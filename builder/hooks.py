@@ -210,7 +210,7 @@ get_website_user_home_page = (
 add_to_apps_screen = [
 	{
 		"name": "builder",
-		"logo": "/assets/builder/frontend/builder_logo.png",
+		"logo": "/assets/builder/builder-logo.svg",
 		"title": "Builder",
 		"route": f"/{builder_path}",
 		"has_permission": "builder.api.check_app_permission",
