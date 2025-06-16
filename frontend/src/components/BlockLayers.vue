@@ -11,7 +11,7 @@
 				<div
 					:data-block-layer-id="element.blockId"
 					:title="element.blockId"
-					class="min-w-24 cursor-pointer select-none overflow-hidden rounded border border-transparent bg-surface-white bg-opacity-50 text-base text-ink-gray-7"
+					class="min-w-24 cursor-pointer select-none rounded border border-transparent bg-surface-white bg-opacity-50 text-base text-ink-gray-7"
 					@click.stop="selectBlock(element, $event)"
 					@mouseover.stop="canvasStore.activeCanvas?.setHoveredBlock(element.blockId)"
 					@mouseleave.stop="canvasStore.activeCanvas?.setHoveredBlock(null)">
@@ -45,14 +45,21 @@
 							}"
 							v-if="Boolean(element.extendedFromComponent)" />
 						<span
-							class="min-h-[1em] min-w-[2em] truncate"
+							class="layer-label min-h-[1em] min-w-[2em] max-w-64 truncate"
 							:contenteditable="element.editable"
 							:title="element.blockId"
 							:class="{
 								'text-purple-500 opacity-80 dark:opacity-100 dark:brightness-125 dark:saturate-[0.3]':
 									element.isExtendedFromComponent(),
 							}"
-							@dblclick="element.editable = true"
+							@dblclick="
+								(ev) => {
+									element.editable = true;
+									// focus
+									const target = ev.target as HTMLElement;
+									target.focus();
+								}
+							"
 							@keydown.enter.stop.prevent="element.editable = false"
 							@blur="setBlockName($event, element)">
 							{{ element.getBlockDescription() }}
@@ -61,7 +68,7 @@
 						<FeatherIcon
 							v-if="!element.isRoot()"
 							:name="element.isVisible() ? 'eye' : 'eye-off'"
-							class="ml-auto mr-2 hidden h-3 w-3 group-hover:block"
+							class="invisible ml-auto mr-2 h-3 w-3 group-hover:visible"
 							@click.stop="element.toggleVisibility()" />
 						<span v-if="element.isRoot()" class="ml-auto mr-2 text-sm capitalize text-ink-gray-5">
 							{{ canvasStore.activeCanvas?.activeBreakpoint }}
