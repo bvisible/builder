@@ -5,7 +5,7 @@
   "type": "module",
   "scripts": {
     "dev": "vite",
-    "build": "vite build --base=/assets/builder/frontend/ && yarn copy-html-entry",
+    "build": "NODE_OPTIONS=--max-old-space-size=4096 vite build --base=/assets/builder/frontend/ && yarn copy-html-entry",
     "copy-html-entry": "cp ../builder/public/frontend/index.html ../builder/www/_builder.html",
     "preview": "vite preview",
     "test-local": "cypress open --e2e --browser chrome",
