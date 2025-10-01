@@ -19,15 +19,18 @@
 						class="group my-[7px] flex items-center gap-1.5 pr-[2px] font-medium"
 						:style="{ paddingLeft: `${indent}px` }"
 						:class="{
-							'!opacity-50': !element.isVisible(),
+							'!opacity-50': !element.isVisible() || isParentHidden,
 						}">
+						<div>
+							<div class="scroll-into-view-anchor absolute ml-20"></div>
+						</div>
 						<FeatherIcon
 							:name="isExpanded(element) ? 'chevron-down' : 'chevron-right'"
 							class="h-3 w-3 text-ink-gray-4"
 							:class="{
 								'ml-[-18px]': adjustForRoot,
 							}"
-							v-if="element.children && element.children.length && !element.isRoot() && element.isVisible()"
+							v-if="element.children && element.children.length && !element.isRoot()"
 							@click.stop="toggleExpanded(element)" />
 						<FeatherIcon
 							:name="element.getIcon()"
@@ -66,18 +69,16 @@
 						</span>
 						<!-- toggle visibility -->
 						<FeatherIcon
-							v-if="!element.isRoot()"
+							v-if="!element.isRoot() && !isParentHidden"
 							:name="element.isVisible() ? 'eye' : 'eye-off'"
 							class="invisible ml-auto mr-2 h-3 w-3 group-hover:visible"
 							@click.stop="element.toggleVisibility()" />
-						<span v-if="element.isRoot()" class="ml-auto mr-2 text-sm capitalize text-ink-gray-5">
-							{{ canvasStore.activeCanvas?.activeBreakpoint }}
-						</span>
 					</span>
 					<div v-if="canShowChildLayer(element)">
 						<BlockLayers
 							:blocks="element.children"
 							:ref="childLayer"
+							:is-parent-hidden="isParentHidden || !element.isVisible()"
 							:indent="childIndent"
 							:disable-draggable="
 								Boolean(element.children.length && element.children[0].isChildOfComponentBlock())
@@ -116,12 +117,14 @@ const props = withDefaults(
 		indent?: number;
 		adjustForRoot?: boolean;
 		disableDraggable?: boolean;
+		isParentHidden?: boolean;
 	}>(),
 	{
 		blocks: () => [],
-		indent: 10,
+		indent: 0,
 		adjustForRoot: true,
 		disableDraggable: false,
+		isParentHidden: false,
 	},
 );
 
@@ -180,10 +183,7 @@ const blockExits = (block: Block) => {
 };
 
 const canShowChildLayer = (block: Block) => {
-	return (
-		((isExpanded(block) && block.hasChildren()) || (block.canHaveChildren() && !block.hasChildren())) &&
-		block.isVisible()
-	);
+	return (isExpanded(block) && block.hasChildren()) || (block.canHaveChildren() && !block.hasChildren());
 };
 
 watch(

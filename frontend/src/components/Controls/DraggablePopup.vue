@@ -1,28 +1,37 @@
 <template>
-	<div class="relative" ref="popover">
-		<div class="fixed z-50" @mousedown.stop>
-			<div
-				ref="popoverContent"
-				class="fixed flex flex-col gap-1 overflow-hidden rounded-lg border border-outline-gray-2 bg-surface-white shadow-xl"
-				:style="{
-					width: width + 'px',
-					minHeight: height + 'px',
-					left: popupLeft + 'px',
-					top: popupTop + 'px',
-				}">
+	<teleport to="body">
+		<div class="relative" ref="popover">
+			<div class="fixed z-50" @mousedown.stop>
 				<div
-					class="flex cursor-grab select-none items-center justify-between px-3 py-1 pr-1 text-sm text-ink-gray-9"
-					:class="{ 'cursor-grabbing': isDragging }"
-					@mousedown="startDrag">
-					<slot name="header"></slot>
-					<Button @click="togglePopup" icon="x" variant="ghost"></Button>
-				</div>
-				<div class="flex-1 px-3 pb-3">
-					<slot name="content"></slot>
+					ref="popoverContent"
+					class="fixed flex flex-col gap-1 overflow-hidden rounded-lg border border-outline-gray-2 bg-surface-white shadow-2xl"
+					:style="{
+						width: width + 'px',
+						minHeight: height + 'px',
+						left: popupLeft + 'px',
+						top: popupTop + 'px',
+					}">
+					<div
+						class="flex cursor-grab select-none items-center justify-between px-4 py-2 pr-3 text-sm text-ink-gray-9"
+						:class="{ 'cursor-grabbing': isDragging }"
+						@mousedown="startDrag">
+						<slot name="header"></slot>
+						<div class="flex items-center gap-2">
+							<Button
+								v-if="actionLabel && actionHandler"
+								@click="actionHandler"
+								:label="actionLabel"
+								variant="solid"></Button>
+							<Button @click="togglePopup" icon="x" variant="subtle"></Button>
+						</div>
+					</div>
+					<div class="flex-1 px-3 pb-3">
+						<slot name="content"></slot>
+					</div>
 				</div>
 			</div>
 		</div>
-	</div>
+	</teleport>
 </template>
 
 <script setup lang="ts">
@@ -36,10 +45,21 @@ const props = withDefaults(
 		modelValue: boolean;
 		width?: number;
 		height?: number;
-		placement?: "top-left" | "top-right" | "bottom-left" | "bottom-right" | "center";
+		placement?:
+			| "top-left"
+			| "top-right"
+			| "bottom-left"
+			| "bottom-right"
+			| "center"
+			| "top-middle"
+			| "bottom-middle"
+			| "middle-left"
+			| "middle-right";
 		placementOffset?: number;
 		clickOutsideToClose?: boolean;
 		container?: HTMLElement | null;
+		actionLabel?: string;
+		actionHandler?: () => void;
 	}>(),
 	{
 		width: 300,
@@ -123,6 +143,22 @@ const setPosition = () => {
 				break;
 			case "center":
 				popupLeft.value = left + (right - left) / 2 - props.width / 2;
+				popupTop.value = top + (bottom - top) / 2 - props.height / 2;
+				break;
+			case "top-middle":
+				popupLeft.value = left + (right - left) / 2 - props.width / 2;
+				popupTop.value = top + props.placementOffset;
+				break;
+			case "bottom-middle":
+				popupLeft.value = left + (right - left) / 2 - props.width / 2;
+				popupTop.value = bottom - props.height - props.placementOffset;
+				break;
+			case "middle-left":
+				popupLeft.value = left + props.placementOffset;
+				popupTop.value = top + (bottom - top) / 2 - props.height / 2;
+				break;
+			case "middle-right":
+				popupLeft.value = right - props.width - props.placementOffset;
 				popupTop.value = top + (bottom - top) / 2 - props.height / 2;
 				break;
 		}

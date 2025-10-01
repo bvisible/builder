@@ -10,29 +10,43 @@
 			v-slot="{ open }"
 			:nullable="nullable"
 			:multiple="multiple">
-			<ComboboxButton v-show="false" ref="comboboxButton"></ComboboxButton>
+			<ComboboxButton v-show="false" ref="comboboxButton" as="div"></ComboboxButton>
 			<div
 				class="form-input flex h-7 w-full items-center justify-between gap-2 rounded border-outline-gray-1 bg-surface-gray-1 p-0 text-sm text-ink-gray-8 transition-colors hover:border-outline-gray-2 hover:bg-surface-gray-1">
 				<!-- {{ displayValue }} -->
+				<template v-if="$slots.prefix">
+					<div class="absolute left-2 top-1.5 z-10 flex items-center">
+						<slot name="prefix" />
+					</div>
+				</template>
 				<ComboboxInput
 					autocomplete="off"
 					@focus="
 						() => {
 							if (!open.value) {
-								$refs.comboboxButton?.$el.click();
+								comboboxButton?.$el.click();
 							}
+							emit('focus');
+							return false;
 						}
 					"
+					@blur="emit('blur')"
 					@change="query = $event.target.value"
 					:displayValue="getDisplayValue"
 					:placeholder="!modelValue ? placeholder : null"
-					class="h-full w-full rounded border-none bg-transparent pl-2 pr-5 text-base focus:ring-2 focus:ring-outline-gray-3" />
+					:class="[
+						'h-full w-full rounded border-none bg-transparent pr-5.5 text-base focus:ring-2 focus:ring-outline-gray-3',
+						$slots.prefix ? 'pl-1' : 'pl-2',
+					]"></ComboboxInput>
 			</div>
 			<ComboboxOptions
 				class="absolute right-0 z-50 w-full overflow-y-auto rounded-lg border border-outline-gray-2 bg-surface-white p-0 shadow-2xl"
-				v-show="filteredOptions.length">
+				v-show="filteredOptions.length || (showInputAsOption && query)">
 				<div class="w-full list-none px-1.5 py-1.5">
-					<ComboboxOption v-if="query" :value="query" class="flex items-center"></ComboboxOption>
+					<ComboboxOption
+						v-if="query && !showInputAsOption"
+						:value="query"
+						class="flex items-center"></ComboboxOption>
 					<ComboboxOption
 						v-for="option in filteredOptions"
 						v-slot="{ active, selected }"
@@ -48,12 +62,21 @@
 						</span>
 						<li
 							v-else
-							class="w-full select-none truncate rounded px-2.5 py-1.5 text-xs"
+							class="group flex w-full select-none items-center gap-2 truncate rounded px-2.5 py-1.5 text-xs"
 							:class="{
 								'bg-gray-100': active,
 								'bg-gray-300': selected,
 							}">
-							{{ option.label }}
+							<component v-if="option.prefix" :is="option.prefix" />
+							<span class="truncate">
+								{{ option.label }}
+							</span>
+							<component
+								class="ml-auto"
+								v-if="option.suffix"
+								:is="option.suffix"
+								@mousedown.stop.prevent
+								@click.stop.prevent />
 						</li>
 					</ComboboxOption>
 				</div>
@@ -92,9 +115,11 @@ import { ComputedRef, computed, ref, watch } from "vue";
 type Option = {
 	label: string;
 	value: string;
+	prefix?: any;
+	suffix?: any;
 };
 
-const emit = defineEmits(["update:modelValue"]);
+const emit = defineEmits(["update:modelValue", "focus", "blur"]);
 
 type Action = {
 	label: String;
@@ -122,7 +147,33 @@ const props = withDefaults(
 const query = ref("");
 const multiple = computed(() => Array.isArray(props.modelValue));
 const nullable = computed(() => !multiple.value);
-const filteredOptions = ref(props.options);
+const asyncOptions = ref<Option[]>([]);
+const comboboxButton = ref<HTMLElement | null>(null);
+
+const filteredOptions = computed(() => {
+	const sourceOptions = props.getOptions ? asyncOptions.value : props.options;
+	let options: Option[] = [];
+
+	if (!query.value) {
+		options = sourceOptions;
+	} else {
+		options = sourceOptions.filter((option) => {
+			const label = option.label.toLowerCase();
+			const value = option.value.toLowerCase();
+			const queryLower = query.value.toLowerCase();
+			return label.includes(queryLower) || value.includes(queryLower);
+		});
+	}
+
+	if (props.showInputAsOption && query.value) {
+		const existingOption = options.find((option) => option.value === query.value);
+		if (!existingOption) {
+			options.unshift({ label: query.value, value: query.value });
+		}
+	}
+
+	return options;
+});
 
 const getDisplayValue = (option: Option | Option[]) => {
 	if (Array.isArray(option)) {
@@ -138,6 +189,19 @@ const value = computed(() => {
 	if (!props.modelValue) {
 		return null;
 	}
+
+	// Support for custom input values
+	if (props.showInputAsOption && typeof props.modelValue === "string") {
+		const existingOption = filteredOptions.value.find((option) => option.value === props.modelValue);
+		if (!existingOption) {
+			return {
+				label: props.modelValue,
+				value: props.modelValue,
+			};
+		}
+		return existingOption;
+	}
+
 	return (
 		filteredOptions.value.find((option) => option.value === props.modelValue) || {
 			label: props.modelValue,
@@ -146,25 +210,26 @@ const value = computed(() => {
 	);
 }) as ComputedRef<Option>;
 
-watch(() => query.value || props.options, updateOptions, { immediate: true });
+watch(() => query.value, updateOptions, { immediate: true });
+watch(
+	() => props.options,
+	() => {
+		if (!props.getOptions) {
+			asyncOptions.value = props.options;
+		}
+	},
+	{ immediate: true },
+);
 
 async function updateOptions() {
 	if (props.getOptions) {
 		const options = await props.getOptions(query.value);
-		filteredOptions.value = options;
-	} else {
-		if (!query.value) {
-			filteredOptions.value = props.options;
-		} else {
-			filteredOptions.value = props.options.filter((option) => {
-				const label = option.label.toLowerCase();
-				const value = option.label.toLowerCase();
-				const queryLower = query.value.toLowerCase();
-				return label.includes(queryLower) || value.includes(query.value);
-			});
-		}
+		asyncOptions.value = options;
 	}
 }
 
 const clearValue = () => emit("update:modelValue", null);
+defineExpose({
+	updateOptions,
+});
 </script>

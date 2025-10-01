@@ -38,7 +38,7 @@
 				</div>
 			</div>
 			<div
-				class="canvas relative flex h-full bg-surface-white shadow-2xl contain-layout selection:!bg-gray-200"
+				class="canvas relative flex h-full bg-surface-white shadow-2xl contain-layout dark:selection:!bg-gray-200"
 				:style="{
 					...canvasStyles,
 					background: canvasProps.background,
@@ -60,6 +60,7 @@
 				<BuilderBlock
 					class="h-full min-h-[inherit]"
 					:block="block"
+					:style="variables"
 					:key="block.blockId"
 					v-if="showBlocks"
 					:breakpoint="breakpoint.device"
@@ -98,9 +99,11 @@ import { BreakpointConfig, CanvasHistory } from "@/types/Builder/BuilderCanvas";
 import { getBlockObject, isCtrlOrCmd } from "@/utils/helpers";
 import { useBlockEventHandlers } from "@/utils/useBlockEventHandlers";
 import { useBlockSelection } from "@/utils/useBlockSelection";
+import { useBuilderVariable } from "@/utils/useBuilderVariable";
 import { useCanvasDropZone } from "@/utils/useCanvasDropZone";
 import { useCanvasEvents } from "@/utils/useCanvasEvents";
 import { useCanvasUtils } from "@/utils/useCanvasUtils";
+import { useDark } from "@vueuse/core";
 import { FeatherIcon } from "frappe-ui";
 import { Ref, computed, onMounted, provide, reactive, ref, watch } from "vue";
 import setPanAndZoom from "../utils/panAndZoom";
@@ -110,6 +113,18 @@ import FitScreenIcon from "./Icons/FitScreen.vue";
 
 const builderStore = useBuilderStore();
 const pageStore = usePageStore();
+
+const { cssVariables, darkCssVariables } = useBuilderVariable();
+const isDark = useDark({
+	attribute: "data-theme",
+});
+
+const variables = computed(() => {
+	return {
+		...cssVariables.value,
+		...(isDark.value ? darkCssVariables.value : {}),
+	};
+});
 
 const resizingBlock = ref(false);
 const canvasContainer = ref(null) as Ref<HTMLElement | null>;
