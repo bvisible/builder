@@ -519,7 +519,9 @@ def get_block_html(blocks):
 				element = "div"
 
 			tag = soup.new_tag(element)
-			tag.attrs = block.get("attributes", {})
+			# Protection contre attrs None (fix pour blocs Builder invalides)
+			attrs_value = block.get("attributes", {})
+			tag.attrs = attrs_value if attrs_value is not None else {}
 
 			customAttributes = block.get("customAttributes", {})
 			if customAttributes:
@@ -557,6 +559,11 @@ def get_block_html(blocks):
 				append_state_style(styles["mobile"]["state"], style_tag, style_class, device="mobile")
 
 				classes.insert(0, style_class)
+
+			# Protection contre tag None (fix pour blocs Builder invalides)
+			if tag is None:
+				frappe.log_error(f"Tag is None for block with element: {block.get('element')}, attrs: {block.get('attrs')}", "Builder Tag None Error")
+				return soup.new_tag("div")
 
 			tag.attrs["class"] = " ".join(classes)
 
