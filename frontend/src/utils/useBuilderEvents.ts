@@ -4,7 +4,6 @@ import webComponent from "@/data/webComponent";
 import { webPages } from "@/data/webPage";
 import useBuilderStore from "@/stores/builderStore";
 import useCanvasStore from "@/stores/canvasStore";
-import useComponentStore from "@/stores/componentStore";
 import usePageStore from "@/stores/pageStore";
 import { BuilderPage } from "@/types/Builder/BuilderPage";
 import blockController from "@/utils/blockController";
@@ -19,7 +18,7 @@ import {
 	isTargetEditable,
 	showDialog,
 	triggerCopyEvent,
-	uploadImage,
+	uploadBuilderAsset,
 } from "@/utils/helpers";
 import { useEventListener, useStorage } from "@vueuse/core";
 import { Ref } from "vue";
@@ -27,7 +26,6 @@ import { useRoute, useRouter } from "vue-router";
 import { toast } from "vue-sonner";
 
 const builderStore = useBuilderStore();
-const componentStore = useComponentStore();
 const canvasStore = useCanvasStore();
 const pageStore = usePageStore();
 
@@ -53,11 +51,13 @@ export function useBuilderEvents(
 	);
 
 	useEventListener(document, "copy", (e) => {
+		if (isTargetEditable(e) || canvasStore.editableBlock) return;
 		copySelectedBlocksToClipboard(e);
 	});
 
 	useEventListener(document, "cut", (e) => {
-		if (isTargetEditable(e)) return;
+		if (isTargetEditable(e) || canvasStore.editableBlock) return;
+		if (builderStore.readOnlyMode) return;
 		copySelectedBlocksToClipboard(e);
 		if (canvasStore.activeCanvas?.selectedBlocks.length) {
 			for (const block of canvasStore.activeCanvas?.selectedBlocks) {
@@ -69,6 +69,7 @@ export function useBuilderEvents(
 
 	useEventListener(document, "paste", async (e) => {
 		if (isTargetEditable(e)) return;
+		if (builderStore.readOnlyMode) return;
 		e.stopPropagation();
 		const clipboardItems = Array.from(e.clipboardData?.items || []);
 
@@ -77,7 +78,7 @@ export function useBuilderEvents(
 			e.preventDefault();
 			const file = clipboardItems.find((item) => item.type.includes("image"))?.getAsFile();
 			if (file) {
-				uploadImage(file).then((res: { fileURL: string; fileName: string }) => {
+				uploadBuilderAsset(file).then((res: { fileURL: string; fileName: string }) => {
 					const selectedBlocks = blockController.getSelectedBlocks();
 					const parentBlock = selectedBlocks.length
 						? selectedBlocks[0]
@@ -261,6 +262,7 @@ export function useBuilderEvents(
 		}
 
 		if (e.key === "d" && isCtrlOrCmd(e)) {
+			if (builderStore.readOnlyMode) return;
 			if (blockController.isBlockSelected() && !blockController.multipleBlocksSelected()) {
 				e.preventDefault();
 				const block = blockController.getSelectedBlocks()[0];
@@ -271,6 +273,7 @@ export function useBuilderEvents(
 		if (isTargetEditable(e)) return;
 
 		if ((e.key === "Backspace" || e.key === "Delete") && blockController.isBlockSelected()) {
+			if (builderStore.readOnlyMode) return;
 			for (const block of blockController.getSelectedBlocks()) {
 				canvasStore.activeCanvas?.removeBlock(block, e.shiftKey);
 			}
@@ -317,7 +320,7 @@ export function useBuilderEvents(
 				if (e.shiftKey) {
 					pageCanvas.value.setScaleAndTranslate();
 				} else {
-					pageCanvas.value.resetZoom();
+					pageCanvas.value.setCanvasZoom?.(1, "center");
 				}
 			}
 			return;
@@ -376,16 +379,19 @@ export function useBuilderEvents(
 		}
 
 		if (e.key === "c") {
+			if (builderStore.readOnlyMode) return;
 			builderStore.mode = "container";
 			return;
 		}
 
 		if (e.key === "i") {
+			if (builderStore.readOnlyMode) return;
 			builderStore.mode = "image";
 			return;
 		}
 
 		if (e.key === "t") {
+			if (builderStore.readOnlyMode) return;
 			builderStore.mode = "text";
 			return;
 		}
@@ -409,7 +415,7 @@ export function useBuilderEvents(
 				webComponent.reload();
 				webPages.fetchOne.submit(pageStore.activePage?.name).then((doc: BuilderPage[]) => {
 					if (currentModified !== doc[0]?.modified) {
-						pageStore.setPage(route.params.pageId as string, false);
+						pageStore.setPage(route.params.pageId as string, false, route.query);
 					}
 				});
 			}

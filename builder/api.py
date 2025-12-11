@@ -2,7 +2,7 @@ import json
 import os
 from io import BytesIO
 from types import FunctionType, MethodType, ModuleType
-from typing import TYPE_CHECKING, Any
+from typing import Any
 from urllib.parse import unquote
 
 import frappe
@@ -98,7 +98,7 @@ def upload_builder_asset():
 
 	image_file = upload_file()
 	if image_file.file_url.endswith((".png", ".jpeg", ".jpg")) and frappe.get_cached_value(
-		"Builder Settings", None, "auto_convert_images_to_webp"
+		"Builder Settings", "Builder Settings", "auto_convert_images_to_webp"
 	):
 		convert_to_webp(file_doc=image_file)
 	return image_file
@@ -174,6 +174,7 @@ def convert_to_webp(image_url: str | None = None, file_doc: Document | None = No
 				return update_file_doc_with_webp(file_doc, image, extn)
 		return file_doc.file_url
 
+	image_url = image_url or ""
 	if image_url.startswith("/files"):
 		image, filename, extn = get_local_image(image_url)
 		if can_convert_image(extn):
@@ -350,3 +351,15 @@ def get_codemirror_completions():
 		key="",
 		value=get_safe_globals(),
 	)
+
+
+@frappe.whitelist()
+def reorder_client_scripts(script_order):
+	if not frappe.has_permission("Builder Page", ptype="write"):
+		frappe.throw("You do not have permission to reorder client scripts")
+
+	if isinstance(script_order, str):
+		script_order = frappe.parse_json(script_order)
+
+	for idx, script_name in enumerate(script_order, start=1):
+		frappe.db.set_value("Builder Page Client Script", script_name, "idx", idx)

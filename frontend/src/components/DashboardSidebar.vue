@@ -7,6 +7,7 @@
 				<Dialog
 					v-model="showSettingsDialog"
 					style="z-index: 40"
+					:disableOutsideClickToClose="true"
 					class="[&>div>div[id^=headlessui-dialog-panel]]:my-3"
 					:options="{
 						title: 'Settings',
@@ -157,9 +158,15 @@
 						{{ project.folder_name }}
 					</EditableSpan>
 				</span>
+				<Tooltip
+					v-if="isFolderActive(project.folder_name) && project.is_standard"
+					placement="top"
+					text="System generated folder cannot be edited or deleted">
+					<FeatherIcon name="info" class="size-4 text-gray-500" />
+				</Tooltip>
 				<Dropdown
 					placement="right"
-					v-if="isFolderActive(project.folder_name)"
+					v-else-if="isFolderActive(project.folder_name)"
 					:options="[
 						{
 							label: 'Rename',
@@ -194,7 +201,6 @@
 </template>
 <script lang="ts" setup>
 import AppsMenu from "@/components/AppsMenu.vue";
-import BuilderSettings from "@/components/BuilderSettings.vue";
 import BuilderButton from "@/components/Controls/BuilderButton.vue";
 import EditableSpan from "@/components/EditableSpan.vue";
 import FilesIcon from "@/components/Icons/Files.vue";
@@ -206,9 +212,11 @@ import useBuilderStore from "@/stores/builderStore";
 import { BuilderProjectFolder } from "@/types/Builder/BuilderProjectFolder";
 import { confirm } from "@/utils/helpers";
 import { useDark, useToggle } from "@vueuse/core";
-import { createResource, Dialog, Dropdown } from "frappe-ui";
+import { createResource, Dialog, Dropdown, Tooltip } from "frappe-ui";
 import { TrialBanner } from "frappe-ui/frappe";
-import { ref } from "vue";
+import { defineAsyncComponent, ref } from "vue";
+
+const BuilderSettings = defineAsyncComponent(() => import("@/components/BuilderSettings.vue"));
 const isDark = useDark({
 	attribute: "data-theme",
 });

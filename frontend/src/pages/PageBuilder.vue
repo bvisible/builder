@@ -41,7 +41,10 @@
 							<FeatherIcon name="chevron-right" class="h-3 w-3" />
 							<span class="flex items-center gap-2">
 								{{ canvasStore.fragmentData.fragmentName }}
-								<a @click="pageListDialog = true" class="cursor-pointer text-ink-gray-4 underline">
+								<a
+									@click="pageListDialog = true"
+									class="cursor-pointer text-ink-gray-4 underline"
+									v-if="canvasStore.fragmentData.showUsageCount">
 									{{ usageMessage }}
 								</a>
 							</span>
@@ -147,6 +150,14 @@ const canvasStore = useCanvasStore();
 const usageCount = ref(0);
 const componentUsedInPages = ref<BuilderPage[]>([]);
 const pageListDialog = ref(false);
+
+watch([() => canvasStore.editableBlock, () => pageStore.activePage?.is_standard], () => {
+	builderStore.toggleReadOnlyMode(
+		canvasStore.editingMode === "page" &&
+			Boolean(pageStore.activePage?.is_standard) &&
+			!window.is_developer_mode,
+	);
+});
 
 declare global {
 	interface Window {
@@ -288,7 +299,7 @@ watch(
 watch(
 	() => fragmentCanvas.value,
 	(value) => {
-		if (value) {
+		if (value && canvasStore.fragmentData.fragmentId && canvasStore.fragmentData.showUsageCount) {
 			const usageCountResource = createResource({
 				method: "POST",
 				url: "builder.builder.doctype.builder_settings.builder_settings.get_component_usage_count",

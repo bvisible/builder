@@ -62,6 +62,7 @@
 					:block="block"
 					:style="variables"
 					:key="block.blockId"
+					:readonly="builderStore.readOnlyMode"
 					v-if="showBlocks"
 					:breakpoint="breakpoint.device"
 					:data="pageStore.pageData" />
@@ -148,6 +149,7 @@ const history = ref(null) as Ref<null> | CanvasHistory;
 const activeBreakpoint = ref("desktop") as Ref<string | null>;
 const hoveredBreakpoint = ref("desktop") as Ref<string | null>;
 const hoveredBlock = ref(null) as Ref<string | null>;
+const setCanvasZoom = ref<(scale: number, pinchPoint: { x: number; y: number } | "center") => void>();
 
 const {
 	clearSelection,
@@ -233,7 +235,8 @@ onMounted(() => {
 		getRootBlock,
 		findBlock,
 	);
-	setPanAndZoom(canvasEl, canvasContainerEl, canvasProps);
+	const { setZoom } = setPanAndZoom(canvasEl, canvasContainerEl, canvasProps);
+	setCanvasZoom.value = setZoom;
 	useBlockEventHandlers(canvasContainerEl);
 });
 
@@ -347,6 +350,7 @@ defineExpose({
 	setActiveBreakpoint,
 	setHoveredBreakpoint,
 	setHoveredBlock,
+	setCanvasZoom,
 });
 
 function selectBreakpoint(ev: MouseEvent, breakpoint: BreakpointConfig) {

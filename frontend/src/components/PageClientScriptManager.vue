@@ -1,60 +1,73 @@
 <template>
 	<div class="flex gap-5">
-		<div class="flex flex-col gap-3 pt-6">
+		<div class="flex flex-col gap-3">
 			<div class="flex h-full w-48 flex-col justify-between gap-1">
 				<div class="flex flex-col gap-1">
-					<a
-						v-for="script in attachedScriptResource.data"
-						href="#"
-						:class="{
-							'text-ink-gray-5': activeScript !== script,
-							'font-medium text-ink-gray-8': activeScript === script,
-						}"
-						@click="selectScript(script)"
-						class="group flex h-6 items-center justify-between gap-1 text-sm last-of-type:mb-2">
-						<div class="flex w-[90%] items-center gap-1">
-							<CSSIcon class="shrink-0" v-if="script.script_type === 'CSS'" />
+					<draggable
+						v-model="attachedScriptResource.data"
+						:item-key="(script: attachedScript) => script.name"
+						handle=".drag-handle"
+						@end="onScriptReorder"
+						class="flex flex-col gap-1">
+						<template #item="{ element: script }">
+							<a
+								href="#"
+								:class="{
+									'text-ink-gray-5': activeScript !== script,
+									'font-medium text-ink-gray-8': activeScript === script,
+								}"
+								@click="selectScript(script)"
+								class="group flex h-6 items-center justify-between gap-1 text-sm first-of-type:mt-6 last-of-type:mb-2">
+								<div class="flex w-[90%] items-center gap-1">
+									<GripVertical class="drag-handle cursor-grab text-ink-gray-5 hover:text-ink-gray-8" />
+									<CSSIcon class="shrink-0" v-if="script.script_type === 'CSS'" />
 
-							<JavaScriptIcon class="shrink-0" v-if="script.script_type === 'JavaScript'" />
+									<JavaScriptIcon class="shrink-0" v-if="script.script_type === 'JavaScript'" />
 
-							<EditableSpan
-								v-model="script.script_name"
-								:editable="script.editable"
-								:onChange="
-									async (newName) => {
-										await updateScriptName(newName, script);
-									}
-								"
-								class="w-full truncate">
-								{{ script.script_name }}
-							</EditableSpan>
-						</div>
+									<EditableSpan
+										v-model="script.script_name"
+										:editable="script.editable && !builderStore.readOnlyMode"
+										:onChange="
+											async (newName) => {
+												await updateScriptName(newName, script);
+											}
+										"
+										class="w-full truncate">
+										{{ script.script_name }}
+									</EditableSpan>
+								</div>
 
-						<Dropdown
-							class="script-options"
-							placement="right"
-							v-if="activeScript === script"
-							:options="[
-								{
-									label: 'Rename',
-									onClick: () => {
-										script.editable = true;
-									},
-									icon: 'edit',
-								},
-								{
-									label: 'Remove Script',
-									onClick: () => deleteScript(script.name),
-									icon: 'trash',
-								},
-							]">
-							<template v-slot="{ open }">
-								<BuilderButton icon="more-horizontal" size="sm" variant="ghost" @click="open"></BuilderButton>
-							</template>
-						</Dropdown>
-					</a>
+								<Dropdown
+									class="script-options"
+									placement="right"
+									v-if="activeScript === script && !builderStore.readOnlyMode"
+									:options="[
+										{
+											label: 'Rename',
+											onClick: () => {
+												script.editable = true;
+											},
+											icon: 'edit',
+										},
+										{
+											label: 'Remove Script',
+											onClick: () => deleteScript(script.name),
+											icon: 'trash',
+										},
+									]">
+									<template v-slot="{ open }">
+										<BuilderButton
+											icon="more-horizontal"
+											size="sm"
+											variant="ghost"
+											@click="open"></BuilderButton>
+									</template>
+								</Dropdown>
+							</a>
+						</template>
+					</draggable>
 
-					<div class="flex w-full gap-2">
+					<div class="flex w-full gap-2" v-if="!builderStore.readOnlyMode">
 						<Dropdown
 							:options="[
 								{ label: 'JavaScript', onClick: () => addScript('JavaScript') },
@@ -88,7 +101,7 @@
 		</div>
 
 		<div
-			class="flex h-[70vh] w-full items-center justify-center rounded bg-surface-gray-1 text-base text-ink-gray-6"
+			class="flex h-[calc(65vh+68px)] w-full items-center justify-center rounded bg-surface-gray-1 text-base text-ink-gray-6"
 			v-show="!activeScript">
 			Add Script
 		</div>
@@ -101,6 +114,7 @@
 				:type="activeScript.script_type as 'JavaScript' | 'CSS'"
 				class="flex-1"
 				height="65vh"
+				:readonly="builderStore.readOnlyMode"
 				:autofocus="false"
 				:show-save-button="true"
 				@save="updateScript"
@@ -111,6 +125,7 @@
 
 <script setup lang="ts">
 import EditableSpan from "@/components/EditableSpan.vue";
+import useBuilderStore from "@/stores/builderStore";
 import usePageStore from "@/stores/pageStore";
 import { posthog } from "@/telemetry";
 import { BuilderClientScript } from "@/types/Builder/BuilderClientScript";
@@ -118,11 +133,14 @@ import { BuilderPage } from "@/types/Builder/BuilderPage";
 import { Autocomplete, createListResource, createResource, Dropdown } from "frappe-ui";
 import { computed, nextTick, ref, watch } from "vue";
 import { toast } from "vue-sonner";
+import draggable from "vuedraggable";
 import CodeEditor from "./Controls/CodeEditor.vue";
 import CSSIcon from "./Icons/CSS.vue";
+import GripVertical from "./Icons/GripVertical.vue";
 import JavaScriptIcon from "./Icons/JavaScript.vue";
 
 const scriptEditor = ref<InstanceType<typeof CodeEditor> | null>(null);
+const builderStore = useBuilderStore();
 const pageStore = usePageStore();
 
 type attachedScript = {
@@ -167,8 +185,8 @@ const attachedScriptResource = createListResource({
 
 const clientScriptResource = createListResource({
 	doctype: "Builder Client Script",
-	fields: ["script", "script_type", "name"],
-	pageLength: 500,
+	fields: ["script_type", "name"],
+	pageLength: 10000,
 	auto: true,
 });
 
@@ -180,7 +198,12 @@ const selectScript = (script: attachedScript) => {
 };
 
 const updateScript = (value: string) => {
-	if (!activeScript.value) return;
+	if (!activeScript.value || builderStore.readOnlyMode) return;
+
+	if (!value || !value.trim()) {
+		toast.warning("Script cannot be empty");
+		return;
+	}
 
 	pageStore.activePageScripts = pageStore.activePageScripts.map((script: BuilderClientScript) => {
 		if (script.name === activeScript.value?.script_name) {
@@ -212,6 +235,8 @@ const updateScript = (value: string) => {
 };
 
 const addScript = (scriptType: "JavaScript" | "CSS") => {
+	if (builderStore.readOnlyMode) return;
+
 	clientScriptResource.insert
 		.submit({
 			script_type: scriptType,
@@ -241,6 +266,8 @@ const addScript = (scriptType: "JavaScript" | "CSS") => {
 };
 
 const attachScript = (builder_script_name: string) => {
+	if (builderStore.readOnlyMode) return;
+
 	attachedScriptResource.insert
 		.submit({
 			parent: props.page.name,
@@ -260,6 +287,8 @@ const attachScript = (builder_script_name: string) => {
 };
 
 const deleteScript = (scriptName: string) => {
+	if (builderStore.readOnlyMode) return;
+
 	activeScript.value = null;
 	attachedScriptResource.delete.submit(scriptName).then(() => {
 		attachedScriptResource.reload();
@@ -270,7 +299,7 @@ const deleteScript = (scriptName: string) => {
 };
 
 const updateScriptName = async (newName: string, script: attachedScript) => {
-	if (!newName) return;
+	if (!newName || builderStore.readOnlyMode) return;
 	script.editable = false;
 	pageStore.activePageScripts = pageStore.activePageScripts.map((_script: BuilderClientScript) => {
 		if (_script.name === script.name) {
@@ -304,6 +333,28 @@ const clientScriptOptions = computed(() =>
 		value: script.name,
 	})),
 );
+
+const onScriptReorder = () => {
+	if (!attachedScriptResource.data) return;
+
+	const scriptOrder = attachedScriptResource.data.map((script: attachedScript) => script.name);
+
+	createResource({
+		url: "builder.api.reorder_client_scripts",
+	})
+		.submit({
+			script_order: scriptOrder,
+		})
+		.then(() => {
+			toast.success("Script order updated");
+		})
+		.catch((e: { message: string; exc: string }) => {
+			const error_message = e.exc.split("\n").slice(-2)[0];
+			toast.error("Failed to update script order", {
+				description: error_message,
+			});
+		});
+};
 
 watch(
 	() => props.page,
