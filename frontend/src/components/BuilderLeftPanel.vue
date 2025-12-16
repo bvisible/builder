@@ -24,7 +24,7 @@
 			</Tooltip>
 		</div>
 		<div
-			class="no-scrollbar hover:show-scrollbar relative min-h-full overflow-auto"
+			class="relative min-h-full overflow-auto"
 			:style="{
 				width: `${builderStore.builderLayout.leftPanelWidth}px`,
 			}"
