@@ -12,6 +12,7 @@
   "preview_width",
   "preview_height",
   "category",
+  "description",
   "order"
  ],
  "fields": [
@@ -42,8 +43,13 @@
    "fieldtype": "Select",
    "in_list_view": 1,
    "label": "Category",
-   "options": "Structure\nBasic\nTypography\nBasic Forms\nForm parts\nMedia\nAdvanced",
+   "options": "Shop\nHero\nNavbar\nContent\nFooter\nForm\nCard\nStructure\nBasic\nTypography\nMedia\nAdvanced",
    "search_index": 1
+  },
+  {
+   "fieldname": "description",
+   "fieldtype": "Small Text",
+   "label": "Description"
   },
   {
    "default": "1",
