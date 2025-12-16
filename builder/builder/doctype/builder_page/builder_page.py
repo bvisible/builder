@@ -705,7 +705,8 @@ def extend_block(block, overridden_block):
 	block["mobileStyles"].update(overridden_block["mobileStyles"])
 	block["tabletStyles"].update(overridden_block["tabletStyles"])
 	block["attributes"].update(overridden_block["attributes"])
-	block["dynamicValues"] = block.get("dynamicValues", []) + overridden_block.get("dynamicValues", [])
+	# Use 'or []' to handle explicit None values (not just missing keys)
+	block["dynamicValues"] = (block.get("dynamicValues") or []) + (overridden_block.get("dynamicValues") or [])
 	if overridden_block.get("element"):
 		block["element"] = overridden_block["element"]
 
