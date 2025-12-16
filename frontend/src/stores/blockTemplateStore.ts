@@ -64,6 +64,7 @@ const useBlockTemplateStore = defineStore("blockTemplateStore", {
 			templateName: string,
 			category: BlockTemplate["category"] = "Basic",
 			previewImage: string = "",
+			description: string = "",
 		) {
 			const blockString = getBlockString(block);
 			const args = {
@@ -77,8 +78,12 @@ const useBlockTemplateStore = defineStore("blockTemplateStore", {
 			} else {
 				args["category"] = category;
 				args["preview"] = previewImage;
+				args["description"] = description;
 				await builderBlockTemplate.insert.submit(args);
 			}
+
+			// FIX: Refresh cache to show new template immediately
+			await builderBlockTemplate.fetch();
 
 			toast.success("Block template saved!");
 		},

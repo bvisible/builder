@@ -8,12 +8,19 @@
 				{
 					label: 'Save',
 					variant: 'solid',
-					onClick: (close: () => void) => {
-						blockTemplateStore.saveBlockTemplate(
+					onClick: async (close: () => void) => {
+						// Copy values before async operation
+						const name = blockTemplateProperties.templateName;
+						const cat = blockTemplateProperties.category;
+						const preview = blockTemplateProperties.previewImage;
+						const desc = blockTemplateProperties.description;
+
+						await blockTemplateStore.saveBlockTemplate(
 							block,
-							blockTemplateProperties.templateName,
-							blockTemplateProperties.category,
-							blockTemplateProperties.previewImage,
+							name,
+							cat,
+							preview,
+							desc,
 						);
 						close();
 					},
@@ -34,6 +41,12 @@
 					v-model="blockTemplateProperties.category"
 					label="Category"
 					:options="blockTemplateStore.blockTemplateCategoryOptions"
+					:hideClearButton="true" />
+				<BuilderInput
+					type="textarea"
+					v-model="blockTemplateProperties.description"
+					label="Description"
+					placeholder="Describe this template for AI selection..."
 					:hideClearButton="true" />
 				<div class="relative">
 					<BuilderInput
@@ -76,5 +89,6 @@ const blockTemplateProperties = ref({
 	templateName: "",
 	category: "" as (typeof blockTemplateStore.blockTemplateCategoryOptions)[number],
 	previewImage: "",
+	description: "",
 });
 </script>
