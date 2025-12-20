@@ -1,0 +1,377 @@
+# French translations for Frappe Builder
+# Copyright (C) 2024 Frappe Technologies Pvt. Ltd.
+# This file is distributed under the same license as the Frappe Builder package.
+#
+msgid ""
+msgstr ""
+"Project-Id-Version: Frappe Builder\n"
+"Report-Msgid-Bugs-To: \n"
+"POT-Creation-Date: 2024-12-20 12:00+0000\n"
+"PO-Revision-Date: 2024-12-20 12:00+0000\n"
+"Last-Translator: \n"
+"Language-Team: French\n"
+"Language: fr\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=UTF-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+"Plural-Forms: nplurals=2; plural=(n > 1);\n"
+
+msgid "About"
+msgstr "À propos"
+
+msgid "Add Custom Meta Tags"
+msgstr "Ajouter des balises meta personnalisées"
+
+msgid "Advanced"
+msgstr "Avancé"
+
+msgid "All the images uploaded to Canvas will be auto converted to WebP for better page performance."
+msgstr "Toutes les images téléchargées sur Canvas seront automatiquement converties en WebP pour de meilleures performances de page."
+
+msgid "An icon file with .ico extension. Should be 16 x 16 px.|||You can generate using favicon-generator.org"
+msgstr "Un fichier icône avec l'extension .ico. Doit être de 16 x 16 px.|||Vous pouvez le générer sur favicon-generator.org"
+
+msgid "An icon file with .ico extension. Should be 16 x 16 px.<br>You can generate using <a href=\"https://favicon-generator.org\" target=\"_blank\">favicon-generator.org</a>"
+msgstr "Un fichier icône avec l'extension .ico. Doit être de 16 x 16 px.<br>Vous pouvez le générer sur <a href=\"https://favicon-generator.org\" target=\"_blank\">favicon-generator.org</a>"
+
+msgid "Apps"
+msgstr "Applications"
+
+msgid "Are you sure you want to replace {0} with {1}?"
+msgstr "Êtes-vous sûr de vouloir remplacer {0} par {1} ?"
+
+msgid "Authenticated Access"
+msgstr "Accès authentifié"
+
+msgid "Auto convert images to WebP"
+msgstr "Convertir automatiquement les images en WebP"
+
+msgid "Basic"
+msgstr "Basique"
+
+msgid "Basic Forms"
+msgstr "Formulaires basiques"
+
+msgid "Block"
+msgstr "Bloc"
+
+msgid "Block Template"
+msgstr "Modèle de bloc"
+
+msgid "Blocks"
+msgstr "Blocs"
+
+msgid "Body HTML"
+msgstr "HTML du corps"
+
+msgid "Builder"
+msgstr "Builder"
+
+msgid "Builder Client Script"
+msgstr "Script client Builder"
+
+msgid "Builder Component"
+msgstr "Composant Builder"
+
+msgid "Builder Page"
+msgstr "Page Builder"
+
+msgid "Builder Page Client Script"
+msgstr "Script client de page Builder"
+
+msgid "Builder Project Folder"
+msgstr "Dossier de projet Builder"
+
+msgid "Builder Script"
+msgstr "Script Builder"
+
+msgid "Builder Settings"
+msgstr "Paramètres Builder"
+
+msgid "Builder Variable"
+msgstr "Variable Builder"
+
+msgid "Canonical URL"
+msgstr "URL canonique"
+
+msgid "Category"
+msgstr "Catégorie"
+
+msgid "Client Scripts"
+msgstr "Scripts client"
+
+msgid "Color"
+msgstr "Couleur"
+
+msgid "Component ID"
+msgstr "ID du composant"
+
+msgid "Component Name"
+msgstr "Nom du composant"
+
+msgid "Component replaced successfully"
+msgstr "Composant remplacé avec succès"
+
+msgid "Content"
+msgstr "Contenu"
+
+msgid "Dark Value"
+msgstr "Valeur sombre"
+
+msgid "Default HTML lang code (e.g., en, es, fr)"
+msgstr "Code de langue HTML par défaut (ex : en, es, fr)"
+
+msgid "Default Language"
+msgstr "Langue par défaut"
+
+msgid "Description"
+msgstr "Description"
+
+msgid "Disable Indexing"
+msgstr "Désactiver l'indexation"
+
+msgid "Documentation"
+msgstr "Documentation"
+
+msgid "Draft Blocks"
+msgstr "Blocs brouillon"
+
+msgid "Dynamic Route"
+msgstr "Route dynamique"
+
+msgid "Favicon"
+msgstr "Favicon"
+
+msgid "Folder Name"
+msgstr "Nom du dossier"
+
+msgid "Font File"
+msgstr "Fichier de police"
+
+msgid "Font Name"
+msgstr "Nom de la police"
+
+msgid "For Web Page"
+msgstr "Pour la page web"
+
+msgid "Form parts"
+msgstr "Parties du formulaire"
+
+msgid "Global script that will be loaded with every page built with Frappe Builder"
+msgstr "Script global qui sera chargé avec chaque page créée avec Frappe Builder"
+
+msgid "Global style that will be loaded with every page built with Frappe Builder"
+msgstr "Style global qui sera chargé avec chaque page créée avec Frappe Builder"
+
+msgid "Head HTML"
+msgstr "HTML de l'en-tête"
+
+msgid "Home Page"
+msgstr "Page d'accueil"
+
+msgid "Image"
+msgstr "Image"
+
+msgid "Is Standard"
+msgstr "Est standard"
+
+msgid "Is Template"
+msgstr "Est un modèle"
+
+msgid "Keyboard Shortcuts"
+msgstr "Raccourcis clavier"
+
+msgid "Landing Page"
+msgstr "Page d'atterrissage"
+
+msgid "Language"
+msgstr "Langue"
+
+msgid "Language code for HTML (e.g., en, es, fr, de). Uses default if unset."
+msgstr "Code de langue pour HTML (ex : en, es, fr, de). Utilise la valeur par défaut si non défini."
+
+msgid "Logout"
+msgstr "Déconnexion"
+
+msgid "Map route parameters into form variables. Example <code>/profile/&lt;user&gt;</code>"
+msgstr "Mapper les paramètres de route vers les variables du formulaire. Exemple <code>/profile/&lt;user&gt;</code>"
+
+msgid "Media"
+msgstr "Média"
+
+msgid "Meta"
+msgstr "Meta"
+
+msgid "Meta Tags"
+msgstr "Balises meta"
+
+msgid "My Profile"
+msgstr "Mon profil"
+
+msgid "My Settings"
+msgstr "Mes paramètres"
+
+msgid "Not used in any page"
+msgstr "Non utilisé dans aucune page"
+
+msgid "Only allow logged-in users to view this page."
+msgstr "Autoriser uniquement les utilisateurs connectés à voir cette page."
+
+msgid "Open in Builder"
+msgstr "Ouvrir dans Builder"
+
+msgid "Options"
+msgstr "Options"
+
+msgid "Order"
+msgstr "Ordre"
+
+msgid "Page Data Script"
+msgstr "Script de données de page"
+
+msgid "Page Name"
+msgstr "Nom de la page"
+
+msgid "Page Preview"
+msgstr "Aperçu de la page"
+
+msgid "Prevent search engines from indexing this page"
+msgstr "Empêcher les moteurs de recherche d'indexer cette page"
+
+msgid "Preview"
+msgstr "Aperçu"
+
+msgid "Preview Height"
+msgstr "Hauteur de l'aperçu"
+
+msgid "Preview Image is mandatory"
+msgstr "L'image d'aperçu est obligatoire"
+
+msgid "Preview Width"
+msgstr "Largeur de l'aperçu"
+
+msgid "Project Folder"
+msgstr "Dossier du projet"
+
+msgid "Public URL"
+msgstr "URL publique"
+
+msgid "Published"
+msgstr "Publié"
+
+msgid "Reload"
+msgstr "Recharger"
+
+msgid "Replace"
+msgstr "Remplacer"
+
+msgid "Replace Component"
+msgstr "Remplacer le composant"
+
+msgid "Replace With"
+msgstr "Remplacer par"
+
+msgid "Report an Issue"
+msgstr "Signaler un problème"
+
+msgid "Route"
+msgstr "Route"
+
+msgid "Script"
+msgstr "Script"
+
+msgid "Script Public URL"
+msgstr "URL publique du script"
+
+msgid "Script Type"
+msgstr "Type de script"
+
+msgid "Scripting"
+msgstr "Script"
+
+msgid "Session Defaults"
+msgstr "Valeurs par défaut de session"
+
+msgid "Spacing"
+msgstr "Espacement"
+
+msgid "Structure"
+msgstr "Structure"
+
+msgid "Style"
+msgstr "Style"
+
+msgid "Style Public URL"
+msgstr "URL publique du style"
+
+msgid "System Manager"
+msgstr "Gestionnaire système"
+
+msgid "Target Component"
+msgstr "Composant cible"
+
+msgid "Template Name"
+msgstr "Nom du modèle"
+
+msgid "The component you are trying to replace with does not exist"
+msgstr "Le composant par lequel vous essayez de remplacer n'existe pas"
+
+msgid "The preferred URL version of this page for search engines. If not set, the current page URL will be used."
+msgstr "L'URL préférée de cette page pour les moteurs de recherche. Si non définie, l'URL actuelle de la page sera utilisée."
+
+msgid "This will be appended at the end of the &lt;body&gt;"
+msgstr "Ceci sera ajouté à la fin du &lt;body&gt;"
+
+msgid "This will be appended at the end of the &lt;head&gt;"
+msgstr "Ceci sera ajouté à la fin du &lt;head&gt;"
+
+msgid "Title"
+msgstr "Titre"
+
+msgid "Toggle Full Width"
+msgstr "Basculer en pleine largeur"
+
+msgid "Toggle Theme"
+msgstr "Changer de thème"
+
+msgid "Type"
+msgstr "Type"
+
+msgid "Typography"
+msgstr "Typographie"
+
+msgid "Used in 1 page"
+msgstr "Utilisé dans 1 page"
+
+msgid "Used in {0} pages"
+msgstr "Utilisé dans {0} pages"
+
+msgid "User Font"
+msgstr "Police utilisateur"
+
+msgid "User Forum"
+msgstr "Forum utilisateur"
+
+msgid "Value"
+msgstr "Valeur"
+
+msgid "Variable Name"
+msgstr "Nom de la variable"
+
+msgid "View Website"
+msgstr "Voir le site web"
+
+msgid "Website Manager"
+msgstr "Gestionnaire de site web"
+
+msgid "You don't have permission to access this component"
+msgstr "Vous n'avez pas la permission d'accéder à ce composant"
+
+msgid "data.events = frappe.get_list(\"Event\")|||<br>|||<b>Note:</b> Each key value of data should be a list."
+msgstr "data.events = frappe.get_list(\"Event\")|||<br>|||<b>Note :</b> Chaque valeur clé de data doit être une liste."
+
+msgid "inverted"
+msgstr "inversé"
+
+msgid "none"
+msgstr "aucun"
