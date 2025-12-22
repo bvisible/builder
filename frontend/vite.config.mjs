@@ -25,6 +25,13 @@ export default defineConfig({
 		emptyOutDir: true,
 		target: "es2015",
 		sourcemap: true,
+		rollupOptions: {
+			// Ignore Frappe bench-specific imports that don't exist in standalone builds
+			external: [
+				/common_site_config\.json/,
+				/\.\.\/\.\.\/\.\.\/frappe\//,
+			],
+		},
 	},
 	resolve: {
 		alias: {
