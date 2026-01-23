@@ -61,6 +61,7 @@ const styleSectionProperties = [
 				styleProperty: "color",
 				component: ColorInput,
 				label: "Text Color",
+				popoverOffset: 120,
 				enableState: computed(() => {
 					return !blockController.getFirstSelectedBlock()?.getEditor();
 				}),
@@ -74,6 +75,7 @@ const styleSectionProperties = [
 			return {
 				component: ColorInput,
 				styleProperty: "borderColor",
+				popoverOffset: 120,
 				label: "Border Color",
 			};
 		},
@@ -183,7 +185,7 @@ const styleSectionProperties = [
 				styleProperty: "zIndex",
 			};
 		},
-		searchKeyWords: "Z, Index, ZIndex, Z Index",
+		searchKeyWords: "Z, Index, ZIndex, Z Index, Z-index, Z-Index",
 		condition: () =>
 			!blockController.multipleBlocksSelected() &&
 			!blockController.isRoot() &&

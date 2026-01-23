@@ -1,5 +1,5 @@
 <template>
-	<Popover placement="left" class="!block w-full" popoverClass="!min-w-fit !mr-[30px]">
+	<Popover placement="left" class="!block w-full" :offset="popoverOffset">
 		<template #target="{ togglePopover, isOpen }">
 			<div class="flex items-center justify-between">
 				<InputLabel v-if="label && labelPosition === 'left'">{{ label }}</InputLabel>
@@ -20,7 +20,7 @@
 						:src="imageURL || '/assets/builder/images/fallback.png'"
 						alt=""
 						@click="togglePopover"
-						class="absolute bottom-[6px] left-2 z-10 h-4 w-4 rounded border border-outline-gray-3 shadow-sm"
+						class="absolute bottom-[6px] left-2 h-4 w-4 rounded border border-outline-gray-3 shadow-sm"
 						:style="{
 							'object-fit': imageFit || 'contain',
 						}" />
@@ -41,7 +41,6 @@
 					:uploadArgs="{
 						private: false,
 						folder: 'Home/Builder Uploads',
-						optimize: true,
 						upload_endpoint: '/api/method/builder.api.upload_builder_asset',
 					}">
 					<template v-slot="{ openFileSelector }">
@@ -54,12 +53,12 @@
 									'object-fit': imageFit || 'contain',
 								}" />
 							<div
-								class="absolute bottom-0 left-0 right-0 top-0 hidden place-items-center bg-gray-500 bg-opacity-20"
+								class="absolute bottom-0 left-0 right-0 top-0 hidden place-items-center bg-surface-gray-4 bg-opacity-20"
 								:class="{
 									'!grid': !imageURL,
 									'group-hover:grid': imageURL,
 								}">
-								<BuilderButton variant="solid" @click="openFileSelector">Upload</BuilderButton>
+								<BuilderButton variant="subtle" @click="openFileSelector">Upload</BuilderButton>
 							</div>
 						</div>
 					</template>
@@ -89,11 +88,13 @@ withDefaults(
 		placeholder?: string;
 		imageFit?: "contain" | "cover" | "fill" | "none";
 		description?: string;
+		popoverOffset?: number;
 	}>(),
 	{
 		labelPosition: "left",
 		placeholder: "Set Image",
 		imageFit: "contain",
+		popoverOffset: 10,
 	},
 );
 

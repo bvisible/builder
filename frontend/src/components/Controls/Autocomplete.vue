@@ -7,7 +7,7 @@
 		:reset-search-term-on-blur="false">
 		<div class="relative" ref="containerRef">
 			<div
-				class="group form-input flex h-7 flex-1 items-center gap-2 rounded border-outline-gray-1 bg-surface-gray-1 p-0 text-sm text-ink-gray-8 transition-colors focus-within:ring-2 focus-within:ring-outline-gray-3 hover:border-outline-gray-2">
+				class="group form-input flex h-7 flex-1 items-center gap-2 rounded bg-surface-gray-2 p-0 text-sm text-ink-gray-8 transition-colors focus-within:bg-surface-white focus-within:ring-2 focus-within:ring-outline-gray-3">
 				<div v-if="$slots.prefix" class="flex items-center pl-2">
 					<slot name="prefix" />
 				</div>
@@ -24,13 +24,13 @@
 						'pl-2': !$slots.prefix,
 						'pr-2': !hasValue,
 					}" />
-				<Button v-if="hasValue" variant="ghost" @click.stop="clearSelection">
+				<Button v-if="hasValue" variant="ghost" @click.stop="clearSelection" class="-ml-2">
 					<CrossIcon class="h-3 w-3" />
 				</Button>
 			</div>
 
 			<ComboboxContent
-				class="absolute z-50 mt-1 max-h-80 w-full overflow-hidden rounded-lg border border-outline-gray-2 bg-surface-white shadow-xl">
+				class="absolute z-10 mt-1 max-h-80 w-full overflow-hidden rounded-lg border bg-surface-white shadow-xl">
 				<div class="overflow-y-auto p-1">
 					<template v-for="(option, index) in displayOptions" :key="`${option.value}-${index}`">
 						<ComboboxSeparator

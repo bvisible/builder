@@ -1,5 +1,5 @@
 <template>
-	<Popover placement="left" class="!block w-full" popoverClass="!min-w-fit !mr-[30px]">
+	<Popover placement="left" class="!block w-full" :offset="25">
 		<template #target="{ togglePopover }">
 			<div class="flex w-full items-center justify-between">
 				<PropertyControl
@@ -14,7 +14,7 @@
 					@update:modelValue="setBGImageURL">
 					<template #prefix>
 						<div
-							class="absolute left-2 top-[6px] z-10 h-4 w-4 cursor-pointer rounded shadow-sm"
+							class="absolute left-2 top-[6px] h-4 w-4 cursor-pointer rounded shadow-sm"
 							@click="togglePopover"
 							:class="{ 'bg-surface-gray-4': !Boolean(backgroundImage) }"
 							:style="previewStyle" />
@@ -76,7 +76,11 @@
 			</div>
 		</template>
 	</Popover>
-	<PropertyControl label="BG Color" styleProperty="backgroundColor" :component="ColorInput" />
+	<PropertyControl
+		label="BG Color"
+		styleProperty="backgroundColor"
+		:component="ColorInput"
+		:popoverOffset="120" />
 </template>
 
 <script lang="ts" setup>

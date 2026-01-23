@@ -148,8 +148,7 @@
 import type Block from "@/block";
 import useCanvasStore from "@/stores/canvasStore";
 import { watchDebounced } from "@vueuse/core";
-import { FeatherIcon, Popover } from "frappe-ui";
-import Input from "frappe-ui/src/components/Input.vue";
+import { FeatherIcon, Input, Popover } from "frappe-ui";
 import { computed, nextTick, onMounted, Ref, ref } from "vue";
 import { toast } from "vue-sonner";
 import BuilderButton from "./BuilderButton.vue";
@@ -178,8 +177,8 @@ const propertyHandlers = [
 		key: "data",
 		name: "Data",
 		matches: (block: Block, term: string) => {
-			if (block.dynamicValues) {
-				block.dynamicValues.forEach((dv: BlockDataKey) => {
+			if (block.getDynamicValues()) {
+				block.getDynamicValues().forEach((dv: BlockDataKey) => {
 					if (dv.key?.toLowerCase().includes(term)) {
 						return true;
 					}

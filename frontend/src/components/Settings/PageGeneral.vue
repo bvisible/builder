@@ -127,36 +127,37 @@
 						description="Prevent search engines from indexing this page"
 						:modelValue="Boolean(pageStore.activePage?.disable_indexing)"
 						@update:modelValue="(val: Boolean) => pageStore.updateActivePage('disable_indexing', val)" />
-					<template v-if="isDeveloperMode">
+					<template v-if="isDeveloperMode || pageStore.activePage?.is_standard">
 						<hr class="w-full border-outline-gray-2" />
 						<Switch
 							size="sm"
 							label="Standard Page"
+							:disabled="!isDeveloperMode && pageStore.activePage?.is_standard"
 							description="Make this page a standard page that can be exported to an app"
 							:modelValue="Boolean(pageStore.activePage?.is_standard)"
-							@update:modelValue="(val: Boolean) => pageStore.updateActivePage('is_standard', val)" />
+							@update:modelValue="handleStandardPageToggle" />
+						<hr v-if="pageStore.activePage?.is_standard" class="w-full border-outline-gray-2" />
 						<div v-if="pageStore.activePage?.is_standard" class="flex items-center justify-between">
 							<div class="flex flex-col gap-2">
-								<span class="text-base font-medium text-ink-gray-9">Module</span>
-								<p class="text-base text-ink-gray-5">Select the module for this standard page</p>
+								<span class="text-base font-medium text-ink-gray-9">App</span>
+								<p class="max-w-xs text-p-sm text-ink-gray-7">Select the app for this standard page</p>
 							</div>
 							<div>
 								<BuilderInput
 									class="w-fit"
 									type="select"
-									:options="moduleOptions"
-									:modelValue="pageStore.activePage?.module"
-									@update:modelValue="
-										(val: string) => pageStore.updateActivePage('module', val)
-									"></BuilderInput>
+									:disabled="!isDeveloperMode && pageStore.activePage?.is_standard"
+									:options="appOptions"
+									:modelValue="pageStore.activePage?.app"
+									@update:modelValue="handleAppChange"></BuilderInput>
 							</div>
 						</div>
 					</template>
-					<hr class="w-full border-outline-gray-2" />
-					<div class="flex items-center justify-between">
+					<hr class="w-full border-outline-gray-2" v-if="!pageStore.activePage?.is_standard" />
+					<div class="flex items-center justify-between" v-if="!pageStore.activePage?.is_standard">
 						<div class="flex flex-col gap-2">
 							<span class="text-base font-medium text-ink-gray-9">Folder</span>
-							<p class="text-base text-ink-gray-5">Set folder to organize your page</p>
+							<p class="max-w-xs text-p-sm text-ink-gray-7">Set folder to organize your page</p>
 						</div>
 						<div>
 							<BuilderInput
@@ -180,12 +181,13 @@ import Switch from "@/components/Controls/Switch.vue";
 import AuthenticatedUserIcon from "@/components/Icons/AuthenticatedUser.vue";
 import builderProjectFolder from "@/data/builderProjectFolder";
 import { builderSettings } from "@/data/builderSettings";
-import moduleDef from "@/data/moduleDef";
 import useBuilderStore from "@/stores/builderStore";
 import usePageStore from "@/stores/pageStore";
 import { BuilderProjectFolder } from "@/types/Builder/BuilderProjectFolder";
-import { FeatherIcon } from "frappe-ui";
+import { toTitleCase } from "@/utils/helpers";
+import { createResource, FeatherIcon } from "frappe-ui";
 import { computed } from "vue";
+import { toast } from "vue-sonner";
 
 const pageStore = usePageStore();
 const builderStore = useBuilderStore();
@@ -211,20 +213,52 @@ const folderOptions = computed(() => {
 	return [homeOption, ...options];
 });
 
-const moduleOptions = computed(() => {
+const installedAppsResource = createResource({
+	url: "frappe.core.doctype.module_def.module_def.get_installed_apps",
+	cache: "installed_apps",
+	auto: true,
+	transform: (data: string) => {
+		return JSON.parse(data);
+	},
+});
+
+const appOptions = computed(() => {
 	const defaultOption = {
-		label: "Select Module",
+		label: "Select App",
 		value: "",
 	};
 
-	const options =
-		moduleDef.data?.map((module: { name: string; module_name: string }) => {
-			return {
-				label: module.module_name,
-				value: module.name,
-			};
-		}) || [];
+	const options = (installedAppsResource.data || []).map((app: string) => {
+		return {
+			label: toTitleCase(app),
+			value: app,
+		};
+	});
 
 	return [defaultOption, ...options];
 });
+
+const handleStandardPageToggle = async (val: Boolean) => {
+	await pageStore.updateActivePage("is_standard", val);
+	notifyStandardPageExport();
+};
+
+const handleAppChange = async (val: string) => {
+	await pageStore.updateActivePage("app", val);
+	notifyStandardPageExport();
+};
+
+const notifyStandardPageExport = () => {
+	const activePage = pageStore.activePage;
+
+	if (!activePage?.app) {
+		toast.warning("Please select an app for this standard page");
+		return;
+	}
+
+	if (activePage.is_standard) {
+		const appName = toTitleCase(activePage.app);
+		toast.success(`This page will be exported to ${appName} app as standard page`);
+	}
+};
 </script>
