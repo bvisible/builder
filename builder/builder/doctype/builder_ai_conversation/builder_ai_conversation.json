@@ -1,0 +1,111 @@
+{
+ "actions": [],
+ "allow_rename": 1,
+ "autoname": "hash",
+ "creation": "2025-01-28 10:00:00.000000",
+ "default_view": "List",
+ "doctype": "DocType",
+ "editable_grid": 1,
+ "engine": "InnoDB",
+ "field_order": [
+  "title",
+  "status",
+  "column_break_info",
+  "page",
+  "section_break_messages",
+  "messages",
+  "section_break_context",
+  "site_context",
+  "generated_blocks"
+ ],
+ "fields": [
+  {
+   "fieldname": "title",
+   "fieldtype": "Data",
+   "in_list_view": 1,
+   "label": "Title",
+   "reqd": 1
+  },
+  {
+   "default": "collecting",
+   "fieldname": "status",
+   "fieldtype": "Select",
+   "in_list_view": 1,
+   "label": "Status",
+   "options": "collecting\ngenerating\ncompleted\nfailed"
+  },
+  {
+   "fieldname": "column_break_info",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "page",
+   "fieldtype": "Link",
+   "label": "Generated Page",
+   "options": "Builder Page"
+  },
+  {
+   "fieldname": "section_break_messages",
+   "fieldtype": "Section Break",
+   "label": "Conversation"
+  },
+  {
+   "fieldname": "messages",
+   "fieldtype": "JSON",
+   "label": "Messages"
+  },
+  {
+   "fieldname": "section_break_context",
+   "fieldtype": "Section Break",
+   "label": "Context"
+  },
+  {
+   "fieldname": "site_context",
+   "fieldtype": "JSON",
+   "label": "Site Context"
+  },
+  {
+   "fieldname": "generated_blocks",
+   "fieldtype": "JSON",
+   "label": "Generated Blocks"
+  }
+ ],
+ "index_web_pages_for_search": 1,
+ "links": [],
+ "modified": "2025-01-28 10:00:00.000000",
+ "modified_by": "Administrator",
+ "module": "Builder",
+ "name": "Builder AI Conversation",
+ "naming_rule": "Random",
+ "owner": "Administrator",
+ "permissions": [
+  {
+   "create": 1,
+   "delete": 1,
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "System Manager",
+   "share": 1,
+   "write": 1
+  },
+  {
+   "create": 1,
+   "delete": 1,
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "Website Manager",
+   "share": 1,
+   "write": 1
+  }
+ ],
+ "sort_field": "modified",
+ "sort_order": "DESC",
+ "states": [],
+ "title_field": "title"
+}

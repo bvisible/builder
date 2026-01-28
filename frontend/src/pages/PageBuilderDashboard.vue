@@ -4,8 +4,22 @@
 		<DashboardSidebar class="z-30"></DashboardSidebar>
 		<div class="flex w-full flex-1 flex-col overflow-hidden">
 			<div
-				class="toolbar sticky top-0 z-10 flex h-12 items-center justify-end border-b-[1px] border-outline-gray-1 bg-surface-white p-2 px-3 py-1"
+				class="toolbar sticky top-0 z-10 flex h-12 items-center justify-end gap-2 border-b-[1px] border-outline-gray-1 bg-surface-white p-2 px-3 py-1"
 				ref="toolbar">
+				<router-link
+					:to="{ name: 'ai-builder' }"
+					@click="
+						() => {
+							posthog.capture('builder_ai_builder_opened');
+						}
+					">
+					<BuilderButton
+						variant="outline"
+						iconLeft="zap"
+						class="border-purple-300 text-purple-600 hover:bg-purple-50">
+						AI Builder
+					</BuilderButton>
+				</router-link>
 				<router-link
 					:to="{ name: 'builder', params: { pageId: 'new' } }"
 					@click="
