@@ -916,12 +916,105 @@ def get_footer_template(context: dict) -> dict:
 
 
 # =============================================================================
+# LLM CONFIGURATION
+# =============================================================================
+
+def get_llm_config() -> dict:
+	"""Get LLM configuration from site config.
+
+	Configuration options in site_config.json:
+	- ai_provider: "ollama" or "openai" (default: "ollama")
+	- ollama_base_url: Ollama API URL (default: "http://localhost:11434")
+	- ollama_model: Model to use with Ollama (default: "llama3.1" or "mistral")
+	- openai_api_key: OpenAI API key (required if using openai)
+	- openai_model: Model to use with OpenAI (default: "gpt-4o-mini")
+	"""
+	return {
+		"provider": frappe.conf.get("ai_provider", "ollama"),
+		"ollama_base_url": frappe.conf.get("ollama_base_url", "http://localhost:11434"),
+		"ollama_model": frappe.conf.get("ollama_model", "llama3.1"),
+		"openai_api_key": frappe.conf.get("openai_api_key"),
+		"openai_model": frappe.conf.get("openai_model", "gpt-4o-mini"),
+	}
+
+
+# =============================================================================
 # LLM API FUNCTIONS
 # =============================================================================
 
-def call_llm(messages: list[dict], model: str = "gpt-4o-mini", temperature: float = 0.7) -> str:
-	"""Make a call to the LLM API."""
-	api_key = frappe.conf.openai_api_key
+def call_llm(messages: list[dict], model: str = None, temperature: float = 0.7) -> str:
+	"""Make a call to the LLM API (Ollama or OpenAI)."""
+	config = get_llm_config()
+	provider = config["provider"]
+
+	if provider == "ollama":
+		return call_ollama(messages, model or config["ollama_model"], temperature, config)
+	else:
+		return call_openai(messages, model or config["openai_model"], temperature, config)
+
+
+def call_ollama(messages: list[dict], model: str, temperature: float, config: dict) -> str:
+	"""Make a call to Ollama API."""
+	import requests
+
+	base_url = config["ollama_base_url"].rstrip("/")
+	url = f"{base_url}/api/chat"
+
+	# Add JSON instruction to the system prompt for Ollama
+	# since it doesn't support response_format natively
+	enhanced_messages = []
+	for msg in messages:
+		if msg["role"] == "system":
+			enhanced_messages.append({
+				"role": "system",
+				"content": msg["content"] + "\n\nIMPORTANT: You MUST respond with valid JSON only. No markdown, no explanations, just the JSON object."
+			})
+		else:
+			enhanced_messages.append(msg)
+
+	payload = {
+		"model": model,
+		"messages": enhanced_messages,
+		"stream": False,
+		"options": {
+			"temperature": temperature
+		},
+		"format": "json"
+	}
+
+	try:
+		response = requests.post(
+			url,
+			json=payload,
+			timeout=120
+		)
+		response.raise_for_status()
+		result = response.json()
+
+		content = result.get("message", {}).get("content", "")
+
+		# Try to extract JSON if wrapped in markdown code blocks
+		if "```json" in content:
+			content = content.split("```json")[1].split("```")[0].strip()
+		elif "```" in content:
+			content = content.split("```")[1].split("```")[0].strip()
+
+		return content
+
+	except requests.exceptions.ConnectionError:
+		frappe.throw(
+			f"Cannot connect to Ollama at {base_url}. "
+			"Please ensure Ollama is running (ollama serve) and the URL is correct."
+		)
+	except requests.exceptions.Timeout:
+		frappe.throw("Ollama request timed out. The model might be loading or the request is too complex.")
+	except Exception as e:
+		frappe.throw(f"Ollama API error: {str(e)}")
+
+
+def call_openai(messages: list[dict], model: str, temperature: float, config: dict) -> str:
+	"""Make a call to OpenAI API."""
+	api_key = config["openai_api_key"]
 	if not api_key:
 		frappe.throw("OpenAI API Key not set in site config. Please add 'openai_api_key' to your site_config.json")
 
@@ -940,6 +1033,46 @@ def call_llm(messages: list[dict], model: str = "gpt-4o-mini", temperature: floa
 	)
 
 	return response["choices"][0]["message"]["content"]
+
+
+@frappe.whitelist()
+def get_ai_config() -> dict:
+	"""Get current AI configuration (for frontend display)."""
+	config = get_llm_config()
+	return {
+		"provider": config["provider"],
+		"ollama_base_url": config["ollama_base_url"] if config["provider"] == "ollama" else None,
+		"ollama_model": config["ollama_model"] if config["provider"] == "ollama" else None,
+		"openai_configured": bool(config["openai_api_key"]) if config["provider"] == "openai" else None,
+	}
+
+
+@frappe.whitelist()
+def test_llm_connection() -> dict:
+	"""Test the LLM connection."""
+	if not frappe.has_permission("Builder Page", ptype="write"):
+		frappe.throw("You do not have permission to test AI connection.")
+
+	config = get_llm_config()
+
+	try:
+		response = call_llm([
+			{"role": "system", "content": "You are a helpful assistant. Respond with JSON only."},
+			{"role": "user", "content": "Say hello in JSON format with a 'message' key."}
+		])
+		json.loads(response)  # Validate JSON
+		return {
+			"success": True,
+			"provider": config["provider"],
+			"model": config["ollama_model"] if config["provider"] == "ollama" else config["openai_model"],
+			"message": "Connection successful!"
+		}
+	except Exception as e:
+		return {
+			"success": False,
+			"provider": config["provider"],
+			"error": str(e)
+		}
 
 
 # =============================================================================
@@ -1165,7 +1298,8 @@ Generate a complete page with all sections. Return ONLY a JSON array of blocks."
 		}
 	]
 
-	response = call_llm(llm_messages, model="gpt-4o", temperature=0.5)
+	# Use default model from config (works for both Ollama and OpenAI)
+	response = call_llm(llm_messages, temperature=0.5)
 
 	try:
 		response_data = json.loads(response)

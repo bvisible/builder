@@ -3,24 +3,41 @@
 		<!-- Sidebar -->
 		<div class="flex w-80 flex-col border-r border-outline-gray-1 bg-surface-white">
 			<!-- Header -->
-			<div class="flex items-center justify-between border-b border-outline-gray-1 p-4">
-				<div class="flex items-center gap-2">
+			<div class="flex flex-col border-b border-outline-gray-1">
+				<div class="flex items-center justify-between p-4">
+					<div class="flex items-center gap-2">
+						<button
+							@click="goBack"
+							class="flex size-8 items-center justify-center rounded text-ink-gray-7 hover:bg-surface-gray-2">
+							<FeatherIcon name="arrow-left" class="size-4" />
+						</button>
+						<h1 class="text-lg font-semibold text-ink-gray-9">AI Builder</h1>
+					</div>
 					<button
-						@click="goBack"
-						class="flex size-8 items-center justify-center rounded text-ink-gray-7 hover:bg-surface-gray-2">
-						<FeatherIcon name="arrow-left" class="size-4" />
+						v-if="canGenerate"
+						@click="generatePage"
+						:disabled="generating"
+						class="flex items-center gap-2 rounded-lg bg-surface-gray-7 px-3 py-2 text-sm font-medium text-white hover:bg-surface-gray-6 disabled:opacity-50">
+						<FeatherIcon v-if="generating" name="loader" class="size-4 animate-spin" />
+						<FeatherIcon v-else name="zap" class="size-4" />
+						<span>{{ generating ? "Generating..." : "Generate" }}</span>
 					</button>
-					<h1 class="text-lg font-semibold text-ink-gray-9">AI Builder</h1>
 				</div>
-				<button
-					v-if="canGenerate"
-					@click="generatePage"
-					:disabled="generating"
-					class="flex items-center gap-2 rounded-lg bg-surface-gray-7 px-3 py-2 text-sm font-medium text-white hover:bg-surface-gray-6 disabled:opacity-50">
-					<FeatherIcon v-if="generating" name="loader" class="size-4 animate-spin" />
-					<FeatherIcon v-else name="zap" class="size-4" />
-					<span>{{ generating ? "Generating..." : "Generate" }}</span>
-				</button>
+				<!-- AI Provider Badge -->
+				<div v-if="aiConfig" class="flex items-center gap-2 border-t border-outline-gray-1 bg-surface-gray-1 px-4 py-2">
+					<div
+						:class="[
+							'flex items-center gap-1.5 rounded-full px-2 py-0.5 text-xs font-medium',
+							aiConfig.provider === 'ollama'
+								? 'bg-green-100 text-green-700'
+								: 'bg-blue-100 text-blue-700'
+						]">
+						<span class="size-1.5 rounded-full" :class="aiConfig.provider === 'ollama' ? 'bg-green-500' : 'bg-blue-500'"></span>
+						{{ aiConfig.provider === 'ollama' ? 'Ollama' : 'OpenAI' }}
+						<span v-if="aiConfig.ollama_model" class="text-green-600">{{ aiConfig.ollama_model }}</span>
+					</div>
+					<span v-if="connectionError" class="text-xs text-red-500">{{ connectionError }}</span>
+				</div>
 			</div>
 
 			<!-- Chat Area -->
@@ -142,6 +159,8 @@ const generating = ref(false);
 const collectionComplete = ref(false);
 const previewDevice = ref("desktop");
 const chatContainer = ref<HTMLElement | null>(null);
+const aiConfig = ref<{ provider: string; ollama_model?: string; ollama_base_url?: string } | null>(null);
+const connectionError = ref<string | null>(null);
 
 // Devices for preview
 const devices = [
@@ -164,6 +183,7 @@ const startConversationResource = createResource({
 	url: "builder.builder_ai.start_conversation",
 	onSuccess(data: any) {
 		conversationId.value = data.conversation_id;
+		connectionError.value = null;
 		if (data.message) {
 			messages.value.push({
 				role: "assistant",
@@ -179,6 +199,20 @@ const startConversationResource = createResource({
 	onError(error: any) {
 		console.error("Failed to start conversation:", error);
 		loading.value = false;
+		const errorMsg = error?.messages?.[0] || error?.message || "Connection failed";
+		if (errorMsg.includes("Ollama") || errorMsg.includes("Cannot connect")) {
+			connectionError.value = "Cannot connect to Ollama. Make sure it's running.";
+			messages.value.push({
+				role: "assistant",
+				content: "I couldn't connect to the AI service. Please make sure Ollama is running (`ollama serve`) and try again.",
+			});
+		} else {
+			messages.value.push({
+				role: "assistant",
+				content: `Error: ${errorMsg}`,
+			});
+		}
+		scrollToBottom();
 	},
 });
 
@@ -235,6 +269,27 @@ const generatePageResource = createResource({
 			role: "assistant",
 			content: "Sorry, I couldn't generate the page. Please try again.",
 		});
+	},
+});
+
+const aiConfigResource = createResource({
+	url: "builder.builder_ai.get_ai_config",
+	onSuccess(data: any) {
+		aiConfig.value = data;
+	},
+});
+
+const testConnectionResource = createResource({
+	url: "builder.builder_ai.test_llm_connection",
+	onSuccess(data: any) {
+		if (!data.success) {
+			connectionError.value = data.error || "Connection failed";
+		} else {
+			connectionError.value = null;
+		}
+	},
+	onError(error: any) {
+		connectionError.value = "Failed to test connection";
 	},
 });
 
@@ -312,6 +367,9 @@ watch(
 
 // Initialize
 onMounted(() => {
+	// Load AI config first
+	aiConfigResource.submit();
+	// Then start conversation
 	startConversation();
 });
 </script>
