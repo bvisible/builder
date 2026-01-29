@@ -1,0 +1,246 @@
+{
+ "actions": [],
+ "allow_rename": 1,
+ "creation": "2025-01-28 12:00:00.000000",
+ "doctype": "DocType",
+ "engine": "InnoDB",
+ "field_order": [
+  "enabled",
+  "ai_provider_section",
+  "ai_provider",
+  "column_break_provider",
+  "ollama_section",
+  "ollama_base_url",
+  "ollama_model",
+  "column_break_ollama",
+  "ollama_timeout",
+  "test_ollama_connection",
+  "openai_section",
+  "openai_api_key",
+  "openai_model",
+  "column_break_openai",
+  "openai_timeout",
+  "test_openai_connection",
+  "generation_section",
+  "default_temperature",
+  "max_conversation_messages",
+  "column_break_generation",
+  "auto_generate_preview",
+  "permissions_section",
+  "allow_website_manager",
+  "column_break_permissions",
+  "rate_limit_per_hour",
+  "advanced_section",
+  "custom_system_prompt",
+  "debug_mode"
+ ],
+ "fields": [
+  {
+   "default": "1",
+   "description": "Enable or disable the AI Builder feature",
+   "fieldname": "enabled",
+   "fieldtype": "Check",
+   "label": "Enable AI Builder"
+  },
+  {
+   "fieldname": "ai_provider_section",
+   "fieldtype": "Section Break",
+   "label": "AI Provider"
+  },
+  {
+   "default": "ollama",
+   "description": "Choose the AI provider to use for generating websites",
+   "fieldname": "ai_provider",
+   "fieldtype": "Select",
+   "in_list_view": 1,
+   "label": "AI Provider",
+   "options": "ollama\nopenai",
+   "reqd": 1
+  },
+  {
+   "fieldname": "column_break_provider",
+   "fieldtype": "Column Break"
+  },
+  {
+   "collapsible": 1,
+   "collapsible_depends_on": "eval:doc.ai_provider === 'ollama'",
+   "depends_on": "eval:doc.ai_provider === 'ollama'",
+   "fieldname": "ollama_section",
+   "fieldtype": "Section Break",
+   "label": "Ollama Configuration"
+  },
+  {
+   "default": "http://localhost:11434",
+   "description": "URL of your Ollama server (e.g., http://localhost:11434)",
+   "fieldname": "ollama_base_url",
+   "fieldtype": "Data",
+   "label": "Ollama Base URL",
+   "mandatory_depends_on": "eval:doc.ai_provider === 'ollama'"
+  },
+  {
+   "default": "llama3.1",
+   "description": "Model to use (e.g., llama3.1, mistral, codellama, llama2)",
+   "fieldname": "ollama_model",
+   "fieldtype": "Data",
+   "label": "Ollama Model",
+   "mandatory_depends_on": "eval:doc.ai_provider === 'ollama'"
+  },
+  {
+   "fieldname": "column_break_ollama",
+   "fieldtype": "Column Break"
+  },
+  {
+   "default": "120",
+   "description": "Request timeout in seconds",
+   "fieldname": "ollama_timeout",
+   "fieldtype": "Int",
+   "label": "Timeout (seconds)"
+  },
+  {
+   "fieldname": "test_ollama_connection",
+   "fieldtype": "Button",
+   "label": "Test Ollama Connection"
+  },
+  {
+   "collapsible": 1,
+   "collapsible_depends_on": "eval:doc.ai_provider === 'openai'",
+   "depends_on": "eval:doc.ai_provider === 'openai'",
+   "fieldname": "openai_section",
+   "fieldtype": "Section Break",
+   "label": "OpenAI Configuration"
+  },
+  {
+   "description": "Your OpenAI API key (starts with sk-)",
+   "fieldname": "openai_api_key",
+   "fieldtype": "Password",
+   "label": "OpenAI API Key",
+   "mandatory_depends_on": "eval:doc.ai_provider === 'openai'"
+  },
+  {
+   "default": "gpt-4o-mini",
+   "description": "Model to use (e.g., gpt-4o-mini, gpt-4o, gpt-4-turbo)",
+   "fieldname": "openai_model",
+   "fieldtype": "Data",
+   "label": "OpenAI Model",
+   "mandatory_depends_on": "eval:doc.ai_provider === 'openai'"
+  },
+  {
+   "fieldname": "column_break_openai",
+   "fieldtype": "Column Break"
+  },
+  {
+   "default": "60",
+   "description": "Request timeout in seconds",
+   "fieldname": "openai_timeout",
+   "fieldtype": "Int",
+   "label": "Timeout (seconds)"
+  },
+  {
+   "fieldname": "test_openai_connection",
+   "fieldtype": "Button",
+   "label": "Test OpenAI Connection"
+  },
+  {
+   "fieldname": "generation_section",
+   "fieldtype": "Section Break",
+   "label": "Generation Settings"
+  },
+  {
+   "default": "0.7",
+   "description": "Controls randomness in responses (0.0 = deterministic, 1.0 = creative)",
+   "fieldname": "default_temperature",
+   "fieldtype": "Float",
+   "label": "Temperature",
+   "precision": "1"
+  },
+  {
+   "default": "20",
+   "description": "Maximum number of messages to include in context",
+   "fieldname": "max_conversation_messages",
+   "fieldtype": "Int",
+   "label": "Max Conversation Messages"
+  },
+  {
+   "fieldname": "column_break_generation",
+   "fieldtype": "Column Break"
+  },
+  {
+   "default": "1",
+   "description": "Automatically generate preview as user provides information",
+   "fieldname": "auto_generate_preview",
+   "fieldtype": "Check",
+   "label": "Auto Generate Preview"
+  },
+  {
+   "fieldname": "permissions_section",
+   "fieldtype": "Section Break",
+   "label": "Permissions & Limits"
+  },
+  {
+   "default": "1",
+   "description": "Allow users with Website Manager role to use AI Builder",
+   "fieldname": "allow_website_manager",
+   "fieldtype": "Check",
+   "label": "Allow Website Manager Role"
+  },
+  {
+   "fieldname": "column_break_permissions",
+   "fieldtype": "Column Break"
+  },
+  {
+   "default": "0",
+   "description": "Maximum AI requests per user per hour (0 = unlimited)",
+   "fieldname": "rate_limit_per_hour",
+   "fieldtype": "Int",
+   "label": "Rate Limit (per hour)"
+  },
+  {
+   "collapsible": 1,
+   "fieldname": "advanced_section",
+   "fieldtype": "Section Break",
+   "label": "Advanced Settings"
+  },
+  {
+   "description": "Custom instructions to add to the system prompt (optional)",
+   "fieldname": "custom_system_prompt",
+   "fieldtype": "Small Text",
+   "label": "Custom System Prompt"
+  },
+  {
+   "default": "0",
+   "description": "Enable debug mode to log AI requests and responses",
+   "fieldname": "debug_mode",
+   "fieldtype": "Check",
+   "label": "Debug Mode"
+  }
+ ],
+ "hide_toolbar": 1,
+ "index_web_pages_for_search": 1,
+ "issingle": 1,
+ "links": [],
+ "modified": "2025-01-28 12:00:00.000000",
+ "modified_by": "Administrator",
+ "module": "Builder",
+ "name": "Builder AI Settings",
+ "owner": "Administrator",
+ "permissions": [
+  {
+   "create": 1,
+   "delete": 1,
+   "email": 1,
+   "print": 1,
+   "read": 1,
+   "role": "System Manager",
+   "share": 1,
+   "write": 1
+  },
+  {
+   "read": 1,
+   "role": "Website Manager"
+  }
+ ],
+ "sort_field": "modified",
+ "sort_order": "DESC",
+ "states": [],
+ "track_changes": 1
+}

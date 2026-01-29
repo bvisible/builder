@@ -919,38 +919,127 @@ def get_footer_template(context: dict) -> dict:
 # LLM CONFIGURATION
 # =============================================================================
 
-def get_llm_config() -> dict:
-	"""Get LLM configuration from site config.
+def get_ai_settings():
+	"""Get AI settings from Builder AI Settings doctype with caching."""
+	try:
+		return frappe.get_cached_doc("Builder AI Settings")
+	except frappe.DoesNotExistError:
+		# Return default settings if doctype doesn't exist yet
+		return frappe._dict({
+			"enabled": True,
+			"ai_provider": "ollama",
+			"ollama_base_url": "http://localhost:11434",
+			"ollama_model": "llama3.1",
+			"ollama_timeout": 120,
+			"openai_api_key": None,
+			"openai_model": "gpt-4o-mini",
+			"openai_timeout": 60,
+			"default_temperature": 0.7,
+			"max_conversation_messages": 20,
+			"auto_generate_preview": True,
+			"allow_website_manager": True,
+			"rate_limit_per_hour": 0,
+			"custom_system_prompt": "",
+			"debug_mode": False
+		})
 
-	Configuration options in site_config.json:
-	- ai_provider: "ollama" or "openai" (default: "ollama")
-	- ollama_base_url: Ollama API URL (default: "http://localhost:11434")
-	- ollama_model: Model to use with Ollama (default: "llama3.1" or "mistral")
-	- openai_api_key: OpenAI API key (required if using openai)
-	- openai_model: Model to use with OpenAI (default: "gpt-4o-mini")
-	"""
-	return {
-		"provider": frappe.conf.get("ai_provider", "ollama"),
-		"ollama_base_url": frappe.conf.get("ollama_base_url", "http://localhost:11434"),
-		"ollama_model": frappe.conf.get("ollama_model", "llama3.1"),
-		"openai_api_key": frappe.conf.get("openai_api_key"),
-		"openai_model": frappe.conf.get("openai_model", "gpt-4o-mini"),
+
+def get_llm_config() -> dict:
+	"""Get LLM configuration from Builder AI Settings doctype."""
+	settings = get_ai_settings()
+
+	config = {
+		"enabled": settings.enabled,
+		"provider": settings.ai_provider,
+		"ollama_base_url": settings.ollama_base_url or "http://localhost:11434",
+		"ollama_model": settings.ollama_model or "llama3.1",
+		"ollama_timeout": settings.ollama_timeout or 120,
+		"openai_model": settings.openai_model or "gpt-4o-mini",
+		"openai_timeout": settings.openai_timeout or 60,
+		"temperature": settings.default_temperature or 0.7,
+		"max_messages": settings.max_conversation_messages or 20,
+		"custom_prompt": settings.custom_system_prompt or "",
+		"debug_mode": settings.debug_mode,
 	}
+
+	# Get OpenAI API key securely
+	if settings.ai_provider == "openai":
+		try:
+			config["openai_api_key"] = settings.get_password("openai_api_key")
+		except Exception:
+			config["openai_api_key"] = None
+
+	return config
+
+
+def check_ai_enabled():
+	"""Check if AI Builder is enabled and user has permission."""
+	settings = get_ai_settings()
+
+	if not settings.enabled:
+		frappe.throw("AI Builder is disabled. Please enable it in Builder AI Settings.")
+
+	# Check permissions
+	if not frappe.has_permission("Builder Page", ptype="write"):
+		frappe.throw("You do not have permission to use AI Builder.")
+
+	# Check role-based access
+	if not settings.allow_website_manager:
+		if "Website Manager" in frappe.get_roles() and "System Manager" not in frappe.get_roles():
+			frappe.throw("AI Builder is not available for Website Manager role.")
 
 
 # =============================================================================
 # LLM API FUNCTIONS
 # =============================================================================
 
-def call_llm(messages: list[dict], model: str = None, temperature: float = 0.7) -> str:
+def call_llm(messages: list[dict], model: str = None, temperature: float = None) -> str:
 	"""Make a call to the LLM API (Ollama or OpenAI)."""
 	config = get_llm_config()
 	provider = config["provider"]
 
+	# Use configured temperature if not specified
+	if temperature is None:
+		temperature = config.get("temperature", 0.7)
+
+	# Add custom system prompt if configured
+	if config.get("custom_prompt"):
+		messages = add_custom_prompt(messages, config["custom_prompt"])
+
+	# Debug logging
+	if config.get("debug_mode"):
+		frappe.log_error(
+			message=f"LLM Request:\nProvider: {provider}\nModel: {model}\nMessages: {json.dumps(messages, indent=2)}",
+			title="AI Builder Debug - Request"
+		)
+
 	if provider == "ollama":
-		return call_ollama(messages, model or config["ollama_model"], temperature, config)
+		result = call_ollama(messages, model or config["ollama_model"], temperature, config)
 	else:
-		return call_openai(messages, model or config["openai_model"], temperature, config)
+		result = call_openai(messages, model or config["openai_model"], temperature, config)
+
+	# Debug logging
+	if config.get("debug_mode"):
+		frappe.log_error(
+			message=f"LLM Response:\n{result[:1000]}...",
+			title="AI Builder Debug - Response"
+		)
+
+	return result
+
+
+def add_custom_prompt(messages: list[dict], custom_prompt: str) -> list[dict]:
+	"""Add custom prompt to system message."""
+	enhanced_messages = []
+	for msg in messages:
+		if msg["role"] == "system":
+			enhanced_messages.append({
+				"role": "system",
+				"content": msg["content"] + f"\n\nAdditional Instructions:\n{custom_prompt}"
+			})
+		else:
+			enhanced_messages.append(msg)
+	return enhanced_messages
 
 
 def call_ollama(messages: list[dict], model: str, temperature: float, config: dict) -> str:
@@ -982,11 +1071,13 @@ def call_ollama(messages: list[dict], model: str, temperature: float, config: di
 		"format": "json"
 	}
 
+	timeout = config.get("ollama_timeout", 120)
+
 	try:
 		response = requests.post(
 			url,
 			json=payload,
-			timeout=120
+			timeout=timeout
 		)
 		response.raise_for_status()
 		result = response.json()
@@ -1014,9 +1105,11 @@ def call_ollama(messages: list[dict], model: str, temperature: float, config: di
 
 def call_openai(messages: list[dict], model: str, temperature: float, config: dict) -> str:
 	"""Make a call to OpenAI API."""
-	api_key = config["openai_api_key"]
+	api_key = config.get("openai_api_key")
 	if not api_key:
-		frappe.throw("OpenAI API Key not set in site config. Please add 'openai_api_key' to your site_config.json")
+		frappe.throw("OpenAI API Key not set. Please configure it in Builder AI Settings.")
+
+	timeout = config.get("openai_timeout", 60)
 
 	response = make_post_request(
 		"https://api.openai.com/v1/chat/completions",
@@ -1029,7 +1122,8 @@ def call_openai(messages: list[dict], model: str, temperature: float, config: di
 			"messages": messages,
 			"temperature": temperature,
 			"response_format": {"type": "json_object"}
-		})
+		}),
+		timeout=timeout
 	)
 
 	return response["choices"][0]["message"]["content"]
@@ -1039,11 +1133,16 @@ def call_openai(messages: list[dict], model: str, temperature: float, config: di
 def get_ai_config() -> dict:
 	"""Get current AI configuration (for frontend display)."""
 	config = get_llm_config()
+	settings = get_ai_settings()
+
 	return {
+		"enabled": config.get("enabled", True),
 		"provider": config["provider"],
-		"ollama_base_url": config["ollama_base_url"] if config["provider"] == "ollama" else None,
-		"ollama_model": config["ollama_model"] if config["provider"] == "ollama" else None,
-		"openai_configured": bool(config["openai_api_key"]) if config["provider"] == "openai" else None,
+		"ollama_base_url": config.get("ollama_base_url") if config["provider"] == "ollama" else None,
+		"ollama_model": config.get("ollama_model") if config["provider"] == "ollama" else None,
+		"openai_model": config.get("openai_model") if config["provider"] == "openai" else None,
+		"openai_configured": bool(config.get("openai_api_key")) if config["provider"] == "openai" else None,
+		"auto_generate_preview": settings.auto_generate_preview if hasattr(settings, 'auto_generate_preview') else True,
 	}
 
 
@@ -1064,7 +1163,7 @@ def test_llm_connection() -> dict:
 		return {
 			"success": True,
 			"provider": config["provider"],
-			"model": config["ollama_model"] if config["provider"] == "ollama" else config["openai_model"],
+			"model": config.get("ollama_model") if config["provider"] == "ollama" else config.get("openai_model"),
 			"message": "Connection successful!"
 		}
 	except Exception as e:
@@ -1082,8 +1181,7 @@ def test_llm_connection() -> dict:
 @frappe.whitelist()
 def start_conversation(title: str = "New Website") -> dict:
 	"""Start a new AI conversation for website generation."""
-	if not frappe.has_permission("Builder Page", ptype="write"):
-		frappe.throw("You do not have permission to use AI Builder.")
+	check_ai_enabled()
 
 	conversation = frappe.get_doc({
 		"doctype": "Builder AI Conversation",
@@ -1125,9 +1223,9 @@ def start_conversation(title: str = "New Website") -> dict:
 @frappe.whitelist()
 def send_message(conversation_id: str, message: str) -> dict:
 	"""Send a message to the AI conversation and get a response."""
-	if not frappe.has_permission("Builder Page", ptype="write"):
-		frappe.throw("You do not have permission to use AI Builder.")
+	check_ai_enabled()
 
+	config = get_llm_config()
 	conversation = frappe.get_doc("Builder AI Conversation", conversation_id)
 
 	# Get existing messages and context
@@ -1148,8 +1246,9 @@ def send_message(conversation_id: str, message: str) -> dict:
 		}
 	]
 
-	# Add conversation history (last 20 messages to avoid token limits)
-	for msg in messages[-20:]:
+	# Add conversation history (use configured max messages)
+	max_messages = config.get("max_messages", 20)
+	for msg in messages[-max_messages:]:
 		llm_messages.append({
 			"role": msg["role"],
 			"content": msg["content"] if msg["role"] == "user" else json.dumps({"message": msg["content"]})
@@ -1187,8 +1286,7 @@ def send_message(conversation_id: str, message: str) -> dict:
 @frappe.whitelist()
 def generate_page(conversation_id: str, page_name: str = None) -> dict:
 	"""Generate a Builder page from the collected context."""
-	if not frappe.has_permission("Builder Page", ptype="write"):
-		frappe.throw("You do not have permission to create pages.")
+	check_ai_enabled()
 
 	conversation = frappe.get_doc("Builder AI Conversation", conversation_id)
 	site_context = json.loads(conversation.site_context or "{}")
@@ -1272,8 +1370,7 @@ def generate_blocks_from_context(context: dict) -> list:
 @frappe.whitelist()
 def generate_blocks_with_llm(conversation_id: str) -> dict:
 	"""Generate blocks using LLM for more creative/custom layouts."""
-	if not frappe.has_permission("Builder Page", ptype="write"):
-		frappe.throw("You do not have permission to use AI Builder.")
+	check_ai_enabled()
 
 	conversation = frappe.get_doc("Builder AI Conversation", conversation_id)
 	site_context = json.loads(conversation.site_context or "{}")

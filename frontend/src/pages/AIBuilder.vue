@@ -24,19 +24,34 @@
 					</button>
 				</div>
 				<!-- AI Provider Badge -->
-				<div v-if="aiConfig" class="flex items-center gap-2 border-t border-outline-gray-1 bg-surface-gray-1 px-4 py-2">
-					<div
-						:class="[
-							'flex items-center gap-1.5 rounded-full px-2 py-0.5 text-xs font-medium',
-							aiConfig.provider === 'ollama'
-								? 'bg-green-100 text-green-700'
-								: 'bg-blue-100 text-blue-700'
-						]">
-						<span class="size-1.5 rounded-full" :class="aiConfig.provider === 'ollama' ? 'bg-green-500' : 'bg-blue-500'"></span>
-						{{ aiConfig.provider === 'ollama' ? 'Ollama' : 'OpenAI' }}
-						<span v-if="aiConfig.ollama_model" class="text-green-600">{{ aiConfig.ollama_model }}</span>
+				<div v-if="aiConfig" class="flex items-center justify-between border-t border-outline-gray-1 bg-surface-gray-1 px-4 py-2">
+					<div class="flex items-center gap-2">
+						<div
+							v-if="aiConfig.enabled !== false"
+							:class="[
+								'flex items-center gap-1.5 rounded-full px-2 py-0.5 text-xs font-medium',
+								aiConfig.provider === 'ollama'
+									? 'bg-green-100 text-green-700'
+									: 'bg-blue-100 text-blue-700'
+							]">
+							<span class="size-1.5 rounded-full" :class="aiConfig.provider === 'ollama' ? 'bg-green-500' : 'bg-blue-500'"></span>
+							{{ aiConfig.provider === 'ollama' ? 'Ollama' : 'OpenAI' }}
+							<span v-if="aiConfig.ollama_model" class="opacity-75">{{ aiConfig.ollama_model }}</span>
+							<span v-else-if="aiConfig.openai_model" class="opacity-75">{{ aiConfig.openai_model }}</span>
+						</div>
+						<div v-else class="flex items-center gap-1.5 rounded-full bg-red-100 px-2 py-0.5 text-xs font-medium text-red-700">
+							<span class="size-1.5 rounded-full bg-red-500"></span>
+							Disabled
+						</div>
+						<span v-if="connectionError" class="text-xs text-red-500">{{ connectionError }}</span>
 					</div>
-					<span v-if="connectionError" class="text-xs text-red-500">{{ connectionError }}</span>
+					<a
+						href="/app/builder-ai-settings"
+						target="_blank"
+						class="flex items-center gap-1 text-xs text-ink-gray-5 hover:text-ink-gray-7">
+						<FeatherIcon name="settings" class="size-3" />
+						<span>Settings</span>
+					</a>
 				</div>
 			</div>
 
