@@ -31,6 +31,7 @@ Configuration centralisée de l'AI Builder.
 | `enabled` | Check | Active/désactive l'AI Builder |
 | `ai_provider` | Select | `ollama` ou `openai` |
 | `ollama_base_url` | Data | URL de l'API Ollama (défaut: `http://localhost:11434`) |
+| `ollama_api_key` | Password | Clé API pour Cloudflare WAF (header X-API-Key) |
 | `ollama_model` | Data | Modèle texte Ollama (défaut: `llama3.1`) |
 | `ollama_vision_model` | Data | Modèle vision Ollama (défaut: `llava`) |
 | `ollama_timeout` | Int | Timeout en secondes (défaut: 120) |
@@ -345,7 +346,7 @@ bench --site [site] run-tests --module builder.builder.doctype.builder_ai_conver
 
 ### Prérequis
 
-**Option 1: Ollama (recommandé)**
+**Option 1: Ollama Local (développement)**
 ```bash
 # Installer Ollama
 curl -fsSL https://ollama.com/install.sh | sh
@@ -358,7 +359,22 @@ ollama pull llava         # Modèle vision (optionnel)
 ollama serve
 ```
 
-**Option 2: OpenAI**
+**Option 2: Ollama avec Cloudflare WAF (production)**
+
+Pour les serveurs Ollama protégés par Cloudflare WAF:
+
+1. Configurer l'URL avec le suffixe `/v1` (endpoint OpenAI-compatible)
+   ```
+   https://ollama.example.com/v1
+   ```
+2. Configurer la clé API dans `ollama_api_key` (sera envoyée via header `X-API-Key`)
+
+Le Builder AI détecte automatiquement le mode à utiliser:
+- Si `ollama_api_key` est défini → Mode proxy Cloudflare (OpenAI-compatible)
+- Si l'URL contient `/v1` → Mode proxy Cloudflare (OpenAI-compatible)
+- Sinon → Mode Ollama natif (local)
+
+**Option 3: OpenAI**
 - Obtenir une clé API sur https://platform.openai.com
 
 ### Configuration
@@ -366,10 +382,11 @@ ollama serve
 1. Aller dans **Builder AI Settings** (`/app/builder-ai-settings`)
 2. Activer l'AI Builder
 3. Configurer le provider (Ollama/OpenAI)
-4. Tester la connexion
-5. (Optionnel) Activer la vision
-6. (Optionnel) Configurer les shortcodes
-7. (Optionnel) Ajuster le niveau de créativité
+4. Pour Ollama avec Cloudflare: renseigner l'API Key
+5. Tester la connexion
+6. (Optionnel) Activer la vision
+7. (Optionnel) Configurer les shortcodes
+8. (Optionnel) Ajuster le niveau de créativité
 
 ## Dépannage
 
@@ -396,6 +413,18 @@ Augmenter `ollama_timeout` dans les settings (défaut: 120s).
 ### Blocks mal formatés
 
 Activer `debug_mode` pour voir les réponses LLM brutes dans les Error Logs.
+
+### Erreur 403 (Cloudflare WAF)
+
+Si vous utilisez un serveur Ollama protégé par Cloudflare:
+
+1. Vérifier que `ollama_api_key` est correctement configuré
+2. Vérifier que la clé est valide auprès de l'administrateur
+3. L'URL doit être au format `https://ollama.example.com/v1`
+
+### Erreur 401 (Authentication)
+
+La clé API est invalide ou expirée. Régénérer une nouvelle clé.
 
 ## Flux de Travail Complet
 

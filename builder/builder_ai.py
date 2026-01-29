@@ -1061,10 +1061,18 @@ def get_llm_config() -> dict:
 	creativity_level = getattr(settings, 'creativity_level', 'balanced')
 	base_temp = settings.default_temperature if settings.default_temperature else creativity_temps.get(creativity_level, 0.7)
 
+	# Get Ollama API key for Cloudflare WAF authentication
+	ollama_api_key = None
+	try:
+		ollama_api_key = settings.get_password("ollama_api_key")
+	except Exception:
+		pass
+
 	config = {
 		"enabled": settings.enabled,
 		"provider": settings.ai_provider,
 		"ollama_base_url": settings.ollama_base_url or "http://localhost:11434",
+		"ollama_api_key": ollama_api_key,
 		"ollama_model": settings.ollama_model or "llama3.1",
 		"ollama_vision_model": getattr(settings, 'ollama_vision_model', None) or "llava",
 		"ollama_timeout": settings.ollama_timeout or 120,
@@ -1167,14 +1175,37 @@ def add_custom_prompt(messages: list[dict], custom_prompt: str) -> list[dict]:
 
 
 def call_ollama(messages: list[dict], model: str, temperature: float, config: dict) -> str:
-	"""Make a call to Ollama API."""
+	"""
+	Make a call to Ollama API.
+
+	Supports two modes:
+	1. Local Ollama: Uses native /api/chat endpoint
+	2. Remote Ollama with Cloudflare WAF: Uses OpenAI-compatible /v1/chat/completions endpoint
+	   with X-API-Key header for authentication
+
+	The mode is auto-detected based on:
+	- If ollama_api_key is set, use OpenAI-compatible mode
+	- If base_url contains /v1, use OpenAI-compatible mode
+	"""
 	import requests
 
 	base_url = config["ollama_base_url"].rstrip("/")
-	url = f"{base_url}/api/chat"
+	api_key = config.get("ollama_api_key")
+	timeout = config.get("ollama_timeout", 120)
 
-	# Add JSON instruction to the system prompt for Ollama
-	# since it doesn't support response_format natively
+	# Detect if we should use OpenAI-compatible mode (for Cloudflare WAF proxy)
+	use_openai_compat = bool(api_key) or "/v1" in base_url
+
+	# Build headers
+	headers = {
+		"Content-Type": "application/json",
+		# User-Agent to avoid Cloudflare bot detection
+		"User-Agent": "Mozilla/5.0 (compatible; BuilderAI/1.0; +https://frappe.io)"
+	}
+	if api_key:
+		headers["X-API-Key"] = api_key
+
+	# Add JSON instruction to the system prompt
 	enhanced_messages = []
 	for msg in messages:
 		if msg["role"] == "system":
@@ -1185,28 +1216,50 @@ def call_ollama(messages: list[dict], model: str, temperature: float, config: di
 		else:
 			enhanced_messages.append(msg)
 
-	payload = {
-		"model": model,
-		"messages": enhanced_messages,
-		"stream": False,
-		"options": {
-			"temperature": temperature
-		},
-		"format": "json"
-	}
+	if use_openai_compat:
+		# OpenAI-compatible mode (for Cloudflare WAF protected Ollama)
+		# Ensure URL ends with /v1 for OpenAI compatibility
+		if not base_url.endswith("/v1"):
+			base_url = f"{base_url}/v1"
+		url = f"{base_url}/chat/completions"
 
-	timeout = config.get("ollama_timeout", 120)
+		payload = {
+			"model": model,
+			"messages": enhanced_messages,
+			"temperature": temperature,
+			"response_format": {"type": "json_object"}
+		}
+	else:
+		# Native Ollama mode (local)
+		url = f"{base_url}/api/chat"
+
+		payload = {
+			"model": model,
+			"messages": enhanced_messages,
+			"stream": False,
+			"options": {
+				"temperature": temperature
+			},
+			"format": "json"
+		}
 
 	try:
 		response = requests.post(
 			url,
+			headers=headers,
 			json=payload,
 			timeout=timeout
 		)
 		response.raise_for_status()
 		result = response.json()
 
-		content = result.get("message", {}).get("content", "")
+		# Extract content based on response format
+		if use_openai_compat:
+			# OpenAI format: response.choices[0].message.content
+			content = result.get("choices", [{}])[0].get("message", {}).get("content", "")
+		else:
+			# Ollama format: response.message.content
+			content = result.get("message", {}).get("content", "")
 
 		# Try to extract JSON if wrapped in markdown code blocks
 		if "```json" in content:
@@ -1219,10 +1272,21 @@ def call_ollama(messages: list[dict], model: str, temperature: float, config: di
 	except requests.exceptions.ConnectionError:
 		frappe.throw(
 			f"Cannot connect to Ollama at {base_url}. "
-			"Please ensure Ollama is running (ollama serve) and the URL is correct."
+			"Please ensure Ollama is running and the URL is correct."
 		)
 	except requests.exceptions.Timeout:
 		frappe.throw("Ollama request timed out. The model might be loading or the request is too complex.")
+	except requests.exceptions.HTTPError as e:
+		# Better error message for Cloudflare WAF blocks
+		if e.response.status_code == 403:
+			frappe.throw(
+				f"Access denied (403). If using Cloudflare WAF, check that the API Key is correct."
+			)
+		elif e.response.status_code == 401:
+			frappe.throw(
+				f"Authentication failed (401). Check the API Key in Builder AI Settings."
+			)
+		frappe.throw(f"Ollama API error: {str(e)}")
 	except Exception as e:
 		frappe.throw(f"Ollama API error: {str(e)}")
 
@@ -1284,18 +1348,35 @@ def analyze_image_with_vision(image_data: str, prompt: str, config: dict = None)
 
 
 def analyze_image_ollama(image_data: str, prompt: str, config: dict) -> dict:
-	"""Analyze image using Ollama vision model (llava, etc.)."""
+	"""
+	Analyze image using Ollama vision model (llava, etc.).
+
+	Supports both local Ollama and Cloudflare WAF protected Ollama servers.
+	"""
 	import requests
 	import base64
 
 	base_url = config["ollama_base_url"].rstrip("/")
+	api_key = config.get("ollama_api_key")
 	vision_model = config.get("ollama_vision_model", "llava")
+	timeout = config.get("ollama_timeout", 120)
+
+	# Build headers (same as call_ollama for consistency)
+	headers = {
+		"Content-Type": "application/json",
+		"User-Agent": "Mozilla/5.0 (compatible; BuilderAI/1.0; +https://frappe.io)"
+	}
+	if api_key:
+		headers["X-API-Key"] = api_key
 
 	# Prepare image data
 	# If it's a URL, download and convert to base64
 	if image_data.startswith("http"):
 		try:
-			response = requests.get(image_data, timeout=30)
+			download_headers = {"User-Agent": headers["User-Agent"]}
+			if api_key:
+				download_headers["X-API-Key"] = api_key
+			response = requests.get(image_data, headers=download_headers, timeout=30)
 			response.raise_for_status()
 			image_data = base64.b64encode(response.content).decode("utf-8")
 		except Exception as e:
@@ -1322,6 +1403,7 @@ Analyze this image and return a JSON object with:
 
 IMPORTANT: Return only valid JSON, no other text."""
 
+	# Native Ollama API for vision (images are handled differently)
 	payload = {
 		"model": vision_model,
 		"messages": [
@@ -1335,11 +1417,10 @@ IMPORTANT: Return only valid JSON, no other text."""
 		"format": "json"
 	}
 
-	timeout = config.get("ollama_timeout", 120)
-
 	try:
 		response = requests.post(
 			f"{base_url}/api/chat",
+			headers=headers,
 			json=payload,
 			timeout=timeout
 		)
@@ -1361,6 +1442,10 @@ IMPORTANT: Return only valid JSON, no other text."""
 
 	except requests.exceptions.ConnectionError:
 		frappe.throw(f"Cannot connect to Ollama at {base_url}. Please ensure Ollama is running.")
+	except requests.exceptions.HTTPError as e:
+		if e.response.status_code == 403:
+			frappe.throw("Access denied (403). Check the API Key for Cloudflare WAF.")
+		frappe.throw(f"Vision analysis failed: {str(e)}")
 	except Exception as e:
 		frappe.throw(f"Vision analysis failed: {str(e)}")
 
@@ -1506,6 +1591,7 @@ def get_ai_config() -> dict:
 		"provider": config["provider"],
 		"ollama_base_url": config.get("ollama_base_url") if config["provider"] == "ollama" else None,
 		"ollama_model": config.get("ollama_model") if config["provider"] == "ollama" else None,
+		"ollama_api_key_configured": bool(config.get("ollama_api_key")) if config["provider"] == "ollama" else None,
 		"openai_model": config.get("openai_model") if config["provider"] == "openai" else None,
 		"openai_configured": bool(config.get("openai_api_key")) if config["provider"] == "openai" else None,
 		"auto_generate_preview": settings.auto_generate_preview if hasattr(settings, 'auto_generate_preview') else True,
@@ -1534,12 +1620,24 @@ def test_llm_connection() -> dict:
 			{"role": "user", "content": "Say hello in JSON format with a 'message' key."}
 		])
 		json.loads(response)  # Validate JSON
-		return {
+
+		# Build result with auth info
+		result = {
 			"success": True,
 			"provider": config["provider"],
 			"model": config.get("ollama_model") if config["provider"] == "ollama" else config.get("openai_model"),
 			"message": "Connection successful!"
 		}
+
+		# Add auth info for Ollama
+		if config["provider"] == "ollama":
+			if config.get("ollama_api_key"):
+				result["auth"] = "X-API-Key (Cloudflare WAF)"
+			else:
+				result["auth"] = "None (local)"
+
+		return result
+
 	except Exception as e:
 		return {
 			"success": False,

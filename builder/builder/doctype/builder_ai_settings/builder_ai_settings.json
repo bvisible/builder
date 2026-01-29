@@ -12,6 +12,7 @@
   "enable_vision",
   "ollama_section",
   "ollama_base_url",
+  "ollama_api_key",
   "ollama_model",
   "column_break_ollama",
   "ollama_vision_model",
@@ -91,11 +92,17 @@
   },
   {
    "default": "http://localhost:11434",
-   "description": "URL of your Ollama server (e.g., http://localhost:11434)",
+   "description": "URL of your Ollama server (e.g., http://localhost:11434 or https://ollama.example.com/v1)",
    "fieldname": "ollama_base_url",
    "fieldtype": "Data",
    "label": "Ollama Base URL",
    "mandatory_depends_on": "eval:doc.ai_provider === 'ollama'"
+  },
+  {
+   "description": "API Key for Cloudflare WAF authentication (X-API-Key header). Leave empty for local Ollama.",
+   "fieldname": "ollama_api_key",
+   "fieldtype": "Password",
+   "label": "API Key (Cloudflare WAF)"
   },
   {
    "default": "llama3.1",
