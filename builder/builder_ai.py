@@ -25,87 +25,190 @@ def generate_block_id() -> str:
 # SYSTEM PROMPTS
 # =============================================================================
 
-COLLECTOR_SYSTEM_PROMPT = """You are a friendly website design assistant helping users create their perfect website. Your role is to have a natural conversation to understand what they want to build.
+def get_collector_prompt(settings=None) -> str:
+	"""Generate the collector prompt with dynamic settings."""
 
-## Your Responsibilities:
-1. Understand the type of website they want (landing page, portfolio, business site, etc.)
-2. Learn about their brand (colors, style preferences, tone)
-3. Gather content for each section (headings, descriptions, CTAs)
-4. Understand their target audience
+	# Get shortcodes if available
+	shortcodes_info = ""
+	if settings and hasattr(settings, 'shortcodes') and settings.shortcodes:
+		shortcodes_list = []
+		for sc in settings.shortcodes:
+			shortcodes_list.append(f"- **{sc.name1}** ({sc.category}): {sc.description or 'No description'}\n  Use when: {sc.use_when or 'As appropriate'}\n  Code: `{sc.shortcode}`")
+		if shortcodes_list:
+			shortcodes_info = f"""
+## Available Components/Shortcodes
+You have access to these pre-built components. Use them when appropriate based on the site type:
 
-## Conversation Guidelines:
-- Be conversational and friendly, not robotic
-- Ask ONE question at a time to avoid overwhelming the user
-- Provide suggestions and examples when helpful
-- If the user is unsure, offer 2-3 options to choose from
-- Acknowledge their choices positively before moving on
+{chr(10).join(shortcodes_list)}
 
-## Information to Collect:
-1. **Site Type**: What kind of site (landing page, portfolio, blog, business, etc.)
-2. **Business/Project Info**: Name, tagline, description
-3. **Sections Needed**: Hero, features, testimonials, pricing, contact, etc.
-4. **Content**: Headlines, descriptions, button text for each section
-5. **Style Preferences**: Colors, modern/classic, minimal/detailed
-6. **Images**: Descriptions of images they want (we'll use placeholders)
+IMPORTANT: When generating the site, you MUST use these shortcodes where appropriate. For example:
+- E-commerce sites MUST include the cart shortcode in the header
+- Sites with user accounts MUST include the user shortcode
+- Sites with search functionality MUST include the search shortcode
+"""
 
-## Response Format:
-Always respond with a JSON object containing:
-{
-  "message": "Your friendly response to the user",
-  "site_context": {
-    // Updated site information collected so far
-    // Include ALL previously collected info plus any new info
-  },
-  "collection_complete": false,  // Set to true when you have enough info
-  "next_question_topic": "brief description of what you'll ask next"
-}
+	# Get design preferences
+	design_info = ""
+	if settings:
+		style = getattr(settings, 'default_style', 'modern')
+		creativity = getattr(settings, 'creativity_level', 'balanced')
+		design_info = f"""
+## Design Approach
+- Default style: {style}
+- Creativity level: {creativity}
+- Use modern design: {getattr(settings, 'use_modern_design', True)}
+"""
 
-## Site Context Schema:
-{
-  "site_type": "landing_page|portfolio|business|blog|ecommerce",
+	# Get site type preferences
+	site_type_info = ""
+	if settings:
+		default_type = getattr(settings, 'default_site_type', 'auto')
+		allow_multipage = getattr(settings, 'allow_multipage', True)
+		site_type_info = f"""
+## Site Structure
+- Default site type: {default_type}
+- Multi-page sites allowed: {allow_multipage}
+"""
+
+	return f"""You are an expert web designer and creative director with 15+ years of experience creating stunning, unique websites. You're having a friendly conversation to understand what the user wants to build.
+
+## Your Personality
+- Enthusiastic and creative, but professional
+- You suggest bold, innovative ideas while respecting user preferences
+- You understand that every business is unique and deserves a unique design
+- You think about user experience, not just aesthetics
+
+## Your Creative Approach
+1. **Understand the Business Context**: What industry? What's their unique value proposition? Who are their competitors?
+2. **Feel the Brand**: What emotions should the site evoke? What's the brand personality?
+3. **Think About the User Journey**: What actions should visitors take? What story does the site tell?
+4. **Design with Intent**: Every design choice should have a purpose
+
+## Conversation Guidelines
+- Ask ONE focused question at a time
+- Be genuinely curious - dig deeper into their business
+- Suggest creative ideas based on their industry (e.g., "For a florist, we could use organic shapes and warm, natural colors...")
+- If they're unsure about colors, suggest palettes that match their industry and mood
+- Don't just collect data - collaborate on the creative vision
+{shortcodes_info}
+{design_info}
+{site_type_info}
+## Information to Gather (Organically)
+
+### Essential (Must Have)
+- Business/project name
+- What they do (in their words)
+- Target audience
+- Main goal of the site (sell, inform, showcase, generate leads?)
+
+### Style & Feel
+- Color preferences OR let you suggest based on industry
+- Modern/classic/minimal/bold/playful/elegant
+- Any sites they like for inspiration
+- Brand personality (professional, friendly, luxurious, approachable?)
+
+### Structure
+- One-page or multi-page?
+- Key sections needed
+- Call-to-action priorities
+
+### Content Direction
+- Headlines (or let you write them)
+- Key messages to convey
+- Unique selling points
+
+## Creative Color Psychology
+Use this knowledge to suggest colors when users don't have preferences:
+- **Florists/Nature**: Warm greens, soft pinks, earthy tones
+- **Tech/SaaS**: Blues, purples, clean whites
+- **Restaurants/Food**: Warm oranges, reds, appetizing colors
+- **Luxury/Fashion**: Black, gold, deep jewel tones
+- **Health/Wellness**: Calming blues, greens, soft gradients
+- **Finance**: Navy blue, green (trust), sophisticated grays
+- **Creative Agencies**: Bold, unexpected color combinations
+- **Kids/Education**: Bright, playful, primary colors
+
+## Response Format
+Always respond with a JSON object:
+{{
+  "message": "Your conversational response",
+  "site_context": {{
+    // All collected information - be comprehensive
+  }},
+  "collection_complete": false,
+  "next_question_topic": "what you'll explore next",
+  "creative_notes": "internal notes about design direction"
+}}
+
+## Site Context Schema
+{{
+  "site_type": "one_page|multi_page",
+  "page_structure": "landing|portfolio|business|ecommerce|blog|saas",
   "business_name": "string",
+  "industry": "string",
   "tagline": "string",
   "description": "string",
-  "target_audience": "string",
-  "style": {
+  "unique_value_proposition": "string",
+  "target_audience": {{
+    "description": "string",
+    "age_range": "string",
+    "interests": ["string"]
+  }},
+  "brand_personality": ["professional", "friendly", "luxurious", "innovative", "trustworthy"],
+  "style": {{
     "primary_color": "#hex",
     "secondary_color": "#hex",
     "accent_color": "#hex",
     "background_color": "#hex",
     "text_color": "#hex",
-    "style_preference": "modern|classic|minimal|bold|playful",
-    "font_style": "sans-serif|serif|modern|classic"
-  },
+    "gradient": "optional gradient definition",
+    "style_preference": "modern|classic|minimal|bold|playful|elegant|corporate",
+    "mood": "description of the overall feel",
+    "inspiration_sites": ["urls or descriptions"]
+  }},
+  "pages": [
+    {{
+      "name": "home",
+      "is_main": true,
+      "sections": [...]
+    }}
+  ],
   "sections": [
-    {
-      "type": "hero|features|testimonials|pricing|contact|about|cta|footer|navbar",
+    {{
+      "type": "hero|features|testimonials|pricing|contact|about|cta|gallery|team|faq|stats|process",
+      "layout_variant": "centered|split|asymmetric|full-width",
       "headline": "string",
       "subheadline": "string",
       "description": "string",
-      "cta_text": "string",
-      "cta_link": "string",
-      "items": [
-        // For features, testimonials, pricing, etc.
-        {
-          "title": "string",
-          "description": "string",
-          "icon": "description of icon needed",
-          "price": "for pricing items",
-          "author": "for testimonials"
-        }
-      ],
-      "image_description": "description of the image needed"
-    }
+      "cta_primary": {{"text": "string", "link": "string"}},
+      "cta_secondary": {{"text": "string", "link": "string"}},
+      "items": [...],
+      "background_style": "solid|gradient|image|pattern",
+      "special_effects": ["parallax", "animation", "glassmorphism"]
+    }}
   ],
-  "contact_info": {
-    "email": "string",
-    "phone": "string",
-    "address": "string",
-    "social_links": {}
-  }
-}
+  "header": {{
+    "style": "transparent|solid|sticky",
+    "includes_search": false,
+    "includes_cart": false,
+    "includes_user_menu": false,
+    "shortcodes_to_use": ["list of shortcode names"]
+  }},
+  "footer": {{
+    "style": "minimal|detailed|mega",
+    "columns": ["about", "links", "contact", "social"]
+  }},
+  "contact_info": {{...}},
+  "seo": {{
+    "meta_title": "string",
+    "meta_description": "string"
+  }}
+}}
 
-Start by greeting the user and asking what kind of website they want to create."""
+Start with a warm, enthusiastic greeting and ask what kind of website they're dreaming of!"""
+
+
+COLLECTOR_SYSTEM_PROMPT = get_collector_prompt()  # Default without settings
 
 
 GENERATOR_SYSTEM_PROMPT = """You are a Frappe Builder block generator. Your task is to convert a site context JSON into properly structured Frappe Builder blocks.
@@ -948,18 +1051,39 @@ def get_llm_config() -> dict:
 	"""Get LLM configuration from Builder AI Settings doctype."""
 	settings = get_ai_settings()
 
+	# Map creativity level to temperature adjustments
+	creativity_temps = {
+		"conservative": 0.5,
+		"balanced": 0.7,
+		"creative": 0.9,
+		"experimental": 1.1
+	}
+	creativity_level = getattr(settings, 'creativity_level', 'balanced')
+	base_temp = settings.default_temperature if settings.default_temperature else creativity_temps.get(creativity_level, 0.7)
+
 	config = {
 		"enabled": settings.enabled,
 		"provider": settings.ai_provider,
 		"ollama_base_url": settings.ollama_base_url or "http://localhost:11434",
 		"ollama_model": settings.ollama_model or "llama3.1",
+		"ollama_vision_model": getattr(settings, 'ollama_vision_model', None) or "llava",
 		"ollama_timeout": settings.ollama_timeout or 120,
 		"openai_model": settings.openai_model or "gpt-4o-mini",
+		"openai_vision_model": getattr(settings, 'openai_vision_model', None) or "gpt-4o",
 		"openai_timeout": settings.openai_timeout or 60,
-		"temperature": settings.default_temperature or 0.7,
+		"temperature": base_temp,
 		"max_messages": settings.max_conversation_messages or 20,
 		"custom_prompt": settings.custom_system_prompt or "",
 		"debug_mode": settings.debug_mode,
+		# Vision settings
+		"enable_vision": getattr(settings, 'enable_vision', False),
+		# Design settings
+		"creativity_level": creativity_level,
+		"default_style": getattr(settings, 'default_style', 'modern'),
+		"use_modern_design": getattr(settings, 'use_modern_design', True),
+		"default_site_type": getattr(settings, 'default_site_type', 'auto'),
+		"allow_multipage": getattr(settings, 'allow_multipage', True),
+		"design_guidelines": getattr(settings, 'design_guidelines', '') or "",
 	}
 
 	# Get OpenAI API key securely
@@ -1129,6 +1253,248 @@ def call_openai(messages: list[dict], model: str, temperature: float, config: di
 	return response["choices"][0]["message"]["content"]
 
 
+# =============================================================================
+# VISION SUPPORT FUNCTIONS
+# =============================================================================
+
+def analyze_image_with_vision(image_data: str, prompt: str, config: dict = None) -> dict:
+	"""
+	Analyze an image using vision-capable LLM.
+
+	Args:
+		image_data: Base64-encoded image data or URL
+		prompt: Analysis prompt
+		config: LLM config (optional, will be fetched if not provided)
+
+	Returns:
+		Analysis results as dict
+	"""
+	if config is None:
+		config = get_llm_config()
+
+	if not config.get("enable_vision"):
+		frappe.throw("Vision is not enabled. Please enable it in Builder AI Settings.")
+
+	provider = config["provider"]
+
+	if provider == "ollama":
+		return analyze_image_ollama(image_data, prompt, config)
+	else:
+		return analyze_image_openai(image_data, prompt, config)
+
+
+def analyze_image_ollama(image_data: str, prompt: str, config: dict) -> dict:
+	"""Analyze image using Ollama vision model (llava, etc.)."""
+	import requests
+	import base64
+
+	base_url = config["ollama_base_url"].rstrip("/")
+	vision_model = config.get("ollama_vision_model", "llava")
+
+	# Prepare image data
+	# If it's a URL, download and convert to base64
+	if image_data.startswith("http"):
+		try:
+			response = requests.get(image_data, timeout=30)
+			response.raise_for_status()
+			image_data = base64.b64encode(response.content).decode("utf-8")
+		except Exception as e:
+			frappe.throw(f"Failed to download image: {str(e)}")
+
+	# Remove data URI prefix if present
+	if "base64," in image_data:
+		image_data = image_data.split("base64,")[1]
+
+	vision_prompt = f"""{prompt}
+
+Analyze this image and return a JSON object with:
+{{
+  "description": "Brief description of what you see",
+  "colors": ["list of dominant colors as hex codes"],
+  "mood": "the mood/feeling the image conveys",
+  "style_suggestions": ["design style suggestions based on the image"],
+  "design_insights": {{
+    "recommended_palette": ["primary", "secondary", "accent colors"],
+    "typography_style": "suggested font style",
+    "layout_suggestions": "layout recommendations"
+  }}
+}}
+
+IMPORTANT: Return only valid JSON, no other text."""
+
+	payload = {
+		"model": vision_model,
+		"messages": [
+			{
+				"role": "user",
+				"content": vision_prompt,
+				"images": [image_data]
+			}
+		],
+		"stream": False,
+		"format": "json"
+	}
+
+	timeout = config.get("ollama_timeout", 120)
+
+	try:
+		response = requests.post(
+			f"{base_url}/api/chat",
+			json=payload,
+			timeout=timeout
+		)
+		response.raise_for_status()
+		result = response.json()
+
+		content = result.get("message", {}).get("content", "{}")
+
+		# Try to parse JSON
+		try:
+			return json.loads(content)
+		except json.JSONDecodeError:
+			# Try to extract JSON from content
+			if "{" in content and "}" in content:
+				start = content.find("{")
+				end = content.rfind("}") + 1
+				return json.loads(content[start:end])
+			return {"description": content, "colors": [], "mood": "unknown", "style_suggestions": []}
+
+	except requests.exceptions.ConnectionError:
+		frappe.throw(f"Cannot connect to Ollama at {base_url}. Please ensure Ollama is running.")
+	except Exception as e:
+		frappe.throw(f"Vision analysis failed: {str(e)}")
+
+
+def analyze_image_openai(image_data: str, prompt: str, config: dict) -> dict:
+	"""Analyze image using OpenAI vision model (gpt-4o, etc.)."""
+	api_key = config.get("openai_api_key")
+	if not api_key:
+		frappe.throw("OpenAI API Key not set. Please configure it in Builder AI Settings.")
+
+	vision_model = config.get("openai_vision_model", "gpt-4o")
+
+	# Prepare image URL or base64
+	if image_data.startswith("http"):
+		image_content = {"type": "image_url", "image_url": {"url": image_data}}
+	else:
+		# Assume base64, add data URI if needed
+		if not image_data.startswith("data:"):
+			image_data = f"data:image/jpeg;base64,{image_data}"
+		image_content = {"type": "image_url", "image_url": {"url": image_data}}
+
+	vision_prompt = f"""{prompt}
+
+Analyze this image and return a JSON object with:
+{{
+  "description": "Brief description of what you see",
+  "colors": ["list of dominant colors as hex codes"],
+  "mood": "the mood/feeling the image conveys",
+  "style_suggestions": ["design style suggestions based on the image"],
+  "design_insights": {{
+    "recommended_palette": ["primary", "secondary", "accent colors"],
+    "typography_style": "suggested font style",
+    "layout_suggestions": "layout recommendations"
+  }}
+}}"""
+
+	messages = [
+		{
+			"role": "user",
+			"content": [
+				{"type": "text", "text": vision_prompt},
+				image_content
+			]
+		}
+	]
+
+	timeout = config.get("openai_timeout", 60)
+
+	response = make_post_request(
+		"https://api.openai.com/v1/chat/completions",
+		headers={
+			"Content-Type": "application/json",
+			"Authorization": f"Bearer {api_key}"
+		},
+		data=json.dumps({
+			"model": vision_model,
+			"messages": messages,
+			"response_format": {"type": "json_object"},
+			"max_tokens": 1000
+		}),
+		timeout=timeout
+	)
+
+	content = response["choices"][0]["message"]["content"]
+	return json.loads(content)
+
+
+@frappe.whitelist()
+def analyze_logo(image_data: str) -> dict:
+	"""
+	Analyze a logo image and extract design insights for website generation.
+
+	Args:
+		image_data: Base64-encoded logo image or URL
+
+	Returns:
+		Design insights from the logo
+	"""
+	check_ai_enabled()
+
+	config = get_llm_config()
+	if not config.get("enable_vision"):
+		frappe.throw("Vision is not enabled. Please enable it in Builder AI Settings.")
+
+	prompt = """This is a company logo. Analyze it to extract:
+1. The dominant colors and their hex codes
+2. The style/mood (modern, classic, playful, professional, etc.)
+3. Design recommendations for a website that would complement this logo"""
+
+	result = analyze_image_with_vision(image_data, prompt, config)
+
+	return {
+		"success": True,
+		"analysis": result
+	}
+
+
+@frappe.whitelist()
+def analyze_reference_image(image_data: str, context: str = "") -> dict:
+	"""
+	Analyze a reference/inspiration image for website design.
+
+	Args:
+		image_data: Base64-encoded image or URL
+		context: Additional context about what the user wants
+
+	Returns:
+		Design insights from the reference
+	"""
+	check_ai_enabled()
+
+	config = get_llm_config()
+	if not config.get("enable_vision"):
+		frappe.throw("Vision is not enabled. Please enable it in Builder AI Settings.")
+
+	prompt = f"""This is a design reference/inspiration image for a website.
+{f'Context: {context}' if context else ''}
+
+Analyze this image to extract:
+1. Layout structure and arrangement
+2. Color palette used
+3. Typography style
+4. Visual effects and design patterns
+5. Overall mood and aesthetic
+6. Specific elements that could be replicated"""
+
+	result = analyze_image_with_vision(image_data, prompt, config)
+
+	return {
+		"success": True,
+		"analysis": result
+	}
+
+
 @frappe.whitelist()
 def get_ai_config() -> dict:
 	"""Get current AI configuration (for frontend display)."""
@@ -1143,6 +1509,14 @@ def get_ai_config() -> dict:
 		"openai_model": config.get("openai_model") if config["provider"] == "openai" else None,
 		"openai_configured": bool(config.get("openai_api_key")) if config["provider"] == "openai" else None,
 		"auto_generate_preview": settings.auto_generate_preview if hasattr(settings, 'auto_generate_preview') else True,
+		# Vision settings
+		"enable_vision": config.get("enable_vision", False),
+		"vision_model": config.get("ollama_vision_model") if config["provider"] == "ollama" else config.get("openai_vision_model"),
+		# Design settings
+		"creativity_level": config.get("creativity_level", "balanced"),
+		"default_style": config.get("default_style", "modern"),
+		"use_modern_design": config.get("use_modern_design", True),
+		"allow_multipage": config.get("allow_multipage", True),
 	}
 
 
@@ -1193,10 +1567,14 @@ def start_conversation(title: str = "New Website") -> dict:
 	})
 	conversation.insert()
 
+	# Get settings and generate dynamic prompt
+	settings = get_ai_settings()
+	system_prompt = get_collector_prompt(settings)
+
 	# Get initial greeting from LLM
 	initial_message = {
 		"role": "system",
-		"content": COLLECTOR_SYSTEM_PROMPT
+		"content": system_prompt
 	}
 
 	response = call_llm([initial_message])
@@ -1226,6 +1604,7 @@ def send_message(conversation_id: str, message: str) -> dict:
 	check_ai_enabled()
 
 	config = get_llm_config()
+	settings = get_ai_settings()
 	conversation = frappe.get_doc("Builder AI Conversation", conversation_id)
 
 	# Get existing messages and context
@@ -1238,11 +1617,14 @@ def send_message(conversation_id: str, message: str) -> dict:
 		"content": message
 	})
 
+	# Generate dynamic prompt with settings
+	system_prompt = get_collector_prompt(settings)
+
 	# Build LLM messages with system prompt and context
 	llm_messages = [
 		{
 			"role": "system",
-			"content": COLLECTOR_SYSTEM_PROMPT + f"\n\nCurrent site context collected so far:\n{json.dumps(site_context, indent=2)}"
+			"content": system_prompt + f"\n\nCurrent site context collected so far:\n{json.dumps(site_context, indent=2)}"
 		}
 	]
 
@@ -1280,6 +1662,146 @@ def send_message(conversation_id: str, message: str) -> dict:
 		"site_context": response_data.get("site_context", {}),
 		"collection_complete": response_data.get("collection_complete", False),
 		"next_topic": response_data.get("next_question_topic")
+	}
+
+
+@frappe.whitelist()
+def send_message_with_image(conversation_id: str, message: str, image_data: str, image_type: str = "reference") -> dict:
+	"""
+	Send a message with an image attachment to the AI conversation.
+
+	Args:
+		conversation_id: Conversation ID
+		message: User message
+		image_data: Base64-encoded image or URL
+		image_type: Type of image - 'logo', 'reference', or 'content'
+
+	Returns:
+		AI response with design insights from the image
+	"""
+	check_ai_enabled()
+
+	config = get_llm_config()
+	settings = get_ai_settings()
+
+	if not config.get("enable_vision"):
+		frappe.throw("Vision is not enabled. Please enable it in Builder AI Settings.")
+
+	conversation = frappe.get_doc("Builder AI Conversation", conversation_id)
+
+	# Get existing messages and context
+	messages = json.loads(conversation.messages or "[]")
+	site_context = json.loads(conversation.site_context or "{}")
+
+	# Analyze the image first
+	image_prompt = {
+		"logo": "This is the company logo. Extract colors, style, and branding insights.",
+		"reference": "This is a design reference. Extract layout, colors, and design patterns the user likes.",
+		"content": "This is content for the website. Describe what you see for use in the design."
+	}.get(image_type, "Analyze this image for website design insights.")
+
+	try:
+		image_analysis = analyze_image_with_vision(image_data, image_prompt, config)
+	except Exception as e:
+		image_analysis = {"error": str(e), "description": "Could not analyze image"}
+
+	# Add user message with image context
+	user_message_content = f"{message}\n\n[User attached a {image_type} image]"
+	messages.append({
+		"role": "user",
+		"content": user_message_content,
+		"has_image": True,
+		"image_type": image_type
+	})
+
+	# Update site context with image analysis
+	if image_type == "logo" and "colors" in image_analysis:
+		if "style" not in site_context:
+			site_context["style"] = {}
+		# Suggest colors from logo
+		colors = image_analysis.get("colors", [])
+		if colors:
+			site_context["style"]["suggested_colors_from_logo"] = colors
+			if len(colors) >= 1:
+				site_context["style"]["primary_color"] = site_context["style"].get("primary_color") or colors[0]
+			if len(colors) >= 2:
+				site_context["style"]["secondary_color"] = site_context["style"].get("secondary_color") or colors[1]
+		if "mood" in image_analysis:
+			site_context["style"]["logo_mood"] = image_analysis["mood"]
+
+	elif image_type == "reference" and "design_insights" in image_analysis:
+		if "style" not in site_context:
+			site_context["style"] = {}
+		site_context["style"]["reference_insights"] = image_analysis.get("design_insights", {})
+		if "style_suggestions" in image_analysis:
+			site_context["style"]["inspiration_styles"] = image_analysis["style_suggestions"]
+
+	# Generate dynamic prompt
+	system_prompt = get_collector_prompt(settings)
+
+	# Build LLM messages including image analysis context
+	llm_messages = [
+		{
+			"role": "system",
+			"content": system_prompt + f"""
+
+Current site context collected so far:
+{json.dumps(site_context, indent=2)}
+
+Image Analysis Results ({image_type}):
+{json.dumps(image_analysis, indent=2)}
+
+IMPORTANT: Incorporate the insights from the image analysis into your response and the site_context.
+If it's a logo, use the detected colors as the primary palette suggestion.
+If it's a reference, acknowledge the design elements the user likes."""
+		}
+	]
+
+	# Add conversation history
+	max_messages = config.get("max_messages", 20)
+	for msg in messages[-max_messages:]:
+		content = msg["content"] if msg["role"] == "user" else json.dumps({"message": msg["content"]})
+		llm_messages.append({
+			"role": msg["role"],
+			"content": content
+		})
+
+	# Get LLM response
+	response = call_llm(llm_messages)
+	response_data = json.loads(response)
+
+	# Merge image-based style updates with LLM response
+	if "site_context" in response_data:
+		# Preserve our image-derived styles
+		if "style" in site_context:
+			if "style" not in response_data["site_context"]:
+				response_data["site_context"]["style"] = {}
+			for key in ["suggested_colors_from_logo", "logo_mood", "reference_insights", "inspiration_styles"]:
+				if key in site_context.get("style", {}):
+					response_data["site_context"]["style"][key] = site_context["style"][key]
+
+	# Add assistant response to messages
+	assistant_message = response_data.get("message", "")
+	messages.append({
+		"role": "assistant",
+		"content": assistant_message
+	})
+
+	# Update conversation
+	conversation.messages = json.dumps(messages)
+	conversation.site_context = json.dumps(response_data.get("site_context", site_context))
+
+	if response_data.get("collection_complete"):
+		conversation.status = "generating"
+
+	conversation.save()
+
+	return {
+		"conversation_id": conversation_id,
+		"message": assistant_message,
+		"site_context": response_data.get("site_context", site_context),
+		"collection_complete": response_data.get("collection_complete", False),
+		"image_analysis": image_analysis
 	}
 
 

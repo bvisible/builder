@@ -9,29 +9,42 @@
   "ai_provider_section",
   "ai_provider",
   "column_break_provider",
+  "enable_vision",
   "ollama_section",
   "ollama_base_url",
   "ollama_model",
   "column_break_ollama",
+  "ollama_vision_model",
   "ollama_timeout",
   "test_ollama_connection",
   "openai_section",
   "openai_api_key",
   "openai_model",
   "column_break_openai",
+  "openai_vision_model",
   "openai_timeout",
   "test_openai_connection",
   "generation_section",
   "default_temperature",
-  "max_conversation_messages",
+  "creativity_level",
   "column_break_generation",
+  "max_conversation_messages",
   "auto_generate_preview",
+  "design_section",
+  "default_site_type",
+  "allow_multipage",
+  "column_break_design",
+  "default_style",
+  "use_modern_design",
+  "shortcodes_section",
+  "shortcodes",
   "permissions_section",
   "allow_website_manager",
   "column_break_permissions",
   "rate_limit_per_hour",
   "advanced_section",
   "custom_system_prompt",
+  "design_guidelines",
   "debug_mode"
  ],
  "fields": [
@@ -62,6 +75,13 @@
    "fieldtype": "Column Break"
   },
   {
+   "default": "0",
+   "description": "Enable vision capabilities to analyze images, logos, and design references",
+   "fieldname": "enable_vision",
+   "fieldtype": "Check",
+   "label": "Enable Vision (Image Analysis)"
+  },
+  {
    "collapsible": 1,
    "collapsible_depends_on": "eval:doc.ai_provider === 'ollama'",
    "depends_on": "eval:doc.ai_provider === 'ollama'",
@@ -79,15 +99,23 @@
   },
   {
    "default": "llama3.1",
-   "description": "Model to use (e.g., llama3.1, mistral, codellama, llama2)",
+   "description": "Model for text generation (e.g., llama3.1, mistral, mixtral)",
    "fieldname": "ollama_model",
    "fieldtype": "Data",
-   "label": "Ollama Model",
+   "label": "Text Model",
    "mandatory_depends_on": "eval:doc.ai_provider === 'ollama'"
   },
   {
    "fieldname": "column_break_ollama",
    "fieldtype": "Column Break"
+  },
+  {
+   "default": "llava",
+   "depends_on": "enable_vision",
+   "description": "Model for image analysis (e.g., llava, llama3.2-vision, bakllava)",
+   "fieldname": "ollama_vision_model",
+   "fieldtype": "Data",
+   "label": "Vision Model"
   },
   {
    "default": "120",
@@ -118,15 +146,23 @@
   },
   {
    "default": "gpt-4o-mini",
-   "description": "Model to use (e.g., gpt-4o-mini, gpt-4o, gpt-4-turbo)",
+   "description": "Model for text generation (e.g., gpt-4o-mini, gpt-4o, gpt-4-turbo)",
    "fieldname": "openai_model",
    "fieldtype": "Data",
-   "label": "OpenAI Model",
+   "label": "Text Model",
    "mandatory_depends_on": "eval:doc.ai_provider === 'openai'"
   },
   {
    "fieldname": "column_break_openai",
    "fieldtype": "Column Break"
+  },
+  {
+   "default": "gpt-4o",
+   "depends_on": "enable_vision",
+   "description": "Model for image analysis (must support vision, e.g., gpt-4o, gpt-4-turbo)",
+   "fieldname": "openai_vision_model",
+   "fieldtype": "Data",
+   "label": "Vision Model"
   },
   {
    "default": "60",
@@ -146,12 +182,24 @@
    "label": "Generation Settings"
   },
   {
-   "default": "0.7",
-   "description": "Controls randomness in responses (0.0 = deterministic, 1.0 = creative)",
+   "default": "0.8",
+   "description": "Controls randomness (0.0 = predictable, 1.0 = very creative). Recommended: 0.7-0.9 for unique designs",
    "fieldname": "default_temperature",
    "fieldtype": "Float",
    "label": "Temperature",
    "precision": "1"
+  },
+  {
+   "default": "balanced",
+   "description": "How creative should the AI be with designs?",
+   "fieldname": "creativity_level",
+   "fieldtype": "Select",
+   "label": "Creativity Level",
+   "options": "conservative\nbalanced\ncreative\nexperimental"
+  },
+  {
+   "fieldname": "column_break_generation",
+   "fieldtype": "Column Break"
   },
   {
    "default": "20",
@@ -161,15 +209,62 @@
    "label": "Max Conversation Messages"
   },
   {
-   "fieldname": "column_break_generation",
-   "fieldtype": "Column Break"
-  },
-  {
    "default": "1",
    "description": "Automatically generate preview as user provides information",
    "fieldname": "auto_generate_preview",
    "fieldtype": "Check",
    "label": "Auto Generate Preview"
+  },
+  {
+   "fieldname": "design_section",
+   "fieldtype": "Section Break",
+   "label": "Design Preferences"
+  },
+  {
+   "default": "auto",
+   "description": "Default site type if not specified by user",
+   "fieldname": "default_site_type",
+   "fieldtype": "Select",
+   "label": "Default Site Type",
+   "options": "auto\none_page\nmulti_page"
+  },
+  {
+   "default": "1",
+   "description": "Allow AI to suggest and create multi-page websites",
+   "fieldname": "allow_multipage",
+   "fieldtype": "Check",
+   "label": "Allow Multi-page Sites"
+  },
+  {
+   "fieldname": "column_break_design",
+   "fieldtype": "Column Break"
+  },
+  {
+   "default": "modern",
+   "description": "Default design style preference",
+   "fieldname": "default_style",
+   "fieldtype": "Select",
+   "label": "Default Style",
+   "options": "modern\nminimal\nbold\nelegant\nplayful\ncorporate"
+  },
+  {
+   "default": "1",
+   "description": "Use modern design patterns (glassmorphism, gradients, micro-interactions)",
+   "fieldname": "use_modern_design",
+   "fieldtype": "Check",
+   "label": "Use Modern Design Trends"
+  },
+  {
+   "fieldname": "shortcodes_section",
+   "fieldtype": "Section Break",
+   "label": "Shortcodes & Components"
+  },
+  {
+   "description": "Define shortcodes/components that the AI can use when generating pages. The AI will automatically use appropriate shortcodes based on the site type.",
+   "fieldname": "shortcodes",
+   "fieldtype": "Table",
+   "label": "Available Shortcodes",
+   "options": "Builder AI Shortcode"
   },
   {
    "fieldname": "permissions_section",
@@ -201,10 +296,16 @@
    "label": "Advanced Settings"
   },
   {
-   "description": "Custom instructions to add to the system prompt (optional)",
+   "description": "Custom instructions to add to every AI request (optional)",
    "fieldname": "custom_system_prompt",
    "fieldtype": "Small Text",
    "label": "Custom System Prompt"
+  },
+  {
+   "description": "Design guidelines and brand rules the AI should follow (colors, fonts, spacing preferences, etc.)",
+   "fieldname": "design_guidelines",
+   "fieldtype": "Text",
+   "label": "Design Guidelines"
   },
   {
    "default": "0",
@@ -218,7 +319,7 @@
  "index_web_pages_for_search": 1,
  "issingle": 1,
  "links": [],
- "modified": "2025-01-28 12:00:00.000000",
+ "modified": "2025-01-28 14:00:00.000000",
  "modified_by": "Administrator",
  "module": "Builder",
  "name": "Builder AI Settings",
