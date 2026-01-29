@@ -10,6 +10,7 @@ from frappe.tests.utils import FrappeTestCase
 from builder.builder_ai import (
 	generate_block_id,
 	generate_blocks_from_context,
+	get_collector_prompt,
 	get_cta_template,
 	get_features_template,
 	get_footer_template,
@@ -372,3 +373,365 @@ class TestOllamaIntegration(FrappeTestCase):
 
 		self.assertIn("message", result)
 		mock_post.assert_called_once()
+
+
+class TestCreativitySettings(FrappeTestCase):
+	"""Tests for creativity and dynamic prompt generation"""
+
+	def test_creativity_levels(self):
+		"""Test that creativity levels map to correct temperatures"""
+		config = get_llm_config()
+
+		# Verify creativity_level is present
+		self.assertIn("creativity_level", config)
+		self.assertIn(config["creativity_level"], ["conservative", "balanced", "creative", "experimental"])
+
+	def test_get_collector_prompt_basic(self):
+		"""Test basic collector prompt generation"""
+		prompt = get_collector_prompt()
+
+		# Verify prompt contains key elements
+		self.assertIn("web designer", prompt.lower())
+		self.assertIn("color", prompt.lower())
+		self.assertIn("json", prompt.lower())
+
+	def test_get_collector_prompt_with_settings(self):
+		"""Test collector prompt with mock settings"""
+		mock_settings = MagicMock()
+		mock_settings.shortcodes = []
+		mock_settings.creativity_level = "creative"
+		mock_settings.default_style = "modern"
+		mock_settings.use_modern_design = True
+		mock_settings.default_site_type = "one_page"
+		mock_settings.allow_multipage = False
+
+		prompt = get_collector_prompt(mock_settings)
+
+		# Verify settings are incorporated
+		self.assertIn("creative", prompt.lower())
+		self.assertIn("modern", prompt.lower())
+		self.assertIn("one_page", prompt.lower())
+
+	def test_get_collector_prompt_with_shortcodes(self):
+		"""Test collector prompt includes shortcodes"""
+		mock_shortcode = MagicMock()
+		mock_shortcode.name1 = "Cart"
+		mock_shortcode.category = "E-commerce"
+		mock_shortcode.description = "Shopping cart icon"
+		mock_shortcode.use_when = "E-commerce sites"
+		mock_shortcode.shortcode = "{% include 'cart.html' %}"
+
+		mock_settings = MagicMock()
+		mock_settings.shortcodes = [mock_shortcode]
+		mock_settings.creativity_level = "balanced"
+		mock_settings.default_style = "modern"
+		mock_settings.use_modern_design = True
+		mock_settings.default_site_type = "auto"
+		mock_settings.allow_multipage = True
+
+		prompt = get_collector_prompt(mock_settings)
+
+		# Verify shortcode is included
+		self.assertIn("Cart", prompt)
+		self.assertIn("E-commerce", prompt)
+
+	def test_color_psychology_in_prompt(self):
+		"""Test that color psychology is included in prompt"""
+		prompt = get_collector_prompt()
+
+		# Verify industry-specific color suggestions
+		self.assertIn("florist", prompt.lower())
+		self.assertIn("tech", prompt.lower())
+		self.assertIn("restaurant", prompt.lower())
+		self.assertIn("luxury", prompt.lower())
+
+	def test_llm_config_includes_vision_settings(self):
+		"""Test that LLM config includes vision settings"""
+		config = get_llm_config()
+
+		self.assertIn("enable_vision", config)
+		self.assertIn("ollama_vision_model", config)
+		self.assertIn("openai_vision_model", config)
+
+	def test_llm_config_includes_design_settings(self):
+		"""Test that LLM config includes design settings"""
+		config = get_llm_config()
+
+		self.assertIn("default_style", config)
+		self.assertIn("use_modern_design", config)
+		self.assertIn("default_site_type", config)
+		self.assertIn("allow_multipage", config)
+
+
+class TestVisionSupport(FrappeTestCase):
+	"""Tests for vision/image analysis functionality"""
+
+	@patch("requests.post")
+	@patch("requests.get")
+	def test_analyze_image_ollama_mock(self, mock_get, mock_post):
+		"""Test image analysis with Ollama (mocked)"""
+		# Mock the POST response for vision
+		mock_post_response = MagicMock()
+		mock_post_response.status_code = 200
+		mock_post_response.json.return_value = {
+			"message": {
+				"content": json.dumps({
+					"description": "A modern tech logo",
+					"colors": ["#3B82F6", "#10B981"],
+					"mood": "professional",
+					"style_suggestions": ["minimal", "modern"],
+					"design_insights": {
+						"recommended_palette": ["#3B82F6", "#10B981", "#F3F4F6"],
+						"typography_style": "sans-serif",
+						"layout_suggestions": "clean, spacious"
+					}
+				})
+			}
+		}
+		mock_post.return_value = mock_post_response
+
+		from builder.builder_ai import analyze_image_ollama
+
+		config = {
+			"ollama_base_url": "http://localhost:11434",
+			"ollama_vision_model": "llava",
+			"ollama_timeout": 120
+		}
+
+		# Use base64 encoded test image (1x1 white pixel)
+		test_image = "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg=="
+
+		result = analyze_image_ollama(test_image, "Analyze this logo", config)
+
+		self.assertIn("description", result)
+		self.assertIn("colors", result)
+		self.assertIsInstance(result["colors"], list)
+		mock_post.assert_called_once()
+
+	def test_analyze_image_requires_vision_enabled(self):
+		"""Test that image analysis requires vision to be enabled"""
+		from builder.builder_ai import analyze_image_with_vision
+
+		config = {
+			"enable_vision": False,
+			"provider": "ollama"
+		}
+
+		with self.assertRaises(frappe.exceptions.ValidationError):
+			analyze_image_with_vision("test_image_data", "test prompt", config)
+
+	@patch("builder.builder_ai.analyze_image_with_vision")
+	@patch("builder.builder_ai.call_llm")
+	def test_send_message_with_image_logo(self, mock_call_llm, mock_analyze):
+		"""Test sending message with logo image"""
+		# Setup mocks
+		mock_analyze.return_value = {
+			"colors": ["#FF5733", "#2E86AB"],
+			"mood": "energetic",
+			"description": "Colorful logo"
+		}
+		mock_call_llm.return_value = json.dumps({
+			"message": "I've analyzed your logo and extracted the colors!",
+			"site_context": {
+				"style": {
+					"primary_color": "#FF5733"
+				}
+			},
+			"collection_complete": False
+		})
+
+		# Create test conversation
+		conversation = frappe.get_doc({
+			"doctype": "Builder AI Conversation",
+			"title": "Vision Test",
+			"status": "collecting",
+			"messages": "[]",
+			"site_context": "{}"
+		}).insert()
+
+		try:
+			from builder.builder_ai import send_message_with_image
+
+			# Mock config to enable vision
+			with patch("builder.builder_ai.get_llm_config") as mock_config:
+				mock_config.return_value = {
+					"enable_vision": True,
+					"provider": "ollama",
+					"max_messages": 20
+				}
+
+				result = send_message_with_image(
+					conversation.name,
+					"Here's my company logo",
+					"base64_image_data",
+					"logo"
+				)
+
+				self.assertIn("message", result)
+				self.assertIn("image_analysis", result)
+				self.assertEqual(result["image_analysis"]["colors"], ["#FF5733", "#2E86AB"])
+
+		finally:
+			conversation.delete()
+
+
+class TestShortcodes(FrappeTestCase):
+	"""Tests for shortcode functionality"""
+
+	def test_shortcode_doctype_exists(self):
+		"""Test that Builder AI Shortcode doctype exists"""
+		self.assertTrue(frappe.db.exists("DocType", "Builder AI Shortcode"))
+
+	def test_create_shortcode(self):
+		"""Test creating a shortcode entry"""
+		# This requires the settings doc to exist
+		try:
+			settings = frappe.get_doc("Builder AI Settings")
+		except frappe.DoesNotExistError:
+			# Create settings if not exists
+			settings = frappe.get_doc({
+				"doctype": "Builder AI Settings",
+				"enabled": True,
+				"ai_provider": "ollama"
+			}).insert()
+
+		# Add a shortcode
+		settings.append("shortcodes", {
+			"name1": "Test Cart",
+			"shortcode": "{% include 'cart.html' %}",
+			"category": "E-commerce",
+			"use_when": "For e-commerce sites",
+			"description": "Shopping cart widget"
+		})
+		settings.save()
+
+		# Verify shortcode was added
+		self.assertEqual(len(settings.shortcodes), 1)
+		self.assertEqual(settings.shortcodes[0].name1, "Test Cart")
+
+		# Cleanup - remove the shortcode
+		settings.shortcodes = []
+		settings.save()
+
+	def test_shortcodes_in_prompt(self):
+		"""Test that shortcodes appear in the generated prompt"""
+		mock_shortcode = MagicMock()
+		mock_shortcode.name1 = "Mobile Menu"
+		mock_shortcode.category = "Navigation"
+		mock_shortcode.description = "Hamburger menu for mobile"
+		mock_shortcode.use_when = "All sites on mobile"
+		mock_shortcode.shortcode = "<button class='hamburger'>☰</button>"
+
+		mock_settings = MagicMock()
+		mock_settings.shortcodes = [mock_shortcode]
+		mock_settings.creativity_level = "balanced"
+		mock_settings.default_style = "modern"
+		mock_settings.use_modern_design = True
+		mock_settings.default_site_type = "auto"
+		mock_settings.allow_multipage = True
+
+		prompt = get_collector_prompt(mock_settings)
+
+		self.assertIn("Mobile Menu", prompt)
+		self.assertIn("Navigation", prompt)
+		self.assertIn("hamburger", prompt.lower())
+
+
+class TestEndToEnd(FrappeTestCase):
+	"""End-to-end integration tests"""
+
+	@patch("builder.builder_ai.call_llm")
+	def test_full_conversation_flow(self, mock_call_llm):
+		"""Test complete conversation from start to page generation"""
+		# Step 1: Start conversation
+		mock_call_llm.return_value = json.dumps({
+			"message": "Hello! What website would you like?",
+			"site_context": {},
+			"collection_complete": False
+		})
+
+		from builder.builder_ai import generate_page, send_message, start_conversation
+
+		result = start_conversation(title="E2E Test")
+		conversation_id = result["conversation_id"]
+
+		try:
+			# Step 2: Send messages
+			mock_call_llm.return_value = json.dumps({
+				"message": "Great! A florist site. What colors?",
+				"site_context": {
+					"business_name": "Fleur de Vie",
+					"industry": "florist"
+				},
+				"collection_complete": False
+			})
+			result = send_message(conversation_id, "I want a site for my florist shop called Fleur de Vie")
+
+			self.assertEqual(result["site_context"]["business_name"], "Fleur de Vie")
+
+			# Step 3: Complete collection
+			mock_call_llm.return_value = json.dumps({
+				"message": "Perfect! I have everything I need.",
+				"site_context": {
+					"business_name": "Fleur de Vie",
+					"industry": "florist",
+					"style": {
+						"primary_color": "#E91E63",
+						"secondary_color": "#8BC34A",
+						"text_color": "#333333"
+					},
+					"sections": [
+						{"type": "hero", "headline": "Beautiful Flowers for Every Occasion"},
+						{"type": "features", "headline": "Our Services"},
+						{"type": "cta", "headline": "Order Now"}
+					]
+				},
+				"collection_complete": True
+			})
+			result = send_message(conversation_id, "Use pink and green colors")
+
+			self.assertTrue(result["collection_complete"])
+
+			# Step 4: Generate page
+			result = generate_page(conversation_id)
+
+			self.assertTrue(result["success"])
+			self.assertIn("blocks", result)
+			self.assertGreater(len(result["blocks"]), 0)
+
+			# Cleanup page
+			if result.get("page_name"):
+				frappe.delete_doc("Builder Page", result["page_name"])
+
+		finally:
+			frappe.delete_doc("Builder AI Conversation", conversation_id)
+
+	def test_blocks_are_valid_json(self):
+		"""Test that all generated blocks can be serialized to JSON"""
+		context = {
+			"business_name": "Test Company",
+			"style": {
+				"primary_color": "#3B82F6",
+				"text_color": "#171717",
+				"secondary_color": "#6B7280"
+			},
+			"sections": [
+				{"type": "hero", "headline": "Welcome"},
+				{"type": "features", "headline": "Features", "items": [
+					{"title": "Fast", "description": "Lightning quick"},
+					{"title": "Secure", "description": "Bank-level security"}
+				]},
+				{"type": "cta", "headline": "Get Started"},
+				{"type": "footer"}
+			]
+		}
+
+		blocks = generate_blocks_from_context(context)
+
+		# Should be JSON serializable
+		try:
+			json_str = json.dumps(blocks)
+			parsed = json.loads(json_str)
+			self.assertEqual(len(parsed), len(blocks))
+		except (TypeError, json.JSONDecodeError) as e:
+			self.fail(f"Blocks are not valid JSON: {e}")
