@@ -11,7 +11,6 @@ import requests
 from frappe.apps import get_apps as get_permitted_apps
 from frappe.core.doctype.file.file import get_local_image
 from frappe.core.doctype.file.utils import delete_file
-from frappe.integrations.utils import make_post_request
 from frappe.model.document import Document
 from frappe.utils.caching import redis_cache
 from frappe.utils.safe_exec import NamespaceDict, get_safe_globals
@@ -24,42 +23,7 @@ from builder.builder.doctype.builder_page.builder_page import BuilderPageRendere
 
 
 # =============================================================================
-# LEGACY AI GENERATION (kept for backward compatibility)
-# =============================================================================
-
-@frappe.whitelist()
-def get_blocks(prompt):
-	"""
-	Legacy AI block generation using OpenAI.
-	Kept for backward compatibility - use generate_page_blocks for new implementations.
-	"""
-	API_KEY = frappe.conf.openai_api_key
-	if not API_KEY:
-		frappe.throw("OpenAI API Key not set in site config.")
-
-	messages = [
-		{
-			"role": "system",
-			"content": "You are a website developer. You respond only with HTML code WITHOUT any EXPLANATION. You use any publicly available images in the webpage. You can use any font from fonts.google.com. Do not use any external css file or font files. DO NOT ADD <style> TAG AT ALL! You should use tailwindcss for styling the page. Use images from pixabay.com or unsplash.com",
-		},
-		{"role": "user", "content": prompt},
-	]
-
-	response = make_post_request(
-		"https://api.openai.com/v1/chat/completions",
-		headers={"Content-Type": "application/json", "Authorization": f"Bearer {API_KEY}"},
-		data=json.dumps(
-			{
-				"model": "gpt-3.5-turbo",
-				"messages": messages,
-			}
-		),
-	)
-	return response["choices"][0]["message"]["content"]
-
-
-# =============================================================================
-# NEW AI GENERATION API (Multi-pass with structured output)
+# AI GENERATION API (Multi-pass with structured output)
 # =============================================================================
 
 @frappe.whitelist()

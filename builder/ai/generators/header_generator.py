@@ -1,22 +1,22 @@
 """
 Header Generator
-Generates headers from declarative configurations.
+Generates headers from declarative configurations using templates.
 """
 
 from typing import Optional
-import json
 import frappe
 
 from builder.ai.config import get_ai_settings
 from builder.ai.providers import get_provider
-from builder.ai.schemas.header_schema import HeaderConfig, HeaderType, HEADER_TYPE_DESCRIPTIONS
+from builder.ai.schemas.header_schema import HeaderConfig, MenuItem, HEADER_TYPE_DESCRIPTIONS
 from builder.ai.design_system import get_theme
 from builder.ai.prompts import get_header_prompt
+from builder.ai.templates.headers import build_header_from_config
 
 
 class HeaderGenerator:
     """
-    Generates header blocks from HeaderConfig.
+    Generates header blocks from HeaderConfig using templates.
 
     The AI's job is simplified to:
     1. Choose the appropriate header type
@@ -56,7 +56,6 @@ class HeaderGenerator:
         Returns:
             HeaderConfig: Configuration for header generation
         """
-        # Determine features based on site type
         features = self._get_features_for_type(site_type)
 
         prompt = get_header_prompt(
@@ -108,221 +107,8 @@ class HeaderGenerator:
             )
 
         theme_data = get_theme(theme)
-        return self._build_header_block(config, theme_data)
-
-    def _build_header_block(self, config: HeaderConfig, theme: dict) -> dict:
-        """
-        Build the actual header block from configuration.
-        """
-        # Get base styles from theme
-        styles = theme.get("styles", {}).get("header", {})
-
-        # Build header structure based on layout
-        header = {
-            "blockId": "header-main",
-            "element": "header",
-            "baseStyles": {
-                "display": "flex",
-                "alignItems": "center",
-                "justifyContent": "space-between",
-                "padding": "16px 24px",
-                "backgroundColor": "var(--surface-color)",
-                "position": "sticky" if config.sticky else "relative",
-                "top": "0" if config.sticky else None,
-                "zIndex": "1000" if config.sticky else None,
-                **{k: v for k, v in styles.items() if v}
-            },
-            "mobileStyles": {
-                "padding": "12px 16px",
-            },
-            "children": []
-        }
-
-        # Add logo
-        logo_block = self._build_logo_block(config)
-        header["children"].append(logo_block)
-
-        # Add navigation
-        nav_block = self._build_nav_block(config)
-        header["children"].append(nav_block)
-
-        # Add action buttons (login, signup, cart, etc.)
-        if self._has_action_buttons(config):
-            actions_block = self._build_actions_block(config)
-            header["children"].append(actions_block)
-
-        return header
-
-    def _build_logo_block(self, config: HeaderConfig) -> dict:
-        """Build logo block"""
-        if config.logo_type == "text":
-            return {
-                "blockId": "header-logo",
-                "element": "a",
-                "innerHTML": config.logo_value,
-                "attributes": {"href": "/"},
-                "baseStyles": {
-                    "fontSize": "20px",
-                    "fontWeight": "700",
-                    "color": "var(--text-color)",
-                    "textDecoration": "none",
-                }
-            }
-        else:  # image
-            return {
-                "blockId": "header-logo",
-                "element": "a",
-                "attributes": {"href": "/"},
-                "children": [{
-                    "blockId": "header-logo-img",
-                    "element": "img",
-                    "attributes": {
-                        "src": config.logo_value,
-                        "alt": config.logo_alt or "Logo"
-                    },
-                    "baseStyles": {
-                        "height": "40px",
-                        "width": "auto",
-                    }
-                }]
-            }
-
-    def _build_nav_block(self, config: HeaderConfig) -> dict:
-        """Build navigation block"""
-        nav = {
-            "blockId": "header-nav",
-            "element": "nav",
-            "baseStyles": {
-                "display": "flex",
-                "alignItems": "center",
-                "gap": "24px",
-            },
-            "mobileStyles": {
-                "display": "none",  # Hide on mobile, would need hamburger
-            },
-            "children": []
-        }
-
-        for i, item in enumerate(config.menu_items):
-            if item.is_cta:
-                # CTA button style
-                link = {
-                    "blockId": f"header-nav-{i}",
-                    "element": "a",
-                    "innerHTML": item.label,
-                    "attributes": {
-                        "href": item.href,
-                        **({"target": "_blank"} if item.is_external else {})
-                    },
-                    "baseStyles": {
-                        "padding": "10px 20px",
-                        "backgroundColor": "var(--primary-color)",
-                        "color": "#ffffff",
-                        "borderRadius": "6px",
-                        "fontWeight": "500",
-                        "textDecoration": "none",
-                    }
-                }
-            else:
-                # Regular link
-                link = {
-                    "blockId": f"header-nav-{i}",
-                    "element": "a",
-                    "innerHTML": item.label,
-                    "attributes": {
-                        "href": item.href,
-                        **({"target": "_blank"} if item.is_external else {})
-                    },
-                    "baseStyles": {
-                        "color": "var(--text-color)",
-                        "textDecoration": "none",
-                        "fontWeight": "500",
-                        "transition": "color 200ms ease",
-                    }
-                }
-            nav["children"].append(link)
-
-        return nav
-
-    def _build_actions_block(self, config: HeaderConfig) -> dict:
-        """Build action buttons block (login, cart, etc.)"""
-        actions = {
-            "blockId": "header-actions",
-            "element": "div",
-            "baseStyles": {
-                "display": "flex",
-                "alignItems": "center",
-                "gap": "12px",
-            },
-            "children": []
-        }
-
-        if config.show_search:
-            actions["children"].append({
-                "blockId": "header-search",
-                "element": "button",
-                "innerHTML": "🔍",
-                "baseStyles": {
-                    "padding": "8px",
-                    "background": "transparent",
-                    "border": "none",
-                    "cursor": "pointer",
-                }
-            })
-
-        if config.show_cart:
-            actions["children"].append({
-                "blockId": "header-cart",
-                "element": "a",
-                "innerHTML": "🛒",
-                "attributes": {"href": "/cart"},
-                "baseStyles": {
-                    "padding": "8px",
-                    "textDecoration": "none",
-                }
-            })
-
-        if config.show_login:
-            actions["children"].append({
-                "blockId": "header-login",
-                "element": "a",
-                "innerHTML": config.login_text,
-                "attributes": {"href": "/login"},
-                "baseStyles": {
-                    "color": "var(--text-color)",
-                    "textDecoration": "none",
-                    "fontWeight": "500",
-                }
-            })
-
-        if config.show_signup:
-            actions["children"].append({
-                "blockId": "header-signup",
-                "element": "a",
-                "innerHTML": config.signup_text,
-                "attributes": {"href": "/signup"},
-                "baseStyles": {
-                    "padding": "10px 20px",
-                    "backgroundColor": "var(--primary-color)",
-                    "color": "#ffffff",
-                    "borderRadius": "6px",
-                    "fontWeight": "500",
-                    "textDecoration": "none",
-                }
-            })
-
-        return actions
-
-    def _has_action_buttons(self, config: HeaderConfig) -> bool:
-        """Check if config has any action buttons"""
-        return any([
-            config.show_cart,
-            config.show_search,
-            config.show_wishlist,
-            config.show_user_menu,
-            config.show_login,
-            config.show_signup,
-        ])
+        # Use template-based generation
+        return build_header_from_config(config, theme_data)
 
     def _get_features_for_type(self, site_type: str) -> list[str]:
         """Get expected features for site type"""
@@ -339,8 +125,6 @@ class HeaderGenerator:
 
     def _get_default_config(self, site_type: str, pages: list[str] = None) -> HeaderConfig:
         """Get default config if AI generation fails"""
-        from builder.ai.schemas.header_schema import MenuItem
-
         pages = pages or ["Home", "About", "Services", "Contact"]
         menu_items = [
             MenuItem(label=page, href=f"/{page.lower()}" if page != "Home" else "/")

@@ -325,6 +325,155 @@ class GeneratedPage(BaseModel):
         }
 
 
+# =============================================================================
+# SECTION CONTENT SCHEMAS
+# These schemas define only the CONTENT that AI should generate.
+# The structure comes from templates.
+# =============================================================================
+
+class HeroContent(BaseModel):
+    """Content for hero section"""
+    badge: Optional[str] = Field(default=None, description="Small badge text above headline (e.g., 'New', '2024 Launch')")
+    headline: str = Field(description="Main headline (short, impactful)")
+    subheadline: str = Field(description="Supporting text (1-2 sentences)")
+    primary_cta_text: str = Field(default="Get Started", description="Primary button text")
+    primary_cta_url: str = Field(default="#", description="Primary button URL")
+    secondary_cta_text: Optional[str] = Field(default=None, description="Secondary button text")
+    secondary_cta_url: Optional[str] = Field(default=None, description="Secondary button URL")
+    image_url: Optional[str] = Field(default=None, description="Hero image URL")
+    image_alt: Optional[str] = Field(default=None, description="Hero image alt text")
+
+
+class FeatureItem(BaseModel):
+    """Single feature item"""
+    icon: str = Field(description="Emoji or icon character")
+    title: str = Field(description="Feature title (2-4 words)")
+    description: str = Field(description="Feature description (1-2 sentences)")
+
+
+class FeaturesContent(BaseModel):
+    """Content for features section"""
+    section_title: str = Field(description="Section heading")
+    section_description: Optional[str] = Field(default=None, description="Section intro text")
+    features: list[FeatureItem] = Field(min_length=3, max_length=6, description="List of features")
+
+
+class TestimonialItem(BaseModel):
+    """Single testimonial"""
+    quote: str = Field(description="The testimonial quote (1-3 sentences)")
+    name: str = Field(description="Person's name")
+    title: str = Field(description="Person's title/company (e.g., 'CEO at Company')")
+    avatar_url: Optional[str] = Field(default=None, description="Avatar image URL")
+
+
+class TestimonialsContent(BaseModel):
+    """Content for testimonials section"""
+    section_title: str = Field(default="What Our Customers Say", description="Section heading")
+    testimonials: list[TestimonialItem] = Field(min_length=2, max_length=4, description="List of testimonials")
+
+
+class PricingFeature(BaseModel):
+    """Feature item in pricing tier"""
+    text: str = Field(description="Feature description")
+    included: bool = Field(default=True, description="Whether feature is included")
+
+
+class PricingTier(BaseModel):
+    """Single pricing tier"""
+    name: str = Field(description="Plan name (e.g., 'Starter', 'Pro', 'Enterprise')")
+    description: str = Field(description="Brief plan description")
+    price: str = Field(description="Price with currency (e.g., '$29', 'Free', 'Custom')")
+    period: str = Field(default="/month", description="Billing period")
+    features: list[PricingFeature] = Field(min_length=3, max_length=8, description="Plan features")
+    cta_text: str = Field(default="Get Started", description="Button text")
+    is_popular: bool = Field(default=False, description="Mark as popular/recommended")
+
+
+class PricingContent(BaseModel):
+    """Content for pricing section"""
+    section_title: str = Field(default="Simple, Transparent Pricing", description="Section heading")
+    section_description: Optional[str] = Field(default=None, description="Section intro text")
+    tiers: list[PricingTier] = Field(min_length=2, max_length=4, description="Pricing tiers")
+
+
+class CtaContent(BaseModel):
+    """Content for CTA section"""
+    headline: str = Field(description="CTA headline")
+    description: Optional[str] = Field(default=None, description="Supporting text")
+    button_text: str = Field(default="Get Started", description="Button text")
+    button_url: str = Field(default="#", description="Button URL")
+
+
+class StatItem(BaseModel):
+    """Single statistic"""
+    number: str = Field(description="The number/value (e.g., '10K+', '99%', '24/7')")
+    label: str = Field(description="What the number represents (e.g., 'Active Users')")
+
+
+class StatsContent(BaseModel):
+    """Content for stats section"""
+    stats: list[StatItem] = Field(min_length=3, max_length=6, description="Statistics to display")
+
+
+class FaqItem(BaseModel):
+    """Single FAQ item"""
+    question: str = Field(description="The question")
+    answer: str = Field(description="The answer (1-3 sentences)")
+
+
+class FaqContent(BaseModel):
+    """Content for FAQ section"""
+    section_title: str = Field(default="Frequently Asked Questions", description="Section heading")
+    section_description: Optional[str] = Field(default=None, description="Section intro text")
+    faqs: list[FaqItem] = Field(min_length=4, max_length=8, description="FAQ items")
+
+
+class ContactContent(BaseModel):
+    """Content for contact section"""
+    section_title: str = Field(default="Get in Touch", description="Section heading")
+    section_description: Optional[str] = Field(default=None, description="Section intro text")
+    email: Optional[str] = Field(default=None, description="Contact email")
+    phone: Optional[str] = Field(default=None, description="Contact phone")
+    address: Optional[str] = Field(default=None, description="Physical address")
+    form_fields: list[str] = Field(default=["name", "email", "message"], description="Form fields to include")
+    submit_text: str = Field(default="Send Message", description="Submit button text")
+
+
+class ClientItem(BaseModel):
+    """Single client/partner logo"""
+    name: str = Field(description="Company name")
+    logo_text: str = Field(description="Text representation of logo (for placeholder)")
+
+
+class ClientsContent(BaseModel):
+    """Content for clients/partners section"""
+    headline: str = Field(default="Trusted by leading companies", description="Section intro")
+    clients: list[ClientItem] = Field(min_length=4, max_length=8, description="Client logos")
+
+
+# Map section types to content schemas
+SECTION_CONTENT_SCHEMAS = {
+    "hero": HeroContent,
+    "hero_centered": HeroContent,
+    "hero_split": HeroContent,
+    "features": FeaturesContent,
+    "features_grid": FeaturesContent,
+    "features_alternating": FeaturesContent,
+    "testimonials": TestimonialsContent,
+    "pricing": PricingContent,
+    "cta": CtaContent,
+    "stats": StatsContent,
+    "faq": FaqContent,
+    "contact": ContactContent,
+    "clients": ClientsContent,
+}
+
+
+def get_content_schema_for_section(section_type: str):
+    """Get the appropriate content schema for a section type"""
+    return SECTION_CONTENT_SCHEMAS.get(section_type)
+
+
 __all__ = [
     "ElementType",
     "SectionType",
@@ -334,4 +483,23 @@ __all__ = [
     "SectionInfo",
     "PageStructure",
     "GeneratedPage",
+    # Content schemas
+    "HeroContent",
+    "FeatureItem",
+    "FeaturesContent",
+    "TestimonialItem",
+    "TestimonialsContent",
+    "PricingFeature",
+    "PricingTier",
+    "PricingContent",
+    "CtaContent",
+    "StatItem",
+    "StatsContent",
+    "FaqItem",
+    "FaqContent",
+    "ContactContent",
+    "ClientItem",
+    "ClientsContent",
+    "SECTION_CONTENT_SCHEMAS",
+    "get_content_schema_for_section",
 ]
