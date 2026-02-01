@@ -573,9 +573,30 @@ def validate_and_fix_blocks(blocks: list) -> dict:
 		if "dataKey" not in block:
 			block["dataKey"] = None
 
-		# Ensure innerHTML exists (can be empty string)
-		if "innerHTML" not in block:
-			block["innerHTML"] = ""
+		# Ensure innerHTML exists - copy from 'text' if present (LLM often uses 'text' instead of 'innerHTML')
+		if "innerHTML" not in block or not block["innerHTML"]:
+			if block.get("text"):
+				block["innerHTML"] = block.pop("text")
+				issues.append(f"{path}: Moved text to innerHTML")
+			else:
+				block["innerHTML"] = ""
+
+		# Remove 'text' field if it exists (Frappe Builder uses innerHTML)
+		if "text" in block:
+			block.pop("text")
+
+		# Also copy 'styles' to 'baseStyles' if baseStyles is empty (LLM sometimes uses 'styles')
+		if not block.get("baseStyles") and block.get("styles"):
+			block["baseStyles"] = block.pop("styles")
+			issues.append(f"{path}: Moved styles to baseStyles")
+
+		# Remove 'style' field (singular) - copy to baseStyles
+		if block.get("style"):
+			if not block.get("baseStyles"):
+				block["baseStyles"] = block.pop("style")
+				issues.append(f"{path}: Moved style to baseStyles")
+			else:
+				block.pop("style")
 
 		# Ensure blockName exists
 		if "blockName" not in block or not block["blockName"]:
