@@ -23,8 +23,16 @@ from builder import builder_analytics
 from builder.builder.doctype.builder_page.builder_page import BuilderPageRenderer
 
 
+# =============================================================================
+# LEGACY AI GENERATION (kept for backward compatibility)
+# =============================================================================
+
 @frappe.whitelist()
 def get_blocks(prompt):
+	"""
+	Legacy AI block generation using OpenAI.
+	Kept for backward compatibility - use generate_page_blocks for new implementations.
+	"""
 	API_KEY = frappe.conf.openai_api_key
 	if not API_KEY:
 		frappe.throw("OpenAI API Key not set in site config.")
@@ -48,6 +56,271 @@ def get_blocks(prompt):
 		),
 	)
 	return response["choices"][0]["message"]["content"]
+
+
+# =============================================================================
+# NEW AI GENERATION API (Multi-pass with structured output)
+# =============================================================================
+
+@frappe.whitelist()
+def generate_page_blocks(
+	prompt: str,
+	theme: str = "modern",
+	site_type: str = "multi_page",
+	provider: str = None,
+	model: str = None,
+	include_header: bool = True,
+	include_footer: bool = True
+):
+	"""
+	Generate page blocks using the new multi-pass AI pipeline.
+
+	Args:
+		prompt: Description of the desired page
+		theme: Visual theme (modern, neobrutalist, glassmorphism, minimal, corporate, creative)
+		site_type: Type of site (single_page, multi_page, multi_page_auth, ecommerce, blog, portfolio)
+		provider: AI provider override (ollama, openai)
+		model: Model name override
+		include_header: Whether to generate header
+		include_footer: Whether to generate footer
+
+	Returns:
+		list[dict]: Generated Frappe Builder blocks
+	"""
+	from builder.ai.generators.page_generator import PageGenerator
+
+	generator = PageGenerator(provider=provider, model=model)
+
+	blocks = generator.generate_page(
+		prompt=prompt,
+		theme=theme,
+		site_type=site_type,
+		include_header=include_header,
+		include_footer=include_footer
+	)
+
+	return blocks
+
+
+@frappe.whitelist()
+def generate_section(
+	section_type: str,
+	context: str,
+	theme: str = "modern",
+	description: str = None,
+	provider: str = None
+):
+	"""
+	Generate a single page section.
+
+	Args:
+		section_type: Type of section (hero, features, testimonials, pricing, cta, contact, etc.)
+		context: Page/site context for relevant content
+		theme: Visual theme
+		description: Additional section requirements
+		provider: AI provider override
+
+	Returns:
+		dict: Generated Frappe Builder block
+	"""
+	from builder.ai.generators.section_generator import SectionGenerator
+
+	generator = SectionGenerator(provider=provider)
+
+	block = generator.generate(
+		section_type=section_type,
+		context=context,
+		theme=theme,
+		description=description
+	)
+
+	return block
+
+
+@frappe.whitelist()
+def generate_header(
+	site_type: str = "multi_page",
+	pages: str = None,  # JSON string array
+	logo: str = None,
+	site_description: str = None,
+	theme: str = "modern"
+):
+	"""
+	Generate a header block.
+
+	Args:
+		site_type: Type of header (single_page, multi_page, ecommerce, etc.)
+		pages: JSON array of page names for navigation
+		logo: Logo text or image URL
+		site_description: Description of the site
+		theme: Visual theme
+
+	Returns:
+		dict: Generated header block
+	"""
+	from builder.ai.generators.header_generator import HeaderGenerator
+
+	# Parse pages if provided as JSON string
+	page_list = None
+	if pages:
+		try:
+			page_list = json.loads(pages) if isinstance(pages, str) else pages
+		except json.JSONDecodeError:
+			page_list = pages.split(",") if isinstance(pages, str) else None
+
+	generator = HeaderGenerator()
+
+	# Create config if logo is provided
+	if logo:
+		from builder.ai.schemas.header_schema import HeaderConfig, MenuItem
+
+		menu_items = []
+		if page_list:
+			menu_items = [
+				MenuItem(label=p.strip(), href=f"/{p.strip().lower()}" if p.strip() != "Home" else "/")
+				for p in page_list
+			]
+
+		config = HeaderConfig(
+			type=site_type,
+			logo_type="image" if logo.startswith("/") or logo.startswith("http") else "text",
+			logo_value=logo,
+			menu_items=menu_items,
+			sticky=True
+		)
+
+		return generator.generate(config=config, theme=theme)
+
+	return generator.generate(
+		site_type=site_type,
+		pages=page_list,
+		site_description=site_description,
+		theme=theme
+	)
+
+
+@frappe.whitelist()
+def generate_footer(
+	site_type: str = "standard",
+	company_name: str = None,
+	site_description: str = None,
+	theme: str = "modern"
+):
+	"""
+	Generate a footer block.
+
+	Args:
+		site_type: Type of footer (minimal, standard, extended, ecommerce)
+		company_name: Company name for copyright
+		site_description: Description of the site
+		theme: Visual theme
+
+	Returns:
+		dict: Generated footer block
+	"""
+	from builder.ai.generators.footer_generator import FooterGenerator
+
+	generator = FooterGenerator()
+
+	return generator.generate(
+		site_type=site_type,
+		company_name=company_name,
+		site_description=site_description,
+		theme=theme
+	)
+
+
+@frappe.whitelist()
+def get_ai_themes():
+	"""
+	Get available AI generation themes.
+
+	Returns:
+		list[dict]: List of available themes with descriptions
+	"""
+	from builder.ai.design_system.themes import THEMES
+
+	return [
+		{
+			"name": name,
+			"label": theme.get("name", name.title()),
+			"description": theme.get("description", ""),
+		}
+		for name, theme in THEMES.items()
+	]
+
+
+@frappe.whitelist()
+def get_ai_site_types():
+	"""
+	Get available site types for AI generation.
+
+	Returns:
+		list[dict]: List of site types with descriptions
+	"""
+	from builder.ai.schemas.header_schema import HEADER_TYPE_DESCRIPTIONS
+
+	return [
+		{
+			"name": name,
+			"label": name.replace("_", " ").title(),
+			"description": info.get("description", ""),
+			"features": info.get("features", []),
+		}
+		for name, info in HEADER_TYPE_DESCRIPTIONS.items()
+	]
+
+
+@frappe.whitelist()
+def check_ai_provider_status():
+	"""
+	Check the status of configured AI providers.
+
+	Returns:
+		dict: Status of each provider
+	"""
+	result = {
+		"ollama": {"available": False, "message": "Not configured"},
+		"openai": {"available": False, "message": "Not configured"},
+	}
+
+	# Check Ollama
+	try:
+		from builder.ai.providers.ollama_provider import OllamaProvider
+		from builder.ai.config import get_ai_settings
+
+		settings = get_ai_settings()
+		if settings.provider == "ollama" or settings.base_url:
+			provider = OllamaProvider(
+				base_url=settings.base_url,
+				model=settings.model
+			)
+			if provider.is_available():
+				result["ollama"] = {
+					"available": True,
+					"message": f"Connected - Model: {settings.model}",
+					"model": settings.model
+				}
+			else:
+				result["ollama"] = {
+					"available": False,
+					"message": f"Server running but model '{settings.model}' not found"
+				}
+	except Exception as e:
+		result["ollama"]["message"] = str(e)
+
+	# Check OpenAI
+	try:
+		api_key = frappe.conf.get("openai_api_key")
+		if api_key:
+			result["openai"] = {
+				"available": True,
+				"message": "API key configured"
+			}
+	except Exception as e:
+		result["openai"]["message"] = str(e)
+
+	return result
 
 
 @frappe.whitelist()

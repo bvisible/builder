@@ -1,0 +1,274 @@
+{
+ "actions": [],
+ "creation": "2024-01-01 00:00:00.000000",
+ "doctype": "DocType",
+ "engine": "InnoDB",
+ "field_order": [
+  "general_section",
+  "default_provider",
+  "default_theme",
+  "default_site_type",
+  "column_break_general",
+  "temperature",
+  "max_retries",
+  "ollama_section",
+  "ollama_enabled",
+  "ollama_base_url",
+  "ollama_model",
+  "column_break_ollama",
+  "ollama_num_ctx",
+  "ollama_timeout",
+  "openai_section",
+  "openai_enabled",
+  "openai_api_key",
+  "openai_model",
+  "column_break_openai",
+  "openai_organization",
+  "anthropic_section",
+  "anthropic_enabled",
+  "anthropic_api_key",
+  "anthropic_model",
+  "generation_section",
+  "enable_multi_pass",
+  "enable_rag",
+  "column_break_generation",
+  "enable_auto_fix",
+  "max_generation_retries",
+  "advanced_section",
+  "custom_system_prompt",
+  "debug_mode"
+ ],
+ "fields": [
+  {
+   "fieldname": "general_section",
+   "fieldtype": "Section Break",
+   "label": "General Settings"
+  },
+  {
+   "default": "ollama",
+   "fieldname": "default_provider",
+   "fieldtype": "Select",
+   "in_list_view": 1,
+   "label": "Default Provider",
+   "options": "ollama\nopenai\nanthropic",
+   "reqd": 1
+  },
+  {
+   "default": "modern",
+   "fieldname": "default_theme",
+   "fieldtype": "Select",
+   "label": "Default Theme",
+   "options": "modern\nneobrutalist\nglassmorphism\nminimal\ncorporate\ncreative"
+  },
+  {
+   "default": "multi_page",
+   "fieldname": "default_site_type",
+   "fieldtype": "Select",
+   "label": "Default Site Type",
+   "options": "single_page\nmulti_page\nmulti_page_auth\necommerce\nblog\nportfolio"
+  },
+  {
+   "fieldname": "column_break_general",
+   "fieldtype": "Column Break"
+  },
+  {
+   "default": "0.7",
+   "description": "Higher values (0.8-1.0) = more creative, lower values (0.1-0.5) = more focused",
+   "fieldname": "temperature",
+   "fieldtype": "Float",
+   "label": "Temperature",
+   "precision": "2"
+  },
+  {
+   "default": "3",
+   "description": "Number of retry attempts if generation fails",
+   "fieldname": "max_retries",
+   "fieldtype": "Int",
+   "label": "Max Retries"
+  },
+  {
+   "fieldname": "ollama_section",
+   "fieldtype": "Section Break",
+   "label": "Ollama Configuration"
+  },
+  {
+   "default": "1",
+   "fieldname": "ollama_enabled",
+   "fieldtype": "Check",
+   "label": "Enable Ollama"
+  },
+  {
+   "default": "http://localhost:11434",
+   "depends_on": "eval:doc.ollama_enabled",
+   "fieldname": "ollama_base_url",
+   "fieldtype": "Data",
+   "label": "Ollama Base URL"
+  },
+  {
+   "default": "qwen2.5:7b",
+   "depends_on": "eval:doc.ollama_enabled",
+   "description": "Recommended: qwen2.5:7b (balanced), qwen2.5:32b (quality), llama3.2:8b (creative)",
+   "fieldname": "ollama_model",
+   "fieldtype": "Data",
+   "label": "Ollama Model"
+  },
+  {
+   "fieldname": "column_break_ollama",
+   "fieldtype": "Column Break"
+  },
+  {
+   "default": "8192",
+   "depends_on": "eval:doc.ollama_enabled",
+   "description": "Context window size (tokens)",
+   "fieldname": "ollama_num_ctx",
+   "fieldtype": "Int",
+   "label": "Context Size"
+  },
+  {
+   "default": "120",
+   "depends_on": "eval:doc.ollama_enabled",
+   "description": "Request timeout in seconds",
+   "fieldname": "ollama_timeout",
+   "fieldtype": "Int",
+   "label": "Timeout (seconds)"
+  },
+  {
+   "fieldname": "openai_section",
+   "fieldtype": "Section Break",
+   "label": "OpenAI Configuration"
+  },
+  {
+   "default": "0",
+   "fieldname": "openai_enabled",
+   "fieldtype": "Check",
+   "label": "Enable OpenAI"
+  },
+  {
+   "depends_on": "eval:doc.openai_enabled",
+   "fieldname": "openai_api_key",
+   "fieldtype": "Password",
+   "label": "OpenAI API Key"
+  },
+  {
+   "default": "gpt-4o-mini",
+   "depends_on": "eval:doc.openai_enabled",
+   "description": "Recommended: gpt-4o-mini (balanced), gpt-4o (quality)",
+   "fieldname": "openai_model",
+   "fieldtype": "Data",
+   "label": "OpenAI Model"
+  },
+  {
+   "fieldname": "column_break_openai",
+   "fieldtype": "Column Break"
+  },
+  {
+   "depends_on": "eval:doc.openai_enabled",
+   "fieldname": "openai_organization",
+   "fieldtype": "Data",
+   "label": "Organization ID"
+  },
+  {
+   "fieldname": "anthropic_section",
+   "fieldtype": "Section Break",
+   "label": "Anthropic Configuration"
+  },
+  {
+   "default": "0",
+   "fieldname": "anthropic_enabled",
+   "fieldtype": "Check",
+   "label": "Enable Anthropic"
+  },
+  {
+   "depends_on": "eval:doc.anthropic_enabled",
+   "fieldname": "anthropic_api_key",
+   "fieldtype": "Password",
+   "label": "Anthropic API Key"
+  },
+  {
+   "default": "claude-3-sonnet-20240229",
+   "depends_on": "eval:doc.anthropic_enabled",
+   "fieldname": "anthropic_model",
+   "fieldtype": "Data",
+   "label": "Anthropic Model"
+  },
+  {
+   "fieldname": "generation_section",
+   "fieldtype": "Section Break",
+   "label": "Generation Settings"
+  },
+  {
+   "default": "1",
+   "description": "Use multi-pass generation (analysis → RAG → generate → validate)",
+   "fieldname": "enable_multi_pass",
+   "fieldtype": "Check",
+   "label": "Enable Multi-Pass Generation"
+  },
+  {
+   "default": "1",
+   "description": "Use RAG to inject relevant template examples",
+   "fieldname": "enable_rag",
+   "fieldtype": "Check",
+   "label": "Enable RAG (Template Examples)"
+  },
+  {
+   "fieldname": "column_break_generation",
+   "fieldtype": "Column Break"
+  },
+  {
+   "default": "1",
+   "description": "Automatically fix common JSON/schema errors",
+   "fieldname": "enable_auto_fix",
+   "fieldtype": "Check",
+   "label": "Enable Auto-Fix"
+  },
+  {
+   "default": "3",
+   "fieldname": "max_generation_retries",
+   "fieldtype": "Int",
+   "label": "Max Generation Retries"
+  },
+  {
+   "collapsible": 1,
+   "fieldname": "advanced_section",
+   "fieldtype": "Section Break",
+   "label": "Advanced"
+  },
+  {
+   "description": "Additional instructions to include in all AI prompts",
+   "fieldname": "custom_system_prompt",
+   "fieldtype": "Code",
+   "label": "Custom System Prompt",
+   "options": "Markdown"
+  },
+  {
+   "default": "0",
+   "description": "Log detailed generation information",
+   "fieldname": "debug_mode",
+   "fieldtype": "Check",
+   "label": "Debug Mode"
+  }
+ ],
+ "index_web_pages_for_search": 1,
+ "issingle": 1,
+ "links": [],
+ "modified": "2024-01-01 00:00:00.000000",
+ "modified_by": "Administrator",
+ "module": "Builder",
+ "name": "AI Settings",
+ "owner": "Administrator",
+ "permissions": [
+  {
+   "create": 1,
+   "delete": 1,
+   "email": 1,
+   "print": 1,
+   "read": 1,
+   "role": "System Manager",
+   "share": 1,
+   "write": 1
+  }
+ ],
+ "sort_field": "modified",
+ "sort_order": "DESC",
+ "track_changes": 1
+}
