@@ -346,16 +346,16 @@ class HeroContent(BaseModel):
 
 class FeatureItem(BaseModel):
     """Single feature item"""
-    icon: str = Field(description="Emoji or icon character")
+    icon: str = Field(default="✨", description="Emoji or icon character")
     title: str = Field(description="Feature title (2-4 words)")
     description: str = Field(description="Feature description (1-2 sentences)")
 
 
 class FeaturesContent(BaseModel):
     """Content for features section"""
-    section_title: str = Field(description="Section heading")
+    section_title: str = Field(default="Why Choose Us", description="Section heading")
     section_description: Optional[str] = Field(default=None, description="Section intro text")
-    features: list[FeatureItem] = Field(min_length=3, max_length=6, description="List of features")
+    features: list[FeatureItem] = Field(default_factory=list, min_length=0, max_length=6, description="List of features")
 
 
 class TestimonialItem(BaseModel):
