@@ -35,6 +35,8 @@
   "column_break_generation",
   "enable_auto_fix",
   "max_generation_retries",
+  "shortcodes_section",
+  "shortcodes",
   "advanced_section",
   "custom_system_prompt",
   "debug_mode"
@@ -234,6 +236,19 @@
    "fieldname": "max_generation_retries",
    "fieldtype": "Int",
    "label": "Max Generation Retries"
+  },
+  {
+   "collapsible": 1,
+   "fieldname": "shortcodes_section",
+   "fieldtype": "Section Break",
+   "label": "Shortcodes & Components"
+  },
+  {
+   "description": "Define shortcodes/components that the AI can use when generating pages. The AI will automatically use appropriate shortcodes based on the site type.",
+   "fieldname": "shortcodes",
+   "fieldtype": "Table",
+   "label": "Available Shortcodes",
+   "options": "Builder AI Shortcode"
   },
   {
    "collapsible": 1,
