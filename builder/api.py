@@ -75,10 +75,12 @@ def generate_site(
 	model: str = None,
 	clear_existing: bool = True,
 	page_title: str = None,
-	set_as_home: bool = True
+	set_as_home: bool = True,
+	header_variation: str = "webshop_standard",
+	footer_variation: str = "webshop_standard"
 ):
 	"""
-	Generate a complete site, optionally clearing existing pages.
+	Generate a complete site using pre-built templates for header/footer.
 	Creates a Builder Page with the generated blocks at root route.
 
 	Args:
@@ -90,11 +92,16 @@ def generate_site(
 		clear_existing: If True, deletes all existing Builder Pages before generating
 		page_title: Title for the new page (extracted from prompt if not provided)
 		set_as_home: If True, sets the page route to "/" (home)
+		header_variation: Header template variation (webshop_standard, webshop_centered, etc.)
+		footer_variation: Footer template variation (webshop_standard, webshop_dark, etc.)
 
 	Returns:
 		dict: {page_name, page_title, route, blocks_count, url}
 	"""
 	from builder.ai.generators.page_generator import PageGenerator
+	from builder.ai.templates.webshop_headers import build_webshop_header
+	from builder.ai.templates.webshop_footers import build_webshop_footer
+	from builder.ai.schemas.header_schema import HeaderConfig
 
 	# Clear existing pages if requested
 	if clear_existing:
@@ -103,15 +110,43 @@ def generate_site(
 			frappe.delete_doc("Builder Page", page_name, ignore_permissions=True)
 		frappe.db.commit()
 
-	# Generate blocks
+	# Extract title from prompt if not provided
+	if not page_title:
+		words = prompt.split()[:5]
+		page_title = " ".join(words).title()
+		if len(page_title) > 50:
+			page_title = page_title[:50]
+
+	# Build pre-designed header with site title as logo
+	header_config = HeaderConfig(
+		logo_type="text",
+		logo_value=page_title,
+		show_search=True,
+		show_cart=True,
+		show_wishlist=True,
+		show_login=True
+	)
+	header_block = build_webshop_header(variation=header_variation, config=header_config)
+
+	# Build pre-designed footer
+	footer_block = build_webshop_footer(
+		variation=footer_variation,
+		company_name=page_title,
+		description=prompt[:100] if len(prompt) > 100 else prompt
+	)
+
+	# Generate only content sections via AI (no header/footer)
 	generator = PageGenerator(provider=provider, model=model)
-	blocks = generator.generate_page(
+	section_blocks = generator.generate_page(
 		prompt=prompt,
 		theme=theme,
 		site_type=site_type,
-		include_header=True,
-		include_footer=True
+		include_header=False,
+		include_footer=False
 	)
+
+	# Assemble: header + sections + footer
+	blocks = [header_block] + section_blocks + [footer_block]
 
 	# Extract title from prompt if not provided
 	if not page_title:
