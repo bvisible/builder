@@ -243,59 +243,74 @@ def _generate_single_section(section_name: str, design_context: str, site_contex
 	"""
 	# Section-specific prompts
 	section_prompts = {
-		"hero": f"""Create a HERO section with:
-- Full-width background with the primary color or a gradient
-- Large headline text with the business name or tagline
-- A subtitle/description paragraph
-- One or two call-to-action buttons
-- Minimum height of 80vh for impact
-- Centered content with good padding""",
+		"hero": f"""Create a HERO section with COMPLETE STYLES:
+- Section: minHeight: "90vh", background gradient or solid color, display: "flex", alignItems: "center", justifyContent: "center", padding: "60px 20px"
+- Container div: maxWidth: "1200px", textAlign: "center"
+- H1: fontSize: "3.5rem", fontWeight: "800", color: "#fff", marginBottom: "24px"
+- Subtitle p: fontSize: "1.25rem", color: "rgba(255,255,255,0.9)", maxWidth: "600px", margin: "0 auto 32px"
+- Buttons div: display: "flex", gap: "16px", justifyContent: "center"
+- Primary button: backgroundColor with primary color, color: "#fff", padding: "16px 32px", borderRadius: "8px", fontSize: "1.1rem", fontWeight: "600"
+- Secondary button: backgroundColor: "transparent", border: "2px solid #fff", color: "#fff", same padding/radius""",
 
-		"about": f"""Create an ABOUT section with:
-- A heading like "About Us" or "Our Story"
-- 2-3 paragraphs of descriptive text about the business
-- Optional image placeholder on one side (use flexbox row layout)
-- Good padding and readable typography
-- Background that contrasts with hero""",
+		"about": f"""Create an ABOUT section with COMPLETE STYLES:
+- Section: padding: "80px 20px", backgroundColor: "#fff" or light color
+- Container: maxWidth: "1200px", margin: "0 auto", display: "flex", gap: "60px", alignItems: "center"
+- Image div: width: "50%", minHeight: "400px", backgroundColor: "#f0f0f0", borderRadius: "12px"
+- Content div: width: "50%"
+- H2: fontSize: "2.5rem", fontWeight: "700", color: dark color, marginBottom: "24px"
+- Paragraphs: fontSize: "1.1rem", lineHeight: "1.8", color: "#555", marginBottom: "16px\"""",
 
-		"services": f"""Create a SERVICES/FEATURES section with:
-- A heading like "Our Services" or "What We Offer"
-- 3-4 service cards in a grid or flex layout
-- Each card with an icon placeholder, title, and short description
-- Consistent styling across all cards
-- Good spacing between cards""",
+		"services": f"""Create a SERVICES section with COMPLETE STYLES:
+- Section: padding: "80px 20px", backgroundColor: "#f8f9fa"
+- Container: maxWidth: "1200px", margin: "0 auto"
+- H2: fontSize: "2.5rem", fontWeight: "700", textAlign: "center", marginBottom: "48px"
+- Cards grid: display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: "32px"
+- Each card: backgroundColor: "#fff", padding: "32px", borderRadius: "12px", boxShadow: "0 4px 6px rgba(0,0,0,0.1)"
+- Card icon: fontSize: "2.5rem", marginBottom: "16px"
+- Card title: fontSize: "1.25rem", fontWeight: "600", marginBottom: "12px"
+- Card text: fontSize: "1rem", color: "#666", lineHeight: "1.6\"""",
 
-		"features": f"""Create a FEATURES section with:
-- A heading highlighting key features
-- 3-4 feature items with icons and descriptions
-- Grid or flex layout for responsive display
-- Visual hierarchy with titles and descriptions""",
+		"features": f"""Create a FEATURES section with COMPLETE STYLES:
+- Section: padding: "80px 20px", backgroundColor: "#f8f9fa"
+- Container: maxWidth: "1200px", margin: "0 auto"
+- H2: fontSize: "2.5rem", fontWeight: "700", textAlign: "center", marginBottom: "48px", color: dark
+- Features grid: display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: "32px"
+- Each feature card: backgroundColor: "#fff", padding: "32px", borderRadius: "12px", boxShadow: "0 4px 6px rgba(0,0,0,0.1)", textAlign: "center"
+- Icon div: fontSize: "2.5rem", marginBottom: "16px"
+- Feature title: fontSize: "1.25rem", fontWeight: "600", color: "#333", marginBottom: "12px"
+- Feature description: fontSize: "1rem", color: "#666", lineHeight: "1.6\"""",
 
-		"contact": f"""Create a CONTACT section with:
-- A heading like "Contact Us" or "Get in Touch"
-- Contact information (placeholder text for address, phone, email)
-- A simple contact form layout (just visual, with input placeholders)
-- Good spacing and clear layout""",
+		"contact": f"""Create a CONTACT section with COMPLETE STYLES:
+- Section: padding: "80px 20px", backgroundColor: "#fff"
+- Container: maxWidth: "800px", margin: "0 auto", textAlign: "center"
+- H2: fontSize: "2.5rem", fontWeight: "700", marginBottom: "24px"
+- Contact info div: marginBottom: "32px"
+- Each info item: fontSize: "1.1rem", marginBottom: "12px", color: "#555"
+- Form div: display: "flex", flexDirection: "column", gap: "16px"
+- Input placeholders: padding: "16px", border: "1px solid #ddd", borderRadius: "8px", fontSize: "1rem"
+- Submit button: backgroundColor with primary, color: "#fff", padding: "16px 32px", borderRadius: "8px\"""",
 
-		"testimonials": f"""Create a TESTIMONIALS section with:
-- A heading like "What Our Customers Say"
-- 2-3 testimonial cards with quote, author name, and role
-- Styled quote marks or icons
-- Grid or carousel-style layout""",
+		"testimonials": f"""Create a TESTIMONIALS section with COMPLETE STYLES:
+- Section: padding: "80px 20px", backgroundColor: "#f8f9fa"
+- H2: fontSize: "2.5rem", fontWeight: "700", textAlign: "center", marginBottom: "48px"
+- Cards container: display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: "32px", maxWidth: "1200px", margin: "0 auto"
+- Each card: backgroundColor: "#fff", padding: "32px", borderRadius: "12px", boxShadow: "0 4px 6px rgba(0,0,0,0.1)"
+- Quote text: fontSize: "1.1rem", fontStyle: "italic", color: "#555", marginBottom: "24px", lineHeight: "1.7"
+- Author name: fontSize: "1rem", fontWeight: "600", color: "#333"
+- Author role: fontSize: "0.9rem", color: "#888\"""",
 
-		"cta": f"""Create a CALL-TO-ACTION section with:
-- Bold headline encouraging action
-- Brief supporting text
-- Prominent button(s)
-- Eye-catching background color or gradient
-- Centered layout""",
+		"cta": f"""Create a CTA section with COMPLETE STYLES:
+- Section: padding: "80px 20px", backgroundColor with primary color or gradient, textAlign: "center"
+- H2: fontSize: "2.5rem", fontWeight: "700", color: "#fff", marginBottom: "16px"
+- Subtitle: fontSize: "1.25rem", color: "rgba(255,255,255,0.9)", marginBottom: "32px", maxWidth: "600px", margin: "0 auto 32px"
+- Button: backgroundColor: "#fff", color with primary color, padding: "16px 40px", borderRadius: "8px", fontSize: "1.1rem", fontWeight: "600\"""",
 
-		"footer": f"""Create a FOOTER section with:
-- Business name and copyright
-- Navigation links placeholder
-- Social media icons placeholder
-- Dark background with light text
-- Multi-column layout"""
+		"footer": f"""Create a FOOTER section with COMPLETE STYLES:
+- Section: padding: "60px 20px 30px", backgroundColor: "#1a1a1a", color: "#fff"
+- Container: maxWidth: "1200px", margin: "0 auto", display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: "40px"
+- Column title: fontSize: "1.1rem", fontWeight: "600", marginBottom: "20px", color: "#fff"
+- Links: fontSize: "0.95rem", color: "#aaa", marginBottom: "10px"
+- Copyright div: gridColumn: "1 / -1", textAlign: "center", paddingTop: "30px", borderTop: "1px solid #333", marginTop: "30px", color: "#888\""""
 	}
 
 	# Get specific prompt or generic one
@@ -319,7 +334,18 @@ CRITICAL REQUIREMENTS:
 3. Use element "section" for the outer block
 4. Include children array with nested elements (h1, h2, p, button, div, etc.)
 5. All CSS properties in camelCase (backgroundColor, fontSize, etc.)
-6. Provide realistic text content related to {site_context.get('business_name', 'the business')}
+6. Provide realistic text content in French related to {site_context.get('business_name', 'the business')}
+7. EVERY element MUST have "baseStyles" with at least: padding, margin, fontSize, color or backgroundColor
+8. Use the primary color {site_context.get('style', {}).get('primary_color', '#333')} for backgrounds/accents
+9. Buttons must have: backgroundColor, color, padding, borderRadius, fontSize, fontWeight
+10. Text elements must have: fontSize, color, lineHeight, margin
+
+STYLE REQUIREMENTS:
+- Section: minHeight, padding, backgroundColor or background gradient
+- Headings (h1, h2): fontSize (2rem-4rem), fontWeight (600-800), color, marginBottom
+- Paragraphs: fontSize (1rem-1.25rem), lineHeight (1.6), color, maxWidth
+- Buttons: backgroundColor, color, padding (12px 24px), borderRadius (8px), fontWeight (600)
+- Cards/divs with content: padding, backgroundColor, borderRadius, boxShadow
 
 Return ONLY the JSON object, no markdown, no explanation."""
 
