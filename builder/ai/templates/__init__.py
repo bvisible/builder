@@ -27,6 +27,28 @@ from builder.ai.templates.sections import (
     build_stats_section,
     build_faq_section,
 )
+from builder.ai.templates.webshop_headers import (
+    WEBSHOP_HEADER_VARIATIONS,
+    build_webshop_header,
+    build_webshop_header_standard,
+    build_webshop_header_centered,
+    build_webshop_header_minimal,
+    build_webshop_header_mega,
+    build_webshop_header_transparent,
+    build_webshop_header_split,
+    get_webshop_header_variations,
+)
+from builder.ai.templates.webshop_footers import (
+    WEBSHOP_FOOTER_VARIATIONS,
+    build_webshop_footer,
+    build_webshop_footer_standard,
+    build_webshop_footer_simple,
+    build_webshop_footer_centered,
+    build_webshop_footer_dark,
+    build_webshop_footer_minimal,
+    build_webshop_footer_newsletter,
+    get_webshop_footer_variations,
+)
 
 __all__ = [
     # Headers
@@ -50,4 +72,24 @@ __all__ = [
     "build_cta_section",
     "build_stats_section",
     "build_faq_section",
+    # Webshop Headers
+    "WEBSHOP_HEADER_VARIATIONS",
+    "build_webshop_header",
+    "build_webshop_header_standard",
+    "build_webshop_header_centered",
+    "build_webshop_header_minimal",
+    "build_webshop_header_mega",
+    "build_webshop_header_transparent",
+    "build_webshop_header_split",
+    "get_webshop_header_variations",
+    # Webshop Footers
+    "WEBSHOP_FOOTER_VARIATIONS",
+    "build_webshop_footer",
+    "build_webshop_footer_standard",
+    "build_webshop_footer_simple",
+    "build_webshop_footer_centered",
+    "build_webshop_footer_dark",
+    "build_webshop_footer_minimal",
+    "build_webshop_footer_newsletter",
+    "get_webshop_footer_variations",
 ]

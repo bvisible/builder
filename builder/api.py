@@ -287,6 +287,111 @@ def check_ai_provider_status():
 	return result
 
 
+# =============================================================================
+# WEBSHOP HEADER/FOOTER TEMPLATES API
+# =============================================================================
+
+@frappe.whitelist()
+def get_webshop_header_variations():
+	"""
+	Get available webshop header variations.
+
+	Returns:
+		dict: Available variations with name, description, preview
+	"""
+	from builder.ai.templates.webshop_headers import WEBSHOP_HEADER_VARIATIONS
+	return WEBSHOP_HEADER_VARIATIONS
+
+
+@frappe.whitelist()
+def get_webshop_footer_variations():
+	"""
+	Get available webshop footer variations.
+
+	Returns:
+		dict: Available variations with name, description, preview
+	"""
+	from builder.ai.templates.webshop_footers import WEBSHOP_FOOTER_VARIATIONS
+	return WEBSHOP_FOOTER_VARIATIONS
+
+
+@frappe.whitelist()
+def build_webshop_header(
+	variation: str = "webshop_standard",
+	logo: str = None,
+	pages: str = None
+):
+	"""
+	Build a webshop header block from a variation.
+
+	Args:
+		variation: Header variation name (webshop_standard, webshop_centered, etc.)
+		logo: Optional logo path (defaults to /files/logo-default.png)
+		pages: JSON array of menu items [{label, href}]
+
+	Returns:
+		dict: Frappe Builder block for header
+	"""
+	from builder.ai.templates.webshop_headers import build_webshop_header as build_header
+	from builder.ai.schemas.header_schema import HeaderConfig, MenuItem
+
+	config = None
+	if logo or pages:
+		menu_items = []
+		if pages:
+			try:
+				page_list = json.loads(pages) if isinstance(pages, str) else pages
+				for p in page_list:
+					if isinstance(p, dict):
+						menu_items.append(MenuItem(label=p.get("label", ""), href=p.get("href", "/")))
+					else:
+						menu_items.append(MenuItem(label=str(p), href=f"/{str(p).lower()}"))
+			except json.JSONDecodeError:
+				pass
+
+		config = HeaderConfig(
+			type="ecommerce",
+			logo_type="image",
+			logo_value=logo or "/files/logo-default.png",
+			menu_items=menu_items if menu_items else None,
+			show_cart=True,
+			show_wishlist=True,
+			show_search=True,
+			show_user_menu=True,
+		)
+
+	return build_header(variation=variation, config=config)
+
+
+@frappe.whitelist()
+def build_webshop_footer(
+	variation: str = "webshop_standard",
+	company_name: str = None,
+	logo: str = None,
+	description: str = None
+):
+	"""
+	Build a webshop footer block from a variation.
+
+	Args:
+		variation: Footer variation name (webshop_standard, webshop_simple, etc.)
+		company_name: Company name for copyright
+		logo: Optional logo path (defaults to /files/logo-default.png)
+		description: Company description text
+
+	Returns:
+		dict: Frappe Builder block for footer
+	"""
+	from builder.ai.templates.webshop_footers import build_webshop_footer as build_footer
+
+	return build_footer(
+		variation=variation,
+		company_name=company_name or "Your Company",
+		logo=logo,
+		description=description
+	)
+
+
 @frappe.whitelist()
 def get_posthog_settings():
 	can_record_session = False

@@ -66,15 +66,15 @@ class HeaderConfig(BaseModel):
 
     # Logo configuration
     logo_type: LogoType = Field(
-        default="text",
+        default="image",
         description="Type of logo to display"
     )
     logo_value: str = Field(
-        default="Brand",
+        default="/files/logo-default.png",
         description="Logo text, image URL, or SVG content"
     )
     logo_alt: Optional[str] = Field(
-        default=None,
+        default="Logo",
         description="Alt text for logo image"
     )
 
@@ -121,15 +121,20 @@ class HeaderConfig(BaseModel):
     )
 
     @classmethod
-    def for_single_page(cls, logo: str, sections: list[str]) -> "HeaderConfig":
-        """Create config for single-page site"""
+    def for_single_page(cls, logo: str = None, sections: list[str] = None) -> "HeaderConfig":
+        """Create config for single-page site with anchor navigation"""
+        sections = sections or ["Home", "Features", "About", "Contact"]
         return cls(
             type="single_page",
             layout="logo_left_menu_right",
-            logo_type="text",
-            logo_value=logo,
+            logo_type="image",
+            logo_value=logo or "/files/logo-default.png",
+            logo_alt="Logo",
             menu_items=[
-                MenuItem(label=section.title(), href=f"#{section.lower().replace(' ', '-')}")
+                MenuItem(
+                    label=section.title(),
+                    href=f"#{section.lower().replace(' ', '-')}" if section.lower() != "home" else "#hero"
+                )
                 for section in sections
             ],
             sticky=True,
@@ -138,18 +143,20 @@ class HeaderConfig(BaseModel):
     @classmethod
     def for_ecommerce(
         cls,
-        logo: str,
-        categories: list[str],
+        logo: str = None,
+        categories: list[str] = None,
         logo_type: LogoType = "image"
     ) -> "HeaderConfig":
         """Create config for e-commerce site"""
+        categories = categories or ["Products", "New Arrivals", "Sale"]
         return cls(
             type="ecommerce",
             layout="logo_center_menu_below",
             logo_type=logo_type,
-            logo_value=logo,
+            logo_value=logo or "/files/logo-default.png",
+            logo_alt="Logo",
             menu_items=[
-                MenuItem(label=cat, href=f"/category/{cat.lower().replace(' ', '-')}")
+                MenuItem(label=cat, href=f"/shop-by-category/{cat.lower().replace(' ', '-')}")
                 for cat in categories
             ],
             sticky=True,
@@ -162,11 +169,12 @@ class HeaderConfig(BaseModel):
     @classmethod
     def for_saas(
         cls,
-        logo: str,
-        features: list[str],
+        logo: str = None,
+        features: list[str] = None,
         has_auth: bool = True
     ) -> "HeaderConfig":
         """Create config for SaaS product"""
+        features = features or ["Product", "Solutions", "Resources"]
         menu_items = [
             MenuItem(label=feat, href=f"/{feat.lower().replace(' ', '-')}")
             for feat in features
@@ -176,8 +184,9 @@ class HeaderConfig(BaseModel):
         return cls(
             type="saas" if not has_auth else "multi_page_auth",
             layout="logo_left_menu_right",
-            logo_type="text",
-            logo_value=logo,
+            logo_type="image",
+            logo_value=logo or "/files/logo-default.png",
+            logo_alt="Logo",
             menu_items=menu_items,
             sticky=True,
             blur_on_scroll=True,

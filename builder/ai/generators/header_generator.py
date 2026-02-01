@@ -126,16 +126,32 @@ class HeaderGenerator:
     def _get_default_config(self, site_type: str, pages: list[str] = None) -> HeaderConfig:
         """Get default config if AI generation fails"""
         pages = pages or ["Home", "About", "Services", "Contact"]
-        menu_items = [
-            MenuItem(label=page, href=f"/{page.lower()}" if page != "Home" else "/")
-            for page in pages
-        ]
 
+        # Use anchor links for single-page sites, URLs for multi-page
+        if site_type == "single_page":
+            menu_items = [
+                MenuItem(
+                    label=page,
+                    href=f"#{page.lower().replace(' ', '-')}" if page != "Home" else "#hero"
+                )
+                for page in pages
+            ]
+        else:
+            menu_items = [
+                MenuItem(
+                    label=page,
+                    href=f"/{page.lower().replace(' ', '-')}" if page != "Home" else "/"
+                )
+                for page in pages
+            ]
+
+        # Use image logo by default with standard path
         return HeaderConfig(
             type=site_type,
             layout="logo_left_menu_right",
-            logo_type="text",
-            logo_value="Brand",
+            logo_type="image",
+            logo_value="/files/logo-default.png",
+            logo_alt="Logo",
             menu_items=menu_items,
             sticky=True,
             show_login=site_type in ["multi_page_auth", "saas", "ecommerce"],
