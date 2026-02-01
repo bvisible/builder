@@ -91,7 +91,7 @@ class SectionGenerator:
             )
         else:
             # Fallback: no template available, use basic generation
-            frappe.log_error(f"No content schema for section type: {section_type}")
+            frappe.log_error("No content schema for section", section_type)
             return self._generate_fallback(section_type, context, theme_data)
 
     def _generate_with_template(
@@ -123,11 +123,11 @@ class SectionGenerator:
             if section:
                 return section
             else:
-                frappe.log_error(f"Failed to build section from content: {section_type}")
+                frappe.log_error("Failed to build section", section_type)
                 return self._generate_fallback(section_type, context, theme_data)
 
         except Exception as e:
-            frappe.log_error(f"Section content generation failed: {e}")
+            frappe.log_error("Section content generation failed", str(e))
             return self._generate_fallback(section_type, context, theme_data)
 
     def _build_content_prompt(

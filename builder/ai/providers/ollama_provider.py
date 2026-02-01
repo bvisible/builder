@@ -330,13 +330,13 @@ CRITICAL RULES:
                     data = json.loads(line)
                     status = data.get("status", "")
                     if "error" in data:
-                        frappe.log_error(f"Ollama pull error: {data['error']}")
+                        frappe.log_error("Ollama pull error", data['error'])
                         return False
 
             return True
 
         except Exception as e:
-            frappe.log_error(f"Failed to pull model {model_to_pull}: {e}")
+            frappe.log_error(f"Failed to pull model: {model_to_pull}", str(e))
             return False
 
     def list_models(self) -> list[dict]:

@@ -173,7 +173,7 @@ class PageGenerator:
             return structure
 
         except Exception as e:
-            frappe.log_error(f"Structure analysis failed: {e}")
+            frappe.log_error("Structure analysis failed", str(e))
             return self._get_default_structure(site_type)
 
     def _get_analysis_system_prompt(self) -> str:
@@ -298,7 +298,7 @@ Most landing pages need only 4-6 sections."""
                 theme=theme
             )
         except Exception as e:
-            frappe.log_error(f"Header generation failed: {e}")
+            frappe.log_error("Header generation failed", str(e))
             return self._get_fallback_header()
 
     def _generate_section(
@@ -316,7 +316,7 @@ Most landing pages need only 4-6 sections."""
                 description=section.description
             )
         except Exception as e:
-            frappe.log_error(f"Section generation failed ({section.type}): {e}")
+            frappe.log_error(f"Section generation failed: {section.type}", str(e))
             return None
 
     def _generate_footer(
@@ -334,7 +334,7 @@ Most landing pages need only 4-6 sections."""
                 theme=theme
             )
         except Exception as e:
-            frappe.log_error(f"Footer generation failed: {e}")
+            frappe.log_error("Footer generation failed", str(e))
             return self._get_fallback_footer()
 
     def _extract_nav_pages(self, structure: PageStructure) -> list[str]:

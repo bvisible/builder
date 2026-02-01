@@ -87,8 +87,8 @@ def get_ai_settings() -> AIConfig:
     Get AI settings from Frappe configuration or AI Settings DocType.
 
     Priority:
-    1. AI Settings DocType (if exists)
-    2. Site config (common_site_config.json)
+    1. Site config (common_site_config.json) - for quick overrides
+    2. AI Settings or Builder AI Settings DocType (if exists)
     3. Default values
 
     Returns:
@@ -96,42 +96,80 @@ def get_ai_settings() -> AIConfig:
     """
     config = AIConfig()
 
-    # Try to get from AI Settings DocType
+    # First check site config for quick overrides
+    site_provider = frappe.conf.get("ai_provider") or frappe.conf.get("ollama_provider")
+    site_base_url = frappe.conf.get("ollama_base_url") or frappe.conf.get("ollama_url")
+    site_model = frappe.conf.get("ollama_model")
+    site_api_key = frappe.conf.get("ollama_api_key")
+
+    if site_provider:
+        config.provider = site_provider
+    if site_base_url:
+        config.base_url = site_base_url
+    if site_model:
+        config.model = site_model
+    if site_api_key:
+        config.api_key = site_api_key
+
+    # Try to get from AI Settings DocType (new) or Builder AI Settings (old)
+    settings = None
     try:
         if frappe.db.exists("DocType", "AI Settings"):
             settings = frappe.get_single("AI Settings")
+        elif frappe.db.exists("DocType", "Builder AI Settings"):
+            settings = frappe.get_single("Builder AI Settings")
+    except Exception:
+        pass
 
-            config.provider = settings.get("default_provider") or config.provider
+    if settings:
+        try:
+            # Common settings
+            config.provider = settings.get("default_provider") or settings.get("provider") or config.provider
             config.temperature = settings.get("temperature") or config.temperature
             config.max_retries = settings.get("max_retries") or config.max_retries
             config.default_theme = settings.get("default_theme") or config.default_theme
 
-            # Provider-specific settings
+            # Provider-specific settings (check both old and new field names)
             if config.provider == "ollama":
-                config.base_url = settings.get("ollama_base_url") or DEFAULT_OLLAMA_CONFIG["base_url"]
-                config.model = settings.get("ollama_model") or DEFAULT_OLLAMA_CONFIG["model"]
+                config.base_url = (
+                    settings.get("ollama_base_url") or
+                    settings.get("ollama_url") or
+                    config.base_url or
+                    DEFAULT_OLLAMA_CONFIG["base_url"]
+                )
+                config.model = (
+                    settings.get("ollama_model") or
+                    settings.get("model") or
+                    config.model or
+                    DEFAULT_OLLAMA_CONFIG["model"]
+                )
                 # Get Ollama API key (for remote servers with Cloudflare WAF)
-                try:
-                    config.api_key = settings.get_password("ollama_api_key")
-                except Exception:
-                    pass
+                if not config.api_key:
+                    try:
+                        config.api_key = settings.get_password("ollama_api_key")
+                    except Exception:
+                        config.api_key = settings.get("ollama_api_key")
+
             elif config.provider == "openai":
-                try:
-                    config.api_key = settings.get_password("openai_api_key")
-                except Exception:
-                    config.api_key = settings.get("openai_api_key")
-                config.model = settings.get("openai_model") or DEFAULT_OPENAI_CONFIG["model"]
+                if not config.api_key:
+                    try:
+                        config.api_key = settings.get_password("openai_api_key")
+                    except Exception:
+                        config.api_key = settings.get("openai_api_key")
+                config.model = settings.get("openai_model") or config.model or DEFAULT_OPENAI_CONFIG["model"]
+
             elif config.provider == "anthropic":
-                try:
-                    config.api_key = settings.get_password("anthropic_api_key")
-                except Exception:
-                    config.api_key = settings.get("anthropic_api_key")
-                config.model = settings.get("anthropic_model")
+                if not config.api_key:
+                    try:
+                        config.api_key = settings.get_password("anthropic_api_key")
+                    except Exception:
+                        config.api_key = settings.get("anthropic_api_key")
+                config.model = settings.get("anthropic_model") or config.model
 
-    except Exception:
-        pass  # DocType doesn't exist yet, use defaults
+        except Exception:
+            pass  # Field doesn't exist, continue with defaults
 
-    # Fallback to site config for API keys
+    # Final fallback to site config for API keys
     if not config.api_key:
         if config.provider == "openai":
             config.api_key = frappe.conf.get("openai_api_key")
@@ -142,7 +180,7 @@ def get_ai_settings() -> AIConfig:
 
     # Ensure base_url for Ollama
     if config.provider == "ollama" and not config.base_url:
-        config.base_url = frappe.conf.get("ollama_base_url", DEFAULT_OLLAMA_CONFIG["base_url"])
+        config.base_url = DEFAULT_OLLAMA_CONFIG["base_url"]
 
     return config
 

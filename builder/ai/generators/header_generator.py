@@ -75,7 +75,7 @@ class HeaderGenerator:
             )
             return config
         except Exception as e:
-            frappe.log_error(f"Header config generation failed: {e}")
+            frappe.log_error("Header config generation failed", str(e))
             return self._get_default_config(site_type, pages)
 
     def generate(

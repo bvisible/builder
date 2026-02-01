@@ -70,7 +70,7 @@ class FooterGenerator:
             )
             return config
         except Exception as e:
-            frappe.log_error(f"Footer config generation failed: {e}")
+            frappe.log_error("Footer config generation failed", str(e))
             return self._get_default_config(site_type, company_name)
 
     def generate(
