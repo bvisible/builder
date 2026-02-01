@@ -9,3 +9,7 @@ builder/public/page_scripts
 builder/public/page_styles
 builder/www/_builder.html
 builder/public/dist
+
+# Claude Code instructions (local only)
+CLAUDE.md
+DEPLOYMENT_ACTIONS.md

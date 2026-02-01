@@ -40,8 +40,34 @@
 	{%- if _head_html %}
 	{{ _head_html|safe }}
 	{%-endif -%}
+	{# Include navbar styles if available #}
+	{% if builder_navbar_data and builder_navbar_data.success %}
+	<style>{{ builder_navbar_data.global_style or '' }}</style>
+	{{ builder_navbar_data.style or '' }}
+	{% for style in (builder_navbar_data.client_styles or []) %}
+	<style>{{ style.content }}</style>
+	{% endfor %}
+	{% endif %}
+	{# Include footer styles if available #}
+	{% if builder_footer_data and builder_footer_data.success %}
+	<style>{{ builder_footer_data.global_style or '' }}</style>
+	{{ builder_footer_data.style or '' }}
+	{% for style in (builder_footer_data.client_styles or []) %}
+	<style>{{ style.content }}</style>
+	{% endfor %}
+	{% endif %}
 </head>
 {% block page_content %}
+{# Render navbar if available #}
+{% if builder_navbar_data and builder_navbar_data.success %}
+{{ builder_navbar_data.content|safe }}
+{% endif %}
+
 {{ __content }}
+
+{# Render footer if available #}
+{% if builder_footer_data and builder_footer_data.success %}
+{{ builder_footer_data.content|safe }}
+{% endif %}
 {% endblock %}
 </html>

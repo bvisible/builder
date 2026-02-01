@@ -10,12 +10,26 @@ from frappe.tests.utils import FrappeTestCase
 from builder.builder_ai import (
 	generate_block_id,
 	generate_blocks_from_context,
+	generate_single_page,
+	generate_site,
 	get_collector_prompt,
 	get_cta_template,
+	get_faq_template,
 	get_features_template,
 	get_footer_template,
+	get_gallery_template,
 	get_hero_template,
 	get_llm_config,
+	get_navbar_template,
+	get_pricing_template,
+	get_process_template,
+	get_product_carousel_template,
+	get_requires_features,
+	get_shortcode_jinja,
+	get_stats_template,
+	get_team_template,
+	get_testimonials_template,
+	validate_and_fix_blocks,
 )
 
 
@@ -138,6 +152,131 @@ class TestBuilderAI(FrappeTestCase):
 		self.assertEqual(footer["element"], "footer")
 		self.assertEqual(footer["blockName"], "footer")
 
+	def test_get_footer_template_vitrine(self):
+		"""Test minimal footer for vitrine site"""
+		context = {
+			"business_name": "My Shop",
+			"functionality_type": "vitrine",
+			"style": {}
+		}
+
+		footer = get_footer_template(context)
+
+		self.assertEqual(footer["element"], "footer")
+		# Minimal footer should have just one child container
+		self.assertEqual(len(footer["children"]), 1)
+
+	def test_get_footer_template_ecommerce(self):
+		"""Test mega footer for e-commerce site"""
+		context = {
+			"business_name": "Online Store",
+			"functionality_type": "ecommerce",
+			"style": {
+				"primary_color": "#3B82F6"
+			},
+			"contact_info": {
+				"email": "test@example.com"
+			}
+		}
+
+		footer = get_footer_template(context)
+
+		self.assertEqual(footer["element"], "footer")
+		# E-commerce footer should have more padding
+		self.assertEqual(footer["baseStyles"]["paddingTop"], "80px")
+
+	def test_get_navbar_template_vitrine(self):
+		"""Test navbar for vitrine site (no e-commerce components)"""
+		context = {
+			"business_name": "My Business",
+			"functionality_type": "vitrine",
+			"style": {
+				"text_color": "#171717"
+			}
+		}
+
+		navbar = get_navbar_template(context)
+
+		self.assertEqual(navbar["element"], "header")
+		self.assertEqual(navbar["blockName"], "navbar")
+
+		# Find navbar-actions child
+		actions = None
+		for child in navbar["children"]:
+			if child.get("blockName") == "navbar-actions":
+				actions = child
+				break
+
+		self.assertIsNotNone(actions)
+		# Vitrine should have no cart, wishlist, user_menu, or search
+		action_names = [c.get("blockName") for c in actions.get("children", [])]
+		self.assertNotIn("navbar-cart", action_names)
+		self.assertNotIn("navbar-wishlist", action_names)
+		self.assertNotIn("navbar-user_menu", action_names)
+
+	def test_get_navbar_template_ecommerce(self):
+		"""Test navbar for e-commerce site (all components)"""
+		context = {
+			"business_name": "Online Store",
+			"functionality_type": "ecommerce",
+			"style": {
+				"primary_color": "#3B82F6",
+				"text_color": "#171717"
+			}
+		}
+
+		navbar = get_navbar_template(context)
+
+		self.assertEqual(navbar["element"], "header")
+
+		# Find navbar-actions child
+		actions = None
+		for child in navbar["children"]:
+			if child.get("blockName") == "navbar-actions":
+				actions = child
+				break
+
+		self.assertIsNotNone(actions)
+		# E-commerce should have cart, wishlist, user_menu, and search
+		action_names = [c.get("blockName") for c in actions.get("children", [])]
+		self.assertIn("navbar-cart", action_names)
+		self.assertIn("navbar-wishlist", action_names)
+		self.assertIn("navbar-user_menu", action_names)
+		self.assertIn("navbar-search", action_names)
+
+	def test_get_requires_features_vitrine(self):
+		"""Test feature requirements for vitrine site"""
+		context = {"functionality_type": "vitrine"}
+		features = get_requires_features(context)
+
+		self.assertFalse(features["cart"])
+		self.assertFalse(features["wishlist"])
+		self.assertFalse(features["user_menu"])
+		self.assertFalse(features["search"])
+		self.assertTrue(features["mobile_menu"])
+
+	def test_get_requires_features_ecommerce(self):
+		"""Test feature requirements for e-commerce site"""
+		context = {"functionality_type": "ecommerce"}
+		features = get_requires_features(context)
+
+		self.assertTrue(features["cart"])
+		self.assertTrue(features["wishlist"])
+		self.assertTrue(features["user_menu"])
+		self.assertTrue(features["search"])
+		self.assertTrue(features["mobile_menu"])
+
+	def test_get_shortcode_jinja_defaults(self):
+		"""Test default Jinja code for shortcodes"""
+		cart_jinja = get_shortcode_jinja("cart")
+		self.assertIn("cart_component.html", cart_jinja)
+
+		wishlist_jinja = get_shortcode_jinja("wishlist")
+		self.assertIn("wishlist_component.html", wishlist_jinja)
+
+		user_menu_jinja = get_shortcode_jinja("user_menu")
+		self.assertIn("user_header.html", user_menu_jinja)
+
 	def test_generate_blocks_from_context_default(self):
 		"""Test block generation with default sections"""
 		context = {
@@ -147,7 +286,8 @@ class TestBuilderAI(FrappeTestCase):
 
 		blocks = generate_blocks_from_context(context)
 
-		# Should have hero, features, cta, and footer
+		# Should have hero + features + cta = 3 blocks
+		# (navbar and footer are now included via webpage.html template)
 		self.assertGreaterEqual(len(blocks), 3)
 
 		# Verify block types
@@ -170,8 +310,9 @@ class TestBuilderAI(FrappeTestCase):
 
 		blocks = generate_blocks_from_context(context)
 
-		# Should have 4 blocks (hero, features, cta + auto-added footer)
-		self.assertEqual(len(blocks), 4)
+		# Should have 3 blocks: hero + features + cta
+		# (navbar and footer are now included via webpage.html template)
+		self.assertEqual(len(blocks), 3)
 
 	def test_block_structure_validity(self):
 		"""Test that generated blocks have valid structure"""
@@ -202,12 +343,124 @@ class TestBuilderAI(FrappeTestCase):
 		}
 
 		blocks = generate_blocks_from_context(context)
+		# blocks[0] is hero (navbar/footer are now in webpage.html template)
 		hero = blocks[0]
 
 		self.assertIn("tabletStyles", hero)
 		self.assertIn("mobileStyles", hero)
 		self.assertIsInstance(hero["tabletStyles"], dict)
 		self.assertIsInstance(hero["mobileStyles"], dict)
+
+	def test_validate_and_fix_blocks_complete(self):
+		"""Test validation with complete blocks"""
+		blocks = [{
+			"blockId": "abc123def",
+			"element": "section",
+			"blockName": "test-section",
+			"innerHTML": "Test content",
+			"attributes": {},
+			"customAttributes": {},
+			"classes": [],
+			"dataKey": None,
+			"baseStyles": {"padding": "20px"},
+			"tabletStyles": {},
+			"mobileStyles": {},
+			"rawStyles": {},
+			"children": []
+		}]
+
+		result = validate_and_fix_blocks(blocks)
+
+		self.assertTrue(result["valid"])
+		self.assertEqual(len(result["errors"]), 0)
+		self.assertEqual(len(result["fixed_blocks"]), 1)
+
+	def test_validate_and_fix_blocks_missing_fields(self):
+		"""Test validation fixes missing fields"""
+		# Block missing several required fields
+		blocks = [{
+			"element": "div",
+			"innerHTML": "Test"
+		}]
+
+		result = validate_and_fix_blocks(blocks)
+
+		# Should be valid after auto-fixes
+		self.assertTrue(result["valid"])
+
+		# Check that missing fields were added
+		fixed_block = result["fixed_blocks"][0]
+		self.assertIn("blockId", fixed_block)
+		self.assertEqual(len(fixed_block["blockId"]), 9)
+		self.assertIn("baseStyles", fixed_block)
+		self.assertIn("mobileStyles", fixed_block)
+		self.assertIn("tabletStyles", fixed_block)
+		self.assertIn("rawStyles", fixed_block)
+		self.assertIn("attributes", fixed_block)
+		self.assertIn("customAttributes", fixed_block)
+		self.assertIn("classes", fixed_block)
+		self.assertIn("children", fixed_block)
+		self.assertIn("dataKey", fixed_block)
+
+	def test_validate_and_fix_blocks_invalid_blockid(self):
+		"""Test validation fixes invalid blockId"""
+		# Invalid blockId (too short, wrong case, etc.)
+		blocks = [
+			{"blockId": "short", "element": "div"},
+			{"blockId": "UPPERCASE1", "element": "p"},
+			{"blockId": "", "element": "span"},
+		]
+
+		result = validate_and_fix_blocks(blocks)
+
+		# All blockIds should be fixed
+		for block in result["fixed_blocks"]:
+			self.assertEqual(len(block["blockId"]), 9)
+			self.assertTrue(block["blockId"].isalnum())
+			self.assertTrue(block["blockId"].islower())
+
+	def test_validate_and_fix_blocks_nested_children(self):
+		"""Test validation fixes nested children"""
+		blocks = [{
+			"element": "section",
+			"children": [
+				{"element": "div"},
+				{
+					"element": "div",
+					"children": [
+						{"element": "p"}
+					]
+				}
+			]
+		}]
+
+		result = validate_and_fix_blocks(blocks)
+
+		self.assertTrue(result["valid"])
+
+		# Check nested children are also fixed
+		fixed = result["fixed_blocks"][0]
+		self.assertIn("blockId", fixed)
+		self.assertIn("blockId", fixed["children"][0])
+		self.assertIn("blockId", fixed["children"][1])
+		self.assertIn("blockId", fixed["children"][1]["children"][0])
+
+	def test_validate_and_fix_blocks_wrong_types(self):
+		"""Test validation fixes wrong field types"""
+		blocks = [{
+			"blockId": "abc123def",
+			"element": "div",
+			"baseStyles": "should be dict",  # Wrong type
+			"classes": "should be list",  # Wrong type
+			"children": None  # Wrong type
+		}]
+
+		result = validate_and_fix_blocks(blocks)
+
+		fixed = result["fixed_blocks"][0]
+		self.assertIsInstance(fixed["baseStyles"], dict)
+		self.assertIsInstance(fixed["classes"], list)
+		self.assertIsInstance(fixed["children"], list)
 
 
 class TestBuilderAIAPI(FrappeTestCase):
@@ -306,10 +559,11 @@ class TestBuilderAIAPI(FrappeTestCase):
 		self.assertIn("page_name", result)
 		self.assertIn("blocks", result)
 
-		# Cleanup
-		if result.get("page_name"):
-			frappe.delete_doc("Builder Page", result["page_name"])
+		# Cleanup - delete conversation first (it has a link to the page)
+		page_name = result.get("page_name")
 		conversation.delete()
+		if page_name:
+			frappe.delete_doc("Builder Page", page_name, force=True)
 
 	def test_preview_blocks_api(self):
 		"""Test preview_blocks API"""
@@ -654,6 +908,7 @@ class TestEndToEnd(FrappeTestCase):
 
 		result = start_conversation(title="E2E Test")
 		conversation_id = result["conversation_id"]
+		page_name = None  # Initialize for cleanup in finally block
 
 		try:
 			# Step 2: Send messages
@@ -699,12 +954,15 @@ class TestEndToEnd(FrappeTestCase):
 			self.assertIn("blocks", result)
 			self.assertGreater(len(result["blocks"]), 0)
 
-			# Cleanup page
-			if result.get("page_name"):
-				frappe.delete_doc("Builder Page", result["page_name"])
+			# Store page name for cleanup
+			page_name = result.get("page_name")
 
 		finally:
+			# Delete conversation first (it has a link to the page)
 			frappe.delete_doc("Builder AI Conversation", conversation_id)
+			# Then delete the page
+			if page_name:
+				frappe.delete_doc("Builder Page", page_name, force=True)
 
 	def test_blocks_are_valid_json(self):
 		"""Test that all generated blocks can be serialized to JSON"""
@@ -735,3 +993,573 @@ class TestEndToEnd(FrappeTestCase):
 			self.assertEqual(len(parsed), len(blocks))
 		except (TypeError, json.JSONDecodeError) as e:
 			self.fail(f"Blocks are not valid JSON: {e}")
+
+
+class TestMultiPageGeneration(FrappeTestCase):
+	"""Tests for multi-page site generation"""
+
+	def test_generate_single_page_basic(self):
+		"""Test single page generation with basic config"""
+		from builder.builder_ai import generate_single_page
+
+		page_config = {
+			"name": "test-about",
+			"route": "/about",
+			"is_main": False,
+			"title": "About Us",
+			"sections": ["hero", "about", "cta"]
+		}
+
+		site_context = {
+			"business_name": "Test Company",
+			"style": {
+				"primary_color": "#3B82F6",
+				"text_color": "#171717"
+			}
+		}
+
+		page_name = generate_single_page(page_config, site_context)
+
+		# Verify page was created
+		self.assertTrue(frappe.db.exists("Builder Page", page_name))
+
+		# Check page properties
+		page = frappe.get_doc("Builder Page", page_name)
+		self.assertEqual(page.page_title, "About Us")
+		self.assertEqual(page.route, "about")  # Route without leading /
+
+		# Verify blocks
+		blocks = json.loads(page.blocks or "[]")
+		self.assertEqual(len(blocks), 3)  # hero, about, cta
+
+		# Cleanup
+		frappe.delete_doc("Builder Page", page_name)
+
+	def test_generate_single_page_main(self):
+		"""Test main page generation uses business name as route"""
+		from builder.builder_ai import generate_single_page
+
+		page_config = {
+			"name": "home",
+			"route": "/",
+			"is_main": True,
+			"title": "Home",
+			"sections": ["hero", "features"]
+		}
+
+		site_context = {
+			"business_name": "Awesome Corp",
+			"style": {}
+		}
+
+		page_name = generate_single_page(page_config, site_context)
+
+		page = frappe.get_doc("Builder Page", page_name)
+		# Main page should use business name slug as route
+		self.assertEqual(page.route, "awesome-corp")
+
+		# Cleanup
+		frappe.delete_doc("Builder Page", page_name)
+
+	def test_generate_site_multi_page(self):
+		"""Test full multi-page site generation"""
+		from builder.builder_ai import generate_site
+
+		# Create conversation with multi-page context
+		site_context = {
+			"business_name": "Multi Page Test",
+			"site_type": "multi_page",
+			"functionality_type": "vitrine",
+			"style": {
+				"primary_color": "#10B981"
+			},
+			"pages": [
+				{
+					"name": "home",
+					"route": "/",
+					"is_main": True,
+					"title": "Accueil",
+					"sections": ["hero", "features", "cta"]
+				},
+				{
+					"name": "about",
+					"route": "/about",
+					"is_main": False,
+					"title": "À propos",
+					"sections": ["hero", "about"]
+				},
+				{
+					"name": "contact",
+					"route": "/contact",
+					"is_main": False,
+					"title": "Contact",
+					"sections": ["hero", "contact"]
+				}
+			]
+		}
+
+		conversation = frappe.get_doc({
+			"doctype": "Builder AI Conversation",
+			"title": "Multi Page Test",
+			"status": "collecting",
+			"messages": "[]",
+			"site_context": json.dumps(site_context)
+		}).insert()
+
+		try:
+			result = generate_site(conversation.name)
+
+			self.assertTrue(result["success"])
+			self.assertEqual(result["total_pages"], 3)
+			self.assertEqual(len(result["pages"]), 3)
+
+			# Verify each page exists
+			for page_info in result["pages"]:
+				self.assertTrue(frappe.db.exists("Builder Page", page_info["name"]))
+
+			# Verify main page
+			self.assertIsNotNone(result["main_page"])
+
+			# Cleanup pages
+			for page_info in result["pages"]:
+				frappe.delete_doc("Builder Page", page_info["name"], force=True)
+
+		finally:
+			conversation.delete()
+
+	def test_generate_site_fallback_single_page(self):
+		"""Test generate_site creates single page when no pages array"""
+		from builder.builder_ai import generate_site
+
+		# Context without pages array
+		site_context = {
+			"business_name": "Single Page Fallback",
+			"style": {},
+			"sections": [
+				{"type": "hero"},
+				{"type": "cta"}
+			]
+		}
+
+		conversation = frappe.get_doc({
+			"doctype": "Builder AI Conversation",
+			"title": "Fallback Test",
+			"status": "collecting",
+			"messages": "[]",
+			"site_context": json.dumps(site_context)
+		}).insert()
+
+		try:
+			result = generate_site(conversation.name)
+
+			self.assertTrue(result["success"])
+			self.assertEqual(result["total_pages"], 1)
+
+			# Cleanup
+			for page_info in result["pages"]:
+				frappe.delete_doc("Builder Page", page_info["name"], force=True)
+
+		finally:
+			conversation.delete()
+
+	def test_navbar_links_match_pages(self):
+		"""Test navbar menu items are built from pages array"""
+		context = {
+			"business_name": "Nav Test",
+			"functionality_type": "vitrine",
+			"site_type": "multi_page",
+			"style": {},
+			"pages": [
+				{"name": "home", "route": "/", "is_main": True, "title": "Accueil"},
+				{"name": "services", "route": "/services", "is_main": False, "title": "Nos Services"},
+				{"name": "contact", "route": "/contact", "is_main": False, "title": "Contact"}
+			]
+		}
+
+		navbar = get_navbar_template(context)
+
+		# Find navbar-menu child to get menu items
+		nav_menu = None
+		for child in navbar["children"]:
+			if child.get("blockName") == "navbar-menu":
+				nav_menu = child
+				break
+
+		self.assertIsNotNone(nav_menu)
+
+		# Extract links from menu items
+		menu_links = []
+		for item in nav_menu.get("children", []):
+			if item.get("element") == "a":
+				href = item.get("attributes", {}).get("href", "")
+				menu_links.append(href)
+
+		# Verify all page routes are in menu
+		self.assertIn("/", menu_links)
+		self.assertIn("/services", menu_links)
+		self.assertIn("/contact", menu_links)
+
+	def test_navbar_one_page_uses_anchors(self):
+		"""Test navbar uses anchor links for one-page sites"""
+		context = {
+			"business_name": "One Page",
+			"functionality_type": "vitrine",
+			"site_type": "one_page",
+			"style": {}
+			# No pages array - should use default anchor links
+		}
+
+		navbar = get_navbar_template(context)
+
+		# Find navbar-menu
+		nav_menu = None
+		for child in navbar["children"]:
+			if child.get("blockName") == "navbar-menu":
+				nav_menu = child
+				break
+
+		self.assertIsNotNone(nav_menu)
+
+		# Extract links
+		menu_links = []
+		for item in nav_menu.get("children", []):
+			if item.get("element") == "a":
+				href = item.get("attributes", {}).get("href", "")
+				menu_links.append(href)
+
+		# Should have anchor links
+		anchor_links = [link for link in menu_links if link.startswith("#")]
+		self.assertGreater(len(anchor_links), 0, "One-page site should have anchor links")
+
+	def test_collector_prompt_includes_multipage_instructions(self):
+		"""Test collector prompt has multi-page instructions"""
+		prompt = get_collector_prompt()
+
+		# Check for multi-page related content
+		self.assertIn("multi_page", prompt.lower())
+		self.assertIn("route", prompt.lower())
+		self.assertIn("is_main", prompt.lower())
+
+	def test_page_schema_in_prompt(self):
+		"""Test that page schema in prompt has required fields"""
+		prompt = get_collector_prompt()
+
+		# Check schema includes route and title
+		self.assertIn('"route":', prompt)
+		self.assertIn('"title":', prompt)
+		self.assertIn('"is_main":', prompt)
+
+
+class TestSectionTemplates(FrappeTestCase):
+	"""Tests for all section template generators"""
+
+	def setUp(self):
+		"""Set up test context"""
+		self.base_context = {
+			"business_name": "Test Company",
+			"industry": "technology",
+			"style": {
+				"primary_color": "#3B82F6",
+				"secondary_color": "#6B7280",
+				"text_color": "#171717",
+				"background_color": "#ffffff"
+			}
+		}
+
+	def test_get_team_template(self):
+		"""Test team section template generation"""
+		context = self.base_context.copy()
+		context["section_team"] = {
+			"headline": "Our Amazing Team",
+			"items": [
+				{"name": "John Doe", "role": "CEO", "image": "https://i.pravatar.cc/300?img=1"},
+				{"name": "Jane Smith", "role": "CTO", "image": "https://i.pravatar.cc/300?img=2"},
+			]
+		}
+
+		team = get_team_template(context)
+
+		self.assertEqual(team["element"], "section")
+		self.assertEqual(team["blockName"], "team")
+		self.assertIn("children", team)
+
+		# Find team grid
+		container = team["children"][0]
+		team_grid = None
+		for child in container.get("children", []):
+			if child.get("blockName") == "team-grid":
+				team_grid = child
+				break
+
+		self.assertIsNotNone(team_grid)
+		# Should have 2 team members
+		self.assertEqual(len(team_grid.get("children", [])), 2)
+
+	def test_get_testimonials_template(self):
+		"""Test testimonials section template generation"""
+		context = self.base_context.copy()
+		context["section_testimonials"] = {
+			"headline": "What Clients Say",
+			"items": [
+				{"quote": "Great service!", "author": "Client A", "role": "CEO"},
+				{"quote": "Highly recommend!", "author": "Client B", "role": "Manager"},
+			]
+		}
+
+		testimonials = get_testimonials_template(context)
+
+		self.assertEqual(testimonials["element"], "section")
+		self.assertEqual(testimonials["blockName"], "testimonials")
+
+		# Find testimonials grid
+		container = testimonials["children"][0]
+		grid = None
+		for child in container.get("children", []):
+			if child.get("blockName") == "testimonials-grid":
+				grid = child
+				break
+
+		self.assertIsNotNone(grid)
+		self.assertEqual(len(grid.get("children", [])), 2)
+
+	def test_get_pricing_template(self):
+		"""Test pricing section template generation"""
+		context = self.base_context.copy()
+		context["section_pricing"] = {
+			"headline": "Our Plans",
+			"items": [
+				{"name": "Basic", "price": "10€", "features": ["Feature 1"]},
+				{"name": "Pro", "price": "29€", "features": ["Feature 1", "Feature 2"], "highlighted": True},
+			]
+		}
+
+		pricing = get_pricing_template(context)
+
+		self.assertEqual(pricing["element"], "section")
+		self.assertEqual(pricing["blockName"], "pricing")
+
+		# Find pricing grid
+		container = pricing["children"][0]
+		grid = None
+		for child in container.get("children", []):
+			if child.get("blockName") == "pricing-grid":
+				grid = child
+				break
+
+		self.assertIsNotNone(grid)
+		self.assertEqual(len(grid.get("children", [])), 2)
+
+	def test_get_gallery_template(self):
+		"""Test gallery section template generation"""
+		context = self.base_context.copy()
+		context["section_gallery"] = {
+			"headline": "Our Gallery",
+			"items": [
+				{"src": "https://example.com/img1.jpg", "alt": "Image 1"},
+				{"src": "https://example.com/img2.jpg", "alt": "Image 2"},
+				{"src": "https://example.com/img3.jpg", "alt": "Image 3"},
+			]
+		}
+
+		gallery = get_gallery_template(context)
+
+		self.assertEqual(gallery["element"], "section")
+		self.assertEqual(gallery["blockName"], "gallery")
+
+		# Find gallery grid
+		container = gallery["children"][0]
+		grid = None
+		for child in container.get("children", []):
+			if child.get("blockName") == "gallery-grid":
+				grid = child
+				break
+
+		self.assertIsNotNone(grid)
+		self.assertEqual(len(grid.get("children", [])), 3)
+
+	def test_get_faq_template(self):
+		"""Test FAQ section template generation"""
+		context = self.base_context.copy()
+		context["section_faq"] = {
+			"headline": "FAQ",
+			"items": [
+				{"question": "Question 1?", "answer": "Answer 1"},
+				{"question": "Question 2?", "answer": "Answer 2"},
+			]
+		}
+
+		faq = get_faq_template(context)
+
+		self.assertEqual(faq["element"], "section")
+		self.assertEqual(faq["blockName"], "faq")
+
+		# Find FAQ list
+		container = faq["children"][0]
+		faq_list = None
+		for child in container.get("children", []):
+			if child.get("blockName") == "faq-list":
+				faq_list = child
+				break
+
+		self.assertIsNotNone(faq_list)
+		self.assertEqual(len(faq_list.get("children", [])), 2)
+
+	def test_get_stats_template(self):
+		"""Test stats section template generation"""
+		context = self.base_context.copy()
+		context["section_stats"] = {
+			"items": [
+				{"value": "100+", "label": "Clients"},
+				{"value": "50+", "label": "Projects"},
+			]
+		}
+
+		stats = get_stats_template(context)
+
+		self.assertEqual(stats["element"], "section")
+		self.assertEqual(stats["blockName"], "stats")
+
+		# Find stats container
+		container = stats["children"][0]
+		self.assertEqual(len(container.get("children", [])), 2)
+
+	def test_get_process_template(self):
+		"""Test process section template generation"""
+		context = self.base_context.copy()
+		context["section_process"] = {
+			"headline": "Our Process",
+			"items": [
+				{"title": "Step 1", "description": "First step"},
+				{"title": "Step 2", "description": "Second step"},
+				{"title": "Step 3", "description": "Third step"},
+			]
+		}
+
+		process = get_process_template(context)
+
+		self.assertEqual(process["element"], "section")
+		self.assertEqual(process["blockName"], "process")
+
+		# Find process steps
+		container = process["children"][0]
+		steps = None
+		for child in container.get("children", []):
+			if child.get("blockName") == "process-steps":
+				steps = child
+				break
+
+		self.assertIsNotNone(steps)
+		self.assertEqual(len(steps.get("children", [])), 3)
+
+	def test_get_product_carousel_template(self):
+		"""Test product carousel section template generation"""
+		context = self.base_context.copy()
+		context["section_product_carousel"] = {
+			"headline": "Featured Products",
+			"items": [
+				{"name": "Product 1", "price": "29€", "image": "https://example.com/p1.jpg"},
+				{"name": "Product 2", "price": "49€", "image": "https://example.com/p2.jpg"},
+			]
+		}
+
+		carousel = get_product_carousel_template(context)
+
+		self.assertEqual(carousel["element"], "section")
+		self.assertEqual(carousel["blockName"], "product-carousel")
+
+		# Find products grid
+		container = carousel["children"][0]
+		grid = None
+		for child in container.get("children", []):
+			if child.get("blockName") == "products-grid":
+				grid = child
+				break
+
+		self.assertIsNotNone(grid)
+		self.assertEqual(len(grid.get("children", [])), 2)
+
+	def test_all_templates_have_required_structure(self):
+		"""Test that all section templates have required block structure"""
+		templates = [
+			get_team_template,
+			get_testimonials_template,
+			get_pricing_template,
+			get_gallery_template,
+			get_faq_template,
+			get_stats_template,
+			get_process_template,
+			get_product_carousel_template,
+		]
+
+		for template_fn in templates:
+			block = template_fn(self.base_context)
+
+			# Required fields
+			self.assertIn("blockId", block, f"{template_fn.__name__} missing blockId")
+			self.assertIn("element", block, f"{template_fn.__name__} missing element")
+			self.assertIn("blockName", block, f"{template_fn.__name__} missing blockName")
+			self.assertIn("baseStyles", block, f"{template_fn.__name__} missing baseStyles")
+			self.assertIn("children", block, f"{template_fn.__name__} missing children")
+
+			# Block ID should be 9 characters
+			self.assertEqual(len(block["blockId"]), 9, f"{template_fn.__name__} has invalid blockId length")
+
+			# Element should be section
+			self.assertEqual(block["element"], "section", f"{template_fn.__name__} element should be section")
+
+	def test_templates_use_context_colors(self):
+		"""Test that templates use colors from context.style"""
+		context = self.base_context.copy()
+		context["style"]["primary_color"] = "#FF5733"
+		context["style"]["text_color"] = "#111111"
+
+		# Test a template that uses primary_color prominently
+		pricing = get_pricing_template(context)
+
+		# The highlighted plan should use primary_color
+		container = pricing["children"][0]
+		grid = None
+		for child in container.get("children", []):
+			if child.get("blockName") == "pricing-grid":
+				grid = child
+				break
+
+		# Find a card with backgroundColor matching primary
+		found_primary = False
+		for card in grid.get("children", []):
+			bg = card.get("baseStyles", {}).get("backgroundColor", "")
+			if bg == "#FF5733":
+				found_primary = True
+				break
+
+		self.assertTrue(found_primary, "Pricing template should use primary_color")
+
+	def test_section_generators_include_new_templates(self):
+		"""Test that generate_blocks_from_context uses all new templates"""
+		context = self.base_context.copy()
+		context["sections"] = [
+			{"type": "hero"},
+			{"type": "team"},
+			{"type": "testimonials"},
+			{"type": "pricing"},
+			{"type": "faq"},
+			{"type": "stats"},
+			{"type": "process"},
+			{"type": "gallery"},
+		]
+
+		blocks = generate_blocks_from_context(context)
+
+		# Should have 8 blocks
+		self.assertEqual(len(blocks), 8)
+
+		# Check block names
+		block_names = [b.get("blockName") for b in blocks]
+		self.assertIn("hero", block_names)
+		self.assertIn("team", block_names)
+		self.assertIn("testimonials", block_names)
+		self.assertIn("pricing", block_names)
+		self.assertIn("faq", block_names)
+		self.assertIn("stats", block_names)
+		self.assertIn("process", block_names)
+		self.assertIn("gallery", block_names)

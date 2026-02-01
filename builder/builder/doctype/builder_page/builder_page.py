@@ -280,6 +280,13 @@ class BuilderPage(WebsiteGenerator):
 		self.set_favicon(context)
 		self.set_language(context)
 		context.page_data = clean_data(context.page_data)
+
+		# Load navbar and footer from Builder Pages with those routes
+		# Skip if current page IS the navbar or footer to avoid infinite recursion
+		if self.route not in ("navbar", "footer"):
+			context.builder_navbar_data = get_builder_page_content_by_route("navbar")
+			context.builder_footer_data = get_builder_page_content_by_route("footer")
+
 		try:
 			context["__content"] = render_template(context.__content, context)
 		except TemplateSyntaxError:
@@ -832,3 +839,98 @@ def reset_block(block):
 	block["classes"] = []
 	block["dataKey"] = {}
 	return block
+
+
+def get_builder_page_content_by_route(route):
+	"""
+	Get rendered content of a Builder Page by its route.
+
+	Used to include shared components like navbar and footer across all pages.
+
+	Args:
+		route: The route of the Builder Page (e.g., "navbar", "footer")
+
+	Returns:
+		dict with keys: success, content, style, global_style, client_styles, client_scripts
+		or None if page not found
+	"""
+	import json
+	import re
+
+	# Check cache first
+	cache_key = f"builder_page_content:{route}"
+	cached = frappe.cache().get_value(cache_key)
+	if cached:
+		return cached
+
+	try:
+		# Find the page by route
+		page_name = frappe.db.get_value(
+			"Builder Page",
+			{"route": route, "published": 1},
+			"name"
+		)
+
+		if not page_name:
+			return {"success": False, "content": "", "message": f"Page not found for route: {route}"}
+
+		# Get the page
+		page = frappe.get_cached_doc("Builder Page", page_name)
+
+		# Get blocks
+		blocks = page.blocks
+		if isinstance(blocks, str):
+			blocks = json.loads(blocks)
+
+		# Generate HTML content
+		content, style, fonts = get_block_html(blocks)
+
+		# Post-process content: replace body with div
+		content = re.sub(r'<body([^>]*)>', r'<div\1 class="builder-body-container">', content)
+		content = re.sub(r'</body>', '</div>', content)
+
+		# Remove webpage_scripts include
+		content = content.replace(
+			"{% include 'templates/generators/webpage_scripts.html' %}",
+			""
+		)
+
+		# Render Jinja templates in content (for {% include %} directives)
+		if "{% " in content or "{{ " in content:
+			try:
+				content = render_template(content, {})
+			except Exception as e:
+				frappe.log_error("Error rendering navbar/footer Jinja", str(e))
+
+		# Get client scripts and styles
+		client_scripts = []
+		client_styles = []
+		for script in page.get("client_scripts", []):
+			script_doc = frappe.get_cached_doc("Builder Client Script", script.builder_script)
+			if script_doc.script_type == "JavaScript":
+				client_scripts.append({"name": script_doc.name, "content": script_doc.script})
+			else:
+				client_styles.append({"name": script_doc.name, "content": script_doc.script})
+
+		# Get global styles/scripts
+		builder_settings = frappe.get_cached_doc("Builder Settings", "Builder Settings")
+
+		result = {
+			"success": True,
+			"content": content,
+			"style": style,
+			"fonts": fonts,
+			"global_style": builder_settings.style or "",
+			"global_script": builder_settings.script or "",
+			"client_scripts": client_scripts,
+			"client_styles": client_styles,
+		}
+
+		# Cache for 5 minutes
+		frappe.cache().set_value(cache_key, result, expires_in_sec=300)
+
+		return result
+
+	except Exception as e:
+		frappe.log_error("Error loading Builder Page content", f"Route: {route}, Error: {str(e)}")
+		return {"success": False, "content": "", "message": str(e)}

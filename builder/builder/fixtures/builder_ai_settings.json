@@ -1,0 +1,105 @@
+[
+  {
+    "doctype": "Builder AI Settings",
+    "name": "Builder AI Settings",
+    "enabled": 1,
+    "ai_provider": "ollama",
+    "ollama_base_url": "http://localhost:11434",
+    "ollama_model": "llama3.1",
+    "ollama_timeout": 120,
+    "default_temperature": 0.7,
+    "max_conversation_messages": 20,
+    "auto_generate_preview": 1,
+    "allow_website_manager": 1,
+    "rate_limit_per_hour": 0,
+    "debug_mode": 0,
+    "default_style": "modern",
+    "creativity_level": "balanced",
+    "use_modern_design": 1,
+    "default_site_type": "auto",
+    "allow_multipage": 1,
+    "shortcodes": [
+      {
+        "doctype": "Builder AI Shortcode",
+        "name1": "Cart Icon",
+        "shortcode": "cart",
+        "category": "E-commerce",
+        "use_when": "For e-commerce sites with shopping cart functionality",
+        "description": "Shopping cart icon with badge showing item count. Opens side cart overlay on click. Includes full cart management UI.",
+        "jinja_code": "{% include 'webshop/templates/includes/cart_component.html' %}"
+      },
+      {
+        "doctype": "Builder AI Shortcode",
+        "name1": "Wishlist Icon",
+        "shortcode": "wishlist",
+        "category": "E-commerce",
+        "use_when": "For e-commerce sites where users can save favorite products",
+        "description": "Wishlist/favorites icon with badge showing saved items count. Only visible for logged-in users.",
+        "jinja_code": "{% include 'webshop/templates/includes/wishlist_component.html' %}"
+      },
+      {
+        "doctype": "Builder AI Shortcode",
+        "name1": "User Menu",
+        "shortcode": "user_menu",
+        "category": "User",
+        "use_when": "For sites requiring user authentication and account management",
+        "description": "User login/profile dropdown. Shows login link for guests, user avatar and dropdown menu (My Account, Orders, Wishlist, Logout) for logged-in users.",
+        "jinja_code": "{% include 'webshop/templates/includes/user_header.html' %}"
+      },
+      {
+        "doctype": "Builder AI Shortcode",
+        "name1": "Search Box",
+        "shortcode": "search",
+        "category": "Search",
+        "use_when": "For sites with product search or content search functionality",
+        "description": "Search input with live product search results dropdown. Uses vanilla JavaScript (no jQuery dependency).",
+        "jinja_code": "{% include 'webshop/templates/includes/search_box.html' %}"
+      },
+      {
+        "doctype": "Builder AI Shortcode",
+        "name1": "Mobile Menu",
+        "shortcode": "mobile_menu",
+        "category": "Navigation",
+        "use_when": "For responsive sites requiring mobile navigation",
+        "description": "Hamburger menu icon that opens mobile navigation drawer. Essential for responsive sites.",
+        "jinja_code": "{% include 'webshop/templates/includes/mobile_menu.html' %}"
+      },
+      {
+        "doctype": "Builder AI Shortcode",
+        "name1": "Contact Form",
+        "shortcode": "contact_form",
+        "category": "Content",
+        "use_when": "For contact pages requiring a functional form that submits to Frappe backend",
+        "description": "Functional contact form with name, email, subject (dropdown from Contact Us Settings), and message fields. Submits via frappe.call() to send_message endpoint. Shows success/error feedback inline.",
+        "jinja_code": "{% include 'builder/templates/includes/contact_form.html' %}"
+      },
+      {
+        "doctype": "Builder AI Shortcode",
+        "name1": "Contact Info",
+        "shortcode": "contact_info",
+        "category": "Content",
+        "use_when": "For displaying company contact information (address, phone, email) from Frappe settings",
+        "description": "Displays contact information from Contact Us Settings DocType: address, phone number (with tel: link), and email (with mailto: link). Includes SVG icons that inherit currentColor.",
+        "jinja_code": "{% include 'builder/templates/includes/contact_info.html' %}"
+      },
+      {
+        "doctype": "Builder AI Shortcode",
+        "name1": "Team Grid",
+        "shortcode": "team_grid",
+        "category": "Content",
+        "use_when": "For about/team pages to display team members from Frappe About Us Settings",
+        "description": "Responsive grid of team members from About Us Settings DocType. Each member shows photo (or placeholder), name, and bio. Inherits colors from parent section.",
+        "jinja_code": "{% include 'builder/templates/includes/team_grid.html' %}"
+      },
+      {
+        "doctype": "Builder AI Shortcode",
+        "name1": "Company Timeline",
+        "shortcode": "company_timeline",
+        "category": "Content",
+        "use_when": "For about/history pages to display company milestones from Frappe About Us Settings",
+        "description": "Vertical timeline showing company history milestones from About Us Settings DocType. Each item has year and highlight text. Uses currentColor for styling.",
+        "jinja_code": "{% include 'builder/templates/includes/company_timeline.html' %}"
+      }
+    ]
+  }
+]

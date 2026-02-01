@@ -60,6 +60,16 @@ website_generators = ["Builder Page"]
 # "filters": "builder.utils.jinja_filters"
 # }
 
+# Fixtures
+# --------
+# Auto-sync default AI shortcodes on bench migrate
+fixtures = [
+	{
+		"dt": "Builder AI Settings",
+		"filters": [["name", "=", "Builder AI Settings"]]
+	}
+]
+
 # Installation
 # ------------
 

@@ -1,0 +1,73 @@
+{
+  "scenarios": [
+    {
+      "id": "boulangerie_multipage",
+      "name": "Le Fournil d'Antan",
+      "type": "vitrine_multipage",
+      "description": "Boulangerie artisanale familiale - Site multi-page",
+      "prompt": "Je suis Paul Mercier, propriétaire de la boulangerie \"Le Fournil d'Antan\" à Lyon. C'est une boulangerie artisanale familiale depuis 1952, on est la 3ème génération. On est connus pour notre pain au levain et nos croissants au beurre AOP.\n\nJe voudrais un site multi-page avec :\n- Une page d'accueil qui montre notre authenticité\n- Une page \"Nos Pains\" pour présenter nos produits\n- Une page \"Notre Histoire\" sur la famille\n- Une page Contact avec nos horaires\n\nCouleurs : des tons chauds, marron/beige comme le pain, avec des touches dorées.\nStyle : rustique mais élégant, authentique.\n\nContact : 04 78 12 34 56, 23 rue des Artisans, 69002 Lyon\nHoraires : Mardi-Samedi 6h30-19h, Dimanche 7h-13h",
+      "expected": {
+        "site_type": "multi_page",
+        "functionality_type": "vitrine",
+        "pages_count": 4,
+        "features": {
+          "cart": false,
+          "user_menu": false,
+          "search": false
+        }
+      }
+    },
+    {
+      "id": "fleuriste_onepage",
+      "name": "Pétales & Sentiments",
+      "type": "vitrine_onepage",
+      "description": "Fleuriste créative - Site one-page",
+      "prompt": "Je m'appelle Camille, je suis fleuriste à Bordeaux avec mon atelier \"Pétales & Sentiments\". Je crée des compositions florales sur-mesure pour les mariages et événements.\n\nJe veux un site one-page simple et élégant avec :\n- Une belle section d'accueil avec mes créations\n- Mes services (mariages, événements, abonnements)\n- Quelques témoignages de clients\n- Un formulaire de contact\n\nCouleurs : rose poudré, vert sauge, touches de blanc crème\nStyle : romantique, délicat, moderne\n\nContact : 06 12 34 56 78, contact@petales-sentiments.fr\nAtelier sur rendez-vous uniquement\nInstagram : @petales_sentiments",
+      "expected": {
+        "site_type": "one_page",
+        "functionality_type": "vitrine",
+        "pages_count": 1,
+        "features": {
+          "cart": false,
+          "user_menu": false,
+          "search": false
+        }
+      }
+    },
+    {
+      "id": "assureur_login",
+      "name": "Protect Assur",
+      "type": "vitrine_with_login",
+      "description": "Cabinet de courtage en assurances - Site avec espace client",
+      "prompt": "Je suis directeur du cabinet de courtage \"Protect Assur\" à Nantes. On accompagne les particuliers et entreprises dans leurs besoins en assurance depuis 15 ans. Nos domaines : auto, habitation, santé, prévoyance, assurance pro.\n\nJe veux un site multi-page professionnel avec espace client :\n- Page d'accueil présentant nos services\n- Page \"Nos Solutions\" (particuliers et pros)\n- Page \"Notre Équipe\" avec nos 8 conseillers\n- Page Contact\n- Les clients doivent pouvoir se connecter à leur espace\n\nCouleurs : bleu marine (confiance), touches de vert (sécurité), fond clair\nStyle : corporate, professionnel, rassurant\n\nContact : 02 40 12 34 56, 15 place du Commerce, 44000 Nantes\nHoraires : Lun-Ven 9h-18h",
+      "expected": {
+        "site_type": "multi_page",
+        "functionality_type": "vitrine_with_login",
+        "pages_count": 4,
+        "features": {
+          "cart": false,
+          "user_menu": true,
+          "search": false
+        }
+      }
+    },
+    {
+      "id": "artisan_ecommerce",
+      "name": "L'Atelier du Cuir",
+      "type": "ecommerce",
+      "description": "Artisan maroquinier - Boutique en ligne",
+      "prompt": "Je suis Marc, artisan maroquinier à Aix-en-Provence depuis 12 ans. Je fabrique à la main des sacs, portefeuilles, ceintures et accessoires en cuir de qualité. Chaque pièce est unique, faite dans mon atelier avec des cuirs français.\n\nJe veux une boutique en ligne pour vendre mes créations :\n- Page d'accueil avec mes pièces phares\n- Catalogue de produits (sacs, ceintures, accessoires)\n- Page \"L'Artisan\" pour raconter mon histoire\n- Page Contact pour les commandes sur-mesure\n\nCouleurs : brun cuir, cognac, touches de noir, fond crème\nStyle : artisanal, luxe accessible, authentique\n\nLivraison France et Europe, retours sous 14 jours\nAtelier : 8 chemin des Oliviers, 13100 Aix-en-Provence\nContact : 04 42 12 34 56, contact@atelier-du-cuir.fr",
+      "expected": {
+        "site_type": "multi_page",
+        "functionality_type": "ecommerce",
+        "pages_count": 4,
+        "features": {
+          "cart": true,
+          "user_menu": true,
+          "search": true,
+          "wishlist": true
+        }
+      }
+    }
+  ]
+}

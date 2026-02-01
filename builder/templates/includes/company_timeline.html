@@ -1,0 +1,74 @@
+{#
+  Company Timeline - Modular shortcode component
+  v1.0.0 - Reads company_history from "About Us Settings" DocType
+
+  Usage: {% include 'builder/templates/includes/company_timeline.html' %}
+#}
+{% set about = frappe.get_doc("About Us Settings") -%}
+
+{% if about.company_history and about.company_history|length > 0 -%}
+<div class="company-timeline-shortcode">
+    {% for item in about.company_history -%}
+    <div class="timeline-item">
+        <span class="timeline-year">{{ item.year }}</span>
+        <div class="timeline-content">
+            <p class="timeline-highlight">{{ item.highlight }}</p>
+        </div>
+    </div>
+    {% endfor -%}
+</div>
+
+<style>
+.company-timeline-shortcode {
+    display: flex;
+    flex-direction: column;
+    gap: 24px;
+    position: relative;
+    padding-left: 24px;
+}
+.company-timeline-shortcode::before {
+    content: '';
+    position: absolute;
+    left: 0;
+    top: 8px;
+    bottom: 8px;
+    width: 2px;
+    background: currentColor;
+    opacity: 0.2;
+}
+.timeline-item {
+    position: relative;
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+}
+.timeline-item::before {
+    content: '';
+    position: absolute;
+    left: -28px;
+    top: 8px;
+    width: 10px;
+    height: 10px;
+    border-radius: 50%;
+    background: currentColor;
+    opacity: 0.6;
+}
+.timeline-year {
+    font-size: 14px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    color: inherit;
+    opacity: 0.6;
+}
+.timeline-content {
+    color: inherit;
+}
+.timeline-highlight {
+    font-size: 16px;
+    line-height: 1.6;
+    margin: 0;
+    color: inherit;
+}
+</style>
+{% endif -%}

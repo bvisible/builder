@@ -37,6 +37,7 @@
   "column_break_design",
   "default_style",
   "use_modern_design",
+  "use_llm_generation",
   "shortcodes_section",
   "shortcodes",
   "permissions_section",
@@ -260,6 +261,13 @@
    "fieldname": "use_modern_design",
    "fieldtype": "Check",
    "label": "Use Modern Design Trends"
+  },
+  {
+   "default": "0",
+   "description": "Use LLM to generate creative, unique page designs instead of fixed templates. When enabled, the AI will create more varied and creative layouts. Falls back to templates if LLM generation fails.",
+   "fieldname": "use_llm_generation",
+   "fieldtype": "Check",
+   "label": "Use Creative LLM Generation (Beta)"
   },
   {
    "fieldname": "shortcodes_section",

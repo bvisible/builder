@@ -1,0 +1,79 @@
+{#
+  Team Grid - Modular shortcode component
+  v1.0.0 - Reads team_members from "About Us Settings" DocType
+
+  Usage: {% include 'builder/templates/includes/team_grid.html' %}
+#}
+{% set about = frappe.get_doc("About Us Settings") -%}
+
+{% if about.team_members and about.team_members|length > 0 -%}
+<div class="team-grid-shortcode">
+    {% for member in about.team_members -%}
+    <div class="team-member">
+        {% if member.image_link -%}
+        <img src="{{ member.image_link }}" alt="{{ member.full_name }}">
+        {% else -%}
+        <div class="team-member-placeholder">
+            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+                <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path>
+                <circle cx="12" cy="7" r="4"></circle>
+            </svg>
+        </div>
+        {% endif -%}
+        <h3>{{ member.full_name }}</h3>
+        {% if member.bio -%}
+        <p>{{ member.bio }}</p>
+        {% endif -%}
+    </div>
+    {% endfor -%}
+</div>
+
+<style>
+.team-grid-shortcode {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+    gap: 32px;
+    width: 100%;
+}
+.team-member {
+    text-align: center;
+}
+.team-member img {
+    width: 150px;
+    height: 150px;
+    border-radius: 50%;
+    object-fit: cover;
+    margin-bottom: 16px;
+    border: 3px solid rgba(0,0,0,0.1);
+}
+.team-member-placeholder {
+    width: 150px;
+    height: 150px;
+    border-radius: 50%;
+    background: rgba(0,0,0,0.05);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin: 0 auto 16px;
+    border: 3px solid rgba(0,0,0,0.1);
+}
+.team-member-placeholder svg {
+    width: 60px;
+    height: 60px;
+    opacity: 0.3;
+}
+.team-member h3 {
+    font-size: 20px;
+    font-weight: 600;
+    margin: 0 0 8px 0;
+    color: inherit;
+}
+.team-member p {
+    font-size: 15px;
+    line-height: 1.6;
+    color: inherit;
+    opacity: 0.8;
+    margin: 0;
+}
+</style>
+{% endif -%}
