@@ -8,77 +8,15 @@ import re
 import uuid
 from typing import Any, Optional
 
+from builder.ai.utils import KEBAB_TO_CAMEL, kebab_to_camel
+
 
 class AutoFixer:
     """
     Automatically fixes common issues in AI-generated blocks.
-    """
 
-    # Kebab to camelCase mappings
-    KEBAB_TO_CAMEL = {
-        "flex-direction": "flexDirection",
-        "flex-wrap": "flexWrap",
-        "align-items": "alignItems",
-        "justify-content": "justifyContent",
-        "align-content": "alignContent",
-        "align-self": "alignSelf",
-        "grid-template-columns": "gridTemplateColumns",
-        "grid-template-rows": "gridTemplateRows",
-        "grid-column": "gridColumn",
-        "grid-row": "gridRow",
-        "column-gap": "columnGap",
-        "row-gap": "rowGap",
-        "min-width": "minWidth",
-        "max-width": "maxWidth",
-        "min-height": "minHeight",
-        "max-height": "maxHeight",
-        "padding-top": "paddingTop",
-        "padding-right": "paddingRight",
-        "padding-bottom": "paddingBottom",
-        "padding-left": "paddingLeft",
-        "margin-top": "marginTop",
-        "margin-right": "marginRight",
-        "margin-bottom": "marginBottom",
-        "margin-left": "marginLeft",
-        "background-color": "backgroundColor",
-        "background-image": "backgroundImage",
-        "background-size": "backgroundSize",
-        "background-position": "backgroundPosition",
-        "background-repeat": "backgroundRepeat",
-        "font-size": "fontSize",
-        "font-weight": "fontWeight",
-        "font-family": "fontFamily",
-        "font-style": "fontStyle",
-        "line-height": "lineHeight",
-        "letter-spacing": "letterSpacing",
-        "text-align": "textAlign",
-        "text-decoration": "textDecoration",
-        "text-transform": "textTransform",
-        "white-space": "whiteSpace",
-        "word-break": "wordBreak",
-        "border-radius": "borderRadius",
-        "border-color": "borderColor",
-        "border-width": "borderWidth",
-        "border-style": "borderStyle",
-        "border-top": "borderTop",
-        "border-right": "borderRight",
-        "border-bottom": "borderBottom",
-        "border-left": "borderLeft",
-        "box-shadow": "boxShadow",
-        "text-shadow": "textShadow",
-        "z-index": "zIndex",
-        "object-fit": "objectFit",
-        "object-position": "objectPosition",
-        "pointer-events": "pointerEvents",
-        "user-select": "userSelect",
-        "backdrop-filter": "backdropFilter",
-        "aspect-ratio": "aspectRatio",
-        "flex-grow": "flexGrow",
-        "flex-shrink": "flexShrink",
-        "flex-basis": "flexBasis",
-        "overflow-x": "overflowX",
-        "overflow-y": "overflowY",
-    }
+    Uses shared utilities from builder.ai.utils for CSS property mappings.
+    """
 
     def __init__(self):
         self.fixes_applied: list[str] = []
@@ -222,13 +160,13 @@ class AutoFixer:
         for key, value in styles.items():
             # Convert kebab-case to camelCase
             if "-" in key:
-                camel_key = self.KEBAB_TO_CAMEL.get(key)
+                camel_key = KEBAB_TO_CAMEL.get(key)
                 if camel_key:
                     key = camel_key
                     self.fixes_applied.append(f"Converted {key} to camelCase")
                 else:
                     # Try to auto-convert
-                    key = self._to_camel_case(key)
+                    key = kebab_to_camel(key)
 
             # Ensure value is string
             if value is not None:
@@ -260,11 +198,6 @@ class AutoFixer:
                 self.fixes_applied.append("Added default href for a element")
 
         return fixed
-
-    def _to_camel_case(self, kebab_str: str) -> str:
-        """Convert kebab-case to camelCase"""
-        components = kebab_str.split("-")
-        return components[0] + "".join(x.title() for x in components[1:])
 
     def get_fixes_report(self) -> list[str]:
         """Get list of fixes applied"""

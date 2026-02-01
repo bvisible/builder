@@ -3,9 +3,10 @@ Block Validator
 Validates generated blocks against Frappe Builder requirements.
 """
 
-from typing import Optional
 import re
 import uuid
+
+from builder.ai.utils import KEBAB_TO_CAMEL, VALID_ELEMENTS
 
 
 class ValidationError(Exception):
@@ -36,71 +37,11 @@ class ValidationWarning:
 class BlockValidator:
     """
     Validates Frappe Builder blocks for correctness and best practices.
+
+    Uses shared constants from builder.ai.utils:
+    - VALID_ELEMENTS: Valid HTML elements
+    - KEBAB_TO_CAMEL: CSS property name mappings
     """
-
-    # Valid HTML elements for Frappe Builder
-    VALID_ELEMENTS = {
-        "div", "section", "article", "aside", "main", "header", "footer", "nav",
-        "h1", "h2", "h3", "h4", "h5", "h6", "p", "span", "label", "blockquote",
-        "a", "button", "img", "video", "iframe",
-        "ul", "ol", "li",
-        "form", "input", "textarea", "select", "option",
-        "hr", "br", "figure", "figcaption", "table", "thead", "tbody", "tr", "td", "th",
-    }
-
-    # CSS properties that should be camelCase
-    STYLE_PROPERTIES = {
-        "display", "flexDirection", "flexWrap", "alignItems", "justifyContent",
-        "gap", "gridTemplateColumns", "gridTemplateRows", "position",
-        "width", "minWidth", "maxWidth", "height", "minHeight", "maxHeight",
-        "padding", "paddingTop", "paddingRight", "paddingBottom", "paddingLeft",
-        "margin", "marginTop", "marginRight", "marginBottom", "marginLeft",
-        "color", "backgroundColor", "backgroundImage", "backgroundSize",
-        "fontSize", "fontWeight", "fontFamily", "lineHeight", "letterSpacing",
-        "textAlign", "textDecoration", "textTransform",
-        "border", "borderRadius", "borderColor", "borderWidth",
-        "boxShadow", "opacity", "transform", "transition",
-        "overflow", "cursor", "zIndex",
-    }
-
-    # Kebab-case properties that are commonly mistaken
-    KEBAB_TO_CAMEL = {
-        "flex-direction": "flexDirection",
-        "flex-wrap": "flexWrap",
-        "align-items": "alignItems",
-        "justify-content": "justifyContent",
-        "grid-template-columns": "gridTemplateColumns",
-        "grid-template-rows": "gridTemplateRows",
-        "min-width": "minWidth",
-        "max-width": "maxWidth",
-        "min-height": "minHeight",
-        "max-height": "maxHeight",
-        "padding-top": "paddingTop",
-        "padding-right": "paddingRight",
-        "padding-bottom": "paddingBottom",
-        "padding-left": "paddingLeft",
-        "margin-top": "marginTop",
-        "margin-right": "marginRight",
-        "margin-bottom": "marginBottom",
-        "margin-left": "marginLeft",
-        "background-color": "backgroundColor",
-        "background-image": "backgroundImage",
-        "background-size": "backgroundSize",
-        "background-position": "backgroundPosition",
-        "font-size": "fontSize",
-        "font-weight": "fontWeight",
-        "font-family": "fontFamily",
-        "line-height": "lineHeight",
-        "letter-spacing": "letterSpacing",
-        "text-align": "textAlign",
-        "text-decoration": "textDecoration",
-        "text-transform": "textTransform",
-        "border-radius": "borderRadius",
-        "border-color": "borderColor",
-        "border-width": "borderWidth",
-        "box-shadow": "boxShadow",
-        "z-index": "zIndex",
-    }
 
     def __init__(self, strict: bool = False):
         """
@@ -221,7 +162,7 @@ class BlockValidator:
             ))
             return
 
-        if element not in self.VALID_ELEMENTS:
+        if element not in VALID_ELEMENTS:
             self.errors.append(ValidationError(
                 f"Invalid element: {element}",
                 field="element",
@@ -250,7 +191,7 @@ class BlockValidator:
         for prop, value in styles.items():
             # Check for kebab-case (common mistake)
             if "-" in prop:
-                camel = self.KEBAB_TO_CAMEL.get(prop)
+                camel = KEBAB_TO_CAMEL.get(prop)
                 if camel:
                     self.warnings.append(ValidationWarning(
                         f"Use camelCase: '{prop}' should be '{camel}'",

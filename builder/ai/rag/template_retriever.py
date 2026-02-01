@@ -212,8 +212,120 @@ def get_examples_for_section(section_type: str, max_examples: int = 2) -> str:
     return get_retriever().get_examples_for_prompt(section_type, max_examples)
 
 
+# Built-in template examples for when no database templates exist
+BUILTIN_EXAMPLES = {
+    "hero": {
+        "name": "Hero Centered Example",
+        "description": "A centered hero section with headline, subheadline, and CTAs",
+        "block": {
+            "blockId": "hero-section",
+            "element": "section",
+            "baseStyles": {
+                "minHeight": "90vh",
+                "display": "flex",
+                "flexDirection": "column",
+                "alignItems": "center",
+                "justifyContent": "center",
+                "padding": "80px 24px",
+                "textAlign": "center",
+                "background": "linear-gradient(135deg, #6366f1 0%, #8b5cf6 100%)",
+            },
+            "children": [
+                {
+                    "blockId": "hero-badge",
+                    "element": "span",
+                    "innerHTML": "New Release",
+                    "baseStyles": {
+                        "padding": "6px 14px",
+                        "backgroundColor": "rgba(255,255,255,0.2)",
+                        "color": "#ffffff",
+                        "borderRadius": "20px",
+                        "fontSize": "13px",
+                        "marginBottom": "24px",
+                    }
+                },
+                {
+                    "blockId": "hero-headline",
+                    "element": "h1",
+                    "innerHTML": "Build Beautiful Websites Faster",
+                    "baseStyles": {
+                        "fontSize": "56px",
+                        "fontWeight": "700",
+                        "color": "#ffffff",
+                        "marginBottom": "24px",
+                        "maxWidth": "800px",
+                    }
+                },
+                {
+                    "blockId": "hero-subheadline",
+                    "element": "p",
+                    "innerHTML": "Create stunning, responsive websites with our intuitive builder.",
+                    "baseStyles": {
+                        "fontSize": "20px",
+                        "color": "rgba(255,255,255,0.9)",
+                        "marginBottom": "32px",
+                        "maxWidth": "600px",
+                    }
+                }
+            ]
+        }
+    },
+    "features": {
+        "name": "Features Grid Example",
+        "block": {
+            "blockId": "features-section",
+            "element": "section",
+            "baseStyles": {"padding": "80px 24px"},
+        }
+    },
+    "testimonials": {
+        "name": "Testimonials Example",
+        "block": {
+            "blockId": "testimonials-section",
+            "element": "section",
+            "baseStyles": {"padding": "80px 24px", "backgroundColor": "#f8fafc"},
+        }
+    },
+    "pricing": {
+        "name": "Pricing Tiers Example",
+        "block": {
+            "blockId": "pricing-section",
+            "element": "section",
+            "baseStyles": {"padding": "80px 24px"},
+        }
+    },
+    "cta": {
+        "name": "CTA Section Example",
+        "block": {
+            "blockId": "cta-section",
+            "element": "section",
+            "baseStyles": {
+                "padding": "80px 24px",
+                "backgroundColor": "var(--primary-color)",
+                "textAlign": "center",
+            }
+        }
+    },
+    "stats": {
+        "name": "Stats Section Example",
+        "block": {
+            "blockId": "stats-section",
+            "element": "section",
+            "baseStyles": {"padding": "64px 24px", "backgroundColor": "#f8fafc"},
+        }
+    },
+}
+
+
+def get_builtin_examples(section_type: str) -> Optional[dict]:
+    """Get built-in example for a section type"""
+    return BUILTIN_EXAMPLES.get(section_type)
+
+
 __all__ = [
     "TemplateRetriever",
     "get_retriever",
     "get_examples_for_section",
+    "get_builtin_examples",
+    "BUILTIN_EXAMPLES",
 ]
