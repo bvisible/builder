@@ -67,6 +67,81 @@ def generate_page_blocks(
 
 
 @frappe.whitelist()
+def generate_site(
+	prompt: str,
+	theme: str = "modern",
+	site_type: str = "single_page",
+	provider: str = None,
+	model: str = None,
+	clear_existing: bool = True,
+	page_title: str = None,
+	set_as_home: bool = True
+):
+	"""
+	Generate a complete site, optionally clearing existing pages.
+	Creates a Builder Page with the generated blocks at root route.
+
+	Args:
+		prompt: Description of the desired site/page
+		theme: Visual theme (modern, neobrutalist, glassmorphism, minimal, corporate, creative)
+		site_type: Type of site (single_page, multi_page, ecommerce, blog, portfolio)
+		provider: AI provider override (ollama, openai)
+		model: Model name override
+		clear_existing: If True, deletes all existing Builder Pages before generating
+		page_title: Title for the new page (extracted from prompt if not provided)
+		set_as_home: If True, sets the page route to "/" (home)
+
+	Returns:
+		dict: {page_name, page_title, route, blocks_count, url}
+	"""
+	from builder.ai.generators.page_generator import PageGenerator
+
+	# Clear existing pages if requested
+	if clear_existing:
+		existing_pages = frappe.get_all("Builder Page", pluck="name")
+		for page_name in existing_pages:
+			frappe.delete_doc("Builder Page", page_name, ignore_permissions=True)
+		frappe.db.commit()
+
+	# Generate blocks
+	generator = PageGenerator(provider=provider, model=model)
+	blocks = generator.generate_page(
+		prompt=prompt,
+		theme=theme,
+		site_type=site_type,
+		include_header=True,
+		include_footer=True
+	)
+
+	# Extract title from prompt if not provided
+	if not page_title:
+		# Try to extract a meaningful title from the prompt
+		words = prompt.split()[:5]
+		page_title = " ".join(words).title()
+		if len(page_title) > 50:
+			page_title = page_title[:50]
+
+	# Create the Builder Page
+	page = frappe.new_doc("Builder Page")
+	page.page_title = page_title
+	page.route = "" if set_as_home else page_title.lower().replace(" ", "-")
+	page.blocks = json.dumps(blocks)
+	page.draft_blocks = json.dumps(blocks)
+	page.published = 1
+	page.insert(ignore_permissions=True)
+	frappe.db.commit()
+
+	return {
+		"page_name": page.name,
+		"page_title": page.page_title,
+		"route": page.route or "/",
+		"blocks_count": len(blocks) if isinstance(blocks, list) else 1,
+		"url": f"/builder/page/{page.name}",
+		"preview_url": f"/builder/page/{page.name}/preview"
+	}
+
+
+@frappe.whitelist()
 def generate_section(
 	section_type: str,
 	context: str,
