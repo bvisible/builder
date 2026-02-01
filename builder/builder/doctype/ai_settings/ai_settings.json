@@ -14,6 +14,7 @@
   "ollama_section",
   "ollama_enabled",
   "ollama_base_url",
+  "ollama_api_key",
   "ollama_model",
   "column_break_ollama",
   "ollama_num_ctx",
@@ -103,6 +104,13 @@
    "fieldname": "ollama_base_url",
    "fieldtype": "Data",
    "label": "Ollama Base URL"
+  },
+  {
+   "depends_on": "eval:doc.ollama_enabled",
+   "description": "API key for remote Ollama servers (e.g., Cloudflare WAF authentication)",
+   "fieldname": "ollama_api_key",
+   "fieldtype": "Password",
+   "label": "Ollama API Key"
   },
   {
    "default": "qwen2.5:7b",

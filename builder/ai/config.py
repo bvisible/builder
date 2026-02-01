@@ -110,11 +110,22 @@ def get_ai_settings() -> AIConfig:
             if config.provider == "ollama":
                 config.base_url = settings.get("ollama_base_url") or DEFAULT_OLLAMA_CONFIG["base_url"]
                 config.model = settings.get("ollama_model") or DEFAULT_OLLAMA_CONFIG["model"]
+                # Get Ollama API key (for remote servers with Cloudflare WAF)
+                try:
+                    config.api_key = settings.get_password("ollama_api_key")
+                except Exception:
+                    pass
             elif config.provider == "openai":
-                config.api_key = settings.get("openai_api_key")
+                try:
+                    config.api_key = settings.get_password("openai_api_key")
+                except Exception:
+                    config.api_key = settings.get("openai_api_key")
                 config.model = settings.get("openai_model") or DEFAULT_OPENAI_CONFIG["model"]
             elif config.provider == "anthropic":
-                config.api_key = settings.get("anthropic_api_key")
+                try:
+                    config.api_key = settings.get_password("anthropic_api_key")
+                except Exception:
+                    config.api_key = settings.get("anthropic_api_key")
                 config.model = settings.get("anthropic_model")
 
     except Exception:
@@ -126,6 +137,8 @@ def get_ai_settings() -> AIConfig:
             config.api_key = frappe.conf.get("openai_api_key")
         elif config.provider == "anthropic":
             config.api_key = frappe.conf.get("anthropic_api_key")
+        elif config.provider == "ollama":
+            config.api_key = frappe.conf.get("ollama_api_key")
 
     # Ensure base_url for Ollama
     if config.provider == "ollama" and not config.base_url:

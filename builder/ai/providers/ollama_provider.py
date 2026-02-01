@@ -41,6 +41,7 @@ class OllamaProvider(BaseProvider):
         self,
         model: str = None,
         base_url: str = None,
+        api_key: str = None,
         temperature: float = 0.7,
         max_tokens: int = 4096,
         timeout: int = 120,
@@ -50,6 +51,7 @@ class OllamaProvider(BaseProvider):
         super().__init__(
             model=model or self.DEFAULT_MODEL,
             base_url=base_url or self.DEFAULT_BASE_URL,
+            api_key=api_key,
             temperature=temperature,
             max_tokens=max_tokens,
             timeout=timeout,
@@ -60,6 +62,8 @@ class OllamaProvider(BaseProvider):
         # Override from Frappe config if available
         if not base_url:
             self.base_url = frappe.conf.get("ollama_base_url", self.DEFAULT_BASE_URL)
+        if not api_key:
+            self.api_key = frappe.conf.get("ollama_api_key")
 
     @property
     def provider_name(self) -> str:
@@ -69,8 +73,14 @@ class OllamaProvider(BaseProvider):
         """Check if Ollama server is running and model is available"""
         try:
             import requests
+            headers = {}
+            if self.api_key:
+                headers["X-API-Key"] = self.api_key
+                headers["Authorization"] = f"Bearer {self.api_key}"
+
             response = requests.get(
                 f"{self.base_url}/api/tags",
+                headers=headers,
                 timeout=5
             )
             if response.status_code != 200:
@@ -249,10 +259,17 @@ CRITICAL RULES:
 
         url = f"{self.base_url}{endpoint}"
 
+        # Build headers with optional API key (for Cloudflare WAF or remote servers)
+        headers = {"Content-Type": "application/json"}
+        if self.api_key:
+            headers["X-API-Key"] = self.api_key
+            headers["Authorization"] = f"Bearer {self.api_key}"
+
         try:
             response = requests.post(
                 url,
                 json=payload,
+                headers=headers,
                 timeout=self.timeout,
             )
 
@@ -290,11 +307,16 @@ CRITICAL RULES:
         import requests
 
         model_to_pull = model or self.model
+        headers = {}
+        if self.api_key:
+            headers["X-API-Key"] = self.api_key
+            headers["Authorization"] = f"Bearer {self.api_key}"
 
         try:
             response = requests.post(
                 f"{self.base_url}/api/pull",
                 json={"name": model_to_pull},
+                headers=headers,
                 timeout=600,  # Models can take a while to download
                 stream=True,
             )
@@ -321,9 +343,15 @@ CRITICAL RULES:
         """List available models on the Ollama server"""
         import requests
 
+        headers = {}
+        if self.api_key:
+            headers["X-API-Key"] = self.api_key
+            headers["Authorization"] = f"Bearer {self.api_key}"
+
         try:
             response = requests.get(
                 f"{self.base_url}/api/tags",
+                headers=headers,
                 timeout=10
             )
             if response.status_code == 200:
@@ -337,11 +365,16 @@ CRITICAL RULES:
         import requests
 
         model_name = model or self.model
+        headers = {}
+        if self.api_key:
+            headers["X-API-Key"] = self.api_key
+            headers["Authorization"] = f"Bearer {self.api_key}"
 
         try:
             response = requests.post(
                 f"{self.base_url}/api/show",
                 json={"name": model_name},
+                headers=headers,
                 timeout=10
             )
             if response.status_code == 200:
