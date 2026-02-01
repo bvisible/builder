@@ -124,17 +124,28 @@ def generate_site(
 	# Create the Builder Page
 	page = frappe.new_doc("Builder Page")
 	page.page_title = page_title
-	page.route = "" if set_as_home else page_title.lower().replace(" ", "-")
 	page.blocks = json.dumps(blocks)
 	page.draft_blocks = json.dumps(blocks)
 	page.published = 1
 	page.insert(ignore_permissions=True)
+
+	# Force route after insert (Frappe auto-generates route on insert)
+	if set_as_home:
+		# Set as home page with empty route
+		frappe.db.set_value("Builder Page", page.name, "route", "")
+		page.route = ""
+	else:
+		# Use custom route
+		custom_route = page_title.lower().replace(" ", "-")
+		frappe.db.set_value("Builder Page", page.name, "route", custom_route)
+		page.route = custom_route
+
 	frappe.db.commit()
 
 	return {
 		"page_name": page.name,
 		"page_title": page.page_title,
-		"route": page.route or "/",
+		"route": page.route if page.route else "/",
 		"blocks_count": len(blocks) if isinstance(blocks, list) else 1,
 		"url": f"/builder/page/{page.name}",
 		"preview_url": f"/builder/page/{page.name}/preview"
