@@ -198,6 +198,30 @@ Output a structured PageStructure with:
 Be specific and thoughtful. Quality over quantity for sections.
 Most landing pages need only 4-6 sections."""
 
+    # Mapping of unsupported section types to supported ones
+    SECTION_TYPE_MAPPING = {
+        "about": "features",  # About sections can use features layout
+        "services": "features",  # Services are similar to features
+        "team": "testimonials",  # Team can use testimonials layout
+        "portfolio": "features",  # Portfolio can use features grid
+        "gallery": "features",  # Gallery can use features grid
+        "products": "features",  # Products can use features layout
+        "benefits": "features",  # Benefits are similar to features
+        "how_it_works": "features",  # Process steps use features
+        "partners": "clients",  # Partners are similar to clients
+        "logos": "clients",  # Logos section
+        "newsletter": "cta",  # Newsletter is a type of CTA
+        "subscribe": "cta",  # Subscribe is a type of CTA
+    }
+
+    # Supported section types (have templates)
+    SUPPORTED_SECTIONS = {
+        "hero", "hero_centered", "hero_split",
+        "features", "features_grid", "features_alternating",
+        "testimonials", "pricing", "cta", "stats", "faq",
+        "contact", "clients"
+    }
+
     def _enrich_structure(self, structure: PageStructure, site_type: str) -> PageStructure:
         """Enrich and validate the analyzed structure"""
         # Ensure header_type matches site_type if not specified
@@ -209,6 +233,13 @@ Most landing pages need only 4-6 sections."""
             structure.sections = [
                 SectionInfo(type="hero", title="Hero Section", priority=10),
             ]
+
+        # Map unsupported section types to supported ones
+        for section in structure.sections:
+            if section.type not in self.SUPPORTED_SECTIONS:
+                mapped_type = self.SECTION_TYPE_MAPPING.get(section.type, "features")
+                frappe.logger().info(f"Mapping section '{section.type}' to '{mapped_type}'")
+                section.type = mapped_type
 
         # Sort sections by priority (highest first)
         structure.sections = sorted(
