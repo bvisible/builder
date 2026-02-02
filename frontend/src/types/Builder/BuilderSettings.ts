@@ -30,4 +30,12 @@ export interface BuilderSettings{
 	default_language?: string
 	/**	Home Page : Data	*/
 	home_page?: string
+	/**	Show Header in Editor : Check - Show header component above the page content in the editor	*/
+	show_header_in_editor?: 0 | 1
+	/**	Header Component : Link - Select the header component to display in the editor	*/
+	editor_header_component?: string
+	/**	Show Footer in Editor : Check - Show footer component below the page content in the editor	*/
+	show_footer_in_editor?: 0 | 1
+	/**	Footer Component : Link - Select the footer component to display in the editor	*/
+	editor_footer_component?: string
 }

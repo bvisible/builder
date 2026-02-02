@@ -32,7 +32,7 @@
 				</div>
 			</div>
 			<div
-				class="canvas relative flex h-full bg-surface-white shadow-2xl contain-layout dark:selection:!bg-gray-200"
+				class="canvas relative flex flex-col bg-surface-white shadow-2xl contain-layout dark:selection:!bg-gray-200"
 				:style="{
 					...canvasStyles,
 					background: canvasProps.background,
@@ -51,8 +51,25 @@
 					@click="activeBreakpoint = breakpoint.device">
 					{{ breakpoint.displayName }}
 				</div>
+				<!-- Editor Header Preview -->
+				<div
+					v-if="editorHeaderBlock && showBlocks"
+					class="editor-preview-block editor-header-preview pointer-events-none relative opacity-60"
+					:style="{ borderBottom: '2px dashed var(--outline-gray-3)' }">
+					<BuilderBlock
+						:block="editorHeaderBlock"
+						:style="variables"
+						:key="editorHeaderBlock.blockId + '-header-preview'"
+						:readonly="true"
+						:breakpoint="breakpoint.device"
+						:data="pageStore.pageData" />
+					<div class="absolute bottom-1 right-2 rounded bg-surface-gray-2 px-2 py-0.5 text-xs text-ink-gray-5">
+						Header Preview
+					</div>
+				</div>
+				<!-- Main Content -->
 				<BuilderBlock
-					class="h-full min-h-[inherit]"
+					class="h-full min-h-[inherit] flex-1"
 					:block="block"
 					:style="variables"
 					:key="block.blockId"
@@ -60,6 +77,22 @@
 					v-if="showBlocks"
 					:breakpoint="breakpoint.device"
 					:data="pageStore.pageData" />
+				<!-- Editor Footer Preview -->
+				<div
+					v-if="editorFooterBlock && showBlocks"
+					class="editor-preview-block editor-footer-preview pointer-events-none relative opacity-60"
+					:style="{ borderTop: '2px dashed var(--outline-gray-3)' }">
+					<BuilderBlock
+						:block="editorFooterBlock"
+						:style="variables"
+						:key="editorFooterBlock.blockId + '-footer-preview'"
+						:readonly="true"
+						:breakpoint="breakpoint.device"
+						:data="pageStore.pageData" />
+					<div class="absolute top-1 right-2 rounded bg-surface-gray-2 px-2 py-0.5 text-xs text-ink-gray-5">
+						Footer Preview
+					</div>
+				</div>
 			</div>
 		</div>
 		<div
@@ -97,7 +130,9 @@ import DraggablePopup from "@/components/Controls/DraggablePopup.vue";
 import SearchBlock from "@/components/Controls/SearchBlock.vue";
 import LoadingIcon from "@/components/Icons/Loading.vue";
 import useBuilderStore from "@/stores/builderStore";
+import useComponentStore from "@/stores/componentStore";
 import usePageStore from "@/stores/pageStore";
+import { builderSettings } from "@/data/builderSettings";
 import { BreakpointConfig, CanvasHistory } from "@/types/Builder/BuilderCanvas";
 import { getBlockObject, isCtrlOrCmd } from "@/utils/helpers";
 import { useBlockEventHandlers } from "@/utils/useBlockEventHandlers";
@@ -116,6 +151,35 @@ import FitScreenIcon from "./Icons/FitScreen.vue";
 
 const builderStore = useBuilderStore();
 const pageStore = usePageStore();
+const componentStore = useComponentStore();
+
+// Editor preview header/footer
+const showEditorHeader = computed(() => builderSettings.doc?.show_header_in_editor && builderSettings.doc?.editor_header_component);
+const showEditorFooter = computed(() => builderSettings.doc?.show_footer_in_editor && builderSettings.doc?.editor_footer_component);
+
+const editorHeaderBlock = computed(() => {
+	if (!showEditorHeader.value) return null;
+	const componentName = builderSettings.doc?.editor_header_component;
+	if (!componentName) return null;
+	return componentStore.getComponentBlock(componentName);
+});
+
+const editorFooterBlock = computed(() => {
+	if (!showEditorFooter.value) return null;
+	const componentName = builderSettings.doc?.editor_footer_component;
+	if (!componentName) return null;
+	return componentStore.getComponentBlock(componentName);
+});
+
+// Load header/footer components when settings change
+watch([showEditorHeader, showEditorFooter], async () => {
+	if (showEditorHeader.value && builderSettings.doc?.editor_header_component) {
+		await componentStore.loadComponent(builderSettings.doc.editor_header_component);
+	}
+	if (showEditorFooter.value && builderSettings.doc?.editor_footer_component) {
+		await componentStore.loadComponent(builderSettings.doc.editor_footer_component);
+	}
+}, { immediate: true });
 
 const { cssVariables, darkCssVariables } = useBuilderVariable();
 const isDark = useDark({

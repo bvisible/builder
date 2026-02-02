@@ -15,7 +15,13 @@
   "auto_convert_images_to_webp",
   "default_language",
   "landing_page_section",
-  "home_page"
+  "home_page",
+  "editor_preview_section",
+  "show_header_in_editor",
+  "editor_header_component",
+  "column_break_editor",
+  "show_footer_in_editor",
+  "editor_footer_component"
  ],
  "fields": [
   {
@@ -85,6 +91,45 @@
    "fieldtype": "Code",
    "label": "Body HTML",
    "options": "HTML"
+  },
+  {
+   "fieldname": "editor_preview_section",
+   "fieldtype": "Section Break",
+   "label": "Editor Preview"
+  },
+  {
+   "default": "0",
+   "description": "Show header component above the page content in the editor",
+   "fieldname": "show_header_in_editor",
+   "fieldtype": "Check",
+   "label": "Show Header in Editor"
+  },
+  {
+   "depends_on": "show_header_in_editor",
+   "description": "Select the header component to display in the editor",
+   "fieldname": "editor_header_component",
+   "fieldtype": "Link",
+   "label": "Header Component",
+   "options": "Builder Component"
+  },
+  {
+   "fieldname": "column_break_editor",
+   "fieldtype": "Column Break"
+  },
+  {
+   "default": "0",
+   "description": "Show footer component below the page content in the editor",
+   "fieldname": "show_footer_in_editor",
+   "fieldtype": "Check",
+   "label": "Show Footer in Editor"
+  },
+  {
+   "depends_on": "show_footer_in_editor",
+   "description": "Select the footer component to display in the editor",
+   "fieldname": "editor_footer_component",
+   "fieldtype": "Link",
+   "label": "Footer Component",
+   "options": "Builder Component"
   }
  ],
  "hide_toolbar": 1,
