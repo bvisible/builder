@@ -71,6 +71,15 @@ after_install = "builder.install.after_install"
 after_migrate = "builder.install.after_migrate"
 after_app_install = "builder.install.after_app_install"
 
+# Fixtures
+# --------
+fixtures = [
+	{
+		"dt": "Builder Shortcode",
+		"filters": [["source_app", "=", "webshop"]]
+	}
+]
+
 # Uninstallation
 # ------------
 

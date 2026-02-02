@@ -1382,3 +1382,72 @@ def subscribe_to_newsletter(email: str, email_group: str = None):
 	except Exception as e:
 		frappe.log_error("Newsletter subscription failed", str(e))
 		frappe.throw(_("Failed to subscribe. Please try again later."))
+
+
+# =============================================================================
+# BUILDER SHORTCODES API
+# =============================================================================
+
+@frappe.whitelist()
+def get_available_shortcodes():
+	"""
+	Get all enabled shortcodes for use in Builder pages.
+
+	Returns:
+		list: List of shortcode objects with usage info
+	"""
+	shortcodes = frappe.get_all(
+		"Builder Shortcode",
+		filters={"enabled": 1},
+		fields=["shortcode_name", "category", "source_app", "template_path",
+				"description", "usage_syntax", "parameters", "example_code"],
+		order_by="category, shortcode_name"
+	)
+
+	# Parse JSON parameters
+	for sc in shortcodes:
+		if sc.get("parameters"):
+			try:
+				sc["parameters"] = json.loads(sc["parameters"])
+			except Exception:
+				sc["parameters"] = []
+
+	return shortcodes
+
+
+@frappe.whitelist()
+def get_shortcodes_for_ai():
+	"""
+	Get shortcodes formatted for AI prompt context.
+
+	Returns:
+		str: Markdown formatted shortcode documentation
+	"""
+	shortcodes = frappe.get_all(
+		"Builder Shortcode",
+		filters={"enabled": 1},
+		fields=["shortcode_name", "category", "description", "usage_syntax", "parameters", "example_code"],
+		order_by="category, shortcode_name"
+	)
+
+	if not shortcodes:
+		return ""
+
+	lines = ["## Available Shortcodes\n"]
+	lines.append("You can use these Jinja includes in Builder pages:\n")
+
+	current_category = None
+	for sc in shortcodes:
+		if sc.category != current_category:
+			current_category = sc.category
+			lines.append(f"\n### {current_category}\n")
+
+		lines.append(f"#### {sc.shortcode_name}")
+		if sc.description:
+			lines.append(f"{sc.description}\n")
+		if sc.usage_syntax:
+			lines.append(f"**Usage:**\n```jinja\n{sc.usage_syntax}\n```\n")
+		if sc.example_code:
+			lines.append(f"**Example:**\n```jinja\n{sc.example_code}\n```\n")
+
+	return "\n".join(lines)

@@ -1,0 +1,86 @@
+[
+  {
+    "doctype": "Builder Shortcode",
+    "shortcode_name": "Product Carousel",
+    "category": "E-commerce",
+    "enabled": 1,
+    "source_app": "webshop",
+    "template_path": "webshop/templates/includes/product_carousel.html",
+    "description": "Displays a horizontal carousel of products with images, prices, discounts, and add-to-cart buttons. Supports filtering by item group, brand, promotions only, and various sorting options. Includes navigation arrows and responsive design.",
+    "usage_syntax": "{% include \"webshop/templates/includes/product_carousel.html\" %}",
+    "parameters": "[{\"name\": \"carousel_title\", \"type\": \"string\", \"default\": \"\", \"description\": \"Title displayed above the carousel\"}, {\"name\": \"carousel_item_group\", \"type\": \"string\", \"default\": \"\", \"description\": \"Filter by Item Group name\"}, {\"name\": \"carousel_brand\", \"type\": \"string\", \"default\": \"\", \"description\": \"Filter by Brand name\"}, {\"name\": \"carousel_limit\", \"type\": \"integer\", \"default\": \"8\", \"description\": \"Maximum number of products to show\"}, {\"name\": \"carousel_sort_by\", \"type\": \"string\", \"default\": \"creation\", \"description\": \"Sort field: creation, modified, item_name, price\"}, {\"name\": \"carousel_sort_order\", \"type\": \"string\", \"default\": \"desc\", \"description\": \"Sort order: asc or desc\"}, {\"name\": \"show_discounted_only\", \"type\": \"boolean\", \"default\": \"false\", \"description\": \"Only show products with active discounts\"}, {\"name\": \"hide_without_image\", \"type\": \"boolean\", \"default\": \"false\", \"description\": \"Hide products without images\"}, {\"name\": \"view_more_link\", \"type\": \"string\", \"default\": \"\", \"description\": \"URL for View More button\"}, {\"name\": \"view_more_text\", \"type\": \"string\", \"default\": \"View More\", \"description\": \"Text for View More button\"}]",
+    "example_code": "{%- set carousel_title = \"Featured Products\" -%}\n{%- set carousel_item_group = \"Electronics\" -%}\n{%- set carousel_limit = 8 -%}\n{%- set carousel_sort_by = \"creation\" -%}\n{%- set carousel_sort_order = \"desc\" -%}\n{%- set view_more_link = \"/all-products\" -%}\n{% include \"webshop/templates/includes/product_carousel.html\" %}"
+  },
+  {
+    "doctype": "Builder Shortcode",
+    "shortcode_name": "Brand Carousel",
+    "category": "E-commerce",
+    "enabled": 1,
+    "source_app": "webshop",
+    "template_path": "webshop/templates/includes/brand_carousel.html",
+    "description": "Displays a horizontal carousel of brand logos with links to filtered product pages. Supports sorting by name, product count, or random. Each brand links to its filtered product listing.",
+    "usage_syntax": "{% include \"webshop/templates/includes/brand_carousel.html\" %}",
+    "parameters": "[{\"name\": \"carousel_title\", \"type\": \"string\", \"default\": \"\", \"description\": \"Title displayed above the carousel\"}, {\"name\": \"carousel_limit\", \"type\": \"integer\", \"default\": \"20\", \"description\": \"Maximum number of brands to show\"}, {\"name\": \"carousel_sort_by\", \"type\": \"string\", \"default\": \"brand_name\", \"description\": \"Sort by: brand_name, product_count, random\"}, {\"name\": \"hide_without_image\", \"type\": \"boolean\", \"default\": \"false\", \"description\": \"Hide brands without logo images\"}, {\"name\": \"show_product_count\", \"type\": \"boolean\", \"default\": \"false\", \"description\": \"Show number of products per brand\"}]",
+    "example_code": "{%- set carousel_title = \"Our Brands\" -%}\n{%- set carousel_limit = 12 -%}\n{%- set carousel_sort_by = \"product_count\" -%}\n{%- set hide_without_image = true -%}\n{% include \"webshop/templates/includes/brand_carousel.html\" %}"
+  },
+  {
+    "doctype": "Builder Shortcode",
+    "shortcode_name": "Breadcrumbs",
+    "category": "Navigation",
+    "enabled": 1,
+    "source_app": "webshop",
+    "template_path": "webshop/templates/includes/breadcrumbs.html",
+    "description": "Displays a breadcrumb navigation trail showing the current page hierarchy. Automatically generates based on page context or can be manually configured.",
+    "usage_syntax": "{% include \"webshop/templates/includes/breadcrumbs.html\" %}",
+    "parameters": "[{\"name\": \"breadcrumbs\", \"type\": \"array\", \"default\": \"[]\", \"description\": \"List of {label, url} objects for manual breadcrumbs\"}]",
+    "example_code": "{%- set breadcrumbs = [{\"label\": \"Home\", \"url\": \"/\"}, {\"label\": \"Products\", \"url\": \"/all-products\"}, {\"label\": \"Category\", \"url\": \"\"}] -%}\n{% include \"webshop/templates/includes/breadcrumbs.html\" %}"
+  },
+  {
+    "doctype": "Builder Shortcode",
+    "shortcode_name": "Coupon Form",
+    "category": "E-commerce",
+    "enabled": 1,
+    "source_app": "webshop",
+    "template_path": "webshop/templates/includes/coupon_form.html",
+    "description": "A form for applying discount coupon codes to the shopping cart. Shows success/error messages and integrates with the cart system.",
+    "usage_syntax": "{% include \"webshop/templates/includes/coupon_form.html\" %}",
+    "parameters": "[]",
+    "example_code": "{% include \"webshop/templates/includes/coupon_form.html\" %}"
+  },
+  {
+    "doctype": "Builder Shortcode",
+    "shortcode_name": "Wishlist Component",
+    "category": "E-commerce",
+    "enabled": 1,
+    "source_app": "webshop",
+    "template_path": "webshop/templates/includes/wishlist_component.html",
+    "description": "Displays the user's wishlist items with product images, names, prices and remove buttons. Includes add-to-cart functionality.",
+    "usage_syntax": "{% include \"webshop/templates/includes/wishlist_component.html\" %}",
+    "parameters": "[]",
+    "example_code": "{% include \"webshop/templates/includes/wishlist_component.html\" %}"
+  },
+  {
+    "doctype": "Builder Shortcode",
+    "shortcode_name": "Order Summary",
+    "category": "E-commerce",
+    "enabled": 1,
+    "source_app": "webshop",
+    "template_path": "webshop/templates/includes/order_summary.html",
+    "description": "Displays a summary of an order including items, quantities, prices, taxes, and totals. Used on order confirmation and order detail pages.",
+    "usage_syntax": "{% include \"webshop/templates/includes/order_summary.html\" %}",
+    "parameters": "[{\"name\": \"doc\", \"type\": \"object\", \"default\": \"\", \"description\": \"The Sales Order or Sales Invoice document\"}]",
+    "example_code": "{%- set doc = frappe.get_doc(\"Sales Order\", order_name) -%}\n{% include \"webshop/templates/includes/order_summary.html\" %}"
+  },
+  {
+    "doctype": "Builder Shortcode",
+    "shortcode_name": "Loyalty Points Form",
+    "category": "E-commerce",
+    "enabled": 1,
+    "source_app": "webshop",
+    "template_path": "webshop/templates/includes/loyalty_points_form.html",
+    "description": "Form for redeeming loyalty points during checkout. Shows available points and allows applying them as discount.",
+    "usage_syntax": "{% include \"webshop/templates/includes/loyalty_points_form.html\" %}",
+    "parameters": "[]",
+    "example_code": "{% include \"webshop/templates/includes/loyalty_points_form.html\" %}"
+  }
+]

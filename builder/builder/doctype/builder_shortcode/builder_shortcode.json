@@ -1,0 +1,147 @@
+{
+ "actions": [],
+ "creation": "2025-02-02 22:00:00.000000",
+ "doctype": "DocType",
+ "engine": "InnoDB",
+ "field_order": [
+  "enabled",
+  "shortcode_name",
+  "category",
+  "column_break_1",
+  "source_app",
+  "template_path",
+  "description_section",
+  "description",
+  "usage_section",
+  "usage_syntax",
+  "parameters_section",
+  "parameters",
+  "example_section",
+  "example_code"
+ ],
+ "fields": [
+  {
+   "default": "1",
+   "fieldname": "enabled",
+   "fieldtype": "Check",
+   "label": "Enabled"
+  },
+  {
+   "fieldname": "shortcode_name",
+   "fieldtype": "Data",
+   "in_list_view": 1,
+   "label": "Shortcode Name",
+   "reqd": 1,
+   "unique": 1
+  },
+  {
+   "fieldname": "category",
+   "fieldtype": "Select",
+   "in_list_view": 1,
+   "label": "Category",
+   "options": "E-commerce\nNavigation\nContent\nForm\nLayout\nOther"
+  },
+  {
+   "fieldname": "column_break_1",
+   "fieldtype": "Column Break"
+  },
+  {
+   "description": "The Frappe app that provides this shortcode",
+   "fieldname": "source_app",
+   "fieldtype": "Data",
+   "label": "Source App"
+  },
+  {
+   "description": "Jinja template path to include",
+   "fieldname": "template_path",
+   "fieldtype": "Data",
+   "label": "Template Path"
+  },
+  {
+   "fieldname": "description_section",
+   "fieldtype": "Section Break",
+   "label": "Description"
+  },
+  {
+   "description": "What this shortcode does - used by AI for generation",
+   "fieldname": "description",
+   "fieldtype": "Text",
+   "label": "Description"
+  },
+  {
+   "fieldname": "usage_section",
+   "fieldtype": "Section Break",
+   "label": "Usage"
+  },
+  {
+   "description": "Jinja syntax to use this shortcode",
+   "fieldname": "usage_syntax",
+   "fieldtype": "Code",
+   "label": "Usage Syntax",
+   "options": "Jinja"
+  },
+  {
+   "fieldname": "parameters_section",
+   "fieldtype": "Section Break",
+   "label": "Parameters"
+  },
+  {
+   "description": "Available parameters in JSON format: [{\"name\": \"param\", \"type\": \"string\", \"default\": \"value\", \"description\": \"...\"}]",
+   "fieldname": "parameters",
+   "fieldtype": "Code",
+   "label": "Parameters",
+   "options": "JSON"
+  },
+  {
+   "fieldname": "example_section",
+   "fieldtype": "Section Break",
+   "label": "Example"
+  },
+  {
+   "description": "Example usage code",
+   "fieldname": "example_code",
+   "fieldtype": "Code",
+   "label": "Example Code",
+   "options": "Jinja"
+  }
+ ],
+ "index_web_pages_for_search": 1,
+ "links": [],
+ "modified": "2025-02-02 22:00:00.000000",
+ "modified_by": "Administrator",
+ "module": "Builder",
+ "name": "Builder Shortcode",
+ "naming_rule": "By fieldname",
+ "autoname": "field:shortcode_name",
+ "owner": "Administrator",
+ "permissions": [
+  {
+   "create": 1,
+   "delete": 1,
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "System Manager",
+   "share": 1,
+   "write": 1
+  },
+  {
+   "create": 1,
+   "delete": 1,
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "Website Manager",
+   "share": 1,
+   "write": 1
+  }
+ ],
+ "sort_field": "modified",
+ "sort_order": "DESC",
+ "states": [],
+ "track_changes": 1
+}
