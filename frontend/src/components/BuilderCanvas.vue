@@ -63,7 +63,7 @@
 						:readonly="true"
 						:breakpoint="breakpoint.device"
 						:data="pageStore.pageData" />
-					<div class="absolute bottom-1 right-2 rounded bg-surface-gray-2 px-2 py-0.5 text-xs text-ink-gray-5">
+					<div class="absolute bottom-2 right-2 z-10 rounded bg-surface-gray-2 px-2 py-0.5 text-xs text-ink-gray-5">
 						Header Preview
 					</div>
 				</div>

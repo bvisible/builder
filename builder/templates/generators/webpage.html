@@ -42,6 +42,25 @@
 	{%-endif -%}
 </head>
 {% block page_content %}
-{{ __content }}
+<body {{ body_attrs or "" }}>
+	{# Include webshop navbar if available #}
+	{% set has_webshop_navbar = frappe.db.exists("File", {"file_url": "/assets/webshop/templates/includes/navbar/navbar.html"}) or true %}
+	{% if has_webshop_navbar %}
+	<header>
+		{% include "templates/includes/navbar/navbar.html" ignore missing %}
+	</header>
+	{% endif %}
+
+	{{ __content }}
+
+	{# Include webshop footer if available #}
+	{% if has_webshop_navbar %}
+	<footer>
+		{% include "templates/includes/footer/footer.html" ignore missing %}
+	</footer>
+	{% endif %}
+
+	{% include "templates/generators/webpage_scripts.html" %}
+</body>
 {% endblock %}
 </html>
