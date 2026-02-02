@@ -40,24 +40,42 @@
 	{%- if _head_html %}
 	{{ _head_html|safe }}
 	{%-endif -%}
+	<style>
+		/* Ensure proper page layout with header/footer */
+		html, body {
+			min-height: 100%;
+			overflow-x: hidden;
+		}
+		body {
+			display: flex;
+			flex-direction: column;
+		}
+		body > .builder-body-container {
+			flex: 1 0 auto;
+		}
+		/* Ensure header/footer take full width */
+		body > .builder-body-container:first-child,
+		body > div:first-child {
+			width: 100%;
+		}
+	</style>
 </head>
 {% block page_content %}
 <body {{ body_attrs or "" }}>
-	{# Include webshop navbar if available #}
-	{% set has_webshop_navbar = frappe.db.exists("File", {"file_url": "/assets/webshop/templates/includes/navbar/navbar.html"}) or true %}
-	{% if has_webshop_navbar %}
-	<header>
+	{# Include webshop navbar if available - uses Builder Settings component #}
+	{% set has_webshop = namespace(value=false) %}
+	{% if frappe.db.exists("File", {"file_url": "/assets/webshop/templates/includes/navbar/navbar.html"}) %}
+		{% set has_webshop.value = true %}
+	{% endif %}
+	{% if has_webshop.value %}
 		{% include "templates/includes/navbar/navbar.html" ignore missing %}
-	</header>
 	{% endif %}
 
 	{{ __content }}
 
-	{# Include webshop footer if available #}
-	{% if has_webshop_navbar %}
-	<footer>
+	{# Include webshop footer if available - uses Builder Settings component #}
+	{% if has_webshop.value %}
 		{% include "templates/includes/footer/footer.html" ignore missing %}
-	</footer>
 	{% endif %}
 
 	{% include "templates/generators/webpage_scripts.html" %}
