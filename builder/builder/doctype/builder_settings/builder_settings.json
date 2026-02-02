@@ -85,8 +85,8 @@
    "fieldtype": "Code",
    "label": "Body HTML",
    "options": "HTML"
-  },
-  ],
+  }
+ ],
  "hide_toolbar": 1,
  "index_web_pages_for_search": 1,
  "issingle": 1,
