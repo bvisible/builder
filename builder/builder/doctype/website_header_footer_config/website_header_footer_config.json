@@ -1,0 +1,553 @@
+{
+ "actions": [],
+ "creation": "2025-02-02 10:00:00.000000",
+ "doctype": "DocType",
+ "engine": "InnoDB",
+ "field_order": [
+  "header_tab",
+  "header_section",
+  "header_layout",
+  "sticky_header",
+  "column_break_header_1",
+  "header_bg_color",
+  "header_text_color",
+  "header_preview_section",
+  "header_preview",
+  "logo_section",
+  "logo_type",
+  "logo_text",
+  "column_break_logo_1",
+  "logo_image",
+  "logo_default_info",
+  "icons_section",
+  "search_type",
+  "column_break_icons_1",
+  "show_user",
+  "show_wishlist",
+  "show_cart",
+  "cta_section",
+  "show_cta",
+  "cta_text",
+  "column_break_cta_1",
+  "cta_url",
+  "cta_style",
+  "menu_tab",
+  "menu_section",
+  "menu_items",
+  "footer_tab",
+  "footer_section",
+  "footer_template",
+  "column_break_footer_1",
+  "footer_bg_color",
+  "footer_text_color",
+  "column_break_footer_2",
+  "show_footer_logo",
+  "footer_logo_section",
+  "footer_logo_type",
+  "footer_logo_text",
+  "column_break_footer_logo",
+  "footer_logo_image",
+  "footer_content_section",
+  "footer_description",
+  "copyright_text",
+  "social_section",
+  "show_social_links",
+  "facebook_url",
+  "twitter_url",
+  "column_break_social_1",
+  "instagram_url",
+  "linkedin_url",
+  "youtube_url",
+  "newsletter_section",
+  "show_newsletter",
+  "newsletter_email_group",
+  "newsletter_title",
+  "column_break_newsletter_1",
+  "newsletter_placeholder",
+  "footer_links_section",
+  "footer_links",
+  "theme_tab",
+  "theme_colors_section",
+  "primary_color",
+  "secondary_color",
+  "column_break_theme_1",
+  "background_color",
+  "text_color",
+  "theme_typography_section",
+  "heading_font",
+  "column_break_theme_2",
+  "body_font"
+ ],
+ "fields": [
+  {
+   "fieldname": "header_tab",
+   "fieldtype": "Tab Break",
+   "label": "Header"
+  },
+  {
+   "fieldname": "header_section",
+   "fieldtype": "Section Break",
+   "label": "Header Layout"
+  },
+  {
+   "default": "Logo | Menu Center | Icons",
+   "description": "Choose the header layout structure",
+   "fieldname": "header_layout",
+   "fieldtype": "Select",
+   "label": "Layout",
+   "options": "Logo | Menu Center | Icons\nLogo | Menu Right | Icons\nMenu Left | Logo Center | Icons",
+   "reqd": 1
+  },
+  {
+   "default": "1",
+   "description": "Header stays fixed at top when scrolling",
+   "fieldname": "sticky_header",
+   "fieldtype": "Check",
+   "label": "Sticky Header"
+  },
+  {
+   "fieldname": "column_break_header_1",
+   "fieldtype": "Column Break"
+  },
+  {
+   "default": "#1a1a1a",
+   "description": "Background color of the header",
+   "fieldname": "header_bg_color",
+   "fieldtype": "Color",
+   "label": "Background Color"
+  },
+  {
+   "default": "#ffffff",
+   "description": "Text and icon color in header",
+   "fieldname": "header_text_color",
+   "fieldtype": "Color",
+   "label": "Text Color"
+  },
+  {
+   "fieldname": "header_preview_section",
+   "fieldtype": "Section Break",
+   "label": "Preview",
+   "collapsible": 0
+  },
+  {
+   "fieldname": "header_preview",
+   "fieldtype": "HTML",
+   "options": "<div id=\"header-preview\" style=\"padding: 15px; background: var(--subtle-fg); border-radius: 8px; width: 100%;\"></div>"
+  },
+  {
+   "fieldname": "logo_section",
+   "fieldtype": "Section Break",
+   "label": "Logo"
+  },
+  {
+   "default": "Image",
+   "fieldname": "logo_type",
+   "fieldtype": "Select",
+   "label": "Logo Type",
+   "options": "Text\nImage"
+  },
+  {
+   "depends_on": "eval:doc.logo_type=='Text'",
+   "fieldname": "logo_text",
+   "fieldtype": "Data",
+   "label": "Logo Text"
+  },
+  {
+   "fieldname": "column_break_logo_1",
+   "fieldtype": "Column Break"
+  },
+  {
+   "depends_on": "eval:doc.logo_type=='Image'",
+   "fieldname": "logo_image",
+   "fieldtype": "Attach Image",
+   "label": "Logo Image"
+  },
+  {
+   "depends_on": "eval:doc.logo_type=='Image' && !doc.logo_image",
+   "fieldname": "logo_default_info",
+   "fieldtype": "HTML",
+   "options": "<div style=\"display: flex; align-items: center; gap: 12px; padding: 10px; background: var(--subtle-fg); border-radius: 8px; margin-top: 8px;\"><img src=\"/files/logo-default.png\" style=\"height: 40px; max-width: 150px; object-fit: contain;\" onerror=\"this.style.display='none'\"><span style=\"color: var(--text-muted); font-size: 12px;\">Default logo will be used. Attach a different image above to override.</span></div>"
+  },
+  {
+   "fieldname": "cta_section",
+   "fieldtype": "Section Break",
+   "label": "Call to Action Button"
+  },
+  {
+   "default": "1",
+   "fieldname": "show_cta",
+   "fieldtype": "Check",
+   "label": "Show CTA Button"
+  },
+  {
+   "default": "Contact Us",
+   "depends_on": "show_cta",
+   "fieldname": "cta_text",
+   "fieldtype": "Data",
+   "label": "CTA Text"
+  },
+  {
+   "fieldname": "column_break_cta_1",
+   "fieldtype": "Column Break"
+  },
+  {
+   "default": "/contact",
+   "depends_on": "show_cta",
+   "fieldname": "cta_url",
+   "fieldtype": "Data",
+   "label": "CTA URL"
+  },
+  {
+   "default": "Primary",
+   "depends_on": "show_cta",
+   "fieldname": "cta_style",
+   "fieldtype": "Select",
+   "label": "CTA Style",
+   "options": "Primary\nSecondary\nOutline"
+  },
+  {
+   "description": "Configure header icons and search options",
+   "fieldname": "icons_section",
+   "fieldtype": "Section Break",
+   "label": "Icons & Search"
+  },
+  {
+   "default": "None",
+   "description": "Search display mode",
+   "fieldname": "search_type",
+   "fieldtype": "Select",
+   "label": "Search",
+   "options": "None\nIcon (overlay)\nSearch Bar (inline)\nSearch Bar (full width bottom)"
+  },
+  {
+   "fieldname": "column_break_icons_1",
+   "fieldtype": "Column Break"
+  },
+  {
+   "default": "0",
+   "description": "Show user/account with dropdown menu",
+   "fieldname": "show_user",
+   "fieldtype": "Check",
+   "label": "User"
+  },
+  {
+   "default": "0",
+   "description": "Show wishlist heart icon",
+   "fieldname": "show_wishlist",
+   "fieldtype": "Check",
+   "label": "Wishlist"
+  },
+  {
+   "default": "0",
+   "description": "Show cart with drawer",
+   "fieldname": "show_cart",
+   "fieldtype": "Check",
+   "label": "Cart"
+  },
+  {
+   "fieldname": "menu_tab",
+   "fieldtype": "Tab Break",
+   "label": "Menu"
+  },
+  {
+   "fieldname": "menu_section",
+   "fieldtype": "Section Break",
+   "label": "Menu Items"
+  },
+  {
+   "fieldname": "menu_items",
+   "fieldtype": "Table",
+   "label": "Menu Items",
+   "options": "Website Menu Item"
+  },
+  {
+   "fieldname": "footer_tab",
+   "fieldtype": "Tab Break",
+   "label": "Footer"
+  },
+  {
+   "fieldname": "footer_section",
+   "fieldtype": "Section Break",
+   "label": "Footer Template"
+  },
+  {
+   "default": "Standard",
+   "fieldname": "footer_template",
+   "fieldtype": "Select",
+   "label": "Footer Template",
+   "options": "Minimal\nStandard\nExtended"
+  },
+  {
+   "fieldname": "column_break_footer_1",
+   "fieldtype": "Column Break"
+  },
+  {
+   "default": "#ffffff",
+   "description": "Background color of the footer (defaults to header background)",
+   "fieldname": "footer_bg_color",
+   "fieldtype": "Color",
+   "label": "Background Color"
+  },
+  {
+   "default": "#1a1a1a",
+   "description": "Text color in footer (defaults to header text color)",
+   "fieldname": "footer_text_color",
+   "fieldtype": "Color",
+   "label": "Text Color"
+  },
+  {
+   "fieldname": "column_break_footer_2",
+   "fieldtype": "Column Break"
+  },
+  {
+   "default": "1",
+   "fieldname": "show_footer_logo",
+   "fieldtype": "Check",
+   "label": "Show Logo in Footer"
+  },
+  {
+   "depends_on": "show_footer_logo",
+   "fieldname": "footer_logo_section",
+   "fieldtype": "Section Break",
+   "label": "Footer Logo"
+  },
+  {
+   "default": "Same as Header",
+   "depends_on": "show_footer_logo",
+   "fieldname": "footer_logo_type",
+   "fieldtype": "Select",
+   "label": "Footer Logo Type",
+   "options": "Text\nImage\nSame as Header"
+  },
+  {
+   "depends_on": "eval:doc.show_footer_logo && doc.footer_logo_type=='Text'",
+   "fieldname": "footer_logo_text",
+   "fieldtype": "Data",
+   "label": "Footer Logo Text"
+  },
+  {
+   "fieldname": "column_break_footer_logo",
+   "fieldtype": "Column Break"
+  },
+  {
+   "depends_on": "eval:doc.show_footer_logo && doc.footer_logo_type=='Image'",
+   "description": "Default: /files/logo-default.png - Attach a different image to override",
+   "fieldname": "footer_logo_image",
+   "fieldtype": "Attach Image",
+   "label": "Footer Logo Image"
+  },
+  {
+   "fieldname": "footer_content_section",
+   "fieldtype": "Section Break",
+   "label": "Footer Content"
+  },
+  {
+   "fieldname": "footer_description",
+   "fieldtype": "Small Text",
+   "label": "Footer Description",
+   "description": "Short description or tagline shown in footer"
+  },
+  {
+   "default": "© {year} {site_name}. All rights reserved.",
+   "fieldname": "copyright_text",
+   "fieldtype": "Data",
+   "label": "Copyright Text",
+   "description": "Use {year} for current year, {site_name} for site name. 'Powered by neoffice.ch' is always shown."
+  },
+  {
+   "fieldname": "social_section",
+   "fieldtype": "Section Break",
+   "label": "Social Links"
+  },
+  {
+   "default": "0",
+   "fieldname": "show_social_links",
+   "fieldtype": "Check",
+   "label": "Show Social Links"
+  },
+  {
+   "depends_on": "show_social_links",
+   "fieldname": "facebook_url",
+   "fieldtype": "Data",
+   "label": "Facebook URL"
+  },
+  {
+   "depends_on": "show_social_links",
+   "fieldname": "twitter_url",
+   "fieldtype": "Data",
+   "label": "Twitter/X URL"
+  },
+  {
+   "fieldname": "column_break_social_1",
+   "fieldtype": "Column Break"
+  },
+  {
+   "depends_on": "show_social_links",
+   "fieldname": "instagram_url",
+   "fieldtype": "Data",
+   "label": "Instagram URL"
+  },
+  {
+   "depends_on": "show_social_links",
+   "fieldname": "linkedin_url",
+   "fieldtype": "Data",
+   "label": "LinkedIn URL"
+  },
+  {
+   "depends_on": "show_social_links",
+   "fieldname": "youtube_url",
+   "fieldtype": "Data",
+   "label": "YouTube URL"
+  },
+  {
+   "fieldname": "newsletter_section",
+   "fieldtype": "Section Break",
+   "label": "Newsletter"
+  },
+  {
+   "default": "0",
+   "fieldname": "show_newsletter",
+   "fieldtype": "Check",
+   "label": "Show Newsletter Signup"
+  },
+  {
+   "depends_on": "show_newsletter",
+   "description": "Email Group where subscribers will be added",
+   "fieldname": "newsletter_email_group",
+   "fieldtype": "Link",
+   "label": "Email Group",
+   "options": "Email Group",
+   "mandatory_depends_on": "show_newsletter"
+  },
+  {
+   "default": "Subscribe to our newsletter",
+   "depends_on": "show_newsletter",
+   "fieldname": "newsletter_title",
+   "fieldtype": "Data",
+   "label": "Newsletter Title"
+  },
+  {
+   "fieldname": "column_break_newsletter_1",
+   "fieldtype": "Column Break"
+  },
+  {
+   "default": "Enter your email",
+   "depends_on": "show_newsletter",
+   "fieldname": "newsletter_placeholder",
+   "fieldtype": "Data",
+   "label": "Newsletter Placeholder"
+  },
+  {
+   "fieldname": "footer_links_section",
+   "fieldtype": "Section Break",
+   "label": "Footer Links"
+  },
+  {
+   "fieldname": "footer_links",
+   "fieldtype": "Table",
+   "label": "Footer Links",
+   "options": "Website Footer Link"
+  },
+  {
+   "fieldname": "theme_tab",
+   "fieldtype": "Tab Break",
+   "label": "Theme"
+  },
+  {
+   "fieldname": "theme_colors_section",
+   "fieldtype": "Section Break",
+   "label": "Colors"
+  },
+  {
+   "default": "#6c5ce7",
+   "description": "Primary brand color used for buttons, links, and accents. Maps to --primary and --primary-color CSS variables.",
+   "fieldname": "primary_color",
+   "fieldtype": "Color",
+   "label": "Primary Color"
+  },
+  {
+   "default": "#00b894",
+   "description": "Secondary accent color for highlights and secondary actions. Maps to --secondary-color CSS variable.",
+   "fieldname": "secondary_color",
+   "fieldtype": "Color",
+   "label": "Secondary Color"
+  },
+  {
+   "fieldname": "column_break_theme_1",
+   "fieldtype": "Column Break"
+  },
+  {
+   "default": "#ffffff",
+   "description": "Page background color. Maps to --background-color CSS variable.",
+   "fieldname": "background_color",
+   "fieldtype": "Color",
+   "label": "Background Color"
+  },
+  {
+   "default": "#1a1a1a",
+   "description": "Main text color. Maps to --text-color CSS variable.",
+   "fieldname": "text_color",
+   "fieldtype": "Color",
+   "label": "Text Color"
+  },
+  {
+   "fieldname": "theme_typography_section",
+   "fieldtype": "Section Break",
+   "label": "Typography"
+  },
+  {
+   "default": "Inter",
+   "description": "Font family for headings (h1-h6)",
+   "fieldname": "heading_font",
+   "fieldtype": "Select",
+   "label": "Heading Font",
+   "options": "Inter\nMontserrat\nPoppins\nRoboto\nOpen Sans\nLato\nRaleway\nPlayfair Display\nSource Sans Pro\nNunito"
+  },
+  {
+   "fieldname": "column_break_theme_2",
+   "fieldtype": "Column Break"
+  },
+  {
+   "default": "Inter",
+   "description": "Font family for body text",
+   "fieldname": "body_font",
+   "fieldtype": "Select",
+   "label": "Body Font",
+   "options": "Inter\nMontserrat\nPoppins\nRoboto\nOpen Sans\nLato\nRaleway\nSource Sans Pro\nNunito\nMerriweather"
+  }
+ ],
+ "index_web_pages_for_search": 1,
+ "issingle": 1,
+ "links": [],
+ "modified": "2025-02-02 10:00:00.000000",
+ "modified_by": "Administrator",
+ "module": "Builder",
+ "name": "Website Header Footer Config",
+ "owner": "Administrator",
+ "permissions": [
+  {
+   "create": 1,
+   "delete": 1,
+   "email": 1,
+   "print": 1,
+   "read": 1,
+   "role": "System Manager",
+   "share": 1,
+   "write": 1
+  },
+  {
+   "create": 1,
+   "delete": 1,
+   "email": 1,
+   "print": 1,
+   "read": 1,
+   "role": "Website Manager",
+   "share": 1,
+   "write": 1
+  }
+ ],
+ "sort_field": "modified",
+ "sort_order": "DESC",
+ "states": [],
+ "track_changes": 1
+}

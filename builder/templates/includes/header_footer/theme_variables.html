@@ -1,0 +1,87 @@
+{# Google Fonts for heading and body fonts #}
+{%- set heading_font = theme.heading_font if theme else 'Inter' -%}
+{%- set body_font = theme.body_font if theme else 'Inter' -%}
+{%- set fonts_to_load = [heading_font] -%}
+{%- if body_font != heading_font -%}
+	{%- set fonts_to_load = fonts_to_load + [body_font] -%}
+{%- endif -%}
+{%- for font in fonts_to_load -%}
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family={{ font | replace(' ', '+') }}:wght@400;500;600;700&display=swap">
+{%- endfor -%}
+
+<style>
+/* ==========================================================================
+   Theme Variables - Injected from Website Header Footer Config
+   Compatible with WebShop CSS variables
+   ========================================================================== */
+
+:root {
+	/* Primary colors - WebShop compatibility */
+	--primary: {{ theme.primary_color if theme else '#6c5ce7' }};
+	--primary-color: {{ theme.primary_color if theme else '#6c5ce7' }};
+	--primary-dark: {{ theme.primary_color if theme else '#6c5ce7' }};
+
+	/* Secondary color */
+	--secondary-color: {{ theme.secondary_color if theme else '#00b894' }};
+
+	/* Background colors */
+	--background-color: {{ theme.background_color if theme else '#ffffff' }};
+	--bg-color: {{ theme.background_color if theme else '#ffffff' }};
+
+	/* Text colors */
+	--text-color: {{ theme.text_color if theme else '#1a1a1a' }};
+	--text-muted: {{ theme.text_color if theme else '#1a1a1a' }}99;
+	--text-light: {{ theme.text_color if theme else '#1a1a1a' }}66;
+
+	/* Typography */
+	--heading-font: '{{ theme.heading_font if theme else 'Inter' }}', sans-serif;
+	--body-font: '{{ theme.body_font if theme else 'Inter' }}', sans-serif;
+	--font-family: '{{ theme.body_font if theme else 'Inter' }}', sans-serif;
+
+	/* Derived colors for WebShop compatibility */
+	--primary-hover: {{ theme.primary_color if theme else '#6c5ce7' }}dd;
+	--primary-light: {{ theme.primary_color if theme else '#6c5ce7' }}20;
+	--primary-bg: {{ theme.primary_color if theme else '#6c5ce7' }}10;
+
+	/* Border colors */
+	--border-color: {{ theme.text_color if theme else '#1a1a1a' }}15;
+	--border-light: {{ theme.text_color if theme else '#1a1a1a' }}10;
+
+	/* Surface colors */
+	--surface-color: {{ theme.background_color if theme else '#ffffff' }};
+	--surface-muted: {{ theme.text_color if theme else '#1a1a1a' }}05;
+}
+
+/* Apply fonts to elements */
+body {
+	font-family: var(--body-font);
+	color: var(--text-color);
+	background-color: var(--background-color);
+}
+
+h1, h2, h3, h4, h5, h6 {
+	font-family: var(--heading-font);
+}
+
+/* Link colors */
+a {
+	color: var(--primary-color);
+}
+
+a:hover {
+	color: var(--primary-hover);
+}
+
+/* Button primary colors */
+.btn-primary,
+.btn-primary-dark {
+	background-color: var(--primary-color);
+	border-color: var(--primary-color);
+}
+
+.btn-primary:hover,
+.btn-primary-dark:hover {
+	background-color: var(--primary-hover);
+	border-color: var(--primary-hover);
+}
+</style>

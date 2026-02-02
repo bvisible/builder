@@ -53,16 +53,11 @@
 				</div>
 				<!-- Editor Header Preview -->
 				<div
-					v-if="editorHeaderBlock && showBlocks"
+					v-if="configuredHeaderHtml?.configured && showBlocks"
 					class="editor-preview-block editor-header-preview pointer-events-none relative opacity-60"
 					:style="{ borderBottom: '2px dashed var(--outline-gray-3)' }">
-					<BuilderBlock
-						:block="editorHeaderBlock"
-						:style="variables"
-						:key="editorHeaderBlock.blockId + '-header-preview'"
-						:readonly="true"
-						:breakpoint="breakpoint.device"
-						:data="pageStore.pageData" />
+					<component :is="'style'" v-if="configuredHeaderHtml.css">{{ configuredHeaderHtml.css }}</component>
+					<div v-html="configuredHeaderHtml.html"></div>
 					<div class="absolute bottom-2 right-2 z-10 rounded bg-surface-gray-2 px-2 py-0.5 text-xs text-ink-gray-5">
 						Header Preview
 					</div>
@@ -79,16 +74,11 @@
 					:data="pageStore.pageData" />
 				<!-- Editor Footer Preview -->
 				<div
-					v-if="editorFooterBlock && showBlocks"
+					v-if="configuredFooterHtml?.configured && showBlocks"
 					class="editor-preview-block editor-footer-preview pointer-events-none relative opacity-60"
 					:style="{ borderTop: '2px dashed var(--outline-gray-3)' }">
-					<BuilderBlock
-						:block="editorFooterBlock"
-						:style="variables"
-						:key="editorFooterBlock.blockId + '-footer-preview'"
-						:readonly="true"
-						:breakpoint="breakpoint.device"
-						:data="pageStore.pageData" />
+					<component :is="'style'" v-if="configuredFooterHtml.css">{{ configuredFooterHtml.css }}</component>
+					<div v-html="configuredFooterHtml.html"></div>
 					<div class="absolute top-1 right-2 rounded bg-surface-gray-2 px-2 py-0.5 text-xs text-ink-gray-5">
 						Footer Preview
 					</div>
@@ -132,7 +122,6 @@ import LoadingIcon from "@/components/Icons/Loading.vue";
 import useBuilderStore from "@/stores/builderStore";
 import useComponentStore from "@/stores/componentStore";
 import usePageStore from "@/stores/pageStore";
-import { builderSettings } from "@/data/builderSettings";
 import { BreakpointConfig, CanvasHistory } from "@/types/Builder/BuilderCanvas";
 import { getBlockObject, isCtrlOrCmd } from "@/utils/helpers";
 import { useBlockEventHandlers } from "@/utils/useBlockEventHandlers";
@@ -142,7 +131,7 @@ import { useCanvasDropZone } from "@/utils/useCanvasDropZone";
 import { useCanvasEvents } from "@/utils/useCanvasEvents";
 import { useCanvasUtils } from "@/utils/useCanvasUtils";
 import { useDark } from "@vueuse/core";
-import { FeatherIcon } from "frappe-ui";
+import { call, FeatherIcon } from "frappe-ui";
 import { Ref, computed, onMounted, provide, reactive, ref, watch } from "vue";
 import setPanAndZoom from "../utils/panAndZoom";
 import BlockSnapGuides from "./BlockSnapGuides.vue";
@@ -153,33 +142,27 @@ const builderStore = useBuilderStore();
 const pageStore = usePageStore();
 const componentStore = useComponentStore();
 
-// Editor preview header/footer
-const showEditorHeader = computed(() => builderSettings.doc?.show_header_in_editor && builderSettings.doc?.editor_header_component);
-const showEditorFooter = computed(() => builderSettings.doc?.show_footer_in_editor && builderSettings.doc?.editor_footer_component);
+// Header/footer HTML from Website Header Footer Config
+const configuredHeaderHtml = ref<{ html: string; css: string; configured: boolean } | null>(null);
+const configuredFooterHtml = ref<{ html: string; css: string; configured: boolean } | null>(null);
 
-const editorHeaderBlock = computed(() => {
-	if (!showEditorHeader.value) return null;
-	const componentName = builderSettings.doc?.editor_header_component;
-	if (!componentName) return null;
-	return componentStore.getComponentBlock(componentName);
-});
-
-const editorFooterBlock = computed(() => {
-	if (!showEditorFooter.value) return null;
-	const componentName = builderSettings.doc?.editor_footer_component;
-	if (!componentName) return null;
-	return componentStore.getComponentBlock(componentName);
-});
-
-// Load header/footer components when settings change
-watch([showEditorHeader, showEditorFooter], async () => {
-	if (showEditorHeader.value && builderSettings.doc?.editor_header_component) {
-		await componentStore.loadComponent(builderSettings.doc.editor_header_component);
+// Load header/footer HTML from Website Header Footer Config
+async function loadConfiguredHeaderFooter() {
+	try {
+		const [headerRes, footerRes] = await Promise.all([
+			call("builder.hf_utils.header_footer.get_editor_header_html"),
+			call("builder.hf_utils.header_footer.get_editor_footer_html"),
+		]);
+		configuredHeaderHtml.value = headerRes;
+		configuredFooterHtml.value = footerRes;
+	} catch (e) {
+		configuredHeaderHtml.value = { configured: false, html: "", css: "" };
+		configuredFooterHtml.value = { configured: false, html: "", css: "" };
 	}
-	if (showEditorFooter.value && builderSettings.doc?.editor_footer_component) {
-		await componentStore.loadComponent(builderSettings.doc.editor_footer_component);
-	}
-}, { immediate: true });
+}
+
+// Load header/footer on mount
+loadConfiguredHeaderFooter();
 
 const { cssVariables, darkCssVariables } = useBuilderVariable();
 const isDark = useDark({

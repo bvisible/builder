@@ -62,12 +62,34 @@
 </head>
 {% block page_content %}
 <body {{ body_attrs or "" }}>
-	{# Include webshop navbar/footer if templates exist #}
-	{% include "templates/includes/navbar/navbar.html" ignore missing %}
+	{# Include header/footer from Website Header Footer Config if configured #}
+	{%- set hf_config = get_header_footer_config() if get_header_footer_config is defined else None -%}
+
+	{# Inject theme CSS variables #}
+	{%- if hf_config -%}
+		{%- set theme = hf_config.get_theme_data() -%}
+		{% include "builder/templates/includes/header_footer/theme_variables.html" %}
+	{%- endif -%}
+
+	{%- if hf_config and hf_config.header_layout -%}
+		{%- set colors = hf_config.get_header_colors() -%}
+		{% include "builder/templates/includes/header_footer/header_styles.html" %}
+		{{ render_header(hf_config) | safe }}
+	{%- else -%}
+		{# Fallback to webshop navbar if no config #}
+		{% include "templates/includes/navbar/navbar.html" ignore missing %}
+	{%- endif -%}
 
 	{{ __content }}
 
-	{% include "templates/includes/footer/footer.html" ignore missing %}
+	{%- if hf_config and hf_config.footer_template -%}
+		{%- set footer_colors = hf_config.get_footer_colors() -%}
+		{% include "builder/templates/includes/header_footer/footer_styles.html" %}
+		{{ render_footer(hf_config) | safe }}
+	{%- else -%}
+		{# Fallback to webshop footer if no config #}
+		{% include "templates/includes/footer/footer.html" ignore missing %}
+	{%- endif -%}
 
 	{% include "templates/generators/webpage_scripts.html" %}
 </body>

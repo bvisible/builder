@@ -1,0 +1,113 @@
+{# Header Template for Website Header Footer Config #}
+{%- from "builder/templates/includes/header_footer/macros.html" import render_logo, render_menu, render_icons, render_cta, render_search_bar -%}
+
+{# Include search overlay if search icon mode is enabled #}
+{%- if icons.search -%}
+{% include "builder/templates/includes/header_footer/components/search_overlay.html" %}
+{%- endif -%}
+
+{# Include cart drawer if cart is enabled #}
+{%- if icons.cart -%}
+{% include "builder/templates/includes/header_footer/components/cart_drawer.html" %}
+{%- endif -%}
+
+<header class="site-header{% if sticky %} site-header--sticky{% endif %}{% if icons.search_bar_full %} site-header--with-search-bar{% endif %}" data-layout="{{ layout }}">
+	<div class="site-header__container">
+		{%- if layout == "B" -%}
+		{# Layout B: [Menu] [Logo centered] [Icons/CTA] #}
+		<div class="site-header__left">
+			{{ render_menu(menu_items, "left") }}
+		</div>
+		<div class="site-header__center">
+			{{ render_logo(logo) }}
+		</div>
+		<div class="site-header__right">
+			{%- if icons.search_bar -%}
+			{{ render_search_bar() }}
+			{%- endif -%}
+			{{ render_icons(icons) }}
+			{%- if cta -%}
+			{{ render_cta(cta) }}
+			{%- endif -%}
+		</div>
+		{%- elif menu_position == "right" -%}
+		{# Layout A - Menu Right: [Logo] [Menu] [Icons/CTA] #}
+		<div class="site-header__left">
+			{{ render_logo(logo) }}
+		</div>
+		<div class="site-header__center site-header__center--right">
+			{{ render_menu(menu_items, "right") }}
+		</div>
+		<div class="site-header__right">
+			{%- if icons.search_bar -%}
+			{{ render_search_bar() }}
+			{%- endif -%}
+			{{ render_icons(icons) }}
+			{%- if cta -%}
+			{{ render_cta(cta) }}
+			{%- endif -%}
+		</div>
+		{%- else -%}
+		{# Layout A - Menu Center: [Logo] [Menu centered] [Icons/CTA] #}
+		<div class="site-header__left">
+			{{ render_logo(logo) }}
+		</div>
+		<div class="site-header__center">
+			{{ render_menu(menu_items, "center") }}
+		</div>
+		<div class="site-header__right">
+			{%- if icons.search_bar -%}
+			{{ render_search_bar() }}
+			{%- endif -%}
+			{{ render_icons(icons) }}
+			{%- if cta -%}
+			{{ render_cta(cta) }}
+			{%- endif -%}
+		</div>
+		{%- endif -%}
+
+		{# Mobile burger menu button #}
+		<button class="site-header__burger" aria-label="Menu" aria-expanded="false">
+			<span class="burger-icon">
+				<span></span>
+				<span></span>
+				<span></span>
+			</span>
+		</button>
+	</div>
+
+	{# Mobile sidebar menu #}
+	<div class="site-header__mobile-menu" aria-hidden="true">
+		<div class="mobile-menu__overlay"></div>
+		<div class="mobile-menu__content">
+			<div class="mobile-menu__header">
+				{{ render_logo(logo) }}
+				<button class="mobile-menu__close" aria-label="Close menu">
+					{% include "builder/templates/includes/header_footer/icons/close.html" %}
+				</button>
+			</div>
+			<nav class="mobile-menu__nav">
+				{%- for item in menu_items -%}
+				<a href="{{ item.url }}" class="mobile-menu__link"
+				   {% if item.is_external or item.open_in_new_tab %}target="_blank" rel="noopener noreferrer"{% endif %}>
+					{{ item.label }}
+				</a>
+				{%- endfor -%}
+			</nav>
+			{%- if cta -%}
+			<div class="mobile-menu__cta">
+				{{ render_cta(cta) }}
+			</div>
+			{%- endif -%}
+		</div>
+	</div>
+
+	{# Full width search bar at bottom #}
+	{%- if icons.search_bar_full -%}
+	<div class="site-header__search-bar-full">
+		<div class="site-header__search-bar-full-container">
+			{{ render_search_bar() }}
+		</div>
+	</div>
+	{%- endif -%}
+</header>

@@ -55,10 +55,13 @@ website_generators = ["Builder Page"]
 # ----------
 
 # add methods and filters to jinja environment
-# jinja = {
-# "methods": "builder.utils.jinja_methods",
-# "filters": "builder.utils.jinja_filters"
-# }
+jinja = {
+	"methods": [
+		"builder.hf_utils.header_footer.render_header",
+		"builder.hf_utils.header_footer.render_footer",
+		"builder.hf_utils.header_footer.get_header_footer_config",
+	]
+}
 
 # Installation
 # ------------

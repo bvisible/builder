@@ -1066,3 +1066,319 @@ def reorder_client_scripts(script_order):
 
 	for idx, script_name in enumerate(script_order, start=1):
 		frappe.db.set_value("Builder Page Client Script", script_name, "idx", idx)
+
+
+# =============================================================================
+# WEBSITE HEADER FOOTER CONFIG API
+# =============================================================================
+
+@frappe.whitelist(allow_guest=True)
+def render_site_header():
+	"""
+	Render the site header from Website Header Footer Config.
+
+	Returns:
+		str: HTML for the header
+	"""
+	from builder.hf_utils.header_footer import render_header
+	return render_header()
+
+
+@frappe.whitelist(allow_guest=True)
+def render_site_footer():
+	"""
+	Render the site footer from Website Header Footer Config.
+
+	Returns:
+		str: HTML for the footer
+	"""
+	from builder.hf_utils.header_footer import render_footer
+	return render_footer()
+
+
+@frappe.whitelist()
+def get_header_layout_info():
+	"""
+	Get information about header layouts.
+
+	Returns:
+		dict: Available layouts with descriptions
+	"""
+	return {
+		"Logo | Menu Center | Icons": {
+			"layout": "A",
+			"menu": "center",
+			"description": "Logo on left, menu centered, icons and CTA on right"
+		},
+		"Logo | Menu Right | Icons": {
+			"layout": "A",
+			"menu": "right",
+			"description": "Logo on left, menu aligned right, icons and CTA on right"
+		},
+		"Menu Left | Logo Center | Icons": {
+			"layout": "B",
+			"menu": "left",
+			"description": "Menu on left, logo centered, icons and CTA on right"
+		}
+	}
+
+
+@frappe.whitelist()
+def get_search_type_info():
+	"""
+	Get information about search types.
+
+	Returns:
+		dict: Available search types with descriptions
+	"""
+	return {
+		"None": {
+			"description": "No search functionality"
+		},
+		"Icon (overlay)": {
+			"description": "Search icon that opens a slide-down overlay"
+		},
+		"Search Bar (inline)": {
+			"description": "Search bar displayed inline next to icons"
+		},
+		"Search Bar (full width bottom)": {
+			"description": "Full width search bar displayed below the header"
+		}
+	}
+
+
+@frappe.whitelist()
+def add_page_to_menu(page_name: str, label: str = None, url: str = None):
+	"""
+	Add a Builder Page to the Website Header Footer Config menu.
+
+	Args:
+		page_name: Name of the Builder Page
+		label: Menu label (defaults to page title)
+		url: Menu URL (defaults to page route)
+
+	Returns:
+		dict: The added menu item
+	"""
+	page = frappe.get_doc("Builder Page", page_name)
+
+	if not label:
+		label = page.page_title or page.page_name
+
+	if not url:
+		url = f"/{page.route}" if page.route else "/"
+
+	config = frappe.get_single("Website Header Footer Config")
+	config.append("menu_items", {
+		"label": label,
+		"url": url,
+		"is_external": False,
+		"open_in_new_tab": False,
+	})
+	config.save()
+
+	return {
+		"label": label,
+		"url": url,
+	}
+
+
+@frappe.whitelist()
+def auto_populate_menu_from_pages():
+	"""
+	Auto-populate the menu with all published Builder Pages.
+
+	Returns:
+		list: Added menu items
+	"""
+	pages = frappe.get_all(
+		"Builder Page",
+		filters={"published": 1},
+		fields=["name", "page_title", "route"],
+		order_by="modified desc"
+	)
+
+	config = frappe.get_single("Website Header Footer Config")
+
+	# Clear existing menu items
+	config.menu_items = []
+
+	added = []
+	for page in pages:
+		label = page.page_title or page.name
+		url = f"/{page.route}" if page.route else "/"
+
+		# Don't add duplicates
+		if any(item.url == url for item in config.menu_items):
+			continue
+
+		config.append("menu_items", {
+			"label": label,
+			"url": url,
+			"is_external": False,
+			"open_in_new_tab": False,
+		})
+		added.append({"label": label, "url": url})
+
+	config.save()
+	return added
+
+
+@frappe.whitelist()
+def apply_site_type_defaults(site_type: str):
+	"""
+	Apply default header/footer settings based on site type.
+
+	Args:
+		site_type: Type of site (vitrine, vitrine_user, blog, ecommerce, ecommerce_search)
+
+	Returns:
+		dict: Applied settings
+	"""
+	SITE_TYPE_DEFAULTS = {
+		"vitrine": {
+			"header_layout": "Logo | Menu Center | Icons",
+			"search_type": "None",
+			"show_cta": True,
+			"show_user": False,
+			"show_wishlist": False,
+			"show_cart": False,
+		},
+		"vitrine_user": {
+			"header_layout": "Logo | Menu Center | Icons",
+			"search_type": "None",
+			"show_cta": True,
+			"show_user": True,
+			"show_wishlist": False,
+			"show_cart": False,
+		},
+		"blog": {
+			"header_layout": "Logo | Menu Center | Icons",
+			"search_type": "Icon (overlay)",
+			"show_cta": True,
+			"show_user": True,
+			"show_wishlist": False,
+			"show_cart": False,
+		},
+		"ecommerce": {
+			"header_layout": "Logo | Menu Center | Icons",
+			"search_type": "Icon (overlay)",
+			"show_cta": False,
+			"show_user": True,
+			"show_wishlist": True,
+			"show_cart": True,
+		},
+		"ecommerce_search_inline": {
+			"header_layout": "Logo | Menu Center | Icons",
+			"search_type": "Search Bar (inline)",
+			"show_cta": False,
+			"show_user": True,
+			"show_wishlist": True,
+			"show_cart": True,
+		},
+		"ecommerce_search_full": {
+			"header_layout": "Logo | Menu Center | Icons",
+			"search_type": "Search Bar (full width bottom)",
+			"show_cta": False,
+			"show_user": True,
+			"show_wishlist": True,
+			"show_cart": True,
+		},
+	}
+
+	defaults = SITE_TYPE_DEFAULTS.get(site_type, SITE_TYPE_DEFAULTS["vitrine"])
+
+	config = frappe.get_single("Website Header Footer Config")
+
+	for key, value in defaults.items():
+		if hasattr(config, key):
+			setattr(config, key, value)
+
+	config.save()
+
+	return defaults
+
+
+# =============================================================================
+# NEWSLETTER SUBSCRIPTION API
+# =============================================================================
+
+@frappe.whitelist(allow_guest=True)
+def subscribe_to_newsletter(email: str, email_group: str = None):
+	"""
+	Subscribe an email address to an Email Group (newsletter).
+
+	Args:
+		email: Email address to subscribe
+		email_group: Name of the Email Group (optional, uses config default if not provided)
+
+	Returns:
+		dict with success status and message
+	"""
+	from frappe.utils import validate_email_address
+
+	# Validate email
+	if not email:
+		frappe.throw(_("Email is required"))
+
+	email = email.strip().lower()
+	if not validate_email_address(email, throw=False):
+		frappe.throw(_("Invalid email address"))
+
+	# Get email group from config if not provided
+	if not email_group:
+		config = frappe.get_single("Website Header Footer Config")
+		email_group = getattr(config, "newsletter_email_group", None)
+
+	if not email_group:
+		frappe.throw(_("No Email Group configured for newsletter"))
+
+	# Check if Email Group exists
+	if not frappe.db.exists("Email Group", email_group):
+		frappe.throw(_("Email Group not found"))
+
+	# Check if already subscribed
+	if frappe.db.exists("Email Group Member", {"email_group": email_group, "email": email}):
+		return {
+			"success": True,
+			"message": _("You are already subscribed to our newsletter"),
+			"already_subscribed": True
+		}
+
+	# Add to Email Group
+	try:
+		doc = frappe.get_doc({
+			"doctype": "Email Group Member",
+			"email_group": email_group,
+			"email": email
+		})
+		doc.insert(ignore_permissions=True)
+
+		# Update subscriber count
+		frappe.get_doc("Email Group", email_group).update_total_subscribers()
+
+		# Send welcome email if configured
+		welcome_template = frappe.db.get_value("Email Group", email_group, "welcome_email_template")
+		if welcome_template:
+			try:
+				template = frappe.get_doc("Email Template", welcome_template)
+				message = frappe.render_template(template.response_, {"email": email, "email_group": email_group})
+				frappe.sendmail(email, subject=template.subject, message=message)
+			except Exception:
+				pass  # Don't fail subscription if welcome email fails
+
+		return {
+			"success": True,
+			"message": _("Thank you for subscribing to our newsletter!"),
+			"already_subscribed": False
+		}
+
+	except frappe.DuplicateEntryError:
+		return {
+			"success": True,
+			"message": _("You are already subscribed to our newsletter"),
+			"already_subscribed": True
+		}
+	except Exception as e:
+		frappe.log_error("Newsletter subscription failed", str(e))
+		frappe.throw(_("Failed to subscribe. Please try again later."))
