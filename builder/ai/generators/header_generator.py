@@ -11,7 +11,7 @@ from builder.ai.providers import get_provider
 from builder.ai.schemas.header_schema import HeaderConfig, NavItem, HEADER_TYPE_DESCRIPTIONS
 from builder.ai.design_system import get_theme
 from builder.ai.prompts import get_header_prompt
-from builder.ai.templates.headers import build_header_from_config
+from builder.ai.templates.headers import build_header
 
 
 class HeaderGenerator:
@@ -106,9 +106,8 @@ class HeaderGenerator:
                 pages=pages
             )
 
-        theme_data = get_theme(theme)
-        # Use template-based generation
-        return build_header_from_config(config, theme_data)
+        # Use template-based generation (theme is applied via CSS variables)
+        return build_header(config)
 
     def _get_features_for_type(self, site_type: str) -> list[str]:
         """Get expected features for site type"""
@@ -125,39 +124,34 @@ class HeaderGenerator:
 
     def _get_default_config(self, site_type: str, pages: list[str] = None) -> HeaderConfig:
         """Get default config if AI generation fails"""
+        # Use factory methods when available
+        factory_methods = {
+            "single_page": lambda: HeaderConfig.for_single_page(sections=pages),
+            "ecommerce": lambda: HeaderConfig.for_ecommerce(categories=pages),
+            "saas": lambda: HeaderConfig.for_saas(pages=pages),
+            "portfolio": lambda: HeaderConfig.for_portfolio(),
+            "blog": lambda: HeaderConfig.for_blog(categories=pages),
+        }
+
+        if site_type in factory_methods:
+            return factory_methods[site_type]()
+
+        # Default fallback for unknown site types
         pages = pages or ["Home", "About", "Services", "Contact"]
+        nav_items = [
+            NavItem(
+                label=page,
+                href=f"/{page.lower().replace(' ', '-')}" if page != "Home" else "/"
+            )
+            for page in pages
+        ]
 
-        # Use anchor links for single-page sites, URLs for multi-page
-        if site_type == "single_page":
-            menu_items = [
-                NavItem(
-                    label=page,
-                    href=f"#{page.lower().replace(' ', '-')}" if page != "Home" else "#hero"
-                )
-                for page in pages
-            ]
-        else:
-            menu_items = [
-                NavItem(
-                    label=page,
-                    href=f"/{page.lower().replace(' ', '-')}" if page != "Home" else "/"
-                )
-                for page in pages
-            ]
-
-        # Use image logo by default with standard path
         return HeaderConfig(
-            type=site_type,
-            layout="logo_left_menu_right",
+            layout="logo_menu_cta",
             logo_type="image",
             logo_value="/files/logo-default.png",
-            logo_alt="Logo",
-            menu_items=menu_items,
+            nav_items=nav_items,
             sticky=True,
-            show_login=site_type in ["multi_page_auth", "saas", "ecommerce"],
-            show_signup=site_type in ["multi_page_auth", "saas"],
-            show_cart=site_type == "ecommerce",
-            show_search=site_type in ["ecommerce", "blog"],
         )
 
 
