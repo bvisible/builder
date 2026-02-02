@@ -10,14 +10,21 @@ from builder.ai.schemas.block_schema import (
 )
 from builder.ai.schemas.header_schema import (
     HeaderConfig,
-    MenuItem,
-    HeaderType,
+    NavItem,
+    HeaderLayout,
+    LogoType,
+    SITE_TYPE_HEADER_DEFAULTS,
+    HEADER_TYPE_DESCRIPTIONS,
 )
 from builder.ai.schemas.footer_schema import (
     FooterConfig,
     FooterColumn,
     FooterType,
 )
+
+# Backwards compatibility alias
+MenuItem = NavItem
+HeaderType = HeaderLayout
 
 __all__ = [
     # Block schemas
@@ -28,8 +35,13 @@ __all__ = [
     "SectionInfo",
     # Header schemas
     "HeaderConfig",
-    "MenuItem",
-    "HeaderType",
+    "NavItem",
+    "MenuItem",  # Alias for backwards compatibility
+    "HeaderLayout",
+    "HeaderType",  # Alias for backwards compatibility
+    "LogoType",
+    "SITE_TYPE_HEADER_DEFAULTS",
+    "HEADER_TYPE_DESCRIPTIONS",
     # Footer schemas
     "FooterConfig",
     "FooterColumn",
