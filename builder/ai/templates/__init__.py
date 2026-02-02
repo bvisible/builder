@@ -3,11 +3,6 @@ AI Templates Module
 Pre-built block templates for consistent AI generation.
 """
 
-from builder.ai.templates.headers import (
-    HEADER_TEMPLATES,
-    get_header_template,
-    build_header_from_config,
-)
 from builder.ai.templates.footers import (
     FOOTER_TEMPLATES,
     get_footer_template,
@@ -50,9 +45,9 @@ from builder.ai.templates.webshop_footers import (
     get_webshop_footer_variations,
 )
 
-# New configurable header system
+# Configurable header system
 from builder.ai.templates.headers import (
-    build_header as build_configurable_header,
+    build_header,
     build_header_with_script,
     build_ecommerce_header,
     build_saas_header,
@@ -77,10 +72,6 @@ from builder.ai.templates.headers import (
 )
 
 __all__ = [
-    # Headers (legacy)
-    "HEADER_TEMPLATES",
-    "get_header_template",
-    "build_header_from_config",
     # Footers
     "FOOTER_TEMPLATES",
     "get_footer_template",
@@ -118,8 +109,8 @@ __all__ = [
     "build_webshop_footer_minimal",
     "build_webshop_footer_newsletter",
     "get_webshop_footer_variations",
-    # New configurable header system
-    "build_configurable_header",
+    # Configurable header system
+    "build_header",
     "build_header_with_script",
     "build_ecommerce_header",
     "build_saas_header",

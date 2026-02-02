@@ -5,7 +5,7 @@ These headers integrate with webshop features: cart, wishlist, search, user acco
 """
 
 from typing import Optional
-from builder.ai.schemas.header_schema import HeaderConfig, MenuItem
+from builder.ai.schemas.header_schema import HeaderConfig, NavItem
 
 
 # Default logo path for all webshop headers
@@ -55,11 +55,11 @@ def _build_webshop_logo(config: HeaderConfig = None, style: str = "standard") ->
 def _build_webshop_nav(items: list[MenuItem] = None) -> dict:
     """Build navigation for webshop"""
     default_items = [
-        MenuItem(label="Home", href="/"),
-        MenuItem(label="Products", href="/all-products"),
-        MenuItem(label="Categories", href="/shop-by-category"),
-        MenuItem(label="About", href="/about"),
-        MenuItem(label="Contact", href="/contact"),
+        NavItem(label="Home", href="/"),
+        NavItem(label="Products", href="/all-products"),
+        NavItem(label="Categories", href="/shop-by-category"),
+        NavItem(label="About", href="/about"),
+        NavItem(label="Contact", href="/contact"),
     ]
     items = items or default_items
 
@@ -520,8 +520,8 @@ def build_webshop_header_minimal(config: HeaderConfig = None) -> dict:
                 },
                 "children": [
                     _build_webshop_nav(config.menu_items if config else [
-                        MenuItem(label="Shop", href="/all-products"),
-                        MenuItem(label="About", href="/about"),
+                        NavItem(label="Shop", href="/all-products"),
+                        NavItem(label="About", href="/about"),
                     ]),
                     _build_webshop_actions(
                         show_search=False,
@@ -709,11 +709,11 @@ def build_webshop_header_split(config: HeaderConfig = None) -> dict:
     Layout: Nav-Left | Logo | Nav-Right | Actions
     """
     items = config.menu_items if config else [
-        MenuItem(label="Home", href="/"),
-        MenuItem(label="Products", href="/all-products"),
-        MenuItem(label="Categories", href="/shop-by-category"),
-        MenuItem(label="About", href="/about"),
-        MenuItem(label="Contact", href="/contact"),
+        NavItem(label="Home", href="/"),
+        NavItem(label="Products", href="/all-products"),
+        NavItem(label="Categories", href="/shop-by-category"),
+        NavItem(label="About", href="/about"),
+        NavItem(label="Contact", href="/contact"),
     ]
 
     # Split items in half

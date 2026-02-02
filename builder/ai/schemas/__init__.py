@@ -22,10 +22,6 @@ from builder.ai.schemas.footer_schema import (
     FooterType,
 )
 
-# Backwards compatibility alias
-MenuItem = NavItem
-HeaderType = HeaderLayout
-
 __all__ = [
     # Block schemas
     "FrappeBlock",
@@ -36,9 +32,7 @@ __all__ = [
     # Header schemas
     "HeaderConfig",
     "NavItem",
-    "MenuItem",  # Alias for backwards compatibility
     "HeaderLayout",
-    "HeaderType",  # Alias for backwards compatibility
     "LogoType",
     "SITE_TYPE_HEADER_DEFAULTS",
     "HEADER_TYPE_DESCRIPTIONS",
