@@ -51,6 +51,15 @@ header_block = build_header(config)
 """
 
 from builder.ai.schemas.header_schema import HeaderConfig, NavItem
+
+# =============================================================================
+# BACKWARDS COMPATIBILITY - Import from legacy module
+# =============================================================================
+from builder.ai.templates.headers_legacy import (
+    HEADER_TEMPLATES,
+    get_header_template,
+    build_header_from_config,
+)
 from builder.ai.templates.headers.layouts import (
     build_layout,
     build_logo,
@@ -322,4 +331,8 @@ __all__ = [
     "generate_unique_id",
     "get_header_base_styles",
     "get_header_mobile_styles",
+    # Backwards compatibility (legacy)
+    "HEADER_TEMPLATES",
+    "get_header_template",
+    "build_header_from_config",
 ]

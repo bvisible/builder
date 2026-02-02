@@ -4,7 +4,10 @@ Pre-built header structures for different site types.
 """
 
 from typing import Optional
-from builder.ai.schemas.header_schema import HeaderConfig, MenuItem
+from builder.ai.schemas.header_schema import HeaderConfig, NavItem
+
+# Backwards compatibility alias
+MenuItem = NavItem
 
 
 def _generate_menu_items(config: HeaderConfig, theme_styles: dict = None) -> list[dict]:
