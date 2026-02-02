@@ -50,8 +50,34 @@ from builder.ai.templates.webshop_footers import (
     get_webshop_footer_variations,
 )
 
+# New configurable header system
+from builder.ai.templates.headers import (
+    build_header as build_configurable_header,
+    build_header_with_script,
+    build_ecommerce_header,
+    build_saas_header,
+    build_portfolio_header,
+    build_blog_header,
+    build_single_page_header,
+    build_layout,
+    build_logo,
+    build_nav,
+    build_cta,
+    build_icons,
+    LAYOUT_BUILDERS,
+    build_search_icon,
+    build_cart_icon,
+    build_wishlist_icon,
+    build_user_icon,
+    build_search_bar,
+    build_icons_group,
+    build_burger_button,
+    build_sidebar,
+    get_auto_burger_script,
+)
+
 __all__ = [
-    # Headers
+    # Headers (legacy)
     "HEADER_TEMPLATES",
     "get_header_template",
     "build_header_from_config",
@@ -92,4 +118,27 @@ __all__ = [
     "build_webshop_footer_minimal",
     "build_webshop_footer_newsletter",
     "get_webshop_footer_variations",
+    # New configurable header system
+    "build_configurable_header",
+    "build_header_with_script",
+    "build_ecommerce_header",
+    "build_saas_header",
+    "build_portfolio_header",
+    "build_blog_header",
+    "build_single_page_header",
+    "build_layout",
+    "build_logo",
+    "build_nav",
+    "build_cta",
+    "build_icons",
+    "LAYOUT_BUILDERS",
+    "build_search_icon",
+    "build_cart_icon",
+    "build_wishlist_icon",
+    "build_user_icon",
+    "build_search_bar",
+    "build_icons_group",
+    "build_burger_button",
+    "build_sidebar",
+    "get_auto_burger_script",
 ]

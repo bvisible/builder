@@ -513,6 +513,246 @@ def build_webshop_footer(
 	)
 
 
+# =============================================================================
+# CONFIGURABLE HEADER SYSTEM API
+# =============================================================================
+
+@frappe.whitelist()
+def get_header_layouts():
+	"""
+	Get available header layouts for the configurable header system.
+
+	Returns:
+		list[dict]: List of layouts with name and description
+	"""
+	return [
+		{
+			"name": "logo_menu_cta",
+			"label": "Logo - Menu - CTA",
+			"description": "Standard layout: Logo left, navigation center-right, icons and CTA on right",
+			"preview": "[Logo] [Nav...] [Icons] [CTA]"
+		},
+		{
+			"name": "menu_logo_cta",
+			"label": "Menu - Logo - CTA",
+			"description": "Centered logo layout: Navigation on left, logo centered, icons and CTA on right",
+			"preview": "[Nav...] [Logo] [Icons] [CTA]"
+		},
+		{
+			"name": "logo_cta_menu",
+			"label": "Logo - CTA - Menu",
+			"description": "CTA priority layout: Logo and CTA on left, navigation and icons on right",
+			"preview": "[Logo] [CTA] [Nav...] [Icons]"
+		},
+	]
+
+
+@frappe.whitelist()
+def get_header_toggles():
+	"""
+	Get available feature toggles for the configurable header system.
+
+	Returns:
+		list[dict]: List of toggles with name, label, and description
+	"""
+	return [
+		{
+			"name": "show_search_bar",
+			"label": "Search Bar",
+			"description": "Full search input bar (takes more space)",
+			"icon": "search"
+		},
+		{
+			"name": "show_search",
+			"label": "Search Icon",
+			"description": "Search magnifying glass icon",
+			"icon": "search"
+		},
+		{
+			"name": "show_wishlist",
+			"label": "Wishlist",
+			"description": "Wishlist/favorites heart icon",
+			"icon": "heart"
+		},
+		{
+			"name": "show_cart",
+			"label": "Cart",
+			"description": "Shopping cart icon",
+			"icon": "shopping-bag"
+		},
+		{
+			"name": "show_user",
+			"label": "User",
+			"description": "User account icon",
+			"icon": "user"
+		},
+	]
+
+
+@frappe.whitelist()
+def build_configurable_header(
+	layout: str = "logo_menu_cta",
+	logo_type: str = "text",
+	logo_value: str = "Brand",
+	logo_url: str = "/",
+	nav_items: str = None,  # JSON string
+	cta_text: str = None,
+	cta_url: str = "#",
+	show_search: bool = False,
+	show_search_bar: bool = False,
+	show_wishlist: bool = False,
+	show_cart: bool = False,
+	show_user: bool = False,
+	sticky: bool = True,
+	transparent: bool = False,
+	blur_on_scroll: bool = False,
+	include_sidebar: bool = True,
+):
+	"""
+	Build a header using the new configurable header system.
+
+	Args:
+		layout: Header layout (logo_menu_cta, menu_logo_cta, logo_cta_menu)
+		logo_type: "text" or "image"
+		logo_value: Logo text or image URL
+		logo_url: Link destination for logo
+		nav_items: JSON array of navigation items [{label, href, is_external?}]
+		cta_text: CTA button text (None = no CTA)
+		cta_url: CTA button URL
+		show_search: Show search icon
+		show_search_bar: Show full search bar
+		show_wishlist: Show wishlist icon
+		show_cart: Show cart icon
+		show_user: Show user icon
+		sticky: Header sticks to top on scroll
+		transparent: Transparent background
+		blur_on_scroll: Add blur effect when scrolling
+		include_sidebar: Include mobile sidebar
+
+	Returns:
+		dict: Frappe Builder block for header
+	"""
+	from builder.ai.templates.headers import build_header
+	from builder.ai.schemas.header_schema import HeaderConfig, NavItem
+
+	# Parse nav_items if provided as JSON string
+	parsed_nav_items = []
+	if nav_items:
+		try:
+			items = json.loads(nav_items) if isinstance(nav_items, str) else nav_items
+			for item in items:
+				if isinstance(item, dict):
+					parsed_nav_items.append(NavItem(
+						label=item.get("label", ""),
+						href=item.get("href", "#"),
+						is_external=item.get("is_external", False),
+					))
+				else:
+					parsed_nav_items.append(NavItem(label=str(item), href="#"))
+		except json.JSONDecodeError:
+			pass
+
+	# Handle boolean conversion from string (Frappe form submission)
+	def to_bool(val):
+		if isinstance(val, bool):
+			return val
+		if isinstance(val, str):
+			return val.lower() in ("true", "1", "yes")
+		return bool(val)
+
+	# Create config
+	config = HeaderConfig(
+		layout=layout,
+		logo_type=logo_type,
+		logo_value=logo_value,
+		logo_url=logo_url,
+		nav_items=parsed_nav_items,
+		cta_text=cta_text if cta_text else None,
+		cta_url=cta_url,
+		show_search=to_bool(show_search),
+		show_search_bar=to_bool(show_search_bar),
+		show_wishlist=to_bool(show_wishlist),
+		show_cart=to_bool(show_cart),
+		show_user=to_bool(show_user),
+		sticky=to_bool(sticky),
+		transparent=to_bool(transparent),
+		blur_on_scroll=to_bool(blur_on_scroll),
+	)
+
+	return build_header(config, include_sidebar=to_bool(include_sidebar))
+
+
+@frappe.whitelist()
+def build_header_for_site_type(
+	site_type: str = "multi_page",
+	logo: str = "Brand",
+	logo_type: str = "text",
+	nav_items: str = None,  # JSON string
+):
+	"""
+	Build a header optimized for a specific site type.
+
+	Uses intelligent defaults based on site type (ecommerce, saas, portfolio, etc.).
+
+	Args:
+		site_type: Type of site (ecommerce, saas, portfolio, blog, single_page, multi_page)
+		logo: Logo text or image URL
+		logo_type: "text" or "image"
+		nav_items: JSON array of navigation items (overrides defaults)
+
+	Returns:
+		dict: Frappe Builder block for header
+	"""
+	from builder.ai.templates.headers import (
+		build_ecommerce_header,
+		build_saas_header,
+		build_portfolio_header,
+		build_blog_header,
+		build_single_page_header,
+		build_header,
+	)
+	from builder.ai.schemas.header_schema import HeaderConfig, NavItem, SITE_TYPE_HEADER_DEFAULTS
+
+	# Parse nav_items if provided
+	parsed_nav_items = None
+	if nav_items:
+		try:
+			items = json.loads(nav_items) if isinstance(nav_items, str) else nav_items
+			parsed_nav_items = [
+				NavItem(
+					label=item.get("label", str(item)) if isinstance(item, dict) else str(item),
+					href=item.get("href", "#") if isinstance(item, dict) else "#",
+				)
+				for item in items
+			]
+		except json.JSONDecodeError:
+			pass
+
+	# Use convenience functions for known site types
+	if site_type == "ecommerce":
+		return build_ecommerce_header(logo=logo, logo_type=logo_type)
+	elif site_type == "saas":
+		return build_saas_header(logo=logo, logo_type=logo_type)
+	elif site_type == "portfolio":
+		return build_portfolio_header(logo=logo, logo_type=logo_type)
+	elif site_type == "blog":
+		return build_blog_header(logo=logo, logo_type=logo_type)
+	elif site_type == "single_page":
+		return build_single_page_header(logo=logo, logo_type=logo_type)
+
+	# Default: use site type defaults with custom config
+	defaults = SITE_TYPE_HEADER_DEFAULTS.get(site_type, SITE_TYPE_HEADER_DEFAULTS["multi_page"])
+
+	config = HeaderConfig(
+		logo_type=logo_type,
+		logo_value=logo,
+		nav_items=parsed_nav_items or [],
+		**defaults
+	)
+
+	return build_header(config)
+
+
 @frappe.whitelist()
 def get_posthog_settings():
 	can_record_session = False

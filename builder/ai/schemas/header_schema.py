@@ -1,7 +1,11 @@
 """
 Header Configuration Schemas
-Defines the declarative header types and configurations.
-The AI only needs to fill in the data - the structure comes from templates.
+Defines the declarative header types and configurations for the configurable header system.
+
+The system supports:
+- 3 base layouts: logo_menu_cta, menu_logo_cta, logo_cta_menu
+- 5 feature toggles: show_user, show_search, show_wishlist, show_cart, show_search_bar
+- Auto-burger menu with sidebar slide-in
 """
 
 from __future__ import annotations
@@ -9,82 +13,110 @@ from typing import Optional, Literal
 from pydantic import BaseModel, Field
 
 
-# Header types with their characteristics
-HeaderType = Literal[
-    "single_page",       # Simple header for one-page sites
-    "multi_page",        # Standard navigation for multi-page sites
-    "multi_page_auth",   # Multi-page with login/signup
-    "ecommerce",         # E-commerce with cart, search, wishlist, user
-    "blog",              # Blog/magazine style
-    "portfolio",         # Minimal portfolio style
-    "saas",              # SaaS product header
-    "documentation",     # Documentation site header
-]
+# =============================================================================
+# BASE TYPES
+# =============================================================================
 
-# Layout variations for header arrangement
+# The 3 base layouts
 HeaderLayout = Literal[
-    "logo_left_menu_right",       # Logo left, menu on right (most common)
-    "logo_left_menu_center",      # Logo left, menu centered
-    "logo_center_menu_below",     # Logo centered, menu below
-    "logo_center_menu_split",     # Logo centered, menu split on sides
-    "hamburger_always",           # Always show hamburger menu
-    "hamburger_mobile",           # Hamburger on mobile only
+    "logo_menu_cta",   # Layout A: [Logo] [Nav...] [Icons] [CTA] - Standard, versatile
+    "menu_logo_cta",   # Layout B: [Nav...] [Logo] [Icons] [CTA] - Centered logo
+    "logo_cta_menu",   # Layout C: [Logo] [CTA] [Nav...] [Icons] - CTA priority
 ]
 
-# Logo types
-LogoType = Literal["image", "text", "svg", "icon_text"]
+# Logo display types
+LogoType = Literal["text", "image"]
 
 
-class MenuItem(BaseModel):
-    """Menu item configuration"""
+# =============================================================================
+# NAVIGATION ITEM
+# =============================================================================
+
+class NavItem(BaseModel):
+    """Navigation menu item configuration"""
     label: str = Field(description="Display text for the menu item")
-    href: str = Field(description="Link URL (can be anchor #section or page /about)")
-    is_cta: bool = Field(default=False, description="Is this a call-to-action button?")
+    href: str = Field(default="#", description="Link URL (anchor #section or page /about)")
     is_external: bool = Field(default=False, description="Opens in new tab?")
-    icon: Optional[str] = Field(default=None, description="Icon name (for icon menus)")
-    children: Optional[list["MenuItem"]] = Field(default=None, description="Dropdown items")
+    icon: Optional[str] = Field(default=None, description="Optional icon name")
+    children: Optional[list["NavItem"]] = Field(default=None, description="Dropdown items")
 
 
 # Rebuild for forward reference
-MenuItem.model_rebuild()
+NavItem.model_rebuild()
 
+
+# =============================================================================
+# HEADER CONFIGURATION
+# =============================================================================
 
 class HeaderConfig(BaseModel):
     """
     Declarative header configuration.
-    The AI fills in the content data, templates handle the structure.
+    The configuration defines what features to show - templates handle the structure.
     """
-    # Type and layout
-    type: HeaderType = Field(
-        default="multi_page",
-        description="Type of header based on site purpose"
-    )
+    # Layout selection (one of the 3 base layouts)
     layout: HeaderLayout = Field(
-        default="logo_left_menu_right",
-        description="Visual arrangement of header elements"
+        default="logo_menu_cta",
+        description="Base layout arrangement"
     )
 
     # Logo configuration
     logo_type: LogoType = Field(
-        default="image",
-        description="Type of logo to display"
+        default="text",
+        description="Type of logo to display (text or image)"
     )
     logo_value: str = Field(
-        default="/files/logo-default.png",
-        description="Logo text, image URL, or SVG content"
+        default="Brand",
+        description="Logo text or image URL"
+    )
+    logo_url: str = Field(
+        default="/",
+        description="Link destination when clicking logo"
     )
     logo_alt: Optional[str] = Field(
         default="Logo",
         description="Alt text for logo image"
     )
 
-    # Navigation
-    menu_items: list[MenuItem] = Field(
+    # Feature toggles (the 5 icons)
+    show_user: bool = Field(
+        default=False,
+        description="Show user/account icon"
+    )
+    show_search: bool = Field(
+        default=False,
+        description="Show search icon (magnifying glass)"
+    )
+    show_wishlist: bool = Field(
+        default=False,
+        description="Show wishlist/favorites icon (heart)"
+    )
+    show_cart: bool = Field(
+        default=False,
+        description="Show shopping cart icon"
+    )
+    show_search_bar: bool = Field(
+        default=False,
+        description="Show full search bar (takes more space)"
+    )
+
+    # Navigation items
+    nav_items: list[NavItem] = Field(
         default_factory=list,
         description="Main navigation menu items"
     )
 
-    # Behavior
+    # CTA button (optional)
+    cta_text: Optional[str] = Field(
+        default=None,
+        description="Call-to-action button text (None = no CTA)"
+    )
+    cta_url: str = Field(
+        default="#",
+        description="CTA button destination URL"
+    )
+
+    # Behavior options
     sticky: bool = Field(
         default=True,
         description="Header sticks to top on scroll"
@@ -98,130 +130,242 @@ class HeaderConfig(BaseModel):
         description="Add blur effect when scrolling"
     )
 
-    # E-commerce specific
-    show_cart: bool = Field(default=False, description="Show shopping cart icon")
-    show_search: bool = Field(default=False, description="Show search bar/icon")
-    show_wishlist: bool = Field(default=False, description="Show wishlist icon")
-    show_user_menu: bool = Field(default=False, description="Show user account menu")
+    # Icon URLs (optional overrides)
+    user_url: str = Field(default="/account", description="User icon link")
+    search_url: str = Field(default="/search", description="Search icon link")
+    wishlist_url: str = Field(default="/wishlist", description="Wishlist icon link")
+    cart_url: str = Field(default="/cart", description="Cart icon link")
 
-    # Auth specific
-    show_login: bool = Field(default=False, description="Show login button")
-    show_signup: bool = Field(default=False, description="Show signup button")
-    login_text: str = Field(default="Login", description="Login button text")
-    signup_text: str = Field(default="Sign Up", description="Signup button text")
-
-    # Blog/Docs specific
-    show_categories: bool = Field(default=False, description="Show category navigation")
-    categories: Optional[list[MenuItem]] = Field(default=None, description="Category menu items")
-
-    # Styling hints (AI can suggest, templates implement)
-    style_hints: Optional[dict] = Field(
-        default=None,
-        description="Styling suggestions (colors, fonts, etc.)"
-    )
+    # ==========================================================================
+    # FACTORY METHODS
+    # ==========================================================================
 
     @classmethod
-    def for_single_page(cls, logo: str = None, sections: list[str] = None) -> "HeaderConfig":
+    def for_single_page(
+        cls,
+        logo: str = "Brand",
+        sections: list[str] = None,
+        logo_type: LogoType = "text"
+    ) -> "HeaderConfig":
         """Create config for single-page site with anchor navigation"""
-        sections = sections or ["Home", "Features", "About", "Contact"]
+        sections = sections or ["Features", "About", "Pricing", "Contact"]
         return cls(
-            type="single_page",
-            layout="logo_left_menu_right",
-            logo_type="image",
-            logo_value=logo or "/files/logo-default.png",
-            logo_alt="Logo",
-            menu_items=[
-                MenuItem(
+            layout="logo_menu_cta",
+            logo_type=logo_type,
+            logo_value=logo,
+            nav_items=[
+                NavItem(
                     label=section.title(),
-                    href=f"#{section.lower().replace(' ', '-')}" if section.lower() != "home" else "#hero"
+                    href=f"#{section.lower().replace(' ', '-')}"
                 )
                 for section in sections
             ],
+            cta_text="Get Started",
+            cta_url="#contact",
             sticky=True,
         )
 
     @classmethod
     def for_ecommerce(
         cls,
-        logo: str = None,
+        logo: str = "/files/logo-default.png",
         categories: list[str] = None,
         logo_type: LogoType = "image"
     ) -> "HeaderConfig":
         """Create config for e-commerce site"""
         categories = categories or ["Products", "New Arrivals", "Sale"]
         return cls(
-            type="ecommerce",
-            layout="logo_center_menu_below",
+            layout="logo_menu_cta",
             logo_type=logo_type,
-            logo_value=logo or "/files/logo-default.png",
-            logo_alt="Logo",
-            menu_items=[
-                MenuItem(label=cat, href=f"/shop-by-category/{cat.lower().replace(' ', '-')}")
+            logo_value=logo,
+            nav_items=[
+                NavItem(label=cat, href=f"/shop-by-category/{cat.lower().replace(' ', '-')}")
                 for cat in categories
             ],
-            sticky=True,
+            # E-commerce features
             show_cart=True,
             show_search=True,
             show_wishlist=True,
-            show_user_menu=True,
+            show_user=True,
+            # No CTA for e-commerce (icons are the CTAs)
+            cta_text=None,
+            sticky=True,
         )
 
     @classmethod
     def for_saas(
         cls,
-        logo: str = None,
-        features: list[str] = None,
-        has_auth: bool = True
+        logo: str = "ProductName",
+        pages: list[str] = None,
+        has_auth: bool = True,
+        logo_type: LogoType = "text"
     ) -> "HeaderConfig":
         """Create config for SaaS product"""
-        features = features or ["Product", "Solutions", "Resources"]
-        menu_items = [
-            MenuItem(label=feat, href=f"/{feat.lower().replace(' ', '-')}")
-            for feat in features
+        pages = pages or ["Features", "Pricing", "Resources"]
+        nav_items = [
+            NavItem(label=page, href=f"/{page.lower().replace(' ', '-')}")
+            for page in pages
         ]
-        menu_items.append(MenuItem(label="Pricing", href="/pricing"))
 
         return cls(
-            type="saas" if not has_auth else "multi_page_auth",
-            layout="logo_left_menu_right",
-            logo_type="image",
-            logo_value=logo or "/files/logo-default.png",
-            logo_alt="Logo",
-            menu_items=menu_items,
+            layout="logo_menu_cta",
+            logo_type=logo_type,
+            logo_value=logo,
+            nav_items=nav_items,
+            # SaaS typically has user login
+            show_user=has_auth,
+            show_search=False,
+            # CTA for signup/demo
+            cta_text="Start Free Trial" if has_auth else "Get Started",
+            cta_url="/signup" if has_auth else "#contact",
             sticky=True,
             blur_on_scroll=True,
-            show_login=has_auth,
-            show_signup=has_auth,
-            signup_text="Get Started",
+        )
+
+    @classmethod
+    def for_portfolio(
+        cls,
+        logo: str = "John Doe",
+        logo_type: LogoType = "text"
+    ) -> "HeaderConfig":
+        """Create config for portfolio site"""
+        return cls(
+            layout="menu_logo_cta",  # Centered logo works well for portfolios
+            logo_type=logo_type,
+            logo_value=logo,
+            nav_items=[
+                NavItem(label="Work", href="/work"),
+                NavItem(label="About", href="/about"),
+            ],
+            # Minimal icons for portfolio
+            show_user=False,
+            show_search=False,
+            show_wishlist=False,
+            show_cart=False,
+            # Contact as CTA
+            cta_text="Contact",
+            cta_url="/contact",
+            sticky=True,
+        )
+
+    @classmethod
+    def for_blog(
+        cls,
+        logo: str = "Blog Name",
+        categories: list[str] = None,
+        logo_type: LogoType = "text"
+    ) -> "HeaderConfig":
+        """Create config for blog site"""
+        categories = categories or ["Tech", "Design", "Business"]
+        return cls(
+            layout="logo_menu_cta",
+            logo_type=logo_type,
+            logo_value=logo,
+            nav_items=[
+                NavItem(label=cat, href=f"/category/{cat.lower()}")
+                for cat in categories
+            ] + [NavItem(label="About", href="/about")],
+            # Blog needs search
+            show_search=True,
+            show_user=False,
+            show_wishlist=False,
+            show_cart=False,
+            # Subscribe CTA
+            cta_text="Subscribe",
+            cta_url="#newsletter",
+            sticky=True,
         )
 
 
-# Header type descriptions for AI context
+# =============================================================================
+# SITE TYPE DEFAULTS
+# =============================================================================
+
+SITE_TYPE_HEADER_DEFAULTS = {
+    "ecommerce": {
+        "layout": "logo_menu_cta",
+        "show_cart": True,
+        "show_wishlist": True,
+        "show_user": True,
+        "show_search": True,
+        "cta_text": None,
+    },
+    "saas": {
+        "layout": "logo_menu_cta",
+        "show_user": True,
+        "show_search": False,
+        "show_wishlist": False,
+        "show_cart": False,
+        "cta_text": "Start Free Trial",
+    },
+    "portfolio": {
+        "layout": "menu_logo_cta",
+        "show_user": False,
+        "show_search": False,
+        "show_wishlist": False,
+        "show_cart": False,
+        "cta_text": "Contact",
+    },
+    "blog": {
+        "layout": "logo_menu_cta",
+        "show_search": True,
+        "show_user": False,
+        "show_wishlist": False,
+        "show_cart": False,
+        "cta_text": "Subscribe",
+    },
+    "single_page": {
+        "layout": "logo_menu_cta",
+        "show_user": False,
+        "show_search": False,
+        "show_wishlist": False,
+        "show_cart": False,
+        "cta_text": "Get Started",
+    },
+    "multi_page": {
+        "layout": "logo_menu_cta",
+        "show_user": False,
+        "show_search": False,
+        "show_wishlist": False,
+        "show_cart": False,
+        "cta_text": "Contact",
+    },
+    "documentation": {
+        "layout": "logo_menu_cta",
+        "show_search": True,
+        "show_search_bar": True,
+        "show_user": False,
+        "show_wishlist": False,
+        "show_cart": False,
+        "cta_text": None,
+    },
+}
+
+
+# =============================================================================
+# HEADER TYPE DESCRIPTIONS (for AI context)
+# =============================================================================
+
 HEADER_TYPE_DESCRIPTIONS = {
     "single_page": {
         "description": "Simple header for one-page landing sites",
         "features": ["Anchor navigation", "Smooth scroll", "Minimal design"],
-        "typical_items": ["Home", "Features", "About", "Contact"],
+        "typical_items": ["Features", "About", "Pricing", "Contact"],
     },
     "multi_page": {
         "description": "Standard header for multi-page websites",
         "features": ["Page navigation", "Dropdown menus", "Active states"],
         "typical_items": ["Home", "About", "Services", "Blog", "Contact"],
     },
-    "multi_page_auth": {
-        "description": "Multi-page with authentication options",
-        "features": ["Login/Signup buttons", "User dropdown", "Page navigation"],
-        "typical_items": ["Home", "Features", "Pricing", "Login", "Sign Up"],
-    },
     "ecommerce": {
         "description": "E-commerce header with shopping features",
-        "features": ["Search bar", "Cart icon", "Wishlist", "User menu", "Categories"],
-        "typical_items": ["Categories", "New Arrivals", "Sale", "Account", "Cart"],
+        "features": ["Search", "Cart", "Wishlist", "User account", "Categories"],
+        "typical_items": ["Products", "Categories", "New Arrivals", "Sale"],
     },
     "blog": {
         "description": "Blog or magazine style header",
         "features": ["Category navigation", "Search", "Subscribe button"],
-        "typical_items": ["Home", "Categories", "About", "Subscribe"],
+        "typical_items": ["Categories", "About", "Subscribe"],
     },
     "portfolio": {
         "description": "Minimal portfolio header",
@@ -231,21 +375,21 @@ HEADER_TYPE_DESCRIPTIONS = {
     "saas": {
         "description": "SaaS product header",
         "features": ["Product nav", "Pricing", "Login/Signup", "Demo CTA"],
-        "typical_items": ["Product", "Solutions", "Pricing", "Resources", "Login"],
+        "typical_items": ["Features", "Pricing", "Resources", "Login"],
     },
     "documentation": {
         "description": "Documentation site header",
-        "features": ["Search", "Version selector", "GitHub link"],
+        "features": ["Search bar", "Version selector", "GitHub link"],
         "typical_items": ["Docs", "API", "Examples", "GitHub"],
     },
 }
 
 
 __all__ = [
-    "HeaderType",
     "HeaderLayout",
     "LogoType",
-    "MenuItem",
+    "NavItem",
     "HeaderConfig",
+    "SITE_TYPE_HEADER_DEFAULTS",
     "HEADER_TYPE_DESCRIPTIONS",
 ]
