@@ -62,18 +62,12 @@
 </head>
 {% block page_content %}
 <body {{ body_attrs or "" }}>
-	{# Include webshop navbar if available - uses Builder Settings component #}
-	{% set has_webshop = "webshop" in frappe.get_installed_apps() %}
-	{% if has_webshop %}
-		{% include "templates/includes/navbar/navbar.html" ignore missing %}
-	{% endif %}
+	{# Include webshop navbar/footer if templates exist #}
+	{% include "templates/includes/navbar/navbar.html" ignore missing %}
 
 	{{ __content }}
 
-	{# Include webshop footer if available - uses Builder Settings component #}
-	{% if has_webshop %}
-		{% include "templates/includes/footer/footer.html" ignore missing %}
-	{% endif %}
+	{% include "templates/includes/footer/footer.html" ignore missing %}
 
 	{% include "templates/generators/webpage_scripts.html" %}
 </body>
