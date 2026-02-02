@@ -8,7 +8,7 @@ import frappe
 
 from builder.ai.config import get_ai_settings
 from builder.ai.providers import get_provider
-from builder.ai.schemas.header_schema import HeaderConfig, MenuItem, HEADER_TYPE_DESCRIPTIONS
+from builder.ai.schemas.header_schema import HeaderConfig, NavItem, HEADER_TYPE_DESCRIPTIONS
 from builder.ai.design_system import get_theme
 from builder.ai.prompts import get_header_prompt
 from builder.ai.templates.headers import build_header_from_config
@@ -130,7 +130,7 @@ class HeaderGenerator:
         # Use anchor links for single-page sites, URLs for multi-page
         if site_type == "single_page":
             menu_items = [
-                MenuItem(
+                NavItem(
                     label=page,
                     href=f"#{page.lower().replace(' ', '-')}" if page != "Home" else "#hero"
                 )
@@ -138,7 +138,7 @@ class HeaderGenerator:
             ]
         else:
             menu_items = [
-                MenuItem(
+                NavItem(
                     label=page,
                     href=f"/{page.lower().replace(' ', '-')}" if page != "Home" else "/"
                 )

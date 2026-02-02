@@ -257,12 +257,12 @@ def generate_header(
 
 	# Create config if logo is provided
 	if logo:
-		from builder.ai.schemas.header_schema import HeaderConfig, MenuItem
+		from builder.ai.schemas.header_schema import HeaderConfig, NavItem
 
 		menu_items = []
 		if page_list:
 			menu_items = [
-				MenuItem(label=p.strip(), href=f"/{p.strip().lower()}" if p.strip() != "Home" else "/")
+				NavItem(label=p.strip(), href=f"/{p.strip().lower()}" if p.strip() != "Home" else "/")
 				for p in page_list
 			]
 
@@ -454,7 +454,7 @@ def build_webshop_header(
 		dict: Frappe Builder block for header
 	"""
 	from builder.ai.templates.webshop_headers import build_webshop_header as build_header
-	from builder.ai.schemas.header_schema import HeaderConfig, MenuItem
+	from builder.ai.schemas.header_schema import HeaderConfig, NavItem
 
 	config = None
 	if logo or pages:
@@ -464,9 +464,9 @@ def build_webshop_header(
 				page_list = json.loads(pages) if isinstance(pages, str) else pages
 				for p in page_list:
 					if isinstance(p, dict):
-						menu_items.append(MenuItem(label=p.get("label", ""), href=p.get("href", "/")))
+						menu_items.append(NavItem(label=p.get("label", ""), href=p.get("href", "/")))
 					else:
-						menu_items.append(MenuItem(label=str(p), href=f"/{str(p).lower()}"))
+						menu_items.append(NavItem(label=str(p), href=f"/{str(p).lower()}"))
 			except json.JSONDecodeError:
 				pass
 

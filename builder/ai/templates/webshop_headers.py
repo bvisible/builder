@@ -52,7 +52,7 @@ def _build_webshop_logo(config: HeaderConfig = None, style: str = "standard") ->
     }
 
 
-def _build_webshop_nav(items: list[MenuItem] = None) -> dict:
+def _build_webshop_nav(items: list[NavItem] = None) -> dict:
     """Build navigation for webshop"""
     default_items = [
         NavItem(label="Home", href="/"),

@@ -28,7 +28,7 @@ from builder.ai.schemas.block_schema import (
 )
 from builder.ai.schemas.header_schema import (
     HeaderConfig,
-    MenuItem,
+    NavItem,
     HEADER_TYPE_DESCRIPTIONS,
 )
 from builder.ai.schemas.footer_schema import (
@@ -253,8 +253,8 @@ class TestHeaderConfig(unittest.TestCase):
             logo_type="text",
             logo_value="Brand",
             menu_items=[
-                MenuItem(label="Home", href="/"),
-                MenuItem(label="About", href="/about"),
+                NavItem(label="Home", href="/"),
+                NavItem(label="About", href="/about"),
             ],
         )
         self.assertEqual(config.type, "multi_page")

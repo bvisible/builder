@@ -4,7 +4,7 @@ Pre-built footer structures optimized for e-commerce with Frappe Webshop.
 """
 
 from typing import Optional, List
-from builder.ai.schemas.header_schema import MenuItem
+from builder.ai.schemas.header_schema import NavItem
 
 
 # Default logo path for all webshop footers
@@ -36,7 +36,7 @@ def _build_footer_logo(logo_value: str = None, style: str = "standard") -> dict:
 
 def _build_footer_column(
     title: str,
-    links: List[MenuItem],
+    links: List[NavItem],
     block_id: str = "footer-col"
 ) -> dict:
     """Build a footer column with title and links"""
@@ -423,24 +423,24 @@ def build_webshop_footer_standard(
     Standard e-commerce footer with multiple columns.
     """
     shop_links = [
-        MenuItem(label="All Products", href="/all-products"),
-        MenuItem(label="Categories", href="/shop-by-category"),
-        MenuItem(label="New Arrivals", href="/all-products?sort=creation"),
-        MenuItem(label="Sale", href="/all-products?on_sale=1"),
+        NavItem(label="All Products", href="/all-products"),
+        NavItem(label="Categories", href="/shop-by-category"),
+        NavItem(label="New Arrivals", href="/all-products?sort=creation"),
+        NavItem(label="Sale", href="/all-products?on_sale=1"),
     ]
 
     support_links = [
-        MenuItem(label="Contact Us", href="/contact"),
-        MenuItem(label="FAQs", href="/faq"),
-        MenuItem(label="Shipping Info", href="/shipping"),
-        MenuItem(label="Returns", href="/returns"),
+        NavItem(label="Contact Us", href="/contact"),
+        NavItem(label="FAQs", href="/faq"),
+        NavItem(label="Shipping Info", href="/shipping"),
+        NavItem(label="Returns", href="/returns"),
     ]
 
     company_links = [
-        MenuItem(label="About Us", href="/about"),
-        MenuItem(label="Blog", href="/blog"),
-        MenuItem(label="Careers", href="/careers"),
-        MenuItem(label="Press", href="/press"),
+        NavItem(label="About Us", href="/about"),
+        NavItem(label="Blog", href="/blog"),
+        NavItem(label="Careers", href="/careers"),
+        NavItem(label="Press", href="/press"),
     ]
 
     return {
