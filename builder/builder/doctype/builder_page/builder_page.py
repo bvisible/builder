@@ -289,7 +289,13 @@ class BuilderPage(WebsiteGenerator):
 		self.set_language(context)
 		context.page_data = clean_data(context.page_data)
 		try:
-			context["__content"] = render_template(context.__content, context)
+			rendered_content = render_template(context.__content, context)
+			# Replace <body> tags with <div> to avoid nested body elements
+			# when the template already provides a body tag
+			import re
+			rendered_content = re.sub(r'<body([^>]*)>', r'<div\1 class="builder-page-content">', rendered_content)
+			rendered_content = re.sub(r'</body>', '</div>', rendered_content)
+			context["__content"] = rendered_content
 		except TemplateSyntaxError:
 			raise
 
