@@ -41,24 +41,39 @@
 	grid-template-columns: 280px 1fr;
 }
 
-/* Simple footer: center everything when few elements */
-.site-footer--standard .site-footer__main:has(.site-footer__columns:has(.site-footer__column:only-child)) {
-	grid-template-columns: 1fr;
+/* Simple footer: center everything when only one column */
+.site-footer__main--simple {
+	grid-template-columns: 1fr !important;
 	text-align: center;
-	max-width: 600px;
+	max-width: 700px;
 	margin: 0 auto 40px;
 }
 
-.site-footer--standard .site-footer__main:has(.site-footer__columns:has(.site-footer__column:only-child)) .site-footer__brand {
+.site-footer__main--simple .site-footer__brand {
 	align-items: center;
 }
 
-.site-footer--standard .site-footer__main:has(.site-footer__columns:has(.site-footer__column:only-child)) .site-footer__newsletter {
+.site-footer__main--simple .site-footer__columns {
+	justify-content: center;
+}
+
+.site-footer__main--simple .site-footer__column-title {
+	text-align: center;
+}
+
+.site-footer__main--simple .site-footer__links {
+	flex-direction: row;
+	flex-wrap: wrap;
+	justify-content: center;
+	gap: 8px 24px;
+}
+
+.site-footer__main--simple .site-footer__newsletter {
 	align-items: center;
 	text-align: center;
 }
 
-.site-footer--standard .site-footer__main:has(.site-footer__columns:has(.site-footer__column:only-child)) .newsletter-form {
+.site-footer__main--simple .newsletter-form {
 	justify-content: center;
 }
 
@@ -89,19 +104,6 @@
 	display: grid;
 	grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
 	gap: 32px;
-}
-
-/* Single column: center and make links horizontal */
-.site-footer__columns:has(.site-footer__column:only-child) {
-	justify-content: center;
-	text-align: center;
-}
-
-.site-footer__columns:has(.site-footer__column:only-child) .site-footer__links {
-	flex-direction: row;
-	flex-wrap: wrap;
-	justify-content: center;
-	gap: 8px 24px;
 }
 
 .site-footer__column-title {

@@ -57,7 +57,8 @@
 
 		{%- elif template == "Standard" -%}
 		{# Standard footer: Logo + columns #}
-		<div class="site-footer__main">
+		{%- set is_simple = footer_columns and footer_columns|length == 1 -%}
+		<div class="site-footer__main{% if is_simple %} site-footer__main--simple{% endif %}">
 			<div class="site-footer__brand">
 				{%- if logo -%}
 				{{ render_logo(logo) }}
