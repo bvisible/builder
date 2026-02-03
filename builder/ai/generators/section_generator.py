@@ -7,6 +7,7 @@ from typing import Optional
 import frappe
 
 from builder.ai.config import get_ai_settings, AIConfig
+from builder.ai.generators.image_generator import ImageGenerator
 from builder.ai.providers import get_provider
 from builder.ai.schemas.block_schema import (
     SectionInfo,
@@ -39,9 +40,11 @@ class SectionGenerator:
         self,
         provider: str = None,
         model: str = None,
-        config: AIConfig = None
+        config: AIConfig = None,
+        generate_images: bool = True
     ):
         self.config = config or get_ai_settings()
+        self.generate_images = generate_images
 
         if provider:
             self.config.provider = provider
@@ -55,6 +58,15 @@ class SectionGenerator:
             base_url=self.config.base_url,
             temperature=self.config.temperature,
         )
+
+        # Initialize image generator if enabled
+        self.image_generator = None
+        if self.generate_images:
+            try:
+                self.image_generator = ImageGenerator()
+            except Exception as e:
+                frappe.log_error("Failed to init ImageGenerator", str(e))
+                self.generate_images = False
 
     def generate(
         self,
@@ -119,6 +131,9 @@ class SectionGenerator:
                 system_prompt=self._get_content_system_prompt(theme_data),
                 temperature=self.config.temperature
             )
+
+            # Generate images from prompts (if enabled)
+            self._process_images(content, section_type)
 
             # Build section from template + content
             theme_styles = theme_data.get("styles", {}).get(section_type, {})
@@ -191,6 +206,15 @@ RULES:
 - Match content to the site's purpose and audience
 - Keep text concise - websites need scannable content
 
+IMAGE PROMPTS:
+When providing image_prompt, avatar_prompt, or background_image_prompt fields:
+- Write detailed, descriptive prompts for AI image generation
+- Include style (photo, illustration, 3D render), subject, mood, colors
+- Example hero: "Professional photo of diverse team collaborating in modern office, warm lighting, shallow depth of field"
+- Example avatar: "Professional headshot of confident female executive, early 40s, warm smile, neutral gray background"
+- Example background: "Abstract geometric gradient in blue and purple tones, subtle tech pattern"
+- NEVER use URLs or references to stock photo sites
+
 Respond only with the structured content - no explanations."""
 
     def _get_section_guidance(self, section_type: str) -> str:
@@ -200,7 +224,8 @@ Respond only with the structured content - no explanations."""
 - Headline: 5-10 words, impactful and clear value proposition
 - Subheadline: 1-2 sentences expanding on the headline
 - Badge: Optional, use for announcements or key differentiators
-- CTAs: Action-oriented, clear benefit""",
+- CTAs: Action-oriented, clear benefit
+- image_prompt: Describe the ideal hero image in detail (style, subject, mood, colors)""",
             "features": """
 - Section title: Clear and benefit-focused
 - Each feature: Concrete benefit with real examples
@@ -210,7 +235,8 @@ Respond only with the structured content - no explanations."""
 - Quotes: Authentic-sounding, specific praise
 - Include concrete results or outcomes when possible
 - Names: Realistic full names
-- Titles: Include company name for B2B contexts""",
+- Titles: Include company name for B2B contexts
+- avatar_prompt: Describe the person (professional headshot, gender, age, style)""",
             "pricing": """
 - Tier names: Descriptive (Starter, Pro, Enterprise)
 - Prices: Realistic for the product category
@@ -219,7 +245,8 @@ Respond only with the structured content - no explanations."""
             "cta": """
 - Headline: Urgency or clear value proposition
 - Keep it short and action-focused
-- Button text: Action verb (Get Started, Start Free Trial)""",
+- Button text: Action verb (Get Started, Start Free Trial)
+- background_image_prompt: Describe a subtle background image if appropriate""",
             "stats": """
 - Use impressive but believable numbers
 - Include units (K, M, %, etc.)
@@ -230,6 +257,57 @@ Respond only with the structured content - no explanations."""
 - Address objections and build trust""",
         }
         return guidance.get(section_type, "")
+
+    def _process_images(self, content, section_type: str) -> None:
+        """
+        Process image prompts in content and generate actual images.
+        Updates the content object in-place with generated image URLs.
+        """
+        if not self.generate_images or not self.image_generator:
+            return
+
+        # Process different content types
+        content_dict = content.model_dump() if hasattr(content, 'model_dump') else content
+
+        # Hero section images
+        if hasattr(content, 'image_prompt') and content.image_prompt:
+            try:
+                result = self.image_generator.generate(
+                    prompt=content.image_prompt,
+                    size="1024x576"  # Landscape for hero
+                )
+                content.image_url = result.file_url
+                if not content.image_alt:
+                    content.image_alt = content.image_prompt[:100]
+                frappe.logger().info(f"Generated hero image: {result.file_url}")
+            except Exception as e:
+                frappe.log_error("Hero image generation failed", str(e))
+
+        # CTA background images
+        if hasattr(content, 'background_image_prompt') and content.background_image_prompt:
+            try:
+                result = self.image_generator.generate(
+                    prompt=content.background_image_prompt,
+                    size="1920x1080"  # Wide for background
+                )
+                content.background_image_url = result.file_url
+                frappe.logger().info(f"Generated CTA background: {result.file_url}")
+            except Exception as e:
+                frappe.log_error("CTA background generation failed", str(e))
+
+        # Testimonial avatars
+        if hasattr(content, 'testimonials'):
+            for testimonial in content.testimonials:
+                if hasattr(testimonial, 'avatar_prompt') and testimonial.avatar_prompt:
+                    try:
+                        result = self.image_generator.generate(
+                            prompt=testimonial.avatar_prompt,
+                            size="256x256"  # Square for avatar
+                        )
+                        testimonial.avatar_url = result.file_url
+                        frappe.logger().info(f"Generated avatar: {result.file_url}")
+                    except Exception as e:
+                        frappe.log_error("Avatar generation failed", str(e))
 
     def _generate_fallback(
         self,

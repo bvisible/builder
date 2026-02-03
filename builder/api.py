@@ -1884,6 +1884,66 @@ def get_available_shortcodes():
 
 
 @frappe.whitelist()
+def generate_image(
+	prompt: str,
+	size: str = None,
+	negative_prompt: str = None,
+	async_generation: bool = False,
+	callback_doctype: str = None,
+	callback_name: str = None,
+	callback_field: str = None,
+):
+	"""
+	Generate an image using AI (Flux via Ollama).
+
+	Args:
+		prompt: Text description of the image to generate
+		size: Image size (e.g., "1024x1024", "512x512", "1024x576")
+		negative_prompt: What to avoid in the image
+		async_generation: If True, runs in background and returns job ID
+		callback_doctype: DocType to update when done (for async)
+		callback_name: Document name to update (for async)
+		callback_field: Field to store the image URL (for async)
+
+	Returns:
+		dict: Generated image info or job ID for async
+	"""
+	from builder.ai.generators.image_generator import ImageGenerator
+
+	generator = ImageGenerator()
+
+	if async_generation:
+		# Queue as background job
+		job_id = generator.generate_async(
+			prompt=prompt,
+			size=size,
+			negative_prompt=negative_prompt,
+			callback_doctype=callback_doctype,
+			callback_name=callback_name,
+			callback_field=callback_field,
+		)
+		return {
+			"job_id": job_id,
+			"status": "queued",
+			"message": "Image generation started in background"
+		}
+	else:
+		# Generate synchronously
+		result = generator.generate(
+			prompt=prompt,
+			size=size,
+			negative_prompt=negative_prompt,
+		)
+		return {
+			"file_url": result.file_url,
+			"file_doc_name": result.file_doc_name,
+			"prompt": result.prompt,
+			"width": result.width,
+			"height": result.height,
+		}
+
+
+@frappe.whitelist()
 def get_shortcodes_for_ai():
 	"""
 	Get shortcodes formatted for AI prompt context.

@@ -19,6 +19,10 @@
   "column_break_ollama",
   "ollama_num_ctx",
   "ollama_timeout",
+  "image_generation_section",
+  "image_generation_enabled",
+  "image_model",
+  "image_size",
   "openai_section",
   "openai_enabled",
   "openai_api_key",
@@ -141,6 +145,35 @@
    "fieldname": "ollama_timeout",
    "fieldtype": "Int",
    "label": "Timeout (seconds)"
+  },
+  {
+   "fieldname": "image_generation_section",
+   "fieldtype": "Section Break",
+   "label": "Image Generation (Flux)"
+  },
+  {
+   "default": "1",
+   "depends_on": "eval:doc.ollama_enabled",
+   "description": "Enable AI image generation using Flux models via Ollama",
+   "fieldname": "image_generation_enabled",
+   "fieldtype": "Check",
+   "label": "Enable Image Generation"
+  },
+  {
+   "default": "x/flux2-klein:latest",
+   "depends_on": "eval:doc.image_generation_enabled",
+   "description": "Flux model for image generation (e.g., x/flux2-klein:latest)",
+   "fieldname": "image_model",
+   "fieldtype": "Data",
+   "label": "Image Model"
+  },
+  {
+   "default": "1024x1024",
+   "depends_on": "eval:doc.image_generation_enabled",
+   "description": "Default image size (e.g., 1024x1024, 512x512, 1024x576)",
+   "fieldname": "image_size",
+   "fieldtype": "Data",
+   "label": "Default Image Size"
   },
   {
    "fieldname": "openai_section",

@@ -340,7 +340,8 @@ class HeroContent(BaseModel):
     primary_cta_url: str = Field(default="#", description="Primary button URL")
     secondary_cta_text: Optional[str] = Field(default=None, description="Secondary button text")
     secondary_cta_url: Optional[str] = Field(default=None, description="Secondary button URL")
-    image_url: Optional[str] = Field(default=None, description="Hero image URL")
+    image_prompt: Optional[str] = Field(default=None, description="Prompt for AI image generation (describe the ideal hero image)")
+    image_url: Optional[str] = Field(default=None, description="Hero image URL (auto-filled after generation)")
     image_alt: Optional[str] = Field(default=None, description="Hero image alt text")
 
 
@@ -363,7 +364,8 @@ class TestimonialItem(BaseModel):
     quote: str = Field(description="The testimonial quote (1-3 sentences)")
     name: str = Field(description="Person's name")
     title: str = Field(description="Person's title/company (e.g., 'CEO at Company')")
-    avatar_url: Optional[str] = Field(default=None, description="Avatar image URL")
+    avatar_prompt: Optional[str] = Field(default=None, description="Prompt for AI avatar generation (e.g., 'professional headshot of a female CEO')")
+    avatar_url: Optional[str] = Field(default=None, description="Avatar image URL (auto-filled after generation)")
 
 
 class TestimonialsContent(BaseModel):
@@ -402,6 +404,8 @@ class CtaContent(BaseModel):
     description: Optional[str] = Field(default=None, description="Supporting text")
     button_text: str = Field(default="Get Started", description="Button text")
     button_url: str = Field(default="#", description="Button URL")
+    background_image_prompt: Optional[str] = Field(default=None, description="Prompt for AI background image generation")
+    background_image_url: Optional[str] = Field(default=None, description="Background image URL (auto-filled after generation)")
 
 
 class StatItem(BaseModel):
