@@ -495,16 +495,24 @@ def _generate_complete_site_worker(
 			"site_name": site_name,
 		})
 
+		# Get current site info for thread initialization
+		current_site = frappe.local.site
+		sites_path = frappe.local.sites_path
+
 		def generate_single_page(page_def: dict) -> dict:
 			"""
 			Generate a single page. Runs in a thread.
 			Returns dict with page_def, blocks, and error info.
 			"""
-			# Each thread needs its own generator instance
-			gen = PageGenerator(provider=provider, model=model)
-			page_prompt = f"{prompt}. Page: {page_def['title']}."
+			# Initialize Frappe in this thread (required for thread-local DB connection)
+			frappe.init(site=current_site, sites_path=sites_path)
+			frappe.connect()
 
 			try:
+				# Each thread needs its own generator instance
+				gen = PageGenerator(provider=provider, model=model)
+				page_prompt = f"{prompt}. Page: {page_def['title']}."
+
 				blocks = gen.generate_page(
 					prompt=page_prompt,
 					theme=theme,
@@ -515,8 +523,15 @@ def _generate_complete_site_worker(
 				)
 				return {"page_def": page_def, "blocks": blocks, "error": None}
 			except Exception as e:
-				frappe.log_error(f"Page generation failed: {page_def['title']}", str(e))
-				return {"page_def": page_def, "blocks": None, "error": str(e)[:200]}
+				error_msg = str(e)[:200]
+				try:
+					frappe.log_error(f"Page generation failed: {page_def['title']}", str(e))
+				except Exception:
+					pass  # Ignore logging errors in thread
+				return {"page_def": page_def, "blocks": None, "error": error_msg}
+			finally:
+				# Clean up thread-local Frappe state
+				frappe.destroy()
 
 		# Generate all pages in parallel (max 4 workers to avoid overload)
 		generated_results = []
