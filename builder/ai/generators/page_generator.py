@@ -83,6 +83,7 @@ class PageGenerator:
             primary_color=primary_color,
             secondary_color=secondary_color,
             font_family=font_family,
+            page_type=page_type,
         )
 
         # Build the user prompt

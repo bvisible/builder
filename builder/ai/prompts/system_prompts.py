@@ -11,7 +11,8 @@ def get_creative_system_prompt(
     theme_prompt: str,
     primary_color: str = None,
     secondary_color: str = None,
-    font_family: str = None
+    font_family: str = None,
+    page_type: str = None
 ) -> str:
     """
     Build the main creative system prompt.
@@ -35,6 +36,9 @@ Utilise ces couleurs de manière créative dans tout le design.
 ## POLICE
 Utilise la police : {font_family}
 """
+
+    # Get available shortcodes for dynamic content
+    shortcodes_section = get_shortcodes_context(page_type)
 
     return f"""Tu es un expert UI/UX designer créatif qui génère des sites web uniques avec Frappe Builder.
 
@@ -123,9 +127,14 @@ Structure d'un block :
 - Sur mobile : colonnes empilées, padding réduit, texte plus petit
 
 ### Images
-- Pour les images, utilise des placeholders descriptifs :
-  - src: "/api/placeholder/800/600" avec alt descriptif
-  - Ou des URLs d'images libres de droits
+- Pour les images, utilise des placeholders de placehold.co :
+  - Hero/Banner : "https://placehold.co/1200x600/1a1a2e/eaeaea?text=Hero+Image"
+  - Cards : "https://placehold.co/400x300/2d2d44/eaeaea?text=Feature"
+  - Avatars : "https://placehold.co/80x80/3d3d5c/eaeaea?text=JD"
+  - Tu peux personnaliser les couleurs et le texte dans l'URL
+  - TOUJOURS inclure un attribut alt descriptif
+
+{shortcodes_section}
 
 ## EXEMPLE DE SORTIE
 [
@@ -183,8 +192,9 @@ def get_page_generation_prompt(
 ) -> str:
     """
     Build the user prompt for page generation.
+    Includes specific instructions based on page type.
     """
-    context = f"Crée un site web pour : {user_prompt}"
+    context = f"Crée une page web pour : {user_prompt}"
 
     if page_title:
         context += f"\n\nPage : {page_title}"
@@ -192,31 +202,102 @@ def get_page_generation_prompt(
     if page_type:
         context += f"\nType de page : {page_type}"
 
+        # Add specific instructions based on page type
+        page_instructions = {
+            "accueil": """
+INSTRUCTIONS SPÉCIFIQUES POUR LA PAGE D'ACCUEIL :
+- Crée une section hero impactante avec un titre accrocheur et un CTA
+- Ajoute une section présentant les services/produits principaux
+- Inclus des témoignages clients si pertinent
+- Termine avec un call-to-action final
+- Cette page doit donner envie d'explorer le reste du site""",
+
+            "about": """
+INSTRUCTIONS SPÉCIFIQUES POUR LA PAGE À PROPOS :
+- Raconte l'histoire de l'entreprise de manière engageante
+- Présente l'équipe avec le shortcode {{ team_grid }} si disponible
+- Mets en avant les valeurs et la mission
+- Inclus des chiffres clés (années d'expérience, clients satisfaits, etc.)""",
+
+            "services": """
+INSTRUCTIONS SPÉCIFIQUES POUR LA PAGE SERVICES :
+- Présente chaque service de manière claire et attractive
+- Utilise des icônes ou illustrations pour chaque service
+- Ajoute des détails sur les bénéfices pour le client
+- Inclus un CTA pour demander un devis ou en savoir plus""",
+
+            "contact": """
+INSTRUCTIONS SPÉCIFIQUES POUR LA PAGE CONTACT :
+- IMPORTANT : Utilise le shortcode {{ contact_form }} pour le formulaire
+- Ajoute les informations de contact (adresse, téléphone, email)
+- Utilise {{ contact_info }} si disponible pour les coordonnées
+- Inclus une carte ou des horaires d'ouverture si pertinent""",
+
+            "produits": """
+INSTRUCTIONS SPÉCIFIQUES POUR LA PAGE PRODUITS :
+- Présente les produits avec des images attrayantes
+- Inclus les prix et caractéristiques principales
+- Ajoute des filtres ou catégories si beaucoup de produits
+- Utilise les shortcodes e-commerce si disponibles""",
+
+            "blog": """
+INSTRUCTIONS SPÉCIFIQUES POUR LA PAGE BLOG :
+- Crée une grille d'articles avec aperçus
+- Inclus la date, l'auteur et une image pour chaque article
+- Ajoute des catégories ou tags
+- Prévois un système de pagination""",
+        }
+
+        if page_type in page_instructions:
+            context += page_instructions[page_type]
+
     return context
 
 
 def get_shortcodes_context(site_type: str = None) -> str:
     """
     Get shortcodes documentation for AI context.
+    Includes both Builder Shortcodes and Builder AI Shortcodes.
     """
+    import frappe
+
+    lines = []
+
+    # Get AI Shortcodes (Team Grid, Contact Form, etc.)
+    try:
+        ai_shortcodes = frappe.get_all(
+            "Builder AI Shortcode",
+            fields=["name1", "category", "shortcode", "description", "jinja_code", "use_when"]
+        )
+        if ai_shortcodes:
+            lines.append("## SHORTCODES DYNAMIQUES DISPONIBLES")
+            lines.append("Utilise ces shortcodes dans innerHTML pour du contenu dynamique.\n")
+
+            for sc in ai_shortcodes:
+                lines.append(f"### {sc.name1} (`{sc.shortcode}`)")
+                if sc.description:
+                    lines.append(f"{sc.description}")
+                if sc.use_when:
+                    lines.append(f"**Quand l'utiliser:** {sc.use_when}")
+                if sc.jinja_code:
+                    lines.append(f"```jinja\n{sc.jinja_code}\n```")
+                lines.append("")
+    except Exception:
+        pass
+
+    # Get regular Builder Shortcodes (e-commerce, etc.)
     try:
         from builder.builder.doctype.builder_shortcode.builder_shortcode import get_shortcodes_for_prompt
         shortcodes_doc = get_shortcodes_for_prompt()
-
-        if not shortcodes_doc:
-            return ""
-
-        context = f"""
-## SHORTCODES DISPONIBLES
-{shortcodes_doc}
-
-Tu peux utiliser ces shortcodes dans innerHTML pour du contenu dynamique.
-Exemple : "innerHTML": "{{% include 'template.html' %}}"
-"""
-        return context
-
+        if shortcodes_doc:
+            lines.append(shortcodes_doc)
     except Exception:
+        pass
+
+    if not lines:
         return ""
+
+    return "\n".join(lines)
 
 
 __all__ = [
