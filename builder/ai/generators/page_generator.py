@@ -75,13 +75,18 @@ class PageGenerator:
         theme_data = get_theme(theme)
         theme_name = theme_data.get("name", theme)
         theme_prompt = theme_data.get("prompt", "")
+        theme_colors = theme_data.get("colors", {})
+
+        # Use theme colors as fallback if not provided
+        effective_primary = primary_color or theme_colors.get("primary", "#6366f1")
+        effective_secondary = secondary_color or theme_colors.get("secondary", "#8b5cf6")
 
         # Build the system prompt with all context
         system_prompt = get_creative_system_prompt(
             theme_name=theme_name,
             theme_prompt=theme_prompt,
-            primary_color=primary_color,
-            secondary_color=secondary_color,
+            primary_color=effective_primary,
+            secondary_color=effective_secondary,
             font_family=font_family,
             page_type=page_type,
         )
@@ -109,9 +114,8 @@ class PageGenerator:
             frappe.log_error("Block validation failed", f"Prompt: {prompt[:100]}")
             raise ValueError("Generated blocks failed validation")
 
-        # Apply custom colors as CSS variables if provided
-        if primary_color or secondary_color:
-            blocks = self._apply_custom_colors(blocks, primary_color, secondary_color)
+        # Apply colors as CSS variables (always apply theme colors)
+        blocks = self._apply_custom_colors(blocks, effective_primary, effective_secondary)
 
         frappe.logger().info(f"Generated {len(blocks)} blocks successfully")
         return blocks

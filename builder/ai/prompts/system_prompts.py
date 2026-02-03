@@ -24,10 +24,16 @@ def get_creative_system_prompt(
     colors_section = ""
     if primary_color or secondary_color:
         colors_section = f"""
-## COULEURS DU SITE
-- Couleur primaire : {primary_color or 'var(--primary-color)'}
-- Couleur secondaire : {secondary_color or 'var(--secondary-color)'}
-Utilise ces couleurs de manière créative dans tout le design.
+## COULEURS DU SITE (IMPORTANT!)
+- Couleur primaire : {primary_color} (utilise cette couleur pour les boutons, liens, accents)
+- Couleur secondaire : {secondary_color} (utilise pour les gradients, hover states)
+
+UTILISATION DES COULEURS:
+- Hero backgrounds: utilise des gradients entre primary et secondary
+- Boutons: backgroundColor: "{primary_color}"
+- Texte sur fond coloré: "#ffffff"
+- Cards: backgroundColor: "var(--surface-color)" ou "#ffffff"
+- Icônes et accents: "{primary_color}"
 """
 
     font_section = ""
@@ -111,6 +117,8 @@ Structure d'un block :
 - Un fleuriste ≠ une agence tech ≠ un restaurant
 - IMPORTANT: Limite-toi à 4-5 sections maximum par page
 - Chaque section doit être concise et efficace
+- **NE GÉNÈRE PAS de header ni de footer** - ils sont gérés globalement par le site
+- Commence directement par le contenu principal (hero, services, etc.)
 
 ### Contenu
 - Écris des textes RÉALISTES et ADAPTÉS au métier
