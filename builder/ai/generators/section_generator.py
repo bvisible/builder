@@ -61,7 +61,8 @@ class SectionGenerator:
         section_type: str,
         context: str,
         theme: str = "modern",
-        description: str = None
+        description: str = None,
+        shortcodes_context: str = ""
     ) -> Optional[dict]:
         """
         Generate a single section using template + AI content.
@@ -71,6 +72,7 @@ class SectionGenerator:
             context: Page/site context for relevant content
             theme: Visual theme name
             description: Additional section description
+            shortcodes_context: Optional shortcodes documentation for dynamic content
 
         Returns:
             dict: Generated Frappe Builder block
@@ -87,7 +89,8 @@ class SectionGenerator:
                 content_schema=content_schema,
                 context=context,
                 description=description,
-                theme_data=theme_data
+                theme_data=theme_data,
+                shortcodes_context=shortcodes_context
             )
         else:
             # Fallback: no template available, use basic generation
@@ -100,12 +103,13 @@ class SectionGenerator:
         content_schema,
         context: str,
         description: str,
-        theme_data: dict
+        theme_data: dict,
+        shortcodes_context: str = ""
     ) -> Optional[dict]:
         """Generate section using template and content schema"""
 
         # Build prompt for content generation
-        prompt = self._build_content_prompt(section_type, context, description, theme_data)
+        prompt = self._build_content_prompt(section_type, context, description, theme_data, shortcodes_context)
 
         try:
             # AI generates only the content
@@ -135,7 +139,8 @@ class SectionGenerator:
         section_type: str,
         context: str,
         description: str,
-        theme_data: dict
+        theme_data: dict,
+        shortcodes_context: str = ""
     ) -> str:
         """Build prompt for content generation"""
         theme_name = theme_data.get("name", "Modern")
@@ -155,6 +160,14 @@ THEME: {theme_name}
         guidance = self._get_section_guidance(section_type)
         if guidance:
             prompt += f"CONTENT GUIDELINES:\n{guidance}\n\n"
+
+        # Add shortcodes context for e-commerce sections
+        if shortcodes_context:
+            prompt += f"""AVAILABLE SHORTCODES:
+{shortcodes_context}
+
+You can reference these shortcodes in content if appropriate for dynamic product displays.
+"""
 
         prompt += """IMPORTANT:
 - Write compelling, realistic content (NO placeholder text like Lorem ipsum)

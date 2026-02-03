@@ -23,6 +23,125 @@ from builder.builder.doctype.builder_page.builder_page import BuilderPageRendere
 
 
 # =============================================================================
+# SITE TYPE CONFIGURATION CONSTANTS
+# =============================================================================
+
+# Default header/footer settings for each site type
+SITE_TYPE_HEADER_FOOTER_DEFAULTS = {
+	"vitrine": {
+		"header_layout": "Logo | Menu Center | Icons",
+		"search_type": "None",
+		"show_cta": True,
+		"show_user": False,
+		"show_wishlist": False,
+		"show_cart": False,
+		"footer_template": "Standard",
+	},
+	"vitrine_user": {
+		"header_layout": "Logo | Menu Center | Icons",
+		"search_type": "None",
+		"show_cta": True,
+		"show_user": True,
+		"show_wishlist": False,
+		"show_cart": False,
+		"footer_template": "Standard",
+	},
+	"blog": {
+		"header_layout": "Logo | Menu Center | Icons",
+		"search_type": "Icon (overlay)",
+		"show_cta": True,
+		"show_user": True,
+		"show_wishlist": False,
+		"show_cart": False,
+		"footer_template": "Standard",
+	},
+	"ecommerce": {
+		"header_layout": "Logo | Menu Center | Icons",
+		"search_type": "Icon (overlay)",
+		"show_cta": False,
+		"show_user": True,
+		"show_wishlist": True,
+		"show_cart": True,
+		"footer_template": "Extended",
+	},
+	"ecommerce_search": {
+		"header_layout": "Logo | Menu Center | Icons",
+		"search_type": "Search Bar (inline)",
+		"show_cta": False,
+		"show_user": True,
+		"show_wishlist": True,
+		"show_cart": True,
+		"footer_template": "Extended",
+	},
+	"saas": {
+		"header_layout": "Logo | Menu Right | Icons",
+		"search_type": "None",
+		"show_cta": True,
+		"show_user": True,
+		"show_wishlist": False,
+		"show_cart": False,
+		"footer_template": "Extended",
+	},
+	"portfolio": {
+		"header_layout": "Logo | Menu Center | Icons",
+		"search_type": "None",
+		"show_cta": True,
+		"show_user": False,
+		"show_wishlist": False,
+		"show_cart": False,
+		"footer_template": "Minimal",
+	},
+}
+
+# Default pages to generate for each site type
+DEFAULT_PAGES_BY_SITE_TYPE = {
+	"vitrine": [
+		{"title": "Accueil", "route": "", "sections": ["hero", "features", "testimonials", "cta"]},
+		{"title": "À propos", "route": "about", "sections": ["hero_centered", "features", "stats"]},
+		{"title": "Services", "route": "services", "sections": ["hero", "features_grid", "pricing"]},
+		{"title": "Contact", "route": "contact", "sections": ["hero_centered", "contact"]},
+	],
+	"vitrine_user": [
+		{"title": "Accueil", "route": "", "sections": ["hero", "features", "testimonials", "cta"]},
+		{"title": "À propos", "route": "about", "sections": ["hero_centered", "features", "stats"]},
+		{"title": "Services", "route": "services", "sections": ["hero", "features_grid", "pricing"]},
+		{"title": "Contact", "route": "contact", "sections": ["hero_centered", "contact"]},
+	],
+	"blog": [
+		{"title": "Accueil", "route": "", "sections": ["hero", "features", "cta"]},
+		{"title": "Articles", "route": "blog", "sections": ["hero_centered", "features_grid"]},
+		{"title": "À propos", "route": "about", "sections": ["hero_centered", "features", "testimonials"]},
+		{"title": "Contact", "route": "contact", "sections": ["hero_centered", "contact"]},
+	],
+	"ecommerce": [
+		{"title": "Accueil", "route": "", "sections": ["hero", "features", "testimonials", "cta"]},
+		{"title": "Boutique", "route": "shop", "sections": ["hero_centered", "features_grid"]},
+		{"title": "À propos", "route": "about", "sections": ["hero_centered", "features", "stats"]},
+		{"title": "Contact", "route": "contact", "sections": ["hero_centered", "contact", "faq"]},
+	],
+	"ecommerce_search": [
+		{"title": "Accueil", "route": "", "sections": ["hero", "features", "testimonials", "cta"]},
+		{"title": "Boutique", "route": "shop", "sections": ["hero_centered", "features_grid"]},
+		{"title": "À propos", "route": "about", "sections": ["hero_centered", "features", "stats"]},
+		{"title": "Contact", "route": "contact", "sections": ["hero_centered", "contact", "faq"]},
+	],
+	"saas": [
+		{"title": "Accueil", "route": "", "sections": ["hero", "features", "stats", "pricing", "testimonials", "faq", "cta"]},
+		{"title": "Fonctionnalités", "route": "features", "sections": ["hero_centered", "features_grid", "features_alternating"]},
+		{"title": "Tarifs", "route": "pricing", "sections": ["hero_centered", "pricing", "faq"]},
+		{"title": "À propos", "route": "about", "sections": ["hero_centered", "features", "stats", "testimonials"]},
+		{"title": "Contact", "route": "contact", "sections": ["hero_centered", "contact"]},
+	],
+	"portfolio": [
+		{"title": "Accueil", "route": "", "sections": ["hero", "features_grid", "testimonials", "cta"]},
+		{"title": "Projets", "route": "projects", "sections": ["hero_centered", "features_grid"]},
+		{"title": "À propos", "route": "about", "sections": ["hero_centered", "features", "stats"]},
+		{"title": "Contact", "route": "contact", "sections": ["hero_centered", "contact"]},
+	],
+}
+
+
+# =============================================================================
 # AI GENERATION API (Multi-pass with structured output)
 # =============================================================================
 
@@ -406,6 +525,355 @@ def check_ai_provider_status():
 		result["openai"]["message"] = str(e)
 
 	return result
+
+
+@frappe.whitelist()
+def generate_complete_site(
+	prompt: str,
+	site_name: str,
+	site_type: str = "vitrine",
+	theme: str = "modern",
+	primary_color: str = None,
+	secondary_color: str = None,
+	logo_text: str = None,
+	logo_image: str = None,
+	cta_text: str = "Contact",
+	cta_url: str = "/contact",
+	social_links: str = None,
+	provider: str = None,
+	model: str = None,
+):
+	"""
+	Generate a complete site asynchronously.
+
+	This function queues the site generation as a background job to avoid
+	HTTP timeouts (Cloudflare 100s limit). Use get_site_generation_status()
+	to poll for completion.
+
+	Args:
+		prompt: Description of the desired site
+		site_name: Name of the site (used for logo if no logo_text provided)
+		site_type: Type of site (vitrine, vitrine_user, blog, ecommerce, ecommerce_search, saas, portfolio)
+		theme: Visual theme (modern, neobrutalist, glassmorphism, minimal, corporate, creative)
+		primary_color: Primary color hex (e.g., "#6c5ce7")
+		secondary_color: Secondary color hex (e.g., "#00b894")
+		logo_text: Text logo (overrides site_name)
+		logo_image: Image logo path (if provided, uses image instead of text)
+		cta_text: Call-to-action button text
+		cta_url: Call-to-action button URL
+		social_links: JSON string with social media URLs {"facebook": "...", "instagram": "...", ...}
+		provider: AI provider override (ollama, openai)
+		model: Model name override
+
+	Returns:
+		dict: {job_id: str, status: "queued"}
+	"""
+	# Generate a unique job ID
+	job_id = f"site_gen_{frappe.generate_hash(length=10)}"
+
+	# Initialize job status in cache
+	_update_generation_status(job_id, {
+		"status": "queued",
+		"progress": 0,
+		"total_pages": len(DEFAULT_PAGES_BY_SITE_TYPE.get(site_type, DEFAULT_PAGES_BY_SITE_TYPE["vitrine"])),
+		"current_page": None,
+		"pages_created": [],
+		"error": None,
+		"site_name": site_name,
+		"created_at": frappe.utils.now(),
+	})
+
+	# Enqueue the generation job
+	# Note: job_id is a reserved parameter in frappe.enqueue() for RQ job naming
+	# We pass our tracking ID as generation_job_id to avoid conflict
+	frappe.enqueue(
+		"builder.api._generate_complete_site_worker",
+		queue="long",
+		timeout=600,  # 10 minutes max
+		job_name=job_id,
+		generation_job_id=job_id,  # Our tracking ID
+		prompt=prompt,
+		site_name=site_name,
+		site_type=site_type,
+		theme=theme,
+		primary_color=primary_color,
+		secondary_color=secondary_color,
+		logo_text=logo_text,
+		logo_image=logo_image,
+		cta_text=cta_text,
+		cta_url=cta_url,
+		social_links=social_links,
+		provider=provider,
+		model=model,
+	)
+
+	return {
+		"job_id": job_id,
+		"status": "queued",
+		"message": "Site generation started. Use get_site_generation_status() to track progress."
+	}
+
+
+def _update_generation_status(job_id: str, data: dict):
+	"""Update the generation status in cache."""
+	cache_key = f"site_generation_{job_id}"
+	frappe.cache().set_value(cache_key, data, expires_in_sec=3600)  # 1 hour TTL
+
+
+def _get_generation_status(job_id: str) -> dict:
+	"""Get the generation status from cache."""
+	cache_key = f"site_generation_{job_id}"
+	return frappe.cache().get_value(cache_key) or {"status": "not_found", "error": "Job not found"}
+
+
+def _generate_complete_site_worker(
+	generation_job_id: str,
+	prompt: str,
+	site_name: str,
+	site_type: str,
+	theme: str,
+	primary_color: str,
+	secondary_color: str,
+	logo_text: str,
+	logo_image: str,
+	cta_text: str,
+	cta_url: str,
+	social_links: str,
+	provider: str,
+	model: str,
+):
+	"""
+	Background worker for site generation.
+
+	This function runs in a background job and updates progress via cache.
+
+	Args:
+		generation_job_id: Our tracking ID for this generation job (not the RQ job_id)
+	"""
+	# Use local variable for cleaner code
+	job_id = generation_job_id
+	from builder.ai.generators.page_generator import PageGenerator
+
+	pages_config = DEFAULT_PAGES_BY_SITE_TYPE.get(site_type, DEFAULT_PAGES_BY_SITE_TYPE["vitrine"])
+	total_pages = len(pages_config)
+
+	try:
+		# Update status: starting
+		_update_generation_status(job_id, {
+			"status": "running",
+			"progress": 0,
+			"total_pages": total_pages,
+			"current_step": "Deleting existing pages",
+			"current_page": None,
+			"pages_created": [],
+			"error": None,
+			"site_name": site_name,
+		})
+
+		# =====================================================================
+		# STEP 1: Delete ALL existing Builder Pages
+		# =====================================================================
+		existing_pages = frappe.get_all("Builder Page", pluck="name")
+		for page_name in existing_pages:
+			frappe.delete_doc("Builder Page", page_name, ignore_permissions=True)
+		frappe.db.commit()
+
+		# =====================================================================
+		# STEP 2: Configure Website Header Footer Config
+		# =====================================================================
+		_update_generation_status(job_id, {
+			"status": "running",
+			"progress": 5,
+			"total_pages": total_pages,
+			"current_step": "Configuring header/footer",
+			"current_page": None,
+			"pages_created": [],
+			"error": None,
+			"site_name": site_name,
+		})
+
+		config = frappe.get_single("Website Header Footer Config")
+
+		# Apply site_type defaults
+		defaults = SITE_TYPE_HEADER_FOOTER_DEFAULTS.get(site_type, SITE_TYPE_HEADER_FOOTER_DEFAULTS["vitrine"])
+		for key, value in defaults.items():
+			if hasattr(config, key):
+				setattr(config, key, value)
+
+		# Apply explicit parameters
+		if logo_image:
+			config.logo_type = "Image"
+			config.logo_image = logo_image
+		else:
+			config.logo_type = "Text"
+			config.logo_text = logo_text or site_name
+
+		# Apply colors if provided
+		if primary_color and hasattr(config, "primary_color"):
+			config.primary_color = primary_color
+		if secondary_color and hasattr(config, "secondary_color"):
+			config.secondary_color = secondary_color
+
+		# CTA configuration
+		config.cta_text = cta_text
+		config.cta_url = cta_url
+
+		# Social links
+		if social_links:
+			try:
+				links = json.loads(social_links) if isinstance(social_links, str) else social_links
+				config.show_social_links = True
+				if links.get("facebook"):
+					config.facebook_url = links["facebook"]
+				if links.get("instagram"):
+					config.instagram_url = links["instagram"]
+				if links.get("twitter"):
+					config.twitter_url = links["twitter"]
+				if links.get("linkedin"):
+					config.linkedin_url = links["linkedin"]
+				if links.get("youtube"):
+					config.youtube_url = links["youtube"]
+			except (json.JSONDecodeError, TypeError):
+				pass
+
+		# Clear menu items (will be populated after page creation)
+		config.menu_items = []
+		config.save(ignore_permissions=True)
+		frappe.db.commit()
+
+		# =====================================================================
+		# STEP 3: Generate pages (content only, no header/footer blocks)
+		# =====================================================================
+		generator = PageGenerator(provider=provider, model=model)
+		created_pages = []
+
+		for idx, page_def in enumerate(pages_config):
+			# Update progress
+			progress = 10 + int((idx / total_pages) * 80)  # 10% to 90%
+			_update_generation_status(job_id, {
+				"status": "running",
+				"progress": progress,
+				"total_pages": total_pages,
+				"current_step": f"Generating page {idx + 1}/{total_pages}",
+				"current_page": page_def["title"],
+				"pages_created": created_pages.copy(),
+				"error": None,
+				"site_name": site_name,
+			})
+
+			# Build page-specific prompt
+			page_prompt = f"{prompt}. This is the {page_def['title']} page."
+
+			# Generate blocks WITHOUT header/footer
+			blocks = generator.generate_page(
+				prompt=page_prompt,
+				theme=theme,
+				site_type=site_type,
+				include_header=False,
+				include_footer=False,
+			)
+
+			# Create the Builder Page
+			page = frappe.new_doc("Builder Page")
+			page.page_title = page_def["title"]
+			page.blocks = json.dumps(blocks)
+			page.draft_blocks = json.dumps(blocks)
+			page.published = 1
+			page.insert(ignore_permissions=True)
+
+			# Force route (no /pages/ prefix)
+			route = page_def["route"]
+			frappe.db.set_value("Builder Page", page.name, "route", route)
+			frappe.db.commit()
+
+			created_pages.append({
+				"name": page.name,
+				"title": page_def["title"],
+				"route": f"/{route}" if route else "/",
+			})
+
+		# =====================================================================
+		# STEP 4: Update menu from created pages
+		# =====================================================================
+		_update_generation_status(job_id, {
+			"status": "running",
+			"progress": 95,
+			"total_pages": total_pages,
+			"current_step": "Updating menu",
+			"current_page": None,
+			"pages_created": created_pages,
+			"error": None,
+			"site_name": site_name,
+		})
+
+		config = frappe.get_single("Website Header Footer Config")
+		config.menu_items = []
+		for page in created_pages:
+			config.append("menu_items", {
+				"label": page["title"],
+				"url": page["route"],
+				"is_external": False,
+				"open_in_new_tab": False,
+			})
+		config.save(ignore_permissions=True)
+		frappe.db.commit()
+
+		# =====================================================================
+		# STEP 5: Mark as completed
+		# =====================================================================
+		_update_generation_status(job_id, {
+			"status": "completed",
+			"progress": 100,
+			"total_pages": total_pages,
+			"current_step": "Completed",
+			"current_page": None,
+			"pages_created": created_pages,
+			"error": None,
+			"site_name": site_name,
+			"completed_at": frappe.utils.now(),
+			"result": {
+				"success": True,
+				"pages": created_pages,
+				"config": {
+					"site_type": site_type,
+					"theme": theme,
+					"logo_type": config.logo_type,
+					"logo_value": config.logo_image if config.logo_type == "Image" else config.logo_text,
+					"menu_items_count": len(config.menu_items),
+				},
+				"message": f"Site generated successfully with {len(created_pages)} pages"
+			}
+		})
+
+	except Exception as e:
+		# Log error and update status
+		frappe.log_error("Site generation failed", str(e))
+		_update_generation_status(job_id, {
+			"status": "failed",
+			"progress": 0,
+			"total_pages": total_pages,
+			"current_step": "Failed",
+			"current_page": None,
+			"pages_created": [],
+			"error": str(e),
+			"site_name": site_name,
+			"failed_at": frappe.utils.now(),
+		})
+		raise
+
+
+@frappe.whitelist()
+def get_site_generation_status(job_id: str):
+	"""
+	Get the status of a site generation job.
+
+	Args:
+		job_id: The job ID returned by generate_complete_site()
+
+	Returns:
+		dict: Job status with progress, current step, pages created, etc.
+	"""
+	return _get_generation_status(job_id)
 
 
 # =============================================================================

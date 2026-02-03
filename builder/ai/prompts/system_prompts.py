@@ -3,6 +3,8 @@ System Prompts
 Core prompts for AI generation with Frappe Builder.
 """
 
+import frappe
+
 # Main system prompt for all generation tasks
 MAIN_SYSTEM_PROMPT = """You are an expert UI/UX designer and frontend developer specializing in Frappe Builder.
 You generate high-quality, creative UI components as JSON blocks.
@@ -260,6 +262,77 @@ def get_footer_prompt(
     )
 
 
+def get_shortcodes_context(site_type: str = None) -> str:
+    """
+    Get shortcodes documentation for AI context.
+
+    Fetches enabled shortcodes from Builder Shortcode and formats them
+    for inclusion in AI prompts.
+
+    Args:
+        site_type: Optional site type to filter relevant shortcodes
+
+    Returns:
+        str: Markdown formatted shortcode documentation
+    """
+    try:
+        from builder.builder.doctype.builder_shortcode.builder_shortcode import get_shortcodes_for_prompt
+        shortcodes_doc = get_shortcodes_for_prompt()
+
+        if not shortcodes_doc:
+            return ""
+
+        # Add usage instructions for AI
+        context = f"""
+{shortcodes_doc}
+
+## When to Use Shortcodes
+
+Shortcodes are Jinja includes that render dynamic components.
+Use them in the `innerHTML` field of a block when you need:
+- Product carousels or grids (for e-commerce)
+- Brand/logo carousels
+- Dynamic content from the database
+
+Example usage in a block:
+```json
+{{
+  "blockId": "products-section",
+  "element": "div",
+  "innerHTML": "{{% include 'webshop/templates/includes/product_carousel.html' %}}",
+  "baseStyles": {{ "padding": "40px 20px" }}
+}}
+```
+"""
+        return context
+
+    except Exception as e:
+        frappe.log_error("Failed to get shortcodes context", str(e))
+        return ""
+
+
+def get_analysis_prompt_with_shortcodes(user_prompt: str, site_type: str) -> str:
+    """
+    Get the structure analysis prompt with shortcodes context included.
+
+    Args:
+        user_prompt: User's page/site description
+        site_type: Type of site being built
+
+    Returns:
+        str: Complete analysis prompt with shortcodes documentation
+    """
+    base_prompt = get_analysis_prompt(user_prompt, site_type)
+    shortcodes_context = get_shortcodes_context(site_type)
+
+    if shortcodes_context:
+        return f"""{base_prompt}
+
+{shortcodes_context}
+"""
+    return base_prompt
+
+
 __all__ = [
     "MAIN_SYSTEM_PROMPT",
     "ANALYSIS_PROMPT",
@@ -271,4 +344,6 @@ __all__ = [
     "get_section_prompt",
     "get_header_prompt",
     "get_footer_prompt",
+    "get_shortcodes_context",
+    "get_analysis_prompt_with_shortcodes",
 ]

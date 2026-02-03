@@ -11,6 +11,7 @@ from builder.ai.providers import get_provider
 from builder.ai.schemas.block_schema import PageStructure, SectionInfo
 from builder.ai.design_system import get_theme
 from builder.ai.prompts import get_analysis_prompt
+from builder.ai.prompts.system_prompts import get_shortcodes_context
 from builder.ai.validators import BlockValidator, AutoFixer
 from builder.ai.generators.section_generator import SectionGenerator
 from builder.ai.generators.header_generator import HeaderGenerator
@@ -90,9 +91,16 @@ class PageGenerator:
         site_type = site_type or self.config.default_site_type
 
         # =========================================================
+        # PASS 0: CONTEXT - Load shortcodes for relevant site types
+        # =========================================================
+        shortcodes_context = ""
+        if site_type in ("ecommerce", "ecommerce_search"):
+            shortcodes_context = get_shortcodes_context(site_type)
+
+        # =========================================================
         # PASS 1: ANALYSIS - Understand what to build
         # =========================================================
-        structure = self._analyze_structure(prompt, site_type)
+        structure = self._analyze_structure(prompt, site_type, shortcodes_context)
         frappe.logger().info(f"Page structure: {structure.page_type} with {len(structure.sections)} sections")
 
         # =========================================================
@@ -122,7 +130,8 @@ class PageGenerator:
             section_block = self._generate_section(
                 section=section,
                 context=prompt,
-                theme=theme_name
+                theme=theme_name,
+                shortcodes_context=shortcodes_context
             )
             if section_block:
                 blocks.append(section_block)
@@ -148,7 +157,7 @@ class PageGenerator:
 
         return validated_blocks
 
-    def _analyze_structure(self, prompt: str, site_type: str) -> PageStructure:
+    def _analyze_structure(self, prompt: str, site_type: str, shortcodes_context: str = "") -> PageStructure:
         """
         PASS 1: Analyze the prompt and determine optimal page structure.
 
@@ -157,8 +166,17 @@ class PageGenerator:
         - What sections are needed
         - Optimal order and priority
         - Suggested theme and colors
+
+        Args:
+            prompt: User's description
+            site_type: Type of site
+            shortcodes_context: Optional shortcodes documentation for e-commerce
         """
         analysis_prompt = get_analysis_prompt(prompt, site_type)
+
+        # Add shortcodes context if available
+        if shortcodes_context:
+            analysis_prompt = f"{analysis_prompt}\n\n{shortcodes_context}"
 
         try:
             structure = self.llm.generate_structured(
@@ -336,7 +354,8 @@ Most landing pages need only 4-6 sections."""
         self,
         section: SectionInfo,
         context: str,
-        theme: str
+        theme: str,
+        shortcodes_context: str = ""
     ) -> Optional[dict]:
         """Generate a section using SectionGenerator"""
         try:
@@ -344,7 +363,8 @@ Most landing pages need only 4-6 sections."""
                 section_type=section.type,
                 context=context,
                 theme=theme,
-                description=section.description
+                description=section.description,
+                shortcodes_context=shortcodes_context
             )
         except Exception as e:
             frappe.log_error(f"Section generation failed: {section.type}", str(e))
