@@ -480,31 +480,32 @@ def _generate_complete_site_worker(
 		frappe.db.commit()
 
 		# =====================================================================
-		# STEP 3: Generate pages (content only, no header/footer blocks)
+		# STEP 3: Generate pages in PARALLEL (content only, no header/footer blocks)
 		# =====================================================================
-		generator = PageGenerator(provider=provider, model=model)
-		created_pages = []
+		from concurrent.futures import ThreadPoolExecutor, as_completed
 
-		for idx, page_def in enumerate(pages_config):
-			# Update progress
-			progress = 10 + int((idx / total_pages) * 80)  # 10% to 90%
-			_update_generation_status(job_id, {
-				"status": "running",
-				"progress": progress,
-				"total_pages": total_pages,
-				"current_step": f"Generating page {idx + 1}/{total_pages}",
-				"current_page": page_def["title"],
-				"pages_created": created_pages.copy(),
-				"error": None,
-				"site_name": site_name,
-			})
+		_update_generation_status(job_id, {
+			"status": "running",
+			"progress": 10,
+			"total_pages": total_pages,
+			"current_step": f"Generating {total_pages} pages in parallel...",
+			"current_page": None,
+			"pages_created": [],
+			"error": None,
+			"site_name": site_name,
+		})
 
-			# Build page-specific prompt with context
+		def generate_single_page(page_def: dict) -> dict:
+			"""
+			Generate a single page. Runs in a thread.
+			Returns dict with page_def, blocks, and error info.
+			"""
+			# Each thread needs its own generator instance
+			gen = PageGenerator(provider=provider, model=model)
 			page_prompt = f"{prompt}. Page: {page_def['title']}."
 
-			# Generate blocks with full creative freedom
 			try:
-				blocks = generator.generate_page(
+				blocks = gen.generate_page(
 					prompt=page_prompt,
 					theme=theme,
 					primary_color=primary_color,
@@ -512,21 +513,51 @@ def _generate_complete_site_worker(
 					page_title=page_def["title"],
 					page_type=page_def.get("type", ""),
 				)
+				return {"page_def": page_def, "blocks": blocks, "error": None}
 			except Exception as e:
 				frappe.log_error(f"Page generation failed: {page_def['title']}", str(e))
-				# Update status to show warning but continue
+				return {"page_def": page_def, "blocks": None, "error": str(e)[:200]}
+
+		# Generate all pages in parallel (max 4 workers to avoid overload)
+		generated_results = []
+		with ThreadPoolExecutor(max_workers=4) as executor:
+			futures = {
+				executor.submit(generate_single_page, page_def): page_def
+				for page_def in pages_config
+			}
+
+			completed_count = 0
+			for future in as_completed(futures):
+				completed_count += 1
+				page_def = futures[future]
+				result = future.result()
+				generated_results.append(result)
+
+				# Update progress
+				progress = 10 + int((completed_count / total_pages) * 80)
+				status_msg = f"Generated {completed_count}/{total_pages}"
+				if result["error"]:
+					status_msg += f" (warning: {page_def['title']} failed)"
+
 				_update_generation_status(job_id, {
 					"status": "running",
 					"progress": progress,
 					"total_pages": total_pages,
-					"current_step": f"Warning: {page_def['title']} failed, continuing...",
+					"current_step": status_msg,
 					"current_page": page_def["title"],
-					"pages_created": created_pages.copy(),
-					"error": f"Page '{page_def['title']}' generation failed: {str(e)[:100]}",
+					"pages_created": [],  # Will be filled after DB operations
+					"error": result["error"],
 					"site_name": site_name,
 				})
-				# Continue with other pages instead of failing completely
+
+		# Now create all pages in DB (sequential, but fast)
+		created_pages = []
+		for result in generated_results:
+			if result["error"] or not result["blocks"]:
 				continue
+
+			page_def = result["page_def"]
+			blocks = result["blocks"]
 
 			# Create the Builder Page
 			page = frappe.new_doc("Builder Page")
