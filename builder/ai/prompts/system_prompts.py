@@ -4,6 +4,10 @@ These prompts give the AI full creative freedom while ensuring valid FrappeBlock
 """
 
 import frappe
+from typing import TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from builder.ai.schemas.design_brief import DesignBrief
 
 
 def get_creative_system_prompt(
@@ -12,7 +16,8 @@ def get_creative_system_prompt(
     primary_color: str = None,
     secondary_color: str = None,
     font_family: str = None,
-    page_type: str = None
+    page_type: str = None,
+    design_brief: "DesignBrief" = None,
 ) -> str:
     """
     Build the main creative system prompt.
@@ -21,9 +26,16 @@ def get_creative_system_prompt(
     while ensuring it outputs valid FrappeBlock JSON.
     """
 
+    # Design brief section (takes precedence if available)
+    design_brief_section = ""
+    if design_brief:
+        design_brief_section = design_brief.to_prompt_section()
+
     colors_section = ""
     if primary_color or secondary_color:
-        colors_section = f"""
+        # Only add basic colors section if no design brief (brief has more detailed color instructions)
+        if not design_brief:
+            colors_section = f"""
 ## COULEURS DU SITE (IMPORTANT!)
 - Couleur primaire : {primary_color} (utilise cette couleur pour les boutons, liens, accents)
 - Couleur secondaire : {secondary_color} (utilise pour les gradients, hover states)
@@ -34,6 +46,13 @@ UTILISATION DES COULEURS:
 - Texte sur fond coloré: "#ffffff"
 - Cards: backgroundColor: "var(--surface-color)" ou "#ffffff"
 - Icônes et accents: "{primary_color}"
+"""
+        else:
+            # Brief exists, just remind of the actual color values
+            colors_section = f"""
+## COULEURS EFFECTIVES
+- var(--primary-color) = {primary_color}
+- var(--secondary-color) = {secondary_color}
 """
 
     font_section = ""
@@ -104,6 +123,7 @@ Structure d'un block :
    - var(--border-color) : bordures
 3. Chaque blockId doit être UNIQUE
 
+{design_brief_section}
 {colors_section}
 {font_section}
 
@@ -289,6 +309,26 @@ INSTRUCTIONS SPÉCIFIQUES POUR LA PAGE BLOG :
 - Inclus la date, l'auteur et une image pour chaque article
 - Ajoute des catégories ou tags
 - Prévois un système de pagination""",
+
+            "collection": """
+INSTRUCTIONS SPÉCIFIQUES POUR LA PAGE COLLECTION :
+- Présente les catégories ou collections de produits de manière attrayante
+- Met en avant les produits phares ou les nouveautés
+- Utilise des cards visuelles avec images de qualité
+- NE PAS afficher tous les produits (la boutique complète est sur /all-products)
+- Inclus un lien CTA vers la boutique complète : "Voir tous les produits" → /all-products
+- Structure suggérée :
+  1. Hero avec titre "Nos Collections" ou "Découvrez notre sélection"
+  2. Section catégories/collections (3-4 cards grandes avec images)
+  3. Section produits phares ou bestsellers (grille de 4-6 produits)
+  4. CTA vers la boutique complète""",
+
+            "boutique": """
+INSTRUCTIONS SPÉCIFIQUES POUR LA PAGE COLLECTION :
+- Cette page présente les collections, pas tous les produits
+- Utilise des cards visuelles pour les catégories
+- Inclus un lien vers /all-products pour la boutique complète
+- Même instructions que le type "collection" ci-dessus""",
         }
 
         if page_type in page_instructions:

@@ -411,18 +411,21 @@
 
 <script>
 (function() {
-	const cartOverlay = document.getElementById('builder-cart-overlay');
-	const cartDrawer = document.getElementById('builder-cart-drawer');
-	const cartClose = document.getElementById('builder-cart-close');
-	const cartTrigger = document.querySelector('.header-icon--cart');
-	const cartBadge = document.querySelector('.cart-badge');
-	const cartItems = document.getElementById('builder-cart-items');
-	const cartEmpty = document.getElementById('builder-cart-empty');
-	const cartFooter = document.getElementById('builder-cart-footer');
-	const cartLoading = document.getElementById('builder-cart-loading');
-	const cartTotalEl = document.getElementById('builder-cart-total');
-	const cartSubtotalEl = document.getElementById('builder-cart-subtotal');
-	const cartTaxesEl = document.getElementById('builder-cart-taxes');
+	// Wait for DOM to be ready before querying header elements
+	// This is necessary because cart_drawer.html is included BEFORE the header renders
+	function initCart() {
+		const cartOverlay = document.getElementById('builder-cart-overlay');
+		const cartDrawer = document.getElementById('builder-cart-drawer');
+		const cartClose = document.getElementById('builder-cart-close');
+		const cartTrigger = document.querySelector('.header-icon--cart');
+		const cartBadge = document.querySelector('.cart-badge');
+		const cartItems = document.getElementById('builder-cart-items');
+		const cartEmpty = document.getElementById('builder-cart-empty');
+		const cartFooter = document.getElementById('builder-cart-footer');
+		const cartLoading = document.getElementById('builder-cart-loading');
+		const cartTotalEl = document.getElementById('builder-cart-total');
+		const cartSubtotalEl = document.getElementById('builder-cart-subtotal');
+		const cartTaxesEl = document.getElementById('builder-cart-taxes');
 
 	let isCartOpen = false;
 	let cartState = {
@@ -699,25 +702,31 @@
 		});
 	}
 
-	// Close on escape
-	document.addEventListener('keydown', function(e) {
-		if (e.key === 'Escape' && isCartOpen) {
-			closeCart();
-		}
-	});
+		// Close on escape
+		document.addEventListener('keydown', function(e) {
+			if (e.key === 'Escape' && isCartOpen) {
+				closeCart();
+			}
+		});
 
-	// Initialize
-	initCartState();
+		// Initialize
+		initCartState();
 
-	// Refresh cart on page load to bypass cache
-	if (document.readyState === 'loading') {
-		document.addEventListener('DOMContentLoaded', refreshCart);
-	} else {
+		// Refresh cart on page load to bypass cache
 		refreshCart();
+
+		// Make functions available globally for add-to-cart buttons
+		window.builderCartRefresh = refreshCart;
+		window.builderCartOpen = openCart;
 	}
 
-	// Make functions available globally for add-to-cart buttons
-	window.builderCartRefresh = refreshCart;
-	window.builderCartOpen = openCart;
+	// Initialize when DOM is ready
+	// This ensures header icons exist before we try to attach event listeners
+	if (document.readyState === 'loading') {
+		document.addEventListener('DOMContentLoaded', initCart);
+	} else {
+		// DOM already loaded, but use setTimeout to ensure header is rendered
+		setTimeout(initCart, 0);
+	}
 })();
 </script>

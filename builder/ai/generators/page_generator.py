@@ -13,6 +13,7 @@ from builder.ai.design_system import get_theme
 from builder.ai.prompts.system_prompts import get_creative_system_prompt, get_page_generation_prompt
 from builder.ai.validators import BlockValidator
 from builder.ai.logging import ai_log
+from builder.ai.schemas.design_brief import DesignBrief
 
 
 class PageGenerator:
@@ -56,6 +57,7 @@ class PageGenerator:
         font_family: str = None,
         page_title: str = None,
         page_type: str = None,
+        design_brief: DesignBrief = None,
     ) -> list[dict]:
         """
         Generate a complete page with full creative freedom.
@@ -68,6 +70,7 @@ class PageGenerator:
             font_family: Custom font family
             page_title: Page title for context
             page_type: Type of page (accueil, services, contact, etc.)
+            design_brief: Optional design brief for visual consistency across pages
 
         Returns:
             list[dict]: List of FrappeBlock dictionaries
@@ -90,6 +93,7 @@ class PageGenerator:
             secondary_color=effective_secondary,
             font_family=font_family,
             page_type=page_type,
+            design_brief=design_brief,
         )
 
         # Build the user prompt

@@ -131,13 +131,13 @@ DEFAULT_PAGES_BY_SITE_TYPE = {
 	],
 	"ecommerce": [
 		{"title": "Accueil", "route": "", "type": "accueil"},
-		{"title": "Boutique", "route": "shop", "type": "boutique"},
+		{"title": "Collection", "route": "collection", "type": "collection"},
 		{"title": "À propos", "route": "about", "type": "about"},
 		{"title": "Contact", "route": "contact", "type": "contact"},
 	],
 	"ecommerce_search": [
 		{"title": "Accueil", "route": "", "type": "accueil"},
-		{"title": "Boutique", "route": "shop", "type": "boutique"},
+		{"title": "Collection", "route": "collection", "type": "collection"},
 		{"title": "À propos", "route": "about", "type": "about"},
 		{"title": "Contact", "route": "contact", "type": "contact"},
 	],
@@ -548,6 +548,46 @@ def _generate_complete_site_worker(
 		ai_log("info", "Header/footer config saved")
 
 		# =====================================================================
+		# STEP 2.5: Generate Design Brief for visual consistency
+		# =====================================================================
+		ai_log("info", "Step 2.5: Generating design brief for consistency")
+		_update_generation_status(job_id, {
+			"status": "running",
+			"progress": 8,
+			"total_pages": total_pages,
+			"current_step": "Generating design brief...",
+			"current_page": None,
+			"pages_created": [],
+			"error": None,
+			"site_name": site_name,
+		})
+
+		from builder.ai.generators.brief_generator import BriefGenerator
+		try:
+			brief_gen = BriefGenerator(provider=provider, model=model, config=ai_config)
+			design_brief = brief_gen.generate_brief(
+				prompt=prompt,
+				site_name=site_name,
+				site_type=site_type,
+				theme=theme,
+				primary_color=primary_color,
+				secondary_color=secondary_color,
+				pages_config=pages_config,
+			)
+			ai_log("info", "Design brief generated",
+				site_tone=design_brief.site_tone, hero_style=design_brief.hero_style)
+			print(f"[SITE_GEN_WORKER] Design brief generated: tone={design_brief.site_tone}")
+		except Exception as e:
+			ai_log("warning", "Design brief generation failed, using defaults", error=str(e)[:100])
+			print(f"[SITE_GEN_WORKER] Design brief failed, using defaults: {str(e)[:100]}")
+			from builder.ai.generators.brief_generator import get_default_brief
+			design_brief = get_default_brief(
+				theme=theme,
+				primary_color=primary_color,
+				secondary_color=secondary_color,
+			)
+
+		# =====================================================================
 		# STEP 3: Generate pages SEQUENTIALLY (simpler, more reliable)
 		# =====================================================================
 		ai_log("info", "Step 3: Starting sequential page generation", total_pages=total_pages)
@@ -598,6 +638,7 @@ def _generate_complete_site_worker(
 					secondary_color=secondary_color,
 					page_title=page_title,
 					page_type=page_def.get("type", ""),
+					design_brief=design_brief,
 				)
 				ai_log("info", "Page generation successful",
 					page=page_title, blocks_count=len(blocks) if blocks else 0)

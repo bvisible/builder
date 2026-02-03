@@ -178,14 +178,17 @@
 
 <script>
 (function() {
-	const searchOverlay = document.getElementById('builder-search-overlay');
-	const searchInput = document.getElementById('builder-search-input');
-	const searchResults = document.getElementById('builder-search-results');
-	const searchClose = document.getElementById('builder-search-close');
-	const searchTrigger = document.querySelector('.header-icon--search');
+	// Wait for DOM to be ready before querying header elements
+	// This is necessary because search_overlay.html is included BEFORE the header renders
+	function initSearch() {
+		const searchOverlay = document.getElementById('builder-search-overlay');
+		const searchInput = document.getElementById('builder-search-input');
+		const searchResults = document.getElementById('builder-search-results');
+		const searchClose = document.getElementById('builder-search-close');
+		const searchTrigger = document.querySelector('.header-icon--search');
 
-	let searchTimeout = null;
-	let isSearchOpen = false;
+		let searchTimeout = null;
+		let isSearchOpen = false;
 
 	// Open search overlay
 	function openSearch() {
@@ -311,11 +314,21 @@
 		});
 	}
 
-	// Close on escape key anywhere
-	document.addEventListener('keydown', function(e) {
-		if (e.key === 'Escape' && isSearchOpen) {
-			closeSearch();
-		}
-	});
+		// Close on escape key anywhere
+		document.addEventListener('keydown', function(e) {
+			if (e.key === 'Escape' && isSearchOpen) {
+				closeSearch();
+			}
+		});
+	}
+
+	// Initialize when DOM is ready
+	// This ensures header icons exist before we try to attach event listeners
+	if (document.readyState === 'loading') {
+		document.addEventListener('DOMContentLoaded', initSearch);
+	} else {
+		// DOM already loaded, but use setTimeout to ensure header is rendered
+		setTimeout(initSearch, 0);
+	}
 })();
 </script>
