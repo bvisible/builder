@@ -117,8 +117,13 @@ Structure d'un block :
 - Un fleuriste ≠ une agence tech ≠ un restaurant
 - IMPORTANT: Limite-toi à 4-5 sections maximum par page
 - Chaque section doit être concise et efficace
-- **NE GÉNÈRE PAS de header ni de footer** - ils sont gérés globalement par le site
-- Commence directement par le contenu principal (hero, services, etc.)
+
+### INTERDIT - NE JAMAIS FAIRE :
+- **NE GÉNÈRE JAMAIS d'élément <nav>** - le header est géré globalement
+- **NE GÉNÈRE JAMAIS d'élément <footer>** - le footer est géré globalement
+- **NE GÉNÈRE JAMAIS de menu de navigation** - il est géré globalement
+- Commence TOUJOURS par une <section> (hero, contenu principal, etc.)
+- Termine TOUJOURS par une <section> (CTA, contact, etc.)
 
 ### Contenu
 - Écris des textes RÉALISTES et ADAPTÉS au métier
