@@ -45,10 +45,10 @@ class OllamaProvider(BaseProvider):
     DEFAULT_MODEL = "kimi-k2.5:cloud"
     DEFAULT_BASE_URL = "http://localhost:11434"
 
-    # Optimized for Kimi K2.5 cloud
-    DEFAULT_NUM_CTX = 131072      # 128k context
-    DEFAULT_MAX_TOKENS = 32768    # 32k output tokens (pages can be large)
-    DEFAULT_TIMEOUT = 600         # 10 minutes for large generations
+    # Optimized for faster generation
+    DEFAULT_NUM_CTX = 32768       # 32k context (prompt ~10k, output ~16k)
+    DEFAULT_MAX_TOKENS = 16384    # 16k output tokens (sufficient for pages)
+    DEFAULT_TIMEOUT = 300         # 5 minutes max per page
 
     def __init__(
         self,
