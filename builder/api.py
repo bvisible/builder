@@ -567,8 +567,9 @@ def _generate_complete_site_worker(
 		})
 
 		config = frappe.get_single("Website Header Footer Config")
-		config.menu_items = []
 
+		# ---- Update Menu ----
+		config.menu_items = []
 		# Track routes to prevent duplicates
 		seen_routes = set()
 		for page in created_pages:
@@ -587,6 +588,39 @@ def _generate_complete_site_worker(
 				"is_external": False,
 				"open_in_new_tab": False,
 			})
+
+		# ---- Update Footer ----
+		# Footer logo: same as header
+		if hasattr(config, "footer_logo_type"):
+			config.footer_logo_type = config.logo_type
+		if hasattr(config, "footer_logo_text"):
+			config.footer_logo_text = config.logo_text
+		if hasattr(config, "footer_logo_image"):
+			config.footer_logo_image = config.logo_image
+		if hasattr(config, "show_footer_logo"):
+			config.show_footer_logo = True
+
+		# Footer description: extract from prompt
+		if hasattr(config, "footer_description"):
+			# Use a short version of the prompt as description
+			short_desc = prompt[:200] if len(prompt) > 200 else prompt
+			# Clean up if it contains site name prefix
+			if " - " in short_desc:
+				short_desc = short_desc.split(" - ", 1)[1]
+			config.footer_description = short_desc
+
+		# Footer links: same as menu
+		if hasattr(config, "footer_links"):
+			config.footer_links = []
+			for page in created_pages:
+				route = page["route"]
+				if route in seen_routes:
+					label = "Accueil" if route == "/" else page["title"]
+					config.append("footer_links", {
+						"label": label,
+						"url": route,
+					})
+
 		config.save(ignore_permissions=True)
 		frappe.db.commit()
 
