@@ -499,12 +499,14 @@ def _generate_complete_site_worker(
 				setattr(config, key, value)
 
 		# Apply explicit parameters
+		# Default to Image logo type (uses existing logo_image from config)
+		config.logo_type = "Image"
 		if logo_image:
-			config.logo_type = "Image"
 			config.logo_image = logo_image
-		else:
-			config.logo_type = "Text"
-			config.logo_text = logo_text or site_name
+		if logo_text:
+			config.logo_text = logo_text
+		elif not config.logo_text:
+			config.logo_text = site_name
 
 		# Apply colors if provided
 		if primary_color and hasattr(config, "primary_color"):
