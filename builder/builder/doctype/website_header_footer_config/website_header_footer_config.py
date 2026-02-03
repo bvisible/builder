@@ -127,6 +127,8 @@ class WebsiteHeaderFooterConfig(Document):
 		return {
 			"bg": self.header_bg_color or "#1a1a1a",
 			"text": self.header_text_color or "#ffffff",
+			"cta_bg": getattr(self, "primary_color", None) or "#6366f1",
+			"cta_text": "#ffffff",
 		}
 
 	def get_footer_colors(self) -> dict:
