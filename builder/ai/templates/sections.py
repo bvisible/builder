@@ -1400,8 +1400,15 @@ def build_section_from_content(section_type: str, content, theme_styles: dict = 
     Returns:
         dict: Complete section block ready for Frappe Builder
     """
+    # Auto-select hero variant based on image presence
+    def hero_variant_for_content(c):
+        # Use split layout if there's an image, otherwise centered
+        if hasattr(c, 'image_url') and c.image_url:
+            return "split"
+        return "centered"
+
     builders = {
-        "hero": lambda c: build_hero_section(c, "centered", theme_styles),
+        "hero": lambda c: build_hero_section(c, hero_variant_for_content(c), theme_styles),
         "hero_centered": lambda c: build_hero_section(c, "centered", theme_styles),
         "hero_split": lambda c: build_hero_section(c, "split", theme_styles),
         "features": lambda c: build_features_section(c, "grid", theme_styles),
