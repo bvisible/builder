@@ -10,6 +10,7 @@ from builder.ai.providers import get_provider
 from builder.ai.generators.page_generator import PageGenerator, generate_page
 from builder.ai.validators import BlockValidator
 from builder.ai.design_system import get_theme, list_themes, DESIGN_TOKENS
+from builder.ai.logging import ai_log, get_log_path
 
 __version__ = "2.0.0"
 
@@ -28,4 +29,7 @@ __all__ = [
     "get_theme",
     "list_themes",
     "DESIGN_TOKENS",
+    # Logging
+    "ai_log",
+    "get_log_path",
 ]

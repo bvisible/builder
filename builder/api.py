@@ -415,11 +415,20 @@ def _generate_complete_site_worker(
 
 	from builder.ai.generators.page_generator import PageGenerator
 	from builder.ai.config import get_ai_settings
+	from builder.ai.logging import ai_log
+
+	# Log to dedicated file (survives worker crashes)
+	ai_log("info", "=== SITE GENERATION STARTED ===",
+		job_id=job_id, site_name=site_name, site_type=site_type)
+	ai_log("info", "Configuration",
+		theme=theme, provider=provider, model=model, primary_color=primary_color)
 
 	# Get AI config NOW (before threads) - frappe.conf is only available in main thread
 	print(f"[SITE_GEN_WORKER] Getting AI settings...")
 	ai_config = get_ai_settings()
 	print(f"[SITE_GEN_WORKER] AI Config: provider={ai_config.provider}, model={ai_config.model}")
+	ai_log("info", "AI settings loaded",
+		provider=ai_config.provider, model=ai_config.model)
 
 	pages_config = DEFAULT_PAGES_BY_SITE_TYPE.get(site_type, DEFAULT_PAGES_BY_SITE_TYPE["vitrine"])
 	total_pages = len(pages_config)
@@ -446,6 +455,7 @@ def _generate_complete_site_worker(
 		# =====================================================================
 		# STEP 1: Delete ALL existing Builder Pages
 		# =====================================================================
+		ai_log("info", "Step 1: Deleting existing pages")
 		print(f"[SITE_GEN_WORKER] Cleaning up existing Builder Pages...")
 		existing_pages = frappe.get_all("Builder Page", pluck="name")
 		for page_name in existing_pages:
@@ -463,10 +473,12 @@ def _generate_complete_site_worker(
 					print(f"[SITE_GEN_WORKER] Skipping page {page_name}: {e2}")
 		frappe.db.commit()
 		print(f"[SITE_GEN_WORKER] Cleanup complete")
+		ai_log("info", "Deleted existing pages", count=len(existing_pages))
 
 		# =====================================================================
 		# STEP 2: Configure Website Header Footer Config
 		# =====================================================================
+		ai_log("info", "Step 2: Configuring header/footer")
 		_update_generation_status(job_id, {
 			"status": "running",
 			"progress": 5,
@@ -531,10 +543,12 @@ def _generate_complete_site_worker(
 		config.menu_items = []
 		config.save(ignore_permissions=True)
 		frappe.db.commit()
+		ai_log("info", "Header/footer config saved")
 
 		# =====================================================================
 		# STEP 3: Generate pages SEQUENTIALLY (simpler, more reliable)
 		# =====================================================================
+		ai_log("info", "Step 3: Starting sequential page generation", total_pages=total_pages)
 		_update_generation_status(job_id, {
 			"status": "running",
 			"progress": 10,
@@ -554,6 +568,7 @@ def _generate_complete_site_worker(
 		generated_results = []
 		for idx, page_def in enumerate(pages_config):
 			page_title = page_def["title"]
+			ai_log("info", f"Generating page {idx + 1}/{total_pages}", page=page_title)
 			print(f"[SITE_GEN_WORKER] === Generating page {idx + 1}/{total_pages}: {page_title} ===")
 
 			# Update progress
@@ -571,6 +586,8 @@ def _generate_complete_site_worker(
 
 			try:
 				page_prompt = f"{prompt}. Page: {page_title}."
+				ai_log("info", "Calling PageGenerator.generate_page()",
+					page=page_title, provider=provider, model=model)
 				print(f"[SITE_GEN_WORKER] Calling gen.generate_page for {page_title}...")
 				blocks = gen.generate_page(
 					prompt=page_prompt,
@@ -580,15 +597,22 @@ def _generate_complete_site_worker(
 					page_title=page_title,
 					page_type=page_def.get("type", ""),
 				)
+				ai_log("info", "Page generation successful",
+					page=page_title, blocks_count=len(blocks) if blocks else 0)
 				print(f"[SITE_GEN_WORKER] Page {page_title} generated: {len(blocks)} blocks")
 				generated_results.append({"page_def": page_def, "blocks": blocks, "error": None})
 			except Exception as e:
 				error_msg = str(e)[:200]
+				ai_log("error", "Page generation failed", page=page_title, error=error_msg)
 				print(f"[SITE_GEN_WORKER] Page {page_title} FAILED: {error_msg}")
 				frappe.log_error(f"Page generation failed: {page_title}", str(e))
 				generated_results.append({"page_def": page_def, "blocks": None, "error": error_msg})
 
 		# Now create all pages in DB (sequential, but fast)
+		ai_log("info", "All page generations completed",
+			successful=sum(1 for r in generated_results if not r["error"]),
+			failed=sum(1 for r in generated_results if r["error"]))
+		ai_log("info", "Step 4: Creating pages in database")
 		created_pages = []
 		for result in generated_results:
 			if result["error"] or not result["blocks"]:
@@ -627,11 +651,13 @@ def _generate_complete_site_worker(
 			})
 
 		# =====================================================================
-		# STEP 4: Update menu from created pages
+		# STEP 5: Update menu from created pages
 		# =====================================================================
+		ai_log("info", "Step 5: Updating menu", pages_created=len(created_pages))
 
 		# Check that at least one page was created
 		if not created_pages:
+			ai_log("error", "No pages could be generated", total_pages=total_pages)
 			raise ValueError(f"No pages could be generated. All {total_pages} page generations failed.")
 
 		_update_generation_status(job_id, {
@@ -731,12 +757,15 @@ def _generate_complete_site_worker(
 		frappe.db.commit()
 
 		# =====================================================================
-		# STEP 5: Mark as completed
+		# STEP 6: Mark as completed
 		# =====================================================================
 		end_time = time.time()
 		duration_seconds = int(end_time - start_time)
 		duration_str = f"{duration_seconds // 60}m {duration_seconds % 60}s"
 
+		ai_log("info", "=== SITE GENERATION COMPLETED ===",
+			job_id=job_id, pages_created=len(created_pages),
+			pages_failed=total_pages - len(created_pages), duration=duration_str)
 		print(f"[SITE_GEN_WORKER] ===== WORKER COMPLETED =====")
 		print(f"[SITE_GEN_WORKER] job_id={job_id}, pages_created={len(created_pages)}/{total_pages}, duration={duration_str}")
 
@@ -772,6 +801,8 @@ def _generate_complete_site_worker(
 
 	except Exception as e:
 		# Log error and update status
+		ai_log("error", "=== SITE GENERATION FAILED ===",
+			job_id=job_id, error=str(e))
 		print(f"[SITE_GEN_WORKER] ===== WORKER FAILED =====")
 		print(f"[SITE_GEN_WORKER] job_id={job_id}, error={str(e)[:200]}")
 		frappe.log_error("Site generation failed", str(e))

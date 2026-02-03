@@ -12,6 +12,7 @@ from builder.ai.providers import get_provider
 from builder.ai.design_system import get_theme
 from builder.ai.prompts.system_prompts import get_creative_system_prompt, get_page_generation_prompt
 from builder.ai.validators import BlockValidator
+from builder.ai.logging import ai_log
 
 
 class PageGenerator:
@@ -99,24 +100,38 @@ class PageGenerator:
         )
 
         # Generate blocks via LLM
+        ai_log("info", "PageGenerator.generate_page() calling LLM",
+            provider=self.config.provider, model=self.config.model,
+            theme=theme_name, page_type=page_type)
+        ai_log("debug", "Prompt sizes",
+            system_prompt_len=len(system_prompt), user_prompt_len=len(user_prompt))
         frappe.logger().info(f"Generating page: {prompt[:50]}...")
 
-        response = self.llm.generate(
-            prompt=user_prompt,
-            system_prompt=system_prompt,
-        )
+        try:
+            response = self.llm.generate(
+                prompt=user_prompt,
+                system_prompt=system_prompt,
+            )
+            ai_log("info", "LLM response received", response_len=len(response))
+        except Exception as e:
+            ai_log("error", "LLM.generate() failed", error=str(e))
+            raise
 
         # Parse JSON response
+        ai_log("debug", "Parsing LLM response as JSON")
         blocks = self._parse_response(response)
 
         # Validate blocks
+        ai_log("debug", "Validating blocks", blocks_count=len(blocks))
         if not self.validator.validate_blocks(blocks):
+            ai_log("error", "Block validation failed", prompt_preview=prompt[:100])
             frappe.log_error("Block validation failed", f"Prompt: {prompt[:100]}")
             raise ValueError("Generated blocks failed validation")
 
         # Apply colors as CSS variables (always apply theme colors)
         blocks = self._apply_custom_colors(blocks, effective_primary, effective_secondary)
 
+        ai_log("info", "Page generation complete", blocks_count=len(blocks))
         frappe.logger().info(f"Generated {len(blocks)} blocks successfully")
         return blocks
 

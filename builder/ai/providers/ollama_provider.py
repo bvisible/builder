@@ -16,6 +16,7 @@ from builder.ai.providers.base import (
     GenerationError,
     ValidationError,
 )
+from builder.ai.logging import ai_log
 
 # Check if Ollama SDK is available
 try:
@@ -176,10 +177,17 @@ class OllamaProvider(BaseProvider):
         max_tokens: int = None,
     ) -> str:
         """Generate text response"""
+        ai_log("info", "OllamaProvider.generate() called",
+            model=self.model, base_url=self.base_url,
+            use_sdk=self._use_sdk, num_ctx=self.num_ctx)
+
         messages = self._format_messages(prompt, system_prompt)
 
         if self._use_sdk:
+            ai_log("debug", "Using Ollama SDK")
             return self._generate_with_sdk(messages, temperature, max_tokens)
+
+        ai_log("debug", "Using HTTP API with streaming")
         return self._generate_with_http(messages, temperature, max_tokens)
 
     def _generate_with_sdk(
@@ -190,6 +198,7 @@ class OllamaProvider(BaseProvider):
     ) -> str:
         """Generate using official Ollama SDK"""
         try:
+            ai_log("debug", "SDK client.chat() starting", model=self.model)
             client = Client(host=self.base_url)
             response = client.chat(
                 model=self.model,
@@ -200,8 +209,11 @@ class OllamaProvider(BaseProvider):
                     "num_ctx": self.num_ctx,
                 },
             )
-            return response.message.content
+            content = response.message.content
+            ai_log("info", "SDK response received", content_length=len(content))
+            return content
         except Exception as e:
+            ai_log("error", "SDK generation failed", error=str(e))
             raise GenerationError(f"Ollama generation failed: {e}")
 
     def _generate_with_http(
@@ -227,9 +239,15 @@ class OllamaProvider(BaseProvider):
             },
         }
 
+        ai_log("debug", "HTTP generate payload prepared",
+            model=self.model, temperature=temperature or self.temperature,
+            num_predict=max_tokens or self.max_tokens)
+
         try:
-            return self._make_streaming_request("/api/chat", payload)
+            result = self._make_streaming_request("/api/chat", payload)
+            return result
         except Exception as e:
+            ai_log("error", "HTTP generation failed", error=str(e))
             raise GenerationError(f"Ollama generation failed: {e}")
 
     def generate_structured(
@@ -438,6 +456,10 @@ CRITICAL RULES:
         url = f"{self.base_url}{endpoint}"
         headers = self._get_auth_headers()
 
+        ai_log("debug", "HTTP streaming request starting",
+            url=url, model=payload.get("model"),
+            num_ctx=payload.get("options", {}).get("num_ctx"),
+            timeout=self.timeout)
         print(f"[OLLAMA] Streaming request to {url}, has_api_key={'X-API-Key' in headers}")
 
         try:
@@ -449,10 +471,13 @@ CRITICAL RULES:
                 stream=True,
             )
 
+            ai_log("debug", "HTTP response received", status=response.status_code)
             print(f"[OLLAMA] Response status: {response.status_code}")
 
             if response.status_code != 200:
                 error_text = response.text[:500]
+                ai_log("error", "HTTP error response",
+                    status=response.status_code, body=error_text[:200])
                 print(f"[OLLAMA] Error response: {error_text[:200]}")
                 raise GenerationError(
                     f"Ollama API error ({response.status_code}): {error_text}"
@@ -460,31 +485,39 @@ CRITICAL RULES:
 
             # Assemble content from stream chunks
             full_content = ""
+            chunks_count = 0
             for line in response.iter_lines():
                 if line:
                     try:
                         chunk = json.loads(line)
                         if "message" in chunk and "content" in chunk["message"]:
                             full_content += chunk["message"]["content"]
+                            chunks_count += 1
                         # Check if stream is done
                         if chunk.get("done", False):
                             break
                     except json.JSONDecodeError:
                         continue
 
+            ai_log("info", "HTTP streaming completed",
+                chunks_received=chunks_count, content_length=len(full_content))
+
             return full_content
 
-        except requests.exceptions.ConnectionError:
+        except requests.exceptions.ConnectionError as e:
+            ai_log("error", "HTTP connection error", url=url, error=str(e))
             raise GenerationError(
                 f"Cannot connect to Ollama at {self.base_url}. "
                 "Make sure Ollama is running (ollama serve)."
             )
         except requests.exceptions.Timeout:
+            ai_log("error", "HTTP timeout", url=url, timeout=self.timeout)
             raise GenerationError(
                 f"Ollama request timed out after {self.timeout}s. "
                 "Try a smaller model or increase timeout."
             )
         except requests.exceptions.RequestException as e:
+            ai_log("error", "HTTP request failed", url=url, error=str(e))
             raise GenerationError(f"Ollama request failed: {e}")
 
     def _make_request(self, endpoint: str, payload: dict) -> dict:
