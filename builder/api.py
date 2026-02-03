@@ -395,6 +395,10 @@ def _generate_complete_site_worker(
 	pages_config = DEFAULT_PAGES_BY_SITE_TYPE.get(site_type, DEFAULT_PAGES_BY_SITE_TYPE["vitrine"])
 	total_pages = len(pages_config)
 
+	# Track generation time
+	import time
+	start_time = time.time()
+
 	try:
 		# Update status: starting
 		_update_generation_status(job_id, {
@@ -406,6 +410,7 @@ def _generate_complete_site_worker(
 			"pages_created": [],
 			"error": None,
 			"site_name": site_name,
+			"started_at": frappe.utils.now(),
 		})
 
 		# =====================================================================
@@ -455,6 +460,11 @@ def _generate_complete_site_worker(
 		# CTA configuration
 		config.cta_text = cta_text
 		config.cta_url = cta_url
+		# CTA button uses primary color
+		if primary_color and hasattr(config, "cta_button_color"):
+			config.cta_button_color = primary_color
+		if hasattr(config, "cta_button_text_color"):
+			config.cta_button_text_color = "#ffffff"
 
 		# Social links
 		if social_links:
@@ -565,6 +575,11 @@ def _generate_complete_site_worker(
 					"site_name": site_name,
 				})
 
+		# Sort results by original page order (pages_config order)
+		# This ensures menu items appear in the correct order (Accueil first)
+		page_order = {p["title"]: i for i, p in enumerate(pages_config)}
+		generated_results.sort(key=lambda r: page_order.get(r["page_def"]["title"], 999))
+
 		# Now create all pages in DB (sequential, but fast)
 		created_pages = []
 		for result in generated_results:
@@ -673,6 +688,10 @@ def _generate_complete_site_worker(
 		# =====================================================================
 		# STEP 5: Mark as completed
 		# =====================================================================
+		end_time = time.time()
+		duration_seconds = int(end_time - start_time)
+		duration_str = f"{duration_seconds // 60}m {duration_seconds % 60}s"
+
 		_update_generation_status(job_id, {
 			"status": "completed",
 			"progress": 100,
@@ -683,9 +702,15 @@ def _generate_complete_site_worker(
 			"error": None,
 			"site_name": site_name,
 			"completed_at": frappe.utils.now(),
+			"duration_seconds": duration_seconds,
+			"duration": duration_str,
 			"result": {
 				"success": True,
 				"pages": created_pages,
+				"pages_generated": len(created_pages),
+				"pages_failed": total_pages - len(created_pages),
+				"duration": duration_str,
+				"duration_seconds": duration_seconds,
 				"config": {
 					"site_type": site_type,
 					"theme": theme,
@@ -693,7 +718,7 @@ def _generate_complete_site_worker(
 					"logo_value": config.logo_image if config.logo_type == "Image" else config.logo_text,
 					"menu_items_count": len(config.menu_items),
 				},
-				"message": f"Site generated successfully with {len(created_pages)} pages"
+				"message": f"Site generated in {duration_str} with {len(created_pages)}/{total_pages} pages"
 			}
 		})
 
