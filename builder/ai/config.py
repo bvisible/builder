@@ -46,10 +46,10 @@ class AIConfig:
 # Recommended models for each provider
 RECOMMENDED_MODELS = {
     "ollama": {
-        "best_quality": "qwen2.5:32b",
-        "balanced": "qwen2.5:7b",
-        "fast": "qwen2.5:3b",
-        "creative": "llama3.2:8b",
+        "best_quality": "kimi-k2.5:cloud",
+        "balanced": "kimi-k2.5:cloud",
+        "fast": "qwen2.5:7b",
+        "creative": "kimi-k2.5:cloud",
         "code": "deepseek-coder:6.7b",
     },
     "openai": {
@@ -66,12 +66,14 @@ RECOMMENDED_MODELS = {
 }
 
 # Default Ollama configuration
+# Optimized for Kimi K2.5 cloud (256k context, 16k+ output)
 DEFAULT_OLLAMA_CONFIG = {
     "base_url": "http://localhost:11434",
-    "model": "qwen2.5:7b",
-    "temperature": 0.7,
-    "num_predict": 4096,
-    "num_ctx": 8192,
+    "model": "kimi-k2.5:cloud",
+    "temperature": 0.6,      # Kimi instant mode recommendation
+    "num_predict": 16384,    # 16k output tokens for large JSON
+    "num_ctx": 131072,       # 128k context window
+    "timeout": 300,          # 5 minutes for cloud deployments
 }
 
 # Default OpenAI configuration

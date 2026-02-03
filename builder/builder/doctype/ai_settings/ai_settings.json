@@ -75,8 +75,8 @@
    "fieldtype": "Column Break"
   },
   {
-   "default": "0.7",
-   "description": "Higher values (0.8-1.0) = more creative, lower values (0.1-0.5) = more focused",
+   "default": "0.6",
+   "description": "Kimi K2.5 instant mode: 0.6 recommended. Higher (0.8-1.0) = creative, lower (0.1-0.5) = focused",
    "fieldname": "temperature",
    "fieldtype": "Float",
    "label": "Temperature",
@@ -115,9 +115,9 @@
    "label": "Ollama API Key"
   },
   {
-   "default": "qwen2.5:7b",
+   "default": "kimi-k2.5:cloud",
    "depends_on": "eval:doc.ollama_enabled",
-   "description": "Recommended: qwen2.5:7b (balanced), qwen2.5:32b (quality), llama3.2:8b (creative)",
+   "description": "Recommended: kimi-k2.5:cloud (256k context), qwen2.5:7b (balanced), llama3.2:8b (creative)",
    "fieldname": "ollama_model",
    "fieldtype": "Data",
    "label": "Ollama Model"
@@ -127,17 +127,17 @@
    "fieldtype": "Column Break"
   },
   {
-   "default": "8192",
+   "default": "131072",
    "depends_on": "eval:doc.ollama_enabled",
-   "description": "Context window size (tokens)",
+   "description": "Context window size (tokens). Kimi K2.5 supports up to 256k.",
    "fieldname": "ollama_num_ctx",
    "fieldtype": "Int",
    "label": "Context Size"
   },
   {
-   "default": "120",
+   "default": "300",
    "depends_on": "eval:doc.ollama_enabled",
-   "description": "Request timeout in seconds",
+   "description": "Request timeout in seconds (5 min recommended for cloud)",
    "fieldname": "ollama_timeout",
    "fieldtype": "Int",
    "label": "Timeout (seconds)"
