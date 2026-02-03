@@ -99,10 +99,12 @@ class OllamaProvider(BaseProvider):
                     # Get password field
                     try:
                         settings["api_key"] = ai_settings.get_password("ollama_api_key")
-                    except Exception:
+                        print(f"[OLLAMA] API key loaded from get_password (length={len(settings['api_key']) if settings['api_key'] else 0})")
+                    except Exception as e:
                         settings["api_key"] = ai_settings.get("ollama_api_key")
-        except Exception:
-            pass
+                        print(f"[OLLAMA] get_password failed: {e}, using fallback")
+        except Exception as e:
+            print(f"[OLLAMA] Failed to load AI Settings: {e}")
 
         # Fallback to site config for any missing values
         if not settings.get("base_url"):
@@ -161,6 +163,9 @@ class OllamaProvider(BaseProvider):
         if self.api_key:
             headers["X-API-Key"] = self.api_key
             headers["Authorization"] = f"Bearer {self.api_key}"
+            print(f"[OLLAMA] Using API key (length={len(self.api_key)}, starts={self.api_key[:8]}...)")
+        else:
+            print("[OLLAMA] No API key configured!")
         return headers
 
     def generate(
@@ -433,6 +438,8 @@ CRITICAL RULES:
         url = f"{self.base_url}{endpoint}"
         headers = self._get_auth_headers()
 
+        print(f"[OLLAMA] Streaming request to {url}, has_api_key={'X-API-Key' in headers}")
+
         try:
             response = requests.post(
                 url,
@@ -442,8 +449,11 @@ CRITICAL RULES:
                 stream=True,
             )
 
+            print(f"[OLLAMA] Response status: {response.status_code}")
+
             if response.status_code != 200:
                 error_text = response.text[:500]
+                print(f"[OLLAMA] Error response: {error_text[:200]}")
                 raise GenerationError(
                     f"Ollama API error ({response.status_code}): {error_text}"
                 )

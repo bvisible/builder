@@ -323,6 +323,8 @@ def generate_complete_site(
 	# Generate a unique job ID
 	job_id = f"site_gen_{frappe.generate_hash(length=10)}"
 
+	print(f"[SITE_GEN] Starting generate_complete_site: job_id={job_id}, site_type={site_type}, site_name={site_name}")
+
 	# Initialize job status in cache
 	_update_generation_status(job_id, {
 		"status": "queued",
@@ -359,6 +361,8 @@ def generate_complete_site(
 		model=model,
 	)
 
+	print(f"[SITE_GEN] Job enqueued successfully: job_id={job_id}")
+
 	return {
 		"job_id": job_id,
 		"status": "queued",
@@ -370,6 +374,7 @@ def _update_generation_status(job_id: str, data: dict):
 	"""Update the generation status in cache."""
 	cache_key = f"site_generation_{job_id}"
 	frappe.cache().set_value(cache_key, data, expires_in_sec=3600)  # 1 hour TTL
+	print(f"[SITE_GEN] Status update: job_id={job_id}, status={data.get('status')}, progress={data.get('progress')}%, step={data.get('current_step', '')[:50]}")
 
 
 def _get_generation_status(job_id: str) -> dict:
@@ -404,10 +409,21 @@ def _generate_complete_site_worker(
 	"""
 	# Use local variable for cleaner code
 	job_id = generation_job_id
+
+	print(f"[SITE_GEN_WORKER] ===== WORKER STARTED =====")
+	print(f"[SITE_GEN_WORKER] job_id={job_id}, site_type={site_type}, site_name={site_name}")
+
 	from builder.ai.generators.page_generator import PageGenerator
+	from builder.ai.config import get_ai_settings
+
+	# Get AI config NOW (before threads) - frappe.conf is only available in main thread
+	print(f"[SITE_GEN_WORKER] Getting AI settings...")
+	ai_config = get_ai_settings()
+	print(f"[SITE_GEN_WORKER] AI Config: provider={ai_config.provider}, model={ai_config.model}")
 
 	pages_config = DEFAULT_PAGES_BY_SITE_TYPE.get(site_type, DEFAULT_PAGES_BY_SITE_TYPE["vitrine"])
 	total_pages = len(pages_config)
+	print(f"[SITE_GEN_WORKER] Pages to generate: {total_pages} - {[p['title'] for p in pages_config]}")
 
 	# Track generation time
 	import time
@@ -430,10 +446,23 @@ def _generate_complete_site_worker(
 		# =====================================================================
 		# STEP 1: Delete ALL existing Builder Pages
 		# =====================================================================
+		print(f"[SITE_GEN_WORKER] Cleaning up existing Builder Pages...")
 		existing_pages = frappe.get_all("Builder Page", pluck="name")
 		for page_name in existing_pages:
-			frappe.delete_doc("Builder Page", page_name, ignore_permissions=True)
+			try:
+				frappe.delete_doc("Builder Page", page_name, ignore_permissions=True, force=True)
+				print(f"[SITE_GEN_WORKER] Deleted page: {page_name}")
+			except Exception as e:
+				# If page has links, try to remove them first
+				print(f"[SITE_GEN_WORKER] Could not delete {page_name}: {e}, trying to clear links...")
+				try:
+					frappe.db.delete("Dynamic Link", {"link_doctype": "Builder Page", "link_name": page_name})
+					frappe.delete_doc("Builder Page", page_name, ignore_permissions=True, force=True)
+					print(f"[SITE_GEN_WORKER] Deleted page after clearing links: {page_name}")
+				except Exception as e2:
+					print(f"[SITE_GEN_WORKER] Skipping page {page_name}: {e2}")
 		frappe.db.commit()
+		print(f"[SITE_GEN_WORKER] Cleanup complete")
 
 		# =====================================================================
 		# STEP 2: Configure Website Header Footer Config
@@ -504,95 +533,60 @@ def _generate_complete_site_worker(
 		frappe.db.commit()
 
 		# =====================================================================
-		# STEP 3: Generate pages in PARALLEL (content only, no header/footer blocks)
+		# STEP 3: Generate pages SEQUENTIALLY (simpler, more reliable)
 		# =====================================================================
-		from concurrent.futures import ThreadPoolExecutor, as_completed
-
 		_update_generation_status(job_id, {
 			"status": "running",
 			"progress": 10,
 			"total_pages": total_pages,
-			"current_step": f"Generating {total_pages} pages in parallel...",
+			"current_step": f"Generating {total_pages} pages...",
 			"current_page": None,
 			"pages_created": [],
 			"error": None,
 			"site_name": site_name,
 		})
 
-		# Get current site info for thread initialization
-		current_site = frappe.local.site
-		sites_path = frappe.local.sites_path
+		# Create one generator instance (reused for all pages)
+		print(f"[SITE_GEN_WORKER] Creating PageGenerator...")
+		gen = PageGenerator(provider=provider, model=model, config=ai_config)
+		print(f"[SITE_GEN_WORKER] PageGenerator created successfully")
 
-		def generate_single_page(page_def: dict) -> dict:
-			"""
-			Generate a single page. Runs in a thread.
-			Returns dict with page_def, blocks, and error info.
-			"""
-			# Initialize Frappe in this thread (required for thread-local DB connection)
-			frappe.init(site=current_site, sites_path=sites_path)
-			frappe.connect()
+		generated_results = []
+		for idx, page_def in enumerate(pages_config):
+			page_title = page_def["title"]
+			print(f"[SITE_GEN_WORKER] === Generating page {idx + 1}/{total_pages}: {page_title} ===")
+
+			# Update progress
+			progress = 10 + int((idx / total_pages) * 80)
+			_update_generation_status(job_id, {
+				"status": "running",
+				"progress": progress,
+				"total_pages": total_pages,
+				"current_step": f"Generating page {idx + 1}/{total_pages}: {page_title}",
+				"current_page": page_title,
+				"pages_created": [],
+				"error": None,
+				"site_name": site_name,
+			})
 
 			try:
-				# Each thread needs its own generator instance
-				gen = PageGenerator(provider=provider, model=model)
-				page_prompt = f"{prompt}. Page: {page_def['title']}."
-
+				page_prompt = f"{prompt}. Page: {page_title}."
+				print(f"[SITE_GEN_WORKER] Calling gen.generate_page for {page_title}...")
 				blocks = gen.generate_page(
 					prompt=page_prompt,
 					theme=theme,
 					primary_color=primary_color,
 					secondary_color=secondary_color,
-					page_title=page_def["title"],
+					page_title=page_title,
 					page_type=page_def.get("type", ""),
 				)
-				return {"page_def": page_def, "blocks": blocks, "error": None}
+				print(f"[SITE_GEN_WORKER] Page {page_title} generated: {len(blocks)} blocks")
+				generated_results.append({"page_def": page_def, "blocks": blocks, "error": None})
 			except Exception as e:
 				error_msg = str(e)[:200]
-				try:
-					frappe.log_error(f"Page generation failed: {page_def['title']}", str(e))
-				except Exception:
-					pass  # Ignore logging errors in thread
-				return {"page_def": page_def, "blocks": None, "error": error_msg}
-			finally:
-				# Clean up thread-local Frappe state
-				frappe.destroy()
-
-		# Generate all pages in parallel (max 4 workers to avoid overload)
-		generated_results = []
-		with ThreadPoolExecutor(max_workers=4) as executor:
-			futures = {
-				executor.submit(generate_single_page, page_def): page_def
-				for page_def in pages_config
-			}
-
-			completed_count = 0
-			for future in as_completed(futures):
-				completed_count += 1
-				page_def = futures[future]
-				result = future.result()
-				generated_results.append(result)
-
-				# Update progress
-				progress = 10 + int((completed_count / total_pages) * 80)
-				status_msg = f"Generated {completed_count}/{total_pages}"
-				if result["error"]:
-					status_msg += f" (warning: {page_def['title']} failed)"
-
-				_update_generation_status(job_id, {
-					"status": "running",
-					"progress": progress,
-					"total_pages": total_pages,
-					"current_step": status_msg,
-					"current_page": page_def["title"],
-					"pages_created": [],  # Will be filled after DB operations
-					"error": result["error"],
-					"site_name": site_name,
-				})
-
-		# Sort results by original page order (pages_config order)
-		# This ensures menu items appear in the correct order (Accueil first)
-		page_order = {p["title"]: i for i, p in enumerate(pages_config)}
-		generated_results.sort(key=lambda r: page_order.get(r["page_def"]["title"], 999))
+				print(f"[SITE_GEN_WORKER] Page {page_title} FAILED: {error_msg}")
+				frappe.log_error(f"Page generation failed: {page_title}", str(e))
+				generated_results.append({"page_def": page_def, "blocks": None, "error": error_msg})
 
 		# Now create all pages in DB (sequential, but fast)
 		created_pages = []
@@ -743,6 +737,9 @@ def _generate_complete_site_worker(
 		duration_seconds = int(end_time - start_time)
 		duration_str = f"{duration_seconds // 60}m {duration_seconds % 60}s"
 
+		print(f"[SITE_GEN_WORKER] ===== WORKER COMPLETED =====")
+		print(f"[SITE_GEN_WORKER] job_id={job_id}, pages_created={len(created_pages)}/{total_pages}, duration={duration_str}")
+
 		_update_generation_status(job_id, {
 			"status": "completed",
 			"progress": 100,
@@ -775,6 +772,8 @@ def _generate_complete_site_worker(
 
 	except Exception as e:
 		# Log error and update status
+		print(f"[SITE_GEN_WORKER] ===== WORKER FAILED =====")
+		print(f"[SITE_GEN_WORKER] job_id={job_id}, error={str(e)[:200]}")
 		frappe.log_error("Site generation failed", str(e))
 		_update_generation_status(job_id, {
 			"status": "failed",
@@ -802,6 +801,57 @@ def get_site_generation_status(job_id: str):
 		dict: Job status with progress, current step, pages created, etc.
 	"""
 	return _get_generation_status(job_id)
+
+
+# =============================================================================
+# DEBUG FUNCTION - REMOVE AFTER TESTING
+# =============================================================================
+
+@frappe.whitelist()
+def test_ollama_api():
+	"""Test Ollama API connection - DEBUG ONLY"""
+	import requests
+	ai = frappe.get_single("AI Settings")
+	api_key = ai.get_password("ollama_api_key")
+	base_url = ai.ollama_base_url
+
+	result = {
+		"api_key_length": len(api_key) if api_key else 0,
+		"api_key_prefix": api_key[:15] if api_key else None,
+		"base_url": base_url,
+	}
+
+	try:
+		headers = {"Content-Type": "application/json", "X-API-Key": api_key}
+		# Use streaming to avoid Cloudflare timeout
+		resp = requests.post(
+			f"{base_url}/api/chat",
+			json={
+				"model": "kimi-k2.5:cloud",
+				"messages": [{"role": "user", "content": "Say hello in one word"}],
+				"stream": True
+			},
+			headers=headers,
+			timeout=120,
+			stream=True
+		)
+		result["status_code"] = resp.status_code
+
+		if resp.status_code == 200:
+			# Read first chunks
+			content = ""
+			for i, line in enumerate(resp.iter_lines()):
+				if line and i < 5:
+					content += line.decode() + "\n"
+				if i >= 5:
+					break
+			result["response_preview"] = content[:500]
+		else:
+			result["response_preview"] = resp.text[:300]
+	except Exception as e:
+		result["error"] = str(e)
+
+	return result
 
 
 # =============================================================================
