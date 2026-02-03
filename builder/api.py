@@ -28,6 +28,16 @@ from builder.builder.doctype.builder_page.builder_page import BuilderPageRendere
 
 # Default header/footer settings for each site type
 SITE_TYPE_HEADER_FOOTER_DEFAULTS = {
+	"one_page": {
+		"header_layout": "Logo | Menu Center | Icons",
+		"search_type": "None",
+		"show_cta": True,
+		"show_user": False,
+		"show_wishlist": False,
+		"show_cart": False,
+		"footer_template": "Minimal",
+		"sticky_header": True,  # Important for one-page navigation
+	},
 	"vitrine": {
 		"header_layout": "Logo | Menu Center | Icons",
 		"search_type": "None",
@@ -97,6 +107,10 @@ SITE_TYPE_HEADER_FOOTER_DEFAULTS = {
 # Page configurations by site type
 # Note: The AI has full creative freedom for sections - we only define pages and routes
 DEFAULT_PAGES_BY_SITE_TYPE = {
+	"one_page": [
+		# Single page with all sections - menu will use anchor links
+		{"title": "Accueil", "route": "", "type": "one_page"},
+	],
 	"vitrine": [
 		{"title": "Accueil", "route": "", "type": "accueil"},
 		{"title": "À propos", "route": "about", "type": "about"},
@@ -641,24 +655,43 @@ def _generate_complete_site_worker(
 
 		# ---- Update Menu ----
 		config.menu_items = []
-		# Track routes to prevent duplicates
-		seen_routes = set()
-		for page in created_pages:
-			route = page["route"]
-			# Skip if route already added (prevents "/" duplication)
-			if route in seen_routes:
-				continue
-			seen_routes.add(route)
 
-			# Use "Accueil" for home page, otherwise use page title
-			label = "Accueil" if route == "/" else page["title"]
+		# Special handling for one_page sites: use anchor links
+		if site_type == "one_page":
+			# Define anchor sections for one-page navigation
+			one_page_anchors = [
+				{"label": "Accueil", "url": "/#hero"},
+				{"label": "Services", "url": "/#services"},
+				{"label": "À propos", "url": "/#about"},
+				{"label": "Contact", "url": "/#contact"},
+			]
+			for anchor in one_page_anchors:
+				config.append("menu_items", {
+					"label": anchor["label"],
+					"url": anchor["url"],
+					"is_external": False,
+					"open_in_new_tab": False,
+				})
+		else:
+			# Multi-page sites: use page routes
+			# Track routes to prevent duplicates
+			seen_routes = set()
+			for page in created_pages:
+				route = page["route"]
+				# Skip if route already added (prevents "/" duplication)
+				if route in seen_routes:
+					continue
+				seen_routes.add(route)
 
-			config.append("menu_items", {
-				"label": label,
-				"url": route,
-				"is_external": False,
-				"open_in_new_tab": False,
-			})
+				# Use "Accueil" for home page, otherwise use page title
+				label = "Accueil" if route == "/" else page["title"]
+
+				config.append("menu_items", {
+					"label": label,
+					"url": route,
+					"is_external": False,
+					"open_in_new_tab": False,
+				})
 
 		# ---- Update Footer ----
 		# Footer logo: same as header
@@ -683,14 +716,22 @@ def _generate_complete_site_worker(
 		# Footer links: same as menu
 		if hasattr(config, "footer_links"):
 			config.footer_links = []
-			for page in created_pages:
-				route = page["route"]
-				if route in seen_routes:
-					label = "Accueil" if route == "/" else page["title"]
+			if site_type == "one_page":
+				# Use same anchor links for footer
+				for anchor in one_page_anchors:
 					config.append("footer_links", {
-						"label": label,
-						"url": route,
+						"label": anchor["label"],
+						"url": anchor["url"],
 					})
+			else:
+				for page in created_pages:
+					route = page["route"]
+					if route in seen_routes:
+						label = "Accueil" if route == "/" else page["title"]
+						config.append("footer_links", {
+							"label": label,
+							"url": route,
+						})
 
 		config.save(ignore_permissions=True)
 		frappe.db.commit()

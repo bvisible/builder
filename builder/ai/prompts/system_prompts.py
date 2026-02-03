@@ -217,6 +217,36 @@ def get_page_generation_prompt(
 
         # Add specific instructions based on page type
         page_instructions = {
+            "one_page": """
+INSTRUCTIONS SPÉCIFIQUES POUR UN SITE ONE-PAGE :
+⚠️ TRÈS IMPORTANT : Tu dois créer TOUTES les sections sur UNE SEULE PAGE avec des IDs pour la navigation par ancres.
+
+STRUCTURE OBLIGATOIRE avec ces IDs EXACTS :
+1. Section Hero avec id="hero" → Navigation: /#hero
+2. Section Services avec id="services" → Navigation: /#services
+3. Section À propos avec id="about" → Navigation: /#about
+4. Section Contact avec id="contact" → Navigation: /#contact
+
+COMMENT AJOUTER L'ID :
+Utilise l'attribut "attributes" avec "id" pour chaque section principale :
+{
+  "blockId": "hero-section",
+  "element": "section",
+  "attributes": {"id": "hero"},
+  ...
+}
+
+CONTENU ATTENDU :
+- Hero (#hero) : Titre accrocheur, sous-titre, CTA principal
+- Services (#services) : Présentation des services/offres (3-4 cards)
+- À propos (#about) : Histoire, valeurs, équipe ou chiffres clés
+- Contact (#contact) : Formulaire avec {{ contact_form }} + coordonnées
+
+DESIGN :
+- Alterne les fonds (clair/foncé/coloré) pour distinguer les sections
+- Chaque section doit avoir une hauteur confortable (minHeight: 80vh minimum pour hero)
+- Assure une bonne transition visuelle entre les sections""",
+
             "accueil": """
 INSTRUCTIONS SPÉCIFIQUES POUR LA PAGE D'ACCUEIL :
 - Crée une section hero impactante avec un titre accrocheur et un CTA
