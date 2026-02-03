@@ -589,11 +589,21 @@ def _generate_complete_site_worker(
 			page_def = result["page_def"]
 			blocks = result["blocks"]
 
+			# Wrap blocks in a root container (required by Frappe Builder)
+			# The Builder expects: [{ blockId, element: "body", children: [...sections...] }]
+			root_block = {
+				"blockId": f"root-{frappe.generate_hash(length=8)}",
+				"element": "body",
+				"baseStyles": {},
+				"children": blocks
+			}
+			wrapped_blocks = [root_block]
+
 			# Create the Builder Page
 			page = frappe.new_doc("Builder Page")
 			page.page_title = page_def["title"]
-			page.blocks = json.dumps(blocks)
-			page.draft_blocks = json.dumps(blocks)
+			page.blocks = json.dumps(wrapped_blocks)
+			page.draft_blocks = json.dumps(wrapped_blocks)
 			page.published = 1
 			page.insert(ignore_permissions=True)
 
