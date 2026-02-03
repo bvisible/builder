@@ -1,0 +1,99 @@
+{# Team Grid Template - Displays team members from About Us Settings #}
+{% set about_us = frappe.get_doc("About Us Settings") if frappe.db.exists("About Us Settings", "About Us Settings") else None %}
+
+<div class="builder-team-grid">
+    {% if about_us and about_us.team_members %}
+        {% for member in about_us.team_members %}
+        <div class="team-card">
+            <div class="team-image">
+                {% if member.image %}
+                <img src="{{ member.image }}" alt="{{ member.full_name }}">
+                {% else %}
+                <div class="team-avatar">
+                    {{ member.full_name[:2].upper() if member.full_name else "?" }}
+                </div>
+                {% endif %}
+            </div>
+            <div class="team-info">
+                <h3 class="team-name">{{ member.full_name }}</h3>
+                {% if member.designation %}
+                <p class="team-role">{{ member.designation }}</p>
+                {% endif %}
+                {% if member.bio %}
+                <p class="team-bio">{{ member.bio }}</p>
+                {% endif %}
+            </div>
+        </div>
+        {% endfor %}
+    {% else %}
+        <p class="no-team">{{ _("Team members will be displayed here once configured in About Us Settings.") }}</p>
+    {% endif %}
+</div>
+
+<style>
+.builder-team-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+    gap: 2rem;
+}
+.builder-team-grid .team-card {
+    background: var(--surface-color, #ffffff);
+    border-radius: 16px;
+    overflow: hidden;
+    box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+    transition: transform 0.2s, box-shadow 0.2s;
+}
+.builder-team-grid .team-card:hover {
+    transform: translateY(-4px);
+    box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1);
+}
+.builder-team-grid .team-image {
+    aspect-ratio: 1;
+    overflow: hidden;
+    background: var(--muted-color, #e5e7eb);
+}
+.builder-team-grid .team-image img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+}
+.builder-team-grid .team-avatar {
+    width: 100%;
+    height: 100%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 3rem;
+    font-weight: 700;
+    color: var(--primary-color, #3b82f6);
+    background: linear-gradient(135deg, var(--surface-color, #f3f4f6) 0%, var(--border-color, #e5e7eb) 100%);
+}
+.builder-team-grid .team-info {
+    padding: 1.5rem;
+    text-align: center;
+}
+.builder-team-grid .team-name {
+    margin: 0 0 0.5rem 0;
+    font-size: 1.25rem;
+    font-weight: 600;
+    color: var(--text-color, #1f2937);
+}
+.builder-team-grid .team-role {
+    margin: 0 0 0.75rem 0;
+    font-size: 0.875rem;
+    color: var(--primary-color, #3b82f6);
+    font-weight: 500;
+}
+.builder-team-grid .team-bio {
+    margin: 0;
+    font-size: 0.875rem;
+    color: var(--muted-color, #6b7280);
+    line-height: 1.5;
+}
+.builder-team-grid .no-team {
+    grid-column: 1 / -1;
+    text-align: center;
+    color: var(--muted-color, #6b7280);
+    padding: 2rem;
+}
+</style>

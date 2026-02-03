@@ -1,0 +1,107 @@
+{# Company Timeline Template - Displays company milestones from About Us Settings #}
+{% set about_us = frappe.get_doc("About Us Settings") if frappe.db.exists("About Us Settings", "About Us Settings") else None %}
+
+<div class="builder-timeline">
+    {% if about_us and about_us.company_history %}
+        {% for item in about_us.company_history %}
+        <div class="timeline-item">
+            <div class="timeline-marker">
+                <div class="timeline-dot"></div>
+                <div class="timeline-line"></div>
+            </div>
+            <div class="timeline-content">
+                {% if item.year %}
+                <span class="timeline-year">{{ item.year }}</span>
+                {% endif %}
+                {% if item.title %}
+                <h3 class="timeline-title">{{ item.title }}</h3>
+                {% endif %}
+                {% if item.description %}
+                <p class="timeline-description">{{ item.description }}</p>
+                {% endif %}
+            </div>
+        </div>
+        {% endfor %}
+    {% else %}
+        <p class="no-timeline">{{ _("Company milestones will be displayed here once configured in About Us Settings.") }}</p>
+    {% endif %}
+</div>
+
+<style>
+.builder-timeline {
+    position: relative;
+    max-width: 800px;
+    margin: 0 auto;
+}
+.builder-timeline .timeline-item {
+    display: flex;
+    gap: 2rem;
+    padding-bottom: 2rem;
+}
+.builder-timeline .timeline-item:last-child {
+    padding-bottom: 0;
+}
+.builder-timeline .timeline-item:last-child .timeline-line {
+    display: none;
+}
+.builder-timeline .timeline-marker {
+    position: relative;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    flex-shrink: 0;
+    width: 24px;
+}
+.builder-timeline .timeline-dot {
+    width: 16px;
+    height: 16px;
+    background: var(--primary-color, #3b82f6);
+    border-radius: 50%;
+    border: 4px solid var(--surface-color, #ffffff);
+    box-shadow: 0 0 0 4px var(--primary-color, #3b82f6);
+    z-index: 1;
+}
+.builder-timeline .timeline-line {
+    position: absolute;
+    top: 24px;
+    bottom: -2rem;
+    width: 2px;
+    background: var(--border-color, #e5e7eb);
+}
+.builder-timeline .timeline-content {
+    flex: 1;
+    padding-bottom: 1rem;
+}
+.builder-timeline .timeline-year {
+    display: inline-block;
+    padding: 0.25rem 0.75rem;
+    background: var(--primary-color, #3b82f6);
+    color: white;
+    font-size: 0.875rem;
+    font-weight: 600;
+    border-radius: 9999px;
+    margin-bottom: 0.75rem;
+}
+.builder-timeline .timeline-title {
+    margin: 0 0 0.5rem 0;
+    font-size: 1.25rem;
+    font-weight: 600;
+    color: var(--text-color, #1f2937);
+}
+.builder-timeline .timeline-description {
+    margin: 0;
+    color: var(--muted-color, #6b7280);
+    line-height: 1.6;
+}
+.builder-timeline .no-timeline {
+    text-align: center;
+    color: var(--muted-color, #6b7280);
+    padding: 2rem;
+}
+
+@media (max-width: 576px) {
+    .builder-timeline .timeline-item {
+        gap: 1rem;
+    }
+}
+</style>
