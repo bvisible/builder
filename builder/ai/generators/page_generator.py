@@ -1,38 +1,26 @@
 """
-Page Generator
-Main orchestrator for multi-pass page generation.
+Page Generator - Creative AI Page Generation
+Direct LLM generation with full creative freedom.
 """
 
+import json
 from typing import Optional
 import frappe
 
 from builder.ai.config import get_ai_settings, AIConfig
 from builder.ai.providers import get_provider
-from builder.ai.schemas.block_schema import PageStructure, SectionInfo
 from builder.ai.design_system import get_theme
-from builder.ai.prompts import get_analysis_prompt
-from builder.ai.prompts.system_prompts import get_shortcodes_context
-from builder.ai.validators import BlockValidator, AutoFixer
-from builder.ai.generators.section_generator import SectionGenerator
-from builder.ai.generators.header_generator import HeaderGenerator
-from builder.ai.generators.footer_generator import FooterGenerator
+from builder.ai.prompts.system_prompts import get_creative_system_prompt, get_page_generation_prompt
+from builder.ai.validators import BlockValidator
 
 
 class PageGenerator:
     """
-    Multi-pass page generator for Frappe Builder.
+    Creative page generator using direct LLM generation.
 
-    Pipeline:
-    1. ANALYSIS: Parse user prompt and determine optimal page structure
-    2. CONTEXT: Load theme and design system tokens
-    3. GENERATION: Generate header, sections, footer using templates
-    4. VALIDATION: Validate and auto-fix all blocks
-    5. ASSEMBLY: Combine into final page
-
-    This generator orchestrates specialized generators:
-    - HeaderGenerator: Template-based header generation
-    - SectionGenerator: Content-only generation + templates
-    - FooterGenerator: Template-based footer generation
+    The AI has full creative freedom to design unique pages.
+    It receives a rich system prompt with theme guidelines and
+    outputs valid FrappeBlock JSON directly.
     """
 
     def __init__(
@@ -48,447 +36,270 @@ class PageGenerator:
         if model:
             self.config.model = model
 
-        # Main LLM for analysis
         self.llm = get_provider(
             self.config.provider,
             model=self.config.model,
             api_key=self.config.api_key,
             base_url=self.config.base_url,
-            temperature=self.config.temperature,
+            temperature=0.8,  # Higher temperature for creativity
         )
 
-        # Specialized generators
-        self.header_generator = HeaderGenerator(provider=provider, model=model)
-        self.section_generator = SectionGenerator(provider=provider, model=model)
-        self.footer_generator = FooterGenerator(provider=provider, model=model)
-
-        # Validators
         self.validator = BlockValidator()
-        self.auto_fixer = AutoFixer()
 
     def generate_page(
         self,
         prompt: str,
-        theme: str = None,
-        site_type: str = None,
-        include_header: bool = True,
-        include_footer: bool = True
+        theme: str = "modern",
+        primary_color: str = None,
+        secondary_color: str = None,
+        font_family: str = None,
+        page_title: str = None,
+        page_type: str = None,
     ) -> list[dict]:
         """
-        Generate a complete page from a prompt.
+        Generate a complete page with full creative freedom.
 
         Args:
-            prompt: User's description of the desired page
-            theme: Visual theme (modern, neobrutalist, etc.)
-            site_type: Type of site (single_page, ecommerce, etc.)
-            include_header: Whether to generate header
-            include_footer: Whether to generate footer
+            prompt: User's description of the desired page/site
+            theme: Visual theme name (modern, neobrutalist, etc.)
+            primary_color: Custom primary color (e.g., "#6c5ce7")
+            secondary_color: Custom secondary color (e.g., "#00b894")
+            font_family: Custom font family
+            page_title: Page title for context
+            page_type: Type of page (accueil, services, contact, etc.)
 
         Returns:
-            list[dict]: List of Frappe Builder blocks
+            list[dict]: List of FrappeBlock dictionaries
         """
-        theme = theme or self.config.default_theme
-        site_type = site_type or self.config.default_site_type
-
-        # =========================================================
-        # PASS 0: CONTEXT - Load shortcodes for relevant site types
-        # =========================================================
-        shortcodes_context = ""
-        if site_type in ("ecommerce", "ecommerce_search"):
-            shortcodes_context = get_shortcodes_context(site_type)
-
-        # =========================================================
-        # PASS 1: ANALYSIS - Understand what to build
-        # =========================================================
-        structure = self._analyze_structure(prompt, site_type, shortcodes_context)
-        frappe.logger().info(f"Page structure: {structure.page_type} with {len(structure.sections)} sections")
-
-        # =========================================================
-        # PASS 2: CONTEXT - Load theme and design tokens
-        # =========================================================
+        # Get theme data
         theme_data = get_theme(theme)
         theme_name = theme_data.get("name", theme)
+        theme_prompt = theme_data.get("prompt", "")
 
-        # =========================================================
-        # PASS 3: GENERATION - Build all page components
-        # =========================================================
-        blocks = []
+        # Build the system prompt with all context
+        system_prompt = get_creative_system_prompt(
+            theme_name=theme_name,
+            theme_prompt=theme_prompt,
+            primary_color=primary_color,
+            secondary_color=secondary_color,
+            font_family=font_family,
+        )
 
-        # 3.1 Generate header
-        if include_header:
-            header_block = self._generate_header(
-                prompt=prompt,
-                structure=structure,
-                theme=theme_name,
-                site_type=site_type
-            )
-            if header_block:
-                blocks.append(header_block)
+        # Build the user prompt
+        user_prompt = get_page_generation_prompt(
+            user_prompt=prompt,
+            page_title=page_title,
+            page_type=page_type,
+        )
 
-        # 3.2 Generate content sections
-        for section in structure.sections:
-            section_block = self._generate_section(
-                section=section,
-                context=prompt,
-                theme=theme_name,
-                shortcodes_context=shortcodes_context
-            )
-            if section_block:
-                blocks.append(section_block)
+        # Generate blocks via LLM
+        frappe.logger().info(f"Generating page: {prompt[:50]}...")
 
-        # 3.3 Generate footer
-        if include_footer:
-            footer_block = self._generate_footer(
-                prompt=prompt,
-                structure=structure,
-                theme=theme_name,
-                site_type=site_type
-            )
-            if footer_block:
-                blocks.append(footer_block)
+        response = self.llm.generate(
+            prompt=user_prompt,
+            system_prompt=system_prompt,
+        )
 
-        # =========================================================
-        # PASS 4: VALIDATION - Ensure quality
-        # =========================================================
-        validated_blocks = []
+        # Parse JSON response
+        blocks = self._parse_response(response)
+
+        # Validate blocks
+        if not self.validator.validate_blocks(blocks):
+            frappe.log_error("Block validation failed", f"Prompt: {prompt[:100]}")
+            raise ValueError("Generated blocks failed validation")
+
+        # Apply custom colors as CSS variables if provided
+        if primary_color or secondary_color:
+            blocks = self._apply_custom_colors(blocks, primary_color, secondary_color)
+
+        frappe.logger().info(f"Generated {len(blocks)} blocks successfully")
+        return blocks
+
+    def _parse_response(self, response: str) -> list[dict]:
+        """
+        Parse the LLM response into a list of blocks.
+        Includes repair logic for truncated JSON.
+        """
+        # Clean up response - remove markdown code blocks if present
+        response = response.strip()
+
+        if response.startswith("```"):
+            # Remove markdown code block
+            lines = response.split("\n")
+            # Remove first line (```json or ```)
+            lines = lines[1:]
+            # Remove last line if it's ```
+            if lines and lines[-1].strip() == "```":
+                lines = lines[:-1]
+            response = "\n".join(lines)
+
+        # Try to parse JSON
+        try:
+            data = json.loads(response)
+
+            # Ensure it's a list
+            if isinstance(data, dict):
+                # If it's a single block, wrap in list
+                data = [data]
+
+            if not isinstance(data, list):
+                raise ValueError("Response is not a list of blocks")
+
+            return data
+
+        except json.JSONDecodeError as e:
+            # Try to repair truncated JSON
+            frappe.logger().warning(f"JSON parse error, attempting repair: {e}")
+            repaired = self._repair_truncated_json(response)
+            if repaired:
+                try:
+                    data = json.loads(repaired)
+                    if isinstance(data, dict):
+                        data = [data]
+                    if isinstance(data, list) and len(data) > 0:
+                        frappe.logger().info(f"JSON repair successful, recovered {len(data)} blocks")
+                        return data
+                except json.JSONDecodeError:
+                    pass
+
+            frappe.log_error("JSON parse error", f"Error: {e}\nResponse: {response[:500]}")
+            raise ValueError(f"Failed to parse LLM response as JSON: {e}")
+
+    def _repair_truncated_json(self, response: str) -> str:
+        """
+        Attempt to repair truncated JSON by closing open structures.
+        Returns repaired JSON string or None if repair fails.
+        """
+        # Find the last complete block by looking for closing braces/brackets
+        # Strategy: progressively truncate and add closing brackets
+
+        # Count open brackets
+        open_braces = 0
+        open_brackets = 0
+        in_string = False
+        escape_next = False
+        last_valid_pos = 0
+
+        for i, char in enumerate(response):
+            if escape_next:
+                escape_next = False
+                continue
+
+            if char == '\\':
+                escape_next = True
+                continue
+
+            if char == '"' and not escape_next:
+                in_string = not in_string
+                continue
+
+            if in_string:
+                continue
+
+            if char == '{':
+                open_braces += 1
+            elif char == '}':
+                open_braces -= 1
+                if open_braces >= 0 and open_brackets >= 0:
+                    last_valid_pos = i + 1
+            elif char == '[':
+                open_brackets += 1
+            elif char == ']':
+                open_brackets -= 1
+                if open_braces >= 0 and open_brackets >= 0:
+                    last_valid_pos = i + 1
+
+        # If we're in the middle of a string, find the start and truncate there
+        if in_string:
+            # Find the last complete object/array before the broken string
+            # Look backwards for a comma or opening bracket at the same nesting level
+            for i in range(len(response) - 1, -1, -1):
+                if response[i] == ',' or response[i] in '[{':
+                    # Truncate here and close
+                    response = response[:i]
+                    if response[i-1:i] == ',':
+                        response = response[:-1]
+                    break
+
+        # Try to close the JSON properly
+        # Remove trailing incomplete content
+        response = response.rstrip()
+
+        # Remove trailing comma if present
+        if response.endswith(','):
+            response = response[:-1]
+
+        # Add closing brackets
+        closers = ""
+        for char in response:
+            if char == '"':
+                in_string = not in_string
+            if not in_string:
+                if char == '{':
+                    closers = '}' + closers
+                elif char == '}' and closers.startswith('}'):
+                    closers = closers[1:]
+                elif char == '[':
+                    closers = ']' + closers
+                elif char == ']' and closers.startswith(']'):
+                    closers = closers[1:]
+
+        return response + closers
+
+    def _apply_custom_colors(
+        self,
+        blocks: list[dict],
+        primary_color: str = None,
+        secondary_color: str = None
+    ) -> list[dict]:
+        """
+        Apply custom colors as CSS variables to root blocks.
+        """
+        if not primary_color and not secondary_color:
+            return blocks
+
         for block in blocks:
-            fixed_block = self._validate_and_fix(block)
-            validated_blocks.append(fixed_block)
+            # Apply to section-level blocks
+            element = block.get("element", "")
+            if element in ("section", "div", "main", "article"):
+                if "rawStyles" not in block:
+                    block["rawStyles"] = {}
 
-        return validated_blocks
+                if primary_color:
+                    block["rawStyles"]["--primary-color"] = primary_color
+                    # Add RGB version for rgba() usage
+                    if primary_color.startswith("#") and len(primary_color) >= 7:
+                        try:
+                            r = int(primary_color[1:3], 16)
+                            g = int(primary_color[3:5], 16)
+                            b = int(primary_color[5:7], 16)
+                            block["rawStyles"]["--primary-rgb"] = f"{r}, {g}, {b}"
+                        except ValueError:
+                            pass
 
-    def _analyze_structure(self, prompt: str, site_type: str, shortcodes_context: str = "") -> PageStructure:
-        """
-        PASS 1: Analyze the prompt and determine optimal page structure.
+                if secondary_color:
+                    block["rawStyles"]["--secondary-color"] = secondary_color
 
-        Uses AI to understand:
-        - What type of page is requested
-        - What sections are needed
-        - Optimal order and priority
-        - Suggested theme and colors
-
-        Args:
-            prompt: User's description
-            site_type: Type of site
-            shortcodes_context: Optional shortcodes documentation for e-commerce
-        """
-        analysis_prompt = get_analysis_prompt(prompt, site_type)
-
-        # Add shortcodes context if available
-        if shortcodes_context:
-            analysis_prompt = f"{analysis_prompt}\n\n{shortcodes_context}"
-
-        try:
-            structure = self.llm.generate_structured(
-                prompt=analysis_prompt,
-                schema=PageStructure,
-                system_prompt=self._get_analysis_system_prompt(),
-                temperature=0.3  # Lower temp for analytical tasks
-            )
-
-            # Validate and enrich structure
-            structure = self._enrich_structure(structure, site_type)
-            return structure
-
-        except Exception as e:
-            frappe.log_error("Structure analysis failed", str(e))
-            return self._get_default_structure(site_type)
-
-    def _get_analysis_system_prompt(self) -> str:
-        """System prompt for structure analysis"""
-        return """You are an expert web designer analyzing page requirements.
-
-Your task is to determine the optimal structure for a web page based on the user's description.
-
-Consider:
-1. What is the primary purpose of this page?
-2. What sections will best achieve that purpose?
-3. What's the logical flow of information?
-4. What header/footer type best suits this page?
-
-Output a structured PageStructure with:
-- page_type: The category of page
-- sections: List of sections with type, title, description, priority
-- header_type: Appropriate header style
-- footer_type: Appropriate footer style
-- theme_suggestion: A visual theme that fits the content
-
-Be specific and thoughtful. Quality over quantity for sections.
-Most landing pages need only 4-6 sections."""
-
-    # Mapping of unsupported section types to supported ones
-    SECTION_TYPE_MAPPING = {
-        "about": "features",  # About sections can use features layout
-        "services": "features",  # Services are similar to features
-        "team": "testimonials",  # Team can use testimonials layout
-        "portfolio": "features",  # Portfolio can use features grid
-        "gallery": "features",  # Gallery can use features grid
-        "products": "features",  # Products can use features layout
-        "benefits": "features",  # Benefits are similar to features
-        "how_it_works": "features",  # Process steps use features
-        "partners": "clients",  # Partners are similar to clients
-        "logos": "clients",  # Logos section
-        "newsletter": "cta",  # Newsletter is a type of CTA
-        "subscribe": "cta",  # Subscribe is a type of CTA
-    }
-
-    # Supported section types (have templates)
-    SUPPORTED_SECTIONS = {
-        "hero", "hero_centered", "hero_split",
-        "features", "features_grid", "features_alternating",
-        "testimonials", "pricing", "cta", "stats", "faq",
-        "contact", "clients"
-    }
-
-    def _enrich_structure(self, structure: PageStructure, site_type: str) -> PageStructure:
-        """Enrich and validate the analyzed structure"""
-        # Ensure header_type matches site_type if not specified
-        if not structure.header_type:
-            structure.header_type = site_type
-
-        # Ensure we have at least one section
-        if not structure.sections:
-            structure.sections = [
-                SectionInfo(type="hero", title="Hero Section", priority=10),
-            ]
-
-        # Map unsupported section types to supported ones
-        for section in structure.sections:
-            if section.type not in self.SUPPORTED_SECTIONS:
-                mapped_type = self.SECTION_TYPE_MAPPING.get(section.type, "features")
-                frappe.logger().info(f"Mapping section '{section.type}' to '{mapped_type}'")
-                section.type = mapped_type
-
-        # Sort sections by priority (highest first)
-        structure.sections = sorted(
-            structure.sections,
-            key=lambda s: s.priority,
-            reverse=True
-        )
-
-        # Limit to reasonable number of sections
-        if len(structure.sections) > 8:
-            structure.sections = structure.sections[:8]
-
-        return structure
-
-    def _get_default_structure(self, site_type: str) -> PageStructure:
-        """Get a sensible default structure based on site type"""
-        default_sections = {
-            "single_page": [
-                SectionInfo(type="hero", title="Hero", priority=10),
-                SectionInfo(type="features", title="Features", priority=8),
-                SectionInfo(type="testimonials", title="Testimonials", priority=6),
-                SectionInfo(type="cta", title="Call to Action", priority=5),
-            ],
-            "multi_page": [
-                SectionInfo(type="hero", title="Hero", priority=10),
-                SectionInfo(type="features", title="Features", priority=8),
-                SectionInfo(type="stats", title="Statistics", priority=7),
-                SectionInfo(type="testimonials", title="Testimonials", priority=6),
-                SectionInfo(type="cta", title="Call to Action", priority=5),
-            ],
-            "ecommerce": [
-                SectionInfo(type="hero", title="Hero", priority=10),
-                SectionInfo(type="features", title="Features", priority=8),
-                SectionInfo(type="pricing", title="Pricing", priority=7),
-                SectionInfo(type="testimonials", title="Testimonials", priority=6),
-                SectionInfo(type="faq", title="FAQ", priority=5),
-                SectionInfo(type="cta", title="Call to Action", priority=4),
-            ],
-            "saas": [
-                SectionInfo(type="hero", title="Hero", priority=10),
-                SectionInfo(type="features", title="Features", priority=9),
-                SectionInfo(type="stats", title="Statistics", priority=7),
-                SectionInfo(type="pricing", title="Pricing", priority=8),
-                SectionInfo(type="testimonials", title="Testimonials", priority=6),
-                SectionInfo(type="faq", title="FAQ", priority=5),
-                SectionInfo(type="cta", title="Call to Action", priority=4),
-            ],
-            "blog": [
-                SectionInfo(type="hero", title="Hero", priority=10),
-                SectionInfo(type="features", title="Categories", priority=8),
-                SectionInfo(type="cta", title="Subscribe", priority=6),
-            ],
-            "portfolio": [
-                SectionInfo(type="hero", title="Hero", priority=10),
-                SectionInfo(type="features", title="Work", priority=9),
-                SectionInfo(type="testimonials", title="Testimonials", priority=7),
-                SectionInfo(type="cta", title="Contact", priority=5),
-            ],
-        }
-
-        sections = default_sections.get(site_type, default_sections["multi_page"])
-
-        return PageStructure(
-            page_type="landing",
-            sections=sections,
-            header_type=site_type,
-            footer_type="standard",
-            theme_suggestion="modern"
-        )
-
-    def _generate_header(
-        self,
-        prompt: str,
-        structure: PageStructure,
-        theme: str,
-        site_type: str
-    ) -> Optional[dict]:
-        """Generate header using HeaderGenerator"""
-        try:
-            # Extract page names from sections for navigation
-            pages = self._extract_nav_pages(structure)
-
-            return self.header_generator.generate(
-                site_description=prompt,
-                site_type=structure.header_type or site_type,
-                pages=pages,
-                theme=theme
-            )
-        except Exception as e:
-            frappe.log_error("Header generation failed", str(e))
-            return self._get_fallback_header()
-
-    def _generate_section(
-        self,
-        section: SectionInfo,
-        context: str,
-        theme: str,
-        shortcodes_context: str = ""
-    ) -> Optional[dict]:
-        """Generate a section using SectionGenerator"""
-        try:
-            return self.section_generator.generate(
-                section_type=section.type,
-                context=context,
-                theme=theme,
-                description=section.description,
-                shortcodes_context=shortcodes_context
-            )
-        except Exception as e:
-            frappe.log_error(f"Section generation failed: {section.type}", str(e))
-            return None
-
-    def _generate_footer(
-        self,
-        prompt: str,
-        structure: PageStructure,
-        theme: str,
-        site_type: str
-    ) -> Optional[dict]:
-        """Generate footer using FooterGenerator"""
-        try:
-            return self.footer_generator.generate(
-                site_description=prompt,
-                site_type=structure.footer_type or "standard",
-                theme=theme
-            )
-        except Exception as e:
-            frappe.log_error("Footer generation failed", str(e))
-            return self._get_fallback_footer()
-
-    def _extract_nav_pages(self, structure: PageStructure) -> list[str]:
-        """Extract navigation page names from structure"""
-        # For single-page sites, use section titles as anchors
-        if structure.header_type == "single_page":
-            return [s.title for s in structure.sections[:5]]
-
-        # For multi-page, use standard pages
-        return ["Home", "About", "Services", "Contact"]
-
-    def _validate_and_fix(self, block: dict) -> dict:
-        """PASS 4: Validate and auto-fix a block"""
-        is_valid = self.validator.validate(block)
-
-        if not is_valid:
-            block = self.auto_fixer.fix(block)
-
-        return block
-
-    def _get_fallback_header(self) -> dict:
-        """Fallback header if generation fails"""
-        return {
-            "blockId": "header-main",
-            "element": "header",
-            "baseStyles": {
-                "display": "flex",
-                "alignItems": "center",
-                "justifyContent": "space-between",
-                "padding": "16px 24px",
-                "backgroundColor": "var(--surface-color)",
-            },
-            "children": [
-                {
-                    "blockId": "header-logo",
-                    "element": "a",
-                    "innerHTML": "Brand",
-                    "attributes": {"href": "/"},
-                    "baseStyles": {
-                        "fontSize": "20px",
-                        "fontWeight": "700",
-                        "textDecoration": "none",
-                        "color": "var(--text-color)",
-                    }
-                }
-            ]
-        }
-
-    def _get_fallback_footer(self) -> dict:
-        """Fallback footer if generation fails"""
-        return {
-            "blockId": "footer-main",
-            "element": "footer",
-            "baseStyles": {
-                "padding": "48px 24px",
-                "backgroundColor": "var(--surface-color)",
-                "textAlign": "center",
-            },
-            "children": [
-                {
-                    "blockId": "footer-copyright",
-                    "element": "p",
-                    "innerHTML": "© 2024 Company. All rights reserved.",
-                    "baseStyles": {
-                        "color": "var(--muted-color)",
-                        "fontSize": "14px",
-                    }
-                }
-            ]
-        }
+        return blocks
 
 
 def generate_page(
     prompt: str,
     theme: str = "modern",
-    site_type: str = "multi_page",
     provider: str = None,
     model: str = None,
-    include_header: bool = True,
-    include_footer: bool = True
+    primary_color: str = None,
+    secondary_color: str = None,
 ) -> list[dict]:
     """
     Convenience function to generate a page.
-
-    Args:
-        prompt: Description of the desired page
-        theme: Visual theme
-        site_type: Type of site
-        provider: AI provider override
-        model: Model override
-        include_header: Include header block
-        include_footer: Include footer block
-
-    Returns:
-        list[dict]: Generated Frappe Builder blocks
     """
     generator = PageGenerator(provider=provider, model=model)
     return generator.generate_page(
         prompt=prompt,
         theme=theme,
-        site_type=site_type,
-        include_header=include_header,
-        include_footer=include_footer
+        primary_color=primary_color,
+        secondary_color=secondary_color,
     )
 
 

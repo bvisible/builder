@@ -94,78 +94,81 @@ SITE_TYPE_HEADER_FOOTER_DEFAULTS = {
 }
 
 # Default pages to generate for each site type
+# Page configurations by site type
+# Note: The AI has full creative freedom for sections - we only define pages and routes
 DEFAULT_PAGES_BY_SITE_TYPE = {
 	"vitrine": [
-		{"title": "Accueil", "route": "", "sections": ["hero", "features", "testimonials", "cta"]},
-		{"title": "À propos", "route": "about", "sections": ["hero_centered", "features", "stats"]},
-		{"title": "Services", "route": "services", "sections": ["hero", "features_grid", "pricing"]},
-		{"title": "Contact", "route": "contact", "sections": ["hero_centered", "contact"]},
+		{"title": "Accueil", "route": "", "type": "accueil"},
+		{"title": "À propos", "route": "about", "type": "about"},
+		{"title": "Services", "route": "services", "type": "services"},
+		{"title": "Contact", "route": "contact", "type": "contact"},
 	],
 	"vitrine_user": [
-		{"title": "Accueil", "route": "", "sections": ["hero", "features", "testimonials", "cta"]},
-		{"title": "À propos", "route": "about", "sections": ["hero_centered", "features", "stats"]},
-		{"title": "Services", "route": "services", "sections": ["hero", "features_grid", "pricing"]},
-		{"title": "Contact", "route": "contact", "sections": ["hero_centered", "contact"]},
+		{"title": "Accueil", "route": "", "type": "accueil"},
+		{"title": "À propos", "route": "about", "type": "about"},
+		{"title": "Services", "route": "services", "type": "services"},
+		{"title": "Contact", "route": "contact", "type": "contact"},
 	],
 	"blog": [
-		{"title": "Accueil", "route": "", "sections": ["hero", "features", "cta"]},
-		{"title": "Articles", "route": "blog", "sections": ["hero_centered", "features_grid"]},
-		{"title": "À propos", "route": "about", "sections": ["hero_centered", "features", "testimonials"]},
-		{"title": "Contact", "route": "contact", "sections": ["hero_centered", "contact"]},
+		{"title": "Accueil", "route": "", "type": "accueil"},
+		{"title": "Articles", "route": "blog", "type": "blog"},
+		{"title": "À propos", "route": "about", "type": "about"},
+		{"title": "Contact", "route": "contact", "type": "contact"},
 	],
 	"ecommerce": [
-		{"title": "Accueil", "route": "", "sections": ["hero", "features", "testimonials", "cta"]},
-		{"title": "Boutique", "route": "shop", "sections": ["hero_centered", "features_grid"]},
-		{"title": "À propos", "route": "about", "sections": ["hero_centered", "features", "stats"]},
-		{"title": "Contact", "route": "contact", "sections": ["hero_centered", "contact", "faq"]},
+		{"title": "Accueil", "route": "", "type": "accueil"},
+		{"title": "Boutique", "route": "shop", "type": "boutique"},
+		{"title": "À propos", "route": "about", "type": "about"},
+		{"title": "Contact", "route": "contact", "type": "contact"},
 	],
 	"ecommerce_search": [
-		{"title": "Accueil", "route": "", "sections": ["hero", "features", "testimonials", "cta"]},
-		{"title": "Boutique", "route": "shop", "sections": ["hero_centered", "features_grid"]},
-		{"title": "À propos", "route": "about", "sections": ["hero_centered", "features", "stats"]},
-		{"title": "Contact", "route": "contact", "sections": ["hero_centered", "contact", "faq"]},
+		{"title": "Accueil", "route": "", "type": "accueil"},
+		{"title": "Boutique", "route": "shop", "type": "boutique"},
+		{"title": "À propos", "route": "about", "type": "about"},
+		{"title": "Contact", "route": "contact", "type": "contact"},
 	],
 	"saas": [
-		{"title": "Accueil", "route": "", "sections": ["hero", "features", "stats", "pricing", "testimonials", "faq", "cta"]},
-		{"title": "Fonctionnalités", "route": "features", "sections": ["hero_centered", "features_grid", "features_alternating"]},
-		{"title": "Tarifs", "route": "pricing", "sections": ["hero_centered", "pricing", "faq"]},
-		{"title": "À propos", "route": "about", "sections": ["hero_centered", "features", "stats", "testimonials"]},
-		{"title": "Contact", "route": "contact", "sections": ["hero_centered", "contact"]},
+		{"title": "Accueil", "route": "", "type": "accueil"},
+		{"title": "Fonctionnalités", "route": "features", "type": "features"},
+		{"title": "Tarifs", "route": "pricing", "type": "pricing"},
+		{"title": "À propos", "route": "about", "type": "about"},
+		{"title": "Contact", "route": "contact", "type": "contact"},
 	],
 	"portfolio": [
-		{"title": "Accueil", "route": "", "sections": ["hero", "features_grid", "testimonials", "cta"]},
-		{"title": "Projets", "route": "projects", "sections": ["hero_centered", "features_grid"]},
-		{"title": "À propos", "route": "about", "sections": ["hero_centered", "features", "stats"]},
-		{"title": "Contact", "route": "contact", "sections": ["hero_centered", "contact"]},
+		{"title": "Accueil", "route": "", "type": "accueil"},
+		{"title": "Projets", "route": "projects", "type": "portfolio"},
+		{"title": "À propos", "route": "about", "type": "about"},
+		{"title": "Contact", "route": "contact", "type": "contact"},
 	],
 }
 
 
 # =============================================================================
-# AI GENERATION API (Multi-pass with structured output)
+# AI GENERATION API (Creative AI with full freedom)
 # =============================================================================
 
 @frappe.whitelist()
 def generate_page_blocks(
 	prompt: str,
 	theme: str = "modern",
-	site_type: str = "multi_page",
+	primary_color: str = None,
+	secondary_color: str = None,
 	provider: str = None,
 	model: str = None,
-	include_header: bool = True,
-	include_footer: bool = True
 ):
 	"""
-	Generate page blocks using the new multi-pass AI pipeline.
+	Generate page blocks using creative AI generation.
+
+	The AI has full creative freedom to design unique pages.
+	Header and footer are managed via Website Header Footer Config.
 
 	Args:
 		prompt: Description of the desired page
 		theme: Visual theme (modern, neobrutalist, glassmorphism, minimal, corporate, creative)
-		site_type: Type of site (single_page, multi_page, multi_page_auth, ecommerce, blog, portfolio)
+		primary_color: Custom primary color (e.g., "#6c5ce7")
+		secondary_color: Custom secondary color (e.g., "#00b894")
 		provider: AI provider override (ollama, openai)
 		model: Model name override
-		include_header: Whether to generate header
-		include_footer: Whether to generate footer
 
 	Returns:
 		list[dict]: Generated Frappe Builder blocks
@@ -177,261 +180,15 @@ def generate_page_blocks(
 	blocks = generator.generate_page(
 		prompt=prompt,
 		theme=theme,
-		site_type=site_type,
-		include_header=include_header,
-		include_footer=include_footer
+		primary_color=primary_color,
+		secondary_color=secondary_color,
 	)
 
 	return blocks
 
 
-@frappe.whitelist()
-def generate_site(
-	prompt: str,
-	theme: str = "modern",
-	site_type: str = "single_page",
-	provider: str = None,
-	model: str = None,
-	clear_existing: bool = True,
-	page_title: str = None,
-	set_as_home: bool = True,
-	header_variation: str = "webshop_standard",
-	footer_variation: str = "webshop_standard"
-):
-	"""
-	Generate a complete site using pre-built templates for header/footer.
-	Creates a Builder Page with the generated blocks at root route.
-
-	Args:
-		prompt: Description of the desired site/page
-		theme: Visual theme (modern, neobrutalist, glassmorphism, minimal, corporate, creative)
-		site_type: Type of site (single_page, multi_page, ecommerce, blog, portfolio)
-		provider: AI provider override (ollama, openai)
-		model: Model name override
-		clear_existing: If True, deletes all existing Builder Pages before generating
-		page_title: Title for the new page (extracted from prompt if not provided)
-		set_as_home: If True, sets the page route to "/" (home)
-		header_variation: Header template variation (webshop_standard, webshop_centered, etc.)
-		footer_variation: Footer template variation (webshop_standard, webshop_dark, etc.)
-
-	Returns:
-		dict: {page_name, page_title, route, blocks_count, url}
-	"""
-	from builder.ai.generators.page_generator import PageGenerator
-	from builder.ai.templates.webshop_headers import build_webshop_header
-	from builder.ai.templates.webshop_footers import build_webshop_footer
-	from builder.ai.schemas.header_schema import HeaderConfig
-
-	# Clear existing pages if requested
-	if clear_existing:
-		existing_pages = frappe.get_all("Builder Page", pluck="name")
-		for page_name in existing_pages:
-			frappe.delete_doc("Builder Page", page_name, ignore_permissions=True)
-		frappe.db.commit()
-
-	# Extract title from prompt if not provided
-	if not page_title:
-		words = prompt.split()[:5]
-		page_title = " ".join(words).title()
-		if len(page_title) > 50:
-			page_title = page_title[:50]
-
-	# Build pre-designed header with site title as logo
-	header_config = HeaderConfig(
-		logo_type="text",
-		logo_value=page_title,
-		show_search=True,
-		show_cart=True,
-		show_wishlist=True,
-		show_login=True
-	)
-	header_block = build_webshop_header(variation=header_variation, config=header_config)
-
-	# Build pre-designed footer
-	footer_block = build_webshop_footer(
-		variation=footer_variation,
-		company_name=page_title,
-		description=prompt[:100] if len(prompt) > 100 else prompt
-	)
-
-	# Generate only content sections via AI (no header/footer)
-	generator = PageGenerator(provider=provider, model=model)
-	section_blocks = generator.generate_page(
-		prompt=prompt,
-		theme=theme,
-		site_type=site_type,
-		include_header=False,
-		include_footer=False
-	)
-
-	# Assemble: header + sections + footer
-	blocks = [header_block] + section_blocks + [footer_block]
-
-	# Extract title from prompt if not provided
-	if not page_title:
-		# Try to extract a meaningful title from the prompt
-		words = prompt.split()[:5]
-		page_title = " ".join(words).title()
-		if len(page_title) > 50:
-			page_title = page_title[:50]
-
-	# Create the Builder Page
-	page = frappe.new_doc("Builder Page")
-	page.page_title = page_title
-	page.blocks = json.dumps(blocks)
-	page.draft_blocks = json.dumps(blocks)
-	page.published = 1
-	page.insert(ignore_permissions=True)
-
-	# Force route after insert (Frappe auto-generates route on insert)
-	if set_as_home:
-		# Set as home page with empty route
-		frappe.db.set_value("Builder Page", page.name, "route", "")
-		page.route = ""
-	else:
-		# Use custom route
-		custom_route = page_title.lower().replace(" ", "-")
-		frappe.db.set_value("Builder Page", page.name, "route", custom_route)
-		page.route = custom_route
-
-	frappe.db.commit()
-
-	return {
-		"page_name": page.name,
-		"page_title": page.page_title,
-		"route": page.route if page.route else "/",
-		"blocks_count": len(blocks) if isinstance(blocks, list) else 1,
-		"url": f"/builder/page/{page.name}",
-		"preview_url": f"/builder/page/{page.name}/preview"
-	}
 
 
-@frappe.whitelist()
-def generate_section(
-	section_type: str,
-	context: str,
-	theme: str = "modern",
-	description: str = None,
-	provider: str = None
-):
-	"""
-	Generate a single page section.
-
-	Args:
-		section_type: Type of section (hero, features, testimonials, pricing, cta, contact, etc.)
-		context: Page/site context for relevant content
-		theme: Visual theme
-		description: Additional section requirements
-		provider: AI provider override
-
-	Returns:
-		dict: Generated Frappe Builder block
-	"""
-	from builder.ai.generators.section_generator import SectionGenerator
-
-	generator = SectionGenerator(provider=provider)
-
-	block = generator.generate(
-		section_type=section_type,
-		context=context,
-		theme=theme,
-		description=description
-	)
-
-	return block
-
-
-@frappe.whitelist()
-def generate_header(
-	site_type: str = "multi_page",
-	pages: str = None,  # JSON string array
-	logo: str = None,
-	site_description: str = None,
-	theme: str = "modern"
-):
-	"""
-	Generate a header block.
-
-	Args:
-		site_type: Type of header (single_page, multi_page, ecommerce, etc.)
-		pages: JSON array of page names for navigation
-		logo: Logo text or image URL
-		site_description: Description of the site
-		theme: Visual theme
-
-	Returns:
-		dict: Generated header block
-	"""
-	from builder.ai.generators.header_generator import HeaderGenerator
-
-	# Parse pages if provided as JSON string
-	page_list = None
-	if pages:
-		try:
-			page_list = json.loads(pages) if isinstance(pages, str) else pages
-		except json.JSONDecodeError:
-			page_list = pages.split(",") if isinstance(pages, str) else None
-
-	generator = HeaderGenerator()
-
-	# Create config if logo is provided
-	if logo:
-		from builder.ai.schemas.header_schema import HeaderConfig, NavItem
-
-		menu_items = []
-		if page_list:
-			menu_items = [
-				NavItem(label=p.strip(), href=f"/{p.strip().lower()}" if p.strip() != "Home" else "/")
-				for p in page_list
-			]
-
-		config = HeaderConfig(
-			type=site_type,
-			logo_type="image" if logo.startswith("/") or logo.startswith("http") else "text",
-			logo_value=logo,
-			menu_items=menu_items,
-			sticky=True
-		)
-
-		return generator.generate(config=config, theme=theme)
-
-	return generator.generate(
-		site_type=site_type,
-		pages=page_list,
-		site_description=site_description,
-		theme=theme
-	)
-
-
-@frappe.whitelist()
-def generate_footer(
-	site_type: str = "standard",
-	company_name: str = None,
-	site_description: str = None,
-	theme: str = "modern"
-):
-	"""
-	Generate a footer block.
-
-	Args:
-		site_type: Type of footer (minimal, standard, extended, ecommerce)
-		company_name: Company name for copyright
-		site_description: Description of the site
-		theme: Visual theme
-
-	Returns:
-		dict: Generated footer block
-	"""
-	from builder.ai.generators.footer_generator import FooterGenerator
-
-	generator = FooterGenerator()
-
-	return generator.generate(
-		site_type=site_type,
-		company_name=company_name,
-		site_description=site_description,
-		theme=theme
-	)
 
 
 @frappe.whitelist()
@@ -454,25 +211,6 @@ def get_ai_themes():
 	]
 
 
-@frappe.whitelist()
-def get_ai_site_types():
-	"""
-	Get available site types for AI generation.
-
-	Returns:
-		list[dict]: List of site types with descriptions
-	"""
-	from builder.ai.schemas.header_schema import HEADER_TYPE_DESCRIPTIONS
-
-	return [
-		{
-			"name": name,
-			"label": name.replace("_", " ").title(),
-			"description": info.get("description", ""),
-			"features": info.get("features", []),
-		}
-		for name, info in HEADER_TYPE_DESCRIPTIONS.items()
-	]
 
 
 @frappe.whitelist()
@@ -761,17 +499,34 @@ def _generate_complete_site_worker(
 				"site_name": site_name,
 			})
 
-			# Build page-specific prompt
-			page_prompt = f"{prompt}. This is the {page_def['title']} page."
+			# Build page-specific prompt with context
+			page_prompt = f"{prompt}. Page: {page_def['title']}."
 
-			# Generate blocks WITHOUT header/footer
-			blocks = generator.generate_page(
-				prompt=page_prompt,
-				theme=theme,
-				site_type=site_type,
-				include_header=False,
-				include_footer=False,
-			)
+			# Generate blocks with full creative freedom
+			try:
+				blocks = generator.generate_page(
+					prompt=page_prompt,
+					theme=theme,
+					primary_color=primary_color,
+					secondary_color=secondary_color,
+					page_title=page_def["title"],
+					page_type=page_def.get("type", ""),
+				)
+			except Exception as e:
+				frappe.log_error(f"Page generation failed: {page_def['title']}", str(e))
+				# Update status to show warning but continue
+				_update_generation_status(job_id, {
+					"status": "running",
+					"progress": progress,
+					"total_pages": total_pages,
+					"current_step": f"Warning: {page_def['title']} failed, continuing...",
+					"current_page": page_def["title"],
+					"pages_created": created_pages.copy(),
+					"error": f"Page '{page_def['title']}' generation failed: {str(e)[:100]}",
+					"site_name": site_name,
+				})
+				# Continue with other pages instead of failing completely
+				continue
 
 			# Create the Builder Page
 			page = frappe.new_doc("Builder Page")
@@ -795,6 +550,11 @@ def _generate_complete_site_worker(
 		# =====================================================================
 		# STEP 4: Update menu from created pages
 		# =====================================================================
+
+		# Check that at least one page was created
+		if not created_pages:
+			raise ValueError(f"No pages could be generated. All {total_pages} page generations failed.")
+
 		_update_generation_status(job_id, {
 			"status": "running",
 			"progress": 95,
@@ -808,10 +568,22 @@ def _generate_complete_site_worker(
 
 		config = frappe.get_single("Website Header Footer Config")
 		config.menu_items = []
+
+		# Track routes to prevent duplicates
+		seen_routes = set()
 		for page in created_pages:
+			route = page["route"]
+			# Skip if route already added (prevents "/" duplication)
+			if route in seen_routes:
+				continue
+			seen_routes.add(route)
+
+			# Use "Accueil" for home page, otherwise use page title
+			label = "Accueil" if route == "/" else page["title"]
+
 			config.append("menu_items", {
-				"label": page["title"],
-				"url": page["route"],
+				"label": label,
+				"url": route,
 				"is_external": False,
 				"open_in_new_tab": False,
 			})
@@ -877,349 +649,8 @@ def get_site_generation_status(job_id: str):
 
 
 # =============================================================================
-# WEBSHOP HEADER/FOOTER TEMPLATES API
+# POSTHOG & OTHER UTILITIES
 # =============================================================================
-
-@frappe.whitelist()
-def get_webshop_header_variations():
-	"""
-	Get available webshop header variations.
-
-	Returns:
-		dict: Available variations with name, description, preview
-	"""
-	from builder.ai.templates.webshop_headers import WEBSHOP_HEADER_VARIATIONS
-	return WEBSHOP_HEADER_VARIATIONS
-
-
-@frappe.whitelist()
-def get_webshop_footer_variations():
-	"""
-	Get available webshop footer variations.
-
-	Returns:
-		dict: Available variations with name, description, preview
-	"""
-	from builder.ai.templates.webshop_footers import WEBSHOP_FOOTER_VARIATIONS
-	return WEBSHOP_FOOTER_VARIATIONS
-
-
-@frappe.whitelist()
-def build_webshop_header(
-	variation: str = "webshop_standard",
-	logo: str = None,
-	pages: str = None
-):
-	"""
-	Build a webshop header block from a variation.
-
-	Args:
-		variation: Header variation name (webshop_standard, webshop_centered, etc.)
-		logo: Optional logo path (defaults to /files/logo-default.png)
-		pages: JSON array of menu items [{label, href}]
-
-	Returns:
-		dict: Frappe Builder block for header
-	"""
-	from builder.ai.templates.webshop_headers import build_webshop_header as build_header
-	from builder.ai.schemas.header_schema import HeaderConfig, NavItem
-
-	config = None
-	if logo or pages:
-		menu_items = []
-		if pages:
-			try:
-				page_list = json.loads(pages) if isinstance(pages, str) else pages
-				for p in page_list:
-					if isinstance(p, dict):
-						menu_items.append(NavItem(label=p.get("label", ""), href=p.get("href", "/")))
-					else:
-						menu_items.append(NavItem(label=str(p), href=f"/{str(p).lower()}"))
-			except json.JSONDecodeError:
-				pass
-
-		config = HeaderConfig(
-			type="ecommerce",
-			logo_type="image",
-			logo_value=logo or "/files/logo-default.png",
-			menu_items=menu_items if menu_items else None,
-			show_cart=True,
-			show_wishlist=True,
-			show_search=True,
-			show_user_menu=True,
-		)
-
-	return build_header(variation=variation, config=config)
-
-
-@frappe.whitelist()
-def build_webshop_footer(
-	variation: str = "webshop_standard",
-	company_name: str = None,
-	logo: str = None,
-	description: str = None
-):
-	"""
-	Build a webshop footer block from a variation.
-
-	Args:
-		variation: Footer variation name (webshop_standard, webshop_simple, etc.)
-		company_name: Company name for copyright
-		logo: Optional logo path (defaults to /files/logo-default.png)
-		description: Company description text
-
-	Returns:
-		dict: Frappe Builder block for footer
-	"""
-	from builder.ai.templates.webshop_footers import build_webshop_footer as build_footer
-
-	return build_footer(
-		variation=variation,
-		company_name=company_name or "Your Company",
-		logo=logo,
-		description=description
-	)
-
-
-# =============================================================================
-# CONFIGURABLE HEADER SYSTEM API
-# =============================================================================
-
-@frappe.whitelist()
-def get_header_layouts():
-	"""
-	Get available header layouts for the configurable header system.
-
-	Returns:
-		list[dict]: List of layouts with name and description
-	"""
-	return [
-		{
-			"name": "logo_menu_cta",
-			"label": "Logo - Menu - CTA",
-			"description": "Standard layout: Logo left, navigation center-right, icons and CTA on right",
-			"preview": "[Logo] [Nav...] [Icons] [CTA]"
-		},
-		{
-			"name": "menu_logo_cta",
-			"label": "Menu - Logo - CTA",
-			"description": "Centered logo layout: Navigation on left, logo centered, icons and CTA on right",
-			"preview": "[Nav...] [Logo] [Icons] [CTA]"
-		},
-		{
-			"name": "logo_cta_menu",
-			"label": "Logo - CTA - Menu",
-			"description": "CTA priority layout: Logo and CTA on left, navigation and icons on right",
-			"preview": "[Logo] [CTA] [Nav...] [Icons]"
-		},
-	]
-
-
-@frappe.whitelist()
-def get_header_toggles():
-	"""
-	Get available feature toggles for the configurable header system.
-
-	Returns:
-		list[dict]: List of toggles with name, label, and description
-	"""
-	return [
-		{
-			"name": "show_search_bar",
-			"label": "Search Bar",
-			"description": "Full search input bar (takes more space)",
-			"icon": "search"
-		},
-		{
-			"name": "show_search",
-			"label": "Search Icon",
-			"description": "Search magnifying glass icon",
-			"icon": "search"
-		},
-		{
-			"name": "show_wishlist",
-			"label": "Wishlist",
-			"description": "Wishlist/favorites heart icon",
-			"icon": "heart"
-		},
-		{
-			"name": "show_cart",
-			"label": "Cart",
-			"description": "Shopping cart icon",
-			"icon": "shopping-bag"
-		},
-		{
-			"name": "show_user",
-			"label": "User",
-			"description": "User account icon",
-			"icon": "user"
-		},
-	]
-
-
-@frappe.whitelist()
-def build_configurable_header(
-	layout: str = "logo_menu_cta",
-	logo_type: str = "text",
-	logo_value: str = "Brand",
-	logo_url: str = "/",
-	nav_items: str = None,  # JSON string
-	cta_text: str = None,
-	cta_url: str = "#",
-	show_search: bool = False,
-	show_search_bar: bool = False,
-	show_wishlist: bool = False,
-	show_cart: bool = False,
-	show_user: bool = False,
-	sticky: bool = True,
-	transparent: bool = False,
-	blur_on_scroll: bool = False,
-	include_sidebar: bool = True,
-):
-	"""
-	Build a header using the new configurable header system.
-
-	Args:
-		layout: Header layout (logo_menu_cta, menu_logo_cta, logo_cta_menu)
-		logo_type: "text" or "image"
-		logo_value: Logo text or image URL
-		logo_url: Link destination for logo
-		nav_items: JSON array of navigation items [{label, href, is_external?}]
-		cta_text: CTA button text (None = no CTA)
-		cta_url: CTA button URL
-		show_search: Show search icon
-		show_search_bar: Show full search bar
-		show_wishlist: Show wishlist icon
-		show_cart: Show cart icon
-		show_user: Show user icon
-		sticky: Header sticks to top on scroll
-		transparent: Transparent background
-		blur_on_scroll: Add blur effect when scrolling
-		include_sidebar: Include mobile sidebar
-
-	Returns:
-		dict: Frappe Builder block for header
-	"""
-	from builder.ai.templates.headers import build_header
-	from builder.ai.schemas.header_schema import HeaderConfig, NavItem
-
-	# Parse nav_items if provided as JSON string
-	parsed_nav_items = []
-	if nav_items:
-		try:
-			items = json.loads(nav_items) if isinstance(nav_items, str) else nav_items
-			for item in items:
-				if isinstance(item, dict):
-					parsed_nav_items.append(NavItem(
-						label=item.get("label", ""),
-						href=item.get("href", "#"),
-						is_external=item.get("is_external", False),
-					))
-				else:
-					parsed_nav_items.append(NavItem(label=str(item), href="#"))
-		except json.JSONDecodeError:
-			pass
-
-	# Handle boolean conversion from string (Frappe form submission)
-	def to_bool(val):
-		if isinstance(val, bool):
-			return val
-		if isinstance(val, str):
-			return val.lower() in ("true", "1", "yes")
-		return bool(val)
-
-	# Create config
-	config = HeaderConfig(
-		layout=layout,
-		logo_type=logo_type,
-		logo_value=logo_value,
-		logo_url=logo_url,
-		nav_items=parsed_nav_items,
-		cta_text=cta_text if cta_text else None,
-		cta_url=cta_url,
-		show_search=to_bool(show_search),
-		show_search_bar=to_bool(show_search_bar),
-		show_wishlist=to_bool(show_wishlist),
-		show_cart=to_bool(show_cart),
-		show_user=to_bool(show_user),
-		sticky=to_bool(sticky),
-		transparent=to_bool(transparent),
-		blur_on_scroll=to_bool(blur_on_scroll),
-	)
-
-	return build_header(config, include_sidebar=to_bool(include_sidebar))
-
-
-@frappe.whitelist()
-def build_header_for_site_type(
-	site_type: str = "multi_page",
-	logo: str = "Brand",
-	logo_type: str = "text",
-	nav_items: str = None,  # JSON string
-):
-	"""
-	Build a header optimized for a specific site type.
-
-	Uses intelligent defaults based on site type (ecommerce, saas, portfolio, etc.).
-
-	Args:
-		site_type: Type of site (ecommerce, saas, portfolio, blog, single_page, multi_page)
-		logo: Logo text or image URL
-		logo_type: "text" or "image"
-		nav_items: JSON array of navigation items (overrides defaults)
-
-	Returns:
-		dict: Frappe Builder block for header
-	"""
-	from builder.ai.templates.headers import (
-		build_ecommerce_header,
-		build_saas_header,
-		build_portfolio_header,
-		build_blog_header,
-		build_single_page_header,
-		build_header,
-	)
-	from builder.ai.schemas.header_schema import HeaderConfig, NavItem, SITE_TYPE_HEADER_DEFAULTS
-
-	# Parse nav_items if provided
-	parsed_nav_items = None
-	if nav_items:
-		try:
-			items = json.loads(nav_items) if isinstance(nav_items, str) else nav_items
-			parsed_nav_items = [
-				NavItem(
-					label=item.get("label", str(item)) if isinstance(item, dict) else str(item),
-					href=item.get("href", "#") if isinstance(item, dict) else "#",
-				)
-				for item in items
-			]
-		except json.JSONDecodeError:
-			pass
-
-	# Use convenience functions for known site types
-	if site_type == "ecommerce":
-		return build_ecommerce_header(logo=logo, logo_type=logo_type)
-	elif site_type == "saas":
-		return build_saas_header(logo=logo, logo_type=logo_type)
-	elif site_type == "portfolio":
-		return build_portfolio_header(logo=logo, logo_type=logo_type)
-	elif site_type == "blog":
-		return build_blog_header(logo=logo, logo_type=logo_type)
-	elif site_type == "single_page":
-		return build_single_page_header(logo=logo, logo_type=logo_type)
-
-	# Default: use site type defaults with custom config
-	defaults = SITE_TYPE_HEADER_DEFAULTS.get(site_type, SITE_TYPE_HEADER_DEFAULTS["multi_page"])
-
-	config = HeaderConfig(
-		logo_type=logo_type,
-		logo_value=logo,
-		nav_items=parsed_nav_items or [],
-		**defaults
-	)
-
-	return build_header(config)
-
 
 @frappe.whitelist()
 def get_posthog_settings():

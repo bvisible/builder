@@ -47,8 +47,8 @@ class OllamaProvider(BaseProvider):
 
     # Optimized for Kimi K2.5 cloud
     DEFAULT_NUM_CTX = 131072      # 128k context
-    DEFAULT_MAX_TOKENS = 16384    # 16k output tokens
-    DEFAULT_TIMEOUT = 300         # 5 minutes for cloud
+    DEFAULT_MAX_TOKENS = 32768    # 32k output tokens (pages can be large)
+    DEFAULT_TIMEOUT = 600         # 10 minutes for large generations
 
     def __init__(
         self,
@@ -205,11 +205,16 @@ class OllamaProvider(BaseProvider):
         temperature: float = None,
         max_tokens: int = None,
     ) -> str:
-        """Generate using HTTP API (fallback)"""
+        """
+        Generate using HTTP API with streaming to bypass Cloudflare timeout.
+
+        Uses stream=True to keep the connection alive - Cloudflare won't
+        timeout as long as data is flowing.
+        """
         payload = {
             "model": self.model,
             "messages": messages,
-            "stream": False,
+            "stream": True,  # Stream to avoid Cloudflare 524 timeout
             "options": {
                 "temperature": temperature or self.temperature,
                 "num_predict": max_tokens or self.max_tokens,
@@ -218,8 +223,7 @@ class OllamaProvider(BaseProvider):
         }
 
         try:
-            response = self._make_request("/api/chat", payload)
-            return response.get("message", {}).get("content", "")
+            return self._make_streaming_request("/api/chat", payload)
         except Exception as e:
             raise GenerationError(f"Ollama generation failed: {e}")
 
@@ -319,11 +323,16 @@ class OllamaProvider(BaseProvider):
         schema_dict: dict,
         temperature: float,
     ) -> str:
-        """Generate structured response using HTTP API (fallback)"""
+        """
+        Generate structured response using HTTP API with streaming.
+
+        Uses streaming to bypass Cloudflare timeout while still
+        enforcing JSON schema constraints.
+        """
         payload = {
             "model": self.model,
             "messages": messages,
-            "stream": False,
+            "stream": True,  # Stream to avoid Cloudflare 524 timeout
             "format": schema_dict,  # Ollama 0.5+ JSON schema constraint
             "options": {
                 "temperature": temperature,
@@ -332,8 +341,7 @@ class OllamaProvider(BaseProvider):
             },
         }
 
-        response = self._make_request("/api/chat", payload)
-        return response.get("message", {}).get("content", "")
+        return self._make_streaming_request("/api/chat", payload)
 
     def generate_json(
         self,
@@ -413,8 +421,64 @@ CRITICAL RULES:
 
         return clean(schema)
 
+    def _make_streaming_request(self, endpoint: str, payload: dict) -> str:
+        """
+        Make streaming HTTP request to Ollama API.
+
+        Streams the response to bypass Cloudflare's 100s timeout.
+        Assembles the full response from stream chunks.
+        """
+        import requests
+
+        url = f"{self.base_url}{endpoint}"
+        headers = self._get_auth_headers()
+
+        try:
+            response = requests.post(
+                url,
+                json=payload,
+                headers=headers,
+                timeout=self.timeout,
+                stream=True,
+            )
+
+            if response.status_code != 200:
+                error_text = response.text[:500]
+                raise GenerationError(
+                    f"Ollama API error ({response.status_code}): {error_text}"
+                )
+
+            # Assemble content from stream chunks
+            full_content = ""
+            for line in response.iter_lines():
+                if line:
+                    try:
+                        chunk = json.loads(line)
+                        if "message" in chunk and "content" in chunk["message"]:
+                            full_content += chunk["message"]["content"]
+                        # Check if stream is done
+                        if chunk.get("done", False):
+                            break
+                    except json.JSONDecodeError:
+                        continue
+
+            return full_content
+
+        except requests.exceptions.ConnectionError:
+            raise GenerationError(
+                f"Cannot connect to Ollama at {self.base_url}. "
+                "Make sure Ollama is running (ollama serve)."
+            )
+        except requests.exceptions.Timeout:
+            raise GenerationError(
+                f"Ollama request timed out after {self.timeout}s. "
+                "Try a smaller model or increase timeout."
+            )
+        except requests.exceptions.RequestException as e:
+            raise GenerationError(f"Ollama request failed: {e}")
+
     def _make_request(self, endpoint: str, payload: dict) -> dict:
-        """Make HTTP request to Ollama API"""
+        """Make non-streaming HTTP request to Ollama API"""
         import requests
 
         url = f"{self.base_url}{endpoint}"

@@ -1,12 +1,8 @@
 # AI Validators Module
-# Block validation and auto-fixing
+# Simple block validation
 
-from builder.ai.validators.block_validator import BlockValidator, ValidationError, validate_block
-from builder.ai.validators.auto_fixer import AutoFixer
+from builder.ai.validators.block_validator import BlockValidator
 
 __all__ = [
     "BlockValidator",
-    "ValidationError",
-    "AutoFixer",
-    "validate_block",
 ]
