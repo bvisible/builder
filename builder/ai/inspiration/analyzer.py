@@ -91,9 +91,9 @@ class DesignAnalyzer:
             for idx in sorted_indices:
                 r, g, b = colors[idx]
                 result.append({
-                    "hex": f"#{r:02x}{g:02x}{b:02x}",
+                    "hex": f"#{int(r):02x}{int(g):02x}{int(b):02x}",
                     "rgb": [int(r), int(g), int(b)],
-                    "percentage": round(percentages[idx], 1),
+                    "percentage": float(round(percentages[idx], 1)),
                 })
 
             return result
@@ -171,8 +171,8 @@ class DesignAnalyzer:
         # Determine if image is light or dark
         if result.get("dominant_colors"):
             avg_brightness = self._calculate_brightness(result["dominant_colors"])
-            result["is_dark_theme"] = avg_brightness < 128
-            result["brightness"] = round(avg_brightness)
+            result["is_dark_theme"] = bool(avg_brightness < 128)
+            result["brightness"] = int(round(avg_brightness))
 
         return result
 
