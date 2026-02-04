@@ -343,7 +343,7 @@ def generate_complete_site(
 	frappe.enqueue(
 		"builder.api._generate_complete_site_worker",
 		queue="long",
-		timeout=600,  # 10 minutes max
+		timeout=1800,  # 30 minutes max (kimi model is slow)
 		job_name=job_id,
 		generation_job_id=job_id,  # Our tracking ID
 		prompt=prompt,
