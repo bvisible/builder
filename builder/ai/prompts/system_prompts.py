@@ -123,6 +123,31 @@ Structure d'un block :
    - var(--border-color) : bordures
 3. Chaque blockId doit être UNIQUE
 
+## TYPOGRAPHIE - UTILISER LES CSS VARIABLES (IMPORTANT!)
+La typographie est gérée globalement via des CSS variables. Tu n'as PAS besoin de spécifier fontSize/fontWeight pour les éléments de texte standard :
+- Pour h1, h2, h3, h4, p : NE PAS spécifier fontSize ni fontWeight
+- Le CSS global applique automatiquement les bonnes tailles via var(--h1-size), var(--h2-size), etc.
+- Les styles mobiles sont aussi gérés automatiquement
+
+EXCEPTION : Tu peux override la taille UNIQUEMENT pour :
+- Texte sur fond coloré/hero qui nécessite une couleur spécifique (color: "#ffffff")
+- Éléments qui doivent être plus grands que le standard (display headlines)
+- Labels, spans, ou petits textes d'UI
+
+EXEMPLE CORRECT (laisser le CSS gérer la taille) :
+{{
+  "element": "h1",
+  "innerHTML": "Mon titre",
+  "baseStyles": {{ "color": "#ffffff", "marginBottom": "24px" }}
+}}
+
+EXEMPLE À ÉVITER (override inutile) :
+{{
+  "element": "h1",
+  "innerHTML": "Mon titre",
+  "baseStyles": {{ "fontSize": "48px", "fontWeight": "700" }}
+}}
+
 {design_brief_section}
 {colors_section}
 {font_section}
@@ -200,13 +225,8 @@ Structure d'un block :
             "element": "h1",
             "innerHTML": "Votre titre accrocheur ici",
             "baseStyles": {{
-              "fontSize": "56px",
-              "fontWeight": "700",
               "color": "#ffffff",
               "marginBottom": "24px"
-            }},
-            "mobileStyles": {{
-              "fontSize": "36px"
             }}
           }}
         ]

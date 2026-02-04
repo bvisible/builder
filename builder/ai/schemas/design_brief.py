@@ -129,6 +129,16 @@ class DesignBrief(BaseModel):
         description="Border radius style"
     )
 
+    # Inspiration context (from user-provided reference sites/images)
+    inspiration_context: Optional[str] = Field(
+        default=None,
+        description="Context from inspiration sources (liked/disliked colors, styles)"
+    )
+    colors_to_avoid: Optional[list[str]] = Field(
+        default=None,
+        description="Colors to avoid based on disliked inspirations"
+    )
+
     def get_border_radius(self) -> str:
         """Get border radius value based on style."""
         radii = {
@@ -138,6 +148,21 @@ class DesignBrief(BaseModel):
             "pill": "9999px",
         }
         return radii.get(self.border_radius_style, "12px")
+
+    def _get_inspiration_section(self) -> str:
+        """Get inspiration context section for prompt."""
+        parts = []
+
+        if self.inspiration_context:
+            parts.append(f"\n### User Inspiration Context\n{self.inspiration_context}")
+
+        if self.colors_to_avoid:
+            colors_str = ", ".join(self.colors_to_avoid[:5])
+            parts.append(f"\n### Colors to AVOID\n{colors_str}")
+
+        if parts:
+            return "\n".join(parts) + "\n"
+        return ""
 
     def to_prompt_section(self) -> str:
         """Convert to a prompt section for the AI."""
@@ -181,7 +206,7 @@ class DesignBrief(BaseModel):
 - Shadows: {"Yes" if self.use_shadows else "No"}
 - Gradients: {"Yes" if self.use_gradients else "No"}
 - Border radius: {self.border_radius_style} ({self.get_border_radius()})
-
+{self._get_inspiration_section()}
 **IMPORTANT**: Apply these styles CONSISTENTLY across ALL pages and sections.
 """
 

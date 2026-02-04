@@ -76,7 +76,36 @@
   "theme_typography_section",
   "heading_font",
   "column_break_theme_2",
-  "body_font"
+  "body_font",
+  "typography_scale_section",
+  "h1_size",
+  "h1_weight",
+  "column_break_h1",
+  "h1_line_height",
+  "h1_size_mobile",
+  "h2_settings_section",
+  "h2_size",
+  "h2_weight",
+  "column_break_h2",
+  "h2_line_height",
+  "h2_size_mobile",
+  "h3_settings_section",
+  "h3_size",
+  "h3_weight",
+  "column_break_h3",
+  "h3_line_height",
+  "h3_size_mobile",
+  "h4_settings_section",
+  "h4_size",
+  "h4_weight",
+  "column_break_h4",
+  "h4_size_mobile",
+  "body_settings_section",
+  "body_size",
+  "body_weight",
+  "column_break_body",
+  "body_line_height",
+  "body_size_mobile"
  ],
  "fields": [
   {
@@ -514,6 +543,175 @@
    "fieldtype": "Select",
    "label": "Body Font",
    "options": "Inter\nMontserrat\nPoppins\nRoboto\nOpen Sans\nLato\nRaleway\nSource Sans Pro\nNunito\nMerriweather"
+  },
+  {
+   "fieldname": "typography_scale_section",
+   "fieldtype": "Section Break",
+   "label": "Typography Scale - H1",
+   "collapsible": 1
+  },
+  {
+   "default": "48px",
+   "fieldname": "h1_size",
+   "fieldtype": "Data",
+   "label": "H1 Size"
+  },
+  {
+   "default": "700",
+   "fieldname": "h1_weight",
+   "fieldtype": "Select",
+   "label": "H1 Weight",
+   "options": "400\n500\n600\n700\n800"
+  },
+  {
+   "fieldname": "column_break_h1",
+   "fieldtype": "Column Break"
+  },
+  {
+   "default": "1.2",
+   "fieldname": "h1_line_height",
+   "fieldtype": "Data",
+   "label": "H1 Line Height"
+  },
+  {
+   "default": "32px",
+   "fieldname": "h1_size_mobile",
+   "fieldtype": "Data",
+   "label": "H1 Size (Mobile)"
+  },
+  {
+   "fieldname": "h2_settings_section",
+   "fieldtype": "Section Break",
+   "label": "Typography Scale - H2",
+   "collapsible": 1
+  },
+  {
+   "default": "36px",
+   "fieldname": "h2_size",
+   "fieldtype": "Data",
+   "label": "H2 Size"
+  },
+  {
+   "default": "600",
+   "fieldname": "h2_weight",
+   "fieldtype": "Select",
+   "label": "H2 Weight",
+   "options": "400\n500\n600\n700\n800"
+  },
+  {
+   "fieldname": "column_break_h2",
+   "fieldtype": "Column Break"
+  },
+  {
+   "default": "1.25",
+   "fieldname": "h2_line_height",
+   "fieldtype": "Data",
+   "label": "H2 Line Height"
+  },
+  {
+   "default": "26px",
+   "fieldname": "h2_size_mobile",
+   "fieldtype": "Data",
+   "label": "H2 Size (Mobile)"
+  },
+  {
+   "fieldname": "h3_settings_section",
+   "fieldtype": "Section Break",
+   "label": "Typography Scale - H3",
+   "collapsible": 1
+  },
+  {
+   "default": "24px",
+   "fieldname": "h3_size",
+   "fieldtype": "Data",
+   "label": "H3 Size"
+  },
+  {
+   "default": "600",
+   "fieldname": "h3_weight",
+   "fieldtype": "Select",
+   "label": "H3 Weight",
+   "options": "400\n500\n600\n700\n800"
+  },
+  {
+   "fieldname": "column_break_h3",
+   "fieldtype": "Column Break"
+  },
+  {
+   "default": "1.3",
+   "fieldname": "h3_line_height",
+   "fieldtype": "Data",
+   "label": "H3 Line Height"
+  },
+  {
+   "default": "20px",
+   "fieldname": "h3_size_mobile",
+   "fieldtype": "Data",
+   "label": "H3 Size (Mobile)"
+  },
+  {
+   "fieldname": "h4_settings_section",
+   "fieldtype": "Section Break",
+   "label": "Typography Scale - H4",
+   "collapsible": 1
+  },
+  {
+   "default": "20px",
+   "fieldname": "h4_size",
+   "fieldtype": "Data",
+   "label": "H4 Size"
+  },
+  {
+   "default": "500",
+   "fieldname": "h4_weight",
+   "fieldtype": "Select",
+   "label": "H4 Weight",
+   "options": "400\n500\n600\n700\n800"
+  },
+  {
+   "fieldname": "column_break_h4",
+   "fieldtype": "Column Break"
+  },
+  {
+   "default": "18px",
+   "fieldname": "h4_size_mobile",
+   "fieldtype": "Data",
+   "label": "H4 Size (Mobile)"
+  },
+  {
+   "fieldname": "body_settings_section",
+   "fieldtype": "Section Break",
+   "label": "Typography Scale - Body",
+   "collapsible": 1
+  },
+  {
+   "default": "16px",
+   "fieldname": "body_size",
+   "fieldtype": "Data",
+   "label": "Body Size"
+  },
+  {
+   "default": "400",
+   "fieldname": "body_weight",
+   "fieldtype": "Select",
+   "label": "Body Weight",
+   "options": "400\n500\n600\n700"
+  },
+  {
+   "fieldname": "column_break_body",
+   "fieldtype": "Column Break"
+  },
+  {
+   "default": "1.6",
+   "fieldname": "body_line_height",
+   "fieldtype": "Data",
+   "label": "Body Line Height"
+  },
+  {
+   "default": "15px",
+   "fieldname": "body_size_mobile",
+   "fieldtype": "Data",
+   "label": "Body Size (Mobile)"
   }
  ],
  "index_web_pages_for_search": 1,

@@ -739,6 +739,7 @@ def _generate_complete_site_worker(
 			# Multi-page sites: use page routes
 			# Track routes to prevent duplicates
 			seen_routes = set()
+			shop_link_added = False
 			for page in created_pages:
 				route = page["route"]
 				# Skip if route already added (prevents "/" duplication)
@@ -755,6 +756,16 @@ def _generate_complete_site_worker(
 					"is_external": False,
 					"open_in_new_tab": False,
 				})
+
+				# For ecommerce sites: add Shop link after Collection
+				if site_type in ("ecommerce", "ecommerce_search") and page["title"] == "Collection" and not shop_link_added:
+					config.append("menu_items", {
+						"label": "Shop",
+						"url": "/all-products",
+						"is_external": False,
+						"open_in_new_tab": False,
+					})
+					shop_link_added = True
 
 		# ---- Update Footer ----
 		# Footer logo: same as header
@@ -1652,6 +1663,70 @@ def generate_image(
 			"width": result.width,
 			"height": result.height,
 		}
+
+
+# =============================================================================
+# INSPIRATION API
+# =============================================================================
+
+@frappe.whitelist()
+def capture_inspiration(
+	url: str = None,
+	image: str = None,
+	sentiment: str = "like",
+	description: str = None,
+):
+	"""
+	Capture a website or image for design inspiration.
+
+	Args:
+		url: Website URL to capture (optional)
+		image: Uploaded image file URL (optional)
+		sentiment: User sentiment (like, dislike, neutral)
+		description: User notes about what they like/dislike
+
+	Returns:
+		dict with doc name and status
+	"""
+	from builder.builder.doctype.builder_site_inspiration.builder_site_inspiration import (
+		capture_inspiration as _capture_inspiration
+	)
+	return _capture_inspiration(url=url, image=image, sentiment=sentiment, description=description)
+
+
+@frappe.whitelist()
+def get_inspirations(limit: int = 20, sentiment: str = None):
+	"""
+	Get list of captured inspirations.
+
+	Args:
+		limit: Max number to return
+		sentiment: Optional filter by sentiment (like, dislike, neutral)
+
+	Returns:
+		List of inspiration summaries with dominant colors
+	"""
+	from builder.builder.doctype.builder_site_inspiration.builder_site_inspiration import (
+		get_inspirations as _get_inspirations
+	)
+	return _get_inspirations(limit=int(limit), sentiment=sentiment)
+
+
+@frappe.whitelist()
+def analyze_inspirations_for_generation(inspiration_names: str = None):
+	"""
+	Analyze inspirations and return aggregated data for AI generation.
+
+	Args:
+		inspiration_names: JSON array of inspiration names (or None for all)
+
+	Returns:
+		Aggregated inspiration data for the design brief
+	"""
+	from builder.builder.doctype.builder_site_inspiration.builder_site_inspiration import (
+		analyze_inspirations_for_generation as _analyze
+	)
+	return _analyze(inspiration_names=inspiration_names)
 
 
 @frappe.whitelist()
