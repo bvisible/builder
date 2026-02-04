@@ -43,9 +43,15 @@ def get_creative_system_prompt(
 UTILISATION DES COULEURS:
 - Hero backgrounds: utilise des gradients entre primary et secondary
 - Boutons: backgroundColor: "{primary_color}"
-- Texte sur fond coloré: "#ffffff"
 - Cards: backgroundColor: "var(--surface-color)" ou "#ffffff"
 - Icônes et accents: "{primary_color}"
+
+RÈGLES DE CONTRASTE (CRITIQUE!):
+- Hero/sections avec gradient ou fond coloré (primary/secondary) → color: "#ffffff"
+- Sections fond blanc (#ffffff) → color: "var(--text-color)"
+- Sections fond gris clair (#f8fafc, #fafafa, #f5f5f5) → color: "var(--text-color)"
+- Cards sur fond blanc/clair → color: "var(--text-color)"
+- JAMAIS de texte blanc sur fond blanc ou gris clair!
 """
         else:
             # Brief exists, just remind of the actual color values
@@ -154,6 +160,19 @@ EXEMPLE À ÉVITER (override inutile) :
 
 ## THÈME : {theme_name}
 {theme_prompt}
+
+## RÈGLES DE CONTRASTE TEXTE/FOND (CRITIQUE!)
+Assure TOUJOURS un bon contraste entre le texte et le fond:
+
+| Fond de section | Couleur du texte |
+|-----------------|------------------|
+| Gradient coloré (primary/secondary) | "#ffffff" |
+| Fond coloré (var(--primary-color), etc.) | "#ffffff" |
+| Fond blanc (#ffffff) | "var(--text-color)" |
+| Fond gris clair (#f8fafc, #fafafa, #f5f5f5) | "var(--text-color)" |
+| var(--surface-color) | "var(--text-color)" |
+
+⚠️ ERREUR FRÉQUENTE À ÉVITER: Ne JAMAIS mettre color: "#ffffff" sur une section à fond blanc ou gris clair!
 
 ## CONSIGNES CRÉATIVES
 
@@ -280,7 +299,7 @@ CONTENU ATTENDU :
 - Hero (#hero) : Titre accrocheur, sous-titre, CTA principal
 - Services (#services) : Présentation des services/offres (3-4 cards)
 - À propos (#about) : Histoire, valeurs, équipe ou chiffres clés
-- Contact (#contact) : Formulaire avec {{ contact_form }} + coordonnées
+- Contact (#contact) : Formulaire avec {% include 'builder/templates/includes/contact_form.html' %} + coordonnées
 
 DESIGN :
 - Alterne les fonds (clair/foncé/coloré) pour distinguer les sections
@@ -312,18 +331,20 @@ INSTRUCTIONS SPÉCIFIQUES POUR LA PAGE SERVICES :
 
             "contact": """
 INSTRUCTIONS SPÉCIFIQUES POUR LA PAGE CONTACT :
-- IMPORTANT : Utilise le shortcode {{ contact_form }} pour le formulaire
+- IMPORTANT : Utilise le shortcode avec include Jinja pour le formulaire :
+  {% include 'builder/templates/includes/contact_form.html' %}
 - IMPORTANT : Pour la carte Google Maps, utilise cette syntaxe EXACTE :
   {% set address = "Adresse complète ici" %}{% set height = "350px" %}{% include 'builder/templates/includes/google_map.html' %}
+- IMPORTANT : Pour les informations de contact, utilise :
+  {% include 'builder/templates/includes/contact_info.html' %}
 - Structure recommandée: 2 colonnes (formulaire à gauche, carte/infos à droite)
 - Ajoute les informations de contact (adresse, téléphone, email)
-- Utilise {{ contact_info }} si disponible pour les coordonnées
 - Exemple de layout avec carte:
   <section style="display: grid; grid-template-columns: 1fr 1fr; gap: 40px;">
-    <div>{{ contact_form }}</div>
+    <div>{% include 'builder/templates/includes/contact_form.html' %}</div>
     <div>
       {% set address = "123 Rue Example, 1000 Ville, Pays" %}{% set height = "350px" %}{% include 'builder/templates/includes/google_map.html' %}
-      <p>Email: contact@example.com</p>
+      {% include 'builder/templates/includes/contact_info.html' %}
     </div>
   </section>""",
 

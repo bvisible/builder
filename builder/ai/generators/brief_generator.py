@@ -159,6 +159,13 @@ IMPORTANT RULES:
 - Be specific about border-radius values and shadow intensities
 - Consider the site type and theme when making decisions
 
+CRITICAL - TEXT COLOR CONTRAST RULES:
+- For hero_text_color: ONLY use "#ffffff" if hero_background is a gradient or colored background
+- If hero is solid light color, hero_text_color MUST be "var(--text-color)"
+- section_backgrounds with light colors (#ffffff, #f8fafc, #fafafa) → body_color: "var(--muted-color)", heading_color: "var(--text-color)"
+- section_backgrounds with dark/colored backgrounds → text should be "#ffffff"
+- NEVER create white text on white/light backgrounds!
+
 Output a valid JSON object matching the DesignBrief schema.
 """
 

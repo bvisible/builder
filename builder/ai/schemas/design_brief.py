@@ -202,6 +202,17 @@ class DesignBrief(BaseModel):
 - Body text: {self.body_color}
 - Links: {self.link_color}
 
+### TEXT COLOR CONTRAST (CRITICAL!)
+Apply these rules for EVERY section based on its background:
+| Background | Text Color |
+|------------|------------|
+| Gradient or colored (primary/secondary) | "#ffffff" |
+| #ffffff (white) | "var(--text-color)" |
+| #f8fafc, #fafafa, #f5f5f5 (light gray) | "var(--text-color)" |
+| var(--surface-color) | "var(--text-color)" |
+
+⚠️ NEVER use white text (#ffffff) on white or light gray backgrounds!
+
 ### Visual Effects
 - Shadows: {"Yes" if self.use_shadows else "No"}
 - Gradients: {"Yes" if self.use_gradients else "No"}

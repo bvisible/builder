@@ -67,6 +67,7 @@ class OpenAIProvider(BaseProvider):
         system_prompt: str = None,
         temperature: float = None,
         max_tokens: int = None,
+        think: str = None,  # Ignored for OpenAI (no thinking mode)
     ) -> str:
         """Generate text response"""
         if not self.is_available():
@@ -93,6 +94,7 @@ class OpenAIProvider(BaseProvider):
         schema: type[T],
         system_prompt: str = None,
         temperature: float = None,
+        think: str = None,  # Ignored for OpenAI (no thinking mode)
     ) -> T:
         """
         Generate structured response using OpenAI's JSON mode.
