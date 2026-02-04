@@ -645,10 +645,13 @@ def _generate_complete_site_worker(
 				print(f"[SITE_GEN_WORKER] Page {page_title} generated: {len(blocks)} blocks")
 				generated_results.append({"page_def": page_def, "blocks": blocks, "error": None})
 			except Exception as e:
+				import traceback
 				error_msg = str(e)[:200]
-				ai_log("error", "Page generation failed", page=page_title, error=error_msg)
+				full_traceback = traceback.format_exc()
+				ai_log("error", "Page generation failed", page=page_title, error=error_msg, traceback=full_traceback[:500])
 				print(f"[SITE_GEN_WORKER] Page {page_title} FAILED: {error_msg}")
-				frappe.log_error(f"Page generation failed: {page_title}", str(e))
+				print(f"[SITE_GEN_WORKER] Full traceback:\n{full_traceback}")
+				frappe.log_error(f"Page generation failed: {page_title}", f"{str(e)}\n\n{full_traceback}")
 				generated_results.append({"page_def": page_def, "blocks": None, "error": error_msg})
 
 		# Now create all pages in DB (sequential, but fast)
@@ -659,6 +662,11 @@ def _generate_complete_site_worker(
 		created_pages = []
 		for result in generated_results:
 			if result["error"] or not result["blocks"]:
+				page_title = result["page_def"].get("title", "unknown")
+				skip_reason = result["error"] if result["error"] else "blocks is None or empty"
+				ai_log("warning", f"Skipping page creation: {page_title}", reason=skip_reason)
+				print(f"[SITE_GEN_WORKER] SKIPPING page {page_title}: {skip_reason}")
+				frappe.log_error(f"Page skipped: {page_title}", f"Reason: {skip_reason}\nBlocks: {result.get('blocks')}")
 				continue
 
 			page_def = result["page_def"]

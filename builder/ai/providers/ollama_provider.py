@@ -232,6 +232,7 @@ class OllamaProvider(BaseProvider):
             "model": self.model,
             "messages": messages,
             "stream": True,  # Stream to avoid Cloudflare 524 timeout
+            "think": False,  # Disable reasoning/thinking to speed up generation
             "options": {
                 "temperature": temperature or self.temperature,
                 "num_predict": max_tokens or self.max_tokens,
@@ -357,6 +358,7 @@ class OllamaProvider(BaseProvider):
             "messages": messages,
             "stream": True,  # Stream to avoid Cloudflare 524 timeout
             "format": schema_dict,  # Ollama 0.5+ JSON schema constraint
+            "think": False,  # Disable reasoning/thinking to speed up generation
             "options": {
                 "temperature": temperature,
                 "num_predict": self.max_tokens,
