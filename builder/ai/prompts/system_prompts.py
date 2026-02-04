@@ -298,9 +298,10 @@ INSTRUCTIONS SPÉCIFIQUES POUR LA PAGE D'ACCUEIL :
             "about": """
 INSTRUCTIONS SPÉCIFIQUES POUR LA PAGE À PROPOS :
 - Raconte l'histoire de l'entreprise de manière engageante
-- Présente l'équipe avec le shortcode {{ team_grid }} si disponible
+- Présente l'équipe avec des cartes (photo placeholder, nom, rôle) - NE PAS utiliser de shortcode
 - Mets en avant les valeurs et la mission
-- Inclus des chiffres clés (années d'expérience, clients satisfaits, etc.)""",
+- Inclus des chiffres clés (années d'expérience, clients satisfaits, etc.)
+- Crée les sections visuellement avec du HTML/CSS, pas de shortcodes fictifs""",
 
             "services": """
 INSTRUCTIONS SPÉCIFIQUES POUR LA PAGE SERVICES :
@@ -312,7 +313,8 @@ INSTRUCTIONS SPÉCIFIQUES POUR LA PAGE SERVICES :
             "contact": """
 INSTRUCTIONS SPÉCIFIQUES POUR LA PAGE CONTACT :
 - IMPORTANT : Utilise le shortcode {{ contact_form }} pour le formulaire
-- IMPORTANT : Utilise le shortcode {{ google_map address="Adresse complète" }} pour afficher une carte interactive
+- IMPORTANT : Pour la carte Google Maps, utilise cette syntaxe EXACTE :
+  {% set address = "Adresse complète ici" %}{% set height = "350px" %}{% include 'builder/templates/includes/google_map.html' %}
 - Structure recommandée: 2 colonnes (formulaire à gauche, carte/infos à droite)
 - Ajoute les informations de contact (adresse, téléphone, email)
 - Utilise {{ contact_info }} si disponible pour les coordonnées
@@ -320,7 +322,7 @@ INSTRUCTIONS SPÉCIFIQUES POUR LA PAGE CONTACT :
   <section style="display: grid; grid-template-columns: 1fr 1fr; gap: 40px;">
     <div>{{ contact_form }}</div>
     <div>
-      {{ google_map address="123 Rue Example, 1000 Ville, Pays" height="350px" }}
+      {% set address = "123 Rue Example, 1000 Ville, Pays" %}{% set height = "350px" %}{% include 'builder/templates/includes/google_map.html' %}
       <p>Email: contact@example.com</p>
     </div>
   </section>""",

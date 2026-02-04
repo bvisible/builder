@@ -261,14 +261,14 @@ Return ONLY the JSON object, no markdown code blocks.
 """
 
         try:
-            # Try structured generation with thinking enabled for better creativity
-            # Using "medium" level for GPT-OSS compatibility (supports low/medium/high)
-            ai_log("debug", "Calling generate_structured for DesignBrief (think=medium)")
+            # Try structured generation with high thinking for better creativity
+            # Using "high" level for best creative decisions on design brief
+            ai_log("debug", "Calling generate_structured for DesignBrief (think=high)")
             brief = self.llm.generate_structured(
                 prompt=user_prompt,
                 schema=DesignBrief,
                 system_prompt=BRIEF_SYSTEM_PROMPT,
-                think="medium",  # Medium reasoning for creative decisions (GPT-OSS compatible)
+                think="high",  # High reasoning for best creative decisions on brief
             )
             ai_log("info", "Design brief generated successfully",
                 site_tone=brief.site_tone, hero_style=brief.hero_style)
