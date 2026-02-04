@@ -175,12 +175,12 @@ class OllamaProvider(BaseProvider):
         system_prompt: str = None,
         temperature: float = None,
         max_tokens: int = None,
-        think: bool = False,
+        think: bool | str = False,
     ) -> str:
         """Generate text response
 
         Args:
-            think: Enable reasoning/thinking mode (slower but better for complex tasks like briefs)
+            think: Reasoning mode - False to disable, True to enable, or "low"/"medium"/"high" for GPT-OSS
         """
         ai_log("info", "OllamaProvider.generate() called",
             model=self.model, base_url=self.base_url,
@@ -226,7 +226,7 @@ class OllamaProvider(BaseProvider):
         messages: list,
         temperature: float = None,
         max_tokens: int = None,
-        think: bool = False,
+        think: bool | str = False,
     ) -> str:
         """
         Generate using HTTP API with streaming to bypass Cloudflare timeout.
@@ -235,7 +235,7 @@ class OllamaProvider(BaseProvider):
         timeout as long as data is flowing.
 
         Args:
-            think: Enable reasoning/thinking mode (slower but better quality for complex tasks)
+            think: Reasoning mode - False to disable, True to enable, or "low"/"medium"/"high" for GPT-OSS
         """
         payload = {
             "model": self.model,
@@ -267,7 +267,7 @@ class OllamaProvider(BaseProvider):
         system_prompt: str = None,
         temperature: float = None,
         max_retries: int = 3,
-        think: bool = False,
+        think: bool | str = False,
     ) -> T:
         """
         Generate structured response using Ollama's JSON schema support.
@@ -281,7 +281,7 @@ class OllamaProvider(BaseProvider):
             system_prompt: Optional system prompt
             temperature: Generation temperature (default: self.temperature)
             max_retries: Number of retry attempts (default: 3)
-            think: Enable reasoning/thinking mode (slower but better for complex tasks)
+            think: Reasoning mode - False to disable, True to enable, or "low"/"medium"/"high" for GPT-OSS
 
         Returns:
             Instance of the schema class with generated content
@@ -357,7 +357,7 @@ class OllamaProvider(BaseProvider):
         messages: list,
         schema_dict: dict,
         temperature: float,
-        think: bool = False,
+        think: bool | str = False,
     ) -> str:
         """
         Generate structured response using HTTP API with streaming.
@@ -366,7 +366,7 @@ class OllamaProvider(BaseProvider):
         enforcing JSON schema constraints.
 
         Args:
-            think: Enable reasoning/thinking mode (slower but better quality)
+            think: Reasoning mode - False to disable, True to enable, or "low"/"medium"/"high" for GPT-OSS
         """
         payload = {
             "model": self.model,

@@ -112,9 +112,11 @@ class PageGenerator:
         frappe.logger().info(f"Generating page: {prompt[:50]}...")
 
         try:
+            # Use "low" thinking for pages - fast generation (GPT-OSS compatible)
             response = self.llm.generate(
                 prompt=user_prompt,
                 system_prompt=system_prompt,
+                think="low",  # Minimal reasoning for faster page generation
             )
             ai_log("info", "LLM response received", response_len=len(response))
         except Exception as e:
