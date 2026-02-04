@@ -261,12 +261,13 @@ Return ONLY the JSON object, no markdown code blocks.
 """
 
         try:
-            # Try structured generation
-            ai_log("debug", "Calling generate_structured for DesignBrief")
+            # Try structured generation with thinking enabled for better creativity
+            ai_log("debug", "Calling generate_structured for DesignBrief (think=True)")
             brief = self.llm.generate_structured(
                 prompt=user_prompt,
                 schema=DesignBrief,
                 system_prompt=BRIEF_SYSTEM_PROMPT,
+                think=True,  # Enable reasoning for better creative decisions
             )
             ai_log("info", "Design brief generated successfully",
                 site_tone=brief.site_tone, hero_style=brief.hero_style)

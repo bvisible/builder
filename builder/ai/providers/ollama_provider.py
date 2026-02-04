@@ -175,11 +175,16 @@ class OllamaProvider(BaseProvider):
         system_prompt: str = None,
         temperature: float = None,
         max_tokens: int = None,
+        think: bool = False,
     ) -> str:
-        """Generate text response"""
+        """Generate text response
+
+        Args:
+            think: Enable reasoning/thinking mode (slower but better for complex tasks like briefs)
+        """
         ai_log("info", "OllamaProvider.generate() called",
             model=self.model, base_url=self.base_url,
-            use_sdk=self._use_sdk, num_ctx=self.num_ctx)
+            use_sdk=self._use_sdk, num_ctx=self.num_ctx, think=think)
 
         messages = self._format_messages(prompt, system_prompt)
 
@@ -187,8 +192,8 @@ class OllamaProvider(BaseProvider):
             ai_log("debug", "Using Ollama SDK")
             return self._generate_with_sdk(messages, temperature, max_tokens)
 
-        ai_log("debug", "Using HTTP API with streaming")
-        return self._generate_with_http(messages, temperature, max_tokens)
+        ai_log("debug", "Using HTTP API with streaming", think=think)
+        return self._generate_with_http(messages, temperature, max_tokens, think=think)
 
     def _generate_with_sdk(
         self,
@@ -221,18 +226,22 @@ class OllamaProvider(BaseProvider):
         messages: list,
         temperature: float = None,
         max_tokens: int = None,
+        think: bool = False,
     ) -> str:
         """
         Generate using HTTP API with streaming to bypass Cloudflare timeout.
 
         Uses stream=True to keep the connection alive - Cloudflare won't
         timeout as long as data is flowing.
+
+        Args:
+            think: Enable reasoning/thinking mode (slower but better quality for complex tasks)
         """
         payload = {
             "model": self.model,
             "messages": messages,
             "stream": True,  # Stream to avoid Cloudflare 524 timeout
-            "think": False,  # Disable reasoning/thinking to speed up generation
+            "think": think,  # Enable/disable reasoning mode
             "options": {
                 "temperature": temperature or self.temperature,
                 "num_predict": max_tokens or self.max_tokens,
@@ -258,6 +267,7 @@ class OllamaProvider(BaseProvider):
         system_prompt: str = None,
         temperature: float = None,
         max_retries: int = 3,
+        think: bool = False,
     ) -> T:
         """
         Generate structured response using Ollama's JSON schema support.
@@ -271,6 +281,7 @@ class OllamaProvider(BaseProvider):
             system_prompt: Optional system prompt
             temperature: Generation temperature (default: self.temperature)
             max_retries: Number of retry attempts (default: 3)
+            think: Enable reasoning/thinking mode (slower but better for complex tasks)
 
         Returns:
             Instance of the schema class with generated content
@@ -290,7 +301,7 @@ class OllamaProvider(BaseProvider):
                 if self._use_sdk:
                     content = self._structured_with_sdk(messages, schema_dict, current_temp)
                 else:
-                    content = self._structured_with_http(messages, schema_dict, current_temp)
+                    content = self._structured_with_http(messages, schema_dict, current_temp, think=think)
 
                 if not content:
                     raise GenerationError("Empty response from Ollama")
@@ -346,19 +357,23 @@ class OllamaProvider(BaseProvider):
         messages: list,
         schema_dict: dict,
         temperature: float,
+        think: bool = False,
     ) -> str:
         """
         Generate structured response using HTTP API with streaming.
 
         Uses streaming to bypass Cloudflare timeout while still
         enforcing JSON schema constraints.
+
+        Args:
+            think: Enable reasoning/thinking mode (slower but better quality)
         """
         payload = {
             "model": self.model,
             "messages": messages,
             "stream": True,  # Stream to avoid Cloudflare 524 timeout
             "format": schema_dict,  # Ollama 0.5+ JSON schema constraint
-            "think": False,  # Disable reasoning/thinking to speed up generation
+            "think": think,  # Enable/disable reasoning mode
             "options": {
                 "temperature": temperature,
                 "num_predict": self.max_tokens,
