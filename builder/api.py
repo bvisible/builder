@@ -664,34 +664,46 @@ def _generate_complete_site_worker(
 			page_def = result["page_def"]
 			blocks = result["blocks"]
 
-			# Wrap blocks in a root container (required by Frappe Builder)
-			# The Builder expects: [{ blockId, element: "body", children: [...sections...] }]
-			root_block = {
-				"blockId": f"root-{frappe.generate_hash(length=8)}",
-				"element": "body",
-				"baseStyles": {},
-				"children": blocks
-			}
-			wrapped_blocks = [root_block]
+			try:
+				# Wrap blocks in a root container (required by Frappe Builder)
+				# The Builder expects: [{ blockId, element: "body", children: [...sections...] }]
+				root_block = {
+					"blockId": f"root-{frappe.generate_hash(length=8)}",
+					"element": "body",
+					"baseStyles": {},
+					"children": blocks
+				}
+				wrapped_blocks = [root_block]
 
-			# Create the Builder Page
-			page = frappe.new_doc("Builder Page")
-			page.page_title = page_def["title"]
-			page.blocks = json.dumps(wrapped_blocks)
-			page.draft_blocks = json.dumps(wrapped_blocks)
-			page.published = 1
-			page.insert(ignore_permissions=True)
+				# Create the Builder Page
+				page = frappe.new_doc("Builder Page")
+				page.page_title = page_def["title"]
+				page.blocks = json.dumps(wrapped_blocks)
+				page.draft_blocks = json.dumps(wrapped_blocks)
+				page.published = 1
+				page.insert(ignore_permissions=True)
 
-			# Force route (no /pages/ prefix)
-			route = page_def["route"]
-			frappe.db.set_value("Builder Page", page.name, "route", route)
-			frappe.db.commit()
+				# Force route (no /pages/ prefix)
+				route = page_def["route"]
+				frappe.db.set_value("Builder Page", page.name, "route", route)
+				frappe.db.commit()
 
-			created_pages.append({
-				"name": page.name,
-				"title": page_def["title"],
-				"route": f"/{route}" if route else "/",
-			})
+				ai_log("info", "Page created successfully",
+					page=page_def["title"], route=route, page_id=page.name)
+
+				created_pages.append({
+					"name": page.name,
+					"title": page_def["title"],
+					"route": f"/{route}" if route else "/",
+				})
+
+			except Exception as e:
+				error_msg = str(e)[:200]
+				ai_log("error", "Failed to create page in database",
+					page=page_def["title"], error=error_msg)
+				frappe.log_error(f"Page creation failed: {page_def['title']}", str(e))
+				# Continue with next page instead of crashing
+				continue
 
 		# =====================================================================
 		# STEP 5: Update menu from created pages

@@ -1,0 +1,52 @@
+{# Google Maps Embed - No API key required #}
+{# Based on: https://github.com/SheeetFace/react-google-map-location #}
+{% set map_address = address | default("") %}
+{% set map_height = height | default("400px") %}
+{% set map_zoom = zoom | default("16") %}
+{% set map_type = type | default("m") %}
+{% set encoded_address = map_address | urlencode %}
+
+<div class="builder-map-container" style="
+    width: 100%;
+    height: {{ map_height }};
+    border-radius: 12px;
+    overflow: hidden;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+">
+    {% if map_address %}
+    <iframe
+        width="100%"
+        height="100%"
+        style="border: none;"
+        loading="lazy"
+        allowfullscreen
+        referrerpolicy="no-referrer-when-downgrade"
+        src="https://maps.google.com/maps?q={{ encoded_address }}&t={{ map_type }}&z={{ map_zoom }}&output=embed"
+        title="{{ _('Map showing') }} {{ map_address }}"
+    ></iframe>
+    {% else %}
+    <div style="
+        width: 100%;
+        height: 100%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        background: var(--surface-color, #f5f5f5);
+        color: var(--muted-color, #666);
+    ">
+        <p>{{ _("Map placeholder - configure address") }}</p>
+    </div>
+    {% endif %}
+</div>
+
+<style>
+.builder-map-container {
+    margin: 1rem 0;
+}
+@media (max-width: 768px) {
+    .builder-map-container {
+        height: 300px !important;
+        border-radius: 8px;
+    }
+}
+</style>

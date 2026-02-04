@@ -312,9 +312,18 @@ INSTRUCTIONS SPÉCIFIQUES POUR LA PAGE SERVICES :
             "contact": """
 INSTRUCTIONS SPÉCIFIQUES POUR LA PAGE CONTACT :
 - IMPORTANT : Utilise le shortcode {{ contact_form }} pour le formulaire
+- IMPORTANT : Utilise le shortcode {{ google_map address="Adresse complète" }} pour afficher une carte interactive
+- Structure recommandée: 2 colonnes (formulaire à gauche, carte/infos à droite)
 - Ajoute les informations de contact (adresse, téléphone, email)
 - Utilise {{ contact_info }} si disponible pour les coordonnées
-- Inclus une carte ou des horaires d'ouverture si pertinent""",
+- Exemple de layout avec carte:
+  <section style="display: grid; grid-template-columns: 1fr 1fr; gap: 40px;">
+    <div>{{ contact_form }}</div>
+    <div>
+      {{ google_map address="123 Rue Example, 1000 Ville, Pays" height="350px" }}
+      <p>Email: contact@example.com</p>
+    </div>
+  </section>""",
 
             "produits": """
 INSTRUCTIONS SPÉCIFIQUES POUR LA PAGE PRODUITS :
