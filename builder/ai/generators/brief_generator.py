@@ -408,8 +408,15 @@ Return ONLY the JSON object, no markdown code blocks.
                 system_prompt=BRIEF_SYSTEM_PROMPT,
                 think=think_value,
             )
+
+            # CRITICAL: Force the actual hex colors into the brief
+            # The AI might return CSS variables instead of actual hex values
+            brief.primary_color = effective_primary
+            brief.secondary_color = effective_secondary
+
             ai_log("info", "Design brief generated successfully",
-                site_tone=brief.site_tone, hero_style=brief.hero_style)
+                site_tone=brief.site_tone, hero_style=brief.hero_style,
+                primary_color=brief.primary_color, secondary_color=brief.secondary_color)
             return brief
 
         except Exception as e:
