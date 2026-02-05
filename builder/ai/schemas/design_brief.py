@@ -82,7 +82,15 @@ class DesignBrief(BaseModel):
         default="#ffffff",
         description="Hero section text color"
     )
-    hero_style: Literal["gradient", "image", "solid", "split"] = Field(
+    hero_style: Literal[
+        "gradient",     # Gradient background (primary → secondary)
+        "image",        # Background image with overlay
+        "solid",        # Solid color background
+        "split",        # Split layout 50/50 (image + text)
+        "minimal",      # Typography-focused, no image
+        "cards",        # Hero with mini-cards integrated
+        "asymmetric",   # Artistic off-center layout
+    ] = Field(
         default="gradient",
         description="Hero visual style"
     )

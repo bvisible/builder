@@ -179,8 +179,26 @@ Assure TOUJOURS un bon contraste entre le texte et le fond:
 ### Structure
 - Crée une structure LOGIQUE pour le type de site demandé
 - Un fleuriste ≠ une agence tech ≠ un restaurant
-- IMPORTANT: Limite-toi à 4-5 sections maximum par page
-- Chaque section doit être concise et efficace
+- Adapte le nombre de sections au contenu (4-8 selon la page)
+- Page d'accueil/one-page : 6-8 sections pour un site complet et riche
+- Pages intérieures : 4-6 sections
+
+### Variations de Hero (VARIE tes designs!)
+Ne fais pas toujours "titre + sous-titre + CTA". Explore ces variations :
+- **Hero Split** : Image à gauche/droite, texte de l'autre côté (layout 50/50)
+- **Hero Minimal** : Titre géant seul centré, sans image
+- **Hero Stats** : Chiffres clés intégrés directement dans le hero
+- **Hero Cards** : 2-3 mini-cards de services dans le hero
+- **Hero Asymétrique** : Layout non centré, éléments décalés artistiquement
+- **Hero avec carrousel** : Slider de produits ou images
+
+### Layouts Avancés (VARIE ces patterns!)
+- **Grilles** : 2, 3, 4, 5 colonnes selon le contenu
+- **Asymétrique** : 60/40, 70/30, pas toujours 50/50
+- **Bento Grid** : Cards de tailles variées (1 grande + 2 petites)
+- **Zigzag** : Alternance gauche/droite pour les features
+- **Full-bleed** : Sections qui prennent 100% de la largeur
+- **Centered narrow** : Contenu étroit (max-width: 700px) pour la lecture
 
 ### INTERDIT - NE JAMAIS FAIRE :
 - **NE GÉNÈRE JAMAIS d'élément <nav>** - le header est géré globalement
@@ -280,11 +298,21 @@ def get_page_generation_prompt(
 INSTRUCTIONS SPÉCIFIQUES POUR UN SITE ONE-PAGE :
 ⚠️ TRÈS IMPORTANT : Tu dois créer TOUTES les sections sur UNE SEULE PAGE avec des IDs pour la navigation par ancres.
 
-STRUCTURE OBLIGATOIRE avec ces IDs EXACTS :
+SECTIONS OBLIGATOIRES (4) avec ces IDs EXACTS :
 1. Section Hero avec id="hero" → Navigation: /#hero
 2. Section Services avec id="services" → Navigation: /#services
 3. Section À propos avec id="about" → Navigation: /#about
 4. Section Contact avec id="contact" → Navigation: /#contact
+
+SECTIONS OPTIONNELLES (ajoute 2-4 selon le contexte) :
+- Témoignages avec id="testimonials" → Navigation: /#testimonials
+- Portfolio avec id="portfolio" → Navigation: /#portfolio
+- Équipe avec id="team" → Navigation: /#team
+- FAQ avec id="faq" → Navigation: /#faq
+- Tarifs avec id="pricing" → Navigation: /#pricing
+- Galerie avec id="gallery" → Navigation: /#gallery
+
+OBJECTIF : 6-8 sections pour un site complet et riche.
 
 COMMENT AJOUTER L'ID :
 Utilise l'attribut "attributes" avec "id" pour chaque section principale :
@@ -296,7 +324,7 @@ Utilise l'attribut "attributes" avec "id" pour chaque section principale :
 }
 
 CONTENU ATTENDU :
-- Hero (#hero) : Titre accrocheur, sous-titre, CTA principal
+- Hero (#hero) : Titre accrocheur, sous-titre, CTA principal (VARIE le style!)
 - Services (#services) : Présentation des services/offres (3-4 cards)
 - À propos (#about) : Histoire, valeurs, équipe ou chiffres clés
 - Contact (#contact) : Formulaire avec {% include 'builder/templates/includes/contact_form.html' %} + coordonnées
@@ -304,7 +332,8 @@ CONTENU ATTENDU :
 DESIGN :
 - Alterne les fonds (clair/foncé/coloré) pour distinguer les sections
 - Chaque section doit avoir une hauteur confortable (minHeight: 80vh minimum pour hero)
-- Assure une bonne transition visuelle entre les sections""",
+- Assure une bonne transition visuelle entre les sections
+- VARIE les layouts : pas que des grilles de 3 colonnes!""",
 
             "accueil": """
 INSTRUCTIONS SPÉCIFIQUES POUR LA PAGE D'ACCUEIL :
@@ -317,10 +346,20 @@ INSTRUCTIONS SPÉCIFIQUES POUR LA PAGE D'ACCUEIL :
             "about": """
 INSTRUCTIONS SPÉCIFIQUES POUR LA PAGE À PROPOS :
 - Raconte l'histoire de l'entreprise de manière engageante
-- Présente l'équipe avec des cartes (photo placeholder, nom, rôle) - NE PAS utiliser de shortcode
 - Mets en avant les valeurs et la mission
 - Inclus des chiffres clés (années d'expérience, clients satisfaits, etc.)
-- Crée les sections visuellement avec du HTML/CSS, pas de shortcodes fictifs""",
+
+SHORTCODES DISPONIBLES POUR CETTE PAGE :
+- Pour l'équipe : {%% include 'builder/templates/includes/team_grid.html' %%}
+- Pour l'historique : {%% include 'builder/templates/includes/company_timeline.html' %%}
+
+STRUCTURE SUGGÉRÉE (5-6 sections) :
+1. Hero "Notre Histoire" avec titre et sous-titre engageants
+2. Section présentation de l'entreprise
+3. Section valeurs (3-4 cards visuelles)
+4. Section équipe avec team_grid shortcode
+5. Section historique/timeline avec company_timeline shortcode
+6. Section chiffres clés (stats impressionnantes)""",
 
             "services": """
 INSTRUCTIONS SPÉCIFIQUES POUR LA PAGE SERVICES :
@@ -366,14 +405,29 @@ INSTRUCTIONS SPÉCIFIQUES POUR LA PAGE BLOG :
 INSTRUCTIONS SPÉCIFIQUES POUR LA PAGE COLLECTION :
 - Présente les catégories ou collections de produits de manière attrayante
 - Met en avant les produits phares ou les nouveautés
-- Utilise des cards visuelles avec images de qualité
 - NE PAS afficher tous les produits (la boutique complète est sur /all-products)
 - Inclus un lien CTA vers la boutique complète : "Voir tous les produits" → /all-products
-- Structure suggérée :
-  1. Hero avec titre "Nos Collections" ou "Découvrez notre sélection"
-  2. Section catégories/collections (3-4 cards grandes avec images)
-  3. Section produits phares ou bestsellers (grille de 4-6 produits)
-  4. CTA vers la boutique complète""",
+
+SHORTCODES E-COMMERCE DISPONIBLES :
+1. Carrousel de produits :
+   {%- set carousel_title = "Nouveautés" -%}
+   {%- set carousel_limit = 8 -%}
+   {%% include "webshop/templates/includes/product_carousel.html" %%}
+
+2. Carrousel de marques :
+   {%- set carousel_title = "Nos Marques" -%}
+   {%% include "webshop/templates/includes/brand_carousel.html" %%}
+
+3. Produits en promo :
+   {%- set show_discounted_only = true -%}
+   {%% include "webshop/templates/includes/product_carousel.html" %%}
+
+STRUCTURE SUGGÉRÉE :
+1. Hero avec titre "Nos Collections" ou "Découvrez notre sélection"
+2. Section catégories/collections (3-4 cards grandes avec images)
+3. Section nouveautés avec product_carousel shortcode
+4. Section marques avec brand_carousel shortcode (si pertinent)
+5. CTA vers la boutique complète""",
 
             "boutique": """
 INSTRUCTIONS SPÉCIFIQUES POUR LA PAGE COLLECTION :

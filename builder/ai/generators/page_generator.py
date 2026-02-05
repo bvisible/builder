@@ -43,7 +43,7 @@ class PageGenerator:
             model=self.config.model,
             api_key=self.config.api_key,
             base_url=self.config.base_url,
-            temperature=0.8,  # Higher temperature for creativity
+            temperature=0.9,  # Higher temperature for more creative designs
         )
 
         self.validator = BlockValidator()
@@ -112,11 +112,12 @@ class PageGenerator:
         frappe.logger().info(f"Generating page: {prompt[:50]}...")
 
         try:
-            # Use "low" thinking for pages - fast generation (GPT-OSS compatible)
+            # Use configurable think level for creative reasoning
+            think_value = self.config.get_think_value(self.config.page_think_level)
             response = self.llm.generate(
                 prompt=user_prompt,
                 system_prompt=system_prompt,
-                think="low",  # Minimal reasoning for faster page generation
+                think=think_value,
             )
             ai_log("info", "LLM response received", response_len=len(response))
         except Exception as e:

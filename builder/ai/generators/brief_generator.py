@@ -26,14 +26,14 @@ def get_default_brief(
     effective_primary = primary_color or theme_colors.get("primary", "#6366f1")
     effective_secondary = secondary_color or theme_colors.get("secondary", "#8b5cf6")
 
-    # Theme-specific defaults
+    # Theme-specific defaults with varied hero styles
     theme_briefs = {
         "neobrutalist": {
             "site_tone": "bold",
             "border_radius_style": "none",
             "use_shadows": True,
             "use_gradients": False,
-            "hero_style": "solid",
+            "hero_style": "asymmetric",  # Bold, off-center layouts
             "section_backgrounds": ["#ffffff", "#fef3c7", "#ffffff", effective_primary],
             "card_style": {
                 "backgroundColor": "#ffffff",
@@ -62,7 +62,7 @@ def get_default_brief(
             "border_radius_style": "subtle",
             "use_shadows": False,
             "use_gradients": False,
-            "hero_style": "solid",
+            "hero_style": "minimal",  # Typography-focused
             "section_backgrounds": ["#ffffff", "#fafafa", "#ffffff", "#f5f5f5"],
             "card_style": {
                 "backgroundColor": "#ffffff",
@@ -77,10 +77,17 @@ def get_default_brief(
             "border_radius_style": "subtle",
             "use_shadows": True,
             "use_gradients": False,
-            "hero_style": "image",
+            "hero_style": "split",  # Professional split layout
         },
         "creative": {
             "site_tone": "playful",
+            "border_radius_style": "rounded",
+            "use_shadows": True,
+            "use_gradients": True,
+            "hero_style": "cards",  # Playful with cards
+        },
+        "modern": {
+            "site_tone": "professional",
             "border_radius_style": "rounded",
             "use_shadows": True,
             "use_gradients": True,
@@ -268,14 +275,15 @@ Return ONLY the JSON object, no markdown code blocks.
 """
 
         try:
-            # Try structured generation with high thinking for better creativity
-            # Using "high" level for best creative decisions on design brief
-            ai_log("debug", "Calling generate_structured for DesignBrief (think=high)")
+            # Use configurable think level for creative design decisions
+            think_value = self.config.get_think_value(self.config.brief_think_level)
+            ai_log("debug", "Calling generate_structured for DesignBrief",
+                think_level=self.config.brief_think_level, think_value=think_value)
             brief = self.llm.generate_structured(
                 prompt=user_prompt,
                 schema=DesignBrief,
                 system_prompt=BRIEF_SYSTEM_PROMPT,
-                think="high",  # High reasoning for best creative decisions on brief
+                think=think_value,
             )
             ai_log("info", "Design brief generated successfully",
                 site_tone=brief.site_tone, hero_style=brief.hero_style)

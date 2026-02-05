@@ -14,6 +14,17 @@ ThemeType = Literal["modern", "neobrutalist", "glassmorphism", "minimal", "corpo
 SiteType = Literal["single_page", "multi_page", "multi_page_auth", "ecommerce", "blog", "portfolio"]
 
 
+# Think level mapping for different models
+# Some models support levels (low/medium/high), others only bool (True/False)
+THINK_LEVEL_MAP = {
+    "kimi-k2.5": {"low": True, "medium": True, "high": True},  # Kimi = True/False only
+    "kimi-k2": {"low": True, "medium": True, "high": True},
+    "glm": {"low": True, "medium": True, "high": True},
+    "gpt-oss": {"low": "low", "medium": "medium", "high": "high"},  # GPT-OSS = strings
+    "default": {"low": False, "medium": True, "high": True},  # Most models = bool
+}
+
+
 @dataclass
 class AIConfig:
     """Configuration for AI generation"""
@@ -37,10 +48,42 @@ class AIConfig:
     request_timeout: int = 120
     connect_timeout: int = 30
 
+    # Thinking configuration
+    brief_think_level: str = "high"     # For design brief generation
+    page_think_level: str = "medium"    # For page generation
+
     def __post_init__(self):
         """Set default model based on provider if not specified"""
         if not self.model:
             self.model = RECOMMENDED_MODELS.get(self.provider, {}).get("balanced")
+
+    def get_think_value(self, level: str) -> bool | str:
+        """
+        Convert think level to model-appropriate value.
+
+        Different models support thinking mode differently:
+        - GPT-OSS: "low" / "medium" / "high" strings
+        - Kimi K2.5, GLM: True / False (no levels)
+        - Most others: True / False
+
+        Args:
+            level: Desired think level ("low", "medium", "high")
+
+        Returns:
+            Appropriate value for the current model
+        """
+        if not self.model:
+            return THINK_LEVEL_MAP["default"].get(level, True)
+
+        model_lower = self.model.lower()
+
+        # Find matching model key
+        for model_key in THINK_LEVEL_MAP:
+            if model_key != "default" and model_key in model_lower:
+                return THINK_LEVEL_MAP[model_key].get(level, True)
+
+        # Fallback to default
+        return THINK_LEVEL_MAP["default"].get(level, True)
 
 
 # Recommended models for each provider
@@ -248,6 +291,7 @@ __all__ = [
     "RECOMMENDED_MODELS",
     "DEFAULT_OLLAMA_CONFIG",
     "DEFAULT_OPENAI_CONFIG",
+    "THINK_LEVEL_MAP",
     "ProviderType",
     "ThemeType",
     "SiteType",
