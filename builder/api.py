@@ -562,10 +562,10 @@ def _generate_complete_site_worker(
 			"site_name": site_name,
 		})
 
-		from builder.ai.generators.brief_generator import BriefGenerator
+		from builder.ai.generators.brief_generator import BriefGenerator, get_default_brief
 		try:
 			brief_gen = BriefGenerator(provider=provider, model=model, config=ai_config)
-			design_brief = brief_gen.generate_brief(
+			design_brief, brief_validation = brief_gen.generate_brief_with_validation(
 				prompt=prompt,
 				site_name=site_name,
 				site_type=site_type,
@@ -573,19 +573,43 @@ def _generate_complete_site_worker(
 				primary_color=primary_color,
 				secondary_color=secondary_color,
 				pages_config=pages_config,
+				max_retries=2,
 			)
-			ai_log("info", "Design brief generated",
-				site_tone=design_brief.site_tone, hero_style=design_brief.hero_style)
-			print(f"[SITE_GEN_WORKER] Design brief generated: tone={design_brief.site_tone}")
+
+			# Log validation results
+			if brief_validation.is_valid:
+				ai_log("info", "Design brief generated and validated",
+					site_tone=design_brief.site_tone, hero_style=design_brief.hero_style,
+					warnings=len(brief_validation.warnings))
+			else:
+				ai_log("warning", "Design brief validated with defaults merged",
+					site_tone=design_brief.site_tone,
+					missing=brief_validation.missing_fields,
+					invalid=list(brief_validation.invalid_fields.keys()))
+
+			print(f"[SITE_GEN_WORKER] Design brief generated: tone={design_brief.site_tone}, valid={brief_validation.is_valid}")
 		except Exception as e:
-			ai_log("warning", "Design brief generation failed, using defaults", error=str(e)[:100])
+			ai_log("warning", "Design brief generation failed completely, using defaults", error=str(e)[:100])
 			print(f"[SITE_GEN_WORKER] Design brief failed, using defaults: {str(e)[:100]}")
-			from builder.ai.generators.brief_generator import get_default_brief
 			design_brief = get_default_brief(
 				theme=theme,
 				primary_color=primary_color,
 				secondary_color=secondary_color,
 			)
+
+		# =====================================================================
+		# STEP 2.6: Extract colors from design brief for page generation
+		# =====================================================================
+		# Use colors from brief if no explicit colors were provided
+		# This ensures the random palette is actually used
+		if not primary_color and hasattr(design_brief, 'primary_color') and design_brief.primary_color:
+			primary_color = design_brief.primary_color
+			ai_log("info", "Using primary color from design brief", color=primary_color)
+		if not secondary_color and hasattr(design_brief, 'secondary_color') and design_brief.secondary_color:
+			secondary_color = design_brief.secondary_color
+			ai_log("info", "Using secondary color from design brief", color=secondary_color)
+
+		print(f"[SITE_GEN_WORKER] Colors for pages: primary={primary_color}, secondary={secondary_color}")
 
 		# =====================================================================
 		# STEP 3: Generate pages SEQUENTIALLY (simpler, more reliable)
@@ -607,6 +631,9 @@ def _generate_complete_site_worker(
 		gen = PageGenerator(provider=provider, model=model, config=ai_config)
 		print(f"[SITE_GEN_WORKER] PageGenerator created successfully")
 
+		# Retry configuration for page generation
+		MAX_PAGE_RETRIES = 2
+
 		generated_results = []
 		for idx, page_def in enumerate(pages_config):
 			page_title = page_def["title"]
@@ -626,32 +653,83 @@ def _generate_complete_site_worker(
 				"site_name": site_name,
 			})
 
-			try:
-				page_prompt = f"{prompt}. Page: {page_title}."
-				ai_log("info", "Calling PageGenerator.generate_page()",
-					page=page_title, provider=provider, model=model)
-				print(f"[SITE_GEN_WORKER] Calling gen.generate_page for {page_title}...")
-				blocks = gen.generate_page(
-					prompt=page_prompt,
-					theme=theme,
-					primary_color=primary_color,
-					secondary_color=secondary_color,
-					page_title=page_title,
-					page_type=page_def.get("type", ""),
-					design_brief=design_brief,
-				)
-				ai_log("info", "Page generation successful",
-					page=page_title, blocks_count=len(blocks) if blocks else 0)
-				print(f"[SITE_GEN_WORKER] Page {page_title} generated: {len(blocks)} blocks")
+			# Retry loop for page generation
+			blocks = None
+			last_error = None
+			for attempt in range(MAX_PAGE_RETRIES + 1):
+				try:
+					page_prompt = f"{prompt}. Page: {page_title}."
+
+					# Add correction instruction on retry
+					if attempt > 0:
+						page_prompt += f"\n\nIMPORTANT: La génération précédente a échoué (erreur JSON). Assure-toi de retourner un JSON valide et complet."
+						ai_log("warning", f"Retry attempt {attempt}/{MAX_PAGE_RETRIES}",
+							page=page_title, previous_error=str(last_error)[:100])
+						print(f"[SITE_GEN_WORKER] Retry {attempt}/{MAX_PAGE_RETRIES} for {page_title}...")
+
+						# Update status to show retry
+						_update_generation_status(job_id, {
+							"status": "running",
+							"progress": progress,
+							"total_pages": total_pages,
+							"current_step": f"Retry {attempt}/{MAX_PAGE_RETRIES}: {page_title}",
+							"current_page": page_title,
+							"pages_created": [],
+							"error": None,
+							"site_name": site_name,
+						})
+					else:
+						ai_log("info", "Calling PageGenerator.generate_page()",
+							page=page_title, provider=provider, model=model)
+						print(f"[SITE_GEN_WORKER] Calling gen.generate_page for {page_title}...")
+
+					blocks = gen.generate_page(
+						prompt=page_prompt,
+						theme=theme,
+						primary_color=primary_color,
+						secondary_color=secondary_color,
+						page_title=page_title,
+						page_type=page_def.get("type", ""),
+						design_brief=design_brief,
+					)
+
+					ai_log("info", "Page generation successful",
+						page=page_title, blocks_count=len(blocks) if blocks else 0,
+						attempt=attempt + 1)
+					print(f"[SITE_GEN_WORKER] Page {page_title} generated: {len(blocks)} blocks")
+					break  # Success - exit retry loop
+
+				except ValueError as e:
+					# JSON parsing errors - retryable
+					last_error = e
+					if "JSON" in str(e) and attempt < MAX_PAGE_RETRIES:
+						ai_log("warning", f"JSON error, will retry", page=page_title,
+							attempt=attempt + 1, error=str(e)[:100])
+						print(f"[SITE_GEN_WORKER] JSON error for {page_title}, will retry: {str(e)[:100]}")
+						continue
+					else:
+						# Max retries exceeded or non-JSON error
+						raise
+
+				except Exception as e:
+					# Other errors - don't retry
+					last_error = e
+					raise
+
+			# After retry loop
+			if blocks:
 				generated_results.append({"page_def": page_def, "blocks": blocks, "error": None})
-			except Exception as e:
+			else:
 				import traceback
-				error_msg = str(e)[:200]
-				full_traceback = traceback.format_exc()
-				ai_log("error", "Page generation failed", page=page_title, error=error_msg, traceback=full_traceback[:500])
-				print(f"[SITE_GEN_WORKER] Page {page_title} FAILED: {error_msg}")
+				error_msg = str(last_error)[:200] if last_error else "Unknown error"
+				full_traceback = traceback.format_exc() if last_error else ""
+				ai_log("error", "Page generation failed after retries",
+					page=page_title, error=error_msg, attempts=MAX_PAGE_RETRIES + 1,
+					traceback=full_traceback[:500])
+				print(f"[SITE_GEN_WORKER] Page {page_title} FAILED after {MAX_PAGE_RETRIES + 1} attempts: {error_msg}")
 				print(f"[SITE_GEN_WORKER] Full traceback:\n{full_traceback}")
-				frappe.log_error(f"Page generation failed: {page_title}", f"{str(e)}\n\n{full_traceback}")
+				frappe.log_error(f"Page generation failed: {page_title}",
+					f"After {MAX_PAGE_RETRIES + 1} attempts\n{str(last_error)}\n\n{full_traceback}")
 				generated_results.append({"page_def": page_def, "blocks": None, "error": error_msg})
 
 		# Now create all pages in DB (sequential, but fast)

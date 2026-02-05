@@ -3,6 +3,7 @@ Brief Generator - Design Brief Generation for Site Consistency
 Generates a design brief ONCE at the start, then used for ALL pages.
 """
 
+import random
 from typing import Optional
 import frappe
 
@@ -10,21 +11,49 @@ from builder.ai.config import get_ai_settings, AIConfig
 from builder.ai.providers import get_provider
 from builder.ai.design_system import get_theme
 from builder.ai.schemas.design_brief import DesignBrief, TypographyScale, SectionHeights
+from builder.ai.validators.brief_validator import BriefValidator, BriefValidationResult
 from builder.ai.logging import ai_log
+
+
+# Color palettes for variety when no color is specified
+DEFAULT_COLOR_PALETTES = [
+    {"primary": "#6366f1", "secondary": "#8b5cf6"},  # Indigo/Violet (original)
+    {"primary": "#059669", "secondary": "#10b981"},  # Emerald
+    {"primary": "#dc2626", "secondary": "#f97316"},  # Red/Orange
+    {"primary": "#7c3aed", "secondary": "#a855f7"},  # Purple
+    {"primary": "#0891b2", "secondary": "#06b6d4"},  # Cyan
+    {"primary": "#ca8a04", "secondary": "#eab308"},  # Yellow/Gold
+    {"primary": "#be185d", "secondary": "#ec4899"},  # Pink/Fuchsia
+    {"primary": "#2563eb", "secondary": "#3b82f6"},  # Blue
+    {"primary": "#16a34a", "secondary": "#22c55e"},  # Green
+    {"primary": "#ea580c", "secondary": "#f97316"},  # Orange
+]
+
+
+def _get_random_palette() -> dict:
+    """Get a random color palette for variety."""
+    return random.choice(DEFAULT_COLOR_PALETTES)
 
 
 # Default fallback brief when generation fails
 def get_default_brief(
     theme: str = "modern",
-    primary_color: str = "#6366f1",
-    secondary_color: str = "#8b5cf6",
+    primary_color: str = None,
+    secondary_color: str = None,
 ) -> DesignBrief:
     """Get a default design brief based on theme."""
     theme_data = get_theme(theme)
     theme_colors = theme_data.get("colors", {})
 
-    effective_primary = primary_color or theme_colors.get("primary", "#6366f1")
-    effective_secondary = secondary_color or theme_colors.get("secondary", "#8b5cf6")
+    # If no colors provided, pick a random palette for variety
+    if not primary_color and not secondary_color:
+        random_palette = _get_random_palette()
+        effective_primary = theme_colors.get("primary") or random_palette["primary"]
+        effective_secondary = theme_colors.get("secondary") or random_palette["secondary"]
+        ai_log("debug", "Using random color palette", primary=effective_primary, secondary=effective_secondary)
+    else:
+        effective_primary = primary_color or theme_colors.get("primary", "#6366f1")
+        effective_secondary = secondary_color or theme_colors.get("secondary", "#8b5cf6")
 
     # Theme-specific typography scales
     theme_typography = {
@@ -54,11 +83,9 @@ def get_default_brief(
         "modern": ("Inter", "Inter"),
     }
 
-    # Theme-specific section heights
-    theme_heights = {
-        "minimal": SectionHeights(hero_min_height="80vh", hero_min_height_mobile="60vh"),
-        "neobrutalist": SectionHeights(hero_min_height="95vh", hero_min_height_mobile="80vh"),
-    }
+    # Theme-specific section heights - empty to avoid forcing heights
+    # Heights should be determined by content, not fixed vh values
+    theme_heights = {}
 
     # Theme-specific defaults with varied hero styles
     theme_briefs = {
@@ -148,6 +175,9 @@ def get_default_brief(
     # Build the brief
     brief_data = {
         "site_tone": overrides.get("site_tone", "professional"),
+        # Store actual colors for consistency
+        "primary_color": effective_primary,
+        "secondary_color": effective_secondary,
         "primary_usage": "CTA buttons, links, key highlights, icons",
         "secondary_usage": "Gradients, hover states, secondary accents",
         "section_backgrounds": overrides.get(
@@ -215,7 +245,7 @@ The design brief defines:
 1. How colors should be used (primary for CTAs, secondary for accents, etc.)
 2. Section background alternation pattern for visual rhythm
 3. Button and card styles
-4. Hero section styling with MANDATORY height
+4. Hero section styling
 5. EXACT typography scale (h1/h2/h3/p sizes)
 6. EXACT section paddings by type
 
@@ -234,25 +264,26 @@ MANDATORY - Include EXACT VALUES:
    - heading_font: font for h1-h6
    - body_font: font for p, span, li
 
-3. SECTION HEIGHTS - CRITICAL for consistency:
-   - hero_min_height: 80vh-100vh (SAME for all pages!)
-   - hero_min_height_mobile: 60vh-80vh
+3. SECTION HEIGHTS AND PADDINGS:
+   - hero: minHeight "70vh" to "90vh" for visual impact, padding 80-100px
+   - standard: content determines height, padding 80-100px vertical
+   - cta: content determines height, padding 60-80px vertical
 
-4. SECTION PADDINGS - Define for each type:
-   - hero: 80-120px vertical
-   - standard: 60-80px vertical
-   - cta: 40-60px vertical
-
-5. CONTRAST RULES - CRITICAL:
+4. CONTRAST RULES - CRITICAL:
    - Gradient/colored background → "#ffffff" text
    - Light background (#fff, #f8fafc) → "var(--text-color)"
    - NEVER white text on light background!
+
+5. BACKGROUNDS - CRITICAL:
+   - Hero MUST have a gradient or solid color (NEVER white/var(--surface-color))
+   - Cards: use "#ffffff" (NEVER var(--surface-color))
+   - Alternate section backgrounds for visual rhythm
 
 IMPORTANT RULES:
 - Use CSS variable names like var(--primary-color) instead of actual hex values
 - Choose a background alternation pattern that creates visual rhythm
 - Be specific about ALL values - vague descriptions cause inconsistency
-- The SAME hero_min_height MUST apply to ALL pages
+- Hero sections should use minHeight (70-90vh) for visual impact above the fold
 
 Output a valid JSON object matching the DesignBrief schema with ALL fields populated.
 """
@@ -285,6 +316,9 @@ class BriefGenerator:
             base_url=self.config.base_url,
             temperature=0.4,  # Lower temperature for consistency
         )
+
+        # Validator for brief completeness
+        self.validator = BriefValidator()
 
     def generate_brief(
         self,
@@ -320,8 +354,16 @@ class BriefGenerator:
         theme_prompt = theme_data.get("prompt", "")
         theme_colors = theme_data.get("colors", {})
 
-        effective_primary = primary_color or theme_colors.get("primary", "#6366f1")
-        effective_secondary = secondary_color or theme_colors.get("secondary", "#8b5cf6")
+        # If no colors provided, pick a random palette for variety
+        if not primary_color and not secondary_color:
+            random_palette = _get_random_palette()
+            effective_primary = theme_colors.get("primary") or random_palette["primary"]
+            effective_secondary = theme_colors.get("secondary") or random_palette["secondary"]
+            ai_log("info", "Using random color palette for variety",
+                   primary=effective_primary, secondary=effective_secondary)
+        else:
+            effective_primary = primary_color or theme_colors.get("primary", "#6366f1")
+            effective_secondary = secondary_color or theme_colors.get("secondary", "#8b5cf6")
 
         # Build user prompt
         pages_list = ""
@@ -380,5 +422,108 @@ Return ONLY the JSON object, no markdown code blocks.
                 secondary_color=effective_secondary,
             )
 
+    def generate_brief_with_validation(
+        self,
+        prompt: str,
+        site_name: str,
+        site_type: str,
+        theme: str = "modern",
+        primary_color: str = None,
+        secondary_color: str = None,
+        pages_config: list[dict] = None,
+        max_retries: int = 2,
+    ) -> tuple[DesignBrief, BriefValidationResult]:
+        """
+        Generate a design brief with validation and automatic retry.
 
-__all__ = ["BriefGenerator", "get_default_brief"]
+        Args:
+            prompt: User's site description
+            site_name: Name of the site
+            site_type: Type of site
+            theme: Visual theme name
+            primary_color: Custom primary color
+            secondary_color: Custom secondary color
+            pages_config: List of pages that will be generated
+            max_retries: Maximum number of retry attempts (default: 2)
+
+        Returns:
+            Tuple of (DesignBrief, BriefValidationResult)
+        """
+        ai_log("info", "Starting brief generation with validation",
+            site_name=site_name, max_retries=max_retries)
+
+        # Extract page types for validation
+        page_types = [p.get("type", "") for p in (pages_config or [])]
+
+        last_validation = None
+
+        for attempt in range(max_retries + 1):
+            ai_log("debug", f"Brief generation attempt {attempt + 1}/{max_retries + 1}")
+
+            # Build prompt with corrections if this is a retry
+            effective_prompt = prompt
+            if attempt > 0 and last_validation:
+                correction = last_validation.to_correction_prompt()
+                effective_prompt = f"""{prompt}
+
+IMPORTANT - CORRECTIONS NEEDED:
+Your previous design brief was incomplete. Please fix these issues:
+
+{correction}
+
+Make sure ALL fields are properly filled with valid values."""
+                ai_log("debug", "Added correction prompt for retry",
+                    missing=last_validation.missing_fields)
+
+            # Generate brief
+            brief = self.generate_brief(
+                prompt=effective_prompt,
+                site_name=site_name,
+                site_type=site_type,
+                theme=theme,
+                primary_color=primary_color,
+                secondary_color=secondary_color,
+                pages_config=pages_config,
+            )
+
+            # Validate
+            validation = self.validator.validate(brief, page_types)
+
+            if validation.is_valid:
+                ai_log("info", "Brief validation passed",
+                    attempt=attempt + 1, warnings=len(validation.warnings))
+                return brief, validation
+
+            # Store for next iteration
+            last_validation = validation
+            ai_log("warning", f"Brief validation failed (attempt {attempt + 1})",
+                missing=validation.missing_fields,
+                invalid=list(validation.invalid_fields.keys()))
+
+        # After max retries, merge with defaults
+        ai_log("warning", "Max retries reached, merging with defaults",
+            attempts=max_retries + 1)
+
+        # Get theme-specific defaults
+        default_brief = get_default_brief(
+            theme=theme,
+            primary_color=primary_color,
+            secondary_color=secondary_color,
+        )
+
+        # Merge the generated brief with defaults
+        merged_brief = brief.merge_with_defaults(default_brief)
+
+        # Final validation (should pass now)
+        final_validation = self.validator.validate(merged_brief, page_types)
+
+        if not final_validation.is_valid:
+            ai_log("error", "Brief still invalid after merge",
+                missing=final_validation.missing_fields)
+            # Return merged brief anyway - it's better than nothing
+            final_validation.add_warning("Brief was merged with defaults after validation failures")
+
+        return merged_brief, final_validation
+
+
+__all__ = ["BriefGenerator", "get_default_brief", "BriefValidationResult"]

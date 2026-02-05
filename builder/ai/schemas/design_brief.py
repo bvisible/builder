@@ -34,9 +34,9 @@ class TypographyScale(BaseModel):
 
 
 class SectionHeights(BaseModel):
-    """Mandatory section heights for consistency."""
-    hero_min_height: str = Field(default="90vh", description="Hero minimum height desktop")
-    hero_min_height_mobile: str = Field(default="70vh", description="Hero minimum height mobile")
+    """Suggested section heights - AI has freedom to adapt."""
+    hero_min_height: Optional[str] = Field(default=None, description="Hero minimum height desktop (suggested)")
+    hero_min_height_mobile: Optional[str] = Field(default=None, description="Hero minimum height mobile (suggested)")
     standard_min_height: str = Field(default="auto", description="Standard section min height")
 
     class Config:
@@ -52,6 +52,16 @@ class DesignBrief(BaseModel):
     site_tone: Literal["professional", "playful", "elegant", "bold", "minimal"] = Field(
         default="professional",
         description="Overall tone of the site"
+    )
+
+    # Actual colors (stored for consistency across pages)
+    primary_color: str = Field(
+        default="#6366f1",
+        description="Primary color hex value chosen for this site"
+    )
+    secondary_color: str = Field(
+        default="#8b5cf6",
+        description="Secondary color hex value chosen for this site"
     )
 
     # Color usage rules
@@ -247,97 +257,154 @@ class DesignBrief(BaseModel):
         return ""
 
     def to_prompt_section(self) -> str:
-        """Convert to a prescriptive prompt section for the AI."""
+        """Convert to a suggestive prompt section for the AI - guidelines not mandates."""
         bg_sequence = " → ".join(self.section_backgrounds)
         typo = self.typography
         heights = self.section_heights
         paddings = self.section_paddings
 
-        return f"""## DESIGN BRIEF (MANDATORY - COPY THESE VALUES EXACTLY)
+        # Heights section - recommend minHeight for heroes
+        heights_section = """
+### Section Heights
+- Hero sections: use minHeight "70vh" to "90vh" for visual impact
+- Other sections: let content determine height naturally
+- Use generous padding (80px-120px) for comfortable spacing
+"""
+
+        return f"""## DESIGN GUIDELINES (suggestions, adapt as needed)
 
 ### Site Tone: {self.site_tone}
 
-### TYPOGRAPHY (MANDATORY - USE THESE EXACT VALUES)
-| Element | Desktop | Mobile | Weight | Line Height |
-|---------|---------|--------|--------|-------------|
-| h1 | {typo.h1_size} | {typo.h1_size_mobile} | {typo.h1_weight} | {typo.h1_line_height} |
-| h2 | {typo.h2_size} | {typo.h2_size_mobile} | {typo.h2_weight} | {typo.h2_line_height} |
-| h3 | {typo.h3_size} | {typo.h3_size_mobile} | {typo.h3_weight} | 1.3 |
-| p  | {typo.body_size} | {typo.body_size_mobile} | 400 | {typo.body_line_height} |
+### Typography suggestions
+Consider these sizes, but feel free to adapt:
+| Element | Desktop | Mobile | Weight |
+|---------|---------|--------|--------|
+| h1 | ~{typo.h1_size} | ~{typo.h1_size_mobile} | {typo.h1_weight} |
+| h2 | ~{typo.h2_size} | ~{typo.h2_size_mobile} | {typo.h2_weight} |
+| h3 | ~{typo.h3_size} | ~{typo.h3_size_mobile} | {typo.h3_weight} |
+| p  | ~{typo.body_size} | ~{typo.body_size_mobile} | 400 |
 
-### FONTS (MANDATORY - ALWAYS INCLUDE IN baseStyles)
-- Headings (h1-h6): fontFamily: "'{self.heading_font}', sans-serif"
-- Body (p, span, li): fontFamily: "'{self.body_font}', sans-serif"
-⚠️ ALWAYS include fontFamily in baseStyles for h1, h2, h3, h4, p, span elements!
-
-### SECTION HEIGHTS (MANDATORY)
-| Type | minHeight Desktop | minHeight Mobile |
-|------|-------------------|------------------|
-| Hero | {heights.hero_min_height} | {heights.hero_min_height_mobile} |
-| Standard | {heights.standard_min_height} | auto |
-
-### SECTION PADDINGS BY TYPE
+### Fonts
+- Headings: consider "{self.heading_font}" or similar
+- Body: consider "{self.body_font}"
+- Include fontFamily in baseStyles for text elements
+{heights_section}
+### Section Paddings (suggestions)
 | Type | Desktop | Mobile |
 |------|---------|--------|
-| Hero | {paddings.get('hero', '100px 24px')} | 60px 16px |
-| Standard | {paddings.get('standard', '80px 24px')} | 48px 16px |
-| Compact | {paddings.get('compact', '60px 24px')} | 40px 16px |
-| CTA | {paddings.get('cta', '60px 24px')} | 40px 16px |
+| Hero | ~{paddings.get('hero', '100px 24px')} | ~60px 16px |
+| Standard | ~{paddings.get('standard', '80px 24px')} | ~48px 16px |
 
 ### Color Usage
 - **Primary color**: {self.primary_usage}
 - **Secondary color**: {self.secondary_usage}
 
-### Section Background Alternation (use in this order)
+### Section Background Alternation (suggested pattern)
 {bg_sequence}
 
-### Button Styles (COPY EXACTLY)
+### Button Styles (suggested)
 Primary: {json.dumps(self.button_primary)}
 Secondary: {json.dumps(self.button_secondary)}
 
-### Card Style
-- background={self.card_style.get('backgroundColor')}
-- borderRadius={self.card_style.get('borderRadius')}
-- boxShadow={self.card_style.get('boxShadow')}
+### Card Style (suggested)
+- background: {self.card_style.get('backgroundColor')}
+- borderRadius: {self.card_style.get('borderRadius')}
+- boxShadow: {self.card_style.get('boxShadow')}
 
 ### Hero Section
 - Background: {self.hero_background}
 - Text color: {self.hero_text_color}
 - Style: {self.hero_style}
-- minHeight: {heights.hero_min_height} (mobile: {heights.hero_min_height_mobile})
-
-### Spacing
-- Content max-width: {self.content_max_width}
 
 ### Typography Colors
 - Headings: {self.heading_color}
 - Body text: {self.body_color}
 - Links: {self.link_color}
 
-### TEXT COLOR CONTRAST (CRITICAL - NEVER VIOLATE!)
-Apply these rules for EVERY section based on its background:
+### TEXT CONTRAST (CRITICAL - always follow!)
 | Background | Text Color |
 |------------|------------|
 | Gradient or colored (primary/secondary) | "#ffffff" |
-| #ffffff (white) | "var(--text-color)" |
-| #f8fafc, #fafafa, #f5f5f5 (light gray) | "var(--text-color)" |
-| var(--surface-color) | "var(--text-color)" |
+| White (#ffffff) | "var(--text-color)" |
+| Light gray (#f8fafc, #fafafa, #f5f5f5) | "var(--text-color)" |
 
-⚠️ NEVER use white text (#ffffff) on white or light gray backgrounds!
-⚠️ ALWAYS check parent background before setting text color!
+⚠️ NEVER use white text on white or light backgrounds!
 
 ### Visual Effects
 - Shadows: {"Yes" if self.use_shadows else "No"}
 - Gradients: {"Yes" if self.use_gradients else "No"}
 - Border radius: {self.border_radius_style} ({self.get_border_radius()})
 {self._get_inspiration_section()}
-**CRITICAL**: Apply these EXACT values CONSISTENTLY across ALL pages and sections.
-Every page MUST have the same hero minHeight, typography scale, and fonts.
+Use these as guidelines for visual consistency while exercising creative freedom.
 """
 
     def to_dict(self) -> dict:
         """Convert to dictionary."""
         return self.model_dump()
+
+    def get_missing_fields(self) -> list[str]:
+        """
+        Return list of fields that are still at default values.
+        Useful for checking if AI properly filled all fields.
+        """
+        defaults = DesignBrief()
+        missing = []
+
+        # Check font fields (Inter is the default)
+        if self.heading_font == defaults.heading_font == "Inter":
+            missing.append("heading_font")
+        if self.body_font == defaults.body_font == "Inter":
+            missing.append("body_font")
+
+        # Check hero fields
+        if self.hero_background == defaults.hero_background:
+            missing.append("hero_background")
+        if self.hero_text_color == defaults.hero_text_color:
+            missing.append("hero_text_color")
+
+        # Check button styles (compare backgroundColor)
+        if self.button_primary.get("backgroundColor") == defaults.button_primary.get("backgroundColor"):
+            missing.append("button_primary")
+
+        # Check section paddings
+        if self.section_paddings == defaults.section_paddings:
+            missing.append("section_paddings")
+
+        return missing
+
+    def merge_with_defaults(self, defaults: "DesignBrief") -> "DesignBrief":
+        """
+        Merge this brief with defaults, filling in missing values.
+        Returns a new DesignBrief with all fields populated.
+        """
+        data = self.model_dump()
+        defaults_data = defaults.model_dump()
+
+        # Merge missing/empty string fields
+        for field in ["heading_font", "body_font", "hero_background", "hero_text_color"]:
+            if not data.get(field) or data.get(field) == "":
+                data[field] = defaults_data[field]
+
+        # Merge incomplete dict fields
+        for field in ["button_primary", "button_secondary", "card_style", "section_paddings"]:
+            if not data.get(field) or not isinstance(data.get(field), dict):
+                data[field] = defaults_data[field]
+            else:
+                # Fill missing keys
+                for key, value in defaults_data.get(field, {}).items():
+                    if key not in data[field] or not data[field][key]:
+                        data[field][key] = value
+
+        # Merge typography if needed
+        if data.get("typography"):
+            typo_data = data["typography"]
+            typo_defaults = defaults_data.get("typography", {})
+            for key, value in typo_defaults.items():
+                if key not in typo_data or not typo_data[key]:
+                    typo_data[key] = value
+            data["typography"] = typo_data
+
+        return DesignBrief(**data)
 
     class Config:
         extra = "ignore"
