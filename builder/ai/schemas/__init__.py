@@ -6,11 +6,13 @@ from builder.ai.schemas.block_schema import (
     FrappeStyles,
     ElementType,
 )
-from builder.ai.schemas.design_brief import DesignBrief
+from builder.ai.schemas.design_brief import DesignBrief, TypographyScale, SectionHeights
 
 __all__ = [
     "FrappeBlock",
     "FrappeStyles",
     "ElementType",
     "DesignBrief",
+    "TypographyScale",
+    "SectionHeights",
 ]

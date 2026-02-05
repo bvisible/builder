@@ -37,6 +37,11 @@ from builder.ai.schemas.footer_schema import (
     FooterLink,
     SocialLinks,
 )
+from builder.ai.schemas.design_brief import (
+    DesignBrief,
+    TypographyScale,
+    SectionHeights,
+)
 
 
 class TestFrappeStyles(unittest.TestCase):
@@ -322,6 +327,147 @@ class TestSectionContentSchemas(unittest.TestCase):
         """Test that unknown section type returns None"""
         schema = get_content_schema_for_section("unknown")
         self.assertIsNone(schema)
+
+
+class TestTypographyScale(unittest.TestCase):
+    """Tests for TypographyScale schema"""
+
+    def test_default_values(self):
+        """Test default typography values"""
+        typo = TypographyScale()
+        self.assertEqual(typo.h1_size, "48px")
+        self.assertEqual(typo.h1_size_mobile, "32px")
+        self.assertEqual(typo.h1_weight, "700")
+        self.assertEqual(typo.body_size, "16px")
+        self.assertEqual(typo.body_line_height, "1.6")
+
+    def test_custom_values(self):
+        """Test custom typography values"""
+        typo = TypographyScale(
+            h1_size="56px",
+            h1_weight="900",
+            body_size="18px",
+        )
+        self.assertEqual(typo.h1_size, "56px")
+        self.assertEqual(typo.h1_weight, "900")
+        self.assertEqual(typo.body_size, "18px")
+
+
+class TestSectionHeights(unittest.TestCase):
+    """Tests for SectionHeights schema"""
+
+    def test_default_values(self):
+        """Test default section height values"""
+        heights = SectionHeights()
+        self.assertEqual(heights.hero_min_height, "90vh")
+        self.assertEqual(heights.hero_min_height_mobile, "70vh")
+        self.assertEqual(heights.standard_min_height, "auto")
+
+    def test_custom_values(self):
+        """Test custom section height values"""
+        heights = SectionHeights(
+            hero_min_height="100vh",
+            hero_min_height_mobile="80vh",
+        )
+        self.assertEqual(heights.hero_min_height, "100vh")
+        self.assertEqual(heights.hero_min_height_mobile, "80vh")
+
+
+class TestDesignBrief(unittest.TestCase):
+    """Tests for DesignBrief schema"""
+
+    def test_default_brief(self):
+        """Test creating a default design brief"""
+        brief = DesignBrief()
+        self.assertEqual(brief.site_tone, "professional")
+        self.assertEqual(brief.heading_font, "Inter")
+        self.assertEqual(brief.body_font, "Inter")
+        self.assertIsNotNone(brief.typography)
+        self.assertIsNotNone(brief.section_heights)
+        self.assertIsNotNone(brief.section_paddings)
+
+    def test_custom_fonts(self):
+        """Test brief with custom fonts"""
+        brief = DesignBrief(
+            heading_font="Poppins",
+            body_font="Roboto",
+        )
+        self.assertEqual(brief.heading_font, "Poppins")
+        self.assertEqual(brief.body_font, "Roboto")
+
+    def test_custom_typography(self):
+        """Test brief with custom typography scale"""
+        typo = TypographyScale(h1_size="56px", h1_weight="800")
+        brief = DesignBrief(typography=typo)
+        self.assertEqual(brief.typography.h1_size, "56px")
+        self.assertEqual(brief.typography.h1_weight, "800")
+
+    def test_custom_section_heights(self):
+        """Test brief with custom section heights"""
+        heights = SectionHeights(hero_min_height="95vh")
+        brief = DesignBrief(section_heights=heights)
+        self.assertEqual(brief.section_heights.hero_min_height, "95vh")
+
+    def test_section_paddings_dict(self):
+        """Test section paddings dictionary"""
+        brief = DesignBrief(
+            section_paddings={
+                "hero": "120px 24px",
+                "standard": "100px 24px",
+                "compact": "80px 24px",
+                "cta": "60px 24px",
+            }
+        )
+        self.assertEqual(brief.section_paddings["hero"], "120px 24px")
+        self.assertEqual(brief.section_paddings["cta"], "60px 24px")
+
+    def test_to_prompt_section_contains_typography(self):
+        """Test that to_prompt_section includes typography info"""
+        brief = DesignBrief(
+            heading_font="Poppins",
+            typography=TypographyScale(h1_size="52px"),
+        )
+        prompt = brief.to_prompt_section()
+        self.assertIn("52px", prompt)
+        self.assertIn("Poppins", prompt)
+        self.assertIn("TYPOGRAPHY", prompt)
+        self.assertIn("FONTS", prompt)
+
+    def test_to_prompt_section_contains_heights(self):
+        """Test that to_prompt_section includes section heights"""
+        brief = DesignBrief(
+            section_heights=SectionHeights(hero_min_height="95vh"),
+        )
+        prompt = brief.to_prompt_section()
+        self.assertIn("95vh", prompt)
+        self.assertIn("SECTION HEIGHTS", prompt)
+
+    def test_to_prompt_section_contains_paddings(self):
+        """Test that to_prompt_section includes section paddings"""
+        brief = DesignBrief()
+        prompt = brief.to_prompt_section()
+        self.assertIn("SECTION PADDINGS", prompt)
+        self.assertIn("Hero", prompt)
+        self.assertIn("Standard", prompt)
+
+    def test_get_border_radius(self):
+        """Test border radius getter"""
+        brief = DesignBrief(border_radius_style="rounded")
+        self.assertEqual(brief.get_border_radius(), "12px")
+
+        brief2 = DesignBrief(border_radius_style="none")
+        self.assertEqual(brief2.get_border_radius(), "0")
+
+        brief3 = DesignBrief(border_radius_style="pill")
+        self.assertEqual(brief3.get_border_radius(), "9999px")
+
+    def test_to_dict(self):
+        """Test to_dict conversion"""
+        brief = DesignBrief(heading_font="Montserrat")
+        result = brief.to_dict()
+        self.assertEqual(result["heading_font"], "Montserrat")
+        self.assertIn("typography", result)
+        self.assertIn("section_heights", result)
 
 
 if __name__ == "__main__":

@@ -9,7 +9,7 @@ import frappe
 from builder.ai.config import get_ai_settings, AIConfig
 from builder.ai.providers import get_provider
 from builder.ai.design_system import get_theme
-from builder.ai.schemas.design_brief import DesignBrief
+from builder.ai.schemas.design_brief import DesignBrief, TypographyScale, SectionHeights
 from builder.ai.logging import ai_log
 
 
@@ -26,6 +26,40 @@ def get_default_brief(
     effective_primary = primary_color or theme_colors.get("primary", "#6366f1")
     effective_secondary = secondary_color or theme_colors.get("secondary", "#8b5cf6")
 
+    # Theme-specific typography scales
+    theme_typography = {
+        "neobrutalist": TypographyScale(
+            h1_size="56px", h1_size_mobile="36px", h1_weight="900",
+            h2_size="40px", h2_size_mobile="28px", h2_weight="800",
+            body_size="18px",
+        ),
+        "minimal": TypographyScale(
+            h1_size="42px", h1_size_mobile="28px", h1_weight="500",
+            h2_size="32px", h2_size_mobile="24px", h2_weight="500",
+            body_size="16px",
+        ),
+        "corporate": TypographyScale(
+            h1_size="44px", h1_size_mobile="30px", h1_weight="700",
+            h2_size="34px", h2_size_mobile="26px", h2_weight="600",
+        ),
+    }
+
+    # Theme-specific fonts
+    theme_fonts = {
+        "neobrutalist": ("Space Grotesk", "Space Grotesk"),
+        "minimal": ("Inter", "Inter"),
+        "corporate": ("Roboto", "Roboto"),
+        "creative": ("Poppins", "Poppins"),
+        "glassmorphism": ("Inter", "Inter"),
+        "modern": ("Inter", "Inter"),
+    }
+
+    # Theme-specific section heights
+    theme_heights = {
+        "minimal": SectionHeights(hero_min_height="80vh", hero_min_height_mobile="60vh"),
+        "neobrutalist": SectionHeights(hero_min_height="95vh", hero_min_height_mobile="80vh"),
+    }
+
     # Theme-specific defaults with varied hero styles
     theme_briefs = {
         "neobrutalist": {
@@ -33,7 +67,7 @@ def get_default_brief(
             "border_radius_style": "none",
             "use_shadows": True,
             "use_gradients": False,
-            "hero_style": "asymmetric",  # Bold, off-center layouts
+            "hero_style": "asymmetric",
             "section_backgrounds": ["#ffffff", "#fef3c7", "#ffffff", effective_primary],
             "card_style": {
                 "backgroundColor": "#ffffff",
@@ -41,6 +75,12 @@ def get_default_brief(
                 "boxShadow": "8px 8px 0 #000000",
                 "padding": "24px",
                 "border": "3px solid #000000",
+            },
+            "section_paddings": {
+                "hero": "120px 24px",
+                "standard": "100px 24px",
+                "compact": "80px 24px",
+                "cta": "80px 24px",
             },
         },
         "glassmorphism": {
@@ -62,7 +102,7 @@ def get_default_brief(
             "border_radius_style": "subtle",
             "use_shadows": False,
             "use_gradients": False,
-            "hero_style": "minimal",  # Typography-focused
+            "hero_style": "minimal",
             "section_backgrounds": ["#ffffff", "#fafafa", "#ffffff", "#f5f5f5"],
             "card_style": {
                 "backgroundColor": "#ffffff",
@@ -71,20 +111,26 @@ def get_default_brief(
                 "padding": "24px",
                 "border": "1px solid #e5e5e5",
             },
+            "section_paddings": {
+                "hero": "80px 24px",
+                "standard": "60px 24px",
+                "compact": "40px 24px",
+                "cta": "40px 24px",
+            },
         },
         "corporate": {
             "site_tone": "professional",
             "border_radius_style": "subtle",
             "use_shadows": True,
             "use_gradients": False,
-            "hero_style": "split",  # Professional split layout
+            "hero_style": "split",
         },
         "creative": {
             "site_tone": "playful",
             "border_radius_style": "rounded",
             "use_shadows": True,
             "use_gradients": True,
-            "hero_style": "cards",  # Playful with cards
+            "hero_style": "cards",
         },
         "modern": {
             "site_tone": "professional",
@@ -97,6 +143,7 @@ def get_default_brief(
 
     # Get theme-specific overrides
     overrides = theme_briefs.get(theme, {})
+    fonts = theme_fonts.get(theme, ("Inter", "Inter"))
 
     # Build the brief
     brief_data = {
@@ -144,36 +191,70 @@ def get_default_brief(
         "use_shadows": overrides.get("use_shadows", True),
         "use_gradients": overrides.get("use_gradients", True),
         "border_radius_style": overrides.get("border_radius_style", "rounded"),
+        # NEW: Typography and fonts
+        "typography": theme_typography.get(theme, TypographyScale()),
+        "heading_font": fonts[0],
+        "body_font": fonts[1],
+        # NEW: Section heights
+        "section_heights": theme_heights.get(theme, SectionHeights()),
+        # NEW: Section paddings by type
+        "section_paddings": overrides.get("section_paddings", {
+            "hero": "100px 24px",
+            "standard": "80px 24px",
+            "compact": "60px 24px",
+            "cta": "60px 24px",
+        }),
     }
 
     return DesignBrief(**brief_data)
 
 
-BRIEF_SYSTEM_PROMPT = """You are a design system expert. Your task is to create a design brief that ensures visual consistency across a multi-page website.
+BRIEF_SYSTEM_PROMPT = """You are a design system architect. Create a PRESCRIPTIVE design brief with EXACT VALUES that ensure perfect visual consistency across ALL pages.
 
 The design brief defines:
 1. How colors should be used (primary for CTAs, secondary for accents, etc.)
 2. Section background alternation pattern for visual rhythm
 3. Button and card styles
-4. Hero section styling
-5. Spacing and typography rules
+4. Hero section styling with MANDATORY height
+5. EXACT typography scale (h1/h2/h3/p sizes)
+6. EXACT section paddings by type
 
-Your brief will be used by another AI to generate multiple pages. The goal is that ALL pages look cohesive and part of the same site.
+Your brief will be used by another AI to generate multiple pages. The goal is that ALL pages look IDENTICAL in style.
+
+MANDATORY - Include EXACT VALUES:
+
+1. TYPOGRAPHY SCALE - Choose precise sizes:
+   - h1: 42-56px desktop, 28-36px mobile (bold weight 600-700)
+   - h2: 32-40px desktop, 24-28px mobile (semibold weight 600)
+   - h3: 24-30px desktop, 20-24px mobile
+   - body: 16-18px desktop, 15-16px mobile
+   - line-height: 1.2 for headings, 1.6 for body
+
+2. FONTS - Choose ONE pair from: Inter, Poppins, Roboto, Montserrat, Lato, Open Sans, Space Grotesk
+   - heading_font: font for h1-h6
+   - body_font: font for p, span, li
+
+3. SECTION HEIGHTS - CRITICAL for consistency:
+   - hero_min_height: 80vh-100vh (SAME for all pages!)
+   - hero_min_height_mobile: 60vh-80vh
+
+4. SECTION PADDINGS - Define for each type:
+   - hero: 80-120px vertical
+   - standard: 60-80px vertical
+   - cta: 40-60px vertical
+
+5. CONTRAST RULES - CRITICAL:
+   - Gradient/colored background → "#ffffff" text
+   - Light background (#fff, #f8fafc) → "var(--text-color)"
+   - NEVER white text on light background!
 
 IMPORTANT RULES:
-- Use CSS variable names like var(--primary-color) instead of actual hex values for primary/secondary colors
-- Choose a background alternation pattern that creates visual rhythm (e.g., white → light gray → white → primary)
-- Be specific about border-radius values and shadow intensities
-- Consider the site type and theme when making decisions
+- Use CSS variable names like var(--primary-color) instead of actual hex values
+- Choose a background alternation pattern that creates visual rhythm
+- Be specific about ALL values - vague descriptions cause inconsistency
+- The SAME hero_min_height MUST apply to ALL pages
 
-CRITICAL - TEXT COLOR CONTRAST RULES:
-- For hero_text_color: ONLY use "#ffffff" if hero_background is a gradient or colored background
-- If hero is solid light color, hero_text_color MUST be "var(--text-color)"
-- section_backgrounds with light colors (#ffffff, #f8fafc, #fafafa) → body_color: "var(--muted-color)", heading_color: "var(--text-color)"
-- section_backgrounds with dark/colored backgrounds → text should be "#ffffff"
-- NEVER create white text on white/light backgrounds!
-
-Output a valid JSON object matching the DesignBrief schema.
+Output a valid JSON object matching the DesignBrief schema with ALL fields populated.
 """
 
 

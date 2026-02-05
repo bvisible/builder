@@ -138,6 +138,12 @@ class PageGenerator:
         # Apply colors as CSS variables (always apply theme colors)
         blocks = self._apply_custom_colors(blocks, effective_primary, effective_secondary)
 
+        # Post-processing: inject fonts and fix styles based on design brief
+        if design_brief:
+            ai_log("debug", "Applying design brief post-processing")
+            blocks = self._inject_fonts(blocks, design_brief)
+            blocks = self._auto_fix_styles(blocks, design_brief)
+
         ai_log("info", "Page generation complete", blocks_count=len(blocks))
         frappe.logger().info(f"Generated {len(blocks)} blocks successfully")
         return blocks
@@ -308,6 +314,120 @@ class PageGenerator:
                     block["rawStyles"]["--secondary-color"] = secondary_color
 
         return blocks
+
+    def _inject_fonts(self, blocks: list[dict], brief: DesignBrief) -> list[dict]:
+        """
+        Inject font families into all text elements based on design brief.
+        Ensures fonts are applied even if AI forgot to include them.
+        """
+        heading_elements = {'h1', 'h2', 'h3', 'h4', 'h5', 'h6'}
+        body_elements = {'p', 'span', 'label', 'li', 'blockquote', 'a'}
+
+        heading_font = f"'{brief.heading_font}', sans-serif"
+        body_font = f"'{brief.body_font}', sans-serif"
+
+        def process_block(block: dict) -> None:
+            element = block.get('element', '')
+            base_styles = block.get('baseStyles', {})
+
+            if element in heading_elements:
+                if 'fontFamily' not in base_styles:
+                    base_styles['fontFamily'] = heading_font
+                    block['baseStyles'] = base_styles
+            elif element in body_elements:
+                if 'fontFamily' not in base_styles:
+                    base_styles['fontFamily'] = body_font
+                    block['baseStyles'] = base_styles
+
+            # Process children recursively
+            for child in block.get('children', []):
+                process_block(child)
+
+        for block in blocks:
+            process_block(block)
+
+        return blocks
+
+    def _auto_fix_styles(self, blocks: list[dict], brief: DesignBrief) -> list[dict]:
+        """
+        Auto-fix common style issues based on design brief.
+        - Fix hero heights
+        - Fix contrast issues (white text on light backgrounds)
+        """
+        for block in blocks:
+            self._fix_block_styles(block, brief)
+
+        return blocks
+
+    def _fix_block_styles(self, block: dict, brief: DesignBrief) -> None:
+        """Recursively fix styles in a block and its children."""
+        block_id = block.get('blockId', '').lower()
+        base_styles = block.get('baseStyles', {})
+        mobile_styles = block.get('mobileStyles', {})
+
+        # Fix hero section heights
+        if 'hero' in block_id:
+            if 'minHeight' not in base_styles:
+                base_styles['minHeight'] = brief.section_heights.hero_min_height
+            if 'minHeight' not in mobile_styles:
+                mobile_styles['minHeight'] = brief.section_heights.hero_min_height_mobile
+            block['baseStyles'] = base_styles
+            block['mobileStyles'] = mobile_styles
+
+        # Fix contrast: detect light backgrounds with white text
+        bg = base_styles.get('backgroundColor', '') or base_styles.get('background', '')
+        if self._is_light_background(bg):
+            self._fix_text_colors_recursive(block, 'var(--text-color)')
+
+        # Process children
+        for child in block.get('children', []):
+            self._fix_block_styles(child, brief)
+
+    def _is_light_background(self, bg: str) -> bool:
+        """Detect if a background is light (requiring dark text)."""
+        if not bg:
+            return False
+
+        light_patterns = [
+            '#ffffff', '#fff', '#f8fafc', '#fafafa', '#f5f5f5',
+            '#f9fafb', '#f3f4f6', '#e5e7eb', '#f1f5f9', '#f4f4f5',
+            'var(--surface-color)', 'white', 'rgb(255', 'rgba(255, 255, 255'
+        ]
+        bg_lower = bg.lower()
+        return any(p in bg_lower for p in light_patterns)
+
+    def _is_dark_background(self, bg: str) -> bool:
+        """Detect if a background is dark (requiring white text)."""
+        if not bg:
+            return False
+
+        dark_patterns = [
+            'gradient', 'linear-gradient', 'radial-gradient',
+            'var(--primary-color)', 'var(--secondary-color)',
+            '#0', '#1', '#2', '#3', '#4', '#5',  # Dark hex colors
+            'rgb(0', 'rgb(1', 'rgb(2', 'rgb(3', 'rgb(4', 'rgb(5',
+        ]
+        bg_lower = bg.lower()
+        return any(p in bg_lower for p in dark_patterns)
+
+    def _fix_text_colors_recursive(self, block: dict, target_color: str) -> None:
+        """
+        Recursively fix text colors in children if they're white on a light background.
+        """
+        for child in block.get('children', []):
+            child_styles = child.get('baseStyles', {})
+
+            # Check if this child has white text
+            current_color = child_styles.get('color', '')
+            if current_color in ['#ffffff', '#fff', 'white', 'rgb(255, 255, 255)']:
+                # Check if this child doesn't have its own dark background
+                child_bg = child_styles.get('backgroundColor', '') or child_styles.get('background', '')
+                if not self._is_dark_background(child_bg):
+                    child_styles['color'] = target_color
+                    child['baseStyles'] = child_styles
+
+            # Continue recursively
+            self._fix_text_colors_recursive(child, target_color)
 
 
 def generate_page(

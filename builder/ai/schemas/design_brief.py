@@ -4,8 +4,43 @@ Ensures visual consistency across all generated pages.
 """
 
 from __future__ import annotations
+import json
 from typing import Literal, Optional
 from pydantic import BaseModel, Field
+
+
+class TypographyScale(BaseModel):
+    """Typography scale for consistent sizing across all pages."""
+    h1_size: str = Field(default="48px", description="H1 font size desktop")
+    h1_size_mobile: str = Field(default="32px", description="H1 font size mobile")
+    h1_weight: str = Field(default="700", description="H1 font weight")
+    h1_line_height: str = Field(default="1.2", description="H1 line height")
+
+    h2_size: str = Field(default="36px", description="H2 font size desktop")
+    h2_size_mobile: str = Field(default="26px", description="H2 font size mobile")
+    h2_weight: str = Field(default="600", description="H2 font weight")
+    h2_line_height: str = Field(default="1.25", description="H2 line height")
+
+    h3_size: str = Field(default="24px", description="H3 font size desktop")
+    h3_size_mobile: str = Field(default="20px", description="H3 font size mobile")
+    h3_weight: str = Field(default="600", description="H3 font weight")
+
+    body_size: str = Field(default="16px", description="Body font size desktop")
+    body_size_mobile: str = Field(default="15px", description="Body font size mobile")
+    body_line_height: str = Field(default="1.6", description="Body line height")
+
+    class Config:
+        extra = "ignore"
+
+
+class SectionHeights(BaseModel):
+    """Mandatory section heights for consistency."""
+    hero_min_height: str = Field(default="90vh", description="Hero minimum height desktop")
+    hero_min_height_mobile: str = Field(default="70vh", description="Hero minimum height mobile")
+    standard_min_height: str = Field(default="auto", description="Standard section min height")
+
+    class Config:
+        extra = "ignore"
 
 
 class DesignBrief(BaseModel):
@@ -109,7 +144,46 @@ class DesignBrief(BaseModel):
         description="Maximum content width"
     )
 
-    # Typography
+    # NEW: Typography Scale (prescriptive sizes)
+    typography: TypographyScale = Field(
+        default_factory=TypographyScale,
+        description="Typography scale for consistent sizing"
+    )
+
+    # NEW: Font families
+    heading_font: str = Field(
+        default="Inter",
+        description="Font family for headings (h1-h6)"
+    )
+    body_font: str = Field(
+        default="Inter",
+        description="Font family for body text"
+    )
+
+    # NEW: Section Heights
+    section_heights: SectionHeights = Field(
+        default_factory=SectionHeights,
+        description="Section height constraints"
+    )
+
+    # NEW: Padding by section type
+    section_paddings: dict = Field(
+        default_factory=lambda: {
+            "hero": "100px 24px",
+            "standard": "80px 24px",
+            "compact": "60px 24px",
+            "cta": "60px 24px",
+        },
+        description="Padding values per section type"
+    )
+
+    # NEW: Dark background detection pattern
+    dark_background_threshold: str = Field(
+        default="gradient|primary|secondary|#[0-5]",
+        description="Regex pattern for dark backgrounds requiring white text"
+    )
+
+    # Typography colors
     heading_color: str = Field(
         default="var(--text-color)",
         description="Heading text color"
@@ -173,12 +247,42 @@ class DesignBrief(BaseModel):
         return ""
 
     def to_prompt_section(self) -> str:
-        """Convert to a prompt section for the AI."""
+        """Convert to a prescriptive prompt section for the AI."""
         bg_sequence = " → ".join(self.section_backgrounds)
+        typo = self.typography
+        heights = self.section_heights
+        paddings = self.section_paddings
 
-        return f"""## DESIGN BRIEF (MANDATORY - FOLLOW EXACTLY)
+        return f"""## DESIGN BRIEF (MANDATORY - COPY THESE VALUES EXACTLY)
 
 ### Site Tone: {self.site_tone}
+
+### TYPOGRAPHY (MANDATORY - USE THESE EXACT VALUES)
+| Element | Desktop | Mobile | Weight | Line Height |
+|---------|---------|--------|--------|-------------|
+| h1 | {typo.h1_size} | {typo.h1_size_mobile} | {typo.h1_weight} | {typo.h1_line_height} |
+| h2 | {typo.h2_size} | {typo.h2_size_mobile} | {typo.h2_weight} | {typo.h2_line_height} |
+| h3 | {typo.h3_size} | {typo.h3_size_mobile} | {typo.h3_weight} | 1.3 |
+| p  | {typo.body_size} | {typo.body_size_mobile} | 400 | {typo.body_line_height} |
+
+### FONTS (MANDATORY - ALWAYS INCLUDE IN baseStyles)
+- Headings (h1-h6): fontFamily: "'{self.heading_font}', sans-serif"
+- Body (p, span, li): fontFamily: "'{self.body_font}', sans-serif"
+⚠️ ALWAYS include fontFamily in baseStyles for h1, h2, h3, h4, p, span elements!
+
+### SECTION HEIGHTS (MANDATORY)
+| Type | minHeight Desktop | minHeight Mobile |
+|------|-------------------|------------------|
+| Hero | {heights.hero_min_height} | {heights.hero_min_height_mobile} |
+| Standard | {heights.standard_min_height} | auto |
+
+### SECTION PADDINGS BY TYPE
+| Type | Desktop | Mobile |
+|------|---------|--------|
+| Hero | {paddings.get('hero', '100px 24px')} | 60px 16px |
+| Standard | {paddings.get('standard', '80px 24px')} | 48px 16px |
+| Compact | {paddings.get('compact', '60px 24px')} | 40px 16px |
+| CTA | {paddings.get('cta', '60px 24px')} | 40px 16px |
 
 ### Color Usage
 - **Primary color**: {self.primary_usage}
@@ -187,9 +291,9 @@ class DesignBrief(BaseModel):
 ### Section Background Alternation (use in this order)
 {bg_sequence}
 
-### Button Styles
-- **Primary Button**: background={self.button_primary.get('backgroundColor')}, color={self.button_primary.get('color')}, borderRadius={self.button_primary.get('borderRadius')}
-- **Secondary Button**: background={self.button_secondary.get('backgroundColor')}, color={self.button_secondary.get('color')}, border={self.button_secondary.get('border')}
+### Button Styles (COPY EXACTLY)
+Primary: {json.dumps(self.button_primary)}
+Secondary: {json.dumps(self.button_secondary)}
 
 ### Card Style
 - background={self.card_style.get('backgroundColor')}
@@ -200,17 +304,17 @@ class DesignBrief(BaseModel):
 - Background: {self.hero_background}
 - Text color: {self.hero_text_color}
 - Style: {self.hero_style}
+- minHeight: {heights.hero_min_height} (mobile: {heights.hero_min_height_mobile})
 
 ### Spacing
-- Section padding: {self.section_padding} (mobile: {self.section_padding_mobile})
 - Content max-width: {self.content_max_width}
 
-### Typography
+### Typography Colors
 - Headings: {self.heading_color}
 - Body text: {self.body_color}
 - Links: {self.link_color}
 
-### TEXT COLOR CONTRAST (CRITICAL!)
+### TEXT COLOR CONTRAST (CRITICAL - NEVER VIOLATE!)
 Apply these rules for EVERY section based on its background:
 | Background | Text Color |
 |------------|------------|
@@ -220,13 +324,15 @@ Apply these rules for EVERY section based on its background:
 | var(--surface-color) | "var(--text-color)" |
 
 ⚠️ NEVER use white text (#ffffff) on white or light gray backgrounds!
+⚠️ ALWAYS check parent background before setting text color!
 
 ### Visual Effects
 - Shadows: {"Yes" if self.use_shadows else "No"}
 - Gradients: {"Yes" if self.use_gradients else "No"}
 - Border radius: {self.border_radius_style} ({self.get_border_radius()})
 {self._get_inspiration_section()}
-**IMPORTANT**: Apply these styles CONSISTENTLY across ALL pages and sections.
+**CRITICAL**: Apply these EXACT values CONSISTENTLY across ALL pages and sections.
+Every page MUST have the same hero minHeight, typography scale, and fonts.
 """
 
     def to_dict(self) -> dict:
@@ -237,4 +343,4 @@ Apply these rules for EVERY section based on its background:
         extra = "ignore"
 
 
-__all__ = ["DesignBrief"]
+__all__ = ["DesignBrief", "TypographyScale", "SectionHeights"]
