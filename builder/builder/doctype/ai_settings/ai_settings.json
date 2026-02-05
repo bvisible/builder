@@ -8,6 +8,7 @@
   "default_provider",
   "default_theme",
   "default_site_type",
+  "output_language",
   "column_break_general",
   "temperature",
   "max_retries",
@@ -73,6 +74,14 @@
    "fieldtype": "Select",
    "label": "Default Site Type",
    "options": "single_page\nmulti_page\nmulti_page_auth\necommerce\nblog\nportfolio"
+  },
+  {
+   "default": "French",
+   "description": "Language for generated content (titles, descriptions, buttons, etc.)",
+   "fieldname": "output_language",
+   "fieldtype": "Select",
+   "label": "Output Language",
+   "options": "French\nEnglish\nGerman\nSpanish\nItalian\nPortuguese\nDutch"
   },
   {
    "fieldname": "column_break_general",

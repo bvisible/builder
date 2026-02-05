@@ -44,6 +44,9 @@ class AIConfig:
     default_theme: ThemeType = "modern"
     default_site_type: SiteType = "multi_page"
 
+    # Output language for generated content
+    output_language: str = "French"
+
     # Timeouts (in seconds)
     request_timeout: int = 120
     connect_timeout: int = 30
@@ -173,6 +176,7 @@ def get_ai_settings() -> AIConfig:
             config.temperature = settings.get("temperature") or config.temperature
             config.max_retries = settings.get("max_retries") or config.max_retries
             config.default_theme = settings.get("default_theme") or config.default_theme
+            config.output_language = settings.get("output_language") or config.output_language
 
             # Provider-specific settings (check both old and new field names)
             if config.provider == "ollama":
