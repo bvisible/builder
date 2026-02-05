@@ -85,6 +85,19 @@ class PageGenerator:
         effective_primary = primary_color or theme_colors.get("primary", "#6366f1")
         effective_secondary = secondary_color or theme_colors.get("secondary", "#8b5cf6")
 
+        # Log design brief details if available
+        if design_brief:
+            ai_log("info", "Design brief received",
+                heading_font=design_brief.heading_font,
+                body_font=design_brief.body_font,
+                hero_height=design_brief.section_heights.hero_min_height if design_brief.section_heights else "not set",
+                hero_style=design_brief.hero_style,
+                primary_color=effective_primary,
+                secondary_color=effective_secondary)
+
+        # Get output language from config
+        output_language = self.config.output_language
+
         # Build the system prompt with all context
         system_prompt = get_creative_system_prompt(
             theme_name=theme_name,
@@ -94,6 +107,7 @@ class PageGenerator:
             font_family=font_family,
             page_type=page_type,
             design_brief=design_brief,
+            output_language=output_language,
         )
 
         # Build the user prompt
@@ -101,6 +115,7 @@ class PageGenerator:
             user_prompt=prompt,
             page_title=page_title,
             page_type=page_type,
+            output_language=output_language,
         )
 
         # Generate blocks via LLM
@@ -109,6 +124,10 @@ class PageGenerator:
             theme=theme_name, page_type=page_type)
         ai_log("debug", "Prompt sizes",
             system_prompt_len=len(system_prompt), user_prompt_len=len(user_prompt))
+        ai_log("debug", "System prompt preview",
+            system_prompt_start=system_prompt[:500])
+        ai_log("debug", "User prompt preview",
+            user_prompt_start=user_prompt[:300])
         frappe.logger().info(f"Generating page: {prompt[:50]}...")
 
         try:
@@ -138,65 +157,88 @@ class PageGenerator:
         # Apply colors as CSS variables (always apply theme colors)
         blocks = self._apply_custom_colors(blocks, effective_primary, effective_secondary)
 
-        # Post-processing: inject fonts and fix styles based on design brief
+        # Post-processing: always inject fonts to ensure consistency
         if design_brief:
-            ai_log("debug", "Applying design brief post-processing")
+            ai_log("debug", "Injecting fonts from design brief",
+                   heading_font=design_brief.heading_font,
+                   body_font=design_brief.body_font)
             blocks = self._inject_fonts(blocks, design_brief)
-            blocks = self._auto_fix_styles(blocks, design_brief)
+            # Note: _auto_fix_styles removed - AI should decide heights/styles
 
-        ai_log("info", "Page generation complete", blocks_count=len(blocks))
+        # Log summary of generated blocks
+        first_block_info = None
+        if blocks:
+            first_block = blocks[0]
+            first_block_info = {
+                "element": first_block.get("element"),
+                "blockId": first_block.get("blockId"),
+                "has_children": len(first_block.get("children", [])) > 0
+            }
+
+        ai_log("info", "Page generation complete",
+            blocks_count=len(blocks),
+            first_block=first_block_info,
+            page_type=page_type,
+            theme=theme_name)
         frappe.logger().info(f"Generated {len(blocks)} blocks successfully")
         return blocks
 
     def _parse_response(self, response: str) -> list[dict]:
-        """
-        Parse the LLM response into a list of blocks.
-        Includes repair logic for truncated JSON.
-        """
+        """Parse the LLM response into a list of blocks."""
+        import json_repair
+
         # Clean up response - remove markdown code blocks if present
         response = response.strip()
-
         if response.startswith("```"):
-            # Remove markdown code block
             lines = response.split("\n")
-            # Remove first line (```json or ```)
             lines = lines[1:]
-            # Remove last line if it's ```
             if lines and lines[-1].strip() == "```":
                 lines = lines[:-1]
             response = "\n".join(lines)
 
-        # Try to parse JSON
+        # Step 1: Try standard json.loads first (fastest path)
         try:
             data = json.loads(response)
-
-            # Ensure it's a list
-            if isinstance(data, dict):
-                # If it's a single block, wrap in list
-                data = [data]
-
-            if not isinstance(data, list):
-                raise ValueError("Response is not a list of blocks")
-
-            return data
-
+            return self._ensure_list(data)
         except json.JSONDecodeError as e:
-            # Try to repair truncated JSON
-            frappe.logger().warning(f"JSON parse error, attempting repair: {e}")
-            repaired = self._repair_truncated_json(response)
-            if repaired:
-                try:
-                    data = json.loads(repaired)
-                    if isinstance(data, dict):
-                        data = [data]
-                    if isinstance(data, list) and len(data) > 0:
-                        frappe.logger().info(f"JSON repair successful, recovered {len(data)} blocks")
-                        return data
-                except json.JSONDecodeError:
-                    pass
+            ai_log("debug", "Standard JSON parse failed, using json_repair",
+                   error=str(e)[:100], response_len=len(response))
 
-            frappe.log_error("JSON parse error", f"Error: {e}\nResponse: {response[:500]}")
-            raise ValueError(f"Failed to parse LLM response as JSON: {e}")
+        # Step 2: Use json-repair library (handles all common LLM errors)
+        try:
+            data = json_repair.loads(response)
+            if data:
+                result = self._ensure_list(data)
+                ai_log("info", "JSON repaired successfully by json-repair",
+                       blocks_count=len(result))
+                return result
+        except Exception as e:
+            ai_log("warning", "json_repair also failed", error=str(e)[:100])
+
+        # Step 3: Last resort - truncation repair + json-repair
+        repaired = self._repair_truncated_json(response)
+        if repaired:
+            try:
+                data = json_repair.loads(repaired)
+                if data:
+                    result = self._ensure_list(data)
+                    ai_log("info", "JSON repaired after truncation fix",
+                           blocks_count=len(result))
+                    return result
+            except Exception:
+                pass
+
+        frappe.log_error("JSON parse error",
+                         f"All repair strategies failed. Response: {response[:500]}")
+        raise ValueError("Failed to parse LLM response as JSON")
+
+    def _ensure_list(self, data) -> list[dict]:
+        """Ensure parsed data is a list of blocks."""
+        if isinstance(data, dict):
+            return [data]
+        if isinstance(data, list) and len(data) > 0:
+            return data
+        raise ValueError("Response is not a list of blocks")
 
     def _repair_truncated_json(self, response: str) -> str:
         """
