@@ -54,8 +54,11 @@ def render_header(config=None) -> str:
 	cta = config.get_cta_data()
 	colors = config.get_header_colors()
 
-	# Build header HTML
-	return frappe.render_template(
+	# Build theme variables + header HTML
+	# Theme variables are included here so ALL pages that render the header
+	# (Builder pages + Webshop pages) get consistent fonts and colors
+	theme_css = get_theme_css(config)
+	header_html = frappe.render_template(
 		"builder/templates/includes/header_footer/header.html",
 		{
 			"config": config,
@@ -69,6 +72,7 @@ def render_header(config=None) -> str:
 			"sticky": config.sticky_header,
 		}
 	)
+	return theme_css + header_html
 
 
 @frappe.whitelist(allow_guest=True)
