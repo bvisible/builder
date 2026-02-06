@@ -612,6 +612,32 @@ def _generate_complete_site_worker(
 		print(f"[SITE_GEN_WORKER] Colors for pages: primary={primary_color}, secondary={secondary_color}")
 
 		# =====================================================================
+		# STEP 2.7: Propagate fonts from design brief to Website Header Footer Config
+		# =====================================================================
+		if hasattr(design_brief, 'heading_font') and design_brief.heading_font:
+			try:
+				config = frappe.get_single("Website Header Footer Config")
+				config.heading_font = design_brief.heading_font
+				config.body_font = design_brief.body_font or "Inter"
+				# Also propagate typography scale if available
+				if hasattr(design_brief, 'typography') and design_brief.typography:
+					typo = design_brief.typography
+					for field in ['h1_size', 'h1_weight', 'h1_line_height', 'h1_size_mobile',
+								  'h2_size', 'h2_weight', 'h2_line_height', 'h2_size_mobile',
+								  'h3_size', 'h3_weight', 'h3_size_mobile',
+								  'body_size', 'body_size_mobile', 'body_line_height']:
+						val = getattr(typo, field, None)
+						if val and hasattr(config, field):
+							setattr(config, field, val)
+				config.save(ignore_permissions=True)
+				frappe.db.commit()
+				ai_log("info", "Fonts propagated to Website Header Footer Config",
+					   heading_font=design_brief.heading_font, body_font=design_brief.body_font)
+				print(f"[SITE_GEN_WORKER] Fonts propagated: heading={design_brief.heading_font}, body={design_brief.body_font}")
+			except Exception as e:
+				ai_log("warning", "Failed to propagate fonts to config", error=str(e)[:100])
+
+		# =====================================================================
 		# STEP 3: Generate pages SEQUENTIALLY (simpler, more reliable)
 		# =====================================================================
 		ai_log("info", "Step 3: Starting sequential page generation", total_pages=total_pages)

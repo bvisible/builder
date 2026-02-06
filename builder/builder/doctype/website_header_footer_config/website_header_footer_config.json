@@ -530,7 +530,7 @@
    "fieldname": "heading_font",
    "fieldtype": "Select",
    "label": "Heading Font",
-   "options": "Inter\nMontserrat\nPoppins\nRoboto\nOpen Sans\nLato\nRaleway\nPlayfair Display\nSource Sans Pro\nNunito"
+   "options": "Inter\nMontserrat\nPoppins\nRoboto\nOpen Sans\nLato\nRaleway\nPlayfair Display\nSource Sans 3\nNunito\nLora\nDM Sans\nManrope\nCormorant Garamond\nSora\nPlus Jakarta Sans\nOutfit\nSpace Grotesk\nArchivo Black\nBebas Neue\nMerriweather\nRoboto Slab"
   },
   {
    "fieldname": "column_break_theme_2",
@@ -542,7 +542,7 @@
    "fieldname": "body_font",
    "fieldtype": "Select",
    "label": "Body Font",
-   "options": "Inter\nMontserrat\nPoppins\nRoboto\nOpen Sans\nLato\nRaleway\nSource Sans Pro\nNunito\nMerriweather"
+   "options": "Inter\nMontserrat\nPoppins\nRoboto\nOpen Sans\nLato\nRaleway\nSource Sans 3\nNunito\nMerriweather\nDM Sans\nManrope\nSpace Grotesk"
   },
   {
    "fieldname": "typography_scale_section",
