@@ -79,15 +79,22 @@
 	--body-size-mobile: {{ theme.body_size_mobile if theme and theme.body_size_mobile else '15px' }};
 }
 
-/* Apply fonts to elements */
+/* Apply fonts to elements - !important to override Frappe/Webshop defaults */
 body {
-	font-family: var(--body-font);
+	font-family: var(--body-font) !important;
 	color: var(--text-color);
 	background-color: var(--background-color);
 }
 
 h1, h2, h3, h4, h5, h6 {
-	font-family: var(--heading-font);
+	font-family: var(--heading-font) !important;
+}
+
+/* Override Webshop product page fonts */
+.product-title, .item-card, .product-description,
+.product-page, .products-search-result,
+.like-disabled-input, .page-title {
+	font-family: var(--body-font) !important;
 }
 
 /* Typography Scale */
