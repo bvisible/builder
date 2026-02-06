@@ -20,6 +20,8 @@ class BlockValidator:
         # Headings & text
         "h1", "h2", "h3", "h4", "h5", "h6", "p", "span", "label", "blockquote",
         "small", "strong", "em", "b", "i", "u", "sub", "sup", "mark", "code", "pre",
+        "cite", "abbr", "time", "address", "q", "del", "ins", "kbd", "samp", "var",
+        "dl", "dt", "dd", "data", "wbr",
         # Interactive
         "a", "button", "img", "video", "iframe", "audio", "source",
         # Lists
