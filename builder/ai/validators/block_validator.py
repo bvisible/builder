@@ -5,7 +5,7 @@ No auto-fix, just validation.
 
 from typing import Optional
 import frappe
-from builder.ai.utils import ai_log
+from builder.ai.logging import ai_log
 
 
 class BlockValidator:
