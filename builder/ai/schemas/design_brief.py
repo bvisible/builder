@@ -350,11 +350,7 @@ Use these as guidelines for visual consistency while exercising creative freedom
         defaults = DesignBrief()
         missing = []
 
-        # Check font fields (Inter is the default)
-        if self.heading_font == defaults.heading_font == "Inter":
-            missing.append("heading_font")
-        if self.body_font == defaults.body_font == "Inter":
-            missing.append("body_font")
+        # Fonts are pre-selected by theme, no need to check for defaults
 
         # Check hero fields
         if self.hero_background == defaults.hero_background:

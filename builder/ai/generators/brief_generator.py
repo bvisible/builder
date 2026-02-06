@@ -35,6 +35,50 @@ def _get_random_palette() -> dict:
     return random.choice(DEFAULT_COLOR_PALETTES)
 
 
+# Multiple font pairs per theme (heading, body) for variety
+# Mix of serif headings + sans-serif body for typographic contrast
+THEME_FONT_OPTIONS = {
+    "modern": [
+        ("Playfair Display", "Open Sans"),
+        ("Montserrat", "Lato"),
+        ("Raleway", "Source Sans 3"),
+        ("Lora", "Inter"),
+    ],
+    "minimal": [
+        ("DM Sans", "Inter"),
+        ("Manrope", "Inter"),
+        ("Cormorant Garamond", "DM Sans"),
+    ],
+    "corporate": [
+        ("Merriweather", "Source Sans 3"),
+        ("Playfair Display", "Lato"),
+        ("Roboto Slab", "Roboto"),
+    ],
+    "creative": [
+        ("Playfair Display", "Poppins"),
+        ("Sora", "DM Sans"),
+        ("Cormorant Garamond", "Montserrat"),
+    ],
+    "glassmorphism": [
+        ("Plus Jakarta Sans", "Inter"),
+        ("Outfit", "DM Sans"),
+        ("Lora", "Inter"),
+    ],
+    "neobrutalist": [
+        ("Space Grotesk", "Space Grotesk"),
+        ("Archivo Black", "Space Grotesk"),
+        ("Bebas Neue", "DM Sans"),
+    ],
+}
+
+
+def _get_random_fonts(theme: str) -> tuple[str, str]:
+    """Get a random font pair (heading, body) for the given theme."""
+    return random.choice(
+        THEME_FONT_OPTIONS.get(theme, [("Playfair Display", "Open Sans")])
+    )
+
+
 # Default fallback brief when generation fails
 def get_default_brief(
     theme: str = "modern",
@@ -73,15 +117,8 @@ def get_default_brief(
         ),
     }
 
-    # Theme-specific fonts
-    theme_fonts = {
-        "neobrutalist": ("Space Grotesk", "Space Grotesk"),
-        "minimal": ("Inter", "Inter"),
-        "corporate": ("Roboto", "Roboto"),
-        "creative": ("Poppins", "Poppins"),
-        "glassmorphism": ("Inter", "Inter"),
-        "modern": ("Inter", "Inter"),
-    }
+    # Pick random font pair for this theme
+    fonts = _get_random_fonts(theme)
 
     # Theme-specific section heights - empty to avoid forcing heights
     # Heights should be determined by content, not fixed vh values
@@ -170,7 +207,6 @@ def get_default_brief(
 
     # Get theme-specific overrides
     overrides = theme_briefs.get(theme, {})
-    fonts = theme_fonts.get(theme, ("Inter", "Inter"))
 
     # Build the brief
     brief_data = {
@@ -260,9 +296,10 @@ MANDATORY - Include EXACT VALUES:
    - body: 16-18px desktop, 15-16px mobile
    - line-height: 1.2 for headings, 1.6 for body
 
-2. FONTS - Choose ONE pair from: Inter, Poppins, Roboto, Montserrat, Lato, Open Sans, Space Grotesk
-   - heading_font: font for h1-h6
-   - body_font: font for p, span, li
+2. FONTS - The heading and body fonts have been pre-selected for this theme. Keep them as provided.
+   - heading_font: keep the provided font for h1-h6
+   - body_font: keep the provided font for p, span, li
+   - DO NOT change to Inter or other fonts
 
 3. SECTION HEIGHTS AND PADDINGS:
    - hero: minHeight "70vh" to "90vh" for visual impact, padding 80-100px
@@ -365,6 +402,11 @@ class BriefGenerator:
             effective_primary = primary_color or theme_colors.get("primary", "#6366f1")
             effective_secondary = secondary_color or theme_colors.get("secondary", "#8b5cf6")
 
+        # Pick random font pair for this theme
+        heading_font, body_font = _get_random_fonts(theme)
+        ai_log("info", "Selected fonts for theme",
+               theme=theme, heading_font=heading_font, body_font=body_font)
+
         # Build user prompt
         pages_list = ""
         if pages_config:
@@ -382,6 +424,10 @@ class BriefGenerator:
 **Colors:**
 - Primary: {effective_primary}
 - Secondary: {effective_secondary}
+
+**Fonts (pre-selected for this theme, do NOT change):**
+- heading_font: "{heading_font}"
+- body_font: "{body_font}"
 
 **Pages to generate:**
 {pages_list}
@@ -409,10 +455,12 @@ Return ONLY the JSON object, no markdown code blocks.
                 think=think_value,
             )
 
-            # CRITICAL: Force the actual hex colors into the brief
-            # The AI might return CSS variables instead of actual hex values
+            # CRITICAL: Force the actual hex colors and fonts into the brief
+            # The AI might return CSS variables or different fonts
             brief.primary_color = effective_primary
             brief.secondary_color = effective_secondary
+            brief.heading_font = heading_font
+            brief.body_font = body_font
 
             ai_log("info", "Design brief generated successfully",
                 site_tone=brief.site_tone, hero_style=brief.hero_style,

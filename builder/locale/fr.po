@@ -1,7 +1,7 @@
 # French translations for Frappe Builder
 # Copyright (C) 2024 Frappe Technologies Pvt. Ltd.
 # This file is distributed under the same license as the Frappe Builder package.
-#
+# 
 msgid ""
 msgstr ""
 "Project-Id-Version: Frappe Builder\n"
@@ -12,7 +12,7 @@ msgstr ""
 "Language-Team: French\n"
 "Language: fr\n"
 "MIME-Version: 1.0\n"
-"Content-Type: text/plain; charset=UTF-8\n"
+"Content-Type: text/plain; charset=utf-8\n"
 "Content-Transfer-Encoding: 8bit\n"
 "Plural-Forms: nplurals=2; plural=(n > 1);\n"
 
@@ -25,14 +25,28 @@ msgstr "Ajouter des balises meta personnalisées"
 msgid "Advanced"
 msgstr "Avancé"
 
-msgid "All the images uploaded to Canvas will be auto converted to WebP for better page performance."
-msgstr "Toutes les images téléchargées sur Canvas seront automatiquement converties en WebP pour de meilleures performances de page."
+msgid ""
+"All the images uploaded to Canvas will be auto converted to WebP for better "
+"page performance."
+msgstr ""
+"Toutes les images téléchargées sur Canvas seront automatiquement converties "
+"en WebP pour de meilleures performances de page."
 
-msgid "An icon file with .ico extension. Should be 16 x 16 px.|||You can generate using favicon-generator.org"
-msgstr "Un fichier icône avec l'extension .ico. Doit être de 16 x 16 px.|||Vous pouvez le générer sur favicon-generator.org"
+msgid ""
+"An icon file with .ico extension. Should be 16 x 16 px.|||You can generate "
+"using favicon-generator.org"
+msgstr ""
+"Un fichier icône avec l'extension .ico. Doit être de 16 x 16 px.|||Vous "
+"pouvez le générer sur favicon-generator.org"
 
-msgid "An icon file with .ico extension. Should be 16 x 16 px.<br>You can generate using <a href=\"https://favicon-generator.org\" target=\"_blank\">favicon-generator.org</a>"
-msgstr "Un fichier icône avec l'extension .ico. Doit être de 16 x 16 px.<br>Vous pouvez le générer sur <a href=\"https://favicon-generator.org\" target=\"_blank\">favicon-generator.org</a>"
+msgid ""
+"An icon file with .ico extension. Should be 16 x 16 px.<br>You can generate "
+"using <a href=\"https://favicon-generator.org\" "
+"target=\"_blank\">favicon-generator.org</a>"
+msgstr ""
+"Un fichier icône avec l'extension .ico. Doit être de 16 x 16 px.<br>Vous "
+"pouvez le générer sur <a href=\"https://favicon-generator.org\" "
+"target=\"_blank\">favicon-generator.org</a>"
 
 msgid "Apps"
 msgstr "Applications"
@@ -188,13 +202,19 @@ msgid "Language"
 msgstr "Langue"
 
 msgid "Language code for HTML (e.g., en, es, fr, de). Uses default if unset."
-msgstr "Code de langue pour HTML (ex : en, es, fr, de). Utilise la valeur par défaut si non défini."
+msgstr ""
+"Code de langue pour HTML (ex : en, es, fr, de). Utilise la valeur par "
+"défaut si non défini."
 
 msgid "Logout"
 msgstr "Déconnexion"
 
-msgid "Map route parameters into form variables. Example <code>/profile/&lt;user&gt;</code>"
-msgstr "Mapper les paramètres de route vers les variables du formulaire. Exemple <code>/profile/&lt;user&gt;</code>"
+msgid ""
+"Map route parameters into form variables. Example "
+"<code>/profile/&lt;user&gt;</code>"
+msgstr ""
+"Mapper les paramètres de route vers les variables du formulaire. Exemple "
+"<code>/profile/&lt;user&gt;</code>"
 
 msgid "Media"
 msgstr "Média"
@@ -316,8 +336,12 @@ msgstr "Nom du modèle"
 msgid "The component you are trying to replace with does not exist"
 msgstr "Le composant par lequel vous essayez de remplacer n'existe pas"
 
-msgid "The preferred URL version of this page for search engines. If not set, the current page URL will be used."
-msgstr "L'URL préférée de cette page pour les moteurs de recherche. Si non définie, l'URL actuelle de la page sera utilisée."
+msgid ""
+"The preferred URL version of this page for search engines. If not set, the "
+"current page URL will be used."
+msgstr ""
+"L'URL préférée de cette page pour les moteurs de recherche. Si non définie, "
+"l'URL actuelle de la page sera utilisée."
 
 msgid "This will be appended at the end of the &lt;body&gt;"
 msgstr "Ceci sera ajouté à la fin du &lt;body&gt;"
@@ -367,11 +391,305 @@ msgstr "Gestionnaire de site web"
 msgid "You don't have permission to access this component"
 msgstr "Vous n'avez pas la permission d'accéder à ce composant"
 
-msgid "data.events = frappe.get_list(\"Event\")|||<br>|||<b>Note:</b> Each key value of data should be a list."
-msgstr "data.events = frappe.get_list(\"Event\")|||<br>|||<b>Note :</b> Chaque valeur clé de data doit être une liste."
+msgid ""
+"data.events = frappe.get_list(\"Event\")|||<br>|||<b>Note:</b> Each key "
+"value of data should be a list."
+msgstr ""
+"data.events = frappe.get_list(\"Event\")|||<br>|||<b>Note :</b> Chaque "
+"valeur clé de data doit être une liste."
 
 msgid "inverted"
 msgstr "inversé"
 
 msgid "none"
 msgstr "aucun"
+
+# Builder Chat - API (chat_api.py)
+
+msgid "Session ID is required"
+msgstr "L'identifiant de session est requis"
+
+msgid "Message is required"
+msgstr "Le message est requis"
+
+msgid "File URL is required"
+msgstr "L'URL du fichier est requise"
+
+msgid "No generation job found"
+msgstr "Aucune tâche de génération trouvée"
+
+msgid "Session not found"
+msgstr "Session introuvable"
+
+msgid "Failed to get generation status"
+msgstr "Impossible de récupérer le statut de génération"
+
+# Builder Chat - Service (builder_chat_service.py)
+
+msgid "Failed to start chat session"
+msgstr "Impossible de démarrer la session de chat"
+
+msgid "Hello {name}!"
+msgstr "Bonjour {name} !"
+
+msgid "Hello!"
+msgstr "Bonjour !"
+
+msgid ""
+"{greeting} I'm **Builder AI**, your website creation assistant.\n"
+"\n"
+"I'll guide you step by step to generate a complete website. Let's start!\n"
+"\n"
+"**What type of website do you want to create?** Briefly describe your "
+"business or project, and I'll take care of the rest."
+msgstr ""
+"{greeting} Je suis **Builder AI**, votre assistant de création de sites "
+"web.\n"
+"\n"
+"Je vais vous guider étape par étape pour générer un site complet. "
+"Commençons !\n"
+"\n"
+"**Quel type de site web souhaitez-vous créer ?** Décrivez brièvement votre "
+"activité ou projet, et je m'occupe du reste."
+
+msgid "Showcase site"
+msgstr "Site vitrine"
+
+msgid "Single page site"
+msgstr "Site une page"
+
+msgid "Online store"
+msgstr "Boutique en ligne"
+
+msgid "Site with login"
+msgstr "Site avec connexion"
+
+msgid "I want a multi-page showcase website"
+msgstr "Je veux un site vitrine avec plusieurs pages"
+
+msgid "I want a single page website"
+msgstr "Je veux un site sur une seule page"
+
+msgid "I want an online store to sell products"
+msgstr "Je veux une boutique en ligne pour vendre des produits"
+
+msgid "I want a showcase site with user login"
+msgstr "Je veux un site vitrine avec connexion utilisateur"
+
+msgid "Inspiration URLs"
+msgstr "URLs d'inspiration"
+
+msgid "Failed to process message: {0}"
+msgstr "Impossible de traiter le message : {0}"
+
+msgid "(Logo uploaded)"
+msgstr "(Logo téléchargé)"
+
+msgid ""
+"Logo received! I'll use it for your site generation.\n"
+"\n"
+"Let's continue. {}"
+msgstr ""
+"Logo reçu ! Je l'utiliserai pour la génération de votre site.\n"
+"\n"
+"Continuons. {}"
+
+msgid "Failed to process logo"
+msgstr "Impossible de traiter le logo"
+
+msgid "Missing required fields: {0}"
+msgstr "Champs requis manquants : {0}"
+
+msgid "Failed to start generation"
+msgstr "Impossible de démarrer la génération"
+
+msgid "Failed to trigger generation: {0}"
+msgstr "Impossible de lancer la génération : {0}"
+
+msgid "Failed to get session"
+msgstr "Impossible de récupérer la session"
+
+msgid ""
+"All required information has been collected! You can now click **Generate "
+"Site** to create your website."
+msgstr ""
+"Toutes les informations requises ont été collectées ! Vous pouvez "
+"maintenant cliquer sur **Générer le site** pour créer votre site web."
+
+msgid ""
+"Could you describe your website project? What is your business or activity "
+"about?"
+msgstr ""
+"Pouvez-vous décrire votre projet de site web ? Quelle est votre activité "
+"ou votre entreprise ?"
+
+msgid "What is the name of your business or project?"
+msgstr "Quel est le nom de votre entreprise ou projet ?"
+
+msgid "What type of site would you like?"
+msgstr "Quel type de site souhaitez-vous ?"
+
+msgid "Which visual theme do you prefer for your site?"
+msgstr "Quel thème visuel préférez-vous pour votre site ?"
+
+msgid "What main color would you like for your site?"
+msgstr "Quelle couleur principale souhaitez-vous pour votre site ?"
+
+msgid "Could you provide: **{0}**?"
+msgstr "Pourriez-vous fournir : **{0}** ?"
+
+msgid "All information collected! Click **Generate Site** when you're ready."
+msgstr ""
+"Toutes les informations sont collectées ! Cliquez sur **Générer le site** "
+"quand vous êtes prêt."
+
+msgid "What is your website about?"
+msgstr "De quoi parle votre site web ?"
+
+msgid "What is the name of your business?"
+msgstr "Quel est le nom de votre entreprise ?"
+
+msgid "Which visual theme do you prefer?"
+msgstr "Quel thème visuel préférez-vous ?"
+
+msgid "What main color would you like?"
+msgstr "Quelle couleur principale souhaitez-vous ?"
+
+msgid "Let's continue with the next step."
+msgstr "Continuons avec l'étape suivante."
+
+msgid "Please upload your logo using the upload button or drag & drop."
+msgstr ""
+"Veuillez télécharger votre logo en utilisant le bouton ou par glisser-"
+"déposer."
+
+msgid "No problem, we'll skip the logo for now.\n\n"
+msgstr "Pas de problème, on passera le logo pour l'instant.\n\n"
+
+msgid "(Skip logo)"
+msgstr "(Passer le logo)"
+
+# Builder Chat - Frontend (builder_chat.js)
+
+msgid "Builder AI Chat"
+msgstr "Chat Builder AI"
+
+msgid "Site Generation"
+msgstr "Génération de site"
+
+msgid "Business & objective"
+msgstr "Activité et objectif"
+
+msgid "Theme & colors"
+msgstr "Thème et couleurs"
+
+msgid "Pages"
+msgstr "Pages"
+
+msgid "Site structure"
+msgstr "Structure du site"
+
+msgid "Generation"
+msgstr "Génération"
+
+msgid "Real-time progress"
+msgstr "Progression en temps réel"
+
+msgid "Required Information"
+msgstr "Informations requises"
+
+msgid "Loading..."
+msgstr "Chargement..."
+
+msgid "Generate Site"
+msgstr "Générer le site"
+
+msgid "Starting conversation..."
+msgstr "Démarrage de la conversation..."
+
+msgid "Upload logo"
+msgstr "Télécharger un logo"
+
+msgid "Describe your website..."
+msgstr "Décrivez votre site web..."
+
+msgid "Session resumed. You can continue where you left off."
+msgstr "Session reprise. Vous pouvez continuer là où vous en étiez."
+
+msgid "Failed to start session"
+msgstr "Impossible de démarrer la session"
+
+msgid "Failed to connect to server"
+msgstr "Impossible de se connecter au serveur"
+
+msgid "Sorry, I encountered an error. Please try again."
+msgstr "Désolé, j'ai rencontré une erreur. Veuillez réessayer."
+
+msgid "Connection error. Please try again."
+msgstr "Erreur de connexion. Veuillez réessayer."
+
+msgid "Please upload a PNG, JPEG, or SVG image."
+msgstr "Veuillez télécharger une image PNG, JPEG ou SVG."
+
+msgid "File size must be less than 5MB."
+msgstr "La taille du fichier ne doit pas dépasser 5 Mo."
+
+msgid "Logo"
+msgstr "Logo"
+
+msgid "Uploading logo..."
+msgstr "Téléchargement du logo..."
+
+msgid "Failed to process logo."
+msgstr "Impossible de traiter le logo."
+
+msgid "Failed to upload file. Please try again."
+msgstr "Impossible de télécharger le fichier. Veuillez réessayer."
+
+msgid "All required fields completed!"
+msgstr "Tous les champs requis sont remplis !"
+
+msgid "Retry"
+msgstr "Réessayer"
+
+msgid "Starting..."
+msgstr "Démarrage..."
+
+msgid "Starting site generation..."
+msgstr "Démarrage de la génération du site..."
+
+msgid ""
+"This may take a few minutes. I will show you the progress in real-time."
+msgstr ""
+"Cela peut prendre quelques minutes. Je vous montrerai la progression en "
+"temps réel."
+
+msgid "Failed to start generation. Please try again."
+msgstr "Impossible de démarrer la génération. Veuillez réessayer."
+
+msgid "Generating..."
+msgstr "Génération en cours..."
+
+msgid "Generating page"
+msgstr "Génération de la page"
+
+msgid "Completed!"
+msgstr "Terminé !"
+
+msgid "Site generated successfully!"
+msgstr "Site généré avec succès !"
+
+msgid "Pages created"
+msgstr "Pages créées"
+
+msgid "You can now edit your pages in the Builder editor."
+msgstr "Vous pouvez maintenant modifier vos pages dans l'éditeur Builder."
+
+msgid "Retry Generation"
+msgstr "Relancer la génération"
+
+msgid "Generation failed"
+msgstr "Échec de la génération"
+
+msgid "An unexpected error occurred. Please try again."
+msgstr "Une erreur inattendue s'est produite. Veuillez réessayer."

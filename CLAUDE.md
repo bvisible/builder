@@ -202,7 +202,63 @@ bench --site [site] execute builder.api.generate_page_blocks --kwargs '{"prompt"
 cd apps/builder && yarn dev
 ```
 
+## Testing AI Generation
+
+After generating a site with AI, **ALWAYS verify visually in the browser**:
+
+### Visual Verification Checklist
+
+1. **Open all generated pages in browser** - Not just the homepage
+2. **Check hero sections**:
+   - Heights look natural and appropriate
+   - Colors match the requested palette
+   - Text contrast is correct (white text on dark, dark text on light)
+3. **Check fonts**:
+   - Use a distinctive font (e.g., Playfair Display serif) for testing
+   - Verify fonts are actually applied in DevTools
+4. **Check color consistency**:
+   - Primary/secondary colors used appropriately
+   - Not always the default blue (#6366f1)
+5. **Check all pages for consistency**:
+   - Same fonts, colors, button styles across pages
+   - Visual rhythm between sections
+
+### Using Chrome DevTools
+
+1. Right-click on element → Inspect
+2. Check "Computed" tab for actual applied styles
+3. Look for `fontFamily`, `backgroundColor`, `color` values
+4. Verify CSS variables are resolving correctly
+
+### Test Commands
+
+```bash
+# Generate site with distinctive font for visual testing
+bench --site [site] execute builder.api.generate_complete_site \
+  --kwargs '{"prompt": "Salon de coiffure élégant", "theme": "modern"}'
+
+# Check AI logs for debugging
+tail -f sites/[site]/logs/builder_ai.log
+```
+
+### Common Issues
+
+| Issue | Cause | Solution |
+|-------|-------|----------|
+| Always blue colors | Hardcoded fallback | Check if colors are passed through |
+| Fonts not applied | AI forgot fontFamily | Custom fonts trigger auto-injection |
+| White text on white bg | Contrast detection missed | Check `_is_light_background()` |
+| Jinja errors on pages | Syntax errors in prompts | Check for `{%%` instead of `{%` |
+
 ## Recent Changes
+
+### AI Module (v1.1.0)
+- Design brief is now suggestive, not prescriptive
+- Random color palettes for variety when no color specified
+- Removed forced hero heights - AI decides
+- Font injection only for custom fonts
+- New DocType: Builder Site Config for tracking generations
+- Improved logging with prompt previews
 
 ### AI Module (v1.0.0)
 - Multi-pass generation pipeline
