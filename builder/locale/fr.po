@@ -693,3 +693,27 @@ msgstr "Échec de la génération"
 
 msgid "An unexpected error occurred. Please try again."
 msgstr "Une erreur inattendue s'est produite. Veuillez réessayer."
+
+msgid "Company Data"
+msgstr "Données de l'entreprise"
+
+msgid "I found the following information for your business:"
+msgstr "J'ai trouvé les informations suivantes pour votre entreprise :"
+
+msgid "Would you like to keep this information or modify it?"
+msgstr "Souhaitez-vous garder ces informations ou les modifier ?"
+
+msgid "Keep all"
+msgstr "Tout garder"
+
+msgid "I want to keep all this information"
+msgstr "Je veux garder toutes ces informations"
+
+msgid "Modify"
+msgstr "Modifier"
+
+msgid "I want to modify some information"
+msgstr "Je veux modifier certaines informations"
+
+msgid "available"
+msgstr "disponible"

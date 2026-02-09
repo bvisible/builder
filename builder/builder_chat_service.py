@@ -105,6 +105,11 @@ class BuilderChatService:
 			})
 			session.insert(ignore_permissions=True)
 
+			# Fetch and store company/ERPNext data
+			company_data = self._get_company_data()
+			if company_data:
+				session.company_data = json.dumps(company_data)
+
 			# Generate welcome message
 			welcome = self._generate_welcome_message()
 			session.add_message(
@@ -163,6 +168,11 @@ class BuilderChatService:
 			# Try to extract data from message (regex-based)
 			extracted = self._extract_data_regex(user_message, session)
 
+			# Handle company data confirmation
+			company_confirm = extracted.pop("_company_confirm", None)
+			if company_confirm == "keep" and session.company_data:
+				self._apply_company_data(session)
+
 			# Build context and call AI
 			context = self._build_ai_context(session)
 			ai_response = self._call_ai(context, user_message, session)
@@ -184,6 +194,14 @@ class BuilderChatService:
 				session.update_extracted_data(extracted)
 
 			response_content = parsed.get("content", ai_response)
+
+			# Check if we should present Company data after site_type selection
+			company_presentation = self._maybe_present_company_data(
+				session, extracted, response_content
+			)
+			if company_presentation:
+				response_content = company_presentation["content"]
+				parsed["buttons"] = company_presentation.get("buttons")
 
 			# Add assistant message
 			session.add_message(
@@ -391,6 +409,29 @@ INSPIRATION:
 {inspiration_str}
 """
 
+		# Build company data context block
+		company_block = ""
+		if session.company_data:
+			try:
+				cd = json.loads(session.company_data)
+				items = []
+				if cd.get("company_name"):
+					items.append(f"Company: {cd['company_name']}")
+				if cd.get("phone"):
+					items.append(f"Phone: {cd['phone']}")
+				if cd.get("email"):
+					items.append(f"Email: {cd['email']}")
+				if cd.get("logo"):
+					items.append(f"Logo: available ({cd['logo']})")
+				if cd.get("website"):
+					items.append(f"Website: {cd['website']}")
+				if cd.get("description"):
+					items.append(f"Description: {cd['description'][:100]}")
+				if items:
+					company_block = "\nCOMPANY DATA (pre-filled from system):\n" + "\n".join(f"- {i}" for i in items) + "\n- Use this data as defaults. Don't re-ask what we already know.\n- If company data was confirmed by the user, use company_name as site_name.\n"
+			except Exception:
+				pass
+
 		system_prompt = f"""You are Builder AI, an assistant that guides users to create a website.
 Your goal is to collect the required parameters through a natural conversation.
 
@@ -398,7 +439,7 @@ CURRENT STATE:
 - Step: {session.current_step}
 - Collected data: {json.dumps(collected, ensure_ascii=False)}
 - Missing fields: {missing_str}
-
+{company_block}
 REQUIRED FIELDS (collect in order):
 1. DESCRIPTION STEP: site_description (what the site is about), site_name (business/project name), site_type (type of site)
 2. STYLE STEP: theme (visual theme), primary_color (hex color), secondary_color (optional hex)
@@ -409,6 +450,23 @@ Themes: {themes_str}
 Site types: {site_types_str}
 Color palettes: {palettes_str}
 {inspiration_block}
+CONVERSATION FLOW (CRITICAL):
+- ALWAYS end your response with a question or a choice for the user
+- Never leave the user without a next action
+- After collecting data, immediately ask about the next missing field
+- Pattern: acknowledge what was said → confirm what was extracted → ask next question
+- When offering choices, use suggestion buttons
+
+CONTENT REWRITING:
+- When the user provides a text for their site (description, about text, tagline), acknowledge it and propose an improved version
+- Say: "Here's a polished version: [improved text]. Does that work for you?"
+- Keep the original meaning, improve clarity and marketing appeal
+- If confirmed, use the rewritten version as site_description
+
+LOGO INTELLIGENCE:
+- If company data includes a logo, propose: "I found your existing logo. Shall we use it, or would you prefer to upload a new one?"
+- Don't ask for a logo upload by default if one already exists
+
 RULES:
 - Ask ONE question at a time
 - Be concise and friendly
@@ -629,6 +687,19 @@ When all required fields are collected, congratulate the user and tell them they
 		if urls:
 			extracted["inspiration_urls"] = urls
 
+		# Detect company data confirmation
+		keep_patterns = [
+			"tout garder", "je garde", "keep all", "c'est bon",
+			"c'est correct", "parfait", "confirmer", "je confirme",
+		]
+		modify_patterns = [
+			"modifier", "changer", "corriger", "modify", "change",
+		]
+		if any(p in msg_lower for p in keep_patterns):
+			extracted["_company_confirm"] = "keep"
+		elif any(p in msg_lower for p in modify_patterns):
+			extracted["_company_confirm"] = "modify"
+
 		return extracted
 
 	# =========================================================================
@@ -749,6 +820,159 @@ When all required fields are collected, congratulate the user and tell them they
 				frappe.log_error("Builder Chat: Inspiration capture error", str(e))
 
 		session.inspiration_urls = json.dumps(existing)
+
+	def _get_company_data(self) -> Dict:
+		"""Fetch available company/site data from Frappe/ERPNext."""
+		data = {}
+
+		# Try ERPNext Company DocType
+		try:
+			company_name = frappe.db.get_default("company")
+			if not company_name:
+				companies = frappe.get_all("Company", limit=1, pluck="name")
+				company_name = companies[0] if companies else None
+
+			if company_name:
+				company = frappe.get_doc("Company", company_name)
+				if company.company_name:
+					data["company_name"] = company.company_name
+				if company.get("phone_no"):
+					data["phone"] = company.phone_no
+				if company.get("email"):
+					data["email"] = company.email
+				if company.get("company_logo"):
+					data["logo"] = company.company_logo
+				if company.get("website"):
+					data["website"] = company.website
+				if company.get("company_description"):
+					data["description"] = company.company_description
+		except Exception:
+			pass  # Company DocType may not exist (no ERPNext)
+
+		# Try Website Header Footer Config (Builder-specific)
+		try:
+			config = frappe.get_single("Website Header Footer Config")
+			if not data.get("logo") and config.get("logo_image"):
+				data["logo"] = config.logo_image
+			if config.get("primary_color"):
+				data["primary_color"] = config.primary_color
+			if config.get("secondary_color"):
+				data["secondary_color"] = config.secondary_color
+			if config.get("heading_font"):
+				data["heading_font"] = config.heading_font
+			if config.get("body_font"):
+				data["body_font"] = config.body_font
+			social = {}
+			for platform in ["facebook", "twitter", "instagram", "linkedin", "youtube"]:
+				url = config.get(f"{platform}_url")
+				if url:
+					social[platform] = url
+			if social:
+				data["social_links"] = social
+		except Exception:
+			pass
+
+		# Site URL
+		data["site_url"] = frappe.utils.get_url()
+
+		return data
+
+	def _maybe_present_company_data(self, session, extracted: Dict, ai_response: str) -> Optional[Dict]:
+		"""Present company data after site_type selection if available and not yet presented."""
+		# Check if site_type was just extracted and company data exists
+		if not extracted.get("site_type"):
+			return None
+		if not session.company_data:
+			return None
+		if session.site_name:
+			# Already have a site name, company data was already processed
+			return None
+
+		presentation = self._build_company_presentation(session)
+		if not presentation:
+			return None
+
+		# Build the combined response
+		lines = [ai_response.rstrip()]
+		lines.append("")
+		lines.append("---")
+		lines.append("")
+		lines.append(presentation["text"])
+
+		buttons = [
+			{"label": _("Keep all"), "value": _("I want to keep all this information")},
+			{"label": _("Modify"), "value": _("I want to modify some information")},
+		]
+
+		return {
+			"content": "\n".join(lines),
+			"buttons": buttons,
+		}
+
+	def _build_company_presentation(self, session) -> Optional[Dict]:
+		"""Build a user-facing presentation of found company data."""
+		if not session.company_data:
+			return None
+
+		try:
+			cd = json.loads(session.company_data)
+		except (json.JSONDecodeError, TypeError):
+			return None
+
+		items = []
+		if cd.get("company_name"):
+			items.append(f"**{_('Name')}:** {cd['company_name']}")
+		if cd.get("phone"):
+			items.append(f"**{_('Phone')}:** {cd['phone']}")
+		if cd.get("email"):
+			items.append(f"**{_('Email')}:** {cd['email']}")
+		if cd.get("logo"):
+			items.append(f"**{_('Logo')}:** {_('available')} ✓")
+		if cd.get("website"):
+			items.append(f"**{_('Website URL')}:** {cd['website']}")
+		if cd.get("description"):
+			desc_preview = cd["description"][:80]
+			if len(cd["description"]) > 80:
+				desc_preview += "..."
+			items.append(f"**{_('Description')}:** {desc_preview}")
+
+		if not items:
+			return None
+
+		header = _("I found the following information for your business:")
+		text = f"{header}\n\n" + "\n".join(f"- {item}" for item in items)
+		text += "\n\n" + _("Would you like to keep this information or modify it?")
+
+		return {"text": text, "data": cd}
+
+	def _apply_company_data(self, session):
+		"""Apply all company data to session fields."""
+		if not session.company_data:
+			return
+
+		try:
+			cd = json.loads(session.company_data)
+		except (json.JSONDecodeError, TypeError):
+			return
+
+		update = {}
+		if cd.get("company_name") and not session.site_name:
+			update["site_name"] = cd["company_name"]
+		if cd.get("logo") and not session.logo_image:
+			update["logo_image"] = cd["logo"]
+		if cd.get("primary_color") and not session.primary_color:
+			update["primary_color"] = cd["primary_color"]
+		if cd.get("secondary_color") and not session.secondary_color:
+			update["secondary_color"] = cd["secondary_color"]
+		if cd.get("heading_font") and not session.heading_font:
+			update["heading_font"] = cd["heading_font"]
+		if cd.get("body_font") and not session.body_font:
+			update["body_font"] = cd["body_font"]
+		if cd.get("social_links") and not session.social_links:
+			update["social_links"] = json.dumps(cd["social_links"])
+
+		if update:
+			session.update_extracted_data(update)
 
 	def _get_user_first_name(self) -> str:
 		"""Get the current user's first name."""

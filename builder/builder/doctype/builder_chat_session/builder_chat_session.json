@@ -19,6 +19,7 @@
   "column_break_desc",
   "site_type",
   "inspiration_urls",
+  "company_data",
   "section_style",
   "theme",
   "primary_color",
@@ -115,7 +116,6 @@
    "fieldtype": "Column Break"
   },
   {
-   "default": "vitrine",
    "fieldname": "site_type",
    "fieldtype": "Select",
    "label": "Site Type",
@@ -127,13 +127,18 @@
    "label": "Inspiration URLs"
   },
   {
+   "fieldname": "company_data",
+   "fieldtype": "JSON",
+   "hidden": 1,
+   "label": "Company Data"
+  },
+  {
    "collapsible": 1,
    "fieldname": "section_style",
    "fieldtype": "Section Break",
    "label": "Step 2: Style"
   },
   {
-   "default": "modern",
    "fieldname": "theme",
    "fieldtype": "Select",
    "label": "Theme",
@@ -189,13 +194,11 @@
    "fieldtype": "Column Break"
   },
   {
-   "default": "Contact",
    "fieldname": "cta_text",
    "fieldtype": "Data",
    "label": "CTA Text"
   },
   {
-   "default": "/contact",
    "fieldname": "cta_url",
    "fieldtype": "Data",
    "label": "CTA URL"

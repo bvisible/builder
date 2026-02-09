@@ -78,7 +78,7 @@ class BuilderChatSession(Document):
 			"theme", "primary_color", "secondary_color",
 			"heading_font", "body_font", "logo_image", "logo_text",
 			"pages_config", "cta_text", "cta_url", "social_links",
-			"inspiration_urls",
+			"inspiration_urls", "company_data",
 		]
 
 		for field, value in new_data.items():
