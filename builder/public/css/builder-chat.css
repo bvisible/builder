@@ -22,11 +22,13 @@ body:has([data-page-container="builder-chat"]) .container {
 /* Main Container */
 .builder-chat-container {
 	display: flex;
-	height: calc(100vh - 60px);
 	min-height: 500px;
 	background: var(--fg-color, #fff);
-	border-radius: 0;
 	overflow: hidden;
+	height: calc(-78px + 100vh);
+	border: 1px solid var(--border-color);
+	border-radius: var(--border-radius-lg);
+	margin-top: 15px;
 }
 
 /* Progress Panel (Left) */

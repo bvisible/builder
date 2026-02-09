@@ -203,6 +203,10 @@ class BuilderChatService:
 				response_content = company_presentation["content"]
 				parsed["buttons"] = company_presentation.get("buttons")
 
+			# Ensure buttons are always present — fallback if AI didn't provide any
+			if not parsed.get("buttons"):
+				parsed["buttons"] = self._get_fallback_buttons(session)
+
 			# Add assistant message
 			session.add_message(
 				role="assistant",
@@ -483,9 +487,16 @@ When you identify data from the user's message, include it in your response usin
 For example, if the user says "I have a bakery called Sweet Dreams":
 <extracted_data>{{"site_description": "A bakery called Sweet Dreams", "site_name": "Sweet Dreams", "site_type": "vitrine"}}</extracted_data>
 
-SUGGESTION BUTTONS:
-When offering choices, include buttons using this format:
-<buttons>[{{"label": "Option 1", "value": "value1"}}, {{"label": "Option 2", "value": "value2"}}]</buttons>
+SUGGESTION BUTTONS (MANDATORY):
+You MUST include <buttons> in EVERY response. Always provide at least 2-3 clickable options.
+Format: <buttons>[{{"label": "Option 1", "value": "value1"}}, ...]</buttons>
+
+Examples by context:
+- Asking about description: offer business type buttons (consulting, store, portfolio, etc.)
+- Asking about theme: offer theme name buttons
+- Asking about color: offer palette name buttons
+- After description rewriting: offer "Yes, perfect" / "Modify" / "Start over" buttons
+- After all fields collected: offer "Generate site" / "Add CTA" / "Add social links"
 
 When asking about themes, offer theme buttons.
 When asking about colors, offer palette buttons.
@@ -593,6 +604,58 @@ When all required fields are collected, congratulate the user and tell them they
 			buttons_str = f"\n\n<buttons>{json.dumps(btns)}</buttons>"
 
 		return question + buttons_str
+
+	def _get_fallback_buttons(self, session) -> list:
+		"""Generate contextual suggestion buttons based on next missing field."""
+		missing = session.get_missing_fields()
+		if not missing:
+			# All fields collected — propose generation or optional extras
+			buttons = [
+				{"label": _("Generate site"), "value": _("Let's generate the site!")},
+			]
+			if not session.cta_text:
+				buttons.append({"label": _("Add a CTA"), "value": _("I'd like to add a call-to-action button")})
+			if not session.social_links:
+				buttons.append({"label": _("Add social links"), "value": _("I'd like to add social media links")})
+			return buttons
+
+		next_field = missing[0].get("field", "")
+
+		if next_field == "site_type":
+			return [{"label": v, "value": k} for k, v in SITE_TYPES.items()]
+		elif next_field == "theme":
+			return [{"label": f"{k} ({v})", "value": k} for k, v in THEMES.items()]
+		elif next_field == "primary_color":
+			return [{"label": p["label"], "value": p["primary"]} for p in COLOR_PALETTES]
+		elif next_field == "site_description":
+			# Contextual suggestions based on company data
+			buttons = []
+			if session.company_data:
+				try:
+					cd = json.loads(session.company_data)
+					if cd.get("description"):
+						buttons.append({"label": _("Use existing description"), "value": cd["description"]})
+				except Exception:
+					pass
+			buttons.extend([
+				{"label": _("Consulting / Services"), "value": _("We are a consulting and services company")},
+				{"label": _("Online store"), "value": _("We sell products online")},
+				{"label": _("Portfolio / Creative"), "value": _("I want to showcase my creative work")},
+			])
+			return buttons
+		elif next_field == "site_name":
+			buttons = []
+			if session.company_data:
+				try:
+					cd = json.loads(session.company_data)
+					if cd.get("company_name"):
+						buttons.append({"label": cd["company_name"], "value": cd["company_name"]})
+				except Exception:
+					pass
+			buttons.append({"label": _("I'll type it"), "value": _("Let me type my site name")})
+			return buttons
+
+		return []
 
 	# =========================================================================
 	# RESPONSE PARSING
