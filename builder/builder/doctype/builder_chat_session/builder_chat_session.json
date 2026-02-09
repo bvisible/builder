@@ -119,7 +119,7 @@
    "fieldname": "site_type",
    "fieldtype": "Select",
    "label": "Site Type",
-   "options": "vitrine\none_page\nvitrine_user\necommerce\necommerce_search\nblog\nsaas\nportfolio"
+   "options": "\nvitrine\none_page\nvitrine_user\necommerce\necommerce_search\nblog\nsaas\nportfolio"
   },
   {
    "fieldname": "inspiration_urls",
@@ -142,7 +142,7 @@
    "fieldname": "theme",
    "fieldtype": "Select",
    "label": "Theme",
-   "options": "modern\nneobrutalist\nglassmorphism\nminimal\ncorporate\ncreative"
+   "options": "\nmodern\nneobrutalist\nglassmorphism\nminimal\ncorporate\ncreative"
   },
   {
    "fieldname": "primary_color",
