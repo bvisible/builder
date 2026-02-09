@@ -774,7 +774,7 @@ frappe.ui.BuilderChatPage = class BuilderChatPage {
 
 		// Build page links
 		const pages = status.pages_created || [];
-		let page_list = pages.map(p => `- [${p.title || p.page_name}](/builder/page/${p.page_name})`).join('\n');
+		let page_list = pages.map(p => `- [${p.title || p.name}](/builder/page/${p.name})`).join('\n');
 
 		this.add_message('assistant',
 			`**${__('Site generated successfully!')}**\n\n` +
