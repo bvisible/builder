@@ -269,7 +269,7 @@ frappe.ui.BuilderChatPage = class BuilderChatPage {
 	async start_session() {
 		try {
 			const response = await frappe.call({
-				method: 'builder.api.chat_api.start_session',
+				method: 'builder.api.chat_start_session',
 				freeze: false
 			});
 
@@ -329,7 +329,7 @@ frappe.ui.BuilderChatPage = class BuilderChatPage {
 
 		try {
 			const response = await frappe.call({
-				method: 'builder.api.chat_api.send_message',
+				method: 'builder.api.chat_send_message',
 				args: {
 					session_id: this.session_id,
 					message: message
@@ -425,7 +425,7 @@ frappe.ui.BuilderChatPage = class BuilderChatPage {
 
 			if (upload_result.message && upload_result.message.file_url) {
 				const response = await frappe.call({
-					method: 'builder.api.chat_api.upload_logo',
+					method: 'builder.api.chat_upload_logo',
 					args: {
 						session_id: this.session_id,
 						file_url: upload_result.message.file_url
@@ -466,7 +466,7 @@ frappe.ui.BuilderChatPage = class BuilderChatPage {
 
 		try {
 			const response = await frappe.call({
-				method: 'builder.api.chat_api.send_message',
+				method: 'builder.api.chat_send_message',
 				args: {
 					session_id: this.session_id,
 					message: command
@@ -674,7 +674,7 @@ frappe.ui.BuilderChatPage = class BuilderChatPage {
 
 		try {
 			const response = await frappe.call({
-				method: 'builder.api.chat_api.trigger_generation',
+				method: 'builder.api.chat_trigger_generation',
 				args: { session_id: this.session_id },
 				freeze: false
 			});
@@ -720,7 +720,7 @@ frappe.ui.BuilderChatPage = class BuilderChatPage {
 		this.generation_poll = setInterval(async () => {
 			try {
 				const response = await frappe.call({
-					method: 'builder.api.chat_api.get_generation_status',
+					method: 'builder.api.chat_get_generation_status',
 					args: { session_id: this.session_id },
 					freeze: false
 				});

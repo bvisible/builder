@@ -1889,3 +1889,83 @@ def get_shortcodes_for_ai():
 			lines.append(f"**Example:**\n```jinja\n{sc.example_code}\n```\n")
 
 	return "\n".join(lines)
+
+
+# =========================================================================
+# CHAT API ENDPOINTS
+# =========================================================================
+
+@frappe.whitelist()
+def chat_start_session():
+	"""Start a new builder chat session or resume an existing active session."""
+	from builder.builder_chat_service import BuilderChatService
+	service = BuilderChatService()
+	return service.start_session(user=frappe.session.user)
+
+
+@frappe.whitelist()
+def chat_send_message(session_id: str, message: str):
+	"""Send a message to the builder chat and get a response."""
+	from builder.builder_chat_service import BuilderChatService
+	if not session_id:
+		return {"success": False, "message": _("Session ID is required")}
+	if not message:
+		return {"success": False, "message": _("Message is required")}
+	service = BuilderChatService()
+	return service.process_message(session_id, message)
+
+
+@frappe.whitelist()
+def chat_upload_logo(session_id: str, file_url: str):
+	"""Handle logo upload for a chat session."""
+	from builder.builder_chat_service import BuilderChatService
+	if not session_id:
+		return {"success": False, "message": _("Session ID is required")}
+	if not file_url:
+		return {"success": False, "message": _("File URL is required")}
+	service = BuilderChatService()
+	return service.upload_logo(session_id, file_url)
+
+
+@frappe.whitelist()
+def chat_trigger_generation(session_id: str):
+	"""Trigger site generation with collected parameters."""
+	from builder.builder_chat_service import BuilderChatService
+	if not session_id:
+		return {"success": False, "message": _("Session ID is required")}
+	service = BuilderChatService()
+	return service.trigger_generation(session_id)
+
+
+@frappe.whitelist()
+def chat_get_generation_status(session_id: str):
+	"""Get the current generation status for polling."""
+	if not session_id:
+		return {"success": False, "message": _("Session ID is required")}
+	try:
+		session = frappe.get_doc("Builder Chat Session", {"session_id": session_id})
+		if not session.job_id:
+			return {"success": False, "message": _("No generation job found")}
+		status = get_site_generation_status(session.job_id)
+		if status:
+			return status
+		else:
+			return {
+				"status": session.generation_status or "unknown",
+				"progress": session.generation_progress or 0,
+			}
+	except frappe.DoesNotExistError:
+		return {"success": False, "message": _("Session not found")}
+	except Exception as e:
+		frappe.log_error("Builder Chat: Get generation status error", str(e))
+		return {"success": False, "message": _("Failed to get generation status")}
+
+
+@frappe.whitelist()
+def chat_get_session(session_id: str):
+	"""Get full session data including conversation history."""
+	from builder.builder_chat_service import BuilderChatService
+	if not session_id:
+		return {"success": False, "message": _("Session ID is required")}
+	service = BuilderChatService()
+	return service.get_session(session_id)
