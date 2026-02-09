@@ -7,15 +7,10 @@ frappe.pages['builder-chat'].on_page_load = function(wrapper) {
 		$('.page-head').hide();
 		$('.page-head-content').hide();
 
-		$('.body-sidebar-container').hide();
 		$('#body_sidebar').hide();
 		$('.layout-side-section').hide();
 		$(wrapper).find('.page-head').hide();
 		$(wrapper).closest('.page-container').find('.page-head').hide();
-		$('.main-section').css({
-			'margin-left': '0',
-			'width': '100%'
-		});
 	};
 
 	hideElements();

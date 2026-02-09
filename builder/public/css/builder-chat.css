@@ -9,18 +9,9 @@
 	display: none !important;
 }
 
-/* Hide sidebar when on builder chat */
-body:has(.page-container[data-name="builder-chat"]) .body-sidebar-container,
-body:has(.page-container[data-name="builder-chat"]) #body_sidebar,
-body:has([data-page-container="builder-chat"]) .body-sidebar-container {
+/* Hide sidebar elements on builder chat page */
+body:has(.page-container[data-name="builder-chat"]) #body_sidebar {
 	display: none !important;
-}
-
-/* Adjust layout when sidebar is hidden */
-body:has(.page-container[data-name="builder-chat"]) .main-section,
-body:has([data-page-container="builder-chat"]) .main-section {
-	margin-left: 0 !important;
-	width: 100% !important;
 }
 
 body:has(.page-container[data-name="builder-chat"]) .container,
