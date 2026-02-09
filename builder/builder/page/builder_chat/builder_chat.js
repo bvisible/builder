@@ -6,7 +6,7 @@ frappe.pages['builder-chat'].on_page_load = function(wrapper) {
 	const hideElements = () => {
 		$('.page-head').hide();
 		$('.page-head-content').hide();
-		$('.sticky-top').hide();
+
 		$('.body-sidebar-container').hide();
 		$('#body_sidebar').hide();
 		$('.layout-side-section').hide();

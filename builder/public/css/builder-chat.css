@@ -5,9 +5,7 @@
 
 /* Hide Frappe UI elements on builder chat page */
 .page-container[data-name="builder-chat"] .page-head,
-.page-container[data-name="builder-chat"] .sticky-top,
-.frappe-control[data-page="builder-chat"] .page-head,
-.frappe-control[data-page="builder-chat"] .sticky-top {
+.frappe-control[data-page="builder-chat"] .page-head {
 	display: none !important;
 }
 
