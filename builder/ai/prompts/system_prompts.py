@@ -499,6 +499,54 @@ DESIGN VARIETY - alternate between these patterns:
 
 This page must make visitors want to explore the entire site.""",
 
+            "accueil_ecommerce": """
+SPECIFIC INSTRUCTIONS FOR E-COMMERCE HOMEPAGE (7-9 sections):
+
+1. HERO SECTION (MANDATORY - make it SPECTACULAR):
+   - Use a full-width background image with color overlay (backgroundImage CSS)
+   - OR a bold gradient with split layout (image left/right)
+   - minHeight: "80vh" to "90vh" for strong first impression
+   - Catchy title about the products/brand, engaging subtitle, primary CTA button
+   - VARY the layout: centered text, left-aligned with image right, etc.
+
+2. PRODUCT CATEGORIES SECTION:
+   - Present 3-4 product categories as large visual cards with images
+   - Each card links to /all-products (or specific category)
+   - Use a grid layout (2x2 or 3-column)
+
+3. NEW ARRIVALS / FEATURED PRODUCTS (use shortcode):
+   {%- set carousel_title = "New Arrivals" -%}
+   {%- set carousel_limit = 8 -%}
+   {% include "webshop/templates/includes/product_carousel.html" %}
+
+4. WHY US / VALUE PROPOSITION SECTION:
+   - Free shipping, quality guarantee, local products, etc.
+   - 3-4 icons/cards with short descriptions
+   - Light background for readability
+
+5. BRAND CAROUSEL (if relevant, use shortcode):
+   {%- set carousel_title = "Our Brands" -%}
+   {% include "webshop/templates/includes/brand_carousel.html" %}
+
+6. TESTIMONIALS / TRUST SECTION (recommended):
+   - Customer reviews with names
+   - Trust badges or certifications
+
+7. CTA SECTION:
+   - Strong call-to-action: "Discover our full collection" -> /all-products
+   - Colored or gradient background for emphasis
+
+AVAILABLE E-COMMERCE SHORTCODES (use them!):
+- Product carousel: {%- set carousel_title = "Title" -%}{%- set carousel_limit = 8 -%}{% include "webshop/templates/includes/product_carousel.html" %}
+- Brand carousel: {%- set carousel_title = "Our Brands" -%}{% include "webshop/templates/includes/brand_carousel.html" %}
+- Sale products: {%- set show_discounted_only = true -%}{% include "webshop/templates/includes/product_carousel.html" %}
+
+DESIGN:
+- Section backgrounds MUST alternate: hero (dark/image) -> white -> light gray -> white -> colored CTA
+- NEVER use dark backgrounds (#0a0a0a, #141414) for product sections - products need WHITE or LIGHT backgrounds
+- Cards: always white background (#ffffff) with subtle shadow
+- This page must showcase products and make visitors want to shop""",
+
             "about": """
 SPECIFIC INSTRUCTIONS FOR ABOUT PAGE:
 - Tell the company story in an engaging way

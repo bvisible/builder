@@ -130,14 +130,12 @@ DEFAULT_PAGES_BY_SITE_TYPE = {
 		{"title": "Contact", "route": "contact", "type": "contact"},
 	],
 	"ecommerce": [
-		{"title": "Accueil", "route": "index", "type": "accueil"},
-		{"title": "Collection", "route": "collection", "type": "collection"},
+		{"title": "Accueil", "route": "index", "type": "accueil_ecommerce"},
 		{"title": "À propos", "route": "about", "type": "about"},
 		{"title": "Contact", "route": "contact", "type": "contact"},
 	],
 	"ecommerce_search": [
-		{"title": "Accueil", "route": "index", "type": "accueil"},
-		{"title": "Collection", "route": "collection", "type": "collection"},
+		{"title": "Accueil", "route": "index", "type": "accueil_ecommerce"},
 		{"title": "À propos", "route": "about", "type": "about"},
 		{"title": "Contact", "route": "contact", "type": "contact"},
 	],
@@ -922,8 +920,8 @@ def _generate_complete_site_worker(
 					"open_in_new_tab": False,
 				})
 
-				# For ecommerce sites: add Shop link after Collection
-				if site_type in ("ecommerce", "ecommerce_search") and page["title"] == "Collection" and not shop_link_added:
+				# For ecommerce sites: add Shop link after Accueil
+				if site_type in ("ecommerce", "ecommerce_search") and route in ("/", "/index") and not shop_link_added:
 					config.append("menu_items", {
 						"label": "Shop",
 						"url": "/all-products",
