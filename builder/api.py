@@ -2141,7 +2141,9 @@ def _walk_blocks_for_placeholders(blocks, page_name, results):
 						size = f"{w}x{h}"
 						alt = attrs.get("alt", "")
 						if not alt or alt in ("Hero Image", "Feature", "Image", "Photo"):
-							alt = "Professional website image, high quality photography"
+							alt = "Professional website photography, photorealistic, no text, no words, no logos, no letters"
+						else:
+							alt = f"Professional photography of {alt}, photorealistic, no text, no words, no logos, no letters"
 						results.append({
 							"page_name": page_name,
 							"block_id": block_id,
@@ -2153,7 +2155,9 @@ def _walk_blocks_for_placeholders(blocks, page_name, results):
 				else:
 					alt = attrs.get("alt", "")
 					if not alt or alt in ("Hero Image", "Feature", "Image", "Photo"):
-						alt = "Professional website image, high quality photography"
+						alt = "Professional website photography, photorealistic, no text, no words, no logos, no letters"
+					else:
+						alt = f"Professional photography of {alt}, photorealistic, no text, no words, no logos, no letters"
 					results.append({
 						"page_name": page_name,
 						"block_id": block_id,
@@ -2175,13 +2179,13 @@ def _walk_blocks_for_placeholders(blocks, page_name, results):
 			if "placehold.co" in bg:
 				size_match = re.search(r"placehold\.co/(\d+)x(\d+)", bg)
 				size = f"{size_match.group(1)}x{size_match.group(2)}" if size_match else "1920x1080"
-				# Extract text param as context for prompt
+				# Extract text param as thematic context (NOT literal text to render in image)
 				text_match = re.search(r"text=([^&'\"]+)", bg)
-				alt = text_match.group(1).replace("+", " ") if text_match else ""
-				if not alt:
-					alt = "Professional website hero image, high quality photography"
+				context = text_match.group(1).replace("+", " ") if text_match else ""
+				if not context:
+					alt = "Professional website hero photography, photorealistic, no text, no words, no logos, no letters"
 				else:
-					alt = f"{alt}, professional website photography, high quality"
+					alt = f"Professional photography for a {context} website section, photorealistic, no text, no words, no logos, no letters"
 				results.append({
 					"page_name": page_name,
 					"block_id": block_id,
@@ -2275,10 +2279,13 @@ def _replace_block_src(blocks, block_id: str, new_src: str, img_type: str = "img
 
 		if block.get("blockId") == block_id:
 			if img_type == "background":
-				# Replace CSS background image
+				# Replace CSS background image with proper cover styles
 				if "baseStyles" not in block:
 					block["baseStyles"] = {}
 				block["baseStyles"]["backgroundImage"] = f"url('{new_src}')"
+				block["baseStyles"]["backgroundSize"] = "cover"
+				block["baseStyles"]["backgroundPosition"] = "center"
+				block["baseStyles"]["backgroundRepeat"] = "no-repeat"
 				# Clean up background shorthand if it contained the old URL
 				if "background" in block["baseStyles"] and "placehold.co" in block["baseStyles"].get("background", ""):
 					del block["baseStyles"]["background"]

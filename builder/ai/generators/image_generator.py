@@ -114,10 +114,12 @@ class ImageGenerator:
         """
         from openai import OpenAI
 
-        # Build the full prompt with negative prompt if provided
-        full_prompt = prompt
-        if negative_prompt:
-            full_prompt = f"{prompt}. Avoid: {negative_prompt}"
+        # Apply default negative prompt to prevent text/logos in generated images
+        if not negative_prompt:
+            negative_prompt = "text, words, letters, logos, watermarks, typography, UI elements, signatures"
+
+        # Build the full prompt with negative prompt
+        full_prompt = f"{prompt}. Avoid: {negative_prompt}"
 
         # Parse size
         if size:
