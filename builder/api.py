@@ -109,47 +109,47 @@ SITE_TYPE_HEADER_FOOTER_DEFAULTS = {
 DEFAULT_PAGES_BY_SITE_TYPE = {
 	"one_page": [
 		# Single page with all sections - menu will use anchor links
-		{"title": "Accueil", "route": "", "type": "one_page"},
+		{"title": "Accueil", "route": "index", "type": "one_page"},
 	],
 	"vitrine": [
-		{"title": "Accueil", "route": "", "type": "accueil"},
+		{"title": "Accueil", "route": "index", "type": "accueil"},
 		{"title": "À propos", "route": "about", "type": "about"},
 		{"title": "Services", "route": "services", "type": "services"},
 		{"title": "Contact", "route": "contact", "type": "contact"},
 	],
 	"vitrine_user": [
-		{"title": "Accueil", "route": "", "type": "accueil"},
+		{"title": "Accueil", "route": "index", "type": "accueil"},
 		{"title": "À propos", "route": "about", "type": "about"},
 		{"title": "Services", "route": "services", "type": "services"},
 		{"title": "Contact", "route": "contact", "type": "contact"},
 	],
 	"blog": [
-		{"title": "Accueil", "route": "", "type": "accueil"},
+		{"title": "Accueil", "route": "index", "type": "accueil"},
 		{"title": "Articles", "route": "blog", "type": "blog"},
 		{"title": "À propos", "route": "about", "type": "about"},
 		{"title": "Contact", "route": "contact", "type": "contact"},
 	],
 	"ecommerce": [
-		{"title": "Accueil", "route": "", "type": "accueil"},
+		{"title": "Accueil", "route": "index", "type": "accueil"},
 		{"title": "Collection", "route": "collection", "type": "collection"},
 		{"title": "À propos", "route": "about", "type": "about"},
 		{"title": "Contact", "route": "contact", "type": "contact"},
 	],
 	"ecommerce_search": [
-		{"title": "Accueil", "route": "", "type": "accueil"},
+		{"title": "Accueil", "route": "index", "type": "accueil"},
 		{"title": "Collection", "route": "collection", "type": "collection"},
 		{"title": "À propos", "route": "about", "type": "about"},
 		{"title": "Contact", "route": "contact", "type": "contact"},
 	],
 	"saas": [
-		{"title": "Accueil", "route": "", "type": "accueil"},
+		{"title": "Accueil", "route": "index", "type": "accueil"},
 		{"title": "Fonctionnalités", "route": "features", "type": "features"},
 		{"title": "Tarifs", "route": "pricing", "type": "pricing"},
 		{"title": "À propos", "route": "about", "type": "about"},
 		{"title": "Contact", "route": "contact", "type": "contact"},
 	],
 	"portfolio": [
-		{"title": "Accueil", "route": "", "type": "accueil"},
+		{"title": "Accueil", "route": "index", "type": "accueil"},
 		{"title": "Projets", "route": "projects", "type": "portfolio"},
 		{"title": "À propos", "route": "about", "type": "about"},
 		{"title": "Contact", "route": "contact", "type": "contact"},
@@ -844,7 +844,7 @@ def _generate_complete_site_worker(
 				created_pages.append({
 					"name": page.name,
 					"title": page_def["title"],
-					"route": f"/{route}" if route else "/",
+					"route": f"/{route}",
 				})
 
 			except Exception as e:
@@ -910,11 +910,14 @@ def _generate_complete_site_worker(
 				seen_routes.add(route)
 
 				# Use "Accueil" for home page, otherwise use page title
-				label = "Accueil" if route == "/" else page["title"]
+				label = "Accueil" if route in ("/", "/index") else page["title"]
+
+				# Menu URL: use "/" for homepage instead of "/index"
+				menu_url = "/" if route in ("/", "/index") else route
 
 				config.append("menu_items", {
 					"label": label,
-					"url": route,
+					"url": menu_url,
 					"is_external": False,
 					"open_in_new_tab": False,
 				})
@@ -963,13 +966,17 @@ def _generate_complete_site_worker(
 				for page in created_pages:
 					route = page["route"]
 					if route in seen_routes:
-						label = "Accueil" if route == "/" else page["title"]
+						label = "Accueil" if route in ("/", "/index") else page["title"]
+						footer_url = "/" if route in ("/", "/index") else route
 						config.append("footer_links", {
 							"label": label,
-							"url": route,
+							"url": footer_url,
 						})
 
 		config.save(ignore_permissions=True)
+
+		# Ensure Website Settings home_page points to the generated index page
+		frappe.db.set_value("Website Settings", "Website Settings", "home_page", "index")
 		frappe.db.commit()
 
 		# =====================================================================
