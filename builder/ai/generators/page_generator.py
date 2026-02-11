@@ -163,7 +163,8 @@ class PageGenerator:
                    heading_font=design_brief.heading_font,
                    body_font=design_brief.body_font)
             blocks = self._inject_fonts(blocks, design_brief)
-            # Note: _auto_fix_styles removed - AI should decide heights/styles
+        # Fix text color contrast issues (white text on light backgrounds)
+        blocks = self._fix_contrast(blocks)
 
         # Sanitize Jinja includes — fix or remove invalid template paths
         blocks = self._sanitize_jinja_includes(blocks)
@@ -392,6 +393,54 @@ class PageGenerator:
             process_block(block)
 
         return blocks
+
+    def _fix_contrast(self, blocks: list[dict]) -> list[dict]:
+        """
+        Fix text color contrast issues.
+        - White text on light/white backgrounds → dark text
+        - Dark text on dark/gradient backgrounds → white text
+        """
+        for block in blocks:
+            self._fix_contrast_recursive(block)
+        return blocks
+
+    def _fix_contrast_recursive(self, block: dict) -> None:
+        """Recursively detect and fix contrast issues in blocks."""
+        base_styles = block.get('baseStyles', {})
+        bg = base_styles.get('backgroundColor', '') or base_styles.get('background', '')
+        has_bg_image = bool(base_styles.get('backgroundImage', ''))
+
+        # Sections with light backgrounds: fix white text children
+        if self._is_light_background(bg) and not has_bg_image:
+            self._fix_text_colors_recursive(block, 'var(--text-color)')
+        # Sections with dark/gradient backgrounds or background images: fix dark text children
+        elif has_bg_image or self._is_dark_background(bg):
+            self._ensure_light_text_recursive(block)
+
+        # Recurse into children sections
+        for child in block.get('children', []):
+            if isinstance(child, dict):
+                child_el = child.get('element', '')
+                if child_el in ('section', 'div', 'main', 'article'):
+                    self._fix_contrast_recursive(child)
+
+    def _ensure_light_text_recursive(self, block: dict) -> None:
+        """Ensure text on dark backgrounds is white."""
+        dark_text = [
+            'var(--text-color)', '#333', '#333333', '#1a1a1a', '#111',
+            '#000', '#000000', 'black', '#374151', '#1f2937',
+        ]
+        for child in block.get('children', []):
+            if not isinstance(child, dict):
+                continue
+            child_styles = child.get('baseStyles', {})
+            color = child_styles.get('color', '')
+            # If text has a dark color and no own background
+            child_bg = child_styles.get('backgroundColor', '') or child_styles.get('background', '')
+            if color.lower() in [c.lower() for c in dark_text] and not child_bg:
+                child_styles['color'] = '#ffffff'
+                child['baseStyles'] = child_styles
+            self._ensure_light_text_recursive(child)
 
     # Known valid Jinja include paths
     VALID_INCLUDES = {

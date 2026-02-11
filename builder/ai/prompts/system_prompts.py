@@ -215,7 +215,7 @@ Don't always do "gradient + centered title + CTA". VARY between these:
 6. **Hero Cards**: Key stats or service cards integrated directly in hero
 
 For HOMEPAGE heroes: Prefer "Background Image" or "Split" layouts for maximum visual impact.
-For INNER PAGE heroes: Use "Gradient" or "Minimal" for lighter feel.
+For INNER PAGE heroes: Use any variation — "Background Image", "Gradient", "Split", or "Minimal". Inner pages deserve strong visuals too.
 
 ### Advanced Layouts (VARY these patterns!)
 - **Grids**: 2, 3, 4, 5 columns depending on content
@@ -489,6 +489,10 @@ Help visitors understand what's offered and why it matters to them.""",
 CONTACT PAGE:
 Make it easy and inviting for visitors to get in touch. Build trust.
 This page must have visual substance — not just a bare form.
+
+Start with a strong hero section — a beautiful background image with overlay makes the page
+feel welcoming and professional. Follow with the company's contact details, a map, and the
+contact form. Add personality: a short intro message, office photos, or a "Why reach out?" section.
 
 AVAILABLE SHORTCODES:
 - Contact form: {% include 'builder/templates/includes/contact_form.html' %}
