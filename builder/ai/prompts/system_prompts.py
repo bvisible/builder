@@ -424,6 +424,10 @@ ONE-PAGE SITE:
 This is a complete website on a single page with anchor navigation.
 Present the business comprehensively: what they do, why they're great, and how to reach them.
 
+A great one-page site feels like a journey — it draws the visitor in and keeps them scrolling.
+Think of it as a story with many chapters: the hook, the promise, the proof, the details, and the call to action.
+Aim for a rich, immersive experience with plenty of visual variety and content depth.
+
 CRITICAL TECHNICAL REQUIREMENT — Anchor IDs:
 Each main section MUST have an attributes: {"id": "..."} for anchor navigation.
 The navigation menu uses these anchors: #hero, #services, #about, #contact
@@ -437,13 +441,25 @@ AVAILABLE SHORTCODE:
 HOMEPAGE:
 This is the front door of the website. First impressions matter.
 Captivate the visitor immediately, tell the brand's story, and make them want to explore further.
-The AI has full creative freedom over structure and content.""",
+
+A homepage should feel generous and complete — not like a teaser page.
+The best homepages immerse visitors in the brand's world: they captivate with a strong hero,
+build trust with social proof or values, showcase what the business offers, and leave
+the visitor wanting to explore more. Don't hold back on content — a rich homepage
+converts better than a sparse one.""",
 
             "accueil_ecommerce": """
 E-COMMERCE HOMEPAGE:
 This is a homepage first, shop second. The visitor should discover the brand's story,
 feel trust and excitement, and be naturally drawn to explore products.
 Balance storytelling with product showcase — don't just list products.
+
+The best e-commerce homepages are rich and immersive. They combine brand storytelling,
+product discovery, trust signals, and calls to action into a seamless experience.
+Think about what makes a visitor trust and buy: a compelling hero, the brand's unique story,
+product highlights, social proof (testimonials, trust badges, guarantees), clear advantages
+(shipping, quality, returns), and inviting calls to action throughout.
+Don't be minimal — give the visitor reasons to stay, explore, and buy.
 
 AVAILABLE E-COMMERCE SHORTCODES (use where it feels natural):
 - Product carousel: {%- set carousel_title = "Title here" -%}{%- set carousel_limit = 8 -%}{% include "webshop/templates/includes/product_carousel.html" %}
