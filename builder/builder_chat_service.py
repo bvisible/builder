@@ -752,8 +752,9 @@ When all required fields are collected, congratulate the user and tell them they
 
 		# Detect company data confirmation
 		keep_patterns = [
-			"tout garder", "je garde", "keep all", "c'est bon",
-			"c'est correct", "parfait", "confirmer", "je confirme",
+			"tout garder", "je garde", "garder tout", "garder ces informations",
+			"keep all", "c'est bon", "c'est correct", "parfait",
+			"confirmer", "je confirme", "oui", "ok",
 		]
 		modify_patterns = [
 			"modifier", "changer", "corriger", "modify", "change",
@@ -963,8 +964,8 @@ When all required fields are collected, congratulate the user and tell them they
 		lines.append(presentation["text"])
 
 		buttons = [
-			{"label": _("Keep all"), "value": _("I want to keep all this information")},
-			{"label": _("Modify"), "value": _("I want to modify some information")},
+			{"label": _("Keep all"), "value": _("Keep all")},
+			{"label": _("Modify"), "value": _("Modify")},
 		]
 
 		return {
