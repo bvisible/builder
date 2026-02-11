@@ -2114,6 +2114,42 @@ def _scan_placeholder_images(page_names: list) -> list:
 	return results
 
 
+def _build_image_prompt(context: str, is_background: bool = False) -> str:
+	"""Build an image generation prompt from context text.
+
+	Avoids words like 'website', 'section', 'page' that cause Flux
+	to generate website mockups instead of photographs.
+	"""
+	# Words that are too generic/abstract for image generation
+	generic_words = {"Hero Image", "Feature", "Image", "Photo", "Hero", "Section", "Banner"}
+
+	if not context or context.strip() in generic_words:
+		if is_background:
+			return "beautiful landscape photography, soft natural lighting, photorealistic, high resolution, no text, no words, no logos, no letters"
+		return "professional product photography, clean background, photorealistic, high resolution, no text, no words, no logos, no letters"
+
+	# Clean up context: remove page-type words that confuse image models
+	import re as _re
+	cleaned = context.strip()
+	# Remove page-type words (Accueil, Contact, About, etc.)
+	page_words = _re.compile(
+		r'\b(accueil|home|contact|about|à propos|services?|blog|shop|boutique|page|section|hero|banner)\b',
+		_re.IGNORECASE
+	)
+	cleaned = page_words.sub("", cleaned).strip()
+	# Remove leftover multiple spaces
+	cleaned = _re.sub(r'\s+', ' ', cleaned).strip()
+
+	if not cleaned or len(cleaned) < 3:
+		if is_background:
+			return "beautiful landscape photography, soft natural lighting, photorealistic, high resolution, no text, no words, no logos, no letters"
+		return "professional product photography, clean background, photorealistic, high resolution, no text, no words, no logos, no letters"
+
+	if is_background:
+		return f"beautiful photography related to {cleaned}, atmospheric lighting, photorealistic, high resolution, no text, no words, no logos, no letters"
+	return f"professional photography of {cleaned}, clean composition, photorealistic, high resolution, no text, no words, no logos, no letters"
+
+
 def _walk_blocks_for_placeholders(blocks, page_name, results):
 	"""Recursively walk blocks to find placehold.co URLs in img src or background images."""
 	import re
@@ -2139,11 +2175,7 @@ def _walk_blocks_for_placeholders(blocks, page_name, results):
 						pass  # Skip small images (avatars, icons)
 					else:
 						size = f"{w}x{h}"
-						alt = attrs.get("alt", "")
-						if not alt or alt in ("Hero Image", "Feature", "Image", "Photo"):
-							alt = "Professional website photography, photorealistic, no text, no words, no logos, no letters"
-						else:
-							alt = f"Professional photography of {alt}, photorealistic, no text, no words, no logos, no letters"
+						alt = _build_image_prompt(attrs.get("alt", ""), is_background=False)
 						results.append({
 							"page_name": page_name,
 							"block_id": block_id,
@@ -2153,11 +2185,7 @@ def _walk_blocks_for_placeholders(blocks, page_name, results):
 							"type": "img",
 						})
 				else:
-					alt = attrs.get("alt", "")
-					if not alt or alt in ("Hero Image", "Feature", "Image", "Photo"):
-						alt = "Professional website photography, photorealistic, no text, no words, no logos, no letters"
-					else:
-						alt = f"Professional photography of {alt}, photorealistic, no text, no words, no logos, no letters"
+					alt = _build_image_prompt(attrs.get("alt", ""), is_background=False)
 					results.append({
 						"page_name": page_name,
 						"block_id": block_id,
@@ -2182,10 +2210,7 @@ def _walk_blocks_for_placeholders(blocks, page_name, results):
 				# Extract text param as thematic context (NOT literal text to render in image)
 				text_match = re.search(r"text=([^&'\"]+)", bg)
 				context = text_match.group(1).replace("+", " ") if text_match else ""
-				if not context:
-					alt = "Professional website hero photography, photorealistic, no text, no words, no logos, no letters"
-				else:
-					alt = f"Professional photography for a {context} website section, photorealistic, no text, no words, no logos, no letters"
+				alt = _build_image_prompt(context, is_background=True)
 				results.append({
 					"page_name": page_name,
 					"block_id": block_id,
