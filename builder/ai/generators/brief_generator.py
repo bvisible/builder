@@ -345,13 +345,13 @@ class BriefGenerator:
         if model:
             self.config.model = model
 
-        # Low temperature for consistent, deterministic decisions
+        # Moderate temperature for creative variety while maintaining coherence
         self.llm = get_provider(
             self.config.provider,
             model=self.config.model,
             api_key=self.config.api_key,
             base_url=self.config.base_url,
-            temperature=0.4,  # Lower temperature for consistency
+            temperature=0.7,  # Higher temperature for design variety
         )
 
         # Validator for brief completeness

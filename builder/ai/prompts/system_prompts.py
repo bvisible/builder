@@ -205,14 +205,17 @@ ALWAYS ensure good contrast between text and background:
 - Homepage/one-page: 6-8 sections for a complete, rich site
 - Inner pages: 4-6 sections
 
-### Hero Variations (VARY your designs!)
-Don't always do "title + subtitle + CTA". Explore these variations:
-- **Hero Split**: Image left/right, text on the other side (50/50 layout)
-- **Hero Minimal**: Giant centered title alone, no image
-- **Hero Stats**: Key numbers integrated directly in hero
-- **Hero Cards**: 2-3 mini service cards in hero
-- **Hero Asymmetric**: Non-centered layout, artistically offset elements
-- **Hero with carousel**: Product or image slider
+### Hero Variations (IMPORTANT: VARY between these patterns!)
+Don't always do "gradient + centered title + CTA". VARY between these:
+1. **Hero Background Image**: Full-width photo with color overlay + centered text (MOST IMPACTFUL)
+2. **Hero Split**: 50/50 or 60/40 - image on one side, text on the other
+3. **Hero Gradient**: Bold gradient background with centered text (no image)
+4. **Hero Minimal**: Typography-only, large display text, lots of white space
+5. **Hero Asymmetric**: Off-center content, decorative elements
+6. **Hero Cards**: Key stats or service cards integrated directly in hero
+
+For HOMEPAGE heroes: Prefer "Background Image" or "Split" layouts for maximum visual impact.
+For INNER PAGE heroes: Use "Gradient" or "Minimal" for lighter feel.
 
 ### Advanced Layouts (VARY these patterns!)
 - **Grids**: 2, 3, 4, 5 columns depending on content
@@ -269,41 +272,117 @@ ALWAYS use hex colors (#ffffff, #f8fafc) or gradients with real colors.
 - The placehold.co "text=" should be a SHORT version (2-4 words), URL-encoded with +
   Example: alt="Modern office with team collaborating" -> text=Team+Office
 
+### Hero Background Images (RECOMMENDED for visual impact!)
+For hero and banner sections, USE CSS backgroundImage instead of <img> elements:
+{{
+  "blockId": "hero-section",
+  "element": "section",
+  "baseStyles": {{
+    "backgroundImage": "url('https://placehold.co/1920x1080/1a1a2e/eaeaea?text=Hero+Background')",
+    "backgroundSize": "cover",
+    "backgroundPosition": "center",
+    "minHeight": "85vh",
+    "display": "flex",
+    "alignItems": "center",
+    "position": "relative"
+  }},
+  "children": [
+    {{
+      "blockId": "hero-overlay",
+      "element": "div",
+      "baseStyles": {{
+        "position": "absolute",
+        "top": "0", "left": "0", "right": "0", "bottom": "0",
+        "background": "linear-gradient(135deg, rgba(99,102,241,0.85) 0%, rgba(139,92,246,0.7) 100%)"
+      }}
+    }},
+    {{
+      "blockId": "hero-content",
+      "element": "div",
+      "baseStyles": {{
+        "position": "relative",
+        "zIndex": "1",
+        "maxWidth": "800px",
+        "textAlign": "center"
+      }},
+      "children": [ ... title, subtitle, CTA ... ]
+    }}
+  ]
+}}
+
+IMPORTANT for background images:
+- Use backgroundSize: "cover" and backgroundPosition: "center"
+- Add a semi-transparent overlay div for text readability
+- The placehold.co URL should use 1920x1080 for hero backgrounds
+- VARY: Sometimes gradient only, sometimes background image + overlay, sometimes split layout with <img>
+
 {shortcodes_section}
 
-## OUTPUT EXAMPLE
+## OUTPUT EXAMPLE (hero with background image + overlay)
 [
   {{
     "blockId": "hero-section",
     "element": "section",
     "baseStyles": {{
-      "minHeight": "80vh",
+      "backgroundImage": "url('https://placehold.co/1920x1080/1a1a2e/eaeaea?text=Hero+Scene')",
+      "backgroundSize": "cover",
+      "backgroundPosition": "center",
+      "minHeight": "85vh",
       "display": "flex",
       "alignItems": "center",
       "justifyContent": "center",
-      "padding": "100px 24px",
-      "background": "linear-gradient(135deg, var(--primary-color) 0%, var(--secondary-color) 100%)"
+      "position": "relative"
     }},
     "mobileStyles": {{
-      "minHeight": "60vh",
+      "minHeight": "70vh",
       "padding": "60px 16px"
     }},
     "children": [
       {{
+        "blockId": "hero-overlay",
+        "element": "div",
+        "baseStyles": {{
+          "position": "absolute",
+          "top": "0", "left": "0", "right": "0", "bottom": "0",
+          "background": "linear-gradient(135deg, rgba(99,102,241,0.8) 0%, rgba(139,92,246,0.6) 100%)"
+        }}
+      }},
+      {{
         "blockId": "hero-content",
         "element": "div",
         "baseStyles": {{
+          "position": "relative",
+          "zIndex": "1",
           "maxWidth": "800px",
-          "textAlign": "center"
+          "textAlign": "center",
+          "padding": "100px 24px"
         }},
         "children": [
           {{
             "blockId": "hero-title",
             "element": "h1",
             "innerHTML": "Your catchy title here",
+            "baseStyles": {{ "color": "#ffffff", "marginBottom": "24px" }}
+          }},
+          {{
+            "blockId": "hero-subtitle",
+            "element": "p",
+            "innerHTML": "A compelling description adapted to the business",
+            "baseStyles": {{ "color": "rgba(255,255,255,0.9)", "marginBottom": "32px", "fontSize": "18px" }}
+          }},
+          {{
+            "blockId": "hero-cta",
+            "element": "a",
+            "innerHTML": "Call to Action",
+            "attributes": {{ "href": "/contact" }},
             "baseStyles": {{
-              "color": "#ffffff",
-              "marginBottom": "24px"
+              "display": "inline-block",
+              "backgroundColor": "#ffffff",
+              "color": "var(--primary-color)",
+              "padding": "14px 32px",
+              "borderRadius": "8px",
+              "fontWeight": "600",
+              "textDecoration": "none"
             }}
           }}
         ]
@@ -382,12 +461,43 @@ DESIGN:
 - VARY layouts: not just 3-column grids!""",
 
             "accueil": """
-SPECIFIC INSTRUCTIONS FOR HOMEPAGE:
-- Create an impactful hero section with a catchy title and CTA
-- Add a section presenting main services/products
-- Include customer testimonials if relevant
-- End with a final call-to-action
-- This page should make visitors want to explore the rest of the site""",
+SPECIFIC INSTRUCTIONS FOR HOMEPAGE (6-8 sections):
+
+1. HERO SECTION (MANDATORY - make it SPECTACULAR):
+   - Use a full-width background image with color overlay (backgroundImage CSS)
+   - OR a bold gradient with split layout (image left/right)
+   - minHeight: "80vh" to "90vh" for strong first impression
+   - Catchy title, engaging subtitle, primary CTA button
+   - VARY the layout: centered text, left-aligned with image right, etc.
+
+2. SERVICES/FEATURES SECTION:
+   - Present 3-4 main services or key features
+   - Use cards with icons or images
+   - Vary layout: 3-column grid, zigzag, or bento grid
+
+3. ABOUT/STORY SECTION:
+   - Brief company story or value proposition
+   - Split layout with image (60/40 or 50/50)
+   - Key figures or stats if relevant
+
+4. TESTIMONIALS/TRUST SECTION (recommended):
+   - Customer quotes with names and roles
+   - Partner logos or certifications
+   - Trust-building elements
+
+5. CTA SECTION:
+   - Strong call-to-action before footer
+   - Colored or gradient background for emphasis
+   - Clear next step for the visitor
+
+DESIGN VARIETY - alternate between these patterns:
+- Section 1: Dark/colored background (hero with image)
+- Section 2: White background
+- Section 3: Light gray (#f8fafc) background
+- Section 4: White background
+- Section 5: Colored/gradient background (CTA)
+
+This page must make visitors want to explore the entire site.""",
 
             "about": """
 SPECIFIC INSTRUCTIONS FOR ABOUT PAGE:
