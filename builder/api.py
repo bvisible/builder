@@ -2115,7 +2115,7 @@ def _scan_placeholder_images(page_names: list) -> list:
 
 
 def _walk_blocks_for_placeholders(blocks, page_name, results):
-	"""Recursively walk blocks to find img elements with placehold.co src."""
+	"""Recursively walk blocks to find placehold.co URLs in img src or background images."""
 	import re
 
 	if not isinstance(blocks, list):
@@ -2125,34 +2125,71 @@ def _walk_blocks_for_placeholders(blocks, page_name, results):
 		if not isinstance(block, dict):
 			continue
 
+		block_id = block.get("blockId", "")
+
+		# Check <img> elements
 		if block.get("element") == "img":
 			attrs = block.get("attributes", {})
 			src = attrs.get("src", "")
-			if "placehold.co" in src:
-				# Extract size from URL pattern: /WIDTHxHEIGHT/
+			if "placehold.co" in src and block_id:
 				size_match = re.search(r"placehold\.co/(\d+)x(\d+)", src)
 				if size_match:
 					w, h = int(size_match.group(1)), int(size_match.group(2))
-					# Skip small images (avatars, icons)
 					if w < 200 or h < 200:
-						continue
-					size = f"{w}x{h}"
+						pass  # Skip small images (avatars, icons)
+					else:
+						size = f"{w}x{h}"
+						alt = attrs.get("alt", "")
+						if not alt or alt in ("Hero Image", "Feature", "Image", "Photo"):
+							alt = "Professional website image, high quality photography"
+						results.append({
+							"page_name": page_name,
+							"block_id": block_id,
+							"src": src,
+							"alt": alt,
+							"size": size,
+							"type": "img",
+						})
 				else:
-					size = "1024x1024"
-
-				alt = attrs.get("alt", "")
-				if not alt or alt in ("Hero Image", "Feature", "Image", "Photo"):
-					alt = "Professional website image, high quality photography"
-
-				block_id = block.get("blockId", "")
-				if block_id:
+					alt = attrs.get("alt", "")
+					if not alt or alt in ("Hero Image", "Feature", "Image", "Photo"):
+						alt = "Professional website image, high quality photography"
 					results.append({
 						"page_name": page_name,
 						"block_id": block_id,
 						"src": src,
 						"alt": alt,
-						"size": size,
+						"size": "1024x1024",
+						"type": "img",
 					})
+
+		# Check CSS background images (backgroundImage or background with url())
+		if block_id:
+			styles = block.get("baseStyles", {})
+			bg = styles.get("backgroundImage", "") or ""
+			if not bg:
+				bg_prop = styles.get("background", "") or ""
+				if "url(" in bg_prop:
+					bg = bg_prop
+
+			if "placehold.co" in bg:
+				size_match = re.search(r"placehold\.co/(\d+)x(\d+)", bg)
+				size = f"{size_match.group(1)}x{size_match.group(2)}" if size_match else "1920x1080"
+				# Extract text param as context for prompt
+				text_match = re.search(r"text=([^&'\"]+)", bg)
+				alt = text_match.group(1).replace("+", " ") if text_match else ""
+				if not alt:
+					alt = "Professional website hero image, high quality photography"
+				else:
+					alt = f"{alt}, professional website photography, high quality"
+				results.append({
+					"page_name": page_name,
+					"block_id": block_id,
+					"src": bg,
+					"alt": alt,
+					"size": size,
+					"type": "background",
+				})
 
 		# Recurse into children
 		if block.get("children"):
@@ -2188,7 +2225,8 @@ def _generate_images_worker(img_job_id: str, placeholder_images: list):
 
 		try:
 			result = generator.generate(prompt=prompt, size=size)
-			_replace_image_in_page(page_name, block_id, result.file_url)
+			img_type = img_info.get("type", "img")
+			_replace_image_in_page(page_name, block_id, result.file_url, img_type=img_type)
 			completed += 1
 		except Exception as e:
 			failed += 1
@@ -2209,7 +2247,7 @@ def _generate_images_worker(img_job_id: str, placeholder_images: list):
 	})
 
 
-def _replace_image_in_page(page_name: str, block_id: str, new_src: str):
+def _replace_image_in_page(page_name: str, block_id: str, new_src: str, img_type: str = "img"):
 	"""Replace a placeholder image src in a Builder Page by blockId."""
 	page = frappe.get_doc("Builder Page", page_name)
 
@@ -2219,15 +2257,15 @@ def _replace_image_in_page(page_name: str, block_id: str, new_src: str):
 			continue
 
 		blocks = json.loads(blocks_json)
-		if _replace_block_src(blocks, block_id, new_src):
+		if _replace_block_src(blocks, block_id, new_src, img_type=img_type):
 			page.set(field, json.dumps(blocks))
 
 	page.save(ignore_permissions=True)
 	frappe.db.commit()
 
 
-def _replace_block_src(blocks, block_id: str, new_src: str) -> bool:
-	"""Recursively find a block by blockId and replace its src attribute."""
+def _replace_block_src(blocks, block_id: str, new_src: str, img_type: str = "img") -> bool:
+	"""Recursively find a block by blockId and replace its image source."""
 	if not isinstance(blocks, list):
 		return False
 
@@ -2236,13 +2274,23 @@ def _replace_block_src(blocks, block_id: str, new_src: str) -> bool:
 			continue
 
 		if block.get("blockId") == block_id:
-			if "attributes" not in block:
-				block["attributes"] = {}
-			block["attributes"]["src"] = new_src
+			if img_type == "background":
+				# Replace CSS background image
+				if "baseStyles" not in block:
+					block["baseStyles"] = {}
+				block["baseStyles"]["backgroundImage"] = f"url('{new_src}')"
+				# Clean up background shorthand if it contained the old URL
+				if "background" in block["baseStyles"] and "placehold.co" in block["baseStyles"].get("background", ""):
+					del block["baseStyles"]["background"]
+			else:
+				# Replace <img> src attribute
+				if "attributes" not in block:
+					block["attributes"] = {}
+				block["attributes"]["src"] = new_src
 			return True
 
 		if block.get("children"):
-			if _replace_block_src(block["children"], block_id, new_src):
+			if _replace_block_src(block["children"], block_id, new_src, img_type=img_type):
 				return True
 
 	return False
