@@ -6,6 +6,7 @@ from typing import Any
 from urllib.parse import unquote
 
 import frappe
+from frappe import _
 import frappe.utils
 import requests
 from frappe.apps import get_apps as get_permitted_apps
