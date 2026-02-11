@@ -252,8 +252,18 @@ frappe.ui.BuilderChatPage = class BuilderChatPage {
 
 		// Delegate click on suggestion buttons
 		this.$messages.on('click', '.suggestion-btn', (e) => {
+			// Ignore clicks on the color picker label (handled by input)
+			if ($(e.currentTarget).hasClass('color-picker-btn')) return;
 			const value = $(e.currentTarget).data('value');
 			this.handle_button_click(value);
+		});
+
+		// Color picker: send chosen color as message
+		this.$messages.on('change', '.color-picker-input', (e) => {
+			const color = $(e.currentTarget).val();
+			$(e.currentTarget).closest('.color-picker-btn').find('.color-picker-preview').css('background', color);
+			this.$input.val(color);
+			this.send_message();
 		});
 	}
 
@@ -541,10 +551,34 @@ frappe.ui.BuilderChatPage = class BuilderChatPage {
 		if (!buttons || !Array.isArray(buttons)) return '';
 
 		const btns = buttons.map(btn => {
-			return `<button class="btn btn-sm btn-default suggestion-btn" data-value="${frappe.utils.escape_html(btn.value)}">${frappe.utils.escape_html(btn.label)}</button>`;
+			const escaped_label = frappe.utils.escape_html(btn.label);
+			const escaped_value = frappe.utils.escape_html(btn.value);
+
+			// Detect color buttons (value is a hex color)
+			const is_color = /^#[0-9a-fA-F]{6}$/.test(btn.value);
+			if (is_color) {
+				return `<button class="btn btn-sm btn-default suggestion-btn color-btn" data-value="${escaped_value}">
+					<span class="color-swatch" style="background-color: ${btn.value}"></span>
+					${escaped_label}
+				</button>`;
+			}
+
+			return `<button class="btn btn-sm btn-default suggestion-btn" data-value="${escaped_value}">${escaped_label}</button>`;
 		}).join('');
 
-		return `<div class="suggestion-buttons">${btns}</div>`;
+		// If there are color buttons, add a custom color picker button
+		const has_colors = buttons.some(btn => /^#[0-9a-fA-F]{6}$/.test(btn.value));
+		const picker_btn = has_colors
+			? `<div class="color-picker-wrapper">
+				<label class="btn btn-sm btn-default suggestion-btn color-picker-btn">
+					<span class="color-swatch color-picker-preview" style="background: conic-gradient(red, yellow, lime, aqua, blue, magenta, red)"></span>
+					${__('Custom color')}
+					<input type="color" class="color-picker-input" value="#6366f1" />
+				</label>
+			</div>`
+			: '';
+
+		return `<div class="suggestion-buttons">${btns}${picker_btn}</div>`;
 	}
 
 	add_system_notice(text) {

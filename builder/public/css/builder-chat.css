@@ -415,6 +415,54 @@ body:has([data-page-container="builder-chat"]) .container {
 	transform: translateY(-1px);
 }
 
+/* Color swatches on buttons */
+.color-swatch {
+	display: inline-block;
+	width: 14px;
+	height: 14px;
+	border-radius: 50%;
+	margin-right: 6px;
+	vertical-align: middle;
+	border: 1px solid rgba(0,0,0,0.15);
+	flex-shrink: 0;
+}
+
+.color-btn {
+	display: inline-flex;
+	align-items: center;
+}
+
+.color-btn:hover .color-swatch {
+	border-color: rgba(255,255,255,0.5);
+}
+
+/* Custom color picker */
+.color-picker-wrapper {
+	display: inline-flex;
+}
+
+.color-picker-btn {
+	display: inline-flex;
+	align-items: center;
+	cursor: pointer;
+	margin: 0;
+}
+
+.color-picker-input {
+	width: 0;
+	height: 0;
+	padding: 0;
+	border: none;
+	opacity: 0;
+	position: absolute;
+}
+
+.color-picker-preview {
+	width: 14px;
+	height: 14px;
+	border-radius: 50%;
+}
+
 /* Typing Indicator */
 .typing-indicator .message-content {
 	display: flex;
