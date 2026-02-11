@@ -419,7 +419,8 @@ class PageGenerator:
     def _sanitize_jinja_includes(self, blocks: list[dict]) -> list[dict]:
         """
         Sanitize Jinja {% include %} in innerHTML fields.
-        Fixes wrong template paths and removes includes to non-existent templates.
+        - Strips escaped backslash-quotes from LLM output (\" → ")
+        - Fixes wrong template paths and removes includes to non-existent templates.
         """
         import re
 
@@ -438,6 +439,13 @@ class PageGenerator:
                         if not isinstance(c, dict) or sanitize_block(c)
                     ]
                 return True
+
+            # Fix escaped quotes from LLM JSON output (\" → ")
+            if '\\"' in inner or "\\'" in inner:
+                inner = inner.replace('\\"', '"').replace("\\'", "'")
+                block["innerHTML"] = inner
+                ai_log("info", "Fixed escaped quotes in Jinja innerHTML",
+                       blockId=block.get("blockId"))
 
             matches = include_pattern.findall(inner)
             for template_path in matches:
