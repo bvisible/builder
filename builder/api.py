@@ -294,6 +294,7 @@ def generate_complete_site(
 	social_links: str = None,
 	provider: str = None,
 	model: str = None,
+	session_id: str = None,
 ):
 	"""
 	Generate a complete site asynchronously.
@@ -316,6 +317,7 @@ def generate_complete_site(
 		social_links: JSON string with social media URLs {"facebook": "...", "instagram": "...", ...}
 		provider: AI provider override (ollama, openai)
 		model: Model name override
+		session_id: Optional chat session ID to update on completion
 
 	Returns:
 		dict: {job_id: str, status: "queued"}
@@ -359,6 +361,7 @@ def generate_complete_site(
 		social_links=social_links,
 		provider=provider,
 		model=model,
+		session_id=session_id,
 	)
 
 	print(f"[SITE_GEN] Job enqueued successfully: job_id={job_id}")
@@ -383,6 +386,40 @@ def _get_generation_status(job_id: str) -> dict:
 	return frappe.cache().get_value(cache_key) or {"status": "not_found", "error": "Job not found"}
 
 
+def _update_session_on_completion(session_id, job_id, status, created_pages):
+	"""Update the Builder Chat Session document when generation completes or fails."""
+	if not session_id:
+		# Try to find session by job_id
+		try:
+			session_name = frappe.db.get_value(
+				"Builder Chat Session", {"job_id": job_id}, "name"
+			)
+			if not session_name:
+				return
+		except Exception:
+			return
+	else:
+		session_name = frappe.db.get_value(
+			"Builder Chat Session", {"session_id": session_id}, "name"
+		)
+		if not session_name:
+			return
+
+	try:
+		session = frappe.get_doc("Builder Chat Session", session_name)
+		session.generation_status = status.lower()
+		session.generation_progress = 100 if status == "Completed" else 0
+		session.status = status
+		if created_pages:
+			session.generated_pages = json.dumps(created_pages)
+		session.save(ignore_permissions=True)
+		frappe.db.commit()
+		print(f"[SITE_GEN] Session {session_name} updated: status={status}, pages={len(created_pages)}")
+	except Exception as e:
+		frappe.log_error("Session update on completion failed", str(e))
+		print(f"[SITE_GEN] Failed to update session: {e}")
+
+
 def _generate_complete_site_worker(
 	generation_job_id: str,
 	prompt: str,
@@ -398,6 +435,7 @@ def _generate_complete_site_worker(
 	social_links: str,
 	provider: str,
 	model: str,
+	session_id: str = None,
 ):
 	"""
 	Background worker for site generation.
@@ -977,6 +1015,9 @@ def _generate_complete_site_worker(
 			}
 		})
 
+		# Update the chat session document in DB (persists beyond cache)
+		_update_session_on_completion(session_id, job_id, "Completed", created_pages)
+
 	except Exception as e:
 		# Log error and update status
 		ai_log("error", "=== SITE GENERATION FAILED ===",
@@ -995,6 +1036,8 @@ def _generate_complete_site_worker(
 			"site_name": site_name,
 			"failed_at": frappe.utils.now(),
 		})
+		# Update the chat session document in DB
+		_update_session_on_completion(session_id, job_id, "Failed", [])
 		raise
 
 
@@ -1947,13 +1990,21 @@ def chat_get_generation_status(session_id: str):
 		if not session.job_id:
 			return {"success": False, "message": _("No generation job found")}
 		status = get_site_generation_status(session.job_id)
-		if status:
+		# If cache has valid data (not "not_found"), return it
+		if status and status.get("status") != "not_found":
 			return status
-		else:
-			return {
-				"status": session.generation_status or "unknown",
-				"progress": session.generation_progress or 0,
-			}
+		# Cache empty — fall back to session document data
+		result = {
+			"status": session.generation_status or "unknown",
+			"progress": session.generation_progress or 0,
+		}
+		# If session says completed, include generated pages
+		if session.status in ("Completed", "Failed") and session.generated_pages:
+			pages = json.loads(session.generated_pages) if isinstance(session.generated_pages, str) else session.generated_pages
+			result["pages_created"] = pages
+			result["status"] = session.status.lower()
+			result["progress"] = 100 if session.status == "Completed" else 0
+		return result
 	except frappe.DoesNotExistError:
 		return {"success": False, "message": _("Session not found")}
 	except Exception as e:

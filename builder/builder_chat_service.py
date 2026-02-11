@@ -327,6 +327,7 @@ class BuilderChatService:
 				cta_text=session.cta_text or "Contact",
 				cta_url=session.cta_url or "/contact",
 				social_links=social_links_str,
+				session_id=session_id,
 			)
 
 			if result and result.get("job_id"):
