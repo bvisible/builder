@@ -41,6 +41,7 @@
   "generation_progress",
   "column_break_gen",
   "generated_pages",
+  "image_job_id",
   "section_meta",
   "missing_fields",
   "validation_errors"
@@ -241,6 +242,12 @@
    "fieldname": "generated_pages",
    "fieldtype": "JSON",
    "label": "Generated Pages",
+   "read_only": 1
+  },
+  {
+   "fieldname": "image_job_id",
+   "fieldtype": "Data",
+   "label": "Image Job ID",
    "read_only": 1
   },
   {

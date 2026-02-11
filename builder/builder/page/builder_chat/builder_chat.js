@@ -448,7 +448,12 @@ frappe.ui.BuilderChatPage = class BuilderChatPage {
 	}
 
 	handle_button_click(value) {
-		if (value.startsWith('__')) {
+		if (value === '__GENERATE_IMAGES__') {
+			this.trigger_image_generation();
+		} else if (value === '__SKIP_IMAGES__') {
+			this.add_message('assistant', __('No problem! You can generate images later from the Builder editor.'));
+			this.scroll_to_bottom();
+		} else if (value.startsWith('__')) {
 			this.send_special_command(value);
 		} else {
 			this.$input.val(value);
@@ -781,6 +786,20 @@ frappe.ui.BuilderChatPage = class BuilderChatPage {
 		this.$steps.filter('[data-step="generation"]').addClass('completed')
 			.find('.step-status i').attr('class', 'fa fa-check');
 
+		// Propose AI image generation
+		const image_buttons = [
+			{label: __("Generate real images"), value: "__GENERATE_IMAGES__"},
+			{label: __("Keep placeholders"), value: "__SKIP_IMAGES__"},
+		];
+		this.add_message('assistant',
+			`**${__('Want to replace placeholder images with AI-generated ones?')}**\n\n` +
+			__('Your pages currently use placeholder images. I can generate real, contextual images using AI. This takes about 30-60 seconds per image.'),
+			image_buttons
+		);
+
+		// Re-enable chat input
+		this.$input.prop('disabled', false);
+
 		this.scroll_to_bottom();
 	}
 
@@ -796,6 +815,112 @@ frappe.ui.BuilderChatPage = class BuilderChatPage {
 			`**${__('Generation failed')}**\n\n${status.error || __('An unexpected error occurred. Please try again.')}`
 		);
 
+		this.scroll_to_bottom();
+	}
+
+	// =========================================================================
+	// IMAGE GENERATION
+	// =========================================================================
+
+	async trigger_image_generation() {
+		this.add_message('assistant',
+			`**${__('Starting image generation...')}**\n\n${__('This may take a few minutes. I will show you the progress.')}`
+		);
+		this.scroll_to_bottom();
+
+		try {
+			const response = await frappe.call({
+				method: 'builder.api.chat_generate_images',
+				args: { session_id: this.session_id },
+				freeze: false
+			});
+
+			if (response.message && response.message.success) {
+				this.add_system_notice(
+					`${__('Found')} ${response.message.total_images} ${__('images to generate')}`
+				);
+				this.start_image_generation_polling(response.message.job_id);
+			} else {
+				this.add_message('assistant',
+					response.message?.message || __('Failed to start image generation.')
+				);
+			}
+		} catch (error) {
+			console.error('Image generation trigger error:', error);
+			this.add_message('assistant', __('Connection error. Please try again.'));
+		}
+	}
+
+	start_image_generation_polling(job_id) {
+		// Reset progress bar for image generation
+		this.$progress_fill.css('width', '0%').removeClass('high');
+		this.$progress_text.text('0%');
+
+		this.image_poll = setInterval(async () => {
+			try {
+				const response = await frappe.call({
+					method: 'builder.api.chat_get_image_generation_status',
+					args: { job_id: job_id },
+					freeze: false
+				});
+
+				if (!response.message) return;
+				const status = response.message;
+
+				// Update progress bar
+				const progress = status.progress || 0;
+				this.$progress_fill.css('width', `${progress}%`);
+				this.$progress_text.text(`${Math.round(progress)}%`);
+
+				// Show current image being generated
+				if (status.current_image && status.current_image !== this._last_image_notice) {
+					this._last_image_notice = status.current_image;
+					this.add_system_notice(
+						`${__('Generating')}: ${status.current_image}`
+					);
+					this.scroll_to_bottom();
+				}
+
+				if (status.status === 'completed') {
+					this.stop_image_generation_polling();
+					this.on_image_generation_complete(status);
+				} else if (status.status === 'failed') {
+					this.stop_image_generation_polling();
+					this.add_message('assistant',
+						`**${__('Image generation failed')}**\n\n${status.error || __('An unexpected error occurred.')}`
+					);
+				}
+			} catch (error) {
+				console.error('Image generation polling error:', error);
+			}
+		}, 5000);
+	}
+
+	stop_image_generation_polling() {
+		if (this.image_poll) {
+			clearInterval(this.image_poll);
+			this.image_poll = null;
+		}
+	}
+
+	on_image_generation_complete(status) {
+		this.$progress_fill.css('width', '100%').addClass('high');
+		this.$progress_text.text('100%');
+
+		const completed = status.images_completed || 0;
+		const failed = status.images_failed || 0;
+		const total = status.total_images || 0;
+
+		let message = `**${__('Image generation complete!')}**\n\n`;
+		message += `${completed}/${total} ${__('images generated successfully.')}`;
+
+		if (failed > 0) {
+			message += `\n\n${failed} ${__('images could not be generated and keep their placeholders.')}`;
+		}
+
+		message += `\n\n${__('Refresh your pages in the Builder editor to see the new images.')}`;
+
+		this.add_message('assistant', message);
 		this.scroll_to_bottom();
 	}
 

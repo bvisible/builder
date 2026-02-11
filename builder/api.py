@@ -1962,6 +1962,227 @@ def chat_get_generation_status(session_id: str):
 
 
 @frappe.whitelist()
+def chat_generate_images(session_id: str):
+	"""Trigger AI image generation for all placeholder images in generated pages."""
+	if not session_id:
+		return {"success": False, "message": _("Session ID is required")}
+
+	try:
+		session = frappe.get_doc("Builder Chat Session", {"session_id": session_id})
+
+		# Check image generation is enabled
+		ai_settings = frappe.get_single("AI Settings")
+		if not ai_settings.get("image_generation_enabled"):
+			return {"success": False, "message": _("Image generation is not enabled in AI Settings")}
+
+		# Get generated pages
+		generated_pages = json.loads(session.generated_pages) if session.generated_pages else []
+		if not generated_pages and session.job_id:
+			status = _get_generation_status(session.job_id)
+			generated_pages = status.get("pages_created", [])
+
+		if not generated_pages:
+			return {"success": False, "message": _("No generated pages found")}
+
+		page_names = [p["name"] for p in generated_pages]
+		placeholder_images = _scan_placeholder_images(page_names)
+
+		if not placeholder_images:
+			return {"success": False, "message": _("No placeholder images found in pages")}
+
+		img_job_id = f"img_gen_{frappe.generate_hash(length=10)}"
+
+		_update_generation_status(img_job_id, {
+			"status": "queued",
+			"progress": 0,
+			"total_images": len(placeholder_images),
+			"images_completed": 0,
+			"images_failed": 0,
+			"current_image": None,
+			"error": None,
+		})
+
+		session.db_set("image_job_id", img_job_id)
+
+		frappe.enqueue(
+			"builder.api._generate_images_worker",
+			queue="long",
+			timeout=1800,
+			job_name=img_job_id,
+			img_job_id=img_job_id,
+			placeholder_images=placeholder_images,
+		)
+
+		return {
+			"success": True,
+			"job_id": img_job_id,
+			"total_images": len(placeholder_images),
+			"status": "queued",
+		}
+	except Exception as e:
+		frappe.log_error("Chat: Image generation trigger failed", str(e))
+		return {"success": False, "message": str(e)}
+
+
+@frappe.whitelist()
+def chat_get_image_generation_status(job_id: str):
+	"""Get the status of an image generation job."""
+	if not job_id:
+		return {"success": False, "message": _("Job ID is required")}
+	return _get_generation_status(job_id)
+
+
+def _scan_placeholder_images(page_names: list) -> list:
+	"""Scan Builder Pages for img blocks with placehold.co URLs."""
+	import re
+	results = []
+
+	for page_name in page_names:
+		try:
+			page = frappe.get_doc("Builder Page", page_name)
+			blocks = json.loads(page.blocks) if page.blocks else []
+			_walk_blocks_for_placeholders(blocks, page_name, results)
+		except Exception as e:
+			frappe.log_error("Scan placeholder images error", f"Page {page_name}: {str(e)}")
+
+	return results
+
+
+def _walk_blocks_for_placeholders(blocks, page_name, results):
+	"""Recursively walk blocks to find img elements with placehold.co src."""
+	import re
+
+	if not isinstance(blocks, list):
+		return
+
+	for block in blocks:
+		if not isinstance(block, dict):
+			continue
+
+		if block.get("element") == "img":
+			attrs = block.get("attributes", {})
+			src = attrs.get("src", "")
+			if "placehold.co" in src:
+				# Extract size from URL pattern: /WIDTHxHEIGHT/
+				size_match = re.search(r"placehold\.co/(\d+)x(\d+)", src)
+				if size_match:
+					w, h = int(size_match.group(1)), int(size_match.group(2))
+					# Skip small images (avatars, icons)
+					if w < 200 or h < 200:
+						continue
+					size = f"{w}x{h}"
+				else:
+					size = "1024x1024"
+
+				alt = attrs.get("alt", "")
+				if not alt or alt in ("Hero Image", "Feature", "Image", "Photo"):
+					alt = "Professional website image, high quality photography"
+
+				block_id = block.get("blockId", "")
+				if block_id:
+					results.append({
+						"page_name": page_name,
+						"block_id": block_id,
+						"src": src,
+						"alt": alt,
+						"size": size,
+					})
+
+		# Recurse into children
+		if block.get("children"):
+			_walk_blocks_for_placeholders(block["children"], page_name, results)
+
+
+def _generate_images_worker(img_job_id: str, placeholder_images: list):
+	"""Background worker that generates images and replaces placeholders in pages."""
+	from builder.ai.generators.image_generator import ImageGenerator
+
+	total = len(placeholder_images)
+	completed = 0
+	failed = 0
+
+	generator = ImageGenerator()
+
+	for idx, img_info in enumerate(placeholder_images):
+		prompt = img_info["alt"]
+		size = img_info["size"]
+		page_name = img_info["page_name"]
+		block_id = img_info["block_id"]
+
+		short_prompt = prompt[:50] + "..." if len(prompt) > 50 else prompt
+		_update_generation_status(img_job_id, {
+			"status": "running",
+			"progress": int((idx / total) * 100),
+			"total_images": total,
+			"images_completed": completed,
+			"images_failed": failed,
+			"current_image": f"{short_prompt} ({idx + 1}/{total})",
+			"error": None,
+		})
+
+		try:
+			result = generator.generate(prompt=prompt, size=size)
+			_replace_image_in_page(page_name, block_id, result.file_url)
+			completed += 1
+		except Exception as e:
+			failed += 1
+			frappe.log_error(
+				"Image generation failed",
+				f"Prompt: {prompt[:100]}\nPage: {page_name}\nBlock: {block_id}\nError: {str(e)}"
+			)
+			continue
+
+	_update_generation_status(img_job_id, {
+		"status": "completed",
+		"progress": 100,
+		"total_images": total,
+		"images_completed": completed,
+		"images_failed": failed,
+		"current_image": None,
+		"error": None,
+	})
+
+
+def _replace_image_in_page(page_name: str, block_id: str, new_src: str):
+	"""Replace a placeholder image src in a Builder Page by blockId."""
+	page = frappe.get_doc("Builder Page", page_name)
+
+	for field in ("blocks", "draft_blocks"):
+		blocks_json = page.get(field)
+		if not blocks_json:
+			continue
+
+		blocks = json.loads(blocks_json)
+		if _replace_block_src(blocks, block_id, new_src):
+			page.set(field, json.dumps(blocks))
+
+	page.save(ignore_permissions=True)
+	frappe.db.commit()
+
+
+def _replace_block_src(blocks, block_id: str, new_src: str) -> bool:
+	"""Recursively find a block by blockId and replace its src attribute."""
+	if not isinstance(blocks, list):
+		return False
+
+	for block in blocks:
+		if not isinstance(block, dict):
+			continue
+
+		if block.get("blockId") == block_id:
+			if "attributes" not in block:
+				block["attributes"] = {}
+			block["attributes"]["src"] = new_src
+			return True
+
+		if block.get("children"):
+			if _replace_block_src(block["children"], block_id, new_src):
+				return True
+
+	return False
+
+
+@frappe.whitelist()
 def chat_get_session(session_id: str):
 	"""Get full session data including conversation history."""
 	from builder.builder_chat_service import BuilderChatService

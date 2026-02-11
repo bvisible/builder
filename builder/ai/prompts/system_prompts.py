@@ -253,13 +253,21 @@ ALWAYS use hex colors (#ffffff, #f8fafc) or gradients with real colors.
 - ALWAYS include mobileStyles for main sections
 - On mobile: stacked columns, reduced padding, smaller text
 
-### Images
-- For images, use placehold.co placeholders:
-  - Hero/Banner: "https://placehold.co/1200x600/1a1a2e/eaeaea?text=Hero+Image"
-  - Cards: "https://placehold.co/400x300/2d2d44/eaeaea?text=Feature"
-  - Avatars: "https://placehold.co/80x80/3d3d5c/eaeaea?text=JD"
-  - You can customize colors and text in the URL
-  - ALWAYS include a descriptive alt attribute
+### Images (CRITICAL: Alt Text = AI Image Prompt)
+- For images, use placehold.co placeholders with these sizes:
+  - Hero/Banner: "https://placehold.co/1200x600/1a1a2e/eaeaea?text=<SHORT_2-4_WORDS>"
+  - Cards/Features: "https://placehold.co/400x300/2d2d44/eaeaea?text=<SHORT_2-4_WORDS>"
+  - Team/Avatars: "https://placehold.co/80x80/3d3d5c/eaeaea?text=<INITIALS>"
+  - You can customize the background/text colors in the URL
+
+- CRITICAL: The "alt" attribute MUST be a DETAILED description suitable for AI image generation.
+  DO NOT use generic text like "Hero Image", "Feature", "Photo".
+  Write a vivid description matching the BUSINESS CONTEXT:
+  - GOOD: "Modern open office with developers collaborating around laptops, natural light"
+  - GOOD: "Freshly baked sourdough bread on rustic wooden board, warm bakery lighting"
+  - BAD: "Hero Image" / "Team photo" / "Feature"
+- The placehold.co "text=" should be a SHORT version (2-4 words), URL-encoded with +
+  Example: alt="Modern office with team collaborating" -> text=Team+Office
 
 {shortcodes_section}
 
