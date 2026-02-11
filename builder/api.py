@@ -2076,8 +2076,17 @@ def chat_generate_images(session_id: str):
 
 
 @frappe.whitelist()
-def chat_get_image_generation_status(job_id: str):
+def chat_get_image_generation_status(job_id: str = None, session_id: str = None):
 	"""Get the status of an image generation job."""
+	if not job_id and session_id:
+		# Look up job_id from session
+		session_name = frappe.db.get_value(
+			"Builder Chat Session", {"session_id": session_id}, "name"
+		)
+		if session_name:
+			job_id = frappe.db.get_value(
+				"Builder Chat Session", session_name, "image_job_id"
+			)
 	if not job_id:
 		return {"success": False, "message": _("Job ID is required")}
 	return _get_generation_status(job_id)
