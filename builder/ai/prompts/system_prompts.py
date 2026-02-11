@@ -416,244 +416,105 @@ def get_page_generation_prompt(
     if page_type:
         context += f"\nPage type: {page_type}"
 
-        # Add specific instructions based on page type
+        # Page instructions: context + goal + available tools
+        # The AI has full creative freedom over structure and sections
         page_instructions = {
             "one_page": """
-SPECIFIC INSTRUCTIONS FOR ONE-PAGE SITE:
-⚠️ VERY IMPORTANT: You must create ALL sections on ONE PAGE with IDs for anchor navigation.
+ONE-PAGE SITE:
+This is a complete website on a single page with anchor navigation.
+Present the business comprehensively: what they do, why they're great, and how to reach them.
 
-MANDATORY SECTIONS (4) with these EXACT IDs:
-1. Hero section with id="hero" → Navigation: /#hero
-2. Services section with id="services" → Navigation: /#services
-3. About section with id="about" → Navigation: /#about
-4. Contact section with id="contact" → Navigation: /#contact
+CRITICAL TECHNICAL REQUIREMENT — Anchor IDs:
+Each main section MUST have an attributes: {"id": "..."} for anchor navigation.
+The navigation menu uses these anchors: #hero, #services, #about, #contact
+You may add more sections with custom IDs (e.g., #testimonials, #portfolio, #faq).
 
-OPTIONAL SECTIONS (add 2-4 depending on context):
-- Testimonials with id="testimonials" → Navigation: /#testimonials
-- Portfolio with id="portfolio" → Navigation: /#portfolio
-- Team with id="team" → Navigation: /#team
-- FAQ with id="faq" → Navigation: /#faq
-- Pricing with id="pricing" → Navigation: /#pricing
-- Gallery with id="gallery" → Navigation: /#gallery
-
-GOAL: 6-8 sections for a complete, rich site.
-
-HOW TO ADD ID:
-Use the "attributes" with "id" for each main section:
-{
-  "blockId": "hero-section",
-  "element": "section",
-  "attributes": {"id": "hero"},
-  ...
-}
-
-EXPECTED CONTENT:
-- Hero (#hero): Catchy title, subtitle, main CTA (VARY the style!)
-- Services (#services): Present services/offers (3-4 cards)
-- About (#about): Story, values, team or key figures
-- Contact (#contact): Form with {% include 'builder/templates/includes/contact_form.html' %} + contact info
-
-DESIGN:
-- Alternate backgrounds (light/dark/colored) to distinguish sections
-- Use generous padding (100px+) for airy sections
-- Hero section: use minHeight "70vh" to "90vh" for visual impact
-- Ensure good visual transition between sections
-- VARY layouts: not just 3-column grids!""",
+AVAILABLE SHORTCODE:
+- Contact form: {% include 'builder/templates/includes/contact_form.html' %}
+  Place it in the contact section to give visitors a way to reach out.""",
 
             "accueil": """
-SPECIFIC INSTRUCTIONS FOR HOMEPAGE (6-8 sections):
-
-1. HERO SECTION (MANDATORY - make it SPECTACULAR):
-   - Use a full-width background image with color overlay (backgroundImage CSS)
-   - OR a bold gradient with split layout (image left/right)
-   - minHeight: "80vh" to "90vh" for strong first impression
-   - Catchy title, engaging subtitle, primary CTA button
-   - VARY the layout: centered text, left-aligned with image right, etc.
-
-2. SERVICES/FEATURES SECTION:
-   - Present 3-4 main services or key features
-   - Use cards with icons or images
-   - Vary layout: 3-column grid, zigzag, or bento grid
-
-3. ABOUT/STORY SECTION:
-   - Brief company story or value proposition
-   - Split layout with image (60/40 or 50/50)
-   - Key figures or stats if relevant
-
-4. TESTIMONIALS/TRUST SECTION (recommended):
-   - Customer quotes with names and roles
-   - Partner logos or certifications
-   - Trust-building elements
-
-5. CTA SECTION:
-   - Strong call-to-action before footer
-   - Colored or gradient background for emphasis
-   - Clear next step for the visitor
-
-DESIGN VARIETY - alternate between these patterns:
-- Section 1: Dark/colored background (hero with image)
-- Section 2: White background
-- Section 3: Light gray (#f8fafc) background
-- Section 4: White background
-- Section 5: Colored/gradient background (CTA)
-
-This page must make visitors want to explore the entire site.""",
+HOMEPAGE:
+This is the front door of the website. First impressions matter.
+Captivate the visitor immediately, tell the brand's story, and make them want to explore further.
+The AI has full creative freedom over structure and content.""",
 
             "accueil_ecommerce": """
-SPECIFIC INSTRUCTIONS FOR E-COMMERCE HOMEPAGE (7-9 sections):
+E-COMMERCE HOMEPAGE:
+This is a homepage first, shop second. The visitor should discover the brand's story,
+feel trust and excitement, and be naturally drawn to explore products.
+Balance storytelling with product showcase — don't just list products.
 
-1. HERO SECTION (MANDATORY - make it SPECTACULAR):
-   - Use a full-width background image with color overlay (backgroundImage CSS)
-   - OR a bold gradient with split layout (image left/right)
-   - minHeight: "80vh" to "90vh" for strong first impression
-   - Catchy title about the products/brand, engaging subtitle, primary CTA button
-   - VARY the layout: centered text, left-aligned with image right, etc.
+AVAILABLE E-COMMERCE SHORTCODES (use where it feels natural):
+- Product carousel: {%- set carousel_title = "Title here" -%}{%- set carousel_limit = 8 -%}{% include "webshop/templates/includes/product_carousel.html" %}
+- Brand carousel: {%- set carousel_title = "Our Brands" -%}{% include "webshop/templates/includes/brand_carousel.html" %}
+- Sale products: {%- set show_discounted_only = true -%}{% include "webshop/templates/includes/product_carousel.html" %}
 
-2. PRODUCT CATEGORIES SECTION:
-   - Present 3-4 product categories as large visual cards with images
-   - Each card links to /all-products (or specific category)
-   - Use a grid layout (2x2 or 3-column)
+TECHNICAL CONSTRAINTS:
+- Shortcodes MUST be placed as innerHTML of a simple <section> or <div> — NOT inside grid/flex containers
+- NEVER use dark backgrounds (#0a0a0a, #141414) for product sections — products need WHITE or LIGHT backgrounds
+- Full shop link: /all-products""",
 
-3. NEW ARRIVALS / FEATURED PRODUCTS (use shortcode):
-   {%- set carousel_title = "New Arrivals" -%}
-   {%- set carousel_limit = 8 -%}
-   {% include "webshop/templates/includes/product_carousel.html" %}
+            "about": """
+ABOUT PAGE:
+Tell the company's story in an engaging way. Humanize the brand.
+Create an emotional connection with the visitor through the company's history, values, and people.
 
-4. WHY US / VALUE PROPOSITION SECTION:
-   - Free shipping, quality guarantee, local products, etc.
-   - 3-4 icons/cards with short descriptions
-   - Light background for readability
+AVAILABLE SHORTCODES (use if relevant):
+- Team grid: {% include 'builder/templates/includes/team_grid.html' %}
+- Company timeline: {% include 'builder/templates/includes/company_timeline.html' %}""",
 
-5. BRAND CAROUSEL (if relevant, use shortcode):
-   {%- set carousel_title = "Our Brands" -%}
-   {% include "webshop/templates/includes/brand_carousel.html" %}
+            "services": """
+SERVICES PAGE:
+Present the company's services clearly and attractively.
+Help visitors understand what's offered and why it matters to them.""",
 
-6. TESTIMONIALS / TRUST SECTION (recommended):
-   - Customer reviews with names
-   - Trust badges or certifications
+            "contact": """
+CONTACT PAGE:
+Make it easy and inviting for visitors to get in touch. Build trust.
+This page must have visual substance — not just a bare form.
 
-7. CTA SECTION:
-   - Strong call-to-action: "Discover our full collection" -> /all-products
-   - Colored or gradient background for emphasis
+AVAILABLE SHORTCODES:
+- Contact form: {% include 'builder/templates/includes/contact_form.html' %}
+- Google map: {% set address = "Full address" %}{% set height = "400px" %}{% include 'builder/templates/includes/google_map.html' %}
+- Contact info block: {% include 'builder/templates/includes/contact_info.html' %}
 
-AVAILABLE E-COMMERCE SHORTCODES (use them!):
+NOTE: Create at least 4 sections — a contact page with only a form feels empty.""",
+
+            "produits": """
+PRODUCTS PAGE:
+Showcase products attractively with images, prices, and key features.
+Help visitors find what they're looking for.""",
+
+            "blog": """
+BLOG PAGE:
+Create an article grid with previews, dates, authors, and images.
+Make it easy to browse and discover content.""",
+
+            "collection": """
+COLLECTION PAGE:
+Showcase product collections or categories — not the full catalog.
+Drive visitors toward specific product groups.
+
+AVAILABLE E-COMMERCE SHORTCODES:
 - Product carousel: {%- set carousel_title = "Title" -%}{%- set carousel_limit = 8 -%}{% include "webshop/templates/includes/product_carousel.html" %}
 - Brand carousel: {%- set carousel_title = "Our Brands" -%}{% include "webshop/templates/includes/brand_carousel.html" %}
 - Sale products: {%- set show_discounted_only = true -%}{% include "webshop/templates/includes/product_carousel.html" %}
 
-DESIGN:
-- Section backgrounds MUST alternate: hero (dark/image) -> white -> light gray -> white -> colored CTA
-- NEVER use dark backgrounds (#0a0a0a, #141414) for product sections - products need WHITE or LIGHT backgrounds
-- Cards: always white background (#ffffff) with subtle shadow
-- This page must showcase products and make visitors want to shop""",
-
-            "about": """
-SPECIFIC INSTRUCTIONS FOR ABOUT PAGE:
-- Tell the company story in an engaging way
-- Highlight values and mission
-- Include key figures (years of experience, satisfied clients, etc.)
-
-AVAILABLE SHORTCODES FOR THIS PAGE:
-- For team: {% include 'builder/templates/includes/team_grid.html' %}
-- For history: {% include 'builder/templates/includes/company_timeline.html' %}
-
-SUGGESTED STRUCTURE (5-6 sections):
-1. Hero "Our Story" with engaging title and subtitle
-2. Company presentation section
-3. Values section (3-4 visual cards)
-4. Team section with team_grid shortcode
-5. History/timeline section with company_timeline shortcode
-6. Key figures section (impressive stats)""",
-
-            "services": """
-SPECIFIC INSTRUCTIONS FOR SERVICES PAGE:
-- Present each service clearly and attractively
-- Use icons or illustrations for each service
-- Add details about benefits for the client
-- Include a CTA to request a quote or learn more""",
-
-            "contact": """
-SPECIFIC INSTRUCTIONS FOR CONTACT PAGE (4-5 sections minimum):
-
-1. HERO SECTION (required):
-   - Catchy title ("Contact Us", "Let's Talk About Your Project", "Get in Touch")
-   - Engaging subtitle explaining why to contact them
-   - Background with gradient or primary color (NOT white!)
-   - minHeight: "60vh" to "70vh" for visual impact, generous padding (80px-100px)
-
-2. FORM + INFO SECTION (2 columns):
-   - Left column: {% include 'builder/templates/includes/contact_form.html' %}
-   - Right column: Contact information (address, phone, email, hours)
-   - Light background (#ffffff or #f8fafc)
-
-3. GOOGLE MAPS SECTION (full width):
-   - {% set address = "Full address here" %}{% set height = "400px" %}{% include 'builder/templates/includes/google_map.html' %}
-
-4. ADDITIONAL INFO SECTION (optional):
-   - Detailed opening hours
-   - Quick FAQ about contact
-   - Or social media
-
-5. FINAL CTA SECTION (optional):
-   - Encouragement to get in touch
-   - "Urgent question? Call us!"
-   - Phone or email button
-
-AVAILABLE SHORTCODES:
-- Form: {% include 'builder/templates/includes/contact_form.html' %}
-- Map: {% set address = "..." %}{% set height = "400px" %}{% include 'builder/templates/includes/google_map.html' %}
-- Contact info: {% include 'builder/templates/includes/contact_info.html' %}
-
-⚠️ Do NOT generate a page with only 2 blocks! Minimum 4 sections.""",
-
-            "produits": """
-SPECIFIC INSTRUCTIONS FOR PRODUCTS PAGE:
-- Present products with attractive images
-- Include prices and main features
-- Add filters or categories if many products
-- Use e-commerce shortcodes if available""",
-
-            "blog": """
-SPECIFIC INSTRUCTIONS FOR BLOG PAGE:
-- Create an article grid with previews
-- Include date, author and image for each article
-- Add categories or tags
-- Plan for pagination""",
-
-            "collection": """
-SPECIFIC INSTRUCTIONS FOR COLLECTION PAGE:
-- Present product categories or collections attractively
-- Highlight featured products or new arrivals
-- DO NOT display all products (full shop is at /all-products)
-- Include a CTA link to full shop: "View all products" → /all-products
-
-AVAILABLE E-COMMERCE SHORTCODES:
-1. Product carousel:
-   {%- set carousel_title = "New Arrivals" -%}
-   {%- set carousel_limit = 8 -%}
-   {% include "webshop/templates/includes/product_carousel.html" %}
-
-2. Brand carousel:
-   {%- set carousel_title = "Our Brands" -%}
-   {% include "webshop/templates/includes/brand_carousel.html" %}
-
-3. Sale products:
-   {%- set show_discounted_only = true -%}
-   {% include "webshop/templates/includes/product_carousel.html" %}
-
-SUGGESTED STRUCTURE:
-1. Hero with title "Our Collections" or "Discover our selection"
-2. Categories/collections section (3-4 large cards with images)
-3. New arrivals section with product_carousel shortcode
-4. Brands section with brand_carousel shortcode (if relevant)
-5. CTA to full shop""",
+TECHNICAL CONSTRAINTS:
+- Shortcodes MUST be in a simple full-width container, not inside grid/flex
+- Full shop link: /all-products""",
 
             "boutique": """
-SPECIFIC INSTRUCTIONS FOR COLLECTION PAGE:
-- This page presents collections, not all products
-- Use visual cards for categories
-- Include link to /all-products for full shop
-- Same instructions as "collection" type above""",
+SHOP PAGE:
+Present collections and product categories visually.
+Same tools available as collection page.
+
+AVAILABLE E-COMMERCE SHORTCODES:
+- Product carousel: {%- set carousel_title = "Title" -%}{%- set carousel_limit = 8 -%}{% include "webshop/templates/includes/product_carousel.html" %}
+- Brand carousel: {%- set carousel_title = "Our Brands" -%}{% include "webshop/templates/includes/brand_carousel.html" %}
+
+TECHNICAL CONSTRAINT: Shortcodes must be in a full-width container, not inside grid/flex.""",
         }
 
         if page_type in page_instructions:
