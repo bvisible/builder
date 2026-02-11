@@ -165,6 +165,9 @@ class PageGenerator:
             blocks = self._inject_fonts(blocks, design_brief)
             # Note: _auto_fix_styles removed - AI should decide heights/styles
 
+        # Sanitize Jinja includes — fix or remove invalid template paths
+        blocks = self._sanitize_jinja_includes(blocks)
+
         # Log summary of generated blocks
         first_block_info = None
         if blocks:
@@ -389,6 +392,99 @@ class PageGenerator:
             process_block(block)
 
         return blocks
+
+    # Known valid Jinja include paths
+    VALID_INCLUDES = {
+        # Builder templates
+        "builder/templates/includes/contact_form.html",
+        "builder/templates/includes/contact_info.html",
+        "builder/templates/includes/team_grid.html",
+        "builder/templates/includes/company_timeline.html",
+        "builder/templates/includes/google_map.html",
+        # Webshop templates
+        "webshop/templates/includes/product_carousel.html",
+        "webshop/templates/includes/brand_carousel.html",
+        # Frappe templates
+        "templates/generators/webpage_scripts.html",
+    }
+
+    # Map of wrong paths to correct paths
+    INCLUDE_CORRECTIONS = {
+        "webshop/templates/includes/contact_form.html": "builder/templates/includes/contact_form.html",
+        "webshop/templates/includes/contact_info.html": "builder/templates/includes/contact_info.html",
+        "webshop/templates/includes/team_grid.html": "builder/templates/includes/team_grid.html",
+        "webshop/templates/includes/google_map.html": "builder/templates/includes/google_map.html",
+    }
+
+    def _sanitize_jinja_includes(self, blocks: list[dict]) -> list[dict]:
+        """
+        Sanitize Jinja {% include %} in innerHTML fields.
+        Fixes wrong template paths and removes includes to non-existent templates.
+        """
+        import re
+
+        include_pattern = re.compile(
+            r"""{%[-\s]*include\s+['"]([^'"]+)['"]\s*[-\s]*%}"""
+        )
+
+        def sanitize_block(block: dict) -> bool:
+            """Sanitize a block's innerHTML. Returns False if block should be removed."""
+            inner = block.get("innerHTML", "")
+            if not inner or "{%" not in inner:
+                # Recurse into children
+                if block.get("children"):
+                    block["children"] = [
+                        c for c in block["children"]
+                        if not isinstance(c, dict) or sanitize_block(c)
+                    ]
+                return True
+
+            matches = include_pattern.findall(inner)
+            for template_path in matches:
+                if template_path in self.VALID_INCLUDES:
+                    continue
+
+                # Try to correct the path
+                corrected = self.INCLUDE_CORRECTIONS.get(template_path)
+                if corrected:
+                    ai_log("warning", "Correcting Jinja include path",
+                           wrong=template_path, corrected=corrected)
+                    inner = inner.replace(template_path, corrected)
+                    block["innerHTML"] = inner
+                else:
+                    # Unknown template — remove the include
+                    ai_log("warning", "Removing invalid Jinja include",
+                           template=template_path,
+                           blockId=block.get("blockId"))
+                    # Remove the entire include tag
+                    bad_pattern = re.compile(
+                        r"""{%[-\s]*include\s+['"]""" + re.escape(template_path) + r"""['"]\s*[-\s]*%}"""
+                    )
+                    inner = bad_pattern.sub("", inner).strip()
+                    block["innerHTML"] = inner
+
+            # If innerHTML is now empty, signal removal
+            if not block.get("innerHTML", "").strip() and not block.get("children"):
+                return False
+
+            # Recurse into children
+            if block.get("children"):
+                block["children"] = [
+                    c for c in block["children"]
+                    if not isinstance(c, dict) or sanitize_block(c)
+                ]
+            return True
+
+        # Process top-level blocks, removing empty ones
+        result = []
+        for block in blocks:
+            if sanitize_block(block):
+                result.append(block)
+            else:
+                ai_log("info", "Removed empty block after Jinja sanitization",
+                       blockId=block.get("blockId"))
+
+        return result
 
     def _auto_fix_styles(self, blocks: list[dict], brief: DesignBrief) -> list[dict]:
         """
