@@ -254,6 +254,17 @@ class BuilderChatService:
 				response_content = company_presentation["content"]
 				parsed["buttons"] = company_presentation.get("buttons")
 
+			# Check step transition BEFORE computing buttons
+			prev_step = session.current_step
+			self._check_step_transition(session)
+
+			# If we just entered page_selection, override with selection UI
+			if session.current_step == "page_selection" and prev_step != "page_selection":
+				recap = self._get_pages_recap(session)
+				selection_msg = _("Would you like to add optional pages to your site?")
+				response_content = recap + "\n\n" + selection_msg
+				parsed["buttons"] = self._get_page_selection_buttons(session)
+
 			# Ensure buttons are always present — fallback if AI didn't provide any
 			if not parsed.get("buttons"):
 				parsed["buttons"] = self._get_fallback_buttons(session)
@@ -265,9 +276,6 @@ class BuilderChatService:
 				buttons=parsed.get("buttons"),
 				extracted_data=extracted if extracted else None
 			)
-
-			# Check step transition
-			self._check_step_transition(session)
 
 			session.save(ignore_permissions=True)
 
