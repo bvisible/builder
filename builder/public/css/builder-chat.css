@@ -691,3 +691,43 @@ body:has([data-page-container="builder-chat"]) .container {
 	background: var(--control-bg);
 	color: var(--text-muted);
 }
+
+/* Chat Table (markdown tables in messages) */
+.chat-table {
+	width: 100%;
+	border-collapse: collapse;
+	margin: 8px 0;
+	font-size: 13px;
+}
+
+.chat-table th,
+.chat-table td {
+	padding: 8px 12px;
+	text-align: left;
+	border-bottom: 1px solid var(--border-color, #e2e8f0);
+}
+
+.chat-table th {
+	font-weight: 600;
+	background: rgba(0, 0, 0, 0.03);
+	font-size: 12px;
+	text-transform: uppercase;
+	letter-spacing: 0.3px;
+	color: var(--text-muted);
+}
+
+.chat-table tr:last-child td {
+	border-bottom: none;
+}
+
+[data-theme="dark"] .chat-table th,
+.dark .chat-table th {
+	background: rgba(255, 255, 255, 0.05);
+}
+
+[data-theme="dark"] .chat-table th,
+[data-theme="dark"] .chat-table td,
+.dark .chat-table th,
+.dark .chat-table td {
+	border-color: var(--border-color);
+}

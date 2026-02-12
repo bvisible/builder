@@ -543,6 +543,27 @@ frappe.ui.BuilderChatPage = class BuilderChatPage {
 		result = result.replace(/\*\*([^*]+)\*\*/g, '<strong>$1</strong>');
 		result = result.replace(/\*([^*]+)\*/g, '<em>$1</em>');
 		result = result.replace(/\[([^\]]+)\]\(([^)]+)\)/g, '<a href="$2" target="_blank">$1</a>');
+
+		// Table support: convert markdown tables to HTML
+		result = result.replace(/((?:^|\n)\|.+\|\n\|[-\s:|]+\|\n(?:\|.+\|(?:\n|$))+)/g, function(tableBlock) {
+			const lines = tableBlock.trim().split('\n');
+			if (lines.length < 3) return tableBlock;
+			const parseRow = (row) => row.split('|').slice(1, -1).map(c => c.trim());
+			const headers = parseRow(lines[0]);
+			const bodyRows = lines.slice(2).filter(r => r.trim());
+			let html = '<table class="chat-table"><thead><tr>';
+			headers.forEach(h => { html += '<th>' + h + '</th>'; });
+			html += '</tr></thead><tbody>';
+			bodyRows.forEach(row => {
+				const cells = parseRow(row);
+				html += '<tr>';
+				cells.forEach(c => { html += '<td>' + c + '</td>'; });
+				html += '</tr>';
+			});
+			html += '</tbody></table>';
+			return html;
+		});
+
 		result = result.replace(/\n/g, '<br>');
 		return result;
 	}
