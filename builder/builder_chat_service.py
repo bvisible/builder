@@ -877,12 +877,21 @@ When all required fields are collected, congratulate the user and tell them they
 				{"label": _("Continue"), "value": "__SKIP_OPTIONAL_PAGES__"},
 			]
 
+		# Filter out pages already in pages_config
+		existing_routes = set()
+		try:
+			existing_pages = json.loads(session.pages_config or "[]")
+			existing_routes = {p.get("route") for p in existing_pages}
+		except (json.JSONDecodeError, TypeError):
+			pass
+
 		buttons = []
 		for page in optional:
-			buttons.append({
-				"label": page["title"],
-				"value": f"__ADD_PAGE_{page['route']}__",
-			})
+			if page["route"] not in existing_routes:
+				buttons.append({
+					"label": page["title"],
+					"value": f"__ADD_PAGE_{page['route']}__",
+				})
 		buttons.append({"label": _("No additional pages"), "value": "__SKIP_OPTIONAL_PAGES__"})
 		buttons.append({"label": _("Custom page"), "value": "__ADD_CUSTOM_PAGE__"})
 		return buttons
@@ -900,7 +909,7 @@ When all required fields are collected, congratulate the user and tell them they
 		pages = json.loads(session.pages_config or "[]")
 		# Avoid duplicates
 		if any(p.get("route") == route for p in pages):
-			return page_def["title"]
+			return None
 
 		pages.append({"title": page_def["title"], "route": page_def["route"], "type": page_def["type"]})
 		session.pages_config = json.dumps(pages)
