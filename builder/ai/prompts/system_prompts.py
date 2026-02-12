@@ -508,8 +508,20 @@ Help visitors find what they're looking for.""",
 
             "blog": """
 BLOG PAGE:
-Create an article grid with previews, dates, authors, and images.
-Make it easy to browse and discover content.""",
+Display published blog articles dynamically using the Blog Listing shortcode.
+Do NOT create fake static articles — use the shortcode which fetches real Blog Post data.
+
+BLOG LISTING SHORTCODE:
+{%- set blog_title = "Latest Articles" -%}
+{%- set blog_limit = 6 -%}
+{%- set blog_layout = "grid" -%}
+{%- set view_more_link = "/blog" -%}
+{% include "builder/templates/includes/blog_listing.html" %}
+
+Parameters: blog_title, blog_category (filter), blog_limit (default 6), blog_sort_by (default published_on), blog_layout (grid/list), view_more_link, view_more_text.
+
+TECHNICAL CONSTRAINT: The shortcode MUST be in a simple full-width container, not inside grid/flex.
+Add a hero section above the blog listing with the page title and a short introduction.""",
 
             "collection": """
 COLLECTION PAGE:

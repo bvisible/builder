@@ -39,9 +39,13 @@
   "job_id",
   "generation_status",
   "generation_progress",
+  "generation_mode",
   "column_break_gen",
   "generated_pages",
   "image_job_id",
+  "homepage_feedback",
+  "homepage_iterations",
+  "saved_brief",
   "section_meta",
   "missing_fields",
   "validation_errors"
@@ -69,7 +73,7 @@
    "fieldtype": "Select",
    "in_list_view": 1,
    "label": "Status",
-   "options": "Active\nGenerating\nCompleted\nFailed\nAbandoned"
+   "options": "Active\nGenerating\nHomepage Ready\nCompleted\nFailed\nAbandoned"
   },
   {
    "default": "description",
@@ -77,7 +81,7 @@
    "fieldtype": "Select",
    "in_list_view": 1,
    "label": "Current Step",
-   "options": "description\nstyle\npages\ngeneration"
+   "options": "description\nstyle\npages\npage_selection\ngeneration\nfeedback"
   },
   {
    "default": "0",
@@ -235,6 +239,12 @@
    "read_only": 1
   },
   {
+   "fieldname": "generation_mode",
+   "fieldtype": "Select",
+   "label": "Generation Mode",
+   "options": "\nfull\nprogressive"
+  },
+  {
    "fieldname": "column_break_gen",
    "fieldtype": "Column Break"
   },
@@ -249,6 +259,23 @@
    "fieldtype": "Data",
    "label": "Image Job ID",
    "read_only": 1
+  },
+  {
+   "fieldname": "homepage_feedback",
+   "fieldtype": "Small Text",
+   "label": "Homepage Feedback"
+  },
+  {
+   "default": "0",
+   "fieldname": "homepage_iterations",
+   "fieldtype": "Int",
+   "label": "Homepage Iterations"
+  },
+  {
+   "fieldname": "saved_brief",
+   "fieldtype": "JSON",
+   "hidden": 1,
+   "label": "Saved Brief"
   },
   {
    "collapsible": 1,

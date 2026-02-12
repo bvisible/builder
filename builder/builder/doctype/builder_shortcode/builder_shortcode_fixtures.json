@@ -82,5 +82,17 @@
     "usage_syntax": "{% include \"webshop/templates/includes/loyalty_points_form.html\" %}",
     "parameters": "[]",
     "example_code": "{% include \"webshop/templates/includes/loyalty_points_form.html\" %}"
+  },
+  {
+    "doctype": "Builder Shortcode",
+    "shortcode_name": "Blog Listing",
+    "category": "Content",
+    "enabled": 1,
+    "source_app": "builder",
+    "template_path": "builder/templates/includes/blog_listing.html",
+    "description": "Displays published Blog Posts in a responsive grid or list layout. Supports filtering by category, sorting, and custom limits. Shows a styled placeholder when no articles exist. Each card includes cover image, category badge, title, intro, and publication date.",
+    "usage_syntax": "{% include \"builder/templates/includes/blog_listing.html\" %}",
+    "parameters": "[{\"name\": \"blog_title\", \"type\": \"string\", \"default\": \"\", \"description\": \"Section title displayed above the listing\"}, {\"name\": \"blog_category\", \"type\": \"string\", \"default\": \"\", \"description\": \"Filter by Blog Category name\"}, {\"name\": \"blog_limit\", \"type\": \"integer\", \"default\": \"6\", \"description\": \"Maximum number of posts to display\"}, {\"name\": \"blog_sort_by\", \"type\": \"string\", \"default\": \"published_on\", \"description\": \"Sort field: published_on, creation, title\"}, {\"name\": \"blog_layout\", \"type\": \"string\", \"default\": \"grid\", \"description\": \"Layout mode: grid or list\"}, {\"name\": \"view_more_link\", \"type\": \"string\", \"default\": \"\", \"description\": \"URL for View More button\"}, {\"name\": \"view_more_text\", \"type\": \"string\", \"default\": \"View All Articles\", \"description\": \"Text for View More button\"}]",
+    "example_code": "{%- set blog_title = \"Latest Articles\" -%}\n{%- set blog_category = \"\" -%}\n{%- set blog_limit = 6 -%}\n{%- set blog_layout = \"grid\" -%}\n{%- set view_more_link = \"/blog\" -%}\n{% include \"builder/templates/includes/blog_listing.html\" %}"
   }
 ]

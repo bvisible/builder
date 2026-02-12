@@ -3352,3 +3352,136 @@ msgstr ""
 msgid "your.email@example.com"
 msgstr ""
 
+#: builder/templates/includes/blog_listing.html
+msgid "No articles yet"
+msgstr "Pas d'articles pour le moment"
+
+#: builder/templates/includes/blog_listing.html
+msgid "Articles will appear here once published. Create your first Blog Post to get started."
+msgstr "Les articles apparaîtront ici une fois publiés. Créez votre premier Blog Post pour commencer."
+
+#: builder/templates/includes/blog_listing.html
+msgid "View All Articles"
+msgstr "Voir tous les articles"
+
+#: builder/builder_chat_service.py
+msgid "No additional pages"
+msgstr "Pas de pages supplémentaires"
+
+#: builder/builder_chat_service.py
+msgid "Custom page"
+msgstr "Page personnalisée"
+
+#: builder/builder_chat_service.py
+msgid "Continue"
+msgstr "Continuer"
+
+#: builder/builder_chat_service.py
+msgid "Page **{title}** added!"
+msgstr "Page **{title}** ajoutée !"
+
+#: builder/builder_chat_service.py
+msgid "Want to add more pages?"
+msgstr "Voulez-vous ajouter d'autres pages ?"
+
+#: builder/builder_chat_service.py
+msgid "This page is already in your list."
+msgstr "Cette page est déjà dans votre liste."
+
+#: builder/builder_chat_service.py
+msgid "Perfect!"
+msgstr "Parfait !"
+
+#: builder/builder_chat_service.py
+msgid "How would you like to generate?"
+msgstr "Comment souhaitez-vous générer ?"
+
+#: builder/builder_chat_service.py
+msgid "Generate entire site"
+msgstr "Générer tout le site"
+
+#: builder/builder_chat_service.py
+msgid "Homepage first"
+msgstr "La page d'accueil d'abord"
+
+#: builder/builder_chat_service.py
+msgid "Pages to generate:"
+msgstr "Pages à générer :"
+
+#: builder/builder_chat_service.py
+msgid "What should this page be called? (e.g. \"Recruitment\", \"FAQ\", \"Pricing\")"
+msgstr "Comment cette page doit-elle s'appeler ? (ex : \"Recrutement\", \"FAQ\", \"Tarifs\")"
+
+#: builder/builder_chat_service.py
+msgid "The homepage looks good!"
+msgstr "La page d'accueil est bien !"
+
+#: builder/builder_chat_service.py
+msgid "Generating the remaining pages with the refined design..."
+msgstr "Génération des pages restantes avec le design affiné..."
+
+#: builder/builder_chat_service.py
+msgid "What would you like to change? Describe your feedback and I'll regenerate the homepage."
+msgstr "Que souhaitez-vous modifier ? Décrivez vos retours et je régénèrerai la page d'accueil."
+
+#: builder/builder_chat_service.py
+msgid "Regenerating the homepage with your feedback..."
+msgstr "Régénération de la page d'accueil avec vos retours..."
+
+#: builder/api.py
+msgid "Session not found"
+msgstr "Session non trouvée"
+
+#: builder/api.py
+msgid "No saved brief found in session"
+msgstr "Aucun brief sauvegardé dans la session"
+
+#: builder/api.py
+msgid "Maximum homepage iterations reached (2). Proceeding with current version."
+msgstr "Nombre maximum d'itérations de la page d'accueil atteint (2). Poursuite avec la version actuelle."
+
+#. Label of the 'Generation Mode' (Select) field in DocType 'Builder Chat Session'
+#: builder/builder/doctype/builder_chat_session/builder_chat_session.json
+msgid "Generation Mode"
+msgstr "Mode de génération"
+
+#. Label of the 'Homepage Feedback' (Small Text) field in DocType 'Builder Chat Session'
+#: builder/builder/doctype/builder_chat_session/builder_chat_session.json
+msgid "Homepage Feedback"
+msgstr "Retour sur la page d'accueil"
+
+#. Label of the 'Homepage Iterations' (Int) field in DocType 'Builder Chat Session'
+#: builder/builder/doctype/builder_chat_session/builder_chat_session.json
+msgid "Homepage Iterations"
+msgstr "Itérations de la page d'accueil"
+
+#. Label of the 'Saved Brief' (JSON) field in DocType 'Builder Chat Session'
+#: builder/builder/doctype/builder_chat_session/builder_chat_session.json
+msgid "Saved Brief"
+msgstr "Brief sauvegardé"
+
+#. Option for the 'Status' (Select) field in DocType 'Builder Chat Session'
+#: builder/builder/doctype/builder_chat_session/builder_chat_session.json
+msgid "Homepage Ready"
+msgstr "Page d'accueil prête"
+
+#. Option for the 'Current Step' (Select) field in DocType 'Builder Chat Session'
+#: builder/builder/doctype/builder_chat_session/builder_chat_session.json
+msgid "page_selection"
+msgstr ""
+
+#. Option for the 'Current Step' (Select) field in DocType 'Builder Chat Session'
+#: builder/builder/doctype/builder_chat_session/builder_chat_session.json
+msgid "feedback"
+msgstr ""
+
+#. Option for the 'Generation Mode' (Select) field in DocType 'Builder Chat Session'
+#: builder/builder/doctype/builder_chat_session/builder_chat_session.json
+msgid "full"
+msgstr ""
+
+#. Option for the 'Generation Mode' (Select) field in DocType 'Builder Chat Session'
+#: builder/builder/doctype/builder_chat_session/builder_chat_session.json
+msgid "progressive"
+msgstr ""
+

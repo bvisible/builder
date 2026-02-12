@@ -368,6 +368,7 @@ class BriefGenerator:
         pages_config: list[dict] = None,
         heading_font: str = None,
         body_font: str = None,
+        revision_instructions: str = None,
     ) -> DesignBrief:
         """
         Generate a design brief for the site.
@@ -448,8 +449,16 @@ Focus on:
 4. Hero styling that matches the theme
 5. Appropriate spacing for the site type
 
-Return ONLY the JSON object, no markdown code blocks.
-"""
+Return ONLY the JSON object, no markdown code blocks."""
+
+        # Append revision instructions if provided (progressive generation feedback)
+        if revision_instructions:
+            user_prompt += f"""
+
+REVISION INSTRUCTIONS (from user feedback):
+{revision_instructions}
+
+IMPORTANT: Apply these revision instructions to the design brief. Adjust colors, styles, spacing, or any other aspect mentioned in the feedback while keeping the overall site cohesive."""
 
         try:
             # Use configurable think level for creative design decisions
@@ -497,6 +506,7 @@ Return ONLY the JSON object, no markdown code blocks.
         max_retries: int = 2,
         heading_font: str = None,
         body_font: str = None,
+        revision_instructions: str = None,
     ) -> tuple[DesignBrief, BriefValidationResult]:
         """
         Generate a design brief with validation and automatic retry.
@@ -551,6 +561,7 @@ Make sure ALL fields are properly filled with valid values."""
                 pages_config=pages_config,
                 heading_font=heading_font,
                 body_font=body_font,
+                revision_instructions=revision_instructions if attempt == 0 else None,
             )
 
             # Validate

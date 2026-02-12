@@ -155,6 +155,50 @@ DEFAULT_PAGES_BY_SITE_TYPE = {
 	],
 }
 
+# Optional pages available per site type (proposed in chat, user selects)
+OPTIONAL_PAGES_BY_SITE_TYPE = {
+	"vitrine": [
+		{"title": "FAQ", "route": "faq", "type": "faq", "description": "Frequently asked questions"},
+		{"title": "Équipe", "route": "team", "type": "team", "description": "Team members presentation"},
+		{"title": "Blog", "route": "articles", "type": "blog", "description": "Blog articles listing"},
+		{"title": "Témoignages", "route": "testimonials", "type": "testimonials", "description": "Customer testimonials"},
+	],
+	"vitrine_user": [
+		{"title": "FAQ", "route": "faq", "type": "faq", "description": "Frequently asked questions"},
+		{"title": "Équipe", "route": "team", "type": "team", "description": "Team members presentation"},
+		{"title": "Blog", "route": "articles", "type": "blog", "description": "Blog articles listing"},
+		{"title": "Témoignages", "route": "testimonials", "type": "testimonials", "description": "Customer testimonials"},
+	],
+	"ecommerce": [
+		{"title": "FAQ", "route": "faq", "type": "faq", "description": "Frequently asked questions"},
+		{"title": "Livraison", "route": "shipping", "type": "custom", "description": "Shipping information"},
+		{"title": "CGV", "route": "terms", "type": "custom", "description": "Terms and conditions"},
+		{"title": "Blog", "route": "articles", "type": "blog", "description": "Blog articles listing"},
+	],
+	"ecommerce_search": [
+		{"title": "FAQ", "route": "faq", "type": "faq", "description": "Frequently asked questions"},
+		{"title": "Livraison", "route": "shipping", "type": "custom", "description": "Shipping information"},
+		{"title": "CGV", "route": "terms", "type": "custom", "description": "Terms and conditions"},
+		{"title": "Blog", "route": "articles", "type": "blog", "description": "Blog articles listing"},
+	],
+	"blog": [
+		{"title": "FAQ", "route": "faq", "type": "faq", "description": "Frequently asked questions"},
+		{"title": "Équipe", "route": "team", "type": "team", "description": "Team members presentation"},
+		{"title": "Portfolio", "route": "portfolio", "type": "portfolio", "description": "Portfolio / projects showcase"},
+	],
+	"saas": [
+		{"title": "FAQ", "route": "faq", "type": "faq", "description": "Frequently asked questions"},
+		{"title": "Blog", "route": "articles", "type": "blog", "description": "Blog articles listing"},
+		{"title": "Équipe", "route": "team", "type": "team", "description": "Team members presentation"},
+		{"title": "Changelog", "route": "changelog", "type": "custom", "description": "Product changelog"},
+	],
+	"portfolio": [
+		{"title": "Blog", "route": "articles", "type": "blog", "description": "Blog articles listing"},
+		{"title": "Témoignages", "route": "testimonials", "type": "testimonials", "description": "Customer testimonials"},
+		{"title": "Services", "route": "services", "type": "services", "description": "Services offered"},
+	],
+}
+
 
 # =============================================================================
 # AI GENERATION API (Creative AI with full freedom)
@@ -296,6 +340,8 @@ def generate_complete_site(
 	session_id: str = None,
 	heading_font: str = None,
 	body_font: str = None,
+	pages_config: str = None,
+	generation_mode: str = "full",
 ):
 	"""
 	Generate a complete site asynchronously.
@@ -328,16 +374,27 @@ def generate_complete_site(
 
 	print(f"[SITE_GEN] Starting generate_complete_site: job_id={job_id}, site_type={site_type}, site_name={site_name}")
 
+	# Parse pages_config if provided as JSON string
+	resolved_pages = None
+	if pages_config:
+		if isinstance(pages_config, str):
+			resolved_pages = json.loads(pages_config)
+		else:
+			resolved_pages = pages_config
+	if not resolved_pages:
+		resolved_pages = DEFAULT_PAGES_BY_SITE_TYPE.get(site_type, DEFAULT_PAGES_BY_SITE_TYPE["vitrine"])
+
 	# Initialize job status in cache
 	_update_generation_status(job_id, {
 		"status": "queued",
 		"progress": 0,
-		"total_pages": len(DEFAULT_PAGES_BY_SITE_TYPE.get(site_type, DEFAULT_PAGES_BY_SITE_TYPE["vitrine"])),
+		"total_pages": len(resolved_pages),
 		"current_page": None,
 		"pages_created": [],
 		"error": None,
 		"site_name": site_name,
 		"created_at": frappe.utils.now(),
+		"generation_mode": generation_mode,
 	})
 
 	# Enqueue the generation job
@@ -365,9 +422,11 @@ def generate_complete_site(
 		session_id=session_id,
 		heading_font=heading_font,
 		body_font=body_font,
+		pages_config=json.dumps(resolved_pages),
+		generation_mode=generation_mode,
 	)
 
-	print(f"[SITE_GEN] Job enqueued successfully: job_id={job_id}")
+	print(f"[SITE_GEN] Job enqueued successfully: job_id={job_id}, mode={generation_mode}")
 
 	return {
 		"job_id": job_id,
@@ -441,6 +500,8 @@ def _generate_complete_site_worker(
 	session_id: str = None,
 	heading_font: str = None,
 	body_font: str = None,
+	pages_config: str = None,
+	generation_mode: str = "full",
 ):
 	"""
 	Background worker for site generation.
@@ -449,12 +510,14 @@ def _generate_complete_site_worker(
 
 	Args:
 		generation_job_id: Our tracking ID for this generation job (not the RQ job_id)
+		pages_config: JSON string of pages to generate (overrides DEFAULT_PAGES_BY_SITE_TYPE)
+		generation_mode: "full" (all pages) or "progressive" (homepage first, then rest)
 	"""
 	# Use local variable for cleaner code
 	job_id = generation_job_id
 
 	print(f"[SITE_GEN_WORKER] ===== WORKER STARTED =====")
-	print(f"[SITE_GEN_WORKER] job_id={job_id}, site_type={site_type}, site_name={site_name}")
+	print(f"[SITE_GEN_WORKER] job_id={job_id}, site_type={site_type}, site_name={site_name}, mode={generation_mode}")
 
 	from builder.ai.generators.page_generator import PageGenerator
 	from builder.ai.config import get_ai_settings
@@ -462,7 +525,7 @@ def _generate_complete_site_worker(
 
 	# Log to dedicated file (survives worker crashes)
 	ai_log("info", "=== SITE GENERATION STARTED ===",
-		job_id=job_id, site_name=site_name, site_type=site_type)
+		job_id=job_id, site_name=site_name, site_type=site_type, generation_mode=generation_mode)
 	ai_log("info", "Configuration",
 		theme=theme, provider=provider, model=model, primary_color=primary_color)
 
@@ -473,7 +536,12 @@ def _generate_complete_site_worker(
 	ai_log("info", "AI settings loaded",
 		provider=ai_config.provider, model=ai_config.model)
 
-	pages_config = DEFAULT_PAGES_BY_SITE_TYPE.get(site_type, DEFAULT_PAGES_BY_SITE_TYPE["vitrine"])
+	# Use provided pages_config or fall back to defaults
+	if pages_config:
+		if isinstance(pages_config, str):
+			pages_config = json.loads(pages_config)
+	else:
+		pages_config = DEFAULT_PAGES_BY_SITE_TYPE.get(site_type, DEFAULT_PAGES_BY_SITE_TYPE["vitrine"])
 	total_pages = len(pages_config)
 	print(f"[SITE_GEN_WORKER] Pages to generate: {total_pages} - {[p['title'] for p in pages_config]}")
 
@@ -685,12 +753,18 @@ def _generate_complete_site_worker(
 		# =====================================================================
 		# STEP 3: Generate pages SEQUENTIALLY (simpler, more reliable)
 		# =====================================================================
-		ai_log("info", "Step 3: Starting sequential page generation", total_pages=total_pages)
+		# In progressive mode, only generate the homepage (first page)
+		pages_to_generate = pages_config
+		if generation_mode == "progressive":
+			pages_to_generate = pages_config[:1]
+			ai_log("info", "Progressive mode: generating homepage only", total_pages=1)
+		total_pages_to_gen = len(pages_to_generate)
+		ai_log("info", "Step 3: Starting sequential page generation", total_pages=total_pages_to_gen)
 		_update_generation_status(job_id, {
 			"status": "running",
 			"progress": 10,
-			"total_pages": total_pages,
-			"current_step": f"Generating {total_pages} pages...",
+			"total_pages": total_pages_to_gen,
+			"current_step": f"Generating {total_pages_to_gen} page{'s' if total_pages_to_gen > 1 else ''}...",
 			"current_page": None,
 			"pages_created": [],
 			"error": None,
@@ -706,18 +780,18 @@ def _generate_complete_site_worker(
 		MAX_PAGE_RETRIES = 2
 
 		generated_results = []
-		for idx, page_def in enumerate(pages_config):
+		for idx, page_def in enumerate(pages_to_generate):
 			page_title = page_def["title"]
-			ai_log("info", f"Generating page {idx + 1}/{total_pages}", page=page_title)
-			print(f"[SITE_GEN_WORKER] === Generating page {idx + 1}/{total_pages}: {page_title} ===")
+			ai_log("info", f"Generating page {idx + 1}/{total_pages_to_gen}", page=page_title)
+			print(f"[SITE_GEN_WORKER] === Generating page {idx + 1}/{total_pages_to_gen}: {page_title} ===")
 
 			# Update progress
-			progress = 10 + int((idx / total_pages) * 80)
+			progress = 10 + int((idx / total_pages_to_gen) * 80)
 			_update_generation_status(job_id, {
 				"status": "running",
 				"progress": progress,
-				"total_pages": total_pages,
-				"current_step": f"Generating page {idx + 1}/{total_pages}: {page_title}",
+				"total_pages": total_pages_to_gen,
+				"current_step": f"Generating page {idx + 1}/{total_pages_to_gen}: {page_title}",
 				"current_page": page_title,
 				"pages_created": [],
 				"error": None,
@@ -900,6 +974,54 @@ def _generate_complete_site_worker(
 				frappe.db.commit()
 				ai_log("info", "Brief compliance check completed",
 					total_fixes=total_fixes, pages_checked=len(created_pages))
+
+		# =====================================================================
+		# STEP 4.6: Progressive mode early return (homepage ready)
+		# =====================================================================
+		if generation_mode == "progressive" and created_pages:
+			ai_log("info", "Progressive mode: homepage ready, pausing generation",
+				homepage=created_pages[0]["title"])
+
+			# Save brief to session for later reuse
+			if session_id and design_brief:
+				try:
+					session_name = frappe.db.get_value(
+						"Builder Chat Session", {"session_id": session_id}, "name"
+					)
+					if session_name:
+						brief_json = design_brief.model_dump_json() if hasattr(design_brief, 'model_dump_json') else json.dumps(design_brief.__dict__, default=str)
+						frappe.db.set_value("Builder Chat Session", session_name, {
+							"saved_brief": brief_json,
+							"generation_mode": "progressive",
+							"homepage_iterations": 0,
+						}, update_modified=False)
+						frappe.db.commit()
+				except Exception as e:
+					ai_log("warning", "Failed to save brief to session", error=str(e)[:200])
+
+			end_time = time.time()
+			duration_seconds = int(end_time - start_time)
+			duration_str = f"{duration_seconds // 60}m {duration_seconds % 60}s"
+
+			_update_generation_status(job_id, {
+				"status": "homepage_ready",
+				"progress": 100,
+				"total_pages": total_pages,
+				"current_step": "Homepage ready — awaiting feedback",
+				"current_page": None,
+				"pages_created": created_pages,
+				"error": None,
+				"site_name": site_name,
+				"completed_at": frappe.utils.now(),
+				"duration_seconds": duration_seconds,
+				"duration": duration_str,
+				"generation_mode": "progressive",
+				"remaining_pages": len(pages_config) - 1,
+			})
+
+			# Update session status
+			_update_session_on_completion(session_id, job_id, "Homepage Ready", created_pages)
+			return  # Early return — remaining pages generated later via continue_generation()
 
 		# =====================================================================
 		# STEP 5: Update menu from created pages
@@ -1092,6 +1214,184 @@ def _generate_complete_site_worker(
 		# Update the chat session document in DB
 		_update_session_on_completion(session_id, job_id, "Failed", [])
 		raise
+
+
+@frappe.whitelist()
+def continue_generation(
+	session_id: str,
+	provider: str = None,
+	model: str = None,
+):
+	"""
+	Continue site generation after progressive homepage review.
+	Generates remaining pages using the saved brief from the session.
+	"""
+	session_name = frappe.db.get_value(
+		"Builder Chat Session", {"session_id": session_id}, "name"
+	)
+	if not session_name:
+		frappe.throw(_("Session not found"))
+
+	session = frappe.get_doc("Builder Chat Session", session_name)
+
+	# Restore brief
+	if not session.saved_brief:
+		frappe.throw(_("No saved brief found in session"))
+
+	# Get pages_config and skip the homepage (already generated)
+	pages_config = json.loads(session.pages_config or "[]")
+	if not pages_config:
+		pages_config = DEFAULT_PAGES_BY_SITE_TYPE.get(session.site_type, DEFAULT_PAGES_BY_SITE_TYPE["vitrine"])
+	remaining_pages = pages_config[1:]  # Skip homepage
+
+	if not remaining_pages:
+		return {"status": "completed", "message": "No remaining pages to generate"}
+
+	job_id = f"site_gen_{frappe.generate_hash(length=10)}"
+
+	_update_generation_status(job_id, {
+		"status": "queued",
+		"progress": 0,
+		"total_pages": len(remaining_pages),
+		"current_page": None,
+		"pages_created": [],
+		"error": None,
+		"site_name": session.site_name,
+		"created_at": frappe.utils.now(),
+		"generation_mode": "continue",
+	})
+
+	frappe.enqueue(
+		"builder.api._generate_complete_site_worker",
+		queue="long",
+		timeout=1800,
+		job_name=job_id,
+		generation_job_id=job_id,
+		prompt=session.site_description or "",
+		site_name=session.site_name or "",
+		site_type=session.site_type or "vitrine",
+		theme=session.theme or "modern",
+		primary_color=session.primary_color,
+		secondary_color=session.secondary_color,
+		logo_text=session.logo_text,
+		logo_image=session.logo_image,
+		cta_text=session.cta_text or "Contact",
+		cta_url=session.cta_url or "/contact",
+		social_links=session.social_links,
+		provider=provider,
+		model=model,
+		session_id=session_id,
+		heading_font=session.heading_font,
+		body_font=session.body_font,
+		pages_config=json.dumps(remaining_pages),
+		generation_mode="full",  # Generate all remaining pages normally
+	)
+
+	# Update session
+	session.job_id = job_id
+	session.generation_status = "generating"
+	session.save(ignore_permissions=True)
+	frappe.db.commit()
+
+	return {"job_id": job_id, "status": "queued", "remaining_pages": len(remaining_pages)}
+
+
+@frappe.whitelist()
+def regenerate_homepage(
+	session_id: str,
+	feedback: str = "",
+	provider: str = None,
+	model: str = None,
+):
+	"""
+	Regenerate the homepage with user feedback integrated into the brief.
+	"""
+	session_name = frappe.db.get_value(
+		"Builder Chat Session", {"session_id": session_id}, "name"
+	)
+	if not session_name:
+		frappe.throw(_("Session not found"))
+
+	session = frappe.get_doc("Builder Chat Session", session_name)
+
+	# Check iteration limit
+	iterations = (session.homepage_iterations or 0) + 1
+	if iterations > 2:
+		frappe.throw(_("Maximum homepage iterations reached (2). Proceeding with current version."))
+
+	# Store feedback
+	session.homepage_feedback = feedback
+	session.homepage_iterations = iterations
+
+	# Get homepage page_def
+	pages_config = json.loads(session.pages_config or "[]")
+	if not pages_config:
+		pages_config = DEFAULT_PAGES_BY_SITE_TYPE.get(session.site_type, DEFAULT_PAGES_BY_SITE_TYPE["vitrine"])
+	homepage_config = pages_config[:1]  # Just the homepage
+
+	# Delete existing homepage
+	existing_pages = json.loads(session.generated_pages or "[]")
+	for page_info in existing_pages:
+		route = page_info.get("route", "")
+		if route in ("/index", "/"):
+			try:
+				frappe.delete_doc("Builder Page", page_info["name"], force=True)
+				frappe.db.commit()
+			except Exception:
+				pass
+
+	# Enrich prompt with feedback
+	enriched_prompt = session.site_description or ""
+	if feedback:
+		enriched_prompt += f"\n\nREVISION INSTRUCTIONS (from user feedback, iteration {iterations}):\n{feedback}"
+
+	job_id = f"site_gen_{frappe.generate_hash(length=10)}"
+
+	_update_generation_status(job_id, {
+		"status": "queued",
+		"progress": 0,
+		"total_pages": 1,
+		"current_page": None,
+		"pages_created": [],
+		"error": None,
+		"site_name": session.site_name,
+		"created_at": frappe.utils.now(),
+		"generation_mode": "regenerate_homepage",
+	})
+
+	frappe.enqueue(
+		"builder.api._generate_complete_site_worker",
+		queue="long",
+		timeout=1800,
+		job_name=job_id,
+		generation_job_id=job_id,
+		prompt=enriched_prompt,
+		site_name=session.site_name or "",
+		site_type=session.site_type or "vitrine",
+		theme=session.theme or "modern",
+		primary_color=session.primary_color,
+		secondary_color=session.secondary_color,
+		logo_text=session.logo_text,
+		logo_image=session.logo_image,
+		cta_text=session.cta_text or "Contact",
+		cta_url=session.cta_url or "/contact",
+		social_links=session.social_links,
+		provider=provider,
+		model=model,
+		session_id=session_id,
+		heading_font=session.heading_font,
+		body_font=session.body_font,
+		pages_config=json.dumps(homepage_config),
+		generation_mode="progressive",  # Still progressive, will return homepage_ready
+	)
+
+	# Update session
+	session.job_id = job_id
+	session.generation_status = "regenerating"
+	session.save(ignore_permissions=True)
+	frappe.db.commit()
+
+	return {"job_id": job_id, "status": "queued", "iteration": iterations}
 
 
 @frappe.whitelist()

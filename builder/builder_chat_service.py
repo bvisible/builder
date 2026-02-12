@@ -48,7 +48,7 @@ COLOR_PALETTES = [
 ]
 
 # Steps configuration
-STEPS = ["description", "style", "pages", "generation"]
+STEPS = ["description", "style", "pages", "page_selection", "generation"]
 
 # Required fields per step
 REQUIRED_FIELDS = {
@@ -161,6 +161,57 @@ class BuilderChatService:
 			# Handle special commands
 			if user_message.startswith("__"):
 				return self._handle_special_command(session, user_message)
+
+			# Handle custom page name input
+			if session.homepage_feedback == "__AWAITING_CUSTOM_PAGE_NAME__":
+				session.db_set("homepage_feedback", "", update_modified=False)
+				session.add_message(role="user", content=user_message)
+				self._add_custom_page(session, user_message.strip())
+				response = _("Page **{title}** added!").format(title=user_message.strip())
+				response += "\n\n" + _("Want to add more pages?")
+				buttons = self._get_page_selection_buttons(session)
+				session.add_message(role="assistant", content=response, buttons=buttons)
+				session.save(ignore_permissions=True)
+				return {
+					"success": True,
+					"response": response,
+					"buttons": buttons,
+					"current_step": session.current_step,
+					"completion_percentage": session.completion_percentage,
+					"missing_fields": session.get_missing_fields(),
+				}
+
+			# Handle homepage feedback (progressive generation)
+			if session.current_step == "feedback":
+				session.add_message(role="user", content=user_message)
+				# Check if user is satisfied
+				satisfied_signals = ["ok", "c'est bon", "parfait", "ça me va", "bien", "super", "genial", "génial", "good", "great", "nice"]
+				if user_message.lower().strip().rstrip("!.") in satisfied_signals:
+					return self._handle_special_command(session, "__HOMEPAGE_SATISFIED__")
+
+				# Otherwise, treat as revision feedback
+				response = _("Regenerating the homepage with your feedback...")
+				session.add_message(role="assistant", content=response)
+				session.save(ignore_permissions=True)
+
+				from builder.api import regenerate_homepage
+				result = regenerate_homepage(
+					session_id=session.session_id,
+					feedback=user_message,
+				)
+				if result and result.get("job_id"):
+					session.job_id = result["job_id"]
+					session.generation_status = "regenerating"
+					session.save(ignore_permissions=True)
+				return {
+					"success": True,
+					"response": response,
+					"job_id": result.get("job_id") if result else None,
+					"status": "queued",
+					"current_step": session.current_step,
+					"completion_percentage": session.completion_percentage,
+					"missing_fields": session.get_missing_fields(),
+				}
 
 			# Add user message
 			session.add_message(role="user", content=user_message)
@@ -330,6 +381,8 @@ class BuilderChatService:
 				session_id=session_id,
 				heading_font=session.heading_font,
 				body_font=session.body_font,
+				pages_config=session.pages_config if session.pages_config else None,
+				generation_mode=session.generation_mode or "full",
 			)
 
 			if result and result.get("job_id"):
@@ -610,11 +663,16 @@ When all required fields are collected, congratulate the user and tell them they
 
 	def _get_fallback_buttons(self, session) -> list:
 		"""Generate contextual suggestion buttons based on next missing field."""
+		# Page selection step: propose optional pages
+		if session.current_step == "page_selection":
+			return self._get_page_selection_buttons(session)
+
 		missing = session.get_missing_fields()
 		if not missing:
-			# All fields collected — propose generation or optional extras
+			# All fields collected — propose generation mode
 			buttons = [
-				{"label": _("Generate site"), "value": _("Let's generate the site!")},
+				{"label": _("Generate entire site"), "value": "__GEN_MODE_FULL__"},
+				{"label": _("Homepage first"), "value": "__GEN_MODE_PROGRESSIVE__"},
 			]
 			if not session.cta_text:
 				buttons.append({"label": _("Add a CTA"), "value": _("I'd like to add a call-to-action button")})
@@ -790,10 +848,11 @@ When all required fields are collected, congratulate the user and tell them they
 				if next_step == "pages":
 					# Auto-populate pages_config based on site_type
 					self._auto_populate_pages(session)
-					# Check if we should skip to generation
-					pages_missing = [f for f in missing if f.get("step") == "pages"]
-					if not pages_missing:
-						session.current_step = next_step
+					# Move to page_selection to propose optional pages
+					session.current_step = "page_selection"
+				elif next_step == "page_selection":
+					# page_selection is handled via special commands
+					session.current_step = next_step
 				else:
 					session.current_step = next_step
 
@@ -806,6 +865,68 @@ When all required fields are collected, congratulate the user and tell them they
 		site_type = session.site_type or "vitrine"
 		pages = DEFAULT_PAGES_BY_SITE_TYPE.get(site_type, DEFAULT_PAGES_BY_SITE_TYPE.get("vitrine", []))
 		session.pages_config = json.dumps(pages)
+
+	def _get_page_selection_buttons(self, session) -> list:
+		"""Get optional page buttons for the page_selection step."""
+		from builder.api import OPTIONAL_PAGES_BY_SITE_TYPE
+		site_type = session.site_type or "vitrine"
+		optional = OPTIONAL_PAGES_BY_SITE_TYPE.get(site_type, [])
+
+		if not optional:
+			return [
+				{"label": _("Continue"), "value": "__SKIP_OPTIONAL_PAGES__"},
+			]
+
+		buttons = []
+		for page in optional:
+			buttons.append({
+				"label": page["title"],
+				"value": f"__ADD_PAGE_{page['route']}__",
+			})
+		buttons.append({"label": _("No additional pages"), "value": "__SKIP_OPTIONAL_PAGES__"})
+		buttons.append({"label": _("Custom page"), "value": "__ADD_CUSTOM_PAGE__"})
+		return buttons
+
+	def _add_optional_page(self, session, route: str):
+		"""Add an optional page to the session pages_config."""
+		from builder.api import OPTIONAL_PAGES_BY_SITE_TYPE
+		site_type = session.site_type or "vitrine"
+		optional = OPTIONAL_PAGES_BY_SITE_TYPE.get(site_type, [])
+
+		page_def = next((p for p in optional if p["route"] == route), None)
+		if not page_def:
+			return None
+
+		pages = json.loads(session.pages_config or "[]")
+		# Avoid duplicates
+		if any(p.get("route") == route for p in pages):
+			return page_def["title"]
+
+		pages.append({"title": page_def["title"], "route": page_def["route"], "type": page_def["type"]})
+		session.pages_config = json.dumps(pages)
+		return page_def["title"]
+
+	def _add_custom_page(self, session, title: str):
+		"""Add a custom page to the session pages_config."""
+		# Generate route from title
+		route = re.sub(r'[^a-z0-9]+', '-', title.lower().strip()).strip('-')
+		pages = json.loads(session.pages_config or "[]")
+		# Avoid duplicates
+		if any(p.get("route") == route for p in pages):
+			return
+
+		pages.append({"title": title, "route": route, "type": "custom"})
+		session.pages_config = json.dumps(pages)
+
+	def _get_pages_recap(self, session) -> str:
+		"""Get a recap of all selected pages."""
+		pages = json.loads(session.pages_config or "[]")
+		if not pages:
+			return ""
+		lines = [_("**Pages to generate:**")]
+		for i, p in enumerate(pages, 1):
+			lines.append(f"{i}. {p['title']} (`/{p['route']}`)")
+		return "\n".join(lines)
 
 	def _get_next_question(self, session) -> str:
 		"""Get the next question to ask based on missing fields."""
@@ -847,6 +968,112 @@ When all required fields are collected, congratulate the user and tell them they
 			next_q = self._get_next_question(session)
 			response = f"{skip_msg}\n\n{next_q}"
 			session.add_message(role="user", content=_("(Skip logo)"))
+			session.add_message(role="assistant", content=response)
+			session.save(ignore_permissions=True)
+			return {
+				"success": True,
+				"response": response,
+				"current_step": session.current_step,
+				"completion_percentage": session.completion_percentage,
+				"missing_fields": session.get_missing_fields(),
+			}
+
+		# --- Page selection commands ---
+		elif command.startswith("__ADD_PAGE_") and command.endswith("__"):
+			route = command[len("__ADD_PAGE_"):-2]
+			title = self._add_optional_page(session, route)
+			if title:
+				response = _("Page **{title}** added!").format(title=title)
+				response += "\n\n" + _("Want to add more pages?")
+				buttons = self._get_page_selection_buttons(session)
+			else:
+				response = _("This page is already in your list.")
+				buttons = self._get_page_selection_buttons(session)
+			session.add_message(role="assistant", content=response, buttons=buttons)
+			session.save(ignore_permissions=True)
+			return {
+				"success": True,
+				"response": response,
+				"buttons": buttons,
+				"current_step": session.current_step,
+				"completion_percentage": session.completion_percentage,
+				"missing_fields": session.get_missing_fields(),
+			}
+
+		elif command == "__SKIP_OPTIONAL_PAGES__":
+			recap = self._get_pages_recap(session)
+			response = _("Perfect!") + "\n\n" + recap
+			response += "\n\n" + _("How would you like to generate?")
+			session.current_step = "generation"
+			buttons = [
+				{"label": _("Generate entire site"), "value": "__GEN_MODE_FULL__"},
+				{"label": _("Homepage first"), "value": "__GEN_MODE_PROGRESSIVE__"},
+			]
+			session.add_message(role="assistant", content=response, buttons=buttons)
+			session.save(ignore_permissions=True)
+			return {
+				"success": True,
+				"response": response,
+				"buttons": buttons,
+				"current_step": session.current_step,
+				"completion_percentage": session.completion_percentage,
+				"missing_fields": session.get_missing_fields(),
+			}
+
+		elif command == "__ADD_CUSTOM_PAGE__":
+			response = _("What should this page be called? (e.g. \"Recruitment\", \"FAQ\", \"Pricing\")")
+			session.add_message(role="assistant", content=response)
+			# Set a flag so next message is treated as custom page name
+			session.db_set("homepage_feedback", "__AWAITING_CUSTOM_PAGE_NAME__", update_modified=False)
+			session.save(ignore_permissions=True)
+			return {
+				"success": True,
+				"response": response,
+				"current_step": session.current_step,
+				"completion_percentage": session.completion_percentage,
+				"missing_fields": session.get_missing_fields(),
+			}
+
+		# --- Generation mode commands ---
+		elif command == "__GEN_MODE_FULL__":
+			session.generation_mode = "full"
+			session.add_message(role="user", content=_("Generate entire site"))
+			session.save(ignore_permissions=True)
+			return self.trigger_generation(session.session_id)
+
+		elif command == "__GEN_MODE_PROGRESSIVE__":
+			session.generation_mode = "progressive"
+			session.add_message(role="user", content=_("Homepage first"))
+			session.save(ignore_permissions=True)
+			return self.trigger_generation(session.session_id)
+
+		# --- Homepage feedback commands ---
+		elif command == "__HOMEPAGE_SATISFIED__":
+			session.add_message(role="user", content=_("The homepage looks good!"))
+			response = _("Generating the remaining pages with the refined design...")
+			session.add_message(role="assistant", content=response)
+			session.current_step = "generation"
+			session.save(ignore_permissions=True)
+
+			from builder.api import continue_generation
+			result = continue_generation(session_id=session.session_id)
+			if result and result.get("job_id"):
+				session.job_id = result["job_id"]
+				session.generation_status = "queued"
+				session.save(ignore_permissions=True)
+			return {
+				"success": True,
+				"response": response,
+				"job_id": result.get("job_id"),
+				"status": "queued",
+				"current_step": session.current_step,
+				"completion_percentage": session.completion_percentage,
+				"missing_fields": session.get_missing_fields(),
+			}
+
+		elif command == "__HOMEPAGE_REVISE__":
+			response = _("What would you like to change? Describe your feedback and I'll regenerate the homepage.")
+			session.current_step = "feedback"
 			session.add_message(role="assistant", content=response)
 			session.save(ignore_permissions=True)
 			return {

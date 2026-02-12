@@ -1,0 +1,275 @@
+{# Blog Listing Template - Displays published Blog Posts dynamically #}
+{# Parameters (set before include): #}
+{#   blog_category    - Filter by Blog Category name (default: all) #}
+{#   blog_limit       - Max posts to display (default: 6) #}
+{#   blog_sort_by     - Sort field: published_on, creation, title (default: published_on) #}
+{#   blog_layout      - Layout: grid or list (default: grid) #}
+{#   blog_title       - Section title (default: none) #}
+{#   view_more_link   - URL for "View More" button (default: none) #}
+{#   view_more_text   - Text for "View More" button (default: "View All Articles") #}
+
+{%- set blog_category = blog_category if blog_category is defined else "" -%}
+{%- set blog_limit = blog_limit if blog_limit is defined else 6 -%}
+{%- set blog_sort_by = blog_sort_by if blog_sort_by is defined else "published_on" -%}
+{%- set blog_layout = blog_layout if blog_layout is defined else "grid" -%}
+{%- set blog_title = blog_title if blog_title is defined else "" -%}
+{%- set view_more_link = view_more_link if view_more_link is defined else "" -%}
+{%- set view_more_text = view_more_text if view_more_text is defined else _("View All Articles") -%}
+
+{%- set blog_filters = {"published": 1, "blog_category": blog_category} if blog_category else {"published": 1} -%}
+
+{%- set blog_posts = frappe.get_all("Blog Post",
+    filters=blog_filters,
+    fields=["name", "title", "blog_intro", "published_on", "route", "meta_image", "blog_category", "blogger"],
+    order_by=blog_sort_by + " desc",
+    limit_page_length=blog_limit
+) -%}
+
+<div class="builder-blog-listing builder-blog-{{ blog_layout }}">
+    {% if blog_title %}
+    <div class="blog-listing-header">
+        <h2 class="blog-listing-title">{{ blog_title }}</h2>
+        {% if view_more_link %}
+        <a href="{{ view_more_link }}" class="blog-view-more-link">{{ view_more_text }} &rarr;</a>
+        {% endif %}
+    </div>
+    {% endif %}
+
+    {% if blog_posts %}
+        <div class="blog-listing-items">
+            {% for post in blog_posts %}
+            <a href="/{{ post.route }}" class="blog-card">
+                <div class="blog-card-image">
+                    {% if post.meta_image %}
+                    <img src="{{ post.meta_image }}" alt="{{ post.title }}" loading="lazy">
+                    {% else %}
+                    <div class="blog-card-placeholder-img">
+                        <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+                            <path d="M19 3H5a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2V5a2 2 0 00-2-2z"/>
+                            <circle cx="8.5" cy="8.5" r="1.5"/>
+                            <path d="M21 15l-5-5L5 21"/>
+                        </svg>
+                    </div>
+                    {% endif %}
+                </div>
+                <div class="blog-card-content">
+                    {% if post.blog_category %}
+                    <span class="blog-card-category">{{ post.blog_category }}</span>
+                    {% endif %}
+                    <h3 class="blog-card-title">{{ post.title }}</h3>
+                    {% if post.blog_intro %}
+                    <p class="blog-card-intro">{{ post.blog_intro | truncate(120) }}</p>
+                    {% endif %}
+                    <div class="blog-card-meta">
+                        <time datetime="{{ post.published_on }}">{{ frappe.utils.format_date(post.published_on, "d MMM yyyy") }}</time>
+                    </div>
+                </div>
+            </a>
+            {% endfor %}
+        </div>
+
+        {% if view_more_link and not blog_title %}
+        <div class="blog-listing-footer">
+            <a href="{{ view_more_link }}" class="blog-view-more-btn">{{ view_more_text }}</a>
+        </div>
+        {% endif %}
+    {% else %}
+        <div class="blog-listing-empty">
+            <div class="blog-empty-icon">
+                <svg width="64" height="64" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+                    <path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/>
+                    <path d="M14 2v6h6"/>
+                    <line x1="16" y1="13" x2="8" y2="13"/>
+                    <line x1="16" y1="17" x2="8" y2="17"/>
+                    <line x1="10" y1="9" x2="8" y2="9"/>
+                </svg>
+            </div>
+            <h3 class="blog-empty-title">{{ _("No articles yet") }}</h3>
+            <p class="blog-empty-text">{{ _("Articles will appear here once published. Create your first Blog Post to get started.") }}</p>
+        </div>
+    {% endif %}
+</div>
+
+<style>
+.builder-blog-listing {
+    width: 100%;
+}
+.builder-blog-listing .blog-listing-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 2rem;
+    flex-wrap: wrap;
+    gap: 1rem;
+}
+.builder-blog-listing .blog-listing-title {
+    margin: 0;
+    font-size: 1.75rem;
+    font-weight: 700;
+    color: var(--text-color, #1f2937);
+}
+.builder-blog-listing .blog-view-more-link {
+    font-size: 0.9rem;
+    font-weight: 500;
+    color: var(--primary-color, #3b82f6);
+    text-decoration: none;
+    transition: opacity 0.2s;
+}
+.builder-blog-listing .blog-view-more-link:hover {
+    opacity: 0.8;
+}
+
+/* Grid layout */
+.builder-blog-grid .blog-listing-items {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+    gap: 2rem;
+}
+
+/* List layout */
+.builder-blog-list .blog-listing-items {
+    display: flex;
+    flex-direction: column;
+    gap: 1.5rem;
+}
+.builder-blog-list .blog-card {
+    flex-direction: row;
+}
+.builder-blog-list .blog-card-image {
+    width: 240px;
+    min-width: 240px;
+    aspect-ratio: 16/10;
+}
+
+/* Card styles */
+.builder-blog-listing .blog-card {
+    display: flex;
+    flex-direction: column;
+    background: var(--surface-color, #ffffff);
+    border-radius: 12px;
+    overflow: hidden;
+    text-decoration: none;
+    color: inherit;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08);
+    transition: transform 0.2s, box-shadow 0.2s;
+}
+.builder-blog-listing .blog-card:hover {
+    transform: translateY(-4px);
+    box-shadow: 0 8px 25px rgba(0, 0, 0, 0.1);
+}
+.builder-blog-listing .blog-card-image {
+    aspect-ratio: 16/10;
+    overflow: hidden;
+    background: var(--muted-color, #f3f4f6);
+}
+.builder-blog-listing .blog-card-image img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    transition: transform 0.3s;
+}
+.builder-blog-listing .blog-card:hover .blog-card-image img {
+    transform: scale(1.05);
+}
+.builder-blog-listing .blog-card-placeholder-img {
+    width: 100%;
+    height: 100%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: var(--muted-color, #9ca3af);
+}
+.builder-blog-listing .blog-card-content {
+    padding: 1.25rem;
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+}
+.builder-blog-listing .blog-card-category {
+    display: inline-block;
+    font-size: 0.75rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    color: var(--primary-color, #3b82f6);
+    margin-bottom: 0.5rem;
+}
+.builder-blog-listing .blog-card-title {
+    margin: 0 0 0.5rem 0;
+    font-size: 1.125rem;
+    font-weight: 600;
+    color: var(--text-color, #1f2937);
+    line-height: 1.4;
+}
+.builder-blog-listing .blog-card-intro {
+    margin: 0 0 1rem 0;
+    font-size: 0.875rem;
+    color: var(--muted-color, #6b7280);
+    line-height: 1.6;
+    flex: 1;
+}
+.builder-blog-listing .blog-card-meta {
+    font-size: 0.8rem;
+    color: var(--muted-color, #9ca3af);
+}
+
+/* Footer */
+.builder-blog-listing .blog-listing-footer {
+    text-align: center;
+    margin-top: 2rem;
+}
+.builder-blog-listing .blog-view-more-btn {
+    display: inline-block;
+    padding: 0.75rem 2rem;
+    background: var(--primary-color, #3b82f6);
+    color: #ffffff;
+    border-radius: 8px;
+    text-decoration: none;
+    font-weight: 500;
+    transition: opacity 0.2s;
+}
+.builder-blog-listing .blog-view-more-btn:hover {
+    opacity: 0.9;
+    color: #ffffff;
+}
+
+/* Empty state */
+.builder-blog-listing .blog-listing-empty {
+    text-align: center;
+    padding: 4rem 2rem;
+    background: var(--surface-color, #f9fafb);
+    border-radius: 12px;
+    border: 2px dashed var(--border-color, #e5e7eb);
+}
+.builder-blog-listing .blog-empty-icon {
+    color: var(--muted-color, #9ca3af);
+    margin-bottom: 1rem;
+}
+.builder-blog-listing .blog-empty-title {
+    margin: 0 0 0.5rem 0;
+    font-size: 1.25rem;
+    font-weight: 600;
+    color: var(--text-color, #374151);
+}
+.builder-blog-listing .blog-empty-text {
+    margin: 0;
+    font-size: 0.9rem;
+    color: var(--muted-color, #6b7280);
+    max-width: 400px;
+    margin: 0 auto;
+}
+
+/* Responsive */
+@media (max-width: 768px) {
+    .builder-blog-grid .blog-listing-items {
+        grid-template-columns: 1fr;
+    }
+    .builder-blog-list .blog-card {
+        flex-direction: column;
+    }
+    .builder-blog-list .blog-card-image {
+        width: 100%;
+        min-width: unset;
+    }
+}
+</style>
