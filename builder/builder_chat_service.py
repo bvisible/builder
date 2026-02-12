@@ -328,6 +328,8 @@ class BuilderChatService:
 				cta_url=session.cta_url or "/contact",
 				social_links=social_links_str,
 				session_id=session_id,
+				heading_font=session.heading_font,
+				body_font=session.body_font,
 			)
 
 			if result and result.get("job_id"):

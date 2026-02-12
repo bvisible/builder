@@ -366,6 +366,8 @@ class BriefGenerator:
         primary_color: str = None,
         secondary_color: str = None,
         pages_config: list[dict] = None,
+        heading_font: str = None,
+        body_font: str = None,
     ) -> DesignBrief:
         """
         Generate a design brief for the site.
@@ -378,6 +380,8 @@ class BriefGenerator:
             primary_color: Custom primary color
             secondary_color: Custom secondary color
             pages_config: List of pages that will be generated
+            heading_font: Heading font override (from company data)
+            body_font: Body font override (from company data)
 
         Returns:
             DesignBrief: Generated design brief
@@ -402,10 +406,14 @@ class BriefGenerator:
             effective_primary = primary_color or theme_colors.get("primary", "#6366f1")
             effective_secondary = secondary_color or theme_colors.get("secondary", "#8b5cf6")
 
-        # Pick random font pair for this theme
-        heading_font, body_font = _get_random_fonts(theme)
-        ai_log("info", "Selected fonts for theme",
-               theme=theme, heading_font=heading_font, body_font=body_font)
+        # Use provided fonts or pick random pair for this theme
+        if heading_font and body_font:
+            ai_log("info", "Using provided fonts (from company/config)",
+                   heading_font=heading_font, body_font=body_font)
+        else:
+            heading_font, body_font = _get_random_fonts(theme)
+            ai_log("info", "Selected random fonts for theme",
+                   theme=theme, heading_font=heading_font, body_font=body_font)
 
         # Build user prompt
         pages_list = ""
@@ -487,6 +495,8 @@ Return ONLY the JSON object, no markdown code blocks.
         secondary_color: str = None,
         pages_config: list[dict] = None,
         max_retries: int = 2,
+        heading_font: str = None,
+        body_font: str = None,
     ) -> tuple[DesignBrief, BriefValidationResult]:
         """
         Generate a design brief with validation and automatic retry.
@@ -539,6 +549,8 @@ Make sure ALL fields are properly filled with valid values."""
                 primary_color=primary_color,
                 secondary_color=secondary_color,
                 pages_config=pages_config,
+                heading_font=heading_font,
+                body_font=body_font,
             )
 
             # Validate

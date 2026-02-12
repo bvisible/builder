@@ -294,6 +294,8 @@ def generate_complete_site(
 	provider: str = None,
 	model: str = None,
 	session_id: str = None,
+	heading_font: str = None,
+	body_font: str = None,
 ):
 	"""
 	Generate a complete site asynchronously.
@@ -361,6 +363,8 @@ def generate_complete_site(
 		provider=provider,
 		model=model,
 		session_id=session_id,
+		heading_font=heading_font,
+		body_font=body_font,
 	)
 
 	print(f"[SITE_GEN] Job enqueued successfully: job_id={job_id}")
@@ -435,6 +439,8 @@ def _generate_complete_site_worker(
 	provider: str,
 	model: str,
 	session_id: str = None,
+	heading_font: str = None,
+	body_font: str = None,
 ):
 	"""
 	Background worker for site generation.
@@ -611,6 +617,8 @@ def _generate_complete_site_worker(
 				secondary_color=secondary_color,
 				pages_config=pages_config,
 				max_retries=2,
+				heading_font=heading_font,
+				body_font=body_font,
 			)
 
 			# Log validation results
