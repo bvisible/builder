@@ -345,9 +345,23 @@ frappe.ui.BuilderChatPage = class BuilderChatPage {
 			this.hide_typing();
 
 			if (response.message && response.message.success) {
-				this.add_message('assistant', response.message.response, response.message.buttons);
+				// Show response message if present
+				if (response.message.response) {
+					this.add_message('assistant', response.message.response, response.message.buttons);
+				}
 				this.update_progress(response.message);
 				this.scroll_to_bottom();
+
+				// If server returned a job_id, generation was triggered via chat
+				if (response.message.job_id) {
+					this.add_system_notice(__('Generation started...'));
+					this.update_progress({
+						current_step: 'generation',
+						completion_percentage: response.message.completion_percentage || 0,
+						missing_fields: []
+					});
+					this.start_generation_polling(response.message.job_id);
+				}
 			} else {
 				this.add_message('assistant', response.message?.message || __('Sorry, I encountered an error. Please try again.'));
 			}
