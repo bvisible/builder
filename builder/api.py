@@ -2351,12 +2351,20 @@ def chat_get_generation_status(session_id: str):
 			"status": session.generation_status or "unknown",
 			"progress": session.generation_progress or 0,
 		}
-		# If session says completed, include generated pages
-		if session.status in ("Completed", "Failed") and session.generated_pages:
+		# If session has generated pages, include them
+		if session.status in ("Completed", "Failed", "Homepage Ready") and session.generated_pages:
 			pages = json.loads(session.generated_pages) if isinstance(session.generated_pages, str) else session.generated_pages
 			result["pages_created"] = pages
-			result["status"] = session.status.lower()
-			result["progress"] = 100 if session.status == "Completed" else 0
+			if session.status == "Completed":
+				result["status"] = "completed"
+				result["progress"] = 100
+			elif session.status == "Homepage Ready":
+				result["status"] = "homepage_ready"
+				result["progress"] = 20
+				result["total_pages"] = len(json.loads(session.pages_config)) if session.pages_config else 0
+			elif session.status == "Failed":
+				result["status"] = "failed"
+				result["progress"] = 0
 		return result
 	except frappe.DoesNotExistError:
 		return {"success": False, "message": _("Session not found")}

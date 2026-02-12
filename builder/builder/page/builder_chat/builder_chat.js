@@ -477,6 +477,9 @@ frappe.ui.BuilderChatPage = class BuilderChatPage {
 		} else if (value === '__SKIP_IMAGES__') {
 			this.add_message('assistant', __('No problem! You can generate images later from the Builder editor.'));
 			this.scroll_to_bottom();
+		} else if (value.startsWith('__OPEN_PAGE_')) {
+			const page_name = value.replace('__OPEN_PAGE_', '').replace('__', '');
+			window.open(`/builder/page/${page_name}`, '_blank');
 		} else if (value.startsWith('__')) {
 			this.send_special_command(value);
 		} else {
@@ -509,6 +512,17 @@ frappe.ui.BuilderChatPage = class BuilderChatPage {
 				}
 				this.update_progress(response.message);
 				this.scroll_to_bottom();
+
+				// If server returned a job_id, generation was triggered
+				if (response.message.job_id) {
+					this.add_system_notice(__('Generation started...'));
+					this.update_progress({
+						current_step: 'generation',
+						completion_percentage: response.message.completion_percentage || 0,
+						missing_fields: []
+					});
+					this.start_generation_polling(response.message.job_id);
+				}
 			}
 		} catch (error) {
 			console.error('Special command error:', error);
@@ -813,12 +827,16 @@ frappe.ui.BuilderChatPage = class BuilderChatPage {
 				}
 
 				// Check completion
-				if (status.status === 'completed') {
+				const s = (status.status || '').replace(/[ _]/g, '');
+				if (s === 'completed') {
 					this.stop_generation_polling();
 					this.on_generation_complete(status);
-				} else if (status.status === 'failed') {
+				} else if (s === 'failed') {
 					this.stop_generation_polling();
 					this.on_generation_failed(status);
+				} else if (s === 'homepageready') {
+					this.stop_generation_polling();
+					this.on_homepage_ready(status);
 				}
 			} catch (error) {
 				console.error('Generation polling error:', error);
@@ -884,6 +902,39 @@ frappe.ui.BuilderChatPage = class BuilderChatPage {
 			`**${__('Generation failed')}**\n\n${status.error || __('An unexpected error occurred. Please try again.')}`
 		);
 
+		this.scroll_to_bottom();
+	}
+
+	on_homepage_ready(status) {
+		const pages = status.pages_created || [];
+		const homepage = pages[0];
+		const total = status.total_pages || '?';
+
+		this.$progress_fill.css('width', '20%');
+		this.$progress_text.text(`1/${total}`);
+
+		this.$generate_btn.prop('disabled', false).html(
+			`<i class="fa fa-magic"></i> ${__('Generate Site')}`
+		);
+
+		let msg = `**${__('Homepage generated!')}**\n\n`;
+		if (homepage) {
+			msg += `${__('Page created')}: [${homepage.title || homepage.name}](/builder/page/${homepage.name})\n\n`;
+		}
+		msg += __('You can preview it and then generate the remaining pages when ready.');
+
+		const buttons = [
+			{label: __("Generate remaining pages"), value: "__HOMEPAGE_SATISFIED__"},
+			{label: __("Revise homepage"), value: "__HOMEPAGE_REVISE__"},
+		];
+		if (homepage) {
+			buttons.push({label: __("Preview homepage"), value: `__OPEN_PAGE_${homepage.name}__`});
+		}
+
+		this.add_message('assistant', msg, buttons);
+
+		// Re-enable chat input
+		this.$input.prop('disabled', false);
 		this.scroll_to_bottom();
 	}
 
