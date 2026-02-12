@@ -645,7 +645,106 @@ def generate_page(
     )
 
 
+class BriefComplianceChecker:
+    """
+    Post-generation checker that ensures all pages conform to the design brief.
+    Runs after ALL pages are generated to fix cross-page inconsistencies,
+    primarily hardcoded colors that don't match the brief palette.
+    """
+
+    def __init__(self, brief, primary_color: str, secondary_color: str):
+        self.brief = brief
+        self.primary = primary_color
+        self.secondary = secondary_color
+        self.primary_rgb = self._hex_to_rgb(primary_color) if primary_color else None
+        self.secondary_rgb = self._hex_to_rgb(secondary_color) if secondary_color else None
+
+    def check_and_fix(self, blocks: list[dict], page_title: str) -> tuple[list[dict], list[str]]:
+        """Check blocks against brief and fix issues. Returns (fixed_blocks, list_of_fixes)."""
+        fixes = []
+        for block in blocks:
+            self._fix_block(block, fixes)
+        if fixes:
+            ai_log("info", "Brief compliance fixes applied",
+                   page=page_title, fix_count=len(fixes), fixes=fixes)
+        return blocks, fixes
+
+    def _fix_block(self, block: dict, fixes: list[str]) -> None:
+        """Recursively check and fix a block's colors."""
+        styles = block.get("baseStyles", {})
+        bid = block.get("blockId", "?")
+
+        # Check background and backgroundColor for hardcoded rgba colors
+        for prop in ("background", "backgroundColor"):
+            val = styles.get(prop, "")
+            if not val or "rgba(" not in val:
+                continue
+            # Skip values that already use CSS variables
+            if "var(--primary" in val or "var(--secondary" in val:
+                continue
+            fixed = self._fix_rgba_colors(val)
+            if fixed != val:
+                styles[prop] = fixed
+                block["baseStyles"] = styles
+                fixes.append(f"{bid}: {prop} colors aligned to brief")
+
+        # Recurse into children
+        for child in block.get("children", []):
+            if isinstance(child, dict):
+                self._fix_block(child, fixes)
+
+    def _fix_rgba_colors(self, value: str) -> str:
+        """Replace hardcoded rgba values with brief colors.
+
+        In a gradient, the first color maps to primary, the second to secondary.
+        Preserves alpha values. Only replaces colors that don't already match.
+        """
+        import re
+        pattern = r'rgba\(\s*(\d+)\s*,\s*(\d+)\s*,\s*(\d+)\s*,\s*([\d.]+)\s*\)'
+        matches = list(re.finditer(pattern, value))
+
+        if not matches or not self.primary_rgb:
+            return value
+
+        result = value
+        # Process matches in reverse order to preserve string positions
+        for i, match in enumerate(reversed(matches)):
+            original_idx = len(matches) - 1 - i
+            r, g, b = int(match.group(1)), int(match.group(2)), int(match.group(3))
+            alpha = match.group(4)
+
+            # Determine target color: first occurrence = primary, second = secondary
+            if original_idx == 0:
+                target = self.primary_rgb
+            elif original_idx == 1 and self.secondary_rgb:
+                target = self.secondary_rgb
+            else:
+                target = self.primary_rgb
+
+            # Skip if already correct
+            if (r, g, b) == target:
+                continue
+
+            # Skip near-black/white colors (likely intentional overlays, not theme colors)
+            if r + g + b < 30 or r + g + b > 735:
+                continue
+
+            new_rgba = f"rgba({target[0]},{target[1]},{target[2]},{alpha})"
+            result = result[:match.start()] + new_rgba + result[match.end():]
+
+        return result
+
+    @staticmethod
+    def _hex_to_rgb(hex_color: str) -> tuple[int, int, int]:
+        """Convert hex color to RGB tuple."""
+        h = hex_color.lstrip("#")
+        if len(h) < 6:
+            return (0, 0, 0)
+        return (int(h[0:2], 16), int(h[2:4], 16), int(h[4:6], 16))
+
+
 __all__ = [
     "PageGenerator",
+    "BriefComplianceChecker",
     "generate_page",
 ]

@@ -855,6 +855,45 @@ def _generate_complete_site_worker(
 				continue
 
 		# =====================================================================
+		# STEP 4.5: Brief compliance check ("Last Call")
+		# =====================================================================
+		if design_brief and created_pages:
+			ai_log("info", "Step 4.5: Brief compliance check", pages=len(created_pages))
+			_update_generation_status(job_id, {
+				"status": "running",
+				"progress": 92,
+				"total_pages": total_pages,
+				"current_step": "Final quality check...",
+				"current_page": None,
+				"pages_created": created_pages,
+				"error": None,
+				"site_name": site_name,
+			})
+
+			from builder.ai.generators.page_generator import BriefComplianceChecker
+			checker = BriefComplianceChecker(design_brief, primary_color, secondary_color)
+			total_fixes = 0
+			for page_info in created_pages:
+				try:
+					page_doc = frappe.get_doc("Builder Page", page_info["name"])
+					blocks = json.loads(page_doc.blocks or "[]")
+					fixed_blocks, fixes = checker.check_and_fix(blocks, page_info["title"])
+					if fixes:
+						total_fixes += len(fixes)
+						new_json = json.dumps(fixed_blocks, ensure_ascii=False)
+						frappe.db.set_value("Builder Page", page_info["name"],
+							{"blocks": new_json, "draft_blocks": new_json},
+							update_modified=False)
+				except Exception as e:
+					ai_log("warning", "Brief compliance check failed for page",
+						page=page_info["title"], error=str(e)[:200])
+
+			if total_fixes:
+				frappe.db.commit()
+				ai_log("info", "Brief compliance check completed",
+					total_fixes=total_fixes, pages_checked=len(created_pages))
+
+		# =====================================================================
 		# STEP 5: Update menu from created pages
 		# =====================================================================
 		ai_log("info", "Step 5: Updating menu", pages_created=len(created_pages))
