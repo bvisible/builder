@@ -32,7 +32,7 @@ export_python_type_annotations = True
 # page_js = {"page" : "public/js/file.js"}
 
 # include js in doctype views
-# doctype_js = {"doctype" : "public/js/doctype.js"}
+doctype_js = {"Website Settings": "public/js/website_settings.js"}
 # doctype_list_js = {"doctype" : "public/js/doctype_list.js"}
 # doctype_tree_js = {"doctype" : "public/js/doctype_tree.js"}
 # doctype_calendar_js = {"doctype" : "public/js/doctype_calendar.js"}
@@ -116,13 +116,11 @@ fixtures = [
 # ---------------
 # Hook on document methods and events
 
-# doc_events = {
-# "*": {
-# "on_update": "method",
-# "on_cancel": "method",
-# "on_trash": "method"
-# }
-# }
+doc_events = {
+	"Website Settings": {
+		"on_update": "builder.hf_utils.menu_integration.sync_from_website_settings"
+	}
+}
 
 # Scheduled Tasks
 # ---------------

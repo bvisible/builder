@@ -57,13 +57,35 @@ body:has([data-page-container="builder-chat"]) .container {
 	letter-spacing: -0.3px;
 }
 
-.builder-progress-panel .progress-header h4 {
+.builder-progress-panel .progress-header-row {
+	display: flex;
+	align-items: center;
+	justify-content: space-between;
+}
+
+.builder-progress-panel .progress-header h4,
+.builder-progress-panel .progress-header-row h4 {
 	margin: 0;
 	font-size: 14px;
 	font-weight: 500;
 	color: rgba(255, 255, 255, 0.6);
 	text-transform: uppercase;
 	letter-spacing: 0.5px;
+}
+
+.builder-progress-panel .btn-new-session {
+	background: rgba(255, 255, 255, 0.1);
+	border: 1px solid rgba(255, 255, 255, 0.2);
+	color: rgba(255, 255, 255, 0.6);
+	border-radius: 6px;
+	padding: 4px 8px;
+	font-size: 11px;
+	transition: all 0.2s;
+}
+
+.builder-progress-panel .btn-new-session:hover {
+	background: rgba(255, 255, 255, 0.2);
+	color: rgba(255, 255, 255, 0.9);
 }
 
 /* Steps */

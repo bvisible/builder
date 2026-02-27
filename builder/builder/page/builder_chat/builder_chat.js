@@ -62,7 +62,12 @@ frappe.ui.BuilderChatPage = class BuilderChatPage {
 							</svg>
 							<span>Builder AI</span>
 						</div>
-						<h4>${__('Site Generation')}</h4>
+						<div class="progress-header-row">
+							<h4>${__('Site Generation')}</h4>
+							<button class="btn btn-xs btn-new-session" title="${__('New session')}">
+								<i class="fa fa-refresh"></i>
+							</button>
+						</div>
 					</div>
 
 					<!-- Steps -->
@@ -265,6 +270,9 @@ frappe.ui.BuilderChatPage = class BuilderChatPage {
 			this.$input.val(color);
 			this.send_message();
 		});
+
+		// New session button
+		this.$container.find('.btn-new-session').on('click', () => this.clear_session());
 	}
 
 	on_show() {
@@ -309,6 +317,44 @@ frappe.ui.BuilderChatPage = class BuilderChatPage {
 		} catch (error) {
 			console.error('Start session error:', error);
 			this.show_error(__('Failed to connect to server'));
+		}
+	}
+
+	async clear_session() {
+		if (!this.session_id) return;
+
+		const confirmed = await new Promise(resolve => {
+			frappe.confirm(
+				__('Start a new session? Current progress will be saved but a fresh conversation will begin.'),
+				() => resolve(true),
+				() => resolve(false)
+			);
+		});
+		if (!confirmed) return;
+
+		try {
+			await frappe.call({
+				method: 'builder.api.chat_clear_session',
+				args: { session_id: this.session_id },
+				freeze: false
+			});
+
+			// Reset UI
+			this.session_id = null;
+			this.$messages.empty();
+			this.$messages.html(`
+				<div class="chat-loading">
+					<i class="fa fa-spinner fa-spin"></i>
+					<span>${__('Starting conversation...')}</span>
+				</div>
+			`);
+			this.update_progress({ current_step: 'description', completion_percentage: 0, missing_fields: [] });
+
+			// Start fresh session
+			this.start_session();
+		} catch (error) {
+			console.error('Clear session error:', error);
+			frappe.msgprint(__('Failed to clear session'));
 		}
 	}
 

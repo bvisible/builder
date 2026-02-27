@@ -159,6 +159,31 @@ def sync_menu_with_pages(replace: bool = False):
 	}
 
 
+def sync_from_website_settings(doc, method):
+	"""Sync Website Settings top_bar_items to Website Header Footer Config.
+
+	Called via doc_events hook when Website Settings is updated.
+	Uses _syncing flag to prevent infinite loops.
+	"""
+	if getattr(doc, "flags", None) and getattr(doc.flags, "_syncing", False):
+		return
+
+	try:
+		config = frappe.get_single("Website Header Footer Config")
+		config._syncing = True
+		config.menu_items = []
+		for item in (doc.top_bar_items or []):
+			config.append("menu_items", {
+				"label": item.label,
+				"url": item.url,
+				"is_external": 0,
+				"open_in_new_tab": item.get("open_in_new_tab", 0),
+			})
+		config.save(ignore_permissions=True)
+	except Exception:
+		frappe.log_error("Menu sync from Website Settings failed", frappe.get_traceback())
+
+
 def get_site_type_menu_defaults(site_type: str) -> list[dict]:
 	"""
 	Get default menu items for a site type.

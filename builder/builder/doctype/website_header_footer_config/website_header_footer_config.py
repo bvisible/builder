@@ -57,7 +57,26 @@ class WebsiteHeaderFooterConfig(Document):
 
 	def on_update(self):
 		"""Clear website cache when header/footer config changes."""
+		if not getattr(self, "_syncing", False):
+			self._sync_menu_to_website_settings()
 		self.clear_website_cache()
+
+	def _sync_menu_to_website_settings(self):
+		"""Sync menu_items to Website Settings top_bar_items for client editing."""
+		try:
+			ws = frappe.get_doc("Website Settings")
+			ws.flags._syncing = True
+			ws.top_bar_items = []
+			for item in (self.menu_items or []):
+				ws.append("top_bar_items", {
+					"label": item.label,
+					"url": item.url,
+					"open_in_new_tab": item.get("open_in_new_tab", 0),
+				})
+			ws.save(ignore_permissions=True)
+		except Exception:
+			# Non-critical: don't break config save if sync fails
+			frappe.log_error("Menu sync to Website Settings failed", frappe.get_traceback())
 
 	def clear_website_cache(self):
 		"""Clear all website-related cache to reflect header/footer changes."""

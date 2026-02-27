@@ -2300,6 +2300,21 @@ def chat_start_session():
 
 
 @frappe.whitelist()
+def chat_clear_session(session_id: str):
+	"""Abandon the current session to force a fresh start on next load."""
+	if not session_id:
+		return {"success": False, "message": _("Session ID is required")}
+	session_name = frappe.db.get_value(
+		"Builder Chat Session",
+		{"session_id": session_id, "user": frappe.session.user}
+	)
+	if session_name:
+		frappe.db.set_value("Builder Chat Session", session_name, "status", "Abandoned")
+		frappe.db.commit()
+	return {"success": True}
+
+
+@frappe.whitelist()
 def chat_send_message(session_id: str, message: str):
 	"""Send a message to the builder chat and get a response."""
 	from builder.builder_chat_service import BuilderChatService

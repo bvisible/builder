@@ -83,23 +83,51 @@ class BuilderChatService:
 		)
 
 	def start_session(self, user: Optional[str] = None) -> Dict:
-		"""Start a new builder chat session."""
+		"""Start a new builder chat session or resume a recent active one."""
 		try:
-			# Abandon existing active sessions
-			existing = frappe.get_all(
+			user = user or frappe.session.user
+
+			# Check for a resumable session (Active, modified < 24h ago)
+			recent_active = frappe.get_all(
 				"Builder Chat Session",
-				filters={"user": user or frappe.session.user, "status": "Active"},
+				filters={
+					"user": user,
+					"status": "Active",
+					"modified": [">", frappe.utils.add_days(frappe.utils.now(), -1)]
+				},
+				order_by="modified desc",
+				limit=1,
 				pluck="name"
 			)
-			for session_name in existing:
+
+			if recent_active:
+				# Resume existing session
+				session = frappe.get_doc("Builder Chat Session", recent_active[0])
+				return {
+					"success": True,
+					"session_id": session.session_id,
+					"is_resumed": True,
+					"current_step": session.current_step,
+					"completion_percentage": session.completion_percentage,
+					"messages": self._format_messages(session.messages),
+					"missing_fields": session.get_missing_fields(),
+				}
+
+			# Abandon old active sessions (> 24h)
+			old_sessions = frappe.get_all(
+				"Builder Chat Session",
+				filters={"user": user, "status": "Active"},
+				pluck="name"
+			)
+			for session_name in old_sessions:
 				frappe.db.set_value("Builder Chat Session", session_name, "status", "Abandoned")
-			if existing:
+			if old_sessions:
 				frappe.db.commit()
 
 			# Create new session
 			session = frappe.get_doc({
 				"doctype": "Builder Chat Session",
-				"user": user or frappe.session.user,
+				"user": user,
 				"status": "Active",
 				"current_step": "description",
 			})
@@ -943,6 +971,15 @@ When all required fields are collected, congratulate the user and tell them they
 		lines = [_("**Pages to generate:**")]
 		for i, p in enumerate(pages, 1):
 			lines.append(f"{i}. {p['title']} (`/{p['route']}`)")
+
+		# For e-commerce sites, mention pre-existing webshop pages
+		site_type = session.site_type or ""
+		if site_type in ("ecommerce", "ecommerce_search"):
+			lines.append("")
+			lines.append(_("**Pages already available via your shop:**"))
+			lines.append(_("- Shop (`/all-products`) — product catalog"))
+			lines.append(_("- My Account (`/me`) — customer area"))
+
 		return "\n".join(lines)
 
 	def _get_next_question(self, session) -> str:
