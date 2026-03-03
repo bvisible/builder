@@ -22,6 +22,9 @@ def execute():
 		"jinja_code": "{% include 'builder/templates/includes/google_map.html' %}"
 	})
 
-	settings.flags.ignore_mandatory = True
+	# Set default_provider if empty (mandatory field)
+	if not settings.default_provider:
+		settings.default_provider = "ollama"
+
 	settings.save(ignore_permissions=True)
 	frappe.db.commit()
