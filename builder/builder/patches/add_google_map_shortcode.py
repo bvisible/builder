@@ -22,5 +22,6 @@ def execute():
 		"jinja_code": "{% include 'builder/templates/includes/google_map.html' %}"
 	})
 
-	settings.save(ignore_permissions=True, ignore_mandatory=True)
+	settings.flags.ignore_mandatory = True
+	settings.save(ignore_permissions=True)
 	frappe.db.commit()
