@@ -676,25 +676,25 @@ When all required fields are collected, congratulate the user and tell them they
 			"buttons": None,
 		}
 
-		# Extract <extracted_data>...</extracted_data>
-		data_match = re.search(r"<extracted_data>(.*?)</extracted_data>", response, re.DOTALL)
+		# Extract <extracted_data>...</extracted_data> (handle escaped slash \/  from AI)
+		data_match = re.search(r"<extracted_data>(.*?)<\\?/extracted_data>", response, re.DOTALL)
 		if data_match:
 			try:
 				result["extracted_data"] = json.loads(data_match.group(1))
 			except json.JSONDecodeError:
 				pass
 			# Remove tag from content
-			result["content"] = re.sub(r"<extracted_data>.*?</extracted_data>", "", result["content"], flags=re.DOTALL).strip()
+			result["content"] = re.sub(r"<extracted_data>.*?<\\?/extracted_data>", "", result["content"], flags=re.DOTALL).strip()
 
-		# Extract <buttons>...</buttons>
-		btn_match = re.search(r"<buttons>(.*?)</buttons>", response, re.DOTALL)
+		# Extract <buttons>...</buttons> (handle escaped slash \/ from AI)
+		btn_match = re.search(r"<buttons>(.*?)<\\?/buttons>", response, re.DOTALL)
 		if btn_match:
 			try:
 				result["buttons"] = json.loads(btn_match.group(1))
 			except json.JSONDecodeError:
 				pass
 			# Remove tag from content
-			result["content"] = re.sub(r"<buttons>.*?</buttons>", "", result["content"], flags=re.DOTALL).strip()
+			result["content"] = re.sub(r"<buttons>.*?<\\?/buttons>", "", result["content"], flags=re.DOTALL).strip()
 
 		return result
 
