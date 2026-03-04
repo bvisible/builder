@@ -49,6 +49,8 @@ COLOR_PALETTES = [
 
 # Steps configuration
 STEPS = ["description", "style", "pages", "generation"]
+STEPS_FULL_SITE = STEPS
+STEPS_SINGLE_PAGE = ["page_request", "generation"]
 
 # Required fields per step
 REQUIRED_FIELDS = {
@@ -122,6 +124,7 @@ class BuilderChatService:
 				"completion_percentage": session.completion_percentage,
 				"messages": self._format_messages(session.messages),
 				"missing_fields": session.get_missing_fields(),
+				"generation_mode": session.generation_mode,
 			}
 
 		except Exception as e:
@@ -129,21 +132,110 @@ class BuilderChatService:
 			return {"success": False, "message": _("Failed to start chat session")}
 
 	def _generate_welcome_message(self) -> Dict:
-		"""Generate the initial welcome message."""
+		"""Generate the initial welcome message with mode choice."""
 		first_name = self._get_user_first_name()
 		greeting = _("Hello {name}!").format(name=first_name) if first_name else _("Hello!")
 
 		intro = _("I'm **Builder AI**, your website creation assistant.")
-		guide = _("I'll guide you step by step to generate a complete website. Let's start!")
-		question = _("**What type of website do you want to create?** Briefly describe your business or project, and I'll take care of the rest.")
+		question = _("**What would you like to do?**")
 
-		content = f"{greeting} {intro}\n\n{guide}\n\n{question}"
+		content = f"{greeting} {intro}\n\n{question}"
+
+		buttons = [
+			{"label": _("Generate a full site"), "value": "__MODE_FULL_SITE__"},
+			{"label": _("Add a page to my site"), "value": "__MODE_SINGLE_PAGE__"},
+		]
+
+		return {"content": content, "buttons": buttons}
+
+	def _generate_full_site_intro(self) -> Dict:
+		"""Generate the full-site mode intro with site type choices."""
+		question = _("**What type of website do you want to create?** Briefly describe your business or project, and I'll take care of the rest.")
 
 		buttons = [
 			{"label": _("Showcase site"), "value": _("I want a multi-page showcase website")},
 			{"label": _("Single page site"), "value": _("I want a single page website")},
 			{"label": _("Online store"), "value": _("I want an online store to sell products")},
 			{"label": _("Site with login"), "value": _("I want a showcase site with user login")},
+		]
+
+		return {"content": question, "buttons": buttons}
+
+	def _analyze_existing_site(self) -> Dict:
+		"""Analyze the existing site to extract theme, colors, fonts for single-page generation."""
+		context = {}
+
+		# 1. Read Website Header Footer Config for current theme
+		try:
+			config = frappe.get_single("Website Header Footer Config")
+			theme_data = config.get_theme_data()
+			context.update(theme_data)
+		except Exception:
+			pass
+
+		# 2. Check Builder Site Config for previous AI generation (design brief)
+		try:
+			site_configs = frappe.get_all(
+				"Builder Site Config",
+				fields=["name", "theme", "primary_color", "secondary_color", "design_brief_json"],
+				order_by="modified desc",
+				limit=1
+			)
+			if site_configs:
+				sc = site_configs[0]
+				if sc.get("theme"):
+					context["theme"] = sc["theme"]
+				if sc.get("primary_color") and not context.get("primary_color"):
+					context["primary_color"] = sc["primary_color"]
+				if sc.get("secondary_color") and not context.get("secondary_color"):
+					context["secondary_color"] = sc["secondary_color"]
+				if sc.get("design_brief_json"):
+					context["has_design_brief"] = True
+					context["design_brief_json"] = sc["design_brief_json"]
+		except Exception:
+			pass
+
+		# 3. List existing published Builder Pages
+		try:
+			context["existing_pages"] = frappe.get_all(
+				"Builder Page",
+				filters={"published": 1},
+				fields=["name", "page_title", "route"],
+				order_by="route asc"
+			)
+		except Exception:
+			context["existing_pages"] = []
+
+		# 4. Default theme if nothing found
+		if not context.get("theme"):
+			context["theme"] = "modern"
+
+		return context
+
+	def _generate_single_page_intro(self, site_context: Dict) -> Dict:
+		"""Generate the intro message for single-page mode, showing detected site info."""
+		pages = site_context.get("existing_pages", [])
+		pages_str = ", ".join([p.get("page_title") or p.get("name") for p in pages]) if pages else _("none detected")
+
+		detected_info = []
+		if site_context.get("primary_color"):
+			detected_info.append(_("Primary color: {0}").format(site_context["primary_color"]))
+		if site_context.get("heading_font") and site_context.get("heading_font") != "Inter":
+			detected_info.append(_("Font: {0}").format(site_context["heading_font"]))
+		if site_context.get("theme"):
+			detected_info.append(_("Theme: {0}").format(site_context["theme"]))
+		detected_str = "\n".join([f"- {info}" for info in detected_info]) if detected_info else _("- Default style")
+
+		content = _("I've analyzed your existing site.") + "\n\n"
+		content += _("**Existing pages**: {0}").format(pages_str) + "\n\n"
+		content += _("**Detected style**:") + "\n" + detected_str + "\n\n"
+		content += _("**What kind of page would you like to add?** Describe it and I'll generate it matching your current design.")
+
+		buttons = [
+			{"label": _("About page"), "value": _("Generate an About page for my site")},
+			{"label": _("Services page"), "value": _("Generate a Services page for my site")},
+			{"label": _("Contact page"), "value": _("Generate a Contact page for my site")},
+			{"label": _("FAQ page"), "value": _("Generate a FAQ page for my site")},
 		]
 
 		return {"content": content, "buttons": buttons}
@@ -208,6 +300,7 @@ class BuilderChatService:
 				"completion_percentage": session.completion_percentage,
 				"missing_fields": session.get_missing_fields(),
 				"is_ready": len(session.get_missing_fields()) == 0 and session.site_description,
+				"generation_mode": session.generation_mode,
 			}
 
 		except Exception as e:
@@ -244,7 +337,7 @@ class BuilderChatService:
 			return {"success": False, "message": _("Failed to process logo")}
 
 	def trigger_generation(self, session_id: str) -> Dict:
-		"""Trigger site generation with collected parameters."""
+		"""Trigger site or page generation with collected parameters."""
 		try:
 			session = frappe.get_doc("Builder Chat Session", {"session_id": session_id})
 
@@ -261,7 +354,11 @@ class BuilderChatService:
 			session.status = "Generating"
 			session.current_step = "generation"
 
-			# Call the existing generate_complete_site API
+			# Branch based on generation mode
+			if session.generation_mode == "single_page":
+				return self._trigger_single_page_generation(session)
+
+			# Full-site mode: call the existing generate_complete_site API
 			from builder.api import generate_complete_site
 
 			# Enrich prompt with inspiration data if available
@@ -365,6 +462,37 @@ class BuilderChatService:
 		missing = session.get_missing_fields()
 		missing_str = ", ".join([f["label"] for f in missing]) if missing else "None"
 
+		# Single-page mode: simplified prompt
+		if session.generation_mode == "single_page":
+			return f"""You are Builder AI, an assistant that helps users add a new page to their existing website.
+
+CURRENT STATE:
+- Step: {session.current_step}
+- Collected data: {json.dumps(collected, ensure_ascii=False)}
+- Existing site colors: primary={session.primary_color}, secondary={session.secondary_color}
+- Existing site fonts: heading={session.heading_font}, body={session.body_font}
+
+YOUR TASK:
+- Understand what kind of page the user wants to add
+- Extract: site_description (what the page should contain/be about)
+- The user does NOT need to choose theme/colors/fonts — those come from the existing site
+- Once you understand the page request, confirm and tell the user to click "Generate Page"
+
+RULES:
+- Be concise and friendly
+- Respond in the SAME LANGUAGE as the user's message
+- ONE question at a time
+- Use markdown for formatting
+
+DATA EXTRACTION:
+<extracted_data>{{"site_description": "Description of the page to generate"}}</extracted_data>
+
+SUGGESTION BUTTONS:
+<buttons>[{{"label": "Option 1", "value": "value1"}}]</buttons>
+
+When the page description is clear, congratulate the user and tell them to click "Generate Page"."""
+
+		# Full-site mode: original prompt
 		themes_str = "\n".join([f"- {k}: {v}" for k, v in THEMES.items()])
 		site_types_str = "\n".join([f"- {k}: {v}" for k, v in SITE_TYPES.items()])
 		palettes_str = "\n".join([f"- {p['label']}: {p['primary']} / {p['secondary']}" for p in COLOR_PALETTES])
@@ -639,15 +767,16 @@ When all required fields are collected, congratulate the user and tell them they
 		"""Check if we should advance to the next step."""
 		current = session.current_step
 		missing = session.get_missing_fields()
+		steps = STEPS_SINGLE_PAGE if session.generation_mode == "single_page" else STEPS_FULL_SITE
 
 		# Get missing fields for current step
 		current_missing = [f for f in missing if f.get("step") == current]
 
 		if not current_missing:
 			# Current step complete, advance
-			idx = STEPS.index(current) if current in STEPS else 0
-			if idx < len(STEPS) - 1:
-				next_step = STEPS[idx + 1]
+			idx = steps.index(current) if current in steps else 0
+			if idx < len(steps) - 1:
+				next_step = steps[idx + 1]
 				# Skip pages step if it has no required fields
 				if next_step == "pages":
 					# Auto-populate pages_config based on site_type
@@ -673,6 +802,8 @@ When all required fields are collected, congratulate the user and tell them they
 		"""Get the next question to ask based on missing fields."""
 		missing = session.get_missing_fields()
 		if not missing:
+			if session.generation_mode == "single_page":
+				return _("All set! Click **Generate Page** when you're ready.")
 			return _("All information collected! Click **Generate Site** when you're ready.")
 
 		next_field = missing[0]["field"]
@@ -691,7 +822,52 @@ When all required fields are collected, congratulate the user and tell them they
 
 	def _handle_special_command(self, session, command: str) -> Dict:
 		"""Handle special commands (button values starting with __)."""
-		if command == "__UPLOAD_LOGO__":
+
+		if command == "__MODE_FULL_SITE__":
+			session.generation_mode = "full_site"
+			session.current_step = "description"
+			response = self._generate_full_site_intro()
+			session.add_message(role="user", content=_("(Generate a full site)"))
+			session.add_message(role="assistant", content=response["content"], buttons=response.get("buttons"))
+			session.calculate_completion()
+			session.update_missing_fields()
+			session.save(ignore_permissions=True)
+			return {
+				"success": True,
+				"response": response["content"],
+				"buttons": response.get("buttons"),
+				"current_step": session.current_step,
+				"completion_percentage": session.completion_percentage,
+				"missing_fields": session.get_missing_fields(),
+				"generation_mode": session.generation_mode,
+			}
+
+		elif command == "__MODE_SINGLE_PAGE__":
+			session.generation_mode = "single_page"
+			session.current_step = "page_request"
+			# Analyze existing site
+			site_context = self._analyze_existing_site()
+			# Pre-fill session with existing theme data
+			for field in ("primary_color", "secondary_color", "heading_font", "body_font", "theme"):
+				if site_context.get(field) and not session.get(field):
+					session.set(field, site_context[field])
+			response = self._generate_single_page_intro(site_context)
+			session.add_message(role="user", content=_("(Add a page to my site)"))
+			session.add_message(role="assistant", content=response["content"], buttons=response.get("buttons"))
+			session.calculate_completion()
+			session.update_missing_fields()
+			session.save(ignore_permissions=True)
+			return {
+				"success": True,
+				"response": response["content"],
+				"buttons": response.get("buttons"),
+				"current_step": session.current_step,
+				"completion_percentage": session.completion_percentage,
+				"missing_fields": session.get_missing_fields(),
+				"generation_mode": session.generation_mode,
+			}
+
+		elif command == "__UPLOAD_LOGO__":
 			response = _("Please upload your logo using the upload button or drag & drop.")
 			session.add_message(role="assistant", content=response)
 			session.save(ignore_permissions=True)
@@ -721,6 +897,149 @@ When all required fields are collected, congratulate the user and tell them they
 
 		# Default: treat as regular message
 		return self.process_message(session.session_id, command.strip("_"))
+
+	# =========================================================================
+	# SINGLE PAGE GENERATION
+	# =========================================================================
+
+	def _trigger_single_page_generation(self, session) -> Dict:
+		"""Generate a single page synchronously using existing site theme."""
+		try:
+			from builder.ai.generators.page_generator import PageGenerator
+
+			# Build design brief from existing site data
+			design_brief = self._build_design_brief_from_existing(session)
+
+			# Generate the page blocks
+			gen = PageGenerator()
+			blocks = gen.generate_page(
+				prompt=session.site_description,
+				theme=session.theme or "modern",
+				primary_color=session.primary_color,
+				secondary_color=session.secondary_color,
+				font_family=None,
+				page_title=None,
+				page_type=None,
+				design_brief=design_brief,
+			)
+
+			if not blocks:
+				session.status = "Failed"
+				session.save(ignore_permissions=True)
+				return {"success": False, "message": _("Failed to generate page blocks")}
+
+			# Wrap blocks in a root body element
+			root_block = {
+				"blockId": f"root-{frappe.generate_hash(length=8)}",
+				"element": "body",
+				"baseStyles": {},
+				"children": blocks,
+			}
+
+			# Determine page title and route from the description
+			page_title = self._extract_page_title(session.site_description)
+			route = frappe.scrub(page_title).replace("_", "-")
+
+			# Create the Builder Page
+			page = frappe.new_doc("Builder Page")
+			page.page_title = page_title
+			page.blocks = json.dumps([root_block])
+			page.draft_blocks = json.dumps([root_block])
+			page.published = 1
+			page.insert(ignore_permissions=True)
+
+			# Set clean route
+			frappe.db.set_value("Builder Page", page.name, "route", route)
+			frappe.db.commit()
+
+			# Add to menu
+			from builder.hf_utils.menu_integration import update_menu_after_page_creation
+			update_menu_after_page_creation(page)
+
+			# Update session
+			session.status = "Completed"
+			session.generated_pages = json.dumps([{
+				"name": page.name,
+				"title": page_title,
+				"route": f"/{route}",
+			}])
+			session.save(ignore_permissions=True)
+
+			return {
+				"success": True,
+				"status": "completed",
+				"pages_created": [{
+					"name": page.name,
+					"title": page_title,
+					"route": f"/{route}",
+					"page_name": page.name,
+				}],
+				"completion_percentage": 100,
+			}
+
+		except Exception as e:
+			frappe.log_error("Builder Chat: Single page generation error", str(e))
+			session.status = "Failed"
+			session.save(ignore_permissions=True)
+			return {"success": False, "message": _("Failed to generate page: {0}").format(str(e))}
+
+	def _build_design_brief_from_existing(self, session):
+		"""Build a DesignBrief from existing site data for single-page generation."""
+		from builder.ai.generators.brief_generator import get_default_brief
+
+		# 1. Check for stored design brief from previous AI generation
+		try:
+			site_configs = frappe.get_all(
+				"Builder Site Config",
+				fields=["design_brief_json"],
+				order_by="modified desc",
+				limit=1
+			)
+			if site_configs and site_configs[0].get("design_brief_json"):
+				from builder.ai.schemas.design_brief import DesignBrief
+				brief_data = json.loads(site_configs[0]["design_brief_json"])
+				# Override with current session values if present
+				if session.primary_color:
+					brief_data["primary_color"] = session.primary_color
+				if session.secondary_color:
+					brief_data["secondary_color"] = session.secondary_color
+				if session.heading_font:
+					brief_data["heading_font"] = session.heading_font
+				if session.body_font:
+					brief_data["body_font"] = session.body_font
+				return DesignBrief(**brief_data)
+		except Exception:
+			pass
+
+		# 2. Fallback: build default brief with existing colors/fonts
+		brief = get_default_brief(
+			theme=session.theme or "modern",
+			primary_color=session.primary_color,
+			secondary_color=session.secondary_color,
+		)
+		if session.heading_font:
+			brief.heading_font = session.heading_font
+		if session.body_font:
+			brief.body_font = session.body_font
+		return brief
+
+	def _extract_page_title(self, description: str) -> str:
+		"""Extract a page title from the description."""
+		# Common patterns: "Generate an About page" -> "About"
+		import re
+		patterns = [
+			r"(?:page|page\s+(?:de|d'))\s+(.+?)(?:\s+(?:pour|for|de|d')\s|$)",
+			r"(?:Generate|Create|Générer|Créer)\s+(?:an?|une?)\s+(.+?)\s+page",
+		]
+		for pattern in patterns:
+			match = re.search(pattern, description, re.IGNORECASE)
+			if match:
+				title = match.group(1).strip().title()
+				if len(title) > 2:
+					return title
+		# Fallback: use first few words
+		words = description.split()[:3]
+		return " ".join(words).title() if words else _("New Page")
 
 	# =========================================================================
 	# UTILITIES

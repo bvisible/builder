@@ -9,6 +9,7 @@
   "session_id",
   "user",
   "status",
+  "generation_mode",
   "current_step",
   "completion_percentage",
   "section_messages",
@@ -70,12 +71,18 @@
    "options": "Active\nGenerating\nCompleted\nFailed\nAbandoned"
   },
   {
+   "fieldname": "generation_mode",
+   "fieldtype": "Select",
+   "label": "Generation Mode",
+   "options": "\nfull_site\nsingle_page"
+  },
+  {
    "default": "description",
    "fieldname": "current_step",
    "fieldtype": "Select",
    "in_list_view": 1,
    "label": "Current Step",
-   "options": "description\nstyle\npages\ngeneration"
+   "options": "description\nstyle\npages\ngeneration\npage_request"
   },
   {
    "default": "0",

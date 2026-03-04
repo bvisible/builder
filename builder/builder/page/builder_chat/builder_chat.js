@@ -48,6 +48,7 @@ frappe.ui.BuilderChatPage = class BuilderChatPage {
 		this.is_typing = false;
 		this.pending_upload = null;
 		this.generation_poll = null;
+		this.generation_mode = null;
 
 		this.make();
 	}
@@ -293,6 +294,11 @@ frappe.ui.BuilderChatPage = class BuilderChatPage {
 					missing_fields: response.message.missing_fields
 				});
 
+				// Track generation mode
+				if (response.message.generation_mode) {
+					this.set_generation_mode(response.message.generation_mode);
+				}
+
 				if (response.message.is_resumed) {
 					this.add_system_notice(__('Session resumed. You can continue where you left off.'));
 				}
@@ -342,6 +348,9 @@ frappe.ui.BuilderChatPage = class BuilderChatPage {
 			if (response.message && response.message.success) {
 				this.add_message('assistant', response.message.response, response.message.buttons);
 				this.update_progress(response.message);
+				if (response.message.generation_mode) {
+					this.set_generation_mode(response.message.generation_mode);
+				}
 				this.scroll_to_bottom();
 			} else {
 				this.add_message('assistant', response.message?.message || __('Sorry, I encountered an error. Please try again.'));
@@ -482,6 +491,9 @@ frappe.ui.BuilderChatPage = class BuilderChatPage {
 				}
 				if (response.message.await_upload) {
 					this.$file_input.click();
+				}
+				if (response.message.generation_mode) {
+					this.set_generation_mode(response.message.generation_mode);
 				}
 				this.update_progress(response.message);
 				this.scroll_to_bottom();
@@ -657,19 +669,26 @@ frappe.ui.BuilderChatPage = class BuilderChatPage {
 	}
 
 	is_step_before(step, current) {
-		const order = ['description', 'style', 'pages', 'generation'];
+		const order = this.generation_mode === 'single_page'
+			? ['page_request', 'generation']
+			: ['description', 'style', 'pages', 'generation'];
 		return order.indexOf(step) < order.indexOf(current);
 	}
 
 	async trigger_generation() {
 		if (this.$generate_btn.prop('disabled')) return;
 
+		const is_single = this.generation_mode === 'single_page';
+		const btn_label = is_single ? __('Generate Page') : __('Generate Site');
+
 		this.$generate_btn.prop('disabled', true).html(
 			`<i class="fa fa-spinner fa-spin"></i> ${__('Starting...')}`
 		);
 
 		this.add_message('assistant',
-			`**${__('Starting site generation...')}**\n\n${__('This may take a few minutes. I will show you the progress in real-time.')}`
+			is_single
+				? `**${__('Generating page...')}**\n\n${__('This should only take a moment.')}`
+				: `**${__('Starting site generation...')}**\n\n${__('This may take a few minutes. I will show you the progress in real-time.')}`
 		);
 
 		try {
@@ -680,18 +699,23 @@ frappe.ui.BuilderChatPage = class BuilderChatPage {
 			});
 
 			if (response.message && response.message.success) {
-				// Update step to generation
+				// Check if generation completed synchronously (single page mode)
+				if (response.message.status === 'completed') {
+					this.on_generation_complete(response.message);
+					return;
+				}
+
+				// Full site: update step and start polling
 				this.update_progress({
 					current_step: 'generation',
 					completion_percentage: response.message.completion_percentage || 0,
 					missing_fields: []
 				});
 
-				// Start polling for generation status
 				this.start_generation_polling(response.message.job_id);
 			} else {
 				this.$generate_btn.prop('disabled', false).html(
-					`<i class="fa fa-magic"></i> ${__('Generate Site')}`
+					`<i class="fa fa-magic"></i> ${btn_label}`
 				);
 				this.add_message('assistant',
 					response.message?.message || __('Failed to start generation. Please try again.')
@@ -700,7 +724,7 @@ frappe.ui.BuilderChatPage = class BuilderChatPage {
 		} catch (error) {
 			console.error('Trigger generation error:', error);
 			this.$generate_btn.prop('disabled', false).html(
-				`<i class="fa fa-magic"></i> ${__('Generate Site')}`
+				`<i class="fa fa-magic"></i> ${btn_label}`
 			);
 			this.add_message('assistant', __('Connection error. Please try again.'));
 		}
@@ -774,17 +798,25 @@ frappe.ui.BuilderChatPage = class BuilderChatPage {
 
 		// Build page links
 		const pages = status.pages_created || [];
+		const is_single = this.generation_mode === 'single_page';
 		let page_list = pages.map(p => `- [${p.title || p.page_name}](/builder/page/${p.page_name})`).join('\n');
 
 		this.add_message('assistant',
-			`**${__('Site generated successfully!')}**\n\n` +
-			`${__('Pages created')}:\n${page_list}\n\n` +
-			`${__('You can now edit your pages in the Builder editor.')}`
+			is_single
+				? `**${__('Page generated successfully!')}**\n\n` +
+				  `${page_list}\n\n` +
+				  `${__('You can now edit your page in the Builder editor.')}`
+				: `**${__('Site generated successfully!')}**\n\n` +
+				  `${__('Pages created')}:\n${page_list}\n\n` +
+				  `${__('You can now edit your pages in the Builder editor.')}`
 		);
 
 		// Mark step as completed
 		this.$steps.filter('[data-step="generation"]').addClass('completed')
 			.find('.step-status i').attr('class', 'fa fa-check');
+
+		// Re-enable chat input
+		this.$input.prop('disabled', false);
 
 		this.scroll_to_bottom();
 	}
@@ -802,6 +834,90 @@ frappe.ui.BuilderChatPage = class BuilderChatPage {
 		);
 
 		this.scroll_to_bottom();
+	}
+
+	set_generation_mode(mode) {
+		if (this.generation_mode === mode) return;
+		this.generation_mode = mode;
+		this.update_steps_for_mode(mode);
+	}
+
+	update_steps_for_mode(mode) {
+		const $steps_container = this.$container.find('.builder-steps');
+
+		if (mode === 'single_page') {
+			$steps_container.html(`
+				<div class="builder-step active" data-step="page_request">
+					<div class="step-indicator">1</div>
+					<div class="step-info">
+						<div class="step-title">${__('Page Request')}</div>
+						<div class="step-subtitle">${__('Describe your page')}</div>
+					</div>
+					<div class="step-status">
+						<i class="fa fa-spinner fa-spin"></i>
+					</div>
+				</div>
+				<div class="builder-step" data-step="generation">
+					<div class="step-indicator">2</div>
+					<div class="step-info">
+						<div class="step-title">${__('Generation')}</div>
+						<div class="step-subtitle">${__('Page creation')}</div>
+					</div>
+					<div class="step-status">
+						<i class="fa fa-circle-o"></i>
+					</div>
+				</div>
+			`);
+			this.$steps = this.$container.find('.builder-step');
+			this.$generate_btn.html(`<i class="fa fa-magic"></i> ${__('Generate Page')}`);
+			this.$progress_panel.find('.progress-header h4').text(__('Page Generation'));
+		} else {
+			$steps_container.html(`
+				<div class="builder-step active" data-step="description">
+					<div class="step-indicator">1</div>
+					<div class="step-info">
+						<div class="step-title">${__('Description')}</div>
+						<div class="step-subtitle">${__('Business & objective')}</div>
+					</div>
+					<div class="step-status">
+						<i class="fa fa-spinner fa-spin"></i>
+					</div>
+				</div>
+				<div class="builder-step" data-step="style">
+					<div class="step-indicator">2</div>
+					<div class="step-info">
+						<div class="step-title">${__('Style')}</div>
+						<div class="step-subtitle">${__('Theme & colors')}</div>
+					</div>
+					<div class="step-status">
+						<i class="fa fa-circle-o"></i>
+					</div>
+				</div>
+				<div class="builder-step" data-step="pages">
+					<div class="step-indicator">3</div>
+					<div class="step-info">
+						<div class="step-title">${__('Pages')}</div>
+						<div class="step-subtitle">${__('Site structure')}</div>
+					</div>
+					<div class="step-status">
+						<i class="fa fa-circle-o"></i>
+					</div>
+				</div>
+				<div class="builder-step" data-step="generation">
+					<div class="step-indicator">4</div>
+					<div class="step-info">
+						<div class="step-title">${__('Generation')}</div>
+						<div class="step-subtitle">${__('Real-time progress')}</div>
+					</div>
+					<div class="step-status">
+						<i class="fa fa-circle-o"></i>
+					</div>
+				</div>
+			`);
+			this.$steps = this.$container.find('.builder-step');
+			this.$generate_btn.html(`<i class="fa fa-magic"></i> ${__('Generate Site')}`);
+			this.$progress_panel.find('.progress-header h4').text(__('Site Generation'));
+		}
 	}
 
 	scroll_to_bottom() {

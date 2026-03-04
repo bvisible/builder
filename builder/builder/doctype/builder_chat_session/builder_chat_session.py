@@ -107,6 +107,12 @@ class BuilderChatSession(Document):
 		Calculate completion percentage based on collected fields.
 		Uses weighted calculation per step.
 		"""
+		# Single-page mode: only need page description
+		if self.generation_mode == "single_page":
+			self.completion_percentage = 100.0 if self.site_description else 0
+			return
+
+		# Full-site mode: weighted calculation
 		# Step 1: Description (40 points)
 		desc_fields = {
 			"site_description": 20,
@@ -147,6 +153,14 @@ class BuilderChatSession(Document):
 		"""Update the list of missing required fields."""
 		missing = []
 
+		if self.generation_mode == "single_page":
+			# Single-page mode: only need page description
+			if not self.get("site_description"):
+				missing.append({"field": "site_description", "label": str(_("Page Description")), "step": "page_request"})
+			self.missing_fields = json.dumps(missing)
+			return
+
+		# Full-site mode
 		# Step 1: Description
 		desc_required = [
 			("site_description", _("Site Description")),
@@ -188,11 +202,14 @@ class BuilderChatSession(Document):
 
 	def is_ready_for_generation(self):
 		"""
-		Check if session has all required data for site generation.
+		Check if session has all required data for generation.
 
 		Returns:
 			Tuple of (is_ready: bool, missing: list)
 		"""
 		missing = self.get_missing_fields()
-		is_ready = len(missing) == 0 and self.site_description and self.site_name
+		if self.generation_mode == "single_page":
+			is_ready = len(missing) == 0 and bool(self.site_description)
+		else:
+			is_ready = len(missing) == 0 and self.site_description and self.site_name
 		return is_ready, missing
