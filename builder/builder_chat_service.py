@@ -940,19 +940,21 @@ When all required fields are collected, congratulate the user and tell them they
 			page_title = self._extract_page_title(session.site_description)
 			route = re.sub(r"[^a-z0-9-]", "", frappe.scrub(page_title).replace("_", "-"))
 
-			# Create the Builder Page
+			# Avoid route collision with existing pages
+			if frappe.db.exists("Builder Page", {"route": route}):
+				route = f"{route}-{frappe.generate_hash(length=4)}"
+
+			# Create the Builder Page with clean route set BEFORE insert
+			# (set_default_values checks "if not self.route" so it won't override)
 			page = frappe.new_doc("Builder Page")
 			page.page_title = page_title
+			page.route = route
 			page.blocks = json.dumps([root_block])
 			page.draft_blocks = json.dumps([root_block])
 			page.published = 1
 			page.insert(ignore_permissions=True)
 
-			# Set clean route
-			frappe.db.set_value("Builder Page", page.name, "route", route)
-			frappe.db.commit()
-
-			# Add to menu
+			# Add to menu (page.route is correct since we set it before insert)
 			from builder.hf_utils.menu_integration import update_menu_after_page_creation
 			update_menu_after_page_creation(page)
 
