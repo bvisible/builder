@@ -354,22 +354,12 @@ frappe.ui.BuilderChatPage = class BuilderChatPage {
 		this.generation_mode = mode;
 
 		if (mode === 'single_page') {
-			// Rebuild progress panel with single-page steps
-			this.progress.steps = this.single_page_steps;
-			this.progress.render();
-			this.rebind_after_render();
+			// Update steps without destroying the chat
+			this.progress.updateSteps(this.single_page_steps);
 			this.progress.setActionLabel(__('Generate Page'), 'fa-magic');
 			this.progress.$progress_panel.find('.progress-header h4')
 				.text(__('Page Generation'));
 		}
-	}
-
-	/**
-	 * After re-rendering the progress component (e.g. mode change),
-	 * re-bind chat events since the chat instance is recreated.
-	 */
-	rebind_after_render() {
-		this.bind_events();
 	}
 
 	// ============ GENERATION ============
