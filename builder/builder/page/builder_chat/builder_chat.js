@@ -3,26 +3,6 @@
 // Migrated to nora.chat.Progress + nora.chat.Core components
 
 frappe.pages['builder-chat'].on_page_load = function(wrapper) {
-	// Hide Frappe UI elements for full-screen chat experience
-	const hideElements = () => {
-		$('.page-head').hide();
-		$('.page-head-content').hide();
-		$('.sticky-top').hide();
-		$('.body-sidebar-container').hide();
-		$('#body_sidebar').hide();
-		$('.layout-side-section').hide();
-		$(wrapper).find('.page-head').hide();
-		$(wrapper).closest('.page-container').find('.page-head').hide();
-		$('.main-section').css({
-			'margin-left': '0',
-			'width': '100%'
-		});
-	};
-
-	hideElements();
-	setTimeout(hideElements, 100);
-	setTimeout(hideElements, 500);
-
 	frappe.builder_chat_page = new frappe.ui.BuilderChatPage(wrapper);
 };
 
@@ -68,26 +48,14 @@ frappe.ui.BuilderChatPage = class BuilderChatPage {
 	}
 
 	make() {
-		// Builder logo SVG
-		const logo_svg = '<svg width="28" height="28" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">'
-			+ '<rect x="3" y="3" width="8" height="8" rx="2" fill="rgba(255,255,255,0.9)"/>'
-			+ '<rect x="13" y="3" width="8" height="8" rx="2" fill="rgba(255,255,255,0.6)"/>'
-			+ '<rect x="3" y="13" width="8" height="8" rx="2" fill="rgba(255,255,255,0.6)"/>'
-			+ '<rect x="13" y="13" width="8" height="8" rx="2" fill="rgba(255,255,255,0.3)"/>'
-			+ '</svg>';
-
 		this.progress = new nora.chat.Progress({
 			wrapper: this.page.main,
 			title: __('Site Generation'),
-			logo: {
-				html: logo_svg,
-				label: 'Builder AI'
-			},
+			logo: { label: 'NORA' },
 			steps: this.full_site_steps,
 			action_button: { label: __('Generate Site'), icon: 'fa-magic' },
 			chat: {
-				bot_name: 'Builder AI',
-				bot_avatar: '/assets/builder/images/builder-bot.svg',
+				bot_name: 'NORA',
 				placeholder: __('Describe your website...'),
 				enable_upload: true,
 				upload_accept: 'image/*'
