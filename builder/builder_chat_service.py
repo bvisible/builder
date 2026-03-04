@@ -938,7 +938,7 @@ When all required fields are collected, congratulate the user and tell them they
 
 			# Determine page title and route from the description
 			page_title = self._extract_page_title(session.site_description)
-			route = frappe.scrub(page_title).replace("_", "-")
+			route = re.sub(r"[^a-z0-9-]", "", frappe.scrub(page_title).replace("_", "-"))
 
 			# Create the Builder Page
 			page = frappe.new_doc("Builder Page")
@@ -1025,19 +1025,21 @@ When all required fields are collected, congratulate the user and tell them they
 
 	def _extract_page_title(self, description: str) -> str:
 		"""Extract a page title from the description."""
-		# Common patterns: "Generate an About page" -> "About"
-		import re
 		patterns = [
-			r"(?:page|page\s+(?:de|d'))\s+(.+?)(?:\s+(?:pour|for|de|d')\s|$)",
+			# "Generate a Services page" -> "Services"
 			r"(?:Generate|Create|Générer|Créer)\s+(?:an?|une?)\s+(.+?)\s+page",
+			# "A Services page showcasing..." -> "Services"
+			r"^(?:An?\s+)(.+?)\s+page\b",
+			# "page de contact pour..." -> "Contact"
+			r"(?:page\s+(?:de|d'|des)\s+)(.+?)(?:\s+(?:pour|for|de|d'|showcasing|with|that)\s|$)",
 		]
 		for pattern in patterns:
 			match = re.search(pattern, description, re.IGNORECASE)
 			if match:
 				title = match.group(1).strip().title()
-				if len(title) > 2:
+				if 2 < len(title) < 50:
 					return title
-		# Fallback: use first few words
+		# Fallback: use first 3 words, cleaned
 		words = description.split()[:3]
 		return " ".join(words).title() if words else _("New Page")
 
