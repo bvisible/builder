@@ -81,8 +81,15 @@ class BuilderChatSession(Document):
 			"inspiration_urls", "company_data",
 		]
 
+		# Fields stored as JSON strings in the database
+		json_fields = {"social_links", "pages_config", "inspiration_urls", "company_data"}
+
 		for field, value in new_data.items():
 			if field in valid_fields and value is not None:
+				# Serialize dicts/lists to JSON strings for JSON-type fields
+				if field in json_fields and isinstance(value, (dict, list)):
+					value = json.dumps(value)
+
 				# Merge inspiration_urls (append, deduplicate)
 				if field == "inspiration_urls" and self.get("inspiration_urls"):
 					try:
