@@ -88,10 +88,157 @@ class BuilderSiteInspiration(Document):
                 self.status = "failed"
                 self.error_message = result.get("error", "Unknown error")
 
+        except ImportError:
+            # Playwright not available — use lightweight HTML-based extraction
+            self._capture_website_lightweight()
+
         except Exception as e:
             frappe.log_error("Website capture failed", str(e))
             self.status = "failed"
             self.error_message = str(e)[:500]
+
+    def _capture_website_lightweight(self):
+        """Fallback: extract page metadata and colors via HTTP without Playwright."""
+        import re
+        import requests
+        from collections import Counter
+        from urllib.parse import urljoin
+
+        try:
+            headers = {
+                "User-Agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) "
+                              "AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"
+            }
+            resp = requests.get(self.url, headers=headers, timeout=15, allow_redirects=True)
+            resp.raise_for_status()
+            html = resp.text
+
+            analysis = {"source": "html_metadata", "url": self.url}
+
+            # Extract title
+            title_match = re.search(r"<title[^>]*>(.*?)</title>", html, re.IGNORECASE | re.DOTALL)
+            if title_match:
+                analysis["title"] = title_match.group(1).strip()[:200]
+
+            # Extract meta description
+            desc_match = re.search(
+                r'<meta[^>]*name=["\']description["\'][^>]*content=["\'](.*?)["\']', html, re.IGNORECASE
+            )
+            if not desc_match:
+                desc_match = re.search(
+                    r'<meta[^>]*content=["\'](.*?)["\'][^>]*name=["\']description["\']', html, re.IGNORECASE
+                )
+            if desc_match:
+                analysis["description"] = desc_match.group(1).strip()[:500]
+
+            # Extract theme-color meta tag
+            theme_match = re.search(
+                r'<meta[^>]*name=["\']theme-color["\'][^>]*content=["\'](#[0-9a-fA-F]{3,8})["\']',
+                html, re.IGNORECASE
+            )
+            if not theme_match:
+                theme_match = re.search(
+                    r'<meta[^>]*content=["\'](#[0-9a-fA-F]{3,8})["\'][^>]*name=["\']theme-color["\']',
+                    html, re.IGNORECASE
+                )
+
+            # Extract og:image
+            og_match = re.search(
+                r'<meta[^>]*property=["\']og:image["\'][^>]*content=["\'](.*?)["\']', html, re.IGNORECASE
+            )
+            if not og_match:
+                og_match = re.search(
+                    r'<meta[^>]*content=["\'](.*?)["\'][^>]*property=["\']og:image["\']', html, re.IGNORECASE
+                )
+
+            # Extract hex colors from CSS/styles
+            hex_colors = re.findall(r'#([0-9a-fA-F]{6})\b', html)
+            color_counts = Counter(hex_colors)
+            total = sum(color_counts.values()) or 1
+
+            dominant_colors = []
+            for hex_val, count in color_counts.most_common(15):
+                r, g, b = int(hex_val[0:2], 16), int(hex_val[2:4], 16), int(hex_val[4:6], 16)
+                # Skip near-black and near-white
+                brightness = r * 0.299 + g * 0.587 + b * 0.114
+                if 15 < brightness < 240:
+                    dominant_colors.append({
+                        "hex": f"#{hex_val.lower()}",
+                        "rgb": [r, g, b],
+                        "percentage": round(count / total * 100, 1),
+                        "source": "css"
+                    })
+                if len(dominant_colors) >= 5:
+                    break
+
+            # Insert theme-color at top if found
+            if theme_match:
+                theme_hex = theme_match.group(1)
+                if len(theme_hex) == 4:  # Expand #RGB to #RRGGBB
+                    theme_hex = f"#{theme_hex[1]*2}{theme_hex[2]*2}{theme_hex[3]*2}"
+                analysis["theme_color"] = theme_hex
+                r, g, b = int(theme_hex[1:3], 16), int(theme_hex[3:5], 16), int(theme_hex[5:7], 16)
+                dominant_colors.insert(0, {
+                    "hex": theme_hex.lower(),
+                    "rgb": [r, g, b],
+                    "percentage": 100.0,
+                    "source": "theme-color"
+                })
+
+            # Try to download og:image and analyze for better colors
+            if og_match:
+                og_url = og_match.group(1)
+                if not og_url.startswith("http"):
+                    og_url = urljoin(self.url, og_url)
+                analysis["og_image"] = og_url
+                try:
+                    og_colors = self._analyze_remote_image(og_url)
+                    if og_colors:
+                        dominant_colors = og_colors
+                        analysis["color_source"] = "og_image"
+                except Exception:
+                    pass
+
+            analysis["dominant_colors"] = dominant_colors[:5]
+
+            # Determine dark/light theme
+            if dominant_colors:
+                total_weight = sum(c["percentage"] for c in dominant_colors)
+                if total_weight > 0:
+                    avg_brightness = sum(
+                        (c["rgb"][0] * 0.299 + c["rgb"][1] * 0.587 + c["rgb"][2] * 0.114) * c["percentage"]
+                        for c in dominant_colors
+                    ) / total_weight
+                    analysis["is_dark_theme"] = bool(avg_brightness < 128)
+                    analysis["brightness"] = int(round(avg_brightness))
+
+            self.analysis = json.dumps(analysis, indent=2)
+            self.status = "captured"
+            self.captured_at = frappe.utils.now()
+
+        except Exception as e:
+            frappe.log_error("Lightweight capture failed", str(e))
+            self.status = "failed"
+            self.error_message = f"HTML capture: {str(e)[:450]}"
+
+    def _analyze_remote_image(self, image_url: str) -> Optional[list]:
+        """Download a remote image and extract dominant colors."""
+        import requests
+
+        resp = requests.get(image_url, timeout=10, stream=True)
+        resp.raise_for_status()
+
+        content_type = resp.headers.get("content-type", "")
+        if "image" not in content_type:
+            return None
+
+        content = resp.content
+        if len(content) > 5 * 1024 * 1024:
+            return None
+
+        from builder.ai.inspiration.analyzer import DesignAnalyzer
+        analyzer = DesignAnalyzer()
+        return analyzer.extract_dominant_colors(content, n_colors=5)
 
     def get_analysis_dict(self) -> dict:
         """Get the analysis data as a dict."""
