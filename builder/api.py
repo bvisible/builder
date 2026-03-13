@@ -402,7 +402,7 @@ def generate_complete_site(
 	# We pass our tracking ID as generation_job_id to avoid conflict
 	frappe.enqueue(
 		"builder.api._generate_complete_site_worker",
-		queue="long",
+		queue="default",
 		timeout=1800,  # 30 minutes max (kimi model is slow)
 		job_name=job_id,
 		generation_job_id=job_id,  # Our tracking ID
@@ -1263,7 +1263,7 @@ def continue_generation(
 
 	frappe.enqueue(
 		"builder.api._generate_complete_site_worker",
-		queue="long",
+		queue="default",
 		timeout=1800,
 		job_name=job_id,
 		generation_job_id=job_id,
@@ -1361,7 +1361,7 @@ def regenerate_homepage(
 
 	frappe.enqueue(
 		"builder.api._generate_complete_site_worker",
-		queue="long",
+		queue="default",
 		timeout=1800,
 		job_name=job_id,
 		generation_job_id=job_id,
@@ -2445,7 +2445,7 @@ def chat_generate_images(session_id: str):
 
 		frappe.enqueue(
 			"builder.api._generate_images_worker",
-			queue="long",
+			queue="default",
 			timeout=1800,
 			job_name=img_job_id,
 			img_job_id=img_job_id,
