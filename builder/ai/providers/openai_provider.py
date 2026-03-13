@@ -44,8 +44,8 @@ class OpenAIProvider(BaseProvider):
         **kwargs
     ):
         # Detect if using a custom API (not native OpenAI)
-        self.base_url = (base_url or "").rstrip("/") if base_url else None
-        is_custom_api = bool(self.base_url) and "openai.com" not in (self.base_url or "")
+        cleaned_base_url = (base_url or "").rstrip("/") if base_url else None
+        is_custom_api = bool(cleaned_base_url) and "openai.com" not in (cleaned_base_url or "")
 
         # Higher defaults for custom APIs (Moonshot pages = large JSON)
         default_max_tokens = 32768 if is_custom_api else 4096
@@ -54,6 +54,7 @@ class OpenAIProvider(BaseProvider):
         super().__init__(
             model=model or self.DEFAULT_MODEL,
             api_key=api_key,
+            base_url=cleaned_base_url,
             temperature=temperature,
             max_tokens=max_tokens or default_max_tokens,
             timeout=timeout or default_timeout,
