@@ -352,6 +352,48 @@ class BuilderChatService:
 			frappe.log_error("Builder Chat: Upload logo error", str(e))
 			return {"success": False, "message": _("Failed to process logo")}
 
+	def upload_inspiration(self, session_id: str, file_url: str) -> Dict:
+		"""Handle inspiration image upload."""
+		try:
+			session = frappe.get_doc("Builder Chat Session", {"session_id": session_id})
+			session.add_message(role="user", content=_("(Reference image uploaded)"))
+
+			# Capture as inspiration via existing infrastructure
+			from builder.api import capture_inspiration
+			result = capture_inspiration(image=file_url, sentiment="like")
+
+			existing = []
+			if session.inspiration_urls:
+				try:
+					existing = json.loads(session.inspiration_urls)
+				except (json.JSONDecodeError, TypeError):
+					existing = []
+
+			if result and result.get("name"):
+				existing.append({"url": file_url, "name": result["name"], "type": "image"})
+				session.inspiration_urls = json.dumps(existing)
+
+			inspo_msg = _("Reference image received! I'll use it as design inspiration for your site.")
+			next_q = self._get_next_question(session)
+			response = f"{inspo_msg}\n\n{next_q}"
+
+			buttons = self._get_fallback_buttons(session)
+			session.add_message(role="assistant", content=response)
+			session.save(ignore_permissions=True)
+
+			return {
+				"success": True,
+				"response": response,
+				"buttons": buttons,
+				"current_step": session.current_step,
+				"completion_percentage": session.completion_percentage,
+				"missing_fields": session.get_missing_fields(),
+			}
+
+		except Exception as e:
+			frappe.log_error("Builder Chat: Upload inspiration error", str(e))
+			return {"success": False, "message": _("Failed to process reference image")}
+
 	def trigger_generation(self, session_id: str) -> Dict:
 		"""Trigger site generation with collected parameters."""
 		try:
@@ -539,7 +581,7 @@ CURRENT STATE:
 REQUIRED FIELDS (collect in order):
 1. DESCRIPTION STEP: site_description (what the site is about), site_name (business/project name), site_type (type of site)
 2. STYLE STEP: theme (visual theme), primary_color (hex color), secondary_color (optional hex)
-3. PAGES STEP: auto-populated based on site_type, but can ask about CTA text/url, social links
+3. PAGES STEP: auto-populated based on site_type. Can also ask about CTA text/url, social links, and inspiration
 
 AVAILABLE OPTIONS:
 Themes: {themes_str}
@@ -562,6 +604,15 @@ CONTENT REWRITING:
 LOGO INTELLIGENCE:
 - If company data includes a logo, propose: "I found your existing logo. Shall we use it, or would you prefer to upload a new one?"
 - Don't ask for a logo upload by default if one already exists
+
+DESIGN INSPIRATION (IMPORTANT):
+- After collecting the style (theme + colors), ask ONE question about design inspiration:
+  "Do you have any websites you admire or reference images for the design?"
+- If the user shares URLs, acknowledge them positively as style references
+- If the user wants to upload reference images, offer the upload button
+- If the user says no or wants to skip, move on immediately — this is optional
+- Never ask more than once about inspiration
+- Offer buttons: "I have inspiration sites" / "Upload reference images" / "No, let's continue"
 
 RULES:
 - Ask ONE question at a time
@@ -588,7 +639,8 @@ Examples by context:
 - Asking about theme: offer theme name buttons
 - Asking about color: offer palette name buttons
 - After description rewriting: offer "Yes, perfect" / "Modify" / "Start over" buttons
-- After all fields collected: offer "Generate site" / "Add CTA" / "Add social links"
+- After style collected: offer "I have inspiration sites" / "Upload reference images" / "No, let's continue"
+- After all fields collected: offer "Generate site" / "Add CTA" / "Add social links" / "Share inspiration"
 
 When asking about themes, offer theme buttons.
 When asking about colors, offer palette buttons.
@@ -714,6 +766,8 @@ When all required fields are collected, congratulate the user and tell them they
 				buttons.append({"label": _("Add a CTA"), "value": _("I'd like to add a call-to-action button")})
 			if not session.social_links:
 				buttons.append({"label": _("Add social links"), "value": _("I'd like to add social media links")})
+			if not session.inspiration_urls:
+				buttons.append({"label": _("Share inspiration"), "value": _("I'd like to share websites or images for inspiration")})
 			return buttons
 
 		next_field = missing[0].get("field", "")
@@ -1006,6 +1060,19 @@ When all required fields are collected, congratulate the user and tell them they
 		"""Handle special commands (button values starting with __)."""
 		if command == "__UPLOAD_LOGO__":
 			response = _("Please upload your logo using the upload button or drag & drop.")
+			session.add_message(role="assistant", content=response)
+			session.save(ignore_permissions=True)
+			return {
+				"success": True,
+				"response": response,
+				"await_upload": True,
+				"current_step": session.current_step,
+				"completion_percentage": session.completion_percentage,
+				"missing_fields": session.get_missing_fields(),
+			}
+
+		elif command == "__UPLOAD_INSPIRATION__":
+			response = _("Please upload a reference image for design inspiration.")
 			session.add_message(role="assistant", content=response)
 			session.save(ignore_permissions=True)
 			return {

@@ -2339,6 +2339,18 @@ def chat_upload_logo(session_id: str, file_url: str):
 
 
 @frappe.whitelist()
+def chat_upload_inspiration(session_id: str, file_url: str):
+	"""Upload an inspiration image for a chat session."""
+	from builder.builder_chat_service import BuilderChatService
+	if not session_id:
+		return {"success": False, "message": _("Session ID is required")}
+	if not file_url:
+		return {"success": False, "message": _("File URL is required")}
+	service = BuilderChatService()
+	return service.upload_inspiration(session_id, file_url)
+
+
+@frappe.whitelist()
 def chat_trigger_generation(session_id: str):
 	"""Trigger site generation with collected parameters."""
 	from builder.builder_chat_service import BuilderChatService

@@ -29,6 +29,7 @@ frappe.ui.BuilderChatPage = class BuilderChatPage {
 		this.session_id = null;
 		this.generation_poll = null;
 		this.generation_mode = null;
+		this.upload_mode = 'logo'; // 'logo' or 'inspiration'
 
 		// Default step definitions for full-site mode
 		this.full_site_steps = [
@@ -48,6 +49,19 @@ frappe.ui.BuilderChatPage = class BuilderChatPage {
 	}
 
 	make() {
+		// Check nora.chat availability
+		if (typeof nora === 'undefined' || !nora.chat || !nora.chat.Progress) {
+			this.page.main.html(`
+				<div style="margin: 60px auto; max-width: 500px; text-align: center; color: var(--text-muted);">
+					<i class="fa fa-exclamation-triangle" style="font-size: 48px; margin-bottom: 20px;"></i>
+					<h4>${__('Nora app required')}</h4>
+					<p>${__('Builder Chat requires the Nora app to be installed.')}</p>
+					<code>bench get-app nora</code>
+				</div>
+			`);
+			return;
+		}
+
 		this.progress = new nora.chat.Progress({
 			wrapper: this.page.main,
 			title: __('Site Generation'),
@@ -258,6 +272,9 @@ frappe.ui.BuilderChatPage = class BuilderChatPage {
 		} else if (value === '__SKIP_IMAGES__') {
 			this.progress.chat.addMessage('assistant', __('No problem! You can generate images later from the Builder editor.'));
 			this.progress.chat.scrollToBottom();
+		} else if (value === '__UPLOAD_INSPIRATION__') {
+			this.upload_mode = 'inspiration';
+			this.progress.chat.$wrapper.find('.nora-chat-file-input').click();
 		} else if (value.startsWith('__OPEN_PAGE_')) {
 			const page_name = value.replace('__OPEN_PAGE_', '').replace('__', '');
 			window.open(`/builder/page/${page_name}`, '_blank');
@@ -325,11 +342,17 @@ frappe.ui.BuilderChatPage = class BuilderChatPage {
 		const file = pending.file;
 		const attachment_preview = pending.url || URL.createObjectURL(file);
 
+		// Determine upload type
+		const is_inspiration = this.upload_mode === 'inspiration';
+		const upload_label = is_inspiration ? __('Reference image') : __('Logo');
+		const typing_text = is_inspiration ? __('Processing reference image...') : __('Uploading logo...');
+		this.upload_mode = 'logo'; // Reset for next upload
+
 		// Show upload message and typing
-		this.progress.chat.addMessage('user', `${__('Logo')}: ${frappe.utils.escape_html(file.name)}`, {
+		this.progress.chat.addMessage('user', `${upload_label}: ${frappe.utils.escape_html(file.name)}`, {
 			attachment: attachment_preview
 		});
-		this.progress.chat.showTyping(__('Uploading logo...'));
+		this.progress.chat.showTyping(typing_text);
 
 		try {
 			const formData = new FormData();
@@ -346,8 +369,11 @@ frappe.ui.BuilderChatPage = class BuilderChatPage {
 			const upload_result = await upload_response.json();
 
 			if (upload_result.message && upload_result.message.file_url) {
+				const api_method = is_inspiration
+					? 'builder.api.chat_upload_inspiration'
+					: 'builder.api.chat_upload_logo';
 				const response = await frappe.call({
-					method: 'builder.api.chat_upload_logo',
+					method: api_method,
 					args: {
 						session_id: this.session_id,
 						file_url: upload_result.message.file_url
