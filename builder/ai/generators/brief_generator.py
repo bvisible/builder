@@ -15,6 +15,31 @@ from builder.ai.validators.brief_validator import BriefValidator, BriefValidatio
 from builder.ai.logging import ai_log
 
 
+def _hero_background_for_style(hero_style: str, primary: str, secondary: str) -> str:
+    """Return a hero background CSS value appropriate for the hero style."""
+    if hero_style == "gradient":
+        angle = random.choice([120, 135, 150, 160, 180])
+        return f"linear-gradient({angle}deg, {primary} 0%, {secondary} 100%)"
+    elif hero_style == "solid":
+        return primary
+    elif hero_style == "minimal":
+        return "#ffffff"
+    elif hero_style in ("split", "asymmetric", "cards"):
+        # Light background — the visual interest comes from layout, not bg
+        return "#f8fafc"
+    elif hero_style == "image":
+        return f"linear-gradient(135deg, {primary}cc 0%, {secondary}99 100%)"
+    # Fallback
+    return primary
+
+
+def _hero_text_color_for_style(hero_style: str) -> str:
+    """Return hero text color based on hero style."""
+    if hero_style in ("minimal", "split", "asymmetric", "cards"):
+        return "var(--text-color)"
+    return "#ffffff"
+
+
 # Color palettes for variety when no color is specified
 DEFAULT_COLOR_PALETTES = [
     {"primary": "#6366f1", "secondary": "#8b5cf6"},  # Indigo/Violet (original)
@@ -245,8 +270,12 @@ def get_default_brief(
             "padding": "24px",
             "border": "1px solid rgba(0, 0, 0, 0.05)",
         }),
-        "hero_background": f"linear-gradient(135deg, {effective_primary} 0%, {effective_secondary} 100%)",
-        "hero_text_color": "#ffffff",
+        "hero_background": _hero_background_for_style(
+            overrides.get("hero_style", "gradient"), effective_primary, effective_secondary
+        ),
+        "hero_text_color": _hero_text_color_for_style(
+            overrides.get("hero_style", "gradient")
+        ),
         "hero_style": overrides.get("hero_style", "gradient"),
         "section_padding": "80px 24px",
         "section_padding_mobile": "48px 16px",
@@ -312,9 +341,10 @@ MANDATORY - Include EXACT VALUES:
    - NEVER white text on light background!
 
 5. BACKGROUNDS - CRITICAL:
-   - Hero MUST have a gradient or solid color (NEVER white/var(--surface-color))
+   - Hero background should match the hero_style: gradient→use gradient, solid→solid color, minimal/split/cards→light bg is fine
    - Cards: use "#ffffff" (NEVER var(--surface-color))
    - Alternate section backgrounds for visual rhythm
+   - Vary hero backgrounds across themes — not every site needs a gradient hero
 
 IMPORTANT RULES:
 - Use CSS variable names like var(--primary-color) instead of actual hex values
