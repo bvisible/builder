@@ -286,6 +286,15 @@ class BuilderChatService:
 			prev_step = session.current_step
 			self._check_step_transition(session)
 
+			# If we just entered inspiration step, inject the inspiration question
+			if session.current_step == "inspiration" and prev_step != "inspiration":
+				response_content += "\n\n" + _("**Do you have any websites you admire or reference images for the design?** This helps me better understand the style you're looking for.")
+				parsed["buttons"] = [
+					{"label": _("I have inspiration sites"), "value": _("I'd like to share websites I like for inspiration")},
+					{"label": _("Upload reference images"), "value": "__UPLOAD_INSPIRATION__"},
+					{"label": _("No, let's continue"), "value": "__SKIP_INSPIRATION__"},
+				]
+
 			# If we just entered page_selection, override with selection UI
 			if session.current_step == "page_selection" and prev_step != "page_selection":
 				recap = self._get_pages_recap(session)
@@ -374,11 +383,21 @@ class BuilderChatService:
 				session.inspiration_urls = json.dumps(existing)
 
 			inspo_msg = _("Reference image received! I'll use it as design inspiration for your site.")
-			next_q = self._get_next_question(session)
-			response = f"{inspo_msg}\n\n{next_q}"
 
-			buttons = self._get_fallback_buttons(session)
-			session.add_message(role="assistant", content=response)
+			# Advance from inspiration to page_selection
+			if session.current_step == "inspiration":
+				self._auto_populate_pages(session)
+				session.current_step = "page_selection"
+				recap = self._get_pages_recap(session)
+				selection_msg = _("Would you like to add optional pages to your site?")
+				response = f"{inspo_msg}\n\n{recap}\n\n{selection_msg}"
+				buttons = self._get_page_selection_buttons(session)
+			else:
+				next_q = self._get_next_question(session)
+				response = f"{inspo_msg}\n\n{next_q}"
+				buttons = self._get_fallback_buttons(session)
+
+			session.add_message(role="assistant", content=response, buttons=buttons)
 			session.save(ignore_permissions=True)
 
 			return {
@@ -751,6 +770,14 @@ When all required fields are collected, congratulate the user and tell them they
 
 	def _get_fallback_buttons(self, session) -> list:
 		"""Generate contextual suggestion buttons based on next missing field."""
+		# Inspiration step: offer inspiration buttons
+		if session.current_step == "inspiration":
+			return [
+				{"label": _("I have inspiration sites"), "value": _("I'd like to share websites I like for inspiration")},
+				{"label": _("Upload reference images"), "value": "__UPLOAD_INSPIRATION__"},
+				{"label": _("No, let's continue"), "value": "__SKIP_INSPIRATION__"},
+			]
+
 		# Page selection step: propose optional pages
 		if session.current_step == "page_selection":
 			return self._get_page_selection_buttons(session)
@@ -930,6 +957,17 @@ When all required fields are collected, congratulate the user and tell them they
 		current_missing = [f for f in missing if f.get("step") == current]
 
 		if not current_missing:
+			# Intercept style → pages: ask about inspiration first (once)
+			if current == "style" and not session.inspiration_urls:
+				session.current_step = "inspiration"
+				return
+
+			# Inspiration step: move to pages after any response
+			if current == "inspiration":
+				self._auto_populate_pages(session)
+				session.current_step = "page_selection"
+				return
+
 			# Current step complete, advance
 			idx = STEPS.index(current) if current in STEPS else 0
 			if idx < len(STEPS) - 1:
@@ -1079,6 +1117,27 @@ When all required fields are collected, congratulate the user and tell them they
 				"success": True,
 				"response": response,
 				"await_upload": True,
+				"current_step": session.current_step,
+				"completion_percentage": session.completion_percentage,
+				"missing_fields": session.get_missing_fields(),
+			}
+
+		elif command == "__SKIP_INSPIRATION__":
+			# Skip inspiration and move to pages step
+			session.current_step = "style"  # Reset to style so transition goes to pages
+			self._auto_populate_pages(session)
+			session.current_step = "page_selection"
+			session.add_message(role="user", content=_("(Skip inspiration)"))
+			recap = self._get_pages_recap(session)
+			selection_msg = _("Would you like to add optional pages to your site?")
+			response = recap + "\n\n" + selection_msg
+			buttons = self._get_page_selection_buttons(session)
+			session.add_message(role="assistant", content=response, buttons=buttons)
+			session.save(ignore_permissions=True)
+			return {
+				"success": True,
+				"response": response,
+				"buttons": buttons,
 				"current_step": session.current_step,
 				"completion_percentage": session.completion_percentage,
 				"missing_fields": session.get_missing_fields(),
