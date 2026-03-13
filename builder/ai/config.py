@@ -146,9 +146,13 @@ def get_ai_settings() -> AIConfig:
 
     # First check site config for quick overrides
     site_provider = frappe.conf.get("ai_provider") or frappe.conf.get("ollama_provider")
-    site_base_url = frappe.conf.get("ollama_base_url") or frappe.conf.get("ollama_url")
-    site_model = frappe.conf.get("ollama_model")
-    site_api_key = frappe.conf.get("ollama_api_key")
+    site_base_url = (
+        frappe.conf.get("openai_base_url") or
+        frappe.conf.get("ollama_base_url") or
+        frappe.conf.get("ollama_url")
+    )
+    site_model = frappe.conf.get("ollama_model") or frappe.conf.get("openai_model")
+    site_api_key = frappe.conf.get("ollama_api_key") or frappe.conf.get("openai_api_key")
 
     if site_provider:
         config.provider = site_provider
