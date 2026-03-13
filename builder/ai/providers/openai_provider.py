@@ -79,6 +79,13 @@ class OpenAIProvider(BaseProvider):
         """Check if OpenAI is configured"""
         return bool(self.api_key)
 
+    @property
+    def _fixed_temperature(self) -> bool:
+        """Check if model requires fixed temperature (reasoning models like kimi-k2.5)."""
+        fixed_temp_models = ["kimi-k2.5", "kimi-k2"]
+        model_lower = (self.model or "").lower()
+        return any(m in model_lower for m in fixed_temp_models)
+
     def generate(
         self,
         prompt: str,
@@ -96,7 +103,7 @@ class OpenAIProvider(BaseProvider):
         payload = {
             "model": self.model,
             "messages": messages,
-            "temperature": temperature or self.temperature,
+            "temperature": 1 if self._fixed_temperature else (temperature or self.temperature),
             "max_tokens": max_tokens or self.max_tokens,
         }
 
@@ -138,7 +145,7 @@ class OpenAIProvider(BaseProvider):
         payload = {
             "model": self.model,
             "messages": messages,
-            "temperature": temperature or self.temperature,
+            "temperature": 1 if self._fixed_temperature else (temperature or self.temperature),
             "max_tokens": self.max_tokens,
         }
 
