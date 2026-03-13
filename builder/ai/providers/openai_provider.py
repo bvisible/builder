@@ -1,6 +1,7 @@
 """
 OpenAI Provider
 Implements AI generation using OpenAI's API with structured output support.
+Also supports OpenAI-compatible APIs (Moonshot, etc.) via custom base_url.
 """
 
 import json
@@ -24,34 +25,50 @@ class OpenAIProvider(BaseProvider):
     """
     OpenAI provider with support for:
     - GPT-4o, GPT-4o-mini, GPT-3.5-turbo
+    - OpenAI-compatible APIs (Moonshot, etc.) via base_url
     - Structured outputs with JSON mode
     - Response format enforcement
     """
 
     DEFAULT_MODEL = "gpt-4o-mini"
-    API_URL = "https://api.openai.com/v1/chat/completions"
+    DEFAULT_API_URL = "https://api.openai.com/v1"
 
     def __init__(
         self,
         model: str = None,
         api_key: str = None,
+        base_url: str = None,
         temperature: float = 0.7,
-        max_tokens: int = 4096,
-        timeout: int = 120,
+        max_tokens: int = None,
+        timeout: int = None,
         **kwargs
     ):
+        # Detect if using a custom API (not native OpenAI)
+        self.base_url = (base_url or "").rstrip("/") if base_url else None
+        is_custom_api = bool(self.base_url) and "openai.com" not in (self.base_url or "")
+
+        # Higher defaults for custom APIs (Moonshot pages = large JSON)
+        default_max_tokens = 32768 if is_custom_api else 4096
+        default_timeout = 300 if is_custom_api else 120
+
         super().__init__(
             model=model or self.DEFAULT_MODEL,
             api_key=api_key,
             temperature=temperature,
-            max_tokens=max_tokens,
-            timeout=timeout,
+            max_tokens=max_tokens or default_max_tokens,
+            timeout=timeout or default_timeout,
             **kwargs
         )
 
         # Get API key from config if not provided
         if not self.api_key:
             self.api_key = frappe.conf.get("openai_api_key")
+
+    @property
+    def _api_url(self) -> str:
+        """Get the chat completions endpoint URL."""
+        base = self.base_url or self.DEFAULT_API_URL
+        return f"{base}/chat/completions"
 
     @property
     def provider_name(self) -> str:
@@ -100,7 +117,7 @@ class OpenAIProvider(BaseProvider):
         Generate structured response using OpenAI's JSON mode.
 
         For newer models (gpt-4o, gpt-4o-mini), uses response_format with JSON schema.
-        For older models, uses JSON mode with schema in prompt.
+        For older models or custom APIs, uses JSON mode with schema in prompt.
         """
         if not self.is_available():
             raise AuthenticationError("OpenAI API key not configured")
@@ -135,7 +152,7 @@ class OpenAIProvider(BaseProvider):
                 }
             }
         else:
-            # Fallback to JSON mode
+            # Fallback to JSON mode (works with Moonshot and other compatible APIs)
             payload["response_format"] = {"type": "json_object"}
 
         try:
@@ -148,8 +165,11 @@ class OpenAIProvider(BaseProvider):
             raise GenerationError(f"OpenAI structured generation failed: {e}")
 
     def _supports_structured_outputs(self) -> bool:
-        """Check if current model supports structured outputs"""
-        # Models that support JSON schema in response_format
+        """Check if current model supports strict JSON schema in response_format."""
+        # Only native OpenAI models support strict JSON schema
+        if self.base_url and "openai.com" not in self.base_url:
+            return False
+
         structured_models = [
             "gpt-4o",
             "gpt-4o-mini",
@@ -182,7 +202,7 @@ IMPORTANT:
         return schema_instruction
 
     def _make_request(self, payload: dict) -> dict:
-        """Make HTTP request to OpenAI API"""
+        """Make HTTP request to OpenAI-compatible API"""
         import requests
 
         headers = {
@@ -192,26 +212,26 @@ IMPORTANT:
 
         try:
             response = requests.post(
-                self.API_URL,
+                self._api_url,
                 headers=headers,
                 json=payload,
                 timeout=self.timeout,
             )
 
             if response.status_code == 401:
-                raise AuthenticationError("Invalid OpenAI API key")
+                raise AuthenticationError("Invalid API key")
             elif response.status_code == 429:
-                raise RateLimitError("OpenAI rate limit exceeded")
+                raise RateLimitError("API rate limit exceeded")
             elif response.status_code != 200:
                 error_msg = response.json().get("error", {}).get("message", response.text)
-                raise GenerationError(f"OpenAI API error ({response.status_code}): {error_msg}")
+                raise GenerationError(f"API error ({response.status_code}): {error_msg}")
 
             return response.json()
 
         except requests.exceptions.Timeout:
-            raise GenerationError(f"OpenAI request timed out after {self.timeout}s")
+            raise GenerationError(f"Request timed out after {self.timeout}s")
         except requests.exceptions.RequestException as e:
-            raise GenerationError(f"OpenAI request failed: {e}")
+            raise GenerationError(f"Request failed: {e}")
 
     def estimate_tokens(self, text: str) -> int:
         """Rough estimate of token count (4 chars per token average)"""

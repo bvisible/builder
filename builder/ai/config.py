@@ -17,8 +17,8 @@ SiteType = Literal["single_page", "multi_page", "multi_page_auth", "ecommerce", 
 # Think level mapping for different models
 # Some models support levels (low/medium/high), others only bool (True/False)
 THINK_LEVEL_MAP = {
-    "kimi-k2.5": {"low": True, "medium": True, "high": True},  # Kimi = True/False only
-    "kimi-k2": {"low": True, "medium": True, "high": True},
+    "kimi-k2.5": {"low": False, "medium": True, "high": True},  # Kimi = True/False only
+    "kimi-k2": {"low": False, "medium": True, "high": True},
     "glm": {"low": True, "medium": True, "high": True},
     "gpt-oss": {"low": "low", "medium": "medium", "high": "high"},  # GPT-OSS = strings
     "default": {"low": False, "medium": True, "high": True},  # Most models = bool
@@ -206,6 +206,11 @@ def get_ai_settings() -> AIConfig:
                     except Exception:
                         config.api_key = settings.get("openai_api_key")
                 config.model = settings.get("openai_model") or config.model or DEFAULT_OPENAI_CONFIG["model"]
+                # Support custom base_url for OpenAI-compatible APIs (Moonshot, etc.)
+                config.base_url = (
+                    settings.get("openai_base_url") or
+                    config.base_url
+                )
 
             elif config.provider == "anthropic":
                 if not config.api_key:
