@@ -48,7 +48,7 @@ COLOR_PALETTES = [
 ]
 
 # Steps configuration
-STEPS = ["description", "style", "pages", "page_selection", "generation"]
+STEPS = ["description", "style", "inspiration", "pages", "page_selection", "generation"]
 
 # Required fields per step
 REQUIRED_FIELDS = {
@@ -957,12 +957,7 @@ When all required fields are collected, congratulate the user and tell them they
 		current_missing = [f for f in missing if f.get("step") == current]
 
 		if not current_missing:
-			# Intercept style → pages: ask about inspiration first (once)
-			if current == "style" and not session.inspiration_urls:
-				session.current_step = "inspiration"
-				return
-
-			# Inspiration step: move to pages after any response
+			# Inspiration step: always move to pages after any response
 			if current == "inspiration":
 				self._auto_populate_pages(session)
 				session.current_step = "page_selection"
@@ -972,14 +967,14 @@ When all required fields are collected, congratulate the user and tell them they
 			idx = STEPS.index(current) if current in STEPS else 0
 			if idx < len(STEPS) - 1:
 				next_step = STEPS[idx + 1]
-				# Skip pages step if it has no required fields
+				# Skip inspiration if already provided
+				if next_step == "inspiration" and session.inspiration_urls:
+					next_step = "pages"
+				# Skip pages step (auto-populate + jump to page_selection)
 				if next_step == "pages":
-					# Auto-populate pages_config based on site_type
 					self._auto_populate_pages(session)
-					# Move to page_selection to propose optional pages
 					session.current_step = "page_selection"
 				elif next_step == "page_selection":
-					# page_selection is handled via special commands
 					session.current_step = next_step
 				else:
 					session.current_step = next_step

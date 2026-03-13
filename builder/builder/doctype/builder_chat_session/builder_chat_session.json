@@ -81,7 +81,7 @@
    "fieldtype": "Select",
    "in_list_view": 1,
    "label": "Current Step",
-   "options": "description\nstyle\npages\npage_selection\ngeneration\nfeedback"
+   "options": "description\nstyle\ninspiration\npages\npage_selection\ngeneration\nfeedback"
   },
   {
    "default": "0",
