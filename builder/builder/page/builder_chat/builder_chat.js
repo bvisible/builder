@@ -76,6 +76,10 @@ frappe.ui.BuilderChatPage = class BuilderChatPage {
 			}
 		});
 
+		// Fix flexbox scroll: ensure chat area doesn't overflow its parent
+		const chatArea = this.page.main.find('.nora-chat-area');
+		if (chatArea.length) chatArea.css('min-height', '0');
+
 		// Show loading state in chat area
 		this.progress.chat.showLoading(__('Starting conversation...'));
 

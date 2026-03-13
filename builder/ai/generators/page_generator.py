@@ -4,6 +4,7 @@ Direct LLM generation with full creative freedom.
 """
 
 import json
+import re
 from typing import Optional
 import frappe
 
@@ -465,9 +466,27 @@ class PageGenerator:
         "webshop/templates/includes/google_map.html": "builder/templates/includes/google_map.html",
     }
 
+    # Pattern to match {{ google_map address="..." }} shortcode from AI
+    SHORTCODE_PATTERN = re.compile(
+        r"""\{\{\s*google_map\s+address=["']([^"']+)["']\s*\}\}"""
+    )
+
+    def _convert_shortcodes(self, inner: str) -> str:
+        """Convert AI shortcode notation to valid Jinja includes."""
+        def replace_google_map(m):
+            addr = m.group(1)
+            return (
+                '{%% set address = "%s" %%}'
+                '{%% set height = "400px" %%}'
+                '{%% include "builder/templates/includes/google_map.html" %%}'
+            ) % addr
+
+        return self.SHORTCODE_PATTERN.sub(replace_google_map, inner)
+
     def _sanitize_jinja_includes(self, blocks: list[dict]) -> list[dict]:
         """
         Sanitize Jinja {% include %} in innerHTML fields.
+        - Converts AI shortcodes ({{ google_map ... }}) to valid Jinja includes
         - Strips escaped backslash-quotes from LLM output (\" → ")
         - Fixes wrong template paths and removes includes to non-existent templates.
         """
@@ -480,7 +499,7 @@ class PageGenerator:
         def sanitize_block(block: dict) -> bool:
             """Sanitize a block's innerHTML. Returns False if block should be removed."""
             inner = block.get("innerHTML", "")
-            if not inner or "{%" not in inner:
+            if not inner or ("{%" not in inner and "{{" not in inner):
                 # Recurse into children
                 if block.get("children"):
                     block["children"] = [
@@ -495,6 +514,15 @@ class PageGenerator:
                 block["innerHTML"] = inner
                 ai_log("info", "Fixed escaped quotes in Jinja innerHTML",
                        blockId=block.get("blockId"))
+
+            # Convert shortcodes to valid Jinja includes
+            if "google_map" in inner:
+                converted = self._convert_shortcodes(inner)
+                if converted != inner:
+                    inner = converted
+                    block["innerHTML"] = inner
+                    ai_log("info", "Converted google_map shortcode to Jinja include",
+                           blockId=block.get("blockId"))
 
             matches = include_pattern.findall(inner)
             for template_path in matches:

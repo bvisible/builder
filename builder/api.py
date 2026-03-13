@@ -110,45 +110,45 @@ SITE_TYPE_HEADER_FOOTER_DEFAULTS = {
 DEFAULT_PAGES_BY_SITE_TYPE = {
 	"one_page": [
 		# Single page with all sections - menu will use anchor links
-		{"title": "Accueil", "route": "index", "type": "one_page"},
+		{"title": "Accueil", "route": "home", "type": "one_page"},
 	],
 	"vitrine": [
-		{"title": "Accueil", "route": "index", "type": "accueil"},
+		{"title": "Accueil", "route": "home", "type": "accueil"},
 		{"title": "À propos", "route": "about", "type": "about"},
 		{"title": "Services", "route": "services", "type": "services"},
 		{"title": "Contact", "route": "contact", "type": "contact"},
 	],
 	"vitrine_user": [
-		{"title": "Accueil", "route": "index", "type": "accueil"},
+		{"title": "Accueil", "route": "home", "type": "accueil"},
 		{"title": "À propos", "route": "about", "type": "about"},
 		{"title": "Services", "route": "services", "type": "services"},
 		{"title": "Contact", "route": "contact", "type": "contact"},
 	],
 	"blog": [
-		{"title": "Accueil", "route": "index", "type": "accueil"},
+		{"title": "Accueil", "route": "home", "type": "accueil"},
 		{"title": "Articles", "route": "blog", "type": "blog"},
 		{"title": "À propos", "route": "about", "type": "about"},
 		{"title": "Contact", "route": "contact", "type": "contact"},
 	],
 	"ecommerce": [
-		{"title": "Accueil", "route": "index", "type": "accueil_ecommerce"},
+		{"title": "Accueil", "route": "home", "type": "accueil_ecommerce"},
 		{"title": "À propos", "route": "about", "type": "about"},
 		{"title": "Contact", "route": "contact", "type": "contact"},
 	],
 	"ecommerce_search": [
-		{"title": "Accueil", "route": "index", "type": "accueil_ecommerce"},
+		{"title": "Accueil", "route": "home", "type": "accueil_ecommerce"},
 		{"title": "À propos", "route": "about", "type": "about"},
 		{"title": "Contact", "route": "contact", "type": "contact"},
 	],
 	"saas": [
-		{"title": "Accueil", "route": "index", "type": "accueil"},
+		{"title": "Accueil", "route": "home", "type": "accueil"},
 		{"title": "Fonctionnalités", "route": "features", "type": "features"},
 		{"title": "Tarifs", "route": "pricing", "type": "pricing"},
 		{"title": "À propos", "route": "about", "type": "about"},
 		{"title": "Contact", "route": "contact", "type": "contact"},
 	],
 	"portfolio": [
-		{"title": "Accueil", "route": "index", "type": "accueil"},
+		{"title": "Accueil", "route": "home", "type": "accueil"},
 		{"title": "Projets", "route": "projects", "type": "portfolio"},
 		{"title": "À propos", "route": "about", "type": "about"},
 		{"title": "Contact", "route": "contact", "type": "contact"},
@@ -1078,10 +1078,10 @@ def _generate_complete_site_worker(
 				seen_routes.add(route)
 
 				# Use "Accueil" for home page, otherwise use page title
-				label = "Accueil" if route in ("/", "/index") else page["title"]
+				label = "Accueil" if route in ("/", "/home", "/index") else page["title"]
 
-				# Menu URL: use "/" for homepage instead of "/index"
-				menu_url = "/" if route in ("/", "/index") else route
+				# Menu URL: use "/" for homepage instead of "/home"
+				menu_url = "/" if route in ("/", "/home", "/index") else route
 
 				config.append("menu_items", {
 					"label": label,
@@ -1091,7 +1091,7 @@ def _generate_complete_site_worker(
 				})
 
 				# For ecommerce sites: add Shop link after Accueil
-				if site_type in ("ecommerce", "ecommerce_search") and route in ("/", "/index") and not shop_link_added:
+				if site_type in ("ecommerce", "ecommerce_search") and route in ("/", "/home", "/index") and not shop_link_added:
 					config.append("menu_items", {
 						"label": "Shop",
 						"url": "/all-products",
@@ -1134,8 +1134,8 @@ def _generate_complete_site_worker(
 				for page in created_pages:
 					route = page["route"]
 					if route in seen_routes:
-						label = "Accueil" if route in ("/", "/index") else page["title"]
-						footer_url = "/" if route in ("/", "/index") else route
+						label = "Accueil" if route in ("/", "/home", "/index") else page["title"]
+						footer_url = "/" if route in ("/", "/home", "/index") else route
 						config.append("footer_links", {
 							"label": label,
 							"url": footer_url,
@@ -1143,8 +1143,8 @@ def _generate_complete_site_worker(
 
 		config.save(ignore_permissions=True)
 
-		# Ensure Website Settings home_page points to the generated index page
-		frappe.db.set_value("Website Settings", "Website Settings", "home_page", "index")
+		# Ensure Website Settings home_page points to the generated home page
+		frappe.db.set_value("Website Settings", "Website Settings", "home_page", "home")
 		frappe.db.commit()
 
 		# =====================================================================
@@ -1333,7 +1333,7 @@ def regenerate_homepage(
 	existing_pages = json.loads(session.generated_pages or "[]")
 	for page_info in existing_pages:
 		route = page_info.get("route", "")
-		if route in ("/index", "/"):
+		if route in ("/home", "/index", "/"):
 			try:
 				frappe.delete_doc("Builder Page", page_info["name"], force=True)
 				frappe.db.commit()
