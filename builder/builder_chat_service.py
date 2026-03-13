@@ -286,9 +286,11 @@ class BuilderChatService:
 			prev_step = session.current_step
 			self._check_step_transition(session)
 
-			# If we just entered inspiration step, inject the inspiration question
+			# If we just entered inspiration step, force inspiration buttons
 			if session.current_step == "inspiration" and prev_step != "inspiration":
-				response_content += "\n\n" + _("**Do you have any websites you admire or reference images for the design?** This helps me better understand the style you're looking for.")
+				# Only inject text if AI didn't already ask about inspiration
+				if "inspiration" not in response_content.lower() and "référence" not in response_content.lower() and "admire" not in response_content.lower():
+					response_content += "\n\n" + _("**Do you have any websites you admire or reference images for the design?** This helps me better understand the style you're looking for.")
 				parsed["buttons"] = [
 					{"label": _("I have inspiration sites"), "value": _("I'd like to share websites I like for inspiration")},
 					{"label": _("Upload reference images"), "value": "__UPLOAD_INSPIRATION__"},
