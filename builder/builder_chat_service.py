@@ -599,8 +599,9 @@ CURRENT STATE:
 {company_block}
 REQUIRED FIELDS (collect in order):
 1. DESCRIPTION STEP: site_description (what the site is about), site_name (business/project name), site_type (type of site)
-2. STYLE STEP: theme (visual theme), primary_color (hex color), secondary_color (optional hex)
-3. PAGES STEP: auto-populated based on site_type. Can also ask about CTA text/url, social links, and inspiration
+2. STYLE STEP: theme (visual theme), primary_color (hex color). Do NOT ask about secondary_color — it will be auto-generated.
+3. INSPIRATION STEP: handled by the system — just acknowledge the user's previous input and confirm the style.
+4. PAGES STEP: auto-populated based on site_type. Can also ask about CTA text/url and social links.
 
 AVAILABLE OPTIONS:
 Themes: {themes_str}
@@ -624,14 +625,11 @@ LOGO INTELLIGENCE:
 - If company data includes a logo, propose: "I found your existing logo. Shall we use it, or would you prefer to upload a new one?"
 - Don't ask for a logo upload by default if one already exists
 
-DESIGN INSPIRATION (IMPORTANT):
-- After collecting the style (theme + colors), ask ONE question about design inspiration:
-  "Do you have any websites you admire or reference images for the design?"
-- If the user shares URLs, acknowledge them positively as style references
-- If the user wants to upload reference images, offer the upload button
-- If the user says no or wants to skip, move on immediately — this is optional
-- Never ask more than once about inspiration
-- Offer buttons: "I have inspiration sites" / "Upload reference images" / "No, let's continue"
+DESIGN INSPIRATION:
+- The inspiration step is handled automatically by the system after the style step — do NOT ask about inspiration yourself.
+- If the current step is "inspiration", simply acknowledge what the user said (confirm style choices) and end with a brief positive note.
+- If the user shares URLs at any point, acknowledge them positively as style references.
+- Do NOT include inspiration buttons — they are injected by the system.
 
 RULES:
 - Ask ONE question at a time
@@ -658,8 +656,7 @@ Examples by context:
 - Asking about theme: offer theme name buttons
 - Asking about color: offer palette name buttons
 - After description rewriting: offer "Yes, perfect" / "Modify" / "Start over" buttons
-- After style collected: offer "I have inspiration sites" / "Upload reference images" / "No, let's continue"
-- After all fields collected: offer "Generate site" / "Add CTA" / "Add social links" / "Share inspiration"
+- After all fields collected: offer "Generate site" / "Add CTA" / "Add social links"
 
 When asking about themes, offer theme buttons.
 When asking about colors, offer palette buttons.
