@@ -691,7 +691,7 @@ When all required fields are collected, congratulate the user and tell them they
 				response = provider._generate_with_http(
 					messages=messages,
 					temperature=0.7,
-					max_tokens=1024,
+					max_tokens=16384,
 				)
 			elif hasattr(provider, '_make_streaming_request'):
 				# Fallback: build payload manually
@@ -716,7 +716,7 @@ When all required fields are collected, congratulate the user and tell them they
 					prompt=context,
 					system_prompt=system_prompt,
 					temperature=0.7,
-					max_tokens=4096,
+					max_tokens=16384,
 				)
 
 			if isinstance(response, str):
