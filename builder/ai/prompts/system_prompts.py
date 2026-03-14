@@ -262,10 +262,10 @@ ALWAYS use hex colors (#ffffff, #f8fafc) or gradients with real colors.
 
 ### Images (CRITICAL: Alt Text = AI Image Prompt)
 - For images, use placehold.co placeholders with these sizes:
-  - Hero/Banner: "https://placehold.co/1200x600/1a1a2e/eaeaea?text=<SHORT_2-4_WORDS>"
-  - Cards/Features: "https://placehold.co/400x300/2d2d44/eaeaea?text=<SHORT_2-4_WORDS>"
-  - Team/Avatars: "https://placehold.co/80x80/3d3d5c/eaeaea?text=<INITIALS>"
-  - You can customize the background/text colors in the URL
+  - Hero/Banner: "https://placehold.co/1200x600/{primary_placeholder}/ffffff?text=<SHORT_2-4_WORDS>"
+  - Cards/Features: "https://placehold.co/400x300/{secondary_placeholder}/ffffff?text=<SHORT_2-4_WORDS>"
+  - Team/Avatars: "https://placehold.co/80x80/{primary_placeholder}/ffffff?text=<INITIALS>"
+  - Adapt the background/text colors to match the site's palette
 
 - CRITICAL: The "alt" attribute MUST be a DETAILED description suitable for AI image generation.
   DO NOT use generic text like "Hero Image", "Feature", "Photo".
@@ -282,7 +282,7 @@ For hero and banner sections, USE CSS backgroundImage instead of <img> elements:
   "blockId": "hero-section",
   "element": "section",
   "baseStyles": {{
-    "backgroundImage": "url('https://placehold.co/1920x1080/1a1a2e/eaeaea?text=Hero+Background')",
+    "backgroundImage": "url('https://placehold.co/1920x1080/{primary_placeholder}/ffffff?text=Hero+Background')",
     "backgroundSize": "cover",
     "backgroundPosition": "center",
     "minHeight": "85vh",
@@ -297,7 +297,8 @@ For hero and banner sections, USE CSS backgroundImage instead of <img> elements:
       "baseStyles": {{
         "position": "absolute",
         "top": "0", "left": "0", "right": "0", "bottom": "0",
-        "background": "linear-gradient(135deg, rgba(99,102,241,0.85) 0%, rgba(139,92,246,0.7) 100%)"
+        "background": "linear-gradient(135deg, var(--primary-color) 0%, var(--secondary-color) 100%)",
+        "opacity": "0.85"
       }}
     }},
     {{
