@@ -919,6 +919,27 @@ When all required fields are collected, congratulate the user and tell them they
 					extracted["site_type"] = st
 					break
 
+		# Extract font names (common web fonts)
+		known_fonts = [
+			"Roboto", "Open Sans", "Lato", "Montserrat", "Poppins", "Inter",
+			"Raleway", "Oswald", "Playfair Display", "Merriweather", "Nunito",
+			"Source Sans Pro", "Ubuntu", "Rubik", "Work Sans", "DM Sans",
+			"Lora", "Libre Baskerville", "PT Sans", "Fira Sans", "Quicksand",
+			"Barlow", "Manrope", "Space Grotesk", "Plus Jakarta Sans",
+			"Archivo", "Outfit", "Sora", "Urbanist",
+		]
+		found_fonts = []
+		for font in known_fonts:
+			if font.lower() in msg_lower:
+				found_fonts.append(font)
+		if found_fonts and not session.heading_font:
+			if len(found_fonts) >= 2:
+				extracted["heading_font"] = found_fonts[0]
+				extracted["body_font"] = found_fonts[1]
+			else:
+				extracted["heading_font"] = found_fonts[0]
+				extracted["body_font"] = found_fonts[0]
+
 		# Detect URLs for inspiration
 		url_pattern = r'https?://[^\s<>"\')\]]+'
 		urls = re.findall(url_pattern, message)
