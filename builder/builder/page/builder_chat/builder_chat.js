@@ -12,6 +12,12 @@ frappe.pages['builder-chat'].on_page_show = function() {
 	}
 };
 
+frappe.pages['builder-chat'].on_page_hide = function() {
+	if (frappe.builder_chat_page && frappe.builder_chat_page.progress) {
+		frappe.builder_chat_page.progress.destroy();
+	}
+};
+
 /**
  * Builder Chat Page Controller
  * AI-guided conversational interface for site generation.
@@ -109,6 +115,9 @@ frappe.ui.BuilderChatPage = class BuilderChatPage {
 	}
 
 	on_show() {
+		if (this.progress) {
+			this.progress.activate();
+		}
 		this.start_session();
 	}
 
