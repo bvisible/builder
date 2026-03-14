@@ -118,7 +118,10 @@ frappe.ui.BuilderChatPage = class BuilderChatPage {
 		if (this.progress) {
 			this.progress.activate();
 		}
-		this.start_session();
+		// Only start session on first load — avoid duplicate messages on SPA return
+		if (!this.session_id) {
+			this.start_session();
+		}
 	}
 
 	// ============ SESSION MANAGEMENT ============
