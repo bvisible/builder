@@ -40,7 +40,7 @@ class BuilderChatSession(Document):
 		"""
 		self.append("messages", {
 			"role": role,
-			"content": content,
+			"content": content or "...",
 			"buttons": json.dumps(buttons) if buttons else None,
 			"extracted_data": json.dumps(extracted_data) if extracted_data else None,
 			"attachment": attachment
