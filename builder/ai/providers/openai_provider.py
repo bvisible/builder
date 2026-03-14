@@ -118,7 +118,12 @@ class OpenAIProvider(BaseProvider):
 
         try:
             response = self._make_request(payload)
-            return response["choices"][0]["message"]["content"]
+            message = response["choices"][0]["message"]
+            content = message.get("content") or ""
+            # Reasoning models may put all output in reasoning_content when max_tokens is too low
+            if not content.strip() and message.get("reasoning_content"):
+                content = message["reasoning_content"]
+            return content
         except Exception as e:
             raise GenerationError(f"OpenAI generation failed: {e}")
 
