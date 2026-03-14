@@ -49,7 +49,7 @@ class OpenAIProvider(BaseProvider):
 
         # Higher defaults for custom APIs (Moonshot pages = large JSON)
         default_max_tokens = 32768 if is_custom_api else 4096
-        default_timeout = 300 if is_custom_api else 120
+        default_timeout = 900 if is_custom_api else 120
 
         super().__init__(
             model=model or self.DEFAULT_MODEL,

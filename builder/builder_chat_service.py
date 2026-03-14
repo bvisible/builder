@@ -586,8 +586,8 @@ INSPIRATION:
 					items.append(f"Description: {cd['description'][:100]}")
 				if items:
 					company_block = "\nCOMPANY DATA (pre-filled from system):\n" + "\n".join(f"- {i}" for i in items) + "\n- Use this data as defaults. Don't re-ask what we already know.\n- If company data was confirmed by the user, use company_name as site_name.\n"
-			except Exception:
-				pass
+			except Exception as e:
+				frappe.log_error("Builder Chat: company data lookup failed", str(e))
 
 		system_prompt = f"""You are Builder AI, an assistant that guides users to create a website.
 Your goal is to collect the required parameters through a natural conversation.
@@ -810,8 +810,8 @@ When all required fields are collected, congratulate the user and tell them they
 					cd = json.loads(session.company_data)
 					if cd.get("description"):
 						buttons.append({"label": _("Use existing description"), "value": cd["description"]})
-				except Exception:
-					pass
+				except Exception as e:
+					frappe.logger("builder").debug(f"Chat: JSON parse fallback: {e}")
 			buttons.extend([
 				{"label": _("Consulting / Services"), "value": _("We are a consulting and services company")},
 				{"label": _("Online store"), "value": _("We sell products online")},
@@ -825,8 +825,8 @@ When all required fields are collected, congratulate the user and tell them they
 					cd = json.loads(session.company_data)
 					if cd.get("company_name"):
 						buttons.append({"label": cd["company_name"], "value": cd["company_name"]})
-				except Exception:
-					pass
+				except Exception as e:
+					frappe.logger("builder").debug(f"Chat: JSON parse fallback: {e}")
 			buttons.append({"label": _("I'll type it"), "value": _("Let me type my site name")})
 			return buttons
 
@@ -1312,8 +1312,8 @@ When all required fields are collected, congratulate the user and tell them they
 					data["website"] = company.website
 				if company.get("company_description"):
 					data["description"] = company.company_description
-		except Exception:
-			pass  # Company DocType may not exist (no ERPNext)
+		except Exception as e:
+			frappe.log_error("Builder Chat: company data loading failed", str(e))
 
 		# Try Website Header Footer Config (Builder-specific)
 		try:
@@ -1335,8 +1335,8 @@ When all required fields are collected, congratulate the user and tell them they
 					social[platform] = url
 			if social:
 				data["social_links"] = social
-		except Exception:
-			pass
+		except Exception as e:
+			frappe.log_error("Builder Chat: header footer config failed", str(e))
 
 		# Site URL
 		data["site_url"] = frappe.utils.get_url()
@@ -1450,8 +1450,8 @@ When all required fields are collected, congratulate the user and tell them they
 					return user_doc.first_name
 				if user_doc.full_name:
 					return user_doc.full_name.split()[0]
-		except Exception:
-			pass
+		except Exception as e:
+			frappe.log_error("Builder Chat: user lookup failed", str(e))
 		return ""
 
 	def _format_messages(self, messages) -> List[Dict]:

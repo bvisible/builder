@@ -403,7 +403,7 @@ def generate_complete_site(
 	frappe.enqueue(
 		"builder.api._generate_complete_site_worker",
 		queue="default",
-		timeout=1800,  # 30 minutes max (kimi model is slow)
+		timeout=3600,  # 1 hour max (kimi model is slow)
 		job_name=job_id,
 		generation_job_id=job_id,  # Our tracking ID
 		prompt=prompt,
@@ -438,7 +438,7 @@ def generate_complete_site(
 def _update_generation_status(job_id: str, data: dict):
 	"""Update the generation status in cache."""
 	cache_key = f"site_generation_{job_id}"
-	frappe.cache().set_value(cache_key, data, expires_in_sec=3600)  # 1 hour TTL
+	frappe.cache().set_value(cache_key, data, expires_in_sec=14400)  # 4 hours TTL
 	print(f"[SITE_GEN] Status update: job_id={job_id}, status={data.get('status')}, progress={data.get('progress')}%, step={data.get('current_step', '')[:50]}")
 
 
@@ -458,7 +458,8 @@ def _update_session_on_completion(session_id, job_id, status, created_pages):
 			)
 			if not session_name:
 				return
-		except Exception:
+		except Exception as e:
+			frappe.log_error("Generation: session lookup failed", str(e))
 			return
 	else:
 		session_name = frappe.db.get_value(
@@ -516,6 +517,7 @@ def _generate_complete_site_worker(
 	# Use local variable for cleaner code
 	job_id = generation_job_id
 
+	frappe.logger("builder").info(f"Generation worker started: job={job_id}, session={session_id}")
 	print(f"[SITE_GEN_WORKER] ===== WORKER STARTED =====")
 	print(f"[SITE_GEN_WORKER] job_id={job_id}, site_type={site_type}, site_name={site_name}, mode={generation_mode}")
 
@@ -703,6 +705,7 @@ def _generate_complete_site_worker(
 			print(f"[SITE_GEN_WORKER] Design brief generated: tone={design_brief.site_tone}, valid={brief_validation.is_valid}")
 		except Exception as e:
 			ai_log("warning", "Design brief generation failed completely, using defaults", error=str(e)[:100])
+			frappe.log_error("Generation: design brief failed", str(e))
 			print(f"[SITE_GEN_WORKER] Design brief failed, using defaults: {str(e)[:100]}")
 			design_brief = get_default_brief(
 				theme=theme,
@@ -749,6 +752,7 @@ def _generate_complete_site_worker(
 				print(f"[SITE_GEN_WORKER] Fonts propagated: heading={design_brief.heading_font}, body={design_brief.body_font}")
 			except Exception as e:
 				ai_log("warning", "Failed to propagate fonts to config", error=str(e)[:100])
+				frappe.log_error("Generation: font propagation failed", str(e))
 
 		# =====================================================================
 		# STEP 3: Generate pages SEQUENTIALLY (simpler, more reliable)
@@ -1200,6 +1204,10 @@ def _generate_complete_site_worker(
 		print(f"[SITE_GEN_WORKER] ===== WORKER FAILED =====")
 		print(f"[SITE_GEN_WORKER] job_id={job_id}, error={str(e)[:200]}")
 		frappe.log_error("Site generation failed", str(e))
+		try:
+			frappe.cache.set_value(f"site_generation_{job_id}", {"status": "failed", "error": str(e)[:500], "progress": 0}, expires_in_sec=14400)
+		except Exception:
+			pass
 		_update_generation_status(job_id, {
 			"status": "failed",
 			"progress": 0,
@@ -1264,7 +1272,7 @@ def continue_generation(
 	frappe.enqueue(
 		"builder.api._generate_complete_site_worker",
 		queue="default",
-		timeout=1800,
+		timeout=3600,  # 1 hour max
 		job_name=job_id,
 		generation_job_id=job_id,
 		prompt=session.site_description or "",
@@ -1337,8 +1345,8 @@ def regenerate_homepage(
 			try:
 				frappe.delete_doc("Builder Page", page_info["name"], force=True)
 				frappe.db.commit()
-			except Exception:
-				pass
+			except Exception as e:
+				frappe.log_error("Generation: brief restore failed", str(e))
 
 	# Enrich prompt with feedback
 	enriched_prompt = session.site_description or ""
@@ -1362,7 +1370,7 @@ def regenerate_homepage(
 	frappe.enqueue(
 		"builder.api._generate_complete_site_worker",
 		queue="default",
-		timeout=1800,
+		timeout=3600,
 		job_name=job_id,
 		generation_job_id=job_id,
 		prompt=enriched_prompt,
