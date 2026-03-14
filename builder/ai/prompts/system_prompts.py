@@ -91,6 +91,10 @@ This includes:
 JSON keys and CSS properties remain in English (blockId, baseStyles, etc.).
 """
 
+    # Strip # from colors for placehold.co URLs
+    primary_placeholder = (primary_color or "37ac50").lstrip("#")
+    secondary_placeholder = (secondary_color or "434647").lstrip("#")
+
     return f"""You are an expert creative UI/UX designer generating unique websites with Frappe Builder.
 
 ## YOUR MISSION
@@ -319,12 +323,13 @@ IMPORTANT for background images:
 {shortcodes_section}
 
 ## OUTPUT EXAMPLE (hero with background image + overlay)
+IMPORTANT: This is just a STRUCTURAL example. You MUST adapt colors to the site's actual primary/secondary colors from the design brief above. NEVER copy the example colors blindly.
 [
   {{
     "blockId": "hero-section",
     "element": "section",
     "baseStyles": {{
-      "backgroundImage": "url('https://placehold.co/1920x1080/1a1a2e/eaeaea?text=Hero+Scene')",
+      "backgroundImage": "url('https://placehold.co/1920x1080/{primary_placeholder}/{secondary_placeholder}?text=Hero+Scene')",
       "backgroundSize": "cover",
       "backgroundPosition": "center",
       "minHeight": "85vh",
@@ -344,7 +349,8 @@ IMPORTANT for background images:
         "baseStyles": {{
           "position": "absolute",
           "top": "0", "left": "0", "right": "0", "bottom": "0",
-          "background": "linear-gradient(135deg, rgba(99,102,241,0.8) 0%, rgba(139,92,246,0.6) 100%)"
+          "background": "linear-gradient(135deg, var(--primary-color) 0%, var(--secondary-color) 100%)",
+          "opacity": "0.85"
         }}
       }},
       {{
