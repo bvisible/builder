@@ -80,11 +80,16 @@ class OpenAIProvider(BaseProvider):
         return bool(self.api_key)
 
     @property
-    def _fixed_temperature(self) -> bool:
-        """Check if model requires fixed temperature (reasoning models like kimi-k2.5)."""
-        fixed_temp_models = ["kimi-k2.5", "kimi-k2"]
+    def _is_reasoning_model(self) -> bool:
+        """Check if model supports thinking/reasoning mode (kimi-k2.5, kimi-k2)."""
+        reasoning_models = ["kimi-k2.5", "kimi-k2"]
         model_lower = (self.model or "").lower()
-        return any(m in model_lower for m in fixed_temp_models)
+        return any(m in model_lower for m in reasoning_models)
+
+    @property
+    def _fixed_temperature(self) -> bool:
+        """Check if model requires fixed temperature (reasoning models)."""
+        return self._is_reasoning_model
 
     def generate(
         self,
@@ -92,7 +97,7 @@ class OpenAIProvider(BaseProvider):
         system_prompt: str = None,
         temperature: float = None,
         max_tokens: int = None,
-        think: str = None,  # Ignored for OpenAI (no thinking mode)
+        think: bool | str = None,
     ) -> str:
         """Generate text response"""
         if not self.is_available():
@@ -107,6 +112,10 @@ class OpenAIProvider(BaseProvider):
             "max_tokens": max_tokens or self.max_tokens,
         }
 
+        # Enable thinking for reasoning models (kimi-k2.5, kimi-k2)
+        if self._is_reasoning_model and think is not False:
+            payload["think"] = True
+
         try:
             response = self._make_request(payload)
             return response["choices"][0]["message"]["content"]
@@ -119,13 +128,14 @@ class OpenAIProvider(BaseProvider):
         schema: type[T],
         system_prompt: str = None,
         temperature: float = None,
-        think: str = None,  # Ignored for OpenAI (no thinking mode)
+        think: bool | str = None,
     ) -> T:
         """
-        Generate structured response using OpenAI's JSON mode.
+        Generate structured response using JSON mode.
 
-        For newer models (gpt-4o, gpt-4o-mini), uses response_format with JSON schema.
-        For older models or custom APIs, uses JSON mode with schema in prompt.
+        For native OpenAI models (gpt-4o, gpt-4o-mini), uses response_format with JSON schema.
+        For custom APIs (Moonshot/kimi), uses JSON mode with schema in prompt.
+        Reasoning models (kimi-k2.5) get thinking enabled for deeper analysis.
         """
         if not self.is_available():
             raise AuthenticationError("OpenAI API key not configured")
@@ -148,6 +158,10 @@ class OpenAIProvider(BaseProvider):
             "temperature": 1 if self._fixed_temperature else (temperature or self.temperature),
             "max_tokens": self.max_tokens,
         }
+
+        # Enable thinking for reasoning models (kimi-k2.5, kimi-k2)
+        if self._is_reasoning_model and think is not False:
+            payload["think"] = True
 
         if supports_structured:
             # Use OpenAI's native JSON schema support

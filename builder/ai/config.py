@@ -53,7 +53,7 @@ class AIConfig:
 
     # Thinking configuration
     brief_think_level: str = "high"     # For design brief generation
-    page_think_level: str = "medium"    # For page generation
+    page_think_level: str = "high"      # For page generation — max quality
 
     def __post_init__(self):
         """Set default model based on provider if not specified"""
