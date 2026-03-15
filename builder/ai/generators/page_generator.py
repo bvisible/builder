@@ -148,12 +148,13 @@ class PageGenerator:
         ai_log("debug", "Parsing LLM response as JSON")
         blocks = self._parse_response(response)
 
-        # Validate blocks
-        ai_log("debug", "Validating blocks", blocks_count=len(blocks))
-        if not self.validator.validate_blocks(blocks):
-            ai_log("error", "Block validation failed", prompt_preview=prompt[:100])
+        # Validate and auto-repair blocks (instead of rejecting)
+        ai_log("debug", "Validating and repairing blocks", blocks_count=len(blocks))
+        blocks = self.validator.validate_and_repair(blocks)
+        if not blocks:
+            ai_log("error", "Block validation failed — no recoverable blocks", prompt_preview=prompt[:100])
             frappe.log_error("Block validation failed", f"Prompt: {prompt[:100]}")
-            raise ValueError("Generated blocks failed validation")
+            raise ValueError("Generated blocks failed validation — no recoverable blocks")
 
         # Apply colors as CSS variables (always apply theme colors)
         blocks = self._apply_custom_colors(blocks, effective_primary, effective_secondary)

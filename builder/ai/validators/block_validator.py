@@ -1,8 +1,9 @@
 """
-Block Validator - Simple validation for FrappeBlock structures.
-No auto-fix, just validation.
+Block Validator - Validation + auto-repair for FrappeBlock structures.
+Fixes common LLM output issues instead of rejecting the entire generation.
 """
 
+import uuid
 from typing import Optional
 import frappe
 from builder.ai.logging import ai_log
@@ -10,8 +11,8 @@ from builder.ai.logging import ai_log
 
 class BlockValidator:
     """
-    Simple validator for FrappeBlock structures.
-    Validates that blocks have required fields and valid structure.
+    Validator and auto-repairer for FrappeBlock structures.
+    Fixes common issues (missing blockId, invalid elements) instead of failing.
     """
 
     VALID_ELEMENTS = {
@@ -37,90 +38,127 @@ class BlockValidator:
         "clipPath", "use", "symbol", "text", "tspan",
     }
 
-    def validate(self, block: dict, _depth: int = 0) -> bool:
+    def __init__(self):
+        self._repairs = 0
+
+    def repair_block(self, block: dict, _depth: int = 0) -> Optional[dict]:
         """
-        Validate a single block.
-
-        Args:
-            block: Block dictionary to validate
-            _depth: Internal recursion depth tracker
-
-        Returns:
-            bool: True if valid, False otherwise
+        Validate and auto-repair a single block.
+        Returns the repaired block, or None if unfixable.
         """
         if not isinstance(block, dict):
-            return False
+            return None
 
-        # Check required fields
-        if "blockId" not in block:
-            ai_log("warning", "Block missing blockId", block_keys=list(block.keys())[:5])
-            return False
+        # Auto-generate missing blockId
+        if "blockId" not in block or not block["blockId"]:
+            element = block.get("element", "div")
+            block["blockId"] = f"{element}-auto-{uuid.uuid4().hex[:8]}"
+            self._repairs += 1
 
-        if "element" not in block:
-            ai_log("warning", "Block missing element", blockId=block.get("blockId"))
-            return False
+        # Default to div if element missing
+        if "element" not in block or not block["element"]:
+            block["element"] = "div"
+            self._repairs += 1
 
-        # Validate element type
+        # Fix invalid element type — map to closest valid or use div
         element = block.get("element")
         if element not in self.VALID_ELEMENTS:
-            ai_log("warning", "Invalid element type in block", element=element, blockId=block.get("blockId"))
-            return False
+            ai_log("debug", "Replacing invalid element with div",
+                   invalid_element=element, blockId=block.get("blockId"))
+            block["element"] = "div"
+            self._repairs += 1
 
-        # Validate children recursively
+        # Recursively repair children
         children = block.get("children")
         if children:
             if not isinstance(children, list):
-                ai_log("warning", "Block children is not a list", blockId=block.get("blockId"))
-                return False
+                block["children"] = []
+                self._repairs += 1
+            else:
+                repaired_children = []
+                for child in children:
+                    repaired = self.repair_block(child, _depth=_depth + 1)
+                    if repaired:
+                        repaired_children.append(repaired)
+                block["children"] = repaired_children
 
-            for child in children:
-                if not self.validate(child, _depth=_depth + 1):
-                    return False
+        return block
 
-        return True
-
-    def validate_blocks(self, blocks: list[dict]) -> bool:
+    def validate_and_repair(self, blocks: list[dict]) -> list[dict]:
         """
-        Validate a list of blocks.
-
-        Args:
-            blocks: List of block dictionaries
-
-        Returns:
-            bool: True if all blocks are valid
+        Validate and auto-repair a list of blocks.
+        Returns the repaired blocks list. Only returns empty if input was completely invalid.
         """
+        self._repairs = 0
+
         if not isinstance(blocks, list):
             ai_log("warning", "Blocks is not a list", type=str(type(blocks)))
-            return False
+            return []
 
         if not blocks:
             ai_log("warning", "Blocks list is empty")
-            return False
+            return []
 
-        # Check for duplicate blockIds
-        block_ids = set()
+        # Deduplicate blockIds
+        seen_ids = set()
 
-        def collect_ids(block):
+        def dedup_ids(block):
             if not isinstance(block, dict):
                 return
-            block_id = block.get("blockId")
-            if block_id:
-                if block_id in block_ids:
-                    ai_log("warning", "Duplicate blockId", blockId=block_id)
-                block_ids.add(block_id)
+            block_id = block.get("blockId", "")
+            if block_id in seen_ids:
+                new_id = f"{block_id}-{uuid.uuid4().hex[:6]}"
+                block["blockId"] = new_id
+                self._repairs += 1
+            seen_ids.add(block.get("blockId", ""))
             for child in block.get("children", []):
-                collect_ids(child)
+                dedup_ids(child)
 
+        # Repair each block
+        repaired = []
         for block in blocks:
-            collect_ids(block)
+            fixed = self.repair_block(block)
+            if fixed:
+                repaired.append(fixed)
 
-        # Validate each block
+        # Dedup after repair
+        for block in repaired:
+            dedup_ids(block)
+
+        if self._repairs > 0:
+            ai_log("info", "Blocks auto-repaired",
+                   repairs=self._repairs, blocks_count=len(repaired))
+
+        return repaired
+
+    def validate(self, block: dict, _depth: int = 0) -> bool:
+        """Legacy validation — still returns bool for backward compat."""
+        if not isinstance(block, dict):
+            return False
+        if "blockId" not in block:
+            return False
+        if "element" not in block:
+            return False
+        if block.get("element") not in self.VALID_ELEMENTS:
+            return False
+        children = block.get("children")
+        if children:
+            if not isinstance(children, list):
+                return False
+            for child in children:
+                if not self.validate(child, _depth=_depth + 1):
+                    return False
+        return True
+
+    def validate_blocks(self, blocks: list[dict]) -> bool:
+        """Legacy validation — returns True if all blocks valid."""
+        if not isinstance(blocks, list) or not blocks:
+            return False
         for i, block in enumerate(blocks):
             if not self.validate(block):
                 ai_log("warning", "Block validation failed at index",
                        index=i, element=block.get("element"), blockId=block.get("blockId"))
                 return False
-
         return True
 
 
