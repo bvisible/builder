@@ -41,7 +41,7 @@ doctype_js = {"Website Settings": "public/js/website_settings.js"}
 # ----------
 
 # application home page (will override Website Settings)
-get_home_page = "builder.www.index.get_home_page"
+home_page = "index"
 
 # website user home page (by Role)
 
