@@ -1,0 +1,71 @@
+{% set home_page = frappe.db.get_value("Builder Page", {"route": "home", "published": 1}, "name") %}
+{% if home_page %}
+<script>window.location.replace('/home');</script>
+<meta http-equiv="refresh" content="0;url=/home">
+<p style="text-align:center;margin-top:40vh;font-family:system-ui;color:#666;">Redirection...</p>
+{% else %}
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+	<meta charset="utf-8">
+	<meta name="viewport" content="width=device-width, initial-scale=1">
+	<title>{{ frappe.get_website_settings().app_name or "Site en construction" }}</title>
+	<style>
+		* { margin: 0; padding: 0; box-sizing: border-box; }
+		body {
+			font-family: 'Inter', system-ui, -apple-system, sans-serif;
+			background: linear-gradient(135deg, #f8fafc 0%, #e2e8f0 100%);
+			min-height: 100vh;
+			display: flex;
+			align-items: center;
+			justify-content: center;
+		}
+		.container {
+			text-align: center;
+			padding: 40px 24px;
+			max-width: 520px;
+		}
+		.icon {
+			width: 80px;
+			height: 80px;
+			margin: 0 auto 24px;
+			background: linear-gradient(135deg, var(--primary-color, #37ac50) 0%, var(--secondary-color, #434647) 100%);
+			border-radius: 20px;
+			display: flex;
+			align-items: center;
+			justify-content: center;
+			font-size: 36px;
+		}
+		h1 {
+			font-size: 28px;
+			font-weight: 700;
+			color: #1a1a2e;
+			margin-bottom: 12px;
+		}
+		p {
+			font-size: 16px;
+			color: #64748b;
+			line-height: 1.6;
+		}
+		.badge {
+			display: inline-block;
+			margin-top: 24px;
+			padding: 8px 20px;
+			background: rgba(55, 172, 80, 0.1);
+			color: var(--primary-color, #37ac50);
+			border-radius: 20px;
+			font-size: 13px;
+			font-weight: 600;
+		}
+	</style>
+</head>
+<body>
+	<div class="container">
+		<div class="icon">&#128736;</div>
+		<h1>Site en construction</h1>
+		<p>Notre nouveau site arrive bient&ocirc;t.<br>Revenez nous voir prochainement !</p>
+		<div class="badge">Coming soon</div>
+	</div>
+</body>
+</html>
+{% endif %}
