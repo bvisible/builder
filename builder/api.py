@@ -698,12 +698,17 @@ def _generate_complete_site_worker(
 					pass
 
 			# Make logo URL absolute for vision API
+			# Fallback to config logo if not provided via session
+			effective_logo = logo_image
+			if not effective_logo and config and config.get("logo_image"):
+				effective_logo = config.logo_image
 			logo_url = None
-			if logo_image:
-				if logo_image.startswith("/"):
-					logo_url = frappe.utils.get_url() + logo_image
+			if effective_logo:
+				if effective_logo.startswith("/"):
+					logo_url = frappe.utils.get_url() + effective_logo
 				else:
-					logo_url = logo_image
+					logo_url = effective_logo
+				ai_log("info", "Logo image for vision analysis", logo_url=logo_url)
 
 			brief_gen = BriefGenerator(provider=provider, model=model, config=ai_config)
 			design_brief, brief_validation = brief_gen.generate_brief_with_validation(

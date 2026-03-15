@@ -233,8 +233,8 @@ class DesignBrief(BaseModel):
 
     # Header colors for logo compatibility
     header_bg_color: str = Field(
-        default="#1a1a1a",
-        description="Header background color — chosen based on logo analysis and site palette. Must ensure logo readability."
+        default="#ffffff",
+        description="Header background color — MUST be chosen based on logo analysis if logo is provided. Use white (#ffffff) for dark logos, dark for light logos. Must ensure logo readability."
     )
     header_text_color: str = Field(
         default="#ffffff",
