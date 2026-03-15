@@ -237,8 +237,8 @@ class DesignBrief(BaseModel):
         description="Header background color — MUST be chosen based on logo analysis if logo is provided. Use white (#ffffff) for dark logos, dark for light logos. Must ensure logo readability."
     )
     header_text_color: str = Field(
-        default="#ffffff",
-        description="Header text color — must contrast with header_bg_color for readability."
+        default="#1a1a1a",
+        description="Header text color — MUST contrast with header_bg_color. Use dark text (#1a1a1a) on light header, white (#ffffff) on dark header."
     )
 
     def get_border_radius(self) -> str:

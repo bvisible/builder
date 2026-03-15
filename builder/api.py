@@ -700,8 +700,14 @@ def _generate_complete_site_worker(
 			# Make logo URL absolute for vision API
 			# Fallback to config logo if not provided via session
 			effective_logo = logo_image
-			if not effective_logo and config and config.get("logo_image"):
-				effective_logo = config.logo_image
+			if not effective_logo and config:
+				try:
+					cfg_logo = config.logo_image if hasattr(config, 'logo_image') else None
+					if cfg_logo:
+						effective_logo = cfg_logo
+						ai_log("info", "Using logo from config for vision", logo=cfg_logo)
+				except Exception:
+					pass
 			logo_url = None
 			if effective_logo:
 				if effective_logo.startswith("/"):
