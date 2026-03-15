@@ -627,6 +627,12 @@ def _generate_complete_site_worker(
 		if secondary_color and hasattr(config, "secondary_color"):
 			config.secondary_color = secondary_color
 
+		# Header colors: use secondary (darker) as bg, white text for contrast
+		if hasattr(config, "header_bg_color"):
+			config.header_bg_color = secondary_color or primary_color or "#1a1a1a"
+		if hasattr(config, "header_text_color"):
+			config.header_text_color = "#ffffff"
+
 		# CTA configuration
 		config.cta_text = cta_text
 		config.cta_url = cta_url
