@@ -73,6 +73,7 @@ class BaseProvider(ABC):
         system_prompt: str = None,
         temperature: float = None,
         max_tokens: int = None,
+        images: list[str] = None,
     ) -> str:
         """
         Generate a text response from the model.
@@ -82,6 +83,7 @@ class BaseProvider(ABC):
             system_prompt: Optional system prompt
             temperature: Override default temperature
             max_tokens: Override default max tokens
+            images: Optional list of image URLs for vision capabilities
 
         Returns:
             str: Generated text response
@@ -95,6 +97,7 @@ class BaseProvider(ABC):
         schema: type[T],
         system_prompt: str = None,
         temperature: float = None,
+        images: list[str] = None,
     ) -> T:
         """
         Generate a structured response matching the Pydantic schema.
@@ -104,6 +107,7 @@ class BaseProvider(ABC):
             schema: Pydantic model class for response structure
             system_prompt: Optional system prompt
             temperature: Override default temperature
+            images: Optional list of image URLs for vision capabilities
 
         Returns:
             T: Validated Pydantic model instance
@@ -163,13 +167,22 @@ class BaseProvider(ABC):
     def _format_messages(
         self,
         prompt: str,
-        system_prompt: str = None
+        system_prompt: str = None,
+        images: list[str] = None
     ) -> list[dict]:
-        """Format prompt into message list"""
+        """Format prompt into message list with optional vision support"""
         messages = []
         if system_prompt:
             messages.append({"role": "system", "content": system_prompt})
-        messages.append({"role": "user", "content": prompt})
+
+        if images:
+            content = [{"type": "text", "text": prompt}]
+            for url in images:
+                content.append({"type": "image_url", "image_url": {"url": url}})
+            messages.append({"role": "user", "content": content})
+        else:
+            messages.append({"role": "user", "content": prompt})
+
         return messages
 
     def _extract_json_from_response(self, response: str) -> str:

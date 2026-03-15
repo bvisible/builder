@@ -683,6 +683,28 @@ def _generate_complete_site_worker(
 
 		from builder.ai.generators.brief_generator import BriefGenerator, get_default_brief
 		try:
+			# Parse inspiration URLs to get image URLs
+			inspiration_image_urls = []
+			if inspiration_urls:
+				try:
+					insp_data = json.loads(inspiration_urls) if isinstance(inspiration_urls, str) else inspiration_urls
+					if isinstance(insp_data, list):
+						for item in insp_data:
+							if isinstance(item, dict) and item.get("url"):
+								inspiration_image_urls.append(item["url"])
+							elif isinstance(item, str):
+								inspiration_image_urls.append(item)
+				except (json.JSONDecodeError, TypeError):
+					pass
+
+			# Make logo URL absolute for vision API
+			logo_url = None
+			if logo_image:
+				if logo_image.startswith("/"):
+					logo_url = frappe.utils.get_url() + logo_image
+				else:
+					logo_url = logo_image
+
 			brief_gen = BriefGenerator(provider=provider, model=model, config=ai_config)
 			design_brief, brief_validation = brief_gen.generate_brief_with_validation(
 				prompt=prompt,
@@ -695,6 +717,8 @@ def _generate_complete_site_worker(
 				max_retries=2,
 				heading_font=heading_font,
 				body_font=body_font,
+				logo_image=logo_url,
+				inspiration_images=inspiration_image_urls if inspiration_image_urls else None,
 			)
 
 			# Log validation results
@@ -732,6 +756,24 @@ def _generate_complete_site_worker(
 			ai_log("info", "Using secondary color from design brief", color=secondary_color)
 
 		print(f"[SITE_GEN_WORKER] Colors for pages: primary={primary_color}, secondary={secondary_color}")
+
+		# =====================================================================
+		# STEP 2.6.5: Apply header colors from design brief (logo analysis)
+		# =====================================================================
+		try:
+			config = frappe.get_single("Website Header Footer Config")
+			if hasattr(design_brief, "header_bg_color") and design_brief.header_bg_color:
+				config.header_bg_color = design_brief.header_bg_color
+			if hasattr(design_brief, "header_text_color") and design_brief.header_text_color:
+				config.header_text_color = design_brief.header_text_color
+			config.save(ignore_permissions=True)
+			frappe.db.commit()
+			ai_log("info", "Header colors applied from design brief",
+				   bg_color=design_brief.header_bg_color, text_color=design_brief.header_text_color)
+			print(f"[SITE_GEN_WORKER] Header colors from design brief: bg={design_brief.header_bg_color}, text={design_brief.header_text_color}")
+		except Exception as e:
+			ai_log("warning", "Failed to apply header colors from design brief", error=str(e)[:100])
+			frappe.log_error("Generation: header colors failed", str(e))
 
 		# =====================================================================
 		# STEP 2.7: Propagate fonts from design brief to Website Header Footer Config

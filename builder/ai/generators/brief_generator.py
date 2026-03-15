@@ -313,6 +313,7 @@ The design brief defines:
 4. Hero section styling
 5. EXACT typography scale (h1/h2/h3/p sizes)
 6. EXACT section paddings by type
+7. Header colors for logo compatibility and site branding
 
 Your brief will be used by another AI to generate multiple pages. The goal is that ALL pages look IDENTICAL in style.
 
@@ -345,6 +346,18 @@ MANDATORY - Include EXACT VALUES:
    - Cards: use "#ffffff" (NEVER var(--surface-color))
    - Alternate section backgrounds for visual rhythm
    - Vary hero backgrounds across themes — not every site needs a gradient hero
+
+## HEADER COLORS (CRITICAL for logo compatibility)
+You MUST choose header_bg_color and header_text_color.
+If a logo image is provided:
+- Analyze the logo's dominant colors and background
+- If logo is dark/colored on transparent bg → prefer white (#ffffff) or very light header
+- If logo is light on transparent bg → prefer dark header (#1a1a1a or primary_color)
+- ALWAYS ensure the logo is clearly visible and readable on the chosen header background
+If no logo is provided:
+- Use a color that complements the site's primary_color
+- Default to dark (#1a1a1a) for professional look or white (#ffffff) for clean look
+CONTRAST RULE: header_text_color must be readable on header_bg_color.
 
 IMPORTANT RULES:
 - Use CSS variable names like var(--primary-color) instead of actual hex values
@@ -399,6 +412,8 @@ class BriefGenerator:
         heading_font: str = None,
         body_font: str = None,
         revision_instructions: str = None,
+        logo_image: str = None,
+        inspiration_images: list[str] = None,
     ) -> DesignBrief:
         """
         Generate a design brief for the site.
@@ -481,6 +496,19 @@ Focus on:
 
 Return ONLY the JSON object, no markdown code blocks."""
 
+        # Build images list for vision capabilities
+        images_for_vision = []
+        if logo_image:
+            images_for_vision.append(logo_image)
+        if inspiration_images:
+            images_for_vision.extend(inspiration_images[:3])
+
+        # Add vision analysis prompts
+        if logo_image:
+            user_prompt += "\n\nA logo image is attached. Analyze it to determine:\n- Its dominant colors\n- Whether it has a transparent background\n- Whether it works better on light or dark header backgrounds\nChoose header_bg_color and header_text_color accordingly. The logo must be readable on the header."
+        if inspiration_images:
+            user_prompt += f"\n\n{len(inspiration_images)} inspiration image(s) are attached. Analyze them for color palettes, layout patterns, and visual style to inform your design brief."
+
         # Append revision instructions if provided (progressive generation feedback)
         if revision_instructions:
             user_prompt += f"""
@@ -500,6 +528,7 @@ IMPORTANT: Apply these revision instructions to the design brief. Adjust colors,
                 schema=DesignBrief,
                 system_prompt=BRIEF_SYSTEM_PROMPT,
                 think=think_value,
+                images=images_for_vision if images_for_vision else None,
             )
 
             # CRITICAL: Force the actual hex colors and fonts into the brief
@@ -537,6 +566,8 @@ IMPORTANT: Apply these revision instructions to the design brief. Adjust colors,
         heading_font: str = None,
         body_font: str = None,
         revision_instructions: str = None,
+        logo_image: str = None,
+        inspiration_images: list[str] = None,
     ) -> tuple[DesignBrief, BriefValidationResult]:
         """
         Generate a design brief with validation and automatic retry.
@@ -592,6 +623,8 @@ Make sure ALL fields are properly filled with valid values."""
                 heading_font=heading_font,
                 body_font=body_font,
                 revision_instructions=revision_instructions if attempt == 0 else None,
+                logo_image=logo_image,
+                inspiration_images=inspiration_images,
             )
 
             # Validate

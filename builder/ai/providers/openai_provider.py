@@ -98,12 +98,13 @@ class OpenAIProvider(BaseProvider):
         temperature: float = None,
         max_tokens: int = None,
         think: bool | str = None,
+        images: list[str] = None,
     ) -> str:
         """Generate text response"""
         if not self.is_available():
             raise AuthenticationError("OpenAI API key not configured")
 
-        messages = self._format_messages(prompt, system_prompt)
+        messages = self._format_messages(prompt, system_prompt, images=images)
 
         payload = {
             "model": self.model,
@@ -134,6 +135,7 @@ class OpenAIProvider(BaseProvider):
         system_prompt: str = None,
         temperature: float = None,
         think: bool | str = None,
+        images: list[str] = None,
     ) -> T:
         """
         Generate structured response using JSON mode.
@@ -152,7 +154,7 @@ class OpenAIProvider(BaseProvider):
             schema_json
         )
 
-        messages = self._format_messages(prompt, enhanced_system)
+        messages = self._format_messages(prompt, enhanced_system, images=images)
 
         # Determine if model supports structured outputs
         supports_structured = self._supports_structured_outputs()

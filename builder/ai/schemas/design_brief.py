@@ -231,6 +231,16 @@ class DesignBrief(BaseModel):
         description="Colors to avoid based on disliked inspirations"
     )
 
+    # Header colors for logo compatibility
+    header_bg_color: str = Field(
+        default="#1a1a1a",
+        description="Header background color — chosen based on logo analysis and site palette. Must ensure logo readability."
+    )
+    header_text_color: str = Field(
+        default="#ffffff",
+        description="Header text color — must contrast with header_bg_color for readability."
+    )
+
     def get_border_radius(self) -> str:
         """Get border radius value based on style."""
         radii = {
