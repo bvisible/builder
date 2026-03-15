@@ -342,6 +342,7 @@ def generate_complete_site(
 	body_font: str = None,
 	pages_config: str = None,
 	generation_mode: str = "full",
+	inspiration_urls: str = None,
 ):
 	"""
 	Generate a complete site asynchronously.
@@ -424,6 +425,7 @@ def generate_complete_site(
 		body_font=body_font,
 		pages_config=json.dumps(resolved_pages),
 		generation_mode=generation_mode,
+		inspiration_urls=inspiration_urls,
 	)
 
 	print(f"[SITE_GEN] Job enqueued successfully: job_id={job_id}, mode={generation_mode}")
@@ -503,6 +505,7 @@ def _generate_complete_site_worker(
 	body_font: str = None,
 	pages_config: str = None,
 	generation_mode: str = "full",
+	inspiration_urls: str = None,
 ):
 	"""
 	Background worker for site generation.
