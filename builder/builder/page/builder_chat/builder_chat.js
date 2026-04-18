@@ -163,6 +163,22 @@ frappe.ui.BuilderChatPage = class BuilderChatPage {
 					this.progress.chat.addSystemNotice(__('Session resumed. You can continue where you left off.'));
 				}
 
+				// Re-attach to an in-flight generation if the server tells us
+				// there's one. Without this, reloading during generation
+				// leaves the UI idle even though the worker is still cooking.
+				if (response.message.job_id && response.message.status === 'Generating') {
+					const snapshot = response.message.generation_status || {};
+					this.progress.chat.addSystemNotice(
+						__('Resuming generation in progress (') + (snapshot.progress || 0) + '%)...'
+					);
+					this.update_progress({
+						current_step: 'generation',
+						completion_percentage: snapshot.progress || 0,
+						missing_fields: []
+					});
+					this.start_generation_polling(response.message.job_id);
+				}
+
 				this.progress.chat.scrollToBottom();
 			} else {
 				this.progress.chat.showError(

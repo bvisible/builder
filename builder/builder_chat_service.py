@@ -87,12 +87,17 @@ class BuilderChatService:
 		try:
 			user = user or frappe.session.user
 
-			# Check for a resumable session (Active, modified < 24h ago)
+			# Statuses we consider "in progress" and worth reopening on reload.
+			# Generating / Homepage Ready are mid-flight — the page was just
+			# kicked off, so we must NOT drop the user into a fresh session.
+			RESUMABLE_STATUSES = ["Active", "Generating", "Homepage Ready"]
+
+			# Check for a resumable session (modified < 24h ago)
 			recent_active = frappe.get_all(
 				"Builder Chat Session",
 				filters={
 					"user": user,
-					"status": "Active",
+					"status": ["in", RESUMABLE_STATUSES],
 					"modified": [">", frappe.utils.add_days(frappe.utils.now(), -1)]
 				},
 				order_by="modified desc",
@@ -101,9 +106,10 @@ class BuilderChatService:
 			)
 
 			if recent_active:
-				# Resume existing session
+				# Resume existing session — include job_id + generation status
+				# so the frontend can re-attach to an in-flight generation.
 				session = frappe.get_doc("Builder Chat Session", recent_active[0])
-				return {
+				payload = {
 					"success": True,
 					"session_id": session.session_id,
 					"is_resumed": True,
@@ -111,9 +117,15 @@ class BuilderChatService:
 					"completion_percentage": session.completion_percentage,
 					"messages": self._format_messages(session.messages),
 					"missing_fields": session.get_missing_fields(),
+					"status": session.status,
 				}
+				if session.status in ("Generating", "Homepage Ready") and session.job_id:
+					payload["job_id"] = session.job_id
+					payload["generation_status"] = self._fetch_generation_snapshot(session.job_id)
+				return payload
 
-			# Abandon old active sessions (> 24h)
+			# Abandon old Active sessions (> 24h). Don't touch Generating
+			# ones here — the watchdog handles those separately.
 			old_sessions = frappe.get_all(
 				"Builder Chat Session",
 				filters={"user": user, "status": "Active"},
@@ -160,6 +172,14 @@ class BuilderChatService:
 		except Exception as e:
 			frappe.log_error("Builder Chat: Start session error", str(e))
 			return {"success": False, "message": _("Failed to start chat session")}
+
+	def _fetch_generation_snapshot(self, job_id: str) -> Dict:
+		"""Return the cached generation status for a job, if any."""
+		try:
+			from builder.api import _get_generation_status
+			return _get_generation_status(job_id)
+		except Exception:
+			return {}
 
 	def _generate_welcome_message(self) -> Dict:
 		"""Generate the initial welcome message."""

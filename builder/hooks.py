@@ -129,6 +129,7 @@ scheduler_events = {
 	"cron": {
 		"*/10 * * * *": [
 			"builder.builder_analytics.ingest_web_page_views_to_duckdb",
+			"builder.api.check_stuck_generations",
 		],
 	}
 }

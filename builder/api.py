@@ -440,6 +440,9 @@ def generate_complete_site(
 def _update_generation_status(job_id: str, data: dict):
 	"""Update the generation status in cache and broadcast via socketio."""
 	cache_key = f"site_generation_{job_id}"
+	# Stamp each update — the watchdog uses this to detect dead workers.
+	data = dict(data)
+	data["last_update"] = frappe.utils.now()
 	frappe.cache().set_value(cache_key, data, expires_in_sec=14400)  # 4 hours TTL
 	print(f"[SITE_GEN] Status update: job_id={job_id}, status={data.get('status')}, progress={data.get('progress')}%, step={data.get('current_step', '')[:50]}")
 
@@ -462,6 +465,69 @@ def _get_generation_status(job_id: str) -> dict:
 	"""Get the generation status from cache."""
 	cache_key = f"site_generation_{job_id}"
 	return frappe.cache().get_value(cache_key) or {"status": "not_found", "error": "Job not found"}
+
+
+# Max minutes we allow a generation to be "running" without a cache update
+# before the watchdog declares it dead. Workers can get OOM-killed, hit
+# supervisorctl restart, lose their Moonshot HTTP connection — in all cases
+# the RQ job stops updating the cache but the session stays "Generating"
+# forever. The watchdog flips those to "Failed" so the UI can recover.
+STUCK_GENERATION_TIMEOUT_MIN = 20
+
+
+def check_stuck_generations():
+	"""Find sessions stuck in 'Generating' and mark them Failed.
+
+	Run every 10 minutes by the scheduler (see hooks.scheduler_events). A
+	session is considered stuck when its cached status hasn't been updated
+	for STUCK_GENERATION_TIMEOUT_MIN minutes — that's the telltale sign the
+	RQ worker died mid-job.
+	"""
+	from datetime import timedelta
+	from frappe.utils import get_datetime, now_datetime
+
+	cutoff = now_datetime() - timedelta(minutes=STUCK_GENERATION_TIMEOUT_MIN)
+	stuck_sessions = frappe.get_all(
+		"Builder Chat Session",
+		filters={"status": "Generating"},
+		fields=["name", "session_id", "job_id", "modified"],
+	)
+
+	marked = 0
+	for row in stuck_sessions:
+		snapshot = _get_generation_status(row.job_id) if row.job_id else {}
+		last_update_str = snapshot.get("last_update")
+
+		# If the cache is fresh, the worker is still alive — leave it alone.
+		if last_update_str:
+			try:
+				if get_datetime(last_update_str) > cutoff:
+					continue
+			except Exception:
+				pass  # Bad timestamp → treat as stuck.
+
+		# Also bail out if the session itself was modified recently (defensive).
+		if row.modified and row.modified > cutoff:
+			continue
+
+		try:
+			session = frappe.get_doc("Builder Chat Session", row.name)
+			session.status = "Failed"
+			session.generation_status = "failed"
+			session.save(ignore_permissions=True)
+			marked += 1
+			if row.job_id:
+				_update_generation_status(row.job_id, {
+					**snapshot,
+					"status": "failed",
+					"error": f"Worker died — no update for >{STUCK_GENERATION_TIMEOUT_MIN} min",
+				})
+		except Exception as e:
+			frappe.log_error("check_stuck_generations: session update failed", str(e))
+
+	if marked:
+		frappe.db.commit()
+		print(f"[SITE_GEN] Watchdog marked {marked} stuck session(s) as Failed")
 
 
 def _update_session_on_completion(session_id, job_id, status, created_pages):
