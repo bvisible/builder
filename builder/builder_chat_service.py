@@ -707,17 +707,29 @@ When all required fields are collected, congratulate the user and tell them they
 				}
 				response = provider._make_streaming_request("/api/chat", payload)
 			else:
-				# Final fallback: use simple generate with concatenated context
+				# Final fallback for OpenAI-compatible providers (Moonshot/Kimi).
+				# Thinking mode is disabled here: chat back-and-forth replies are
+				# short ("do you want a vitrine?") and with thinking each reply
+				# takes 2+ min and trips the gunicorn worker timeout. Thinking is
+				# reserved for brief/page generation (separate code paths).
 				context = "\n".join([
 					f"[{m['role']}]: {m['content']}"
 					for m in messages[1:]  # Skip system
 				])
-				response = provider.generate(
+				generate_kwargs = dict(
 					prompt=context,
 					system_prompt=system_prompt,
 					temperature=0.7,
-					max_tokens=16384,
+					max_tokens=2048,
 				)
+				# Pass think=False when the provider accepts it (OpenAI-compatible).
+				try:
+					import inspect
+					if "think" in inspect.signature(provider.generate).parameters:
+						generate_kwargs["think"] = False
+				except (TypeError, ValueError):
+					pass
+				response = provider.generate(**generate_kwargs)
 
 			if isinstance(response, str):
 				return response
