@@ -27,7 +27,7 @@ msgstr "(Passer le logo)"
 
 #: builder/builder_chat_service.py:143
 msgid "**What type of website do you want to create?** Briefly describe your business or project, and I'll take care of the rest."
-msgstr ""
+msgstr "**Quel type de site web souhaitez-vous créer ?** Décrivez brièvement votre activité ou projet, et je m'occupe du reste."
 
 #: builder/templates/includes/contact_form.html:23
 msgid "+41 XX XXX XX XX"
@@ -88,7 +88,7 @@ msgstr "À propos"
 #. Option for the 'Status' (Select) field in DocType 'Builder Chat Session'
 #: builder/builder/doctype/builder_chat_session/builder_chat_session.json
 msgid "Active"
-msgstr ""
+msgstr "Actif"
 
 #. Label of a Button field in DocType 'Builder Page'
 #: builder/builder/doctype/builder_page/builder_page.json
@@ -97,11 +97,11 @@ msgstr "Ajouter des balises meta personnalisées"
 
 #: builder/builder_chat_service.py:618
 msgid "Add a CTA"
-msgstr ""
+msgstr "Ajouter un CTA"
 
 #: builder/builder_chat_service.py:620
 msgid "Add social links"
-msgstr ""
+msgstr "Ajouter les réseaux sociaux"
 
 #. Description of the 'Custom System Prompt' (Code) field in DocType 'AI
 #. Settings'
@@ -149,7 +149,7 @@ msgstr "Un fichier icône avec l'extension .ico. Doit être de 16 x 16 px.<br>Vo
 
 #: builder/builder/page/builder_chat/builder_chat.js:924
 msgid "An unexpected error occurred."
-msgstr ""
+msgstr "Une erreur inattendue s'est produite."
 
 #: builder/builder/page/builder_chat/builder_chat.js:849
 msgid "An unexpected error occurred. Please try again."
@@ -183,7 +183,7 @@ msgstr ""
 #. Label of a Select field in DocType 'Builder Page'
 #: builder/builder/doctype/builder_page/builder_page.json
 msgid "App"
-msgstr ""
+msgstr "Application"
 
 #. Option for the 'Heading Font' (Select) field in DocType 'Website Header
 #. Footer Config'
@@ -198,7 +198,7 @@ msgstr "Êtes-vous sûr de vouloir remplacer {0} par {1} ?"
 #. Label of a Attach field in DocType 'Builder Chat Message'
 #: builder/builder/doctype/builder_chat_message/builder_chat_message.json
 msgid "Attachment"
-msgstr ""
+msgstr "Pièce jointe"
 
 #. Label of a Check field in DocType 'Builder Page'
 #: builder/builder/doctype/builder_page/builder_page.json
@@ -228,7 +228,7 @@ msgstr ""
 #. Label of a Color field in DocType 'Website Header Footer Config'
 #: builder/builder/doctype/website_header_footer_config/website_header_footer_config.json
 msgid "Background Color"
-msgstr ""
+msgstr "Couleur d’Arrière-plan"
 
 #. Description of the 'Background Color' (Color) field in DocType 'Website
 #. Header Footer Config'
@@ -272,7 +272,7 @@ msgstr "Blocs"
 
 #: builder/hf_utils/menu_integration.py:188
 msgid "Blog"
-msgstr ""
+msgstr "Blog"
 
 #. Label of a Data field in DocType 'Builder Chat Session'
 #. Label of a Select field in DocType 'Website Header Footer Config'
@@ -397,7 +397,7 @@ msgstr "Activité et objectif"
 #. Label of a JSON field in DocType 'Builder Chat Message'
 #: builder/builder/doctype/builder_chat_message/builder_chat_message.json
 msgid "Buttons"
-msgstr ""
+msgstr "Boutons"
 
 #. Label of a Select field in DocType 'Website Header Footer Config'
 #: builder/builder/doctype/website_header_footer_config/website_header_footer_config.json
@@ -416,7 +416,7 @@ msgstr ""
 #: builder/builder/doctype/builder_chat_session/builder_chat_session.json
 #: builder/builder/doctype/website_header_footer_config/website_header_footer_config.json
 msgid "CTA URL"
-msgstr ""
+msgstr "URL du CTA"
 
 #. Label of a Section Break field in DocType 'Website Header Footer Config'
 #: builder/builder/doctype/website_header_footer_config/website_header_footer_config.json
@@ -431,7 +431,7 @@ msgstr "URL canonique"
 #. Label of a Section Break field in DocType 'Builder Site Inspiration'
 #: builder/builder/doctype/builder_site_inspiration/builder_site_inspiration.json
 msgid "Capture"
-msgstr ""
+msgstr "Capturer"
 
 #. Label of a Datetime field in DocType 'Builder Site Inspiration'
 #: builder/builder/doctype/builder_site_inspiration/builder_site_inspiration.json
@@ -441,17 +441,17 @@ msgstr ""
 #. Option for the 'Category' (Select) field in DocType 'Block Template'
 #: builder/builder/doctype/block_template/block_template.json
 msgid "Card"
-msgstr ""
+msgstr "Carte"
 
 #. Label of a Check field in DocType 'Website Header Footer Config'
 #: builder/builder/doctype/website_header_footer_config/website_header_footer_config.json
 #: builder/templates/includes/header_footer/macros.html:47
 msgid "Cart"
-msgstr ""
+msgstr "Panier"
 
 #: builder/hf_utils/menu_integration.py:182
 msgid "Categories"
-msgstr ""
+msgstr "Catégories"
 
 #. Label of a Select field in DocType 'Block Template'
 #. Label of a Select field in DocType 'Builder AI Shortcode'
@@ -465,7 +465,7 @@ msgstr "Catégorie"
 #: builder/templates/includes/header_footer/components/cart_drawer.html:43
 #: builder/templates/includes/header_footer/header.html:14
 msgid "Checkout"
-msgstr ""
+msgstr "Paiement"
 
 #. Description of the 'Layout' (Select) field in DocType 'Website Header Footer
 #. Config'
@@ -501,7 +501,7 @@ msgstr ""
 #. Label of a Data field in DocType 'Website Footer Link'
 #: builder/builder/doctype/website_footer_link/website_footer_link.json
 msgid "Column"
-msgstr ""
+msgstr "Colonne"
 
 #. Label of a JSON field in DocType 'Builder Chat Session'
 #: builder/builder/doctype/builder_chat_session/builder_chat_session.json
@@ -515,7 +515,7 @@ msgstr ""
 #. Option for the 'Status' (Select) field in DocType 'Builder Chat Session'
 #: builder/builder/doctype/builder_chat_session/builder_chat_session.json
 msgid "Completed"
-msgstr ""
+msgstr "Terminé"
 
 #: builder/builder/page/builder_chat/builder_chat.js:806
 msgid "Completed!"
@@ -524,7 +524,7 @@ msgstr "Terminé !"
 #. Label of a Percent field in DocType 'Builder Chat Session'
 #: builder/builder/doctype/builder_chat_session/builder_chat_session.json
 msgid "Completion"
-msgstr ""
+msgstr "Achèvement"
 
 #. Label of a Data field in DocType 'Builder Component'
 #: builder/builder/doctype/builder_component/builder_component.json
@@ -554,7 +554,7 @@ msgstr "Erreur de connexion. Veuillez réessayer."
 
 #: builder/builder_chat_service.py:642
 msgid "Consulting / Services"
-msgstr ""
+msgstr "Conseil / Services"
 
 #: builder/hf_utils/menu_integration.py:177
 #: builder/hf_utils/menu_integration.py:184
@@ -562,7 +562,7 @@ msgstr ""
 #: builder/hf_utils/menu_integration.py:196
 #: builder/hf_utils/menu_integration.py:203
 msgid "Contact"
-msgstr ""
+msgstr "Contact"
 
 #. Option for the 'Category' (Select) field in DocType 'Block Template'
 #. Label of a Long Text field in DocType 'Builder Chat Message'
@@ -671,7 +671,7 @@ msgstr ""
 #. Label of a Select field in DocType 'AI Settings'
 #: builder/builder/doctype/ai_settings/ai_settings.json
 msgid "Default Theme"
-msgstr ""
+msgstr "Thème par défaut"
 
 #. Description of the 'Default Image Size' (Data) field in DocType 'AI
 #. Settings'
@@ -702,6 +702,10 @@ msgstr ""
 #: builder/builder/doctype/builder_page/builder_page.json
 #: builder/builder/doctype/builder_shortcode/builder_shortcode.json
 #: builder/builder/doctype/builder_site_inspiration/builder_site_inspiration.json
+#: builder/builder/page/builder_chat/builder_chat.js:79
+msgid "Describe your website..."
+msgstr "Décrivez votre site web..."
+
 #: builder/builder/page/builder_chat/builder_chat.js:51
 msgid "Description"
 msgstr "Description"
@@ -768,12 +772,12 @@ msgstr ""
 #: builder/templates/includes/contact_form.html:14
 #: builder/templates/includes/contact_info.html:47
 msgid "Email"
-msgstr ""
+msgstr "Email"
 
 #. Label of a Link field in DocType 'Website Header Footer Config'
 #: builder/builder/doctype/website_header_footer_config/website_header_footer_config.json
 msgid "Email Group"
-msgstr ""
+msgstr "Groupe Email"
 
 #: builder/api.py:1701
 msgid "Email Group not found"
@@ -833,7 +837,7 @@ msgstr ""
 #. Label of a Check field in DocType 'Builder Shortcode'
 #: builder/builder/doctype/builder_shortcode/builder_shortcode.json
 msgid "Enabled"
-msgstr ""
+msgstr "Activé"
 
 #. Option for the 'Output Language' (Select) field in DocType 'AI Settings'
 #: builder/builder/doctype/ai_settings/ai_settings.json
@@ -848,12 +852,12 @@ msgstr ""
 #. Label of a Small Text field in DocType 'Builder Site Inspiration'
 #: builder/builder/doctype/builder_site_inspiration/builder_site_inspiration.json
 msgid "Error Message"
-msgstr ""
+msgstr "Message d&#39;erreur"
 
 #. Label of a Section Break field in DocType 'Builder Shortcode'
 #: builder/builder/doctype/builder_shortcode/builder_shortcode.json
 msgid "Example"
-msgstr ""
+msgstr "Exemple"
 
 #. Label of a Code field in DocType 'Builder Shortcode'
 #: builder/builder/doctype/builder_shortcode/builder_shortcode.json
@@ -898,7 +902,7 @@ msgstr ""
 #. Option for the 'Status' (Select) field in DocType 'Builder Chat Session'
 #: builder/builder/doctype/builder_chat_session/builder_chat_session.json
 msgid "Failed"
-msgstr ""
+msgstr "Échoué"
 
 #: builder/builder/page/builder_chat/builder_chat.js:311
 msgid "Failed to connect to server"
@@ -939,7 +943,7 @@ msgstr "Impossible de démarrer la génération. Veuillez réessayer."
 
 #: builder/builder/page/builder_chat/builder_chat.js:879
 msgid "Failed to start image generation."
-msgstr ""
+msgstr "Impossible de démarrer la génération d'images."
 
 #: builder/builder/page/builder_chat/builder_chat.js:307
 msgid "Failed to start session"
@@ -970,7 +974,7 @@ msgstr "Favicon"
 
 #: builder/hf_utils/menu_integration.py:200
 msgid "Features"
-msgstr ""
+msgstr "Fonctionnalités"
 
 #: builder/api.py:1974
 msgid "File URL is required"
@@ -1017,12 +1021,12 @@ msgstr ""
 #: builder/builder/doctype/block_template/block_template.json
 #: builder/builder/doctype/website_header_footer_config/website_header_footer_config.json
 msgid "Footer"
-msgstr ""
+msgstr "Pied de Page"
 
 #. Label of a Section Break field in DocType 'Website Header Footer Config'
 #: builder/builder/doctype/website_header_footer_config/website_header_footer_config.json
 msgid "Footer Content"
-msgstr ""
+msgstr "Contenue du pied de page"
 
 #. Label of a Small Text field in DocType 'Website Header Footer Config'
 #: builder/builder/doctype/website_header_footer_config/website_header_footer_config.json
@@ -1038,7 +1042,7 @@ msgstr ""
 #. Label of a Section Break field in DocType 'Website Header Footer Config'
 #: builder/builder/doctype/website_header_footer_config/website_header_footer_config.json
 msgid "Footer Logo"
-msgstr ""
+msgstr "Logo du pied de page"
 
 #. Label of a Attach Image field in DocType 'Website Header Footer Config'
 #: builder/builder/doctype/website_header_footer_config/website_header_footer_config.json
@@ -1059,7 +1063,7 @@ msgstr ""
 #. Label of a Select field in DocType 'Website Header Footer Config'
 #: builder/builder/doctype/website_header_footer_config/website_header_footer_config.json
 msgid "Footer Template"
-msgstr ""
+msgstr "Modèle de pied de page"
 
 #. Label of a Link field in DocType 'Builder Component'
 #: builder/builder/doctype/builder_component/builder_component.json
@@ -1073,7 +1077,7 @@ msgstr "Pour la page web"
 #: builder/builder/doctype/builder_ai_shortcode/builder_ai_shortcode.json
 #: builder/builder/doctype/builder_shortcode/builder_shortcode.json
 msgid "Form"
-msgstr ""
+msgstr "Formulaire"
 
 #: builder/builder/page/builder_chat/builder_chat.js:874
 msgid "Found"
@@ -1098,7 +1102,7 @@ msgstr ""
 #. Label of a Section Break field in DocType 'AI Settings'
 #: builder/builder/doctype/ai_settings/ai_settings.json
 msgid "General Settings"
-msgstr ""
+msgstr "Paramètres généraux"
 
 #: builder/builder/page/builder_chat/builder_chat.js:51
 #: builder/builder/page/builder_chat/builder_chat.js:728
@@ -1274,7 +1278,7 @@ msgstr "HTML de l'en-tête"
 #. Label of a Tab Break field in DocType 'Website Header Footer Config'
 #: builder/builder/doctype/website_header_footer_config/website_header_footer_config.json
 msgid "Header"
-msgstr ""
+msgstr "En-Tête"
 
 #. Label of a Section Break field in DocType 'Website Header Footer Config'
 #: builder/builder/doctype/website_header_footer_config/website_header_footer_config.json
@@ -1300,7 +1304,7 @@ msgstr ""
 
 #: builder/templates/includes/header_footer/components/user_header.html:219
 msgid "Hello"
-msgstr ""
+msgstr "Bonjour"
 
 #: builder/builder_chat_service.py:139
 msgid "Hello {name}!"
@@ -1321,7 +1325,7 @@ msgstr ""
 #: builder/hf_utils/menu_integration.py:193
 #: builder/hf_utils/menu_integration.py:199
 msgid "Home"
-msgstr ""
+msgstr "Accueil"
 
 #. Label of a Data field in DocType 'Builder Settings'
 #: builder/builder/doctype/builder_settings/builder_settings.json
@@ -1330,7 +1334,7 @@ msgstr "Page d'accueil"
 
 #: builder/templates/includes/contact_info.html:62
 msgid "Hours"
-msgstr ""
+msgstr "Heures"
 
 #: builder/templates/includes/contact_form.html:29
 msgid "How can we help you?"
@@ -1358,27 +1362,27 @@ msgstr "Je veux une boutique en ligne pour vendre des produits"
 
 #: builder/builder_chat_service.py:644
 msgid "I want to showcase my creative work"
-msgstr ""
+msgstr "Je veux présenter mon travail créatif"
 
 #: builder/builder_chat_service.py:618
 msgid "I'd like to add a call-to-action button"
-msgstr ""
+msgstr "J'aimerais ajouter un bouton d'appel à l'action"
 
 #: builder/builder_chat_service.py:620
 msgid "I'd like to add social media links"
-msgstr ""
+msgstr "J'aimerais ajouter des liens vers les réseaux sociaux"
 
 #: builder/builder_chat_service.py:142
 msgid "I'll guide you step by step to generate a complete website. Let's start!"
-msgstr ""
+msgstr "Je vais vous guider étape par étape pour générer un site complet. Commençons !"
 
 #: builder/builder_chat_service.py:656
 msgid "I'll type it"
-msgstr ""
+msgstr "Je vais le taper"
 
 #: builder/builder_chat_service.py:141
 msgid "I'm **Builder AI**, your website creation assistant."
-msgstr ""
+msgstr "Je suis **Builder AI**, votre assistant de création de sites web."
 
 #. Option for the 'Search' (Select) field in DocType 'Website Header Footer
 #. Config'
@@ -1533,7 +1537,7 @@ msgstr ""
 #: builder/builder/doctype/website_footer_link/website_footer_link.json
 #: builder/builder/doctype/website_menu_item/website_menu_item.json
 msgid "Label"
-msgstr ""
+msgstr "Étiquette"
 
 #. Label of a Section Break field in DocType 'Builder Settings'
 #: builder/builder/doctype/builder_settings/builder_settings.json
@@ -1568,11 +1572,11 @@ msgstr ""
 #: builder/builder/doctype/builder_shortcode/builder_shortcode.json
 #: builder/builder/doctype/website_header_footer_config/website_header_footer_config.json
 msgid "Layout"
-msgstr ""
+msgstr "Disposition"
 
 #: builder/builder_chat_service.py:656
 msgid "Let me type my site name"
-msgstr ""
+msgstr "Laissez-moi taper le nom de mon site"
 
 #: builder/builder_chat_service.py:822
 msgid "Let's continue with the next step."
@@ -1589,12 +1593,12 @@ msgstr ""
 
 #: builder/hf_utils/header_footer.py:102
 msgid "Links"
-msgstr ""
+msgstr "Liens"
 
 #: builder/templates/includes/header_footer/components/cart_drawer.html:17
 #: builder/templates/includes/header_footer/header.html:14
 msgid "Loading Cart..."
-msgstr ""
+msgstr "Chargement du panier..."
 
 #: builder/builder/page/builder_chat/builder_chat.js:51
 msgid "Loading..."
@@ -1607,7 +1611,7 @@ msgstr ""
 
 #: builder/templates/includes/header_footer/components/user_header.html:9
 msgid "Log in"
-msgstr ""
+msgstr "Se connecter"
 
 #. Label of a Section Break field in DocType 'Website Header Footer Config'
 #: builder/builder/doctype/website_header_footer_config/website_header_footer_config.json
@@ -1636,7 +1640,7 @@ msgstr ""
 
 #: builder/builder_chat_service.py:249
 msgid "Logo received! I'll use it for your site generation."
-msgstr ""
+msgstr "Logo reçu ! Je l'utiliserai pour la génération de votre site."
 
 #. Option for the 'Layout' (Select) field in DocType 'Website Header Footer
 #. Config'
@@ -1707,7 +1711,7 @@ msgstr "Média"
 #. Label of a Tab Break field in DocType 'Website Header Footer Config'
 #: builder/builder/doctype/website_header_footer_config/website_header_footer_config.json
 msgid "Menu"
-msgstr ""
+msgstr "Menu"
 
 #. Label of a Section Break field in DocType 'Website Header Footer Config'
 #. Label of a Table field in DocType 'Website Header Footer Config'
@@ -1731,7 +1735,7 @@ msgstr ""
 
 #: builder/templates/includes/contact_form.html:27
 msgid "Message"
-msgstr ""
+msgstr "Message"
 
 #: builder/api.py:1962
 msgid "Message is required"
@@ -1768,7 +1772,10 @@ msgstr ""
 #. Label of a JSON field in DocType 'Builder Chat Session'
 #: builder/builder/doctype/builder_chat_session/builder_chat_session.json
 msgid "Missing Fields"
-msgstr ""
+msgstr "Champs manquants"
+
+msgid "Missing Information"
+msgstr "Informations manquantes"
 
 #: builder/builder_chat_service.py:279
 msgid "Missing required fields: {0}"
@@ -1788,25 +1795,25 @@ msgstr ""
 #. Config'
 #: builder/builder/doctype/website_header_footer_config/website_header_footer_config.json
 msgid "Montserrat"
-msgstr ""
+msgstr "Montserrat"
 
 #: builder/templates/includes/header_footer/components/user_header.html:20
 msgid "My account"
-msgstr ""
+msgstr "Mon compte"
 
 #: builder/templates/includes/header_footer/components/user_header.html:21
 msgid "My orders"
-msgstr ""
+msgstr "Mes commandes"
 
 #: builder/templates/includes/header_footer/components/user_header.html:22
 msgid "My wishlist"
-msgstr ""
+msgstr "Ma liste de souhaits"
 
 #. Label of a Data field in DocType 'Builder AI Shortcode'
 #: builder/builder/doctype/builder_ai_shortcode/builder_ai_shortcode.json
 #: builder/templates/includes/contact_form.html:9
 msgid "Name"
-msgstr ""
+msgstr "Nom"
 
 #. Option for the 'Category' (Select) field in DocType 'Block Template'
 #: builder/builder/doctype/block_template/block_template.json
@@ -1853,23 +1860,23 @@ msgstr ""
 
 #: builder/builder/page/builder_chat/builder_chat.js:464
 msgid "No problem! You can generate images later from the Builder editor."
-msgstr ""
+msgstr "Pas de problème ! Vous pourrez générer les images plus tard depuis l'éditeur Builder."
 
 #: builder/builder_chat_service.py:844
 msgid "No problem, we'll skip the logo for now."
-msgstr ""
+msgstr "Pas de problème, on passera le logo pour l'instant."
 
 #: builder/templates/includes/header_footer/components/search_bar.html:345
 #: builder/templates/includes/header_footer/components/search_overlay.html:246
 #: builder/templates/includes/header_footer/header.html:7
 msgid "No results found"
-msgstr ""
+msgstr "Aucun résultat trouvé"
 
 #. Option for the 'Search' (Select) field in DocType 'Website Header Footer
 #. Config'
 #: builder/builder/doctype/website_header_footer_config/website_header_footer_config.json
 msgid "None"
-msgstr ""
+msgstr "Aucun"
 
 #: builder/builder/doctype/builder_settings/builder_settings.js:42
 msgid "Not used in any page"
@@ -1878,7 +1885,7 @@ msgstr "Non utilisé dans aucune page"
 #. Label of a Section Break field in DocType 'Builder Site Inspiration'
 #: builder/builder/doctype/builder_site_inspiration/builder_site_inspiration.json
 msgid "Notes"
-msgstr ""
+msgstr "Remarques"
 
 #. Description of the 'Max Retries' (Int) field in DocType 'AI Settings'
 #: builder/builder/doctype/ai_settings/ai_settings.json
@@ -1982,7 +1989,7 @@ msgstr ""
 #: builder/builder/doctype/builder_ai_shortcode/builder_ai_shortcode.json
 #: builder/builder/doctype/builder_shortcode/builder_shortcode.json
 msgid "Other"
-msgstr ""
+msgstr "Autre"
 
 #. Option for the 'Heading Font' (Select) field in DocType 'Website Header
 #. Footer Config'
@@ -1994,7 +2001,7 @@ msgstr ""
 #. Config'
 #: builder/builder/doctype/website_header_footer_config/website_header_footer_config.json
 msgid "Outline"
-msgstr ""
+msgstr "Contour"
 
 #. Label of a Select field in DocType 'AI Settings'
 #: builder/builder/doctype/ai_settings/ai_settings.json
@@ -2051,12 +2058,12 @@ msgstr "Pages créées"
 #. Label of a Code field in DocType 'Builder Shortcode'
 #: builder/builder/doctype/builder_shortcode/builder_shortcode.json
 msgid "Parameters"
-msgstr ""
+msgstr "Paramètres"
 
 #: builder/templates/includes/contact_form.html:21
 #: builder/templates/includes/contact_info.html:32
 msgid "Phone"
-msgstr ""
+msgstr "Téléphone"
 
 #. Option for the 'Heading Font' (Select) field in DocType 'Website Header
 #. Footer Config'
@@ -2088,7 +2095,7 @@ msgstr ""
 
 #: builder/builder_chat_service.py:644
 msgid "Portfolio / Creative"
-msgstr ""
+msgstr "Portfolio / Créatif"
 
 #. Option for the 'Output Language' (Select) field in DocType 'AI Settings'
 #: builder/builder/doctype/ai_settings/ai_settings.json
@@ -2124,13 +2131,13 @@ msgstr "Largeur de l'aperçu"
 
 #: builder/hf_utils/menu_integration.py:201
 msgid "Pricing"
-msgstr ""
+msgstr "Tarification"
 
 #. Option for the 'CTA Style' (Select) field in DocType 'Website Header Footer
 #. Config'
 #: builder/builder/doctype/website_header_footer_config/website_header_footer_config.json
 msgid "Primary"
-msgstr ""
+msgstr "Primaire"
 
 #. Label of a Data field in DocType 'Builder Chat Session'
 #. Label of a Color field in DocType 'Builder Site Config'
@@ -2140,7 +2147,7 @@ msgstr ""
 #: builder/builder/doctype/builder_site_config/builder_site_config.json
 #: builder/builder/doctype/website_header_footer_config/website_header_footer_config.json
 msgid "Primary Color"
-msgstr ""
+msgstr "Couleur primaire"
 
 #. Description of the 'Primary Color' (Color) field in DocType 'Website Header
 #. Footer Config'
@@ -2236,7 +2243,7 @@ msgstr ""
 #. Label of a Select field in DocType 'Builder Chat Message'
 #: builder/builder/doctype/builder_chat_message/builder_chat_message.json
 msgid "Role"
-msgstr ""
+msgstr "Rôle"
 
 #. Label of a Data field in DocType 'Builder Page'
 #. Label of a Data field in DocType 'Builder Site Config Page'
@@ -2285,7 +2292,7 @@ msgstr "Script"
 #: builder/builder/doctype/website_header_footer_config/website_header_footer_config.json
 #: builder/templates/includes/header_footer/macros.html:28
 msgid "Search"
-msgstr ""
+msgstr "Rechercher"
 
 #. Option for the 'Search' (Select) field in DocType 'Website Header Footer
 #. Config'
@@ -2312,12 +2319,12 @@ msgstr ""
 #: builder/templates/includes/header_footer/components/search_overlay.html:251
 #: builder/templates/includes/header_footer/header.html:7
 msgid "Search error"
-msgstr ""
+msgstr "Erreur de recherche"
 
 #: builder/templates/includes/header_footer/components/search_overlay.html:9
 #: builder/templates/includes/header_footer/header.html:6
 msgid "Search for Products"
-msgstr ""
+msgstr "Rechercher des produits"
 
 #: builder/builder/doctype/website_header_footer_config/website_header_footer_config.js:198
 msgid "Search for products"
@@ -2325,19 +2332,19 @@ msgstr ""
 
 #: builder/templates/includes/header_footer/components/search_bar.html:14
 msgid "Search products..."
-msgstr ""
+msgstr "Rechercher des produits..."
 
 #: builder/templates/includes/header_footer/components/search_bar.html:331
 #: builder/templates/includes/header_footer/components/search_overlay.html:229
 #: builder/templates/includes/header_footer/header.html:7
 msgid "Searching..."
-msgstr ""
+msgstr "Recherche..."
 
 #. Option for the 'CTA Style' (Select) field in DocType 'Website Header Footer
 #. Config'
 #: builder/builder/doctype/website_header_footer_config/website_header_footer_config.json
 msgid "Secondary"
-msgstr ""
+msgstr "Secondaire"
 
 #. Label of a Data field in DocType 'Builder Chat Session'
 #. Label of a Color field in DocType 'Builder Site Config'
@@ -2365,7 +2372,7 @@ msgstr ""
 
 #: builder/hf_utils/menu_integration.py:176
 msgid "Services"
-msgstr ""
+msgstr "Services"
 
 #. Label of a Data field in DocType 'Builder Chat Session'
 #: builder/builder/doctype/builder_chat_session/builder_chat_session.json
@@ -2390,7 +2397,7 @@ msgstr "Session reprise. Vous pouvez continuer là où vous en étiez."
 #: builder/builder/doctype/block_template/block_template.json
 #: builder/hf_utils/menu_integration.py:181
 msgid "Shop"
-msgstr ""
+msgstr "Boutique"
 
 #. Description of the 'Footer Description' (Small Text) field in DocType
 #. 'Website Header Footer Config'
@@ -2463,7 +2470,7 @@ msgstr "Site une page"
 #: builder/builder/doctype/builder_chat_session/builder_chat_session.json
 #: builder/builder/doctype/builder_chat_session/builder_chat_session.py:152
 msgid "Site Description"
-msgstr ""
+msgstr "Description du site"
 
 #: builder/builder/page/builder_chat/builder_chat.js:51
 msgid "Site Generation"
@@ -2475,7 +2482,7 @@ msgstr "Génération de site"
 #: builder/builder/doctype/builder_chat_session/builder_chat_session.py:153
 #: builder/builder/doctype/builder_site_config/builder_site_config.json
 msgid "Site Name"
-msgstr ""
+msgstr "Nom du site"
 
 #. Label of a Select field in DocType 'Builder Chat Session'
 #. Label of a Select field in DocType 'Builder Site Config'
@@ -2483,7 +2490,7 @@ msgstr ""
 #: builder/builder/doctype/builder_chat_session/builder_chat_session.py:154
 #: builder/builder/doctype/builder_site_config/builder_site_config.json
 msgid "Site Type"
-msgstr ""
+msgstr "Type de site"
 
 #: builder/builder/page/builder_chat/builder_chat.js:814
 msgid "Site generated successfully!"
@@ -2522,7 +2529,7 @@ msgstr "Désolé, j'ai rencontré une erreur. Veuillez réessayer."
 #. Label of a Section Break field in DocType 'Builder Site Inspiration'
 #: builder/builder/doctype/builder_site_inspiration/builder_site_inspiration.json
 msgid "Source"
-msgstr ""
+msgstr "Source"
 
 #. Label of a Data field in DocType 'Builder Shortcode'
 #: builder/builder/doctype/builder_shortcode/builder_shortcode.json
@@ -2540,7 +2547,7 @@ msgstr ""
 #. Label of a Select field in DocType 'Builder Site Inspiration'
 #: builder/builder/doctype/builder_site_inspiration/builder_site_inspiration.json
 msgid "Source Type"
-msgstr ""
+msgstr "Type de source"
 
 #. Option for the 'Heading Font' (Select) field in DocType 'Website Header
 #. Footer Config'
@@ -2578,7 +2585,7 @@ msgstr ""
 #: builder/templates/includes/header_footer/components/cart_drawer.html:26
 #: builder/templates/includes/header_footer/header.html:14
 msgid "Start Shopping"
-msgstr ""
+msgstr "Commencer vos achats"
 
 #: builder/builder/page/builder_chat/builder_chat.js:51
 msgid "Starting conversation..."
@@ -2601,7 +2608,7 @@ msgstr "Démarrage..."
 #: builder/builder/doctype/builder_chat_session/builder_chat_session.json
 #: builder/builder/doctype/builder_site_inspiration/builder_site_inspiration.json
 msgid "Status"
-msgstr ""
+msgstr "Statut"
 
 #. Label of a Section Break field in DocType 'Builder Chat Session'
 #: builder/builder/doctype/builder_chat_session/builder_chat_session.json
@@ -2666,7 +2673,7 @@ msgstr ""
 #: builder/templates/includes/header_footer/components/cart_drawer.html:33
 #: builder/templates/includes/header_footer/header.html:14
 msgid "Subtotal"
-msgstr ""
+msgstr "Sous-total"
 
 #. Name of a role
 #: builder/builder/doctype/ai_settings/ai_settings.json
@@ -2707,7 +2714,7 @@ msgstr "Nom du modèle"
 #. Label of a Data field in DocType 'Builder Shortcode'
 #: builder/builder/doctype/builder_shortcode/builder_shortcode.json
 msgid "Template Path"
-msgstr ""
+msgstr "Chemin du modèle"
 
 #. Option for the 'Logo Type' (Select) field in DocType 'Website Header Footer
 #. Config'
@@ -2715,12 +2722,12 @@ msgstr ""
 #. Footer Config'
 #: builder/builder/doctype/website_header_footer_config/website_header_footer_config.json
 msgid "Text"
-msgstr ""
+msgstr "Texte"
 
 #. Label of a Color field in DocType 'Website Header Footer Config'
 #: builder/builder/doctype/website_header_footer_config/website_header_footer_config.json
 msgid "Text Color"
-msgstr ""
+msgstr "Couleur du Texte"
 
 #. Description of the 'Text Color' (Color) field in DocType 'Website Header
 #. Footer Config'
@@ -2760,7 +2767,7 @@ msgstr "L'URL préférée de cette page pour les moteurs de recherche. Si non d�
 #: builder/builder/doctype/builder_site_config/builder_site_config.json
 #: builder/builder/doctype/website_header_footer_config/website_header_footer_config.json
 msgid "Theme"
-msgstr ""
+msgstr "Thème"
 
 #: builder/builder/page/builder_chat/builder_chat.js:51
 msgid "Theme & colors"
@@ -2791,7 +2798,7 @@ msgstr "Ceci sera ajouté à la fin du &lt;head&gt;"
 #. Label of a Attach Image field in DocType 'Builder Site Inspiration'
 #: builder/builder/doctype/builder_site_inspiration/builder_site_inspiration.json
 msgid "Thumbnail"
-msgstr ""
+msgstr "Miniature"
 
 #. Description of the 'Thumbnail' (Attach Image) field in DocType 'Builder Site
 #. Inspiration'
@@ -2807,7 +2814,7 @@ msgstr ""
 #. Label of a Datetime field in DocType 'Builder Chat Message'
 #: builder/builder/doctype/builder_chat_message/builder_chat_message.json
 msgid "Timestamp"
-msgstr ""
+msgstr "Horodatage"
 
 #. Label of a Data field in DocType 'Builder Page'
 #. Label of a Data field in DocType 'Builder Site Config Page'
@@ -2819,7 +2826,7 @@ msgstr "Titre"
 #: builder/templates/includes/header_footer/components/cart_drawer.html:38
 #: builder/templates/includes/header_footer/header.html:14
 msgid "Total"
-msgstr ""
+msgstr "Total"
 
 #: builder/templates/includes/header_footer/components/search_bar.html:346
 msgid "Try different keywords"
@@ -2875,7 +2882,7 @@ msgstr ""
 #: builder/builder/doctype/website_footer_link/website_footer_link.json
 #: builder/builder/doctype/website_menu_item/website_menu_item.json
 msgid "URL"
-msgstr ""
+msgstr "URL"
 
 #. Description of the 'Inspiration Image' (Attach Image) field in DocType
 #. 'Builder Site Inspiration'
@@ -2939,7 +2946,7 @@ msgstr "Utilisé dans {0} pages"
 #: builder/builder/doctype/builder_chat_session/builder_chat_session.json
 #: builder/builder/doctype/website_header_footer_config/website_header_footer_config.json
 msgid "User"
-msgstr ""
+msgstr "Utilisateur"
 
 #. Name of a DocType
 #: builder/builder/doctype/user_font/user_font.json
@@ -2964,11 +2971,11 @@ msgstr "Nom de la variable"
 #: builder/templates/includes/header_footer/components/cart_drawer.html:42
 #: builder/templates/includes/header_footer/header.html:14
 msgid "View Cart"
-msgstr ""
+msgstr "Voir le panier"
 
 #: builder/templates/includes/header_footer/components/search_bar.html:484
 msgid "View all results"
-msgstr ""
+msgstr "Voir tous les résultats"
 
 #: builder/builder/page/builder_chat/builder_chat.js:829
 msgid "Want to replace placeholder images with AI-generated ones?"
@@ -2976,11 +2983,11 @@ msgstr "Voulez-vous remplacer les images placeholder par des images générées 
 
 #: builder/builder_chat_service.py:642
 msgid "We are a consulting and services company"
-msgstr ""
+msgstr "Nous sommes une société de conseil et de services"
 
 #: builder/builder_chat_service.py:643
 msgid "We sell products online"
-msgstr ""
+msgstr "Nous vendons des produits en ligne"
 
 #. Name of a DocType
 #: builder/builder/doctype/website_footer_link/website_footer_link.json
@@ -3017,7 +3024,7 @@ msgstr ""
 #. Label of a Data field in DocType 'Builder Site Inspiration'
 #: builder/builder/doctype/builder_site_inspiration/builder_site_inspiration.json
 msgid "Website URL"
-msgstr ""
+msgstr "URL de site web"
 
 #: builder/builder/doctype/website_header_footer_config/website_header_footer_config.py:81
 msgid "Website cache cleared. Refresh your pages to see changes."
@@ -3076,7 +3083,7 @@ msgstr "Quel thème visuel préférez-vous ?"
 #: builder/builder/doctype/website_header_footer_config/website_header_footer_config.json
 #: builder/templates/includes/header_footer/macros.html:40
 msgid "Wishlist"
-msgstr ""
+msgstr "Liste de souhaits"
 
 #: builder/hf_utils/menu_integration.py:194
 msgid "Work"
@@ -3106,12 +3113,12 @@ msgstr ""
 #: builder/templates/includes/header_footer/components/cart_drawer.html:8
 #: builder/templates/includes/header_footer/header.html:13
 msgid "Your Cart"
-msgstr ""
+msgstr "Votre panier"
 
 #: builder/templates/includes/header_footer/components/cart_drawer.html:25
 #: builder/templates/includes/header_footer/header.html:14
 msgid "Your cart is empty"
-msgstr ""
+msgstr "Votre panier est vide"
 
 #: builder/templates/includes/contact_form.html:11
 msgid "Your name"
@@ -3201,7 +3208,7 @@ msgstr ""
 #. Option for the 'Status' (Select) field in DocType 'Builder Site Inspiration'
 #: builder/builder/doctype/builder_site_inspiration/builder_site_inspiration.json
 msgid "failed"
-msgstr ""
+msgstr "échoué"
 
 #. Option for the 'Current Step' (Select) field in DocType 'Builder Chat
 #. Session'
@@ -3334,7 +3341,7 @@ msgstr ""
 #. Option for the 'Role' (Select) field in DocType 'Builder Chat Message'
 #: builder/builder/doctype/builder_chat_message/builder_chat_message.json
 msgid "user"
-msgstr ""
+msgstr "utilisateur"
 
 #. Option for the 'Site Type' (Select) field in DocType 'Builder Chat Session'
 #. Option for the 'Site Type' (Select) field in DocType 'Builder Site Config'
@@ -3429,10 +3436,6 @@ msgid "Regenerating the homepage with your feedback..."
 msgstr "Régénération de la page d'accueil avec vos retours..."
 
 #: builder/api.py
-msgid "Session not found"
-msgstr "Session non trouvée"
-
-#: builder/api.py
 msgid "No saved brief found in session"
 msgstr "Aucun brief sauvegardé dans la session"
 
@@ -3485,3 +3488,196 @@ msgstr ""
 msgid "progressive"
 msgstr ""
 
+
+
+
+# --- Entries migrated from translations/fr.csv ---
+
+msgid "(Reference image uploaded)"
+msgstr "(Image de référence téléchargée)"
+
+msgid "(Skip inspiration)"
+msgstr "(Passer l'inspiration)"
+
+msgid "**Do you have any websites you admire or reference images for the design?** This is optional but helps refine the visual style."
+msgstr "**Avez-vous des sites web que vous admirez ou des images de référence pour le design ?** C'est optionnel mais aide à affiner le style visuel."
+
+msgid "**Pages to generate:**"
+msgstr "**Pages à générer :**"
+
+msgid "- My Account (`/me`) — customer area"
+msgstr "- Mon Compte (`/me`) — espace client"
+
+msgid "- Shop (`/all-products`) — product catalog"
+msgstr "- Boutique (`/all-products`) — catalogue produits"
+
+msgid "Apps"
+msgstr "Applications"
+
+msgid "Builder"
+msgstr "Builder"
+
+msgid "Builder Chat requires the Nora app to be installed."
+msgstr "Builder Chat nécessite l'installation de l'application Nora."
+
+msgid "Describe your page"
+msgstr "Décrivez votre page"
+
+msgid "Documentation"
+msgstr "Documentation"
+
+msgid "Failed to clear session"
+msgstr "Impossible d'effacer la session"
+
+msgid "Failed to process reference image"
+msgstr "Impossible de traiter l'image de référence"
+
+msgid "Generate Page"
+msgstr "Générer la page"
+
+msgid "Generate entire site at once"
+msgstr "Générer tout le site d'un coup"
+
+msgid "Generate homepage first for review"
+msgstr "Générer d'abord la page d'accueil pour vérification"
+
+msgid "Generate remaining pages"
+msgstr "Générer les pages restantes"
+
+msgid "Generating page..."
+msgstr "Génération de la page..."
+
+msgid "Generation started..."
+msgstr "Génération lancée..."
+
+msgid "Homepage generated!"
+msgstr "Page d'accueil générée !"
+
+msgid "I have inspiration sites"
+msgstr "J'ai des sites d'inspiration"
+
+msgid "I want to keep all this information"
+msgstr "Je veux garder toutes ces informations"
+
+msgid "I want to modify some information"
+msgstr "Je veux modifier certaines informations"
+
+msgid "I'd like to share websites I like for inspiration"
+msgstr "J'aimerais partager des sites que j'aime pour l'inspiration"
+
+msgid "I'd like to share websites or images for inspiration"
+msgstr "J'aimerais partager des sites ou images pour l'inspiration"
+
+msgid "Keyboard Shortcuts"
+msgstr "Raccourcis clavier"
+
+msgid "My Profile"
+msgstr "Mon profil"
+
+msgid "My Settings"
+msgstr "Mes paramètres"
+
+msgid "No remaining pages to generate"
+msgstr "Plus de pages à générer"
+
+msgid "No, let's continue"
+msgstr "Non, on continue"
+
+msgid "Nora app required"
+msgstr "Application Nora requise"
+
+msgid "Page Request"
+msgstr "Demande de page"
+
+msgid "Page created"
+msgstr "Page créée"
+
+msgid "Page creation"
+msgstr "Création de page"
+
+msgid "Page generated successfully!"
+msgstr "Page générée avec succès !"
+
+msgid "Pages already available via your shop:"
+msgstr "Pages déjà disponibles via votre boutique :"
+
+msgid "Please upload a PNG JPEG or SVG image."
+msgstr "Veuillez télécharger une image PNG JPEG ou SVG."
+
+msgid "Please upload a reference image for design inspiration."
+msgstr "Veuillez télécharger une image de référence pour l'inspiration du design."
+
+msgid "Portfolio"
+msgstr "Portfolio"
+
+msgid "Preview homepage"
+msgstr "Aperçu de la page d'accueil"
+
+msgid "Processing reference image..."
+msgstr "Traitement de l'image de référence..."
+
+msgid "Reference image"
+msgstr "Image de référence"
+
+msgid "Reference image received! I'll use it as design inspiration for your site."
+msgstr "Image de référence reçue ! Je l'utiliserai comme inspiration pour le design de votre site."
+
+msgid "Reload"
+msgstr "Recharger"
+
+msgid "Report an Issue"
+msgstr "Signaler un problème"
+
+msgid "Revise homepage"
+msgstr "Modifier la page d'accueil"
+
+msgid "Session Defaults"
+msgstr "Valeurs par défaut de session"
+
+msgid "Share inspiration"
+msgstr "Partager l'inspiration"
+
+msgid "Start a new session? Current progress will be saved but a fresh conversation will begin."
+msgstr "Démarrer une nouvelle session ? La progression actuelle sera sauvegardée mais une nouvelle conversation commencera."
+
+msgid "Style & Design"
+msgstr "Style et Design"
+
+msgid "This should only take a moment."
+msgstr "Cela ne devrait prendre qu'un instant."
+
+msgid "Toggle Full Width"
+msgstr "Basculer en pleine largeur"
+
+msgid "Toggle Theme"
+msgstr "Changer de thème"
+
+msgid "Upload logo"
+msgstr "Télécharger le logo"
+
+msgid "Upload reference images"
+msgstr "Télécharger des images de référence"
+
+msgid "User Forum"
+msgstr "Forum utilisateur"
+
+msgid "View Website"
+msgstr "Voir le site web"
+
+msgid "Would you like to add optional pages to your site?"
+msgstr "Souhaitez-vous ajouter des pages optionnelles à votre site ?"
+
+msgid "You can now edit your page in the Builder editor."
+msgstr "Vous pouvez maintenant modifier votre page dans l'éditeur Builder."
+
+msgid "You can preview it and then generate the remaining pages when ready."
+msgstr "Vous pouvez la prévisualiser puis générer les pages restantes quand vous êtes prêt."
+
+msgid "available"
+msgstr "disponible"
+
+msgid "inverted"
+msgstr "inversé"
+
+msgid "none"
+msgstr "aucun"
