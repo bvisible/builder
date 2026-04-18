@@ -35,27 +35,22 @@ def _migrate_doctype(doctype_name: str) -> None:
     if not frappe.db.exists("DocType", doctype_name):
         return
 
-    try:
-        settings = frappe.get_single(doctype_name)
-    except Exception as e:
-        frappe.log_error(
-            f"AI Settings migration: get_single failed for {doctype_name}",
-            str(e),
-        )
-        return
-
+    # We read field values directly via DB — not via frappe.get_single —
+    # because the Python controller module has already been deleted when
+    # this patch runs, which would raise ImportError.
     for field, (conf_key, is_password) in FIELD_TO_CONF.items():
         if frappe.conf.get(conf_key):
             continue  # site_config already has it — respect existing value
 
-        try:
-            value = (
-                settings.get_password(field, raise_exception=False)
-                if is_password
-                else settings.get(field)
-            )
-        except Exception:
-            value = None
+        value = frappe.db.get_single_value(doctype_name, field)
+
+        if is_password and value:
+            try:
+                value = frappe.utils.password.get_decrypted_password(
+                    doctype_name, doctype_name, field, raise_exception=False
+                )
+            except Exception:
+                value = None
 
         if value in (None, ""):
             continue
