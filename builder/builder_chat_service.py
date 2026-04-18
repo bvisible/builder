@@ -190,6 +190,21 @@ class BuilderChatService:
 			if user_message.startswith("__"):
 				return self._handle_special_command(session, user_message)
 
+			# The AI sometimes emits its own button values (e.g. "generate_site",
+			# "ajouter un CTA") instead of our canonical __TOKENS__. Route the
+			# obvious generation triggers to trigger_generation so the UI starts
+			# polling — otherwise it just looks like a dead button.
+			if user_message.strip().lower() in {
+				"generate_site",
+				"generate site",
+				"générer le site",
+				"générer le site maintenant",
+			}:
+				session.generation_mode = session.generation_mode or "full"
+				session.add_message(role="user", content=_("Generate entire site"))
+				session.save(ignore_permissions=True)
+				return self.trigger_generation(session.session_id)
+
 			# Handle custom page name input
 			if session.homepage_feedback == "__AWAITING_CUSTOM_PAGE_NAME__":
 				session.db_set("homepage_feedback", "", update_modified=False)
