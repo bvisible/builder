@@ -530,7 +530,46 @@ frappe.ui.BuilderChatPage = class BuilderChatPage {
 		// Disable chat input during generation
 		this.progress.chat.setInputDisabled(true);
 
-		let last_page = null;
+		this._gen_last_page = null;
+		this._gen_job_id = job_id;
+
+		const handle_status = (status) => {
+			if (!status) return;
+
+			// Update progress bar
+			const gen_progress = status.progress || 0;
+			this.progress.updateProgress(gen_progress);
+
+			// Show page progress as system notice
+			if (status.current_page && status.current_page !== this._gen_last_page) {
+				this._gen_last_page = status.current_page;
+				this.progress.chat.addSystemNotice(
+					`${__('Generating page')}: ${frappe.utils.escape_html(status.current_page)} (${status.pages_created?.length || 0}/${status.total_pages || '?'})`
+				);
+				this.progress.chat.scrollToBottom();
+			}
+
+			// Check completion
+			const s = (status.status || '').replace(/[ _]/g, '');
+			if (s === 'completed') {
+				this.stop_generation_polling();
+				this.on_generation_complete(status);
+			} else if (s === 'failed') {
+				this.stop_generation_polling();
+				this.on_generation_failed(status);
+			} else if (s === 'homepageready') {
+				this.stop_generation_polling();
+				this.on_homepage_ready(status);
+			}
+		};
+
+		// Realtime channel (socketio). The backend publishes every
+		// _update_generation_status() on this event, giving near-instant UI
+		// updates. Polling below is kept as a cheap fallback in case socketio
+		// drops a packet — the interval is longer (8s) to avoid bench load.
+		this._gen_realtime_event = `builder_gen_progress:${job_id}`;
+		this._gen_realtime_handler = (data) => handle_status(data);
+		frappe.realtime.on(this._gen_realtime_event, this._gen_realtime_handler);
 
 		this.generation_poll = setInterval(async () => {
 			try {
@@ -539,46 +578,22 @@ frappe.ui.BuilderChatPage = class BuilderChatPage {
 					args: { session_id: this.session_id },
 					freeze: false
 				});
-
-				if (!response.message) return;
-
-				const status = response.message;
-
-				// Update progress bar
-				const gen_progress = status.progress || 0;
-				this.progress.updateProgress(gen_progress);
-
-				// Show page progress as system notice
-				if (status.current_page && status.current_page !== last_page) {
-					last_page = status.current_page;
-					this.progress.chat.addSystemNotice(
-						`${__('Generating page')}: ${frappe.utils.escape_html(status.current_page)} (${status.pages_created?.length || 0}/${status.total_pages || '?'})`
-					);
-					this.progress.chat.scrollToBottom();
-				}
-
-				// Check completion
-				const s = (status.status || '').replace(/[ _]/g, '');
-				if (s === 'completed') {
-					this.stop_generation_polling();
-					this.on_generation_complete(status);
-				} else if (s === 'failed') {
-					this.stop_generation_polling();
-					this.on_generation_failed(status);
-				} else if (s === 'homepageready') {
-					this.stop_generation_polling();
-					this.on_homepage_ready(status);
-				}
+				handle_status(response.message);
 			} catch (error) {
 				console.error('Generation polling error:', error);
 			}
-		}, 3000);
+		}, 8000);
 	}
 
 	stop_generation_polling() {
 		if (this.generation_poll) {
 			clearInterval(this.generation_poll);
 			this.generation_poll = null;
+		}
+		if (this._gen_realtime_event && this._gen_realtime_handler) {
+			frappe.realtime.off(this._gen_realtime_event, this._gen_realtime_handler);
+			this._gen_realtime_event = null;
+			this._gen_realtime_handler = null;
 		}
 	}
 

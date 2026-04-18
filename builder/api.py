@@ -438,10 +438,24 @@ def generate_complete_site(
 
 
 def _update_generation_status(job_id: str, data: dict):
-	"""Update the generation status in cache."""
+	"""Update the generation status in cache and broadcast via socketio."""
 	cache_key = f"site_generation_{job_id}"
 	frappe.cache().set_value(cache_key, data, expires_in_sec=14400)  # 4 hours TTL
 	print(f"[SITE_GEN] Status update: job_id={job_id}, status={data.get('status')}, progress={data.get('progress')}%, step={data.get('current_step', '')[:50]}")
+
+	# Push to the browser via frappe.realtime (socketio). The event name is
+	# prefixed with the job_id so multiple concurrent generations don't
+	# interfere. The frontend subscribes in start_generation_polling().
+	try:
+		frappe.publish_realtime(
+			event=f"builder_gen_progress:{job_id}",
+			message={**data, "job_id": job_id},
+			user=frappe.session.user if getattr(frappe, "session", None) else None,
+			after_commit=False,
+		)
+	except Exception as e:
+		# Never let realtime failures break generation — polling still works.
+		print(f"[SITE_GEN] publish_realtime failed: {e}")
 
 
 def _get_generation_status(job_id: str) -> dict:
