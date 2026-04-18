@@ -1289,9 +1289,15 @@ def _generate_complete_site_worker(
 
 		config.save(ignore_permissions=True)
 
-		# Ensure Website Settings home_page points to the generated home page
+		# Point BOTH settings to the generated home page. Website Settings
+		# is Frappe's standard pointer; Builder Settings is what
+		# BuilderPage.is_home_page() checks for rendering — if only Website
+		# Settings is set, BuilderPageRenderer still resolves the Builder
+		# Page at /home but "/" shows Frappe's fallback. Keep them in sync.
 		frappe.db.set_value("Website Settings", "Website Settings", "home_page", "home")
+		frappe.db.set_value("Builder Settings", "Builder Settings", "home_page", "home")
 		frappe.db.commit()
+		frappe.clear_cache()
 
 		# =====================================================================
 		# STEP 6: Mark as completed
