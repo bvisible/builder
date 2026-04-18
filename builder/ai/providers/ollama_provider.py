@@ -62,60 +62,23 @@ class OllamaProvider(BaseProvider):
         num_ctx: int = None,
         **kwargs
     ):
-        # Load settings from AI Settings DocType (priority) or fallback to defaults
-        settings = self._get_ai_settings()
+        conf = frappe.conf
 
         super().__init__(
-            model=model or settings.get("model") or self.DEFAULT_MODEL,
-            base_url=base_url or settings.get("base_url") or self.DEFAULT_BASE_URL,
-            api_key=api_key or settings.get("api_key"),
-            temperature=temperature if temperature is not None else settings.get("temperature", 0.6),
+            model=model or conf.get("ollama_model") or self.DEFAULT_MODEL,
+            base_url=(
+                base_url
+                or conf.get("ollama_base_url")
+                or conf.get("ollama_url")
+                or self.DEFAULT_BASE_URL
+            ),
+            api_key=api_key or conf.get("ollama_api_key"),
+            temperature=temperature if temperature is not None else 0.6,
             max_tokens=max_tokens or self.DEFAULT_MAX_TOKENS,
-            timeout=timeout or settings.get("timeout") or self.DEFAULT_TIMEOUT,
-            **kwargs
+            timeout=timeout or int(conf.get("ollama_timeout") or self.DEFAULT_TIMEOUT),
+            **kwargs,
         )
-        self.num_ctx = num_ctx or settings.get("num_ctx") or self.DEFAULT_NUM_CTX
-
-    def _get_ai_settings(self) -> dict:
-        """
-        Get Ollama settings from AI Settings DocType.
-
-        Priority:
-        1. AI Settings DocType (recommended)
-        2. Site config (fallback for backward compatibility)
-        3. Default values
-        """
-        settings = {}
-
-        # Try to load from AI Settings DocType first
-        try:
-            if frappe.db.exists("DocType", "AI Settings"):
-                ai_settings = frappe.get_single("AI Settings")
-                if ai_settings.get("ollama_enabled"):
-                    settings["base_url"] = ai_settings.get("ollama_base_url")
-                    settings["model"] = ai_settings.get("ollama_model")
-                    settings["num_ctx"] = ai_settings.get("ollama_num_ctx")
-                    settings["timeout"] = ai_settings.get("ollama_timeout")
-                    settings["temperature"] = ai_settings.get("temperature")
-                    # Get password field
-                    try:
-                        settings["api_key"] = ai_settings.get_password("ollama_api_key")
-                        print(f"[OLLAMA] API key loaded from get_password (length={len(settings['api_key']) if settings['api_key'] else 0})")
-                    except Exception as e:
-                        settings["api_key"] = ai_settings.get("ollama_api_key")
-                        print(f"[OLLAMA] get_password failed: {e}, using fallback")
-        except Exception as e:
-            print(f"[OLLAMA] Failed to load AI Settings: {e}")
-
-        # Fallback to site config for any missing values
-        if not settings.get("base_url"):
-            settings["base_url"] = frappe.conf.get("ollama_base_url")
-        if not settings.get("model"):
-            settings["model"] = frappe.conf.get("ollama_model")
-        if not settings.get("api_key"):
-            settings["api_key"] = frappe.conf.get("ollama_api_key")
-
-        return settings
+        self.num_ctx = num_ctx or int(conf.get("ollama_num_ctx") or self.DEFAULT_NUM_CTX)
 
     @property
     def provider_name(self) -> str:

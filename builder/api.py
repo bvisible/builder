@@ -1479,57 +1479,6 @@ def get_site_generation_status(job_id: str):
 
 
 # =============================================================================
-# DEBUG FUNCTION - REMOVE AFTER TESTING
-# =============================================================================
-
-@frappe.whitelist()
-def test_ollama_api():
-	"""Test Ollama API connection - DEBUG ONLY"""
-	import requests
-	ai = frappe.get_single("AI Settings")
-	api_key = ai.get_password("ollama_api_key")
-	base_url = ai.ollama_base_url
-
-	result = {
-		"api_key_length": len(api_key) if api_key else 0,
-		"api_key_prefix": api_key[:15] if api_key else None,
-		"base_url": base_url,
-	}
-
-	try:
-		headers = {"Content-Type": "application/json", "X-API-Key": api_key}
-		# Use streaming to avoid Cloudflare timeout
-		resp = requests.post(
-			f"{base_url}/api/chat",
-			json={
-				"model": "kimi-k2.5:cloud",
-				"messages": [{"role": "user", "content": "Say hello in one word"}],
-				"stream": True
-			},
-			headers=headers,
-			timeout=120,
-			stream=True
-		)
-		result["status_code"] = resp.status_code
-
-		if resp.status_code == 200:
-			# Read first chunks
-			content = ""
-			for i, line in enumerate(resp.iter_lines()):
-				if line and i < 5:
-					content += line.decode() + "\n"
-				if i >= 5:
-					break
-			result["response_preview"] = content[:500]
-		else:
-			result["response_preview"] = resp.text[:300]
-	except Exception as e:
-		result["error"] = str(e)
-
-	return result
-
-
-# =============================================================================
 # POSTHOG & OTHER UTILITIES
 # =============================================================================
 
@@ -2479,10 +2428,9 @@ def chat_generate_images(session_id: str):
 	try:
 		session = frappe.get_doc("Builder Chat Session", {"session_id": session_id})
 
-		# Check image generation is enabled
-		ai_settings = frappe.get_single("AI Settings")
-		if not ai_settings.get("image_generation_enabled"):
-			return {"success": False, "message": _("Image generation is not enabled in AI Settings")}
+		# Image generation is enabled per-site via site_config ("image_generation_enabled")
+		if not frappe.conf.get("image_generation_enabled"):
+			return {"success": False, "message": _("Image generation is not enabled on this site")}
 
 		# Get generated pages
 		generated_pages = json.loads(session.generated_pages) if session.generated_pages else []

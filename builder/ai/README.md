@@ -148,25 +148,28 @@ footer = footer_gen.generate(
 
 ## Configuration
 
-### AI Settings DocType
+### Site config keys
 
-Configure AI settings in Frappe:
+All AI settings live in `sites/<site>/site_config.json` (pushed by
+`neoffice-devops` via `SiteConfigPhase`). Recognised keys:
 
-- **default_provider**: `openai` or `ollama`
-- **ollama_base_url**: Default `http://localhost:11434`
-- **ollama_model**: Recommended `llama3.1:8b` or `mistral`
-- **openai_api_key**: Your OpenAI API key
-- **openai_model**: Default `gpt-4o`
-- **temperature**: 0.0-1.0 (default 0.7)
-- **default_theme**: `modern`, `neobrutalist`, etc.
-- **default_site_type**: `multi_page`, `single_page`, `ecommerce`, etc.
+- **ai_provider**: `openai` (default) or `ollama`
+- **openai_api_key**: Moonshot / OpenAI-compatible API key
+- **openai_base_url**: e.g. `https://api.moonshot.ai/v1`
+- **openai_model**: e.g. `kimi-k2.5`
+- **ollama_base_url** / **ollama_model** / **ollama_api_key**: for local dev
+- **ai_temperature**: 0.0-1.0 (default 0.6)
+- **ai_max_tokens**, **ai_request_timeout**
+- **ai_default_theme**, **ai_default_site_type**, **ai_output_language**
+
+Override locally with `bench --site <site> set-config <key> <value>`.
 
 ### Programmatic Configuration
 
 ```python
 from builder.ai.config import AIConfig, get_ai_settings
 
-# Get settings from DocType
+# Resolved from site_config.json + hardcoded defaults
 config = get_ai_settings()
 
 # Or create custom config

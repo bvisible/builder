@@ -1,96 +1,61 @@
 """
 AI Configuration Module
-Manages AI provider settings, model configurations, and generation parameters.
+Reads AI provider settings exclusively from site_config.json (frappe.conf).
+
+Managed by neoffice-devops which pushes the canonical values to each
+instance via SiteConfigPhase. There is no DocType for these settings.
+
+Local dev overrides: edit sites/<site>/site_config.json manually.
 """
 
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 from typing import Literal, Optional
+
 import frappe
 
 
-# Type definitions
-ProviderType = Literal["openai", "ollama", "anthropic"]
+ProviderType = Literal["openai", "ollama"]
 ThemeType = Literal["modern", "neobrutalist", "glassmorphism", "minimal", "corporate", "creative"]
 SiteType = Literal["single_page", "multi_page", "multi_page_auth", "ecommerce", "blog", "portfolio"]
 
 
-# Think level mapping for different models
-# Some models support levels (low/medium/high), others only bool (True/False)
+# Think level → per-model value. Kimi expects bool, GPT-OSS expects string,
+# everything else defaults to bool.
 THINK_LEVEL_MAP = {
-    "kimi-k2.5": {"low": False, "medium": True, "high": True},  # Kimi = True/False only
+    "kimi-k2.5": {"low": False, "medium": True, "high": True},
     "kimi-k2": {"low": False, "medium": True, "high": True},
     "glm": {"low": True, "medium": True, "high": True},
-    "gpt-oss": {"low": "low", "medium": "medium", "high": "high"},  # GPT-OSS = strings
-    "default": {"low": False, "medium": True, "high": True},  # Most models = bool
+    "gpt-oss": {"low": "low", "medium": "medium", "high": "high"},
+    "default": {"low": False, "medium": True, "high": True},
 }
 
 
-@dataclass
-class AIConfig:
-    """Configuration for AI generation"""
-
-    # Provider settings
-    provider: ProviderType = "ollama"
-    model: Optional[str] = None
-    api_key: Optional[str] = None
-    base_url: Optional[str] = None
-
-    # Generation settings
-    temperature: float = 0.7
-    max_tokens: int = 4096
-    max_retries: int = 3
-
-    # Default theme and site type
-    default_theme: ThemeType = "modern"
-    default_site_type: SiteType = "multi_page"
-
-    # Output language for generated content
-    output_language: str = "French"
-
-    # Timeouts (in seconds)
-    request_timeout: int = 120
-    connect_timeout: int = 30
-
-    # Thinking configuration
-    brief_think_level: str = "high"     # For design brief generation
-    page_think_level: str = "high"      # For page generation — max quality
-
-    def __post_init__(self):
-        """Set default model based on provider if not specified"""
-        if not self.model:
-            self.model = RECOMMENDED_MODELS.get(self.provider, {}).get("balanced")
-
-    def get_think_value(self, level: str) -> bool | str:
-        """
-        Convert think level to model-appropriate value.
-
-        Different models support thinking mode differently:
-        - GPT-OSS: "low" / "medium" / "high" strings
-        - Kimi K2.5, GLM: True / False (no levels)
-        - Most others: True / False
-
-        Args:
-            level: Desired think level ("low", "medium", "high")
-
-        Returns:
-            Appropriate value for the current model
-        """
-        if not self.model:
-            return THINK_LEVEL_MAP["default"].get(level, True)
-
-        model_lower = self.model.lower()
-
-        # Find matching model key
-        for model_key in THINK_LEVEL_MAP:
-            if model_key != "default" and model_key in model_lower:
-                return THINK_LEVEL_MAP[model_key].get(level, True)
-
-        # Fallback to default
-        return THINK_LEVEL_MAP["default"].get(level, True)
+# Production defaults — matches the Moonshot/Kimi deployment pushed by devops.
+DEFAULTS = {
+    "provider": "openai",
+    "model": "kimi-k2.5",
+    "base_url": "https://api.moonshot.ai/v1",
+    "api_key": None,
+    "temperature": 0.6,
+    "max_tokens": 16384,
+    "request_timeout": 900,
+    "connect_timeout": 30,
+    "default_theme": "modern",
+    "default_site_type": "multi_page",
+    "output_language": "French",
+    "brief_think_level": "high",
+    "page_think_level": "high",
+}
 
 
-# Recommended models for each provider
+# Per-provider recommended models.
 RECOMMENDED_MODELS = {
+    "openai": {
+        "best_quality": "kimi-k2.5",
+        "balanced": "kimi-k2.5",
+        "fast": "kimi-k2.5",
+        "creative": "kimi-k2.5",
+    },
     "ollama": {
         "best_quality": "kimi-k2.5:cloud",
         "balanced": "kimi-k2.5:cloud",
@@ -98,214 +63,130 @@ RECOMMENDED_MODELS = {
         "creative": "kimi-k2.5:cloud",
         "code": "deepseek-coder:6.7b",
     },
-    "openai": {
-        "best_quality": "gpt-4o",
-        "balanced": "gpt-4o-mini",
-        "fast": "gpt-3.5-turbo",
-        "creative": "gpt-4o",
-    },
-    "anthropic": {
-        "best_quality": "claude-3-opus-20240229",
-        "balanced": "claude-3-sonnet-20240229",
-        "fast": "claude-3-haiku-20240307",
-    },
 }
 
-# Default Ollama configuration
-# Optimized for Kimi K2.5 cloud (256k context, 16k+ output)
-DEFAULT_OLLAMA_CONFIG = {
-    "base_url": "http://localhost:11434",
-    "model": "kimi-k2.5:cloud",
-    "temperature": 0.6,      # Kimi instant mode recommendation
-    "num_predict": 16384,    # 16k output tokens for large JSON
-    "num_ctx": 131072,       # 128k context window
-    "timeout": 300,          # 5 minutes for cloud deployments
-}
 
-# Default OpenAI configuration
-DEFAULT_OPENAI_CONFIG = {
-    "model": "gpt-4o-mini",
-    "temperature": 0.7,
-    "max_tokens": 4096,
-}
+@dataclass
+class AIConfig:
+    """Runtime AI configuration, resolved from site_config.json."""
+
+    provider: ProviderType = DEFAULTS["provider"]
+    model: Optional[str] = DEFAULTS["model"]
+    api_key: Optional[str] = DEFAULTS["api_key"]
+    base_url: Optional[str] = DEFAULTS["base_url"]
+
+    temperature: float = DEFAULTS["temperature"]
+    max_tokens: int = DEFAULTS["max_tokens"]
+    max_retries: int = 3
+
+    default_theme: ThemeType = DEFAULTS["default_theme"]
+    default_site_type: SiteType = DEFAULTS["default_site_type"]
+    output_language: str = DEFAULTS["output_language"]
+
+    request_timeout: int = DEFAULTS["request_timeout"]
+    connect_timeout: int = DEFAULTS["connect_timeout"]
+
+    brief_think_level: str = DEFAULTS["brief_think_level"]
+    page_think_level: str = DEFAULTS["page_think_level"]
+
+    def get_think_value(self, level: str) -> bool | str:
+        """Convert a think level to the value expected by the current model."""
+        if not self.model:
+            return THINK_LEVEL_MAP["default"].get(level, True)
+
+        model_lower = self.model.lower()
+        for model_key, mapping in THINK_LEVEL_MAP.items():
+            if model_key != "default" and model_key in model_lower:
+                return mapping.get(level, True)
+        return THINK_LEVEL_MAP["default"].get(level, True)
 
 
 def get_ai_settings() -> AIConfig:
     """
-    Get AI settings from Frappe configuration or AI Settings DocType.
+    Resolve AI settings from site_config.json with hardcoded defaults.
 
-    Priority:
-    1. Site config (common_site_config.json) - for quick overrides
-    2. AI Settings or Builder AI Settings DocType (if exists)
-    3. Default values
-
-    Returns:
-        AIConfig: Configured AI settings
+    Keys read from frappe.conf:
+        ai_provider        (default: "openai")
+        openai_model       aliases: ollama_model
+        openai_base_url    aliases: ollama_base_url, ollama_url
+        openai_api_key     aliases: ollama_api_key
+        ai_temperature
+        ai_max_tokens
+        ai_request_timeout
+        ai_default_theme
+        ai_default_site_type
+        ai_output_language
     """
-    config = AIConfig()
+    conf = frappe.conf
 
-    # First check site config for quick overrides
-    site_provider = frappe.conf.get("ai_provider") or frappe.conf.get("ollama_provider")
-    site_base_url = (
-        frappe.conf.get("openai_base_url") or
-        frappe.conf.get("ollama_base_url") or
-        frappe.conf.get("ollama_url")
+    provider = conf.get("ai_provider") or conf.get("ollama_provider") or DEFAULTS["provider"]
+    model = (
+        conf.get("openai_model")
+        or conf.get("ollama_model")
+        or DEFAULTS["model"]
     )
-    site_model = frappe.conf.get("ollama_model") or frappe.conf.get("openai_model")
-    site_api_key = frappe.conf.get("ollama_api_key") or frappe.conf.get("openai_api_key")
+    base_url = (
+        conf.get("openai_base_url")
+        or conf.get("ollama_base_url")
+        or conf.get("ollama_url")
+        or DEFAULTS["base_url"]
+    )
+    api_key = (
+        conf.get("openai_api_key")
+        or conf.get("ollama_api_key")
+        or DEFAULTS["api_key"]
+    )
 
-    if site_provider:
-        config.provider = site_provider
-    if site_base_url:
-        config.base_url = site_base_url
-    if site_model:
-        config.model = site_model
-    if site_api_key:
-        config.api_key = site_api_key
-
-    # Try to get from AI Settings DocType (new) or Builder AI Settings (old)
-    settings = None
-    try:
-        if frappe.db.exists("DocType", "AI Settings"):
-            settings = frappe.get_single("AI Settings")
-        elif frappe.db.exists("DocType", "Builder AI Settings"):
-            settings = frappe.get_single("Builder AI Settings")
-    except Exception:
-        pass
-
-    if settings:
-        try:
-            # Common settings
-            config.provider = settings.get("default_provider") or settings.get("provider") or config.provider
-            config.temperature = settings.get("temperature") or config.temperature
-            config.max_retries = settings.get("max_retries") or config.max_retries
-            config.default_theme = settings.get("default_theme") or config.default_theme
-            config.output_language = settings.get("output_language") or config.output_language
-
-            # Provider-specific settings (check both old and new field names)
-            if config.provider == "ollama":
-                config.base_url = (
-                    settings.get("ollama_base_url") or
-                    settings.get("ollama_url") or
-                    config.base_url or
-                    DEFAULT_OLLAMA_CONFIG["base_url"]
-                )
-                config.model = (
-                    settings.get("ollama_model") or
-                    settings.get("model") or
-                    config.model or
-                    DEFAULT_OLLAMA_CONFIG["model"]
-                )
-                # Get Ollama API key (for remote servers with Cloudflare WAF)
-                if not config.api_key:
-                    try:
-                        config.api_key = settings.get_password("ollama_api_key")
-                    except Exception:
-                        config.api_key = settings.get("ollama_api_key")
-
-            elif config.provider == "openai":
-                if not config.api_key:
-                    try:
-                        config.api_key = settings.get_password("openai_api_key")
-                    except Exception:
-                        config.api_key = settings.get("openai_api_key")
-                config.model = settings.get("openai_model") or config.model or DEFAULT_OPENAI_CONFIG["model"]
-                # Support custom base_url for OpenAI-compatible APIs (Moonshot, etc.)
-                config.base_url = (
-                    settings.get("openai_base_url") or
-                    config.base_url
-                )
-
-            elif config.provider == "anthropic":
-                if not config.api_key:
-                    try:
-                        config.api_key = settings.get_password("anthropic_api_key")
-                    except Exception:
-                        config.api_key = settings.get("anthropic_api_key")
-                config.model = settings.get("anthropic_model") or config.model
-
-        except Exception:
-            pass  # Field doesn't exist, continue with defaults
-
-    # Final fallback to site config for API keys
-    if not config.api_key:
-        if config.provider == "openai":
-            config.api_key = frappe.conf.get("openai_api_key")
-        elif config.provider == "anthropic":
-            config.api_key = frappe.conf.get("anthropic_api_key")
-        elif config.provider == "ollama":
-            config.api_key = frappe.conf.get("ollama_api_key")
-
-    # Ensure base_url for Ollama
-    if config.provider == "ollama" and not config.base_url:
-        config.base_url = DEFAULT_OLLAMA_CONFIG["base_url"]
-
-    return config
+    return AIConfig(
+        provider=provider,
+        model=model,
+        base_url=base_url,
+        api_key=api_key,
+        temperature=float(conf.get("ai_temperature") or DEFAULTS["temperature"]),
+        max_tokens=int(conf.get("ai_max_tokens") or DEFAULTS["max_tokens"]),
+        request_timeout=int(conf.get("ai_request_timeout") or DEFAULTS["request_timeout"]),
+        default_theme=conf.get("ai_default_theme") or DEFAULTS["default_theme"],
+        default_site_type=conf.get("ai_default_site_type") or DEFAULTS["default_site_type"],
+        output_language=conf.get("ai_output_language") or DEFAULTS["output_language"],
+    )
 
 
 def get_model_for_task(task: str, provider: str = None) -> str:
-    """
-    Get the recommended model for a specific task.
-
-    Args:
-        task: Type of task ("quality", "balanced", "fast", "creative", "code")
-        provider: Provider name (defaults to configured provider)
-
-    Returns:
-        str: Model name
-    """
+    """Return the recommended model name for a given task + provider."""
     if not provider:
         provider = get_ai_settings().provider
-
     models = RECOMMENDED_MODELS.get(provider, {})
     return models.get(task, models.get("balanced", ""))
 
 
 def validate_provider_config(config: AIConfig) -> tuple[bool, str]:
-    """
-    Validate that the provider configuration is complete.
+    """Ensure the resolved config has enough info to call the provider."""
+    if config.provider == "openai":
+        if not config.api_key:
+            return False, "openai_api_key missing from site_config.json"
+        if not config.model:
+            return False, "openai_model missing from site_config.json"
+        return True, ""
 
-    Args:
-        config: AI configuration to validate
-
-    Returns:
-        tuple: (is_valid, error_message)
-    """
     if config.provider == "ollama":
         if not config.base_url:
-            return False, "Ollama base_url is required"
+            return False, "ollama_base_url missing from site_config.json"
         if not config.model:
-            return False, "Ollama model is required"
-        return True, ""
-
-    elif config.provider == "openai":
-        if not config.api_key:
-            return False, "OpenAI API key is required. Set it in AI Settings or site config."
-        if not config.model:
-            return False, "OpenAI model is required"
-        return True, ""
-
-    elif config.provider == "anthropic":
-        if not config.api_key:
-            return False, "Anthropic API key is required. Set it in AI Settings or site config."
-        if not config.model:
-            return False, "Anthropic model is required"
+            return False, "ollama_model missing from site_config.json"
         return True, ""
 
     return False, f"Unknown provider: {config.provider}"
 
 
-# Export configuration for easy access
 __all__ = [
     "AIConfig",
+    "DEFAULTS",
+    "RECOMMENDED_MODELS",
+    "THINK_LEVEL_MAP",
+    "ProviderType",
+    "SiteType",
+    "ThemeType",
     "get_ai_settings",
     "get_model_for_task",
     "validate_provider_config",
-    "RECOMMENDED_MODELS",
-    "DEFAULT_OLLAMA_CONFIG",
-    "DEFAULT_OPENAI_CONFIG",
-    "THINK_LEVEL_MAP",
-    "ProviderType",
-    "ThemeType",
-    "SiteType",
 ]

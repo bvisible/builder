@@ -64,24 +64,14 @@ class ImageGenerator:
         self.width, self.height = self._parse_size(self.size)
 
     def _get_settings(self) -> dict:
-        """Get settings from AI Settings DocType"""
-        settings = {}
-        try:
-            if frappe.db.exists("DocType", "AI Settings"):
-                ai_settings = frappe.get_single("AI Settings")
-                if ai_settings.get("ollama_enabled"):
-                    settings["base_url"] = ai_settings.get("ollama_base_url")
-                    # Check if image generation is enabled
-                    if ai_settings.get("image_generation_enabled"):
-                        settings["model"] = ai_settings.get("image_model") or self.DEFAULT_MODEL
-                        settings["size"] = ai_settings.get("image_size") or self.DEFAULT_SIZE
-                    try:
-                        settings["api_key"] = ai_settings.get_password("ollama_api_key")
-                    except Exception:
-                        settings["api_key"] = ai_settings.get("ollama_api_key")
-        except Exception:
-            pass
-        return settings
+        """Get image generation settings from site_config.json."""
+        conf = frappe.conf
+        return {
+            "base_url": conf.get("ollama_base_url") or conf.get("ollama_url"),
+            "api_key": conf.get("ollama_api_key"),
+            "model": conf.get("image_model") or self.DEFAULT_MODEL,
+            "size": conf.get("image_size") or self.DEFAULT_SIZE,
+        }
 
     def _parse_size(self, size: str) -> tuple[int, int]:
         """Parse size string to width, height tuple"""
