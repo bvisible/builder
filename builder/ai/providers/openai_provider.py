@@ -113,9 +113,12 @@ class OpenAIProvider(BaseProvider):
             "max_tokens": max_tokens or self.max_tokens,
         }
 
-        # Enable thinking for reasoning models (kimi-k2.5, kimi-k2)
-        if self._is_reasoning_model and think is not False:
-            payload["think"] = True
+        # For reasoning models (kimi-k2.5), thinking defaults to on. Caller
+        # must pass think=False explicitly to disable it, and in that case
+        # we send `think: false` to Moonshot so the server actually skips
+        # reasoning (omitting the field leaves Moonshot's default = True).
+        if self._is_reasoning_model:
+            payload["think"] = False if think is False else True
 
         try:
             response = self._make_request(payload)
@@ -166,9 +169,9 @@ class OpenAIProvider(BaseProvider):
             "max_tokens": self.max_tokens,
         }
 
-        # Enable thinking for reasoning models (kimi-k2.5, kimi-k2)
-        if self._is_reasoning_model and think is not False:
-            payload["think"] = True
+        # Same explicit think flag as generate() above.
+        if self._is_reasoning_model:
+            payload["think"] = False if think is False else True
 
         if supports_structured:
             # Use OpenAI's native JSON schema support
