@@ -708,10 +708,13 @@ When all required fields are collected, congratulate the user and tell them they
 				response = provider._make_streaming_request("/api/chat", payload)
 			else:
 				# Final fallback for OpenAI-compatible providers (Moonshot/Kimi).
-				# Thinking mode is disabled here: chat back-and-forth replies are
-				# short ("do you want a vitrine?") and with thinking each reply
-				# takes 2+ min and trips the gunicorn worker timeout. Thinking is
-				# reserved for brief/page generation (separate code paths).
+				# Kimi-k2.5 thinks before every reply regardless of the `think`
+				# flag (Moonshot ignores it), so we give it 16k tokens so it
+				# has room to both reason AND produce a final answer. Without
+				# enough budget, `content` comes back empty and the provider
+				# raises (see openai_provider.generate). Chat takes ~60-120s
+				# per reply at this budget — acceptable given no alternative
+				# until a non-thinking chat_model config is added.
 				context = "\n".join([
 					f"[{m['role']}]: {m['content']}"
 					for m in messages[1:]  # Skip system
@@ -720,9 +723,8 @@ When all required fields are collected, congratulate the user and tell them they
 					prompt=context,
 					system_prompt=system_prompt,
 					temperature=0.7,
-					max_tokens=2048,
+					max_tokens=16384,
 				)
-				# Pass think=False when the provider accepts it (OpenAI-compatible).
 				try:
 					import inspect
 					if "think" in inspect.signature(provider.generate).parameters:

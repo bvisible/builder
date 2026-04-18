@@ -123,10 +123,18 @@ class OpenAIProvider(BaseProvider):
         try:
             response = self._make_request(payload)
             message = response["choices"][0]["message"]
-            content = message.get("content") or ""
-            # Reasoning models may put all output in reasoning_content when max_tokens is too low
-            if not content.strip() and message.get("reasoning_content"):
-                content = message["reasoning_content"]
+            content = (message.get("content") or "").strip()
+            if not content:
+                # Kimi ran out of budget inside the reasoning phase and never
+                # produced a final answer. Do NOT fall back to reasoning_content
+                # — that's the internal monologue and leaking it to the chat UI
+                # makes the assistant look deranged. Raise a clear error so the
+                # caller can retry with more tokens or a non-thinking model.
+                reasoning_len = len(message.get("reasoning_content") or "")
+                raise GenerationError(
+                    f"Model returned empty content (reasoning_content={reasoning_len} chars). "
+                    "Increase max_tokens or use a non-thinking model."
+                )
             return content
         except Exception as e:
             raise GenerationError(f"OpenAI generation failed: {e}")
