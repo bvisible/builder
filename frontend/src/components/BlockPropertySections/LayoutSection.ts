@@ -2,7 +2,7 @@ import BlockFlexLayoutHandler from "@/components/BlockFlexLayoutHandler.vue";
 import BlockGridLayoutHandler from "@/components/BlockGridLayoutHandler.vue";
 import OptionToggle from "@/components/Controls/OptionToggle.vue";
 import blockController from "@/utils/blockController";
-import PropertyControl from "../Controls/PropertyControl.vue";
+import StylePropertyControl from "../Controls/StylePropertyControl.vue";
 
 // Props that only make sense with display: grid. When the user switches
 // away from grid, these are stripped from ALL breakpoints of the block —
@@ -52,11 +52,11 @@ function cleanupIncompatibleDisplayProps(newDisplay: StyleValue) {
 
 const layoutSectionProperties = [
 	{
-		component: PropertyControl,
+		component: StylePropertyControl,
 		condition: () => !blockController.isText(),
 		getProps: () => {
 			return {
-				styleProperty: "display",
+				propertyKey: "display",
 				component: OptionToggle,
 				label: "Type",
 				enableStates: false,

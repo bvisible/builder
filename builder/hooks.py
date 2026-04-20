@@ -1,7 +1,5 @@
 import frappe
 
-from . import __version__ as app_version
-
 app_name = "builder"
 app_title = "Frappe Builder"
 app_publisher = "Frappe Technologies Pvt Ltd"
@@ -16,6 +14,7 @@ app_include_css = "/assets/builder/css/builder-chat.css"
 app_include_js = "/assets/builder/js/builder.js"
 
 export_python_type_annotations = True
+require_type_annotated_api_methods = True
 
 # include js, css files in header of web template
 # web_include_css = "/assets/builder/css/builder.css"
@@ -60,7 +59,13 @@ jinja = {
 		"builder.hf_utils.header_footer.render_header",
 		"builder.hf_utils.header_footer.render_footer",
 		"builder.hf_utils.header_footer.get_header_footer_config",
-	]
+	],
+	"filters": [
+		"builder.utils.combine",
+		"builder.utils.execute_script_and_combine",
+		"builder.utils.hash",
+		"builder.utils.to_safe_json",
+	],
 }
 
 # Installation

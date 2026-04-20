@@ -2,7 +2,7 @@ import BlockContextMenu from "@/components/BlockContextMenu.vue";
 import { builderSettings } from "@/data/builderSettings";
 import { BuilderSettings } from "@/types/Builder/BuilderSettings";
 import RealTimeHandler from "@/utils/realtimeHandler";
-import { useStorage } from "@vueuse/core";
+import { useDark, useStorage } from "@vueuse/core";
 import { defineStore } from "pinia";
 import { toast } from "vue-sonner";
 import type Dialog from "../components/Controls/Dialog.vue";
@@ -35,13 +35,21 @@ const useBuilderStore = defineStore("builderStore", {
 		showRightPanel: <boolean>true,
 		showLeftPanel: <boolean>true,
 		showHTMLDialog: false,
-		showDataScriptDialog: false,
+		showDataScriptDialog: <"block" | "page" | null>null,
 		realtime: new RealTimeHandler(),
 		readOnlyMode: false,
 		viewers: <UserInfo[]>[],
 		isFCSite: window.is_fc_site === "True" ? true : false,
 		activeFolder: useStorage("activeFolder", ""),
+		isDark: useDark({
+			attribute: "data-theme",
+		}),
 	}),
+	getters: {
+		isAIEnabled(): boolean {
+			return !!builderSettings.doc?.ai_api_key;
+		},
+	},
 	actions: {
 		toggleReadOnlyMode(readonly: boolean | null = null) {
 			this.readOnlyMode = readonly ?? !this.readOnlyMode;

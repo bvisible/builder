@@ -32,7 +32,7 @@
 				</div>
 			</div>
 			<div
-				class="canvas relative flex flex-col bg-surface-white shadow-2xl contain-layout dark:selection:!bg-gray-200"
+				class="canvas relative flex flex-col h-full bg-surface-white shadow-2xl contain-layout dark:selection:!bg-gray-200"
 				:style="{
 					...canvasStyles,
 					background: canvasProps.background,
@@ -165,14 +165,11 @@ async function loadConfiguredHeaderFooter() {
 loadConfiguredHeaderFooter();
 
 const { cssVariables, darkCssVariables } = useBuilderVariable();
-const isDark = useDark({
-	attribute: "data-theme",
-});
 
 const variables = computed(() => {
 	return {
 		...cssVariables.value,
-		...(isDark.value ? darkCssVariables.value : {}),
+		...(builderStore.isDark ? darkCssVariables.value : {}),
 	};
 });
 
