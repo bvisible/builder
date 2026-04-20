@@ -1201,8 +1201,15 @@ def set_fonts(styles, font_map):
 	for style in styles:
 		font = style.get("fontFamily")
 		if font:
-			# Remove quotes if present
-			font = font.strip("'\"")
+			# AI often writes `fontFamily: "'Lato', sans-serif"` — split off
+			# the fallback stack, keep just the primary face, strip quotes
+			# and whitespace. Without this, the whole string (`'Lato',
+			# sans-serif`) gets URL-encoded into the Google Fonts <link>
+			# and the browser refuses to load it.
+			font = font.split(",")[0].strip().strip("'\"").strip()
+
+			if not font:
+				continue
 
 			# Skip if it is a system font
 			if font.lower() in system_fonts:
@@ -1234,7 +1241,9 @@ def set_fonts_from_html(soup, font_map):
 		styles = tag.attrs.get("style").split(";")
 		for style in styles:
 			if "font-family" in style:
-				font = style.split(":")[1].strip().strip("'\"")
+				# Split off fallback stack, keep primary face only.
+				raw = style.split(":", 1)[1]
+				font = raw.split(",")[0].strip().strip("'\"").strip()
 				if font:
 					font_map[font] = {"weights": [400]}
 

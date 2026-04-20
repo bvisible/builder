@@ -15,8 +15,15 @@
 	<link rel="canonical" href="{{ canonical_url }}" />
 	{% endif %}
 	<title>{{title}}</title>
-	<link rel="icon" href="{{ favicon_light or favicon or '/assets/builder/images/frappe_black.png' }}"  media="(prefers-color-scheme: light)"/>
-	<link rel="icon" href="{{ favicon_dark or favicon or '/assets/builder/images/frappe_white.png' }}"  media="(prefers-color-scheme: dark)"/>
+	{#-
+		Favicon priority (first non-empty wins):
+		1. `favicon_light` / `favicon_dark` — per-mode, set on Builder Page or Website Settings
+		2. `favicon` — single favicon on Website Settings
+		3. Neoffice default SVG (light + dark friendly)
+		Clients can override by setting `favicon` in Website Settings.
+	-#}
+	<link rel="icon" type="image/svg+xml" href="{{ favicon_light or favicon or '/assets/neoffice_theme/images/neoffice-favicon.svg' }}" media="(prefers-color-scheme: light)"/>
+	<link rel="icon" type="image/svg+xml" href="{{ favicon_dark or favicon or '/assets/neoffice_theme/images/neoffice-favicon.svg' }}" media="(prefers-color-scheme: dark)"/>
 	{% block meta_block %}{% include "templates/includes/meta_block.html" %}{% endblock %}
 	<link rel="stylesheet" href="/assets/builder/reset.css?v=1" media="screen">
 	<link rel="preconnect" href="https://fonts.googleapis.com">
