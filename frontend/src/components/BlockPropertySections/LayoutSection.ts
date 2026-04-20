@@ -4,6 +4,52 @@ import OptionToggle from "@/components/Controls/OptionToggle.vue";
 import blockController from "@/utils/blockController";
 import PropertyControl from "../Controls/PropertyControl.vue";
 
+// Props that only make sense with display: grid. When the user switches
+// away from grid, these are stripped from ALL breakpoints of the block —
+// otherwise they stay in the stored JSON, get serialised into the page
+// CSS, and break layout once the user switches again (or on public render
+// where the browser just ignores them but keeps flex items unstyled).
+const GRID_ONLY_PROPS: styleProperty[] = [
+	"gridTemplateColumns",
+	"gridTemplateRows",
+	"gridTemplateAreas",
+	"gridAutoColumns",
+	"gridAutoRows",
+	"gridAutoFlow",
+	"gridArea",
+	"gridColumn",
+	"gridColumnStart",
+	"gridColumnEnd",
+	"gridRow",
+	"gridRowStart",
+	"gridRowEnd",
+	"columnGap",
+	"rowGap",
+] as unknown as styleProperty[];
+
+// Props that only make sense with display: flex. gap / justify-content /
+// align-items are intentionally NOT in this list — they work identically
+// in both flex and grid.
+const FLEX_ONLY_PROPS: styleProperty[] = [
+	"flexDirection",
+	"flexFlow",
+	"flexWrap",
+	"flexGrow",
+	"flexShrink",
+	"flexBasis",
+	"order",
+] as unknown as styleProperty[];
+
+function cleanupIncompatibleDisplayProps(newDisplay: StyleValue) {
+	const blocks = blockController.getSelectedBlocks();
+	const toStrip: styleProperty[] = [];
+	if (newDisplay !== "grid") toStrip.push(...GRID_ONLY_PROPS);
+	if (newDisplay !== "flex") toStrip.push(...FLEX_ONLY_PROPS);
+	blocks.forEach((block) => {
+		toStrip.forEach((prop) => block.removeStyle(prop));
+	});
+}
+
 const layoutSectionProperties = [
 	{
 		component: PropertyControl,
@@ -30,6 +76,10 @@ const layoutSectionProperties = [
 		events: {
 			"update:modelValue": (val: StyleValue) => {
 				blockController.setStyle("display", val);
+				// Strip props from the old display mode across all breakpoints.
+				// Keeps block JSON clean and prevents "stuck grid-template-columns
+				// after switching to flex" which breaks the rendered layout.
+				cleanupIncompatibleDisplayProps(val);
 				if (val === "grid") {
 					if (!blockController.getStyle("gridTemplateColumns")) {
 						blockController.setStyle("gridTemplateColumns", "repeat(2, minmax(200px, 1fr))");

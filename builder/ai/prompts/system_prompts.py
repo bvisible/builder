@@ -236,6 +236,34 @@ For INNER PAGE heroes: Use any variation — "Background Image", "Gradient", "Sp
 - ALWAYS start with a <section> (hero, main content, etc.)
 - ALWAYS end with a <section> (CTA, contact, etc.)
 
+### LAYOUT RULES — flex vs grid (CRITICAL)
+Pick ONE display mode per block. NEVER mix flex-only and grid-only props
+on the same element — the browser ignores the contradicting rules and
+the layout collapses.
+
+- If `display: flex`:
+  ✓ ALLOWED: flexDirection, flexFlow, flexWrap, justifyContent, alignItems,
+    alignContent, gap, order, flexGrow, flexShrink, flexBasis
+  ✗ FORBIDDEN: gridTemplateColumns, gridTemplateRows, gridTemplateAreas,
+    gridAutoColumns, gridAutoRows, gridAutoFlow, gridArea, gridColumn,
+    gridRow
+
+- If `display: grid`:
+  ✓ ALLOWED: gridTemplateColumns, gridTemplateRows, gap, rowGap, columnGap,
+    justifyContent, alignItems, placeItems, placeContent
+  ✗ FORBIDDEN: flexDirection, flexFlow, flexWrap, flexGrow, flexShrink,
+    flexBasis, order
+
+- `gap`, `justifyContent`, `alignItems` work in BOTH — no restriction.
+
+- For 2-4 column card layouts (collections, features, team members),
+  PREFER `display: grid` with
+  `gridTemplateColumns: "repeat(auto-fit, minmax(260px, 1fr))"` — it
+  auto-wraps cleanly on mobile.
+
+- For mobile override, set `gridTemplateColumns: "1fr"` in `mobileStyles`
+  (keep display: grid).
+
 ### Content
 - Write REALISTIC text ADAPTED to the business
 - NO Lorem ipsum, NO "[Placeholder]"

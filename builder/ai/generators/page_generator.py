@@ -171,6 +171,12 @@ class PageGenerator:
         # Sanitize Jinja includes — fix or remove invalid template paths
         blocks = self._sanitize_jinja_includes(blocks)
 
+        # Strip layout props that contradict the block's display mode.
+        # Kimi (and other reasoning models) sometimes emit `display: flex`
+        # together with `gridTemplateColumns` — the browser picks one and
+        # the layout collapses. This pass guarantees a clean contract.
+        blocks = self._sanitize_layout_styles(blocks)
+
         # Log summary of generated blocks
         first_block_info = None
         if blocks:
@@ -571,6 +577,100 @@ class PageGenerator:
                        blockId=block.get("blockId"))
 
         return result
+
+    # Props that only make sense under `display: grid`. Kept in camelCase
+    # because that's the format the AI outputs and the Builder frontend
+    # uses internally (converted to kebab-case at CSS-serialise time).
+    _GRID_ONLY_STYLE_KEYS = (
+        "gridTemplateColumns",
+        "gridTemplateRows",
+        "gridTemplateAreas",
+        "gridAutoColumns",
+        "gridAutoRows",
+        "gridAutoFlow",
+        "gridArea",
+        "gridColumn",
+        "gridColumnStart",
+        "gridColumnEnd",
+        "gridRow",
+        "gridRowStart",
+        "gridRowEnd",
+        "columnGap",
+        "rowGap",
+    )
+
+    # Props that only make sense under `display: flex`. `gap`,
+    # `justifyContent`, `alignItems`, `alignContent`, `placeItems`,
+    # `placeContent` are intentionally absent — they work identically
+    # in flex and grid.
+    _FLEX_ONLY_STYLE_KEYS = (
+        "flexDirection",
+        "flexFlow",
+        "flexWrap",
+        "flexGrow",
+        "flexShrink",
+        "flexBasis",
+        "order",
+    )
+
+    def _sanitize_layout_styles(self, blocks: list[dict]) -> list[dict]:
+        """Strip style keys that contradict each block's display mode.
+
+        The LLM sometimes mixes `display: flex` with `gridTemplateColumns`
+        (or the reverse). The browser honours only one display value and
+        silently drops the contradicting rules — visually the layout
+        collapses. We enforce the contract here before the blocks are
+        persisted as a Builder Page.
+
+        Only `baseStyles` / `mobileStyles` / `tabletStyles` are touched.
+        `rawStyles` (user-authored CSS overrides) is never modified.
+        """
+        stripped_total = 0
+
+        def clean_style_dict(style_dict: dict, display: str | None) -> int:
+            if not isinstance(style_dict, dict) or not display:
+                return 0
+            if display == "flex":
+                unwanted = self._GRID_ONLY_STYLE_KEYS
+            elif display == "grid":
+                unwanted = self._FLEX_ONLY_STYLE_KEYS
+            else:
+                return 0
+            removed = 0
+            for key in unwanted:
+                if key in style_dict:
+                    del style_dict[key]
+                    removed += 1
+            return removed
+
+        def walk(block: dict) -> None:
+            nonlocal stripped_total
+            base = block.get("baseStyles") or {}
+            # Display may be declared on any breakpoint but the CRITICAL
+            # cleanup target is whichever breakpoint sets display: we
+            # strip contradicting props from that SAME breakpoint's dict.
+            for key in ("baseStyles", "mobileStyles", "tabletStyles"):
+                style_dict = block.get(key)
+                if not isinstance(style_dict, dict):
+                    continue
+                # Effective display for this breakpoint = the one set on it,
+                # falling back to baseStyles (breakpoint inheritance).
+                display = style_dict.get("display") or base.get("display")
+                stripped_total += clean_style_dict(style_dict, display)
+
+            for child in block.get("children", []) or []:
+                if isinstance(child, dict):
+                    walk(child)
+
+        for block in blocks:
+            if isinstance(block, dict):
+                walk(block)
+
+        if stripped_total:
+            ai_log("info", "Sanitized contradictory layout styles",
+                   props_stripped=stripped_total)
+
+        return blocks
 
     def _auto_fix_styles(self, blocks: list[dict], brief: DesignBrief) -> list[dict]:
         """
