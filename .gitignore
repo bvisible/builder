@@ -13,4 +13,4 @@ builder/public/page_scripts
 builder/public/page_styles
 # builder/www/_builder.html
 builder/public/dist
-CLAUDE.md
+# CLAUDE.md  # 2026-05-07 unshipped to document commit-the-build pipeline
