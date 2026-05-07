@@ -4,9 +4,13 @@
 *.swp
 tags
 node_modules
-builder/public/frontend
+# 2026-05-07 (NORA #28) — frontend build outputs are committed on this branch.
+# See docs/COMMIT-BUILD-PATTERN.md in neoffice-devops.
+# (page_scripts and page_styles are generated at runtime when users publish
+# pages in the builder UI — they stay ignored.)
+# builder/public/frontend
 builder/public/page_scripts
 builder/public/page_styles
-builder/www/_builder.html
+# builder/www/_builder.html
 builder/public/dist
 CLAUDE.md
