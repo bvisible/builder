@@ -18,10 +18,14 @@ class WebsiteHeaderFooterConfig(Document):
 		from builder.builder.doctype.website_footer_link.website_footer_link import WebsiteFooterLink
 
 		copyright_text: DF.Data | None
+		cta_shape: DF.Literal["Rounded", "Pill", "Square"]
+		cta_size: DF.Literal["Medium", "Small"]
 		cta_style: DF.Literal["Primary", "Secondary", "Outline"]
 		cta_text: DF.Data | None
 		cta_url: DF.Data | None
 		facebook_url: DF.Data | None
+		header_border: DF.Literal["None", "Subtle"]
+		header_height: DF.Literal["Standard", "Slim", "Tall"]
 		header_bg_color: DF.Color | None
 		header_text_color: DF.Color | None
 		footer_description: DF.SmallText | None

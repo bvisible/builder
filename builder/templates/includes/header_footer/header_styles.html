@@ -3,6 +3,8 @@
    Site Header Styles - Dark Theme by Default
    ========================================================================== */
 
+{%- set hf = hf_config if hf_config is defined and hf_config else None -%}
+{%- set header_heights = {"Slim": "56px", "Standard": "64px", "Tall": "76px"} -%}
 :root {
 	--header-bg: {{ colors.bg if colors else '#1a1a1a' }};
 	--header-text: {{ colors.text if colors else '#ffffff' }};
@@ -11,12 +13,13 @@
 	--header-hover-bg: {{ colors.text if colors else '#ffffff' }}10;
 	--cta-bg: {{ colors.cta_bg if colors and colors.cta_bg else 'var(--primary-color, #6366f1)' }};
 	--cta-text: {{ colors.cta_text if colors and colors.cta_text else '#ffffff' }};
+	--header-height: {{ header_heights.get(hf.get("header_height") if hf else None, "64px") }};
 }
 
 .site-header {
 	position: relative;
 	background: var(--header-bg);
-	border-bottom: 1px solid var(--header-border);
+	border-bottom: {{ "none" if hf and hf.get("header_border") == "None" else "1px solid var(--header-border)" }};
 	z-index: 1000;
 }
 
@@ -163,6 +166,16 @@
 	border-radius: 8px;
 	transition: all 0.2s ease;
 	white-space: nowrap;
+}
+
+/* CTA shape variants (cta_shape) */
+.site-cta--shape-pill { border-radius: 9999px; }
+.site-cta--shape-square { border-radius: 4px; }
+
+/* CTA size variants (cta_size) */
+.site-cta--size-small {
+	padding: 6px 14px;
+	font-size: 0.8125rem;
 }
 
 .site-cta--primary {

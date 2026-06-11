@@ -53,7 +53,8 @@
 {%- endmacro -%}
 
 {%- macro render_cta(cta) -%}
-<a href="{{ cta.url or '#' }}" class="site-cta site-cta--{{ cta.style | lower }}">
+<a href="{{ cta.url or '#' }}"
+   class="site-cta site-cta--{{ cta.style | lower }} site-cta--shape-{{ (cta.shape or 'Rounded') | lower }} site-cta--size-{{ (cta.size or 'Medium') | lower }}">
 	{{ cta.text or "Contact" }}
 </a>
 {%- endmacro -%}

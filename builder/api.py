@@ -1956,7 +1956,45 @@ def import_template_group(template_group: str, project_folder: str | None = None
 	if not created:
 		frappe.throw(frappe._("Could not import any pages from this template group."))
 
+	# bvisible: adopting a template group = adopting its design. The group's
+	# manifest can carry a header/footer design (colors, height, CTA shape...)
+	# that we apply to the centrally-managed Website Header Footer Config, so
+	# the site-wide navigation matches the imported template instead of
+	# clashing with it (the template's own navbar/footer blocks are stripped
+	# at import — see _strip_template_navigation).
+	_apply_template_header_footer(group.get("header_footer"))
+
 	return created
+
+
+# Website Header Footer Config fields a hub template manifest may configure.
+TEMPLATE_HF_ALLOWED_FIELDS = {
+	"header_layout", "sticky_header", "header_height", "header_border",
+	"header_bg_color", "header_text_color",
+	"show_cta", "cta_text", "cta_url", "cta_style", "cta_shape", "cta_size",
+	"footer_template", "footer_bg_color", "footer_text_color",
+	"primary_color", "secondary_color", "background_color", "text_color",
+	"heading_font", "body_font",
+}
+
+
+def _apply_template_header_footer(hf: dict | None) -> None:
+	"""bvisible: apply a template group's header/footer design to the site's
+	Website Header Footer Config (whitelisted fields only)."""
+	if not hf or not isinstance(hf, dict):
+		return
+	try:
+		config = frappe.get_single("Website Header Footer Config")
+	except Exception:
+		return
+	changed = False
+	for field, value in hf.items():
+		if field in TEMPLATE_HF_ALLOWED_FIELDS and value not in (None, ""):
+			config.set(field, value)
+			changed = True
+	if changed:
+		config.save(ignore_permissions=True)
+		frappe.clear_cache()
 
 
 @frappe.whitelist()
