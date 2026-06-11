@@ -2068,6 +2068,8 @@ def get_site_contact_context() -> dict:
 				data["email"] = company.email
 			if company.get("website"):
 				data["website"] = company.website
+			# Note: on the Neoffice fleet /files/logo-default.png IS the client's
+			# logo (the default file gets replaced per instance) — don't filter it.
 			if company.get("company_logo"):
 				data["logo"] = company.company_logo
 			address_name = frappe.db.get_value(
@@ -2093,9 +2095,8 @@ def get_site_contact_context() -> dict:
 
 	try:
 		config = frappe.get_single("Website Header Footer Config")
-		logo = config.get("logo_image")
-		if not data.get("logo") and logo and "logo-default" not in logo:
-			data["logo"] = logo
+		if not data.get("logo") and config.get("logo_image"):
+			data["logo"] = config.logo_image
 	except Exception:
 		pass
 
