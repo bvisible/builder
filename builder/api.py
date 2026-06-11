@@ -343,9 +343,17 @@ def generate_complete_site(
 	pages_config: str = None,
 	generation_mode: str = "full",
 	inspiration_urls: str = None,
+	replace_existing: str = "auto",
 ):
 	"""
 	Generate a complete site asynchronously.
+
+	replace_existing (bvisible) controls what happens to the site's current pages:
+	- "auto" (default): replace silently only when every existing page is an
+	  untouched AI generation; otherwise return confirmation_required without
+	  queueing anything (the caller asks the user, then retries with "force")
+	- "force": replace everything (template pages and hub staging always survive)
+	- "none": additive — generate only the requested pages, leave the rest alone
 
 	This function queues the site generation as a background job to avoid
 	HTTP timeouts (Cloudflare 100s limit). Use get_site_generation_status()
@@ -398,6 +406,27 @@ def generate_complete_site(
 		"generation_mode": generation_mode,
 	})
 
+	# bvisible: regenerate decision — never silently destroy pages a user
+	# designed or edited (see classify_existing_pages)
+	if replace_existing not in ("auto", "force", "none"):
+		frappe.throw(_("Invalid replace_existing value: {0}").format(replace_existing))
+	if replace_existing == "auto":
+		classes = classify_existing_pages()
+		if classes["protected"]:
+			from builder.ai.logging import ai_log
+
+			ai_log("info", "Generation needs replace confirmation",
+				   protected=len(classes["protected"]))
+			return {
+				"status": "confirmation_required",
+				"protected_pages": classes["protected"],
+				"untouched_pages": classes["untouched"],
+				"message": _(
+					"Some existing pages were designed or edited by hand. "
+					"Confirm before replacing the whole site, or generate additively."
+				),
+			}
+
 	# Enqueue the generation job
 	# Note: job_id is a reserved parameter in frappe.enqueue() for RQ job naming
 	# We pass our tracking ID as generation_job_id to avoid conflict
@@ -426,6 +455,7 @@ def generate_complete_site(
 		pages_config=json.dumps(resolved_pages),
 		generation_mode=generation_mode,
 		inspiration_urls=inspiration_urls,
+		replace_existing=replace_existing,
 	)
 
 	print(f"[SITE_GEN] Job enqueued successfully: job_id={job_id}, mode={generation_mode}")
@@ -586,6 +616,7 @@ def _generate_complete_site_worker(
 	pages_config: str = None,
 	generation_mode: str = "full",
 	inspiration_urls: str = None,
+	replace_existing: str = "auto",
 ):
 	"""
 	Background worker for site generation.
@@ -651,20 +682,24 @@ def _generate_complete_site_worker(
 		# =====================================================================
 		# STEP 1: Delete ALL existing Builder Pages
 		# =====================================================================
-		ai_log("info", "Step 1: Deleting existing pages")
-		print(f"[SITE_GEN_WORKER] Cleaning up existing Builder Pages...")
+		ai_log("info", "Step 1: Deleting existing pages", replace_existing=replace_existing)
+		print(f"[SITE_GEN_WORKER] Cleaning up existing Builder Pages (mode={replace_existing})...")
 		# bvisible: full-site generation replaces the previous site, but NEVER
 		# template pages (the hub's catalog lives in this doctype!) nor the
-		# hub's editorial staging ("Hub Inbox — <group>" folders).
-		all_pages = frappe.get_all(
-			"Builder Page",
-			filters={"is_template": 0},
-			fields=["name", "project_folder"],
-		)
-		existing_pages = [
-			p.name for p in all_pages
-			if not (p.project_folder or "").startswith("Hub Inbox")
-		]
+		# hub's editorial staging ("Hub Inbox — <group>" folders). Pages a user
+		# designed/edited (protected) are only removed in "force" mode; "none"
+		# is additive and deletes nothing here.
+		if replace_existing == "none":
+			existing_pages = []
+		else:
+			classes = classify_existing_pages()
+			existing_pages = [p["name"] for p in classes["untouched"]]
+			if replace_existing == "force":
+				existing_pages += [p["name"] for p in classes["protected"]]
+			elif classes["protected"]:
+				# "auto" should have been confirmed upstream; play safe anyway
+				ai_log("warning", "Auto mode with protected pages — keeping them",
+					   kept=len(classes["protected"]))
 		for page_name in existing_pages:
 			try:
 				frappe.delete_doc("Builder Page", page_name, ignore_permissions=True, force=True)
@@ -1066,7 +1101,32 @@ def _generate_complete_site_worker(
 
 				# Force route (no /pages/ prefix)
 				route = page_def["route"]
-				frappe.db.set_value("Builder Page", page.name, "route", route)
+				# bvisible: additive mode — resolve a route collision by replacing
+				# the occupant only when it is an untouched AI page, otherwise
+				# keep the user's page and shift the new route.
+				if replace_existing == "none":
+					occupant = frappe.db.get_value(
+						"Builder Page",
+						{"route": route, "is_template": 0, "name": ("!=", page.name)},
+						["name", "ai_generated_at", "ai_blocks_hash", "blocks", "draft_blocks"],
+						as_dict=True,
+					)
+					if occupant:
+						occupant_hash = _blocks_fingerprint(occupant.draft_blocks or occupant.blocks)
+						if occupant.ai_generated_at and occupant_hash == occupant.ai_blocks_hash:
+							frappe.delete_doc("Builder Page", occupant.name,
+											  ignore_permissions=True, force=True)
+						else:
+							route = f"{route}-{frappe.generate_hash(length=4)}"
+							ai_log("warning", "Route occupied by a protected page — shifted",
+								   new_route=route)
+				# bvisible: stamp the generation so future runs can tell
+				# untouched AI pages from user-designed ones
+				frappe.db.set_value("Builder Page", page.name, {
+					"route": route,
+					"ai_generated_at": frappe.utils.now(),
+					"ai_blocks_hash": _blocks_fingerprint(page.blocks),
+				}, update_modified=False)
 				frappe.db.commit()
 
 				ai_log("info", "Page created successfully",
@@ -1113,8 +1173,11 @@ def _generate_complete_site_worker(
 					if fixes:
 						total_fixes += len(fixes)
 						new_json = json.dumps(fixed_blocks, ensure_ascii=False)
+						# bvisible: re-stamp the AI hash — these are still
+						# generator-made blocks, not user edits
 						frappe.db.set_value("Builder Page", page_info["name"],
-							{"blocks": new_json, "draft_blocks": new_json},
+							{"blocks": new_json, "draft_blocks": new_json,
+							 "ai_blocks_hash": _blocks_fingerprint(new_json)},
 							update_modified=False)
 				except Exception as e:
 					ai_log("warning", "Brief compliance check failed for page",
@@ -1969,6 +2032,51 @@ def import_template_group(template_group: str, project_folder: str | None = None
 	_apply_template_header_footer(group.get("header_footer"))
 
 	return created
+
+
+def _blocks_fingerprint(raw) -> str:
+	"""bvisible: stable hash of a page's blocks JSON (order-insensitive)."""
+	import hashlib
+
+	if not raw:
+		return ""
+	try:
+		data = json.loads(raw) if isinstance(raw, str) else raw
+		normalized = json.dumps(data, sort_keys=True, ensure_ascii=False)
+	except Exception:
+		normalized = str(raw)
+	return hashlib.md5(normalized.encode("utf-8")).hexdigest()
+
+
+def classify_existing_pages() -> dict:
+	"""bvisible: classify the site's pages for the regenerate decision.
+
+	- untouched: AI-generated pages never edited since (current blocks hash
+	  still matches the hash stamped at generation) — safe to replace silently
+	- protected: pages a user designed or edited (hand-made pages, imported
+	  templates kept as drafts, or AI pages whose blocks changed since
+	  generation) — replacing them requires explicit confirmation
+	Template pages and hub staging are excluded entirely.
+	"""
+	pages = frappe.get_all(
+		"Builder Page",
+		filters={"is_template": 0},
+		fields=[
+			"name", "page_title", "project_folder",
+			"ai_generated_at", "ai_blocks_hash", "blocks", "draft_blocks",
+		],
+	)
+	untouched, protected = [], []
+	for p in pages:
+		if (p.project_folder or "").startswith("Hub Inbox"):
+			continue
+		info = {"name": p.name, "title": p.page_title}
+		current = _blocks_fingerprint(p.draft_blocks or p.blocks)
+		if p.ai_generated_at and p.ai_blocks_hash and current == p.ai_blocks_hash:
+			untouched.append(info)
+		else:
+			protected.append(info)
+	return {"untouched": untouched, "protected": protected}
 
 
 # Brief fields applied 1:1 to Website Header Footer Config (site chrome).

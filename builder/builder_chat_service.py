@@ -225,6 +225,23 @@ class BuilderChatService:
 				session.save(ignore_permissions=True)
 				return self.trigger_generation(session.session_id)
 
+			# Replace-confirmation buttons (asked when existing pages were
+			# designed/edited by hand — see classify_existing_pages)
+			if user_message.strip() in {"__FORCE_REGENERATE__", _("Yes, replace everything")}:
+				session.add_message(role="user", content=_("Yes, replace everything"))
+				session.save(ignore_permissions=True)
+				return self.trigger_generation(session.session_id, force_replace=True)
+			if user_message.strip() in {"__CANCEL_REGENERATE__", _("No, keep my pages")}:
+				session.add_message(role="user", content=_("No, keep my pages"))
+				response = _(
+					"Understood — I kept all your existing pages. "
+					"You can adjust your project and generate again whenever you want."
+				)
+				session.add_message(role="assistant", content=response)
+				session.status = "Active"
+				session.save(ignore_permissions=True)
+				return {"success": True, "message": response, "completion_percentage": session.completion_percentage}
+
 			# Handle custom page name input
 			if session.homepage_feedback == "__AWAITING_CUSTOM_PAGE_NAME__":
 				session.db_set("homepage_feedback", "", update_modified=False)
@@ -448,8 +465,11 @@ class BuilderChatService:
 			frappe.log_error("Builder Chat: Upload inspiration error", str(e))
 			return {"success": False, "message": _("Failed to process reference image")}
 
-	def trigger_generation(self, session_id: str) -> Dict:
-		"""Trigger site generation with collected parameters."""
+	def trigger_generation(self, session_id: str, force_replace: bool = False) -> Dict:
+		"""Trigger site generation with collected parameters.
+
+		force_replace=True confirms replacing pages a user designed/edited
+		(asked via the replace-confirmation buttons in process_message)."""
 		try:
 			session = frappe.get_doc("Builder Chat Session", {"session_id": session_id})
 
@@ -515,7 +535,39 @@ class BuilderChatService:
 				body_font=session.body_font,
 				pages_config=session.pages_config if session.pages_config else None,
 				generation_mode=session.generation_mode or "full",
+				replace_existing="force" if force_replace else "auto",
 			)
+
+			# Existing pages were designed/edited by hand: ask before wiping
+			if result and result.get("status") == "confirmation_required":
+				protected = result.get("protected_pages") or []
+				titles = ", ".join(p.get("title") or p.get("name") for p in protected[:8])
+				if len(protected) > 8:
+					titles += ", …"
+				question = _(
+					"⚠️ Your site has {0} page(s) that were designed or edited by hand: {1}.\n\n"
+					"Generating the new site will REPLACE all current pages. Do you want to continue?"
+				).format(len(protected), titles)
+				session.status = "Active"
+				session.add_message(
+					role="assistant",
+					content=question,
+					buttons=[
+						{"label": _("Yes, replace everything"), "value": "__FORCE_REGENERATE__"},
+						{"label": _("No, keep my pages"), "value": "__CANCEL_REGENERATE__"},
+					],
+				)
+				session.save(ignore_permissions=True)
+				return {
+					"success": True,
+					"status": "confirmation_required",
+					"message": question,
+					"buttons": [
+						{"label": _("Yes, replace everything"), "value": "__FORCE_REGENERATE__"},
+						{"label": _("No, keep my pages"), "value": "__CANCEL_REGENERATE__"},
+					],
+					"completion_percentage": session.completion_percentage,
+				}
 
 			if result and result.get("job_id"):
 				session.job_id = result["job_id"]
