@@ -177,6 +177,13 @@ class PageGenerator:
         # Sanitize Jinja includes — fix or remove invalid template paths
         blocks = self._sanitize_jinja_includes(blocks)
 
+        # Jinja syntax hard guard: every innerHTML carrying Jinja statements
+        # must COMPILE. Repairs the classic LLM mistake of single-quoting a
+        # string that contains a French apostrophe ({% set address = 'Route de
+        # l'Industrie…' %} → TemplateSyntaxError → whole page 500s); strips
+        # the statement entirely when unrecoverable.
+        blocks = self._sanitize_jinja_syntax(blocks)
+
         # Strip layout props that contradict the block's display mode.
         # Kimi (and other reasoning models) sometimes emit `display: flex`
         # together with `gridTemplateColumns` — the browser picks one and
@@ -620,6 +627,78 @@ class PageGenerator:
             ) % addr
 
         return self.SHORTCODE_PATTERN.sub(replace_google_map, inner)
+
+    # ------------------------------------------------------------------
+    # Jinja syntax guard
+    # ------------------------------------------------------------------
+    def _sanitize_jinja_syntax(self, blocks: list[dict]) -> list[dict]:
+        """Guarantee that every innerHTML containing Jinja compiles.
+
+        A single bad statement (typically an unescaped apostrophe inside a
+        single-quoted {% set %} string) makes the WHOLE page render a 500.
+        Repair strategy per block: compile → requote single-quoted set-strings
+        to double quotes → compile again → as a last resort drop the Jinja
+        statements and keep the plain markup."""
+        fixed = 0
+        stripped = 0
+
+        def walk(block: dict):
+            nonlocal fixed, stripped
+            html = block.get("innerHTML")
+            if isinstance(html, str) and ("{%" in html or "{{" in html):
+                if not self._jinja_compiles(html):
+                    requoted = self._requote_jinja_set_strings(html)
+                    if requoted != html and self._jinja_compiles(requoted):
+                        block["innerHTML"] = requoted
+                        fixed += 1
+                    else:
+                        block["innerHTML"] = re.sub(r"{%.*?%}", "", html, flags=re.S)
+                        stripped += 1
+            for child in block.get("children") or []:
+                if isinstance(child, dict):
+                    walk(child)
+
+        for block in blocks:
+            walk(block)
+        if fixed or stripped:
+            ai_log("warning", "Jinja syntax guard repaired blocks",
+                   requoted=fixed, stripped=stripped)
+        return blocks
+
+    def _jinja_compiles(self, html: str) -> bool:
+        try:
+            from frappe.utils.jinja import get_jenv
+
+            get_jenv().from_string(html)
+            return True
+        except Exception as e:
+            import jinja2
+
+            if isinstance(e, jinja2.TemplateSyntaxError):
+                return False
+            # Non-syntax failure (env/db hiccup while building the jinja env):
+            # fail open — never strip valid markup over a transient error.
+            return True
+
+    @staticmethod
+    def _requote_jinja_set_strings(html: str) -> str:
+        """Rewrite {% set x = '…' %} statements to double-quoted strings.
+
+        The greedy inner capture spans from the FIRST to the LAST single quote
+        of the statement, so apostrophes inside the value (French text) are
+        kept as content instead of terminating the string."""
+
+        def fix_statement(match: re.Match) -> str:
+            statement = match.group(0)
+            set_match = re.match(
+                r"({%-?\s*set\s+\w+\s*=\s*)'(.*)'(\s*-?%})$", statement, flags=re.S
+            )
+            if not set_match:
+                return statement
+            value = set_match.group(2).replace('"', '\\"')
+            return f'{set_match.group(1)}"{value}"{set_match.group(3)}'
+
+        return re.sub(r"{%.*?%}", fix_statement, html, flags=re.S)
 
     def _sanitize_jinja_includes(self, blocks: list[dict]) -> list[dict]:
         """
