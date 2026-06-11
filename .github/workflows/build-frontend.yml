@@ -38,7 +38,11 @@ jobs:
         run: yarn install --frozen-lockfile
 
       - name: Build
-        run: yarn build
+        # FORCE_REBUILD bypasses the root package.json gate: in a CI checkout the
+        # committed artifacts always exist, so a plain `yarn build` would skip and
+        # ship stale assets. CI (16 GB) must always rebuild; client servers keep
+        # the skip gate.
+        run: FORCE_REBUILD=1 yarn build
 
       - name: Commit artifacts
         run: |
