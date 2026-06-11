@@ -4,6 +4,7 @@ Generates a design brief ONCE at the start, then used for ALL pages.
 """
 
 import random
+import re
 from typing import Optional
 import frappe
 
@@ -40,7 +41,10 @@ def _hero_text_color_for_style(hero_style: str) -> str:
     return "#ffffff"
 
 
-# Color palettes for variety when no color is specified
+HEX_COLOR_RE = re.compile(r"^#[0-9a-fA-F]{6}([0-9a-fA-F]{2})?$")
+
+# Fallback palettes — used ONLY when the brief LLM fails or returns an unusable
+# color (the LLM normally derives the palette from the business context).
 DEFAULT_COLOR_PALETTES = [
     {"primary": "#6366f1", "secondary": "#8b5cf6"},  # Indigo/Violet (original)
     {"primary": "#059669", "secondary": "#10b981"},  # Emerald
@@ -177,7 +181,7 @@ def get_default_brief(
             "border_radius_style": "rounded",
             "use_shadows": True,
             "use_gradients": True,
-            "hero_style": "gradient",
+            "hero_style": random.choice(["image", "split", "asymmetric"]),
             "card_style": {
                 "backgroundColor": "rgba(255, 255, 255, 0.15)",
                 "borderRadius": "16px",
@@ -226,12 +230,15 @@ def get_default_brief(
             "border_radius_style": "rounded",
             "use_shadows": True,
             "use_gradients": True,
-            "hero_style": "gradient",
+            "hero_style": random.choice(["image", "split", "minimal", "asymmetric"]),
         },
     }
 
     # Get theme-specific overrides
     overrides = theme_briefs.get(theme, {})
+    fallback_hero_style = overrides.get("hero_style") or random.choice(
+        ["image", "split", "minimal", "solid", "asymmetric", "cards"]
+    )
 
     # Build the brief
     brief_data = {
@@ -270,13 +277,12 @@ def get_default_brief(
             "padding": "24px",
             "border": "1px solid rgba(0, 0, 0, 0.05)",
         }),
+        # Fallback hero: varied, never a systematic gradient
         "hero_background": _hero_background_for_style(
-            overrides.get("hero_style", "gradient"), effective_primary, effective_secondary
+            fallback_hero_style, effective_primary, effective_secondary
         ),
-        "hero_text_color": _hero_text_color_for_style(
-            overrides.get("hero_style", "gradient")
-        ),
-        "hero_style": overrides.get("hero_style", "gradient"),
+        "hero_text_color": _hero_text_color_for_style(fallback_hero_style),
+        "hero_style": fallback_hero_style,
         "section_padding": "80px 24px",
         "section_padding_mobile": "48px 16px",
         "content_max_width": "1200px",
@@ -304,67 +310,66 @@ def get_default_brief(
     return DesignBrief(**brief_data)
 
 
-BRIEF_SYSTEM_PROMPT = """You are a design system architect. Create a PRESCRIPTIVE design brief with EXACT VALUES that ensure perfect visual consistency across ALL pages.
+BRIEF_SYSTEM_PROMPT = """You are the CREATIVE DIRECTOR for this website. Your brief is the single
+source of art direction for every page another AI will generate — it decides whether the
+result feels genuinely designed or like yet another AI template.
 
-The design brief defines:
-1. How colors should be used (primary for CTAs, secondary for accents, etc.)
-2. Section background alternation pattern for visual rhythm
-3. Button and card styles
-4. Hero section styling
-5. EXACT typography scale (h1/h2/h3/p sizes)
-6. EXACT section paddings by type
-7. Header colors for logo compatibility and site branding
+## 1. ART DIRECTION (the most important part)
+- `design_concept`: 3-5 sentences. Commit to ONE bold aesthetic direction that fits THIS
+  business (brutally minimal, maximalist, retro-futuristic, organic/natural, luxury/refined,
+  playful/toy-like, editorial/magazine, brutalist/raw, art-deco/geometric, soft/pastel,
+  industrial/utilitarian...). Describe the atmosphere, how color and typography carry the
+  brand, and what makes this site UNFORGETTABLE. A stone mason, a pediatric dentist and a
+  jazz club must get radically different directions.
+- `signature_element`: ONE memorable visual idea carried across all pages (oversized display
+  headline treatment, recurring graphic motif, unexpected accent usage, distinctive image
+  treatment, asymmetric layout system...).
+- FORBIDDEN as direction: the generic AI look — diagonal violet gradient hero with centered
+  white text, interchangeable 3-card rows, timid evenly-spread palettes.
 
-Your brief will be used by another AI to generate multiple pages. The goal is that ALL pages look IDENTICAL in style.
+## 2. COLOR
+- If colors are imposed (client brand/logo), build the direction around them.
+- Otherwise CHOOSE the palette from the business's world (materials, environment, emotion) —
+  a dominant color + sharp accent beats evenly-distributed pastels. Avoid the indigo/violet
+  default and cliché tech palettes unless the business genuinely calls for them.
+- primary_color / secondary_color must be real hex values.
 
-MANDATORY - Include EXACT VALUES:
-
-1. TYPOGRAPHY SCALE - Choose precise sizes:
-   - h1: 42-56px desktop, 28-36px mobile (bold weight 600-700)
-   - h2: 32-40px desktop, 24-28px mobile (semibold weight 600)
-   - h3: 24-30px desktop, 20-24px mobile
+## 3. TYPOGRAPHY
+- If fonts are imposed, keep them as provided. Otherwise choose a DISTINCTIVE Google Fonts
+  pairing serving the direction: a characterful display/heading face + a readable body face.
+  Avoid defaulting to Inter/Roboto/Arial/Open Sans; avoid converging on the same trendy
+  face across sites.
+- TYPOGRAPHY SCALE - precise sizes, scaled to the direction (an editorial site can push
+  h1 to 64-80px; a dense corporate tool stays tighter):
+   - h1: 42-80px desktop, 28-40px mobile
+   - h2: 30-44px desktop, 24-28px mobile
+   - h3: 22-30px desktop, 20-24px mobile
    - body: 16-18px desktop, 15-16px mobile
-   - line-height: 1.2 for headings, 1.6 for body
+   - line-height: 1.1-1.3 for headings, 1.5-1.7 for body
 
-2. FONTS - The heading and body fonts have been pre-selected for this theme. Keep them as provided.
-   - heading_font: keep the provided font for h1-h6
-   - body_font: keep the provided font for p, span, li
-   - DO NOT change to Inter or other fonts
+## 4. STRUCTURE & RHYTHM
+- hero_style: a DELIBERATE choice for THIS site (image / split / minimal / solid /
+  asymmetric / cards — gradient only as a characterful statement, never as default).
+- hero_background + hero_text_color: concrete values that contrast properly.
+- section_backgrounds: an alternation that creates rhythm IN the chosen direction
+  (not necessarily white/gray/white — a dark or colored field can be part of it).
+- Section paddings: hero 80-120px, standard 64-100px, cta 56-80px vertical.
+  Heroes may use minHeight 60-90vh when the composition needs presence.
+- button_primary / button_secondary / card_style: styled IN the direction (square,
+  pill, bordered, shadowed — one deliberate system, used consistently).
 
-3. SECTION HEIGHTS AND PADDINGS:
-   - hero: minHeight "70vh" to "90vh" for visual impact, padding 80-100px
-   - standard: content determines height, padding 80-100px vertical
-   - cta: content determines height, padding 60-80px vertical
+## 5. NON-NEGOTIABLE TECHNICAL RULES
+- CONTRAST: colored/dark background → "#ffffff" text; light background (#fff, #f8fafc)
+  → "var(--text-color)". NEVER white text on light background!
+- Cards: use "#ffffff" or a concrete hex (NEVER var(--surface-color)).
+- HEADER COLORS: you MUST choose header_bg_color and header_text_color.
+  If a logo image is provided: analyze its dominant colors — dark/colored logo on
+  transparent bg → light header (#ffffff or very light); light logo → dark header.
+  The logo must be clearly readable on the chosen header background.
+  header_text_color must be readable on header_bg_color.
 
-4. CONTRAST RULES - CRITICAL:
-   - Gradient/colored background → "#ffffff" text
-   - Light background (#fff, #f8fafc) → "var(--text-color)"
-   - NEVER white text on light background!
-
-5. BACKGROUNDS - CRITICAL:
-   - Hero background should match the hero_style: gradient→use gradient, solid→solid color, minimal/split/cards→light bg is fine
-   - Cards: use "#ffffff" (NEVER var(--surface-color))
-   - Alternate section backgrounds for visual rhythm
-   - Vary hero backgrounds across themes — not every site needs a gradient hero
-
-## HEADER COLORS (CRITICAL for logo compatibility)
-You MUST choose header_bg_color and header_text_color.
-If a logo image is provided:
-- Analyze the logo's dominant colors and background
-- If logo is dark/colored on transparent bg → prefer white (#ffffff) or very light header
-- If logo is light on transparent bg → prefer dark header (#1a1a1a or primary_color)
-- ALWAYS ensure the logo is clearly visible and readable on the chosen header background
-If no logo is provided:
-- Use a color that complements the site's primary_color
-- Default to dark (#1a1a1a) for professional look or white (#ffffff) for clean look
-CONTRAST RULE: header_text_color must be readable on header_bg_color.
-
-IMPORTANT RULES:
-- Use CSS variable names like var(--primary-color) instead of actual hex values
-- Choose a background alternation pattern that creates visual rhythm
-- Be specific about ALL values - vague descriptions cause inconsistency
-- Hero sections should use minHeight (70-90vh) for visual impact above the fold
-
+Consistency matters — all pages share ONE visual language (this brief) — but the
+language itself must be distinctive to this site, never a reusable template.
 Output a valid JSON object matching the DesignBrief schema with ALL fields populated.
 """
 
@@ -441,58 +446,61 @@ class BriefGenerator:
         theme_prompt = theme_data.get("prompt", "")
         theme_colors = theme_data.get("colors", {})
 
-        # If no colors provided, pick a random palette for variety
-        if not primary_color and not secondary_color:
-            random_palette = _get_random_palette()
-            effective_primary = theme_colors.get("primary") or random_palette["primary"]
-            effective_secondary = theme_colors.get("secondary") or random_palette["secondary"]
-            ai_log("info", "Using random color palette for variety",
-                   primary=effective_primary, secondary=effective_secondary)
-        else:
-            effective_primary = primary_color or theme_colors.get("primary", "#6366f1")
-            effective_secondary = secondary_color or theme_colors.get("secondary", "#8b5cf6")
+        # Colors: imposed (client brand/logo) → forced onto the brief afterwards;
+        # otherwise the brief LLM chooses them from the business context (the old
+        # behavior — random.choice over 10 hardcoded Tailwind palettes — was a
+        # major cause of same-looking sites).
+        colors_imposed = bool(primary_color or secondary_color)
+        effective_primary = primary_color or secondary_color
+        effective_secondary = secondary_color or primary_color
 
-        # Use provided fonts or pick random pair for this theme
-        if heading_font and body_font:
-            ai_log("info", "Using provided fonts (from company/config)",
-                   heading_font=heading_font, body_font=body_font)
-        else:
-            heading_font, body_font = _get_random_fonts(theme)
-            ai_log("info", "Selected random fonts for theme",
-                   theme=theme, heading_font=heading_font, body_font=body_font)
+        # Fonts: same logic — imposed (company data/config) or chosen by the LLM.
+        fonts_imposed = bool(heading_font and body_font)
 
         # Build user prompt
         pages_list = ""
         if pages_config:
             pages_list = "\n".join([f"- {p['title']} ({p['type']})" for p in pages_config])
 
-        user_prompt = f"""Create a design brief for this website:
+        if colors_imposed:
+            colors_block = f"""**Colors (imposed by the client brand — build the direction around them):**
+- Primary: {effective_primary}
+- Secondary: {effective_secondary}"""
+        else:
+            colors_block = (
+                "**Colors:** none imposed — CHOOSE the palette from this business's world "
+                "(see system prompt §2)."
+            )
+
+        if fonts_imposed:
+            fonts_block = f"""**Fonts (imposed — keep them as provided):**
+- heading_font: "{heading_font}"
+- body_font: "{body_font}\""""
+        else:
+            fonts_block = (
+                "**Fonts:** none imposed — choose a distinctive Google Fonts pairing "
+                "(see system prompt §3)."
+            )
+
+        user_prompt = f"""Create the design brief for this website:
 
 **Site Name:** {site_name}
 **Site Type:** {site_type}
 **Description:** {prompt}
 
-**Theme:** {theme_name}
+**Theme hint (a starting mood, not a cage):** {theme_name}
 {theme_prompt}
 
-**Colors:**
-- Primary: {effective_primary}
-- Secondary: {effective_secondary}
+{colors_block}
 
-**Fonts (pre-selected for this theme, do NOT change):**
-- heading_font: "{heading_font}"
-- body_font: "{body_font}"
+{fonts_block}
 
 **Pages to generate:**
 {pages_list}
 
-Create a DesignBrief that ensures ALL these pages will look cohesive and part of the same site.
-Focus on:
-1. How to use the colors consistently
-2. A section background alternation pattern
-3. Consistent button and card styles
-4. Hero styling that matches the theme
-5. Appropriate spacing for the site type
+Write the art direction (design_concept + signature_element) for THIS business first,
+then derive every concrete value of the DesignBrief from it. All pages must share one
+distinctive visual language.
 
 Return ONLY the JSON object, no markdown code blocks."""
 
@@ -531,12 +539,30 @@ IMPORTANT: Apply these revision instructions to the design brief. Adjust colors,
                 images=images_for_vision if images_for_vision else None,
             )
 
-            # CRITICAL: Force the actual hex colors and fonts into the brief
-            # The AI might return CSS variables or different fonts
-            brief.primary_color = effective_primary
-            brief.secondary_color = effective_secondary
-            brief.heading_font = heading_font
-            brief.body_font = body_font
+            # Imposed values always win (the AI might return CSS variables or
+            # drift from the client brand); free choices are kept but sanity-
+            # checked, with a varied fallback when unusable.
+            if colors_imposed:
+                brief.primary_color = effective_primary
+                brief.secondary_color = effective_secondary
+            else:
+                if not HEX_COLOR_RE.match(brief.primary_color or ""):
+                    palette = _get_random_palette()
+                    ai_log("warning", "LLM primary_color unusable, falling back to palette",
+                           got=str(brief.primary_color)[:30])
+                    brief.primary_color = palette["primary"]
+                    brief.secondary_color = palette["secondary"]
+                elif not HEX_COLOR_RE.match(brief.secondary_color or ""):
+                    brief.secondary_color = brief.primary_color
+
+            if fonts_imposed:
+                brief.heading_font = heading_font
+                brief.body_font = body_font
+            else:
+                if not (brief.heading_font or "").strip() or not (brief.body_font or "").strip():
+                    fallback_heading, fallback_body = _get_random_fonts(theme)
+                    brief.heading_font = (brief.heading_font or "").strip() or fallback_heading
+                    brief.body_font = (brief.body_font or "").strip() or fallback_body
 
             ai_log("info", "Design brief generated successfully",
                 site_tone=brief.site_tone, hero_style=brief.hero_style,

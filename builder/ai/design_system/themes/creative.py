@@ -117,7 +117,7 @@ TYPOGRAPHY:
 
 COLOR:
 - Dark base (#0a0a0a)
-- Neon accents (#ff3366, #00d4ff, #ffcc00)
+- Vibrant accents from the brief's palette (saturated, high-energy)
 - Gradients for CTAs and highlights
 - White for primary text
 - Gray (#888) for secondary text

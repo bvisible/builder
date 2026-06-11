@@ -85,7 +85,7 @@ VISUAL LANGUAGE:
 - Offset shadows with NO blur (e.g., "6px 6px 0 #000000")
 - Sharp corners - NO border-radius
 - High contrast: black on bright colors
-- Bold accent colors: coral (#ff6b6b), teal (#4ecdc4), yellow (#ffd93d)
+- Bold accent colors from the brief's palette (loud, unapologetic)
 - Cream/warm white backgrounds (#fffef0)
 
 LAYOUT PRINCIPLES:

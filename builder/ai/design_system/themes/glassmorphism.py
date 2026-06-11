@@ -92,7 +92,7 @@ VISUAL LANGUAGE:
 
 BACKGROUND:
 - Page must have dark gradient background
-- Example: "linear-gradient(135deg, #1a1a2e 0%, #16213e 50%, #0f3460 100%)"
+- Deep, atmospheric backgrounds derived from the brief's palette (dark, layered)
 - Without dark background, glass effect doesn't work
 
 GLASS CARDS:

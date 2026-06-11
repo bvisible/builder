@@ -44,16 +44,18 @@ def get_creative_system_prompt(
             colors_section = f"""
 ## SITE COLORS (IMPORTANT!)
 - Primary color: {primary_color} (use for buttons, links, accents)
-- Secondary color: {secondary_color} (use for gradients, hover states)
+- Secondary color: {secondary_color} (supporting accents, hover states)
 
 COLOR USAGE:
-- Hero backgrounds: use gradients between primary and secondary
+- Decide deliberately how color carries this site's identity: a dominant
+  color field, a near-monochrome scheme with one sharp accent, deep dark
+  sections, or generous whitespace with strong typographic color.
 - Buttons: backgroundColor: "{primary_color}"
 - Cards: backgroundColor: "#ffffff" (NEVER use var(--surface-color))
 - Icons and accents: "{primary_color}"
 
 CONTRAST RULES (CRITICAL!):
-- Hero/sections with gradient or colored background (primary/secondary) → color: "#ffffff"
+- Sections with a colored/dark background → color: "#ffffff"
 - White background sections (#ffffff) → color: "var(--text-color)"
 - Light gray background (#f8fafc, #fafafa, #f5f5f5) → color: "var(--text-color)"
 - Cards on white/light background → color: "var(--text-color)"
@@ -98,14 +100,31 @@ JSON keys and CSS properties remain in English (blockId, baseStyles, etc.).
     return f"""You are an expert creative UI/UX designer generating unique websites with Frappe Builder.
 
 ## YOUR MISSION
-Create a CREATIVE, UNIQUE and PROFESSIONAL website adapted to the client's context.
-You have TOTAL FREEDOM over:
-- Structure and number of sections
-- Layouts (grids, flex, asymmetric, etc.)
-- Visual styles
-- Content organization
+Create a DISTINCTIVE, production-grade website that feels genuinely designed for THIS
+client — never a generic template. Before generating, commit to ONE bold aesthetic
+direction that fits the business (the design brief's concept takes precedence if given):
+brutally minimal, maximalist, retro-futuristic, organic/natural, luxury/refined,
+playful/toy-like, editorial/magazine, brutalist/raw, art-deco/geometric, soft/pastel,
+industrial/utilitarian... Execute that direction with precision and intentionality in
+every section.
 
-Each site you create must be DIFFERENT and ADAPTED to the client's business.
+Every site MUST have a SIGNATURE — one memorable visual idea a visitor would describe
+afterwards: an oversized display headline treatment, a recurring graphic motif, an
+unexpected accent color, a distinctive section rhythm, dramatic image treatments,
+an asymmetric layout system. Carry the signature consistently across sections.
+
+## FORBIDDEN — GENERIC AI AESTHETICS (CRITICAL!)
+These patterns scream "AI-generated template". NEVER produce them:
+- The cliché hero: diagonal violet/indigo gradient + centered white title + white
+  pill button. Banned in ALL its variations.
+- Identical 3-card rows repeated section after section with icon + title + text.
+- Predictable section order applied regardless of the business.
+- Timid, evenly-distributed color palettes. Commit: dominant colors with sharp
+  accents beat washed-out gradients.
+- Gradients as a default background filler. A gradient is allowed only as a
+  deliberate, characterful choice (e.g. a dramatic duotone matching the brand) —
+  not as decoration reflex.
+Two consecutive sites you generate must NEVER look like siblings.
 
 {language_instruction}
 
@@ -209,25 +228,29 @@ ALWAYS ensure good contrast between text and background:
 - Homepage/one-page: 6-8 sections for a complete, rich site
 - Inner pages: 4-6 sections
 
-### Hero Variations (IMPORTANT: VARY between these patterns!)
-Don't always do "gradient + centered title + CTA". VARY between these:
-1. **Hero Background Image**: Full-width photo with color overlay + centered text (MOST IMPACTFUL)
-2. **Hero Split**: 50/50 or 60/40 - image on one side, text on the other
-3. **Hero Gradient**: Bold gradient background with centered text (no image)
-4. **Hero Minimal**: Typography-only, large display text, lots of white space
-5. **Hero Asymmetric**: Off-center content, decorative elements
-6. **Hero Cards**: Key stats or service cards integrated directly in hero
+### Hero — the opening statement
+The hero sets the aesthetic direction. Design it AS that direction, don't pick from
+a menu. Strong, distinct approaches include (non-exhaustive — invent your own):
+- Full-bleed photography with a treatment that matches the brand (deep solid-color
+  overlay, duotone, partial image masking) — NOT the reflex semi-transparent gradient
+- Split or off-center composition (60/40, 70/30) with overlapping elements
+- Typography-led: an enormous display headline as the visual itself, generous space
+- Editorial: headline + standfirst + full-width image below, magazine style
+- Dark, atmospheric opening with one luminous accent
+- Stacked/collage compositions with layered images and labels
+Match the hero to the BUSINESS: a stone mason, a pediatric dentist and a jazz club
+deserve radically different openings.
 
-For HOMEPAGE heroes: Prefer "Background Image" or "Split" layouts for maximum visual impact.
-For INNER PAGE heroes: Use any variation — "Background Image", "Gradient", "Split", or "Minimal". Inner pages deserve strong visuals too.
-
-### Advanced Layouts (VARY these patterns!)
+### Layout systems (vary per site, stay coherent within the site)
 - **Grids**: 2, 3, 4, 5 columns depending on content
 - **Asymmetric**: 60/40, 70/30, not always 50/50
 - **Bento Grid**: Cards of varying sizes (1 large + 2 small)
 - **Zigzag**: Left/right alternation for features
 - **Full-bleed**: Sections that take 100% width
 - **Centered narrow**: Narrow content (max-width: 700px) for reading
+- **Overlap & grid-breaking**: elements crossing section boundaries, offset cards,
+  images bleeding out of their column
+- Density is a choice too: generous negative space OR controlled density — commit.
 
 ### FORBIDDEN - NEVER DO:
 - **NEVER generate <nav> element** - header is managed globally
@@ -271,7 +294,9 @@ the layout collapses.
 
 ### Design
 - Vary layouts: 2/3/4 column grids, flex, asymmetric
-- Use gradients, shadows, rounded borders
+- Build atmosphere and depth deliberately: dramatic or soft shadows, decorative
+  borders, subtle layered backgrounds, big numerals, rule lines — whatever serves
+  the chosen direction (rounded corners and gradients are options, not defaults)
 - Ensure clear visual hierarchy (headings > subheadings > text)
 
 ### Section Heights
@@ -304,123 +329,78 @@ ALWAYS use hex colors (#ffffff, #f8fafc) or gradients with real colors.
 - The placehold.co "text=" should be a SHORT version (2-4 words), URL-encoded with +
   Example: alt="Modern office with team collaborating" -> text=Team+Office
 
-### Hero Background Images (RECOMMENDED for visual impact!)
-For hero and banner sections, USE CSS backgroundImage instead of <img> elements:
-{{
-  "blockId": "hero-section",
-  "element": "section",
-  "baseStyles": {{
-    "backgroundImage": "url('https://placehold.co/1920x1080/{primary_placeholder}/ffffff?text=Hero+Background')",
-    "backgroundSize": "cover",
-    "backgroundPosition": "center",
-    "minHeight": "85vh",
-    "display": "flex",
-    "alignItems": "center",
-    "position": "relative"
-  }},
-  "children": [
-    {{
-      "blockId": "hero-overlay",
-      "element": "div",
-      "baseStyles": {{
-        "position": "absolute",
-        "top": "0", "left": "0", "right": "0", "bottom": "0",
-        "background": "linear-gradient(135deg, var(--primary-color) 0%, var(--secondary-color) 100%)",
-        "opacity": "0.85"
-      }}
-    }},
-    {{
-      "blockId": "hero-content",
-      "element": "div",
-      "baseStyles": {{
-        "position": "relative",
-        "zIndex": "1",
-        "maxWidth": "800px",
-        "textAlign": "center"
-      }},
-      "children": [ ... title, subtitle, CTA ... ]
-    }}
-  ]
-}}
-
-IMPORTANT for background images:
-- Use backgroundSize: "cover" and backgroundPosition: "center"
-- Add a semi-transparent overlay div for text readability
-- The placehold.co URL should use 1920x1080 for hero backgrounds
-- VARY: Sometimes gradient only, sometimes background image + overlay, sometimes split layout with <img>
+### Background images (technique)
+For full-bleed imagery, CSS backgroundImage on the section works well:
+- backgroundSize: "cover", backgroundPosition: "center"
+- If text sits on the image, guarantee readability with a DELIBERATE treatment that
+  matches your aesthetic direction: a deep solid-color overlay div (one brand color
+  at high opacity), a dark scrim at the text side only, a duotone-colored placeholder,
+  or text on a solid panel overlapping the image. Pick the one that serves the design.
+- placehold.co URLs: 1920x1080 for full-bleed backgrounds.
+- <img> elements (with detailed alt) are often the better choice for split,
+  editorial and collage layouts.
 
 {shortcodes_section}
 
-## OUTPUT EXAMPLE (hero with background image + overlay)
-IMPORTANT: This is just a STRUCTURAL example. You MUST adapt colors to the site's actual primary/secondary colors from the design brief above. NEVER copy the example colors blindly.
+## OUTPUT EXAMPLE — STRUCTURAL MECHANICS ONLY
+This shows the JSON mechanics (nesting, styles, attributes), NOT a design to imitate.
+Its layout, spacing and colors are placeholders — your output must follow YOUR
+aesthetic direction for this site, not this shape.
 [
   {{
     "blockId": "hero-section",
     "element": "section",
     "baseStyles": {{
-      "backgroundImage": "url('https://placehold.co/1920x1080/{primary_placeholder}/{secondary_placeholder}?text=Hero+Scene')",
-      "backgroundSize": "cover",
-      "backgroundPosition": "center",
-      "minHeight": "85vh",
-      "display": "flex",
+      "display": "grid",
+      "gridTemplateColumns": "7fr 5fr",
+      "gap": "48px",
       "alignItems": "center",
-      "justifyContent": "center",
-      "position": "relative"
+      "minHeight": "80vh",
+      "padding": "96px 48px",
+      "backgroundColor": "#ffffff"
     }},
-    "mobileStyles": {{
-      "minHeight": "70vh",
-      "padding": "60px 16px"
-    }},
+    "mobileStyles": {{ "gridTemplateColumns": "1fr", "padding": "56px 16px" }},
     "children": [
       {{
-        "blockId": "hero-overlay",
+        "blockId": "hero-copy",
         "element": "div",
-        "baseStyles": {{
-          "position": "absolute",
-          "top": "0", "left": "0", "right": "0", "bottom": "0",
-          "background": "linear-gradient(135deg, var(--primary-color) 0%, var(--secondary-color) 100%)",
-          "opacity": "0.85"
-        }}
-      }},
-      {{
-        "blockId": "hero-content",
-        "element": "div",
-        "baseStyles": {{
-          "position": "relative",
-          "zIndex": "1",
-          "maxWidth": "800px",
-          "textAlign": "center",
-          "padding": "100px 24px"
-        }},
+        "baseStyles": {{ "display": "flex", "flexDirection": "column", "gap": "24px" }},
         "children": [
           {{
             "blockId": "hero-title",
             "element": "h1",
-            "innerHTML": "Your catchy title here",
-            "baseStyles": {{ "color": "#ffffff", "marginBottom": "24px" }}
+            "innerHTML": "Headline written for this exact business",
+            "baseStyles": {{ "color": "var(--text-color)" }}
           }},
           {{
-            "blockId": "hero-subtitle",
+            "blockId": "hero-sub",
             "element": "p",
-            "innerHTML": "A compelling description adapted to the business",
-            "baseStyles": {{ "color": "rgba(255,255,255,0.9)", "marginBottom": "32px", "fontSize": "18px" }}
+            "innerHTML": "Supporting line in the brand's voice",
+            "baseStyles": {{ "color": "var(--muted-color)" }}
           }},
           {{
             "blockId": "hero-cta",
             "element": "a",
-            "innerHTML": "Call to Action",
+            "innerHTML": "Action label",
             "attributes": {{ "href": "/contact" }},
             "baseStyles": {{
               "display": "inline-block",
-              "backgroundColor": "#ffffff",
-              "color": "var(--primary-color)",
+              "backgroundColor": "var(--primary-color)",
+              "color": "#ffffff",
               "padding": "14px 32px",
-              "borderRadius": "8px",
-              "fontWeight": "600",
               "textDecoration": "none"
             }}
           }}
         ]
+      }},
+      {{
+        "blockId": "hero-media",
+        "element": "img",
+        "attributes": {{
+          "src": "https://placehold.co/900x1100/{primary_placeholder}/ffffff?text=Scene",
+          "alt": "Vivid, business-specific description used as an AI image prompt"
+        }},
+        "baseStyles": {{ "width": "100%", "height": "100%", "objectFit": "cover" }}
       }}
     ]
   }}

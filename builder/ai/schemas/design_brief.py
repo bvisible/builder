@@ -48,6 +48,25 @@ class DesignBrief(BaseModel):
     Design brief for visual consistency across pages.
     Generated ONCE at the start, then used for ALL page generations.
     """
+    # Art direction — the creative core of the brief. Written by the brief LLM,
+    # injected verbatim at the top of every page-generation prompt.
+    design_concept: str = Field(
+        default="",
+        description=(
+            "3-5 sentence art direction for this specific site: the chosen aesthetic "
+            "direction (e.g. editorial/magazine, luxury/refined, brutalist/raw...), the "
+            "atmosphere, how color and typography carry the brand, what makes it distinctive."
+        ),
+    )
+    signature_element: str = Field(
+        default="",
+        description=(
+            "ONE memorable visual idea carried across all pages: an oversized display "
+            "headline treatment, a recurring graphic motif, an unexpected accent color "
+            "usage, a distinctive section rhythm or image treatment."
+        ),
+    )
+
     # Site tone
     site_tone: Literal["professional", "playful", "elegant", "bold", "minimal"] = Field(
         default="professional",
@@ -118,26 +137,28 @@ class DesignBrief(BaseModel):
         description="Card container styles"
     )
 
-    # Hero section
+    # Hero section. No gradient default: the brief LLM must make a deliberate
+    # choice per site (empty values are filled by get_default_brief's varied
+    # fallback, never by a hardcoded gradient).
     hero_background: str = Field(
-        default="linear-gradient(135deg, var(--primary-color) 0%, var(--secondary-color) 100%)",
-        description="Hero section background"
+        default="",
+        description="Hero section background (a deliberate choice — solid, image treatment, dark field...)"
     )
     hero_text_color: str = Field(
-        default="#ffffff",
-        description="Hero section text color"
+        default="",
+        description="Hero section text color (must contrast with hero_background)"
     )
     hero_style: Literal[
-        "gradient",     # Gradient background (primary → secondary)
-        "image",        # Background image with overlay
-        "solid",        # Solid color background
-        "split",        # Split layout 50/50 (image + text)
-        "minimal",      # Typography-focused, no image
-        "cards",        # Hero with mini-cards integrated
-        "asymmetric",   # Artistic off-center layout
+        "image",        # Image with a deliberate treatment (solid overlay, duotone, scrim)
+        "split",        # Split layout (image + text, 60/40, 70/30...)
+        "minimal",      # Typography-led, generous space
+        "solid",        # Solid color field
+        "asymmetric",   # Off-center/overlapping composition
+        "cards",        # Content cards integrated in the hero
+        "gradient",     # Only as a deliberate, characterful choice
     ] = Field(
-        default="gradient",
-        description="Hero visual style"
+        default="split",
+        description="Hero composition — choose what serves THIS site's direction"
     )
 
     # Spacing
@@ -160,14 +181,15 @@ class DesignBrief(BaseModel):
         description="Typography scale for consistent sizing"
     )
 
-    # NEW: Font families
+    # NEW: Font families (empty defaults — chosen per site by the brief LLM or
+    # the varied theme fallback, never a hardcoded generic face)
     heading_font: str = Field(
-        default="Inter",
-        description="Font family for headings (h1-h6)"
+        default="",
+        description="Distinctive Google Font for headings — characterful, fits the art direction"
     )
     body_font: str = Field(
-        default="Inter",
-        description="Font family for body text"
+        default="",
+        description="Readable Google Font for body text, pairs with heading_font"
     )
 
     # NEW: Section Heights
@@ -281,8 +303,19 @@ class DesignBrief(BaseModel):
 - Use generous padding (80px-120px) for comfortable spacing
 """
 
-        return f"""## DESIGN GUIDELINES (suggestions, adapt as needed)
+        concept_section = ""
+        if self.design_concept:
+            concept_section = f"""### ART DIRECTION (follow this — it defines the site)
+{self.design_concept}
+"""
+        if self.signature_element:
+            concept_section += f"""
+### SIGNATURE ELEMENT (must appear, consistently, on every page)
+{self.signature_element}
+"""
 
+        return f"""## DESIGN BRIEF
+{concept_section}
 ### Site Tone: {self.site_tone}
 
 ### Typography suggestions

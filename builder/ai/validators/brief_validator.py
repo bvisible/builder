@@ -16,6 +16,28 @@ CSS_SIZE_PATTERN = re.compile(r"^\d+(\.\d+)?(px|rem|em|vh|vw|%)$")
 CSS_COLOR_PATTERN = re.compile(
     r"^(#[0-9a-fA-F]{3,8}|rgb\(|rgba\(|var\(--[\w-]+\)|transparent|white|black)"
 )
+HEX6_PATTERN = re.compile(r"^#([0-9a-fA-F]{6})$")
+
+
+def _relative_luminance(hex_color: str) -> Optional[float]:
+    """WCAG relative luminance of a #rrggbb color; None if not parseable."""
+    match = HEX6_PATTERN.match((hex_color or "").strip())
+    if not match:
+        return None
+    channels = []
+    raw = match.group(1)
+    for i in (0, 2, 4):
+        c = int(raw[i : i + 2], 16) / 255
+        channels.append(c / 12.92 if c <= 0.04045 else ((c + 0.055) / 1.055) ** 2.4)
+    r, g, b = channels
+    return 0.2126 * r + 0.7152 * g + 0.0722 * b
+
+
+def _contrast_ratio_with_white(hex_color: str) -> Optional[float]:
+    lum = _relative_luminance(hex_color)
+    if lum is None:
+        return None
+    return (1.0 + 0.05) / (lum + 0.05)
 
 
 @dataclass
@@ -78,6 +100,8 @@ class BriefValidator:
 
     # Fields that must be non-empty
     REQUIRED_FIELDS = [
+        "design_concept",
+        "signature_element",
         "heading_font",
         "body_font",
         "hero_background",
@@ -196,7 +220,7 @@ class BriefValidator:
         brief: DesignBrief,
         result: BriefValidationResult,
     ) -> None:
-        """Check color values are valid."""
+        """Check color values are valid, and the palette passes basic contrast."""
         color_fields = ["hero_text_color", "heading_color", "body_color", "link_color"]
 
         for field_name in color_fields:
@@ -206,6 +230,17 @@ class BriefValidator:
                     field_name,
                     f"Invalid color format: '{value}' (expected: #hex, rgb(), var(--name))"
                 )
+
+        # WCAG guard: primary buttons carry white text — the chosen primary must
+        # contrast with white (>= 3:1, large-text/UI threshold). Keeps the freely
+        # chosen palette from producing unreadable pastel-on-white CTAs.
+        ratio = _contrast_ratio_with_white(brief.primary_color)
+        if ratio is not None and ratio < 3.0:
+            result.add_invalid(
+                "primary_color",
+                f"'{brief.primary_color}' has only {ratio:.2f}:1 contrast against white "
+                "text — pick a deeper shade of the same hue (>= 3:1 required for buttons)"
+            )
 
     def _validate_enums(
         self,

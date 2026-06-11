@@ -79,7 +79,7 @@ VISUAL LANGUAGE:
 - Subtle depth through soft shadows (not harsh drop shadows)
 - Smooth border-radius (8-16px) for a friendly feel
 - Gradients used sparingly for hero sections or CTAs
-- Color palette: primary indigo (#6366f1) with violet accents
+- Color palette: the design brief's palette — one dominant color with sharp accents
 
 LAYOUT PRINCIPLES:
 - Clear visual hierarchy: one hero element per section

@@ -109,9 +109,9 @@ LAYOUT PRINCIPLES:
 - Grid-aligned elements
 
 COLOR USAGE:
-- Primary: Professional blue (#2563eb)
-- Success/positive: Green (#059669)
-- CTA/attention: Amber (#f59e0b)
+- Primary: the brief's primary color, used with institutional restraint
+- Success/positive: a clearly positive tone fitting the palette
+- CTA/attention: the brief's accent color
 - Neutral grays for text and borders
 - High contrast for accessibility
 
