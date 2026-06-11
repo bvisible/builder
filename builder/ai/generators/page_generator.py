@@ -168,6 +168,12 @@ class PageGenerator:
         # Fix text color contrast issues (white text on light backgrounds)
         blocks = self._fix_contrast(blocks)
 
+        # WCAG hard guard: resolve the actual luminance of every element's
+        # effective background vs its text color and repair unreadable pairs
+        # (e.g. the LLM emitting backgroundColor AND color = var(--text-color)
+        # on a CTA — black on black).
+        blocks = self._fix_contrast_wcag(blocks, effective_primary, effective_secondary)
+
         # Sanitize Jinja includes — fix or remove invalid template paths
         blocks = self._sanitize_jinja_includes(blocks)
 
@@ -449,6 +455,131 @@ class PageGenerator:
                 child_styles['color'] = '#ffffff'
                 child['baseStyles'] = child_styles
             self._ensure_light_text_recursive(child)
+
+    # ------------------------------------------------------------------
+    # WCAG luminance guard
+    # ------------------------------------------------------------------
+    # Approximate luminance of the theme CSS variables (light theme values).
+    # Used when an element's color/background is expressed as a variable the
+    # generator cannot resolve from the brief.
+    CSS_VAR_FALLBACK_LUMINANCE = {
+        "var(--text-color)": 0.02,        # near-black body text
+        "var(--muted-color)": 0.18,       # medium gray
+        "var(--background-color)": 0.95,  # near-white page background
+        "var(--surface-color)": 0.93,
+        "var(--border-color)": 0.75,
+    }
+
+    def _fix_contrast_wcag(self, blocks: list[dict], primary_color: str = None,
+                           secondary_color: str = None) -> list[dict]:
+        """Hard contrast guard: compute the WCAG luminance of every element's
+        effective background and of its text color, and repair any pair below
+        a 3:1 ratio (large-text/UI threshold). Catches what the heuristic
+        passes miss — e.g. the LLM emitting the SAME value for backgroundColor
+        and color on a CTA (black on black), or a dark text on var-based dark
+        backgrounds."""
+        var_map = {}
+        if primary_color:
+            var_map["var(--primary-color)"] = primary_color
+        if secondary_color:
+            var_map["var(--secondary-color)"] = secondary_color
+        fixed_count = 0
+
+        def contrast(l1: float, l2: float) -> float:
+            hi, lo = max(l1, l2), min(l1, l2)
+            return (hi + 0.05) / (lo + 0.05)
+
+        def walk(block: dict, inherited_bg_lum):
+            nonlocal fixed_count
+            styles = block.get("baseStyles") or {}
+            own_bg = styles.get("backgroundColor") or styles.get("background") or ""
+            own_bg_lum = self._resolve_luminance(own_bg, var_map)
+            bg_lum = own_bg_lum if own_bg_lum is not None else inherited_bg_lum
+
+            element = block.get("element", "")
+            has_text = bool((block.get("innerHTML") or "").strip()) and element not in (
+                "img", "video", "iframe", "hr", "input", "textarea", "select",
+            )
+            if has_text and bg_lum is not None:
+                color = styles.get("color") or ""
+                text_lum = self._resolve_luminance(color, var_map)
+                if text_lum is None and not color:
+                    # No own color: rendered color is inherited. A parent fix
+                    # already turned dark-section children white, so only the
+                    # default dark body text remains a realistic assumption.
+                    text_lum = self.CSS_VAR_FALLBACK_LUMINANCE["var(--text-color)"]
+                if text_lum is not None and contrast(bg_lum, text_lum) < 3.0:
+                    styles["color"] = "#ffffff" if bg_lum < 0.35 else "var(--text-color)"
+                    block["baseStyles"] = styles
+                    fixed_count += 1
+
+            for child in block.get("children") or []:
+                if isinstance(child, dict):
+                    walk(child, bg_lum)
+
+        for block in blocks:
+            walk(block, None)
+        if fixed_count:
+            ai_log("info", "WCAG contrast guard repaired unreadable text", fixes=fixed_count)
+        return blocks
+
+    def _resolve_luminance(self, value: str, var_map: dict):
+        """WCAG relative luminance of a CSS color value, or None when the
+        value cannot be resolved (unknown variable, image url, ...)."""
+        if not value or not isinstance(value, str):
+            return None
+        v = value.strip().lower()
+        if v in ("transparent", "none", "inherit", "unset", "initial", "currentcolor"):
+            return None
+
+        # Resolve known CSS variables (brief colors first, theme fallbacks second)
+        for var_name, hex_val in var_map.items():
+            if v == var_name.lower():
+                v = hex_val.lower()
+                break
+        else:
+            if v in self.CSS_VAR_FALLBACK_LUMINANCE:
+                return self.CSS_VAR_FALLBACK_LUMINANCE[v]
+
+        # Gradients: approximate with the first resolvable color stop
+        if "gradient" in v:
+            m = re.search(r"#[0-9a-f]{6}\b|#[0-9a-f]{3}\b", v)
+            if m:
+                v = m.group(0)
+            else:
+                for var_name, hex_val in var_map.items():
+                    if var_name.lower() in v:
+                        v = hex_val.lower()
+                        break
+                else:
+                    return None
+        if v.startswith("var(") or "url(" in v:
+            return None
+
+        v = {"white": "#ffffff", "black": "#000000"}.get(v, v)
+
+        rgb = None
+        m = re.match(r"^#([0-9a-f]{3})$", v)
+        if m:
+            rgb = tuple(int(c * 2, 16) for c in m.group(1))
+        else:
+            m = re.match(r"^#([0-9a-f]{6})(?:[0-9a-f]{2})?$", v)
+            if m:
+                raw = m.group(1)
+                rgb = tuple(int(raw[i:i + 2], 16) for i in (0, 2, 4))
+            else:
+                m = re.match(r"^rgba?\(\s*(\d+)\s*,\s*(\d+)\s*,\s*(\d+)", v)
+                if m:
+                    rgb = tuple(min(255, int(g)) for g in m.groups())
+        if rgb is None:
+            return None
+
+        channels = []
+        for c in rgb:
+            c = c / 255
+            channels.append(c / 12.92 if c <= 0.04045 else ((c + 0.055) / 1.055) ** 2.4)
+        r, g, b = channels
+        return 0.2126 * r + 0.7152 * g + 0.0722 * b
 
     # Known valid Jinja include paths
     VALID_INCLUDES = {
