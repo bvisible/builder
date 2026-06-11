@@ -10,21 +10,33 @@ export default defineConfig({
 	},
 	plugins: [
 		frappeui({
+			frontendRoute: "/_builder",
 			frappeProxy: {
 				port: 8080,
 				source: "^/(app|desk|login|api|assets|files|pages|builder_assets)",
 			},
 			lucideIcons: true,
+			frappeTypes: {
+				input: {
+					builder: [
+						"block_template",
+						"builder_client_script",
+						"builder_component",
+						"builder_page",
+						"builder_page_client_script",
+						"builder_project_folder",
+						"builder_settings",
+						"builder_variable",
+						"user_font",
+					],
+				},
+			},
 		}),
 		vue(),
 	],
-	buildConfig: false,
 	build: {
 		chunkSizeWarningLimit: 1500,
-		outDir: `../builder/public/frontend`,
-		emptyOutDir: true,
 		target: "es2015",
-		sourcemap: true,
 		rollupOptions: {
 			// Ignore Frappe bench-specific imports that don't exist in standalone builds
 			external: [
@@ -34,6 +46,7 @@ export default defineConfig({
 		},
 	},
 	resolve: {
+		dedupe: ["prosemirror-model", "prosemirror-view", "prosemirror-state", "prosemirror-transform"],
 		alias: {
 			"@": path.resolve(__dirname, "src"),
 		},
@@ -42,12 +55,6 @@ export default defineConfig({
 		allowedHosts: true,
 	},
 	optimizeDeps: {
-		include: [
-			"frappe-ui > feather-icons",
-			"showdown",
-			"engine.io-client",
-			"interactjs",
-			"highlight.js/lib/core",
-		],
+		include: ["frappe-ui > feather-icons", "engine.io-client", "interactjs", "highlight.js/lib/core"],
 	},
 });

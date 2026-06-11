@@ -1,12 +1,14 @@
 import BlockContextMenu from "@/components/BlockContextMenu.vue";
 import { builderSettings } from "@/data/builderSettings";
-import { BuilderSettings } from "@/types/Builder/BuilderSettings";
+import { BuilderSettings } from "@/types/doctypes";
 import RealTimeHandler from "@/utils/realtimeHandler";
 import { useDark, useStorage } from "@vueuse/core";
+import { toast } from "frappe-ui";
+import { useTelemetry } from "frappe-ui/frappe";
 import { defineStore } from "pinia";
-import { toast } from "vue-sonner";
-import type Dialog from "../components/Controls/Dialog.vue";
 import BlockLayers from "./components/BlockLayers.vue";
+
+const { capture } = useTelemetry();
 
 declare global {
 	interface Window {
@@ -17,7 +19,6 @@ declare global {
 const useBuilderStore = defineStore("builderStore", {
 	state: () => ({
 		activeLayers: <InstanceType<typeof BlockLayers> | null>null,
-		appDialogs: <(typeof Dialog)[]>[],
 		blockContextMenu: <InstanceType<typeof BlockContextMenu> | null>null,
 		propertyFilter: <string | null>null,
 		mode: <BuilderMode>"select", // check setEvents in BuilderCanvas for usage
@@ -31,11 +32,10 @@ const useBuilderStore = defineStore("builderStore", {
 			optionsPanelWidth: 57,
 		},
 		leftPanelActiveTab: <LeftSidebarTabOption>"Layers",
-		rightPanelActiveTab: <RightSidebarTabOption>"Properties",
 		showRightPanel: <boolean>true,
 		showLeftPanel: <boolean>true,
 		showHTMLDialog: false,
-		showDataScriptDialog: <"block" | "page" | null>null,
+		showDataScriptDialog: <"page" | null>null,
 		realtime: new RealTimeHandler(),
 		readOnlyMode: false,
 		viewers: <UserInfo[]>[],
@@ -44,6 +44,11 @@ const useBuilderStore = defineStore("builderStore", {
 		isDark: useDark({
 			attribute: "data-theme",
 		}),
+		canvasDarkMode: useStorage("canvasDarkMode", false),
+		highlightBlocksWithClientScripts: false,
+		showSettingsDialog: false,
+		settingsActiveTab: <string>"page_general",
+		openImageUpload: false,
 	}),
 	getters: {
 		isAIEnabled(): boolean {
@@ -60,6 +65,7 @@ const useBuilderStore = defineStore("builderStore", {
 					home_page: route,
 				})
 				.then(() => {
+					capture("builder_homepage_set");
 					toast.success("Homepage set successfully");
 				});
 		},
@@ -69,6 +75,7 @@ const useBuilderStore = defineStore("builderStore", {
 					home_page: "",
 				})
 				.then(() => {
+					capture("builder_homepage_unset");
 					toast.success("This page will no longer be the homepage");
 				});
 		},

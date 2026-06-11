@@ -2,7 +2,9 @@ import useCanvasStore from "@/stores/canvasStore";
 import useComponentStore from "@/stores/componentStore";
 import {
 	addPxToNumber,
+	cssUrl,
 	dataURLtoFile,
+	generateId,
 	getBlockCopy,
 	getBlockInstance,
 	getBoxSpacing,
@@ -68,8 +70,8 @@ class Block implements BlockOptions {
 	activeState?: string | null = null;
 	dynamicValues: Array<BlockDataKey>;
 	blockClientScript?: string;
-	blockDataScript?: string;
 	props?: BlockProps;
+	editorConfig?: BlockEditorConfig;
 	// @ts-expect-error
 	referenceComponent: Block | null;
 	customAttributes: BlockAttributeMap;
@@ -92,7 +94,7 @@ class Block implements BlockOptions {
 					return componentStore.getComponentBlock(this.extendedFromComponent as string) || null;
 				} else if (this.isChildOfComponent) {
 					const componentBlock = componentStore.getComponentBlock(this.isChildOfComponent as string);
-					return findBlock(this.referenceBlockId as string, [componentBlock]);
+					return findBlockInTree(this.referenceBlockId as string, [componentBlock]);
 				}
 				return null;
 			}),
@@ -117,7 +119,7 @@ class Block implements BlockOptions {
 		this.originalElement = options.originalElement;
 
 		if (!options.blockId || options.blockId === "root") {
-			this.blockId = this.generateId();
+			this.blockId = generateId();
 		} else {
 			this.blockId = options.blockId;
 		}
@@ -134,8 +136,8 @@ class Block implements BlockOptions {
 		this.attributes = reactive(options.attributes || {});
 		this.dynamicValues = reactive(options.dynamicValues || []);
 		this.blockClientScript = options.blockClientScript || "";
-		this.blockDataScript = options.blockDataScript || "";
 		this.props = reactive(options.props || {});
+		this.editorConfig = options.editorConfig;
 
 		this.blockName = options.blockName;
 		delete this.attributes.style;
@@ -166,7 +168,7 @@ class Block implements BlockOptions {
 			if (file) {
 				this.setStyle("backgroundImage", "");
 				uploadBuilderAsset(file, true).then((obj) => {
-					this.setStyle("backgroundImage", `url(${obj.fileURL})`);
+					this.setStyle("backgroundImage", cssUrl(obj.fileURL));
 				});
 			}
 		}
@@ -442,39 +444,41 @@ class Block implements BlockOptions {
 	getNativeStyle(style: styleProperty) {
 		return this.getStyle(style, undefined, true);
 	}
-	generateId() {
-		return Math.random().toString(36).substr(2, 9);
-	}
 	getIcon() {
+		if (this.editorConfig?.icon) {
+			const icon = this.editorConfig.icon;
+			return icon.startsWith("lucide-") ? icon : `lucide-${icon}`;
+		}
+		// "lucide-toggle-left";
 		switch (true) {
 			case this.isRoot():
-				return "hash";
+				return "lucide-hash";
 			case this.isRepeater():
-				return "database";
+				return "lucide-database";
 			case this.isSVG():
-				return "aperture";
+				return "lucide-aperture";
 			case this.isHTML():
-				return "code";
+				return "lucide-code";
 			case this.isLink():
-				return "link";
+				return "lucide-link";
 			case this.isText():
-				return "type";
-			case this.isContainer() && this.isRow():
-				return "columns";
-			case this.isContainer() && this.isColumn():
-				return "credit-card";
-			case this.isGrid():
-				return "grid";
-			case this.isContainer():
-				return "square";
-			case this.isImage():
-				return "image";
+				return "lucide-type";
 			case this.isVideo():
-				return "film";
+				return "lucide-film";
+			case this.isContainer() && this.isRow():
+				return "lucide-columns";
+			case this.isContainer() && this.isColumn():
+				return "lucide-rows-2";
+			case this.isGrid():
+				return "lucide-grid-2x2";
+			case this.isContainer():
+				return "lucide-square";
+			case this.isImage():
+				return "lucide-image";
 			case this.isForm():
-				return "file-text";
+				return "lucide-file-text";
 			default:
-				return "square";
+				return "lucide-square";
 		}
 	}
 	isRoot() {
@@ -932,7 +936,7 @@ class Block implements BlockOptions {
 		return getBoxSpacing(this, "margin", opts);
 	}
 	getDynamicValues() {
-		let dynamicValues = this.dynamicValues;
+		const dynamicValues = [...this.dynamicValues];
 		const dynamicValueProperties = dynamicValues.map((v) => v.property);
 		if (this.isExtendedFromComponent()) {
 			const componentDynamicValues = this.referenceComponent?.getDynamicValues() || [];
@@ -1001,18 +1005,6 @@ class Block implements BlockOptions {
 	}
 	setBlockClientScript(script: string) {
 		this.blockClientScript = script;
-	}
-	getBlockDataScript(): string {
-		let blockDataScript = "";
-		if (this.isExtendedFromComponent() && !this.blockDataScript) {
-			blockDataScript = this.referenceComponent?.getBlockDataScript() || "";
-		} else {
-			blockDataScript = this.blockDataScript || "";
-		}
-		return blockDataScript;
-	}
-	setBlockDataScript(script: string) {
-		this.blockDataScript = script;
 	}
 	getBlockProps(): BlockProps {
 		let blockProps = {};
@@ -1118,7 +1110,7 @@ function resetBlock(
 	resetChildren: boolean = true,
 	resetOverrides: boolean = true,
 ) {
-	block.blockId = block.generateId();
+	block.blockId = generateId();
 	if (resetOverrides) {
 		delete block.innerHTML;
 		delete block.element;
@@ -1133,7 +1125,6 @@ function resetBlock(
 		block.dynamicValues = [];
 		block.props = {};
 		block.blockClientScript = "";
-		block.blockDataScript = "";
 	}
 
 	if (resetChildren) {
@@ -1143,13 +1134,13 @@ function resetBlock(
 	}
 }
 
-function findBlock(blockId: string, blocks: Block[]): Block | null {
+export function findBlockInTree(blockId: string, blocks: Block[]): Block | null {
 	for (const block of blocks) {
 		if (block.blockId === blockId) {
 			return block;
 		}
 		if (block.children) {
-			const found = findBlock(blockId, block.children);
+			const found = findBlockInTree(blockId, block.children);
 			if (found) {
 				return found;
 			}

@@ -2,10 +2,12 @@
 	<bubble-menu
 		ref="menu"
 		:editor="editor"
-		:tippy-options="bubbleMenuOptions.tippyOptions"
+		:append-to="overlayElement"
+		:options="{ strategy: 'absolute', placement: 'bottom' }"
+		:plugin-key="bubbleMenuPluginKey"
+		v-show="!canvasProps?.panning && !canvasProps?.scaling"
 		v-if="editor"
-		class="rounded-md border border-outline-gray-3 bg-surface-white p-1 text-lg text-ink-gray-9 shadow-2xl"
-		:should-show="bubbleMenuOptions.shouldShow">
+		class="rounded-md border border-outline-gray-3 bg-surface-white p-1 text-lg text-ink-gray-9 shadow-2xl">
 		<div
 			v-if="settingLink"
 			class="flex flex-col gap-2 p-1"
@@ -62,14 +64,14 @@
 				@click="editor?.chain().focus().toggleBold().run()"
 				class="rounded px-2 py-1 hover:bg-surface-gray-2"
 				:class="{ 'bg-surface-gray-3': editor.isActive('bold') }">
-				<FeatherIcon class="h-3 w-3" name="bold" :stroke-width="2" />
+				<span class="lucide-bold h-3 w-3" aria-hidden="true" />
 			</button>
 			<button
 				v-show="!block.isHeader()"
 				@click="editor?.chain().focus().toggleItalic().run()"
 				class="rounded px-2 py-1 hover:bg-surface-gray-2"
 				:class="{ 'bg-surface-gray-3': editor.isActive('italic') }">
-				<FeatherIcon class="h-3 w-3" name="italic" :stroke-width="2" />
+				<span class="lucide-italic h-3 w-3" aria-hidden="true" />
 			</button>
 			<button
 				v-show="!block.isHeader()"
@@ -77,6 +79,14 @@
 				class="rounded px-2 py-1 hover:bg-surface-gray-2"
 				:class="{ 'bg-surface-gray-3': editor.isActive('strike') }">
 				<StrikeThroughIcon />
+			</button>
+
+			<button
+				v-show="!block.isHeader()"
+				@click="editor?.chain().focus().toggleUnderline().run()"
+				class="rounded px-2 py-1 hover:bg-surface-gray-2"
+				:class="{ 'bg-surface-gray-3': editor.isActive('underline') }">
+				<UnderlineIcon />
 			</button>
 
 			<button
@@ -89,7 +99,7 @@
 				"
 				class="rounded px-2 py-1 hover:bg-surface-gray-2"
 				:class="{ 'bg-surface-gray-3': editor.isActive('link') }">
-				<FeatherIcon class="h-3 w-3" name="link" :stroke-width="2" />
+				<span class="lucide-link h-3 w-3" aria-hidden="true" />
 			</button>
 			<div v-show="!block.isHeader()">
 				<ColorPicker
@@ -136,11 +146,13 @@ import type Block from "@/block";
 import ColorPicker from "@/components/Controls/ColorPicker.vue";
 import Input from "@/components/Controls/Input.vue";
 import StrikeThroughIcon from "@/components/Icons/StrikeThrough.vue";
-import { BubbleMenu, type Editor } from "@tiptap/vue-3";
+import UnderlineIcon from "@/components/Icons/Underline.vue";
+import type { Editor } from "@tiptap/vue-3";
+import { BubbleMenu } from "@tiptap/vue-3/menus";
 import { vOnClickOutside } from "@vueuse/components";
-import { debounce } from "frappe-ui";
+import { debouncedWatch } from "@vueuse/core";
+import { debounce, toast } from "frappe-ui";
 import { computed, nextTick, ref, watch, type Ref } from "vue";
-import { toast } from "vue-sonner";
 
 const props = defineProps<{
 	block: Block;
@@ -156,7 +168,7 @@ const openInNewTab = ref(false);
 const linkInput = ref(null) as Ref<typeof Input | null>;
 
 const editorRef = computed(() => props.editor);
-const isEditableRef = computed(() => props.isEditable);
+const bubbleMenuPluginKey = "bubbleMenu";
 
 const selectedColor = computed(() => {
 	if (props.editor?.isActive("textStyle")) {
@@ -202,6 +214,8 @@ const setLink = (value: string | null, closeModal = true) => {
 };
 
 const setHeading = (level: 1 | 2 | 3) => {
+	props.block.setBaseStyle("font-size", level === 1 ? "2rem" : level === 2 ? "1.5rem" : "1.25rem");
+	props.block.setBaseStyle("font-weight", "bold");
 	const tag = `h${level}`;
 	if (props.block.element === tag) {
 		props.block.element = "p";
@@ -242,6 +256,8 @@ const setTextColor = debounce((color: string | undefined) => {
 // Keyboard handling
 const handleKeydown = (e: KeyboardEvent) => {
 	if (e.key === "k" && e.metaKey) {
+		e.preventDefault();
+		e.stopPropagation();
 		const blockWarnings = {
 			isHeader: "You cannot make heading a link",
 			isLink: "You cannot add link inside a link block",
@@ -270,26 +286,14 @@ watch(
 	{ immediate: true },
 );
 
-const bubbleMenuOptions = {
-	tippyOptions: {
-		appendTo: props.overlayElement,
-		interactive: true,
-		onCreate: (instance: any) => {
-			watch(
-				() => props.canvasProps,
-				() => {
-					if (props.canvasProps?.panning || props.canvasProps?.scaling) {
-						instance.hide();
-					} else {
-						instance.show();
-					}
-				},
-				{ deep: true },
-			);
-		},
+debouncedWatch(
+	() => [props.canvasProps?.panning, props.canvasProps?.scaling],
+	() => {
+		nextTick(() => {
+			props.editor?.commands.setMeta(bubbleMenuPluginKey, "updatePosition");
+		});
 	},
-	shouldShow: () => isEditableRef.value,
-};
+);
 
 defineExpose({
 	handleKeydown,

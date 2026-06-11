@@ -2,40 +2,35 @@
 # For license information, please see license.txt
 
 import copy
-import os
 import re
-import shutil
 from typing import Any
 
 import bs4 as bs
 import frappe
 import frappe.utils
-from frappe.modules import scrub
-from frappe.modules.export_file import export_to_files
-from frappe.utils import set_request
+from frappe.utils import now, set_request
 from frappe.utils.caching import redis_cache
 from frappe.utils.jinja import render_template
+from frappe.utils.telemetry import capture
 from frappe.website.page_renderers.document_page import DocumentPage
 from frappe.website.path_resolver import evaluate_dynamic_routes
 from frappe.website.path_resolver import resolve_path as original_resolve_path
-from frappe.website.serve import get_response_content
 from frappe.website.utils import clear_cache
 from frappe.website.website_generator import WebsiteGenerator
-from jinja2.exceptions import TemplateSyntaxError
 
+from builder.builder.doctype.builder_project_folder.builder_project_folder import is_system_activity
+from builder.builder.doctype.user_font.user_font import get_all_user_fonts
 from builder.export_import_standard_page import export_page_as_standard
 from builder.hooks import builder_path
 from builder.html_preview_image import generate_preview
+from builder.template_sync import delete_template_page_fixture, export_template_group
 from builder.utils import (
-	Block,
 	ColonRule,
 	camel_case_to_kebab_case,
 	clean_data,
-	copy_img_to_asset_folder,
 	escape_single_quotes,
 	execute_script,
 	get_builder_page_preview_file_paths,
-	get_template_assets_folder_path,
 	is_component_used,
 	sanitize_style_value,
 	split_styles,
@@ -123,7 +118,9 @@ class BuilderPage(WebsiteGenerator):
 		preview: DF.Data | None
 		project_folder: DF.Link | None
 		published: DF.Check
+		published_at: DF.Datetime | None
 		route: DF.Data | None
+		template_group: DF.Data | None
 	# end: auto-generated types
 
 	def onload(self):
@@ -143,6 +140,7 @@ class BuilderPage(WebsiteGenerator):
 		self.process_blocks()
 		self.set_preview()
 		self.set_default_values()
+		capture("builder_page_created", "builder")
 
 	def process_blocks(self):
 		for block_type in ["blocks", "draft_blocks"]:
@@ -165,6 +163,21 @@ class BuilderPage(WebsiteGenerator):
 				self.autoname()
 			self.route = f"pages/{self.name}"
 
+	def validate(self):
+		super().validate()  # WebsiteGenerator route normalization
+
+		# pages of shipped template groups can only be edited in developer mode
+		if (
+			self.is_template
+			and self.template_group
+			and not frappe.conf.get("developer_mode")
+			and not is_system_activity()
+		):
+			frappe.throw(
+				frappe._("Template pages can only be modified in developer mode."),
+				frappe.PermissionError,
+			)
+
 	def on_update(self):
 		if self.has_value_changed("route"):
 			if self.route and (":" in self.route or "<" in self.route):
@@ -176,6 +189,7 @@ class BuilderPage(WebsiteGenerator):
 			self.has_value_changed("dynamic_route")
 			or self.has_value_changed("route")
 			or self.has_value_changed("published")
+			or self.has_value_changed("published_at")
 			or self.has_value_changed("disable_indexing")
 			or self.has_value_changed("blocks")
 		):
@@ -186,8 +200,17 @@ class BuilderPage(WebsiteGenerator):
 			if frappe.get_cached_value("Builder Settings", "Builder Settings", "home_page") == self.route:
 				frappe.db.set_value("Builder Settings", "Builder Settings", "home_page", None)
 
-		if frappe.conf.developer_mode and self.is_template:
-			save_as_template(self)
+		if (
+			frappe.conf.developer_mode
+			and self.is_template
+			and self.template_group
+			and not is_system_activity()
+		):
+			# target app is the hub on the hub site (template_target_app=builder_hub),
+			# builder by default — keeps builder from importing the hub (circular)
+			export_template_group(
+				self.template_group, target_app=frappe.conf.get("template_target_app") or "builder"
+			)
 
 		if frappe.conf.developer_mode and self.is_standard and self.app:
 			export_page_as_standard(self.name, target_app=self.app)
@@ -198,15 +221,14 @@ class BuilderPage(WebsiteGenerator):
 		clear_cache(self.route)
 
 	def on_trash(self):
-		if self.is_template and frappe.conf.developer_mode:
-			page_template_folder = os.path.join(
-				frappe.get_app_path("builder"), "builder", "builder_page_template", scrub(str(self.name))
-			)
-			if os.path.exists(page_template_folder):
-				shutil.rmtree(page_template_folder)
-			assets_path = get_template_assets_folder_path(self)
-			if os.path.exists(assets_path):
-				shutil.rmtree(assets_path)
+		if self.is_template and self.template_group:
+			if frappe.conf.developer_mode:
+				delete_template_page_fixture(self, app=frappe.conf.get("template_target_app") or "builder")
+			elif not is_system_activity():
+				frappe.throw(
+					frappe._("Template pages can only be deleted in developer mode."),
+					frappe.PermissionError,
+				)
 
 	def add_comment(self, comment_type="Comment", text=None, comment_email=None, comment_by=None):
 		if comment_type in ["Attachment Removed", "Attachment"]:
@@ -222,10 +244,12 @@ class BuilderPage(WebsiteGenerator):
 	@frappe.whitelist()
 	def publish(self):
 		self.published = 1
+		self.published_at = now()
 		if self.draft_blocks:
 			self.blocks = self.draft_blocks
 			self.draft_blocks = None
 		self.save()
+		capture("builder_page_published", "builder")
 		frappe.enqueue_doc(
 			self.doctype,
 			self.name,
@@ -240,25 +264,36 @@ class BuilderPage(WebsiteGenerator):
 	def unpublish(self):
 		self.published = 0
 		self.save()
+		capture("builder_page_unpublished", "builder")
 
 	def get_context(self, context):
 		# delete default favicon
 		del context.favicon
 		context.disable_indexing = self.disable_indexing
-		page_data = self.get_page_data()
+
+		context.preview = getattr(getattr(frappe.local, "request", None), "for_preview", None)
+
+		if context.preview:
+			context.disable_auto_dark_mode = 0
+		else:
+			context.disable_auto_dark_mode = frappe.get_cached_value(
+				"Builder Settings", "Builder Settings", "disable_auto_dark_mode"
+			)
+
+		page_data = self._get_page_data(for_render=True)
 		if page_data.get("title"):
 			context.title = page_data.get("page_title")
 
 		blocks = self.blocks
-		context.preview = getattr(getattr(frappe.local, "request", None), "for_preview", None)
 
 		if context.preview and self.draft_blocks:
 			blocks = self.draft_blocks
 
-		content, style, fonts, has_block_script = get_block_html(blocks)
+		content, style, fonts, has_dual_mode_image = get_block_html(blocks)
 
-		if self.dynamic_route or page_data or has_block_script:
+		if self.dynamic_route or page_data or self.page_data_script:
 			context.no_cache = 1
+		context.has_dual_mode_image = has_dual_mode_image
 
 		self.set_custom_font(context, fonts)
 		context.fonts = fonts
@@ -268,7 +303,7 @@ class BuilderPage(WebsiteGenerator):
 		if frappe.form_dict and self.dynamic_route:
 			query_string = "&".join(
 				[
-					f"{k}={frappe.utils.escape_html(frappe.utils.quote(v))}"
+					f"{frappe.utils.escape_html(frappe.utils.quote(k))}={frappe.utils.escape_html(frappe.utils.quote(v))}"
 					for k, v in frappe.form_dict.items()
 				]
 			)
@@ -288,16 +323,13 @@ class BuilderPage(WebsiteGenerator):
 		self.set_favicon(context)
 		self.set_language(context)
 		context.page_data = clean_data(context.page_data)
-		try:
-			rendered_content = render_template(context.__content, context)
-			# Replace <body> tags with <div> to avoid nested body elements
-			# when the template already provides a body tag
-			import re
-			rendered_content = re.sub(r'<body([^>]*)>', r'<div\1 class="builder-page-content">', rendered_content)
-			rendered_content = re.sub(r'</body>', '</div>', rendered_content)
-			context["__content"] = rendered_content
-		except TemplateSyntaxError:
-			raise
+		rendered_content = render_template(context.__content, context)
+		# Replace <body> tags with <div> to avoid nested body elements
+		# when the template already provides a body tag
+		import re
+		rendered_content = re.sub(r'<body([^>]*)>', r'<div\1 class="builder-page-content">', rendered_content)
+		rendered_content = re.sub(r'</body>', '</div>', rendered_content)
+		context["__content"] = rendered_content
 
 	def set_meta_tags(self, context, page_data=None):
 		if not page_data:
@@ -367,11 +399,20 @@ class BuilderPage(WebsiteGenerator):
 
 	@frappe.whitelist()
 	def get_page_data(self, route_variables: dict | None = None) -> dict:
+		return self._get_page_data(route_variables=route_variables, for_render=False)
+
+	def _get_page_data(self, route_variables: dict | None = None, for_render: bool = False) -> dict:
 		if route_variables:
 			frappe.form_dict.update({k: v for k, v in route_variables.items()})
 		page_data = frappe._dict()
 		if self.page_data_script:
-			_locals = dict(data=frappe._dict(), page=frappe._dict())
+
+			def redirect(location: str, http_status_code: int = 302):
+				if for_render:
+					frappe.local.flags.redirect_location = location
+					raise frappe.Redirect(http_status_code)
+
+			_locals = dict(data=frappe._dict(), page=frappe._dict(), redirect=redirect)
 			execute_script(self.page_data_script, _locals, self.name)
 			page_data.update(_locals["data"])
 			page_data.update(_locals["page"])
@@ -384,9 +425,7 @@ class BuilderPage(WebsiteGenerator):
 	def generate_page_preview_image(self, html=None):
 		public_path, local_path = get_builder_page_preview_file_paths(self)
 		if not html:
-			set_request(method="GET", path=self.route)
-			frappe.local.request.for_preview = True
-			html = get_response_content()
+			html = self.get_preview_html()
 
 		generate_preview(
 			html,
@@ -394,28 +433,43 @@ class BuilderPage(WebsiteGenerator):
 		)
 		self.db_set("preview", public_path, commit=True, update_modified=False)
 
+	def get_preview_html(self) -> str:
+		"""Render this page in preview mode (uses draft_blocks when present), so a
+		preview can be generated for unpublished/draft pages too — not just for
+		pages reachable via their published route."""
+		set_request(method="GET", path=f"/{self.route or ''}")
+		frappe.local.request.for_preview = True
+		frappe.local.no_cache = 1
+		renderer = BuilderPageRenderer(path="")
+		renderer.docname = self.name
+		renderer.doctype = "Builder Page"
+		renderer.init_context()
+		return str(renderer.render().data, "utf-8")
+
 	def set_custom_font(self, context, font_map):
-		user_fonts = frappe.get_all(
-			"User Font",
-			fields=["font_name", "font_file"],
-			filters={"font_name": ("in", list(font_map.keys()))},
-		)
+		all_user_fonts = get_all_user_fonts()
+		user_fonts = [f for f in all_user_fonts if f.font_name in font_map]
 		if user_fonts:
 			context.custom_fonts = user_fonts
 		for font in user_fonts:
 			font_map.pop(font.font_name, None)
 
 	def replace_component(self, target_component, replace_with):
+		updates = {}
 		if self.blocks:
 			blocks = frappe.parse_json(self.blocks)
 			self.blocks = frappe.as_json(replace_component_in_blocks(blocks, target_component, replace_with))
-			self.db_set("blocks", self.blocks, commit=True, update_modified=False)
+			updates["blocks"] = self.blocks
 		if self.draft_blocks:
 			draft_blocks = frappe.parse_json(self.draft_blocks)
 			self.draft_blocks = frappe.as_json(
 				replace_component_in_blocks(draft_blocks, target_component, replace_with)
 			)
-			self.db_set("draft_blocks", self.draft_blocks, commit=True, update_modified=False)
+			updates["draft_blocks"] = self.draft_blocks
+
+		# one db_set (single commit per page) instead of one commit per field
+		if updates:
+			self.db_set(updates, commit=True, update_modified=False)
 
 		self.clear_route_cache()
 
@@ -526,7 +580,7 @@ def get_block_html(blocks: str | list) -> tuple[str, str, dict, bool]:
 		blocks: JSON string or list of block dictionaries
 
 	#### Returns:
-		Tuple of (`html_content`, `css_styles`, `font_map`, `has_block_script`)
+		Tuple of (`html_content`, `css_styles`, `font_map`, `has_dual_mode_image`)
 	"""
 	blocks = frappe.parse_json(blocks)
 	if not isinstance(blocks, list):
@@ -541,7 +595,7 @@ def get_block_html(blocks: str | list) -> tuple[str, str, dict, bool]:
 		"soup": soup,
 		"style_tag": style_tag,
 		"font_map": font_map,
-		"has_block_script": False,
+		"has_dual_mode_image": False,
 		"standard_props_stack": {},  # prop_name -> list of prop_info
 		"global_script_tag": soup.new_tag("script"),
 		"used_block_scripts": set(),
@@ -554,19 +608,25 @@ def get_block_html(blocks: str | list) -> tuple[str, str, dict, bool]:
 		props = process_block_props(block, None, shared_state["standard_props_stack"])
 		block_context = get_block_context(block, props)
 
-		shared_state["has_block_script"] = block_context["block_data_script"] is not None
-
 		tag = build_tag(block, shared_state)
 		# Add global script to the top
 		tag.insert(0, shared_state["global_script_tag"])
 
 		html = wrap_html_with_context(str(tag), block_context)
+		cleanup_props_stack(props, shared_state["standard_props_stack"])
 		html_parts.append(html)
 
-	return "".join(html_parts), str(style_tag), font_map, shared_state["has_block_script"]
+	return (
+		"".join(html_parts),
+		str(style_tag),
+		font_map,
+		shared_state["has_dual_mode_image"],
+	)
 
 
-def build_tag(block: dict, state: dict, data_key: dict | None = None) -> bs.Tag:
+def build_tag(
+	block: dict, state: dict, data_key: dict | None = None, ancestor_font: str | None = None
+) -> bs.Tag:
 	"""
 	Transforms a single block to an HTML tag.
 
@@ -574,16 +634,28 @@ def build_tag(block: dict, state: dict, data_key: dict | None = None) -> bs.Tag:
 		BeautifulSoup tag element
 	"""
 
-	props = process_block_props(block, data_key, state["standard_props_stack"])
-
 	set_dynamic_content_placeholders(block, data_key)
 
-	tag = create_html_tag(block, state)
+	all_styles = [
+		block.get("baseStyles") or {},
+		block.get("mobileStyles") or {},
+		block.get("tabletStyles") or {},
+		block.get("rawStyles") or {},
+	]
+	resolved_font = (
+		next(
+			(s.get("fontFamily", "").strip("'\"") for s in all_styles if s.get("fontFamily")),
+			None,
+		)
+		or ancestor_font
+	)
+
+	tag = create_html_tag(block, state, ancestor_font=resolved_font)
 
 	if is_repeater_block(block):
-		render_repeater_children(tag, block, data_key, state)
+		render_repeater_children(tag, block, data_key, state, ancestor_font=resolved_font)
 	else:
-		render_children(tag, block, data_key, state)
+		render_children(tag, block, data_key, state, ancestor_font=resolved_font)
 
 	attach_client_script(tag, block, state)
 
@@ -591,8 +663,6 @@ def build_tag(block: dict, state: dict, data_key: dict | None = None) -> bs.Tag:
 	effective_element = block.get("originalElement") or block.get("element")
 	if effective_element == "body":
 		tag.append("{% include 'templates/generators/webpage_scripts.html' %}")
-
-	cleanup_props_stack(props, state["standard_props_stack"])
 
 	return tag
 
@@ -602,15 +672,15 @@ def get_block_context(block: dict, props: dict) -> dict:
 	Get the Jinja template context for a block.
 
 	#### Returns:
-		Dict with keys: { `all_props`, `passed_down_props`, `block_data_script` }
+		Dict with keys: { `all_props`, `passed_down_props` }
 	"""
 	all_props = {name: info["value"] for name, info in props.items()}
 	passed_down_props = {name: info["value"] for name, info in props.items() if info["is_passed_down"]}
 
 	return {
+		"block_id": block.get("blockId"),
 		"all_props": all_props,
 		"passed_down_props": passed_down_props,
-		"block_data_script": block.get("blockDataScript"),
 	}
 
 
@@ -677,9 +747,7 @@ def get_dynamic_props_template(
 	prop_value: str, comes_from: str, data_key: dict | None, default_value: Any
 ) -> str:
 	"""Get a Jinja template reference for dynamic properties."""
-	if comes_from == "blockDataScript":
-		key = jinja_safe_key(f"block.{prop_value}")
-	elif comes_from == "props":
+	if comes_from == "props":
 		key = jinja_safe_key(f"props.{prop_value}")
 	else:  # dataScript
 		if data_key:
@@ -692,7 +760,7 @@ def get_dynamic_props_template(
 	return f"{{{{ {key} if {key} is defined else '{fallback}' }}}}"
 
 
-def create_html_tag(block: dict, state: dict) -> bs.Tag:
+def create_html_tag(block: dict, state: dict, ancestor_font: str | None = None) -> bs.Tag:
 	"""Create HTML tag element with attributes, classes, and styling."""
 	soup = state["soup"]
 
@@ -713,8 +781,10 @@ def create_html_tag(block: dict, state: dict) -> bs.Tag:
 			dark_source = soup.new_tag("source")
 			dark_source["srcset"] = dark_src
 			dark_source["media"] = "(prefers-color-scheme: dark)"
+			dark_source["data-scheme"] = "dark"  # used by manual theme toggle script
 			picture_tag.append(dark_source)
 			picture_tag.attrs["style"] = "display: contents;"
+			state["has_dual_mode_image"] = True
 
 			tag = soup.new_tag("img")
 			tag.attrs = {k: v for k, v in attributes.items() if k != "darkSrc"}
@@ -733,7 +803,7 @@ def create_html_tag(block: dict, state: dict) -> bs.Tag:
 	for key, value in block.get("customAttributes", {}).items():
 		tag[key] = value
 
-	classes = build_tag_classes(block, state)
+	classes = build_tag_classes(block, state, ancestor_font=ancestor_font)
 	tag.attrs["class"] = " ".join(classes)
 
 	add_inner_html_content(tag, block, state)
@@ -745,7 +815,7 @@ def create_html_tag(block: dict, state: dict) -> bs.Tag:
 	return tag
 
 
-def build_tag_classes(block: dict, state: dict) -> list[str]:
+def build_tag_classes(block: dict, state: dict, ancestor_font: str | None = None) -> list[str]:
 	"""Build list of CSS classes for the tag."""
 	classes = block.get("classes", [])
 	if isinstance(classes, str):
@@ -759,13 +829,13 @@ def build_tag_classes(block: dict, state: dict) -> list[str]:
 		classes.insert(0, "__text_block__")
 
 	if block.get("baseStyles"):
-		style_class = generate_and_apply_styles(block, state)
+		style_class = generate_and_apply_styles(block, state, ancestor_font=ancestor_font)
 		classes.insert(0, style_class)
 
 	return classes
 
 
-def generate_and_apply_styles(block: dict, state: dict) -> str:
+def generate_and_apply_styles(block: dict, state: dict, ancestor_font: str | None = None) -> str:
 	"""Generate a unique style class and append all styles to the style tag."""
 	style_class = f"fb-{frappe.generate_hash(length=8)}"
 	style_tag = state["style_tag"]
@@ -784,7 +854,7 @@ def generate_and_apply_styles(block: dict, state: dict) -> str:
 		styles["tablet"]["regular"],
 		styles["raw"]["regular"],
 	]
-	set_fonts(style_list, font_map)
+	set_fonts(style_list, font_map, inherited_font=ancestor_font)
 
 	# Append styles for different states and devices
 	# Base and raw
@@ -822,7 +892,9 @@ def is_repeater_block(block: dict) -> bool:
 	return bool(block.get("isRepeaterBlock") and block.get("children") and block.get("dataKey"))
 
 
-def render_children(tag: bs.Tag, block: dict, data_key: dict | None, state: dict):
+def render_children(
+	tag: bs.Tag, block: dict, data_key: dict | None, state: dict, ancestor_font: str | None = None
+):
 	"""Render (non-repeater) children."""
 	for child in block.get("children", []) or []:
 		child = extend_block_with_component(child)
@@ -830,14 +902,15 @@ def render_children(tag: bs.Tag, block: dict, data_key: dict | None, state: dict
 		child_context = get_block_context(child, child_props)
 		child_context["visibility_key"] = get_visibility_condition_key(child, data_key)
 
-		state["has_block_script"] = child_context["block_data_script"] is not None
-
-		child_tag = build_tag(child, state, data_key)
+		child_tag = build_tag(child, state, data_key, ancestor_font=ancestor_font)
 
 		append_child_with_context(tag, child_tag, child_context)
+		cleanup_props_stack(child_props, state["standard_props_stack"])
 
 
-def render_repeater_children(tag: bs.Tag, block: dict, data_key: dict | None, state: dict):
+def render_repeater_children(
+	tag: bs.Tag, block: dict, data_key: dict | None, state: dict, ancestor_font: str | None = None
+):
 	"""Render children for repeater blocks (with for loops)."""
 	loop_info = get_loop_info(block, data_key, state["standard_props_stack"])
 
@@ -849,15 +922,14 @@ def render_repeater_children(tag: bs.Tag, block: dict, data_key: dict | None, st
 	child_props = process_block_props(child, loop_info["data_key"], state["standard_props_stack"])
 	child_context = get_block_context(child, child_props)
 
-	state["has_block_script"] = child_context["block_data_script"] is not None
-
 	if block.get("dataKey", {}).get("comesFrom") == "props":
 		data_key_key = block.get("dataKey").get("key")
 		child_context["default_props"] = extract_loop_variables(data_key_key, state["standard_props_stack"])
 
-	child_tag = build_tag(child, state, loop_info["data_key"])
+	child_tag = build_tag(child, state, loop_info["data_key"], ancestor_font=ancestor_font)
 
 	append_child_with_context(tag, child_tag, child_context)
+	cleanup_props_stack(child_props, state["standard_props_stack"])
 
 	tag.append("{% endfor %}")
 
@@ -883,13 +955,6 @@ def get_loop_info(block: dict, data_key: dict | None, props_stack: dict) -> dict
 			safe_key = f"{safe_key}.items()"
 
 		return {"loop_var": loop_var, "iterator_key": safe_key, "data_key": data_key}
-
-	elif comes_from == "blockDataScript":
-		return {
-			"loop_var": "block",
-			"iterator_key": jinja_safe_key(f"block.{iterator_key}"),
-			"data_key": data_key,
-		}
 
 	else:  # dataScript
 		if data_key:
@@ -943,8 +1008,6 @@ def get_visibility_condition_key(block: dict, data_key: dict | None) -> str | No
 	# Get key based on source
 	if comes_from == "props":
 		return jinja_safe_key(f"props.{key}")
-	elif comes_from == "blockDataScript":
-		return jinja_safe_key(f"block.{key}")
 	else:  # dataScript
 		if data_key:
 			return f"{extract_data_key(data_key)}.{key}"
@@ -965,7 +1028,7 @@ def attach_client_script(tag: bs.Tag, block: dict, state: dict):
 	# Add global function definition (only once)
 	if script_unique_id not in state["used_block_scripts"]:
 		state["global_script_tag"].append(
-			f"function client_script_{script_unique_id}(props, block_data) {{{script}}}\n"
+			f"function client_script_{script_unique_id}(props) {{{script}}}\n"
 		)
 		state["used_block_scripts"].add(script_unique_id)
 
@@ -977,8 +1040,7 @@ def attach_client_script(tag: bs.Tag, block: dict, state: dict):
 	local_script.string = (
 		f"(client_script_{script_unique_id}).call("
 		f"document.querySelector('[data-block-uid=\"{{{{ unique_hash }}}}\"]'), "
-		f"{{{{ props | to_safe_json }}}}, "
-		f"{{{{ block.block_data | to_safe_json }}}}"
+		f"{{{{ props | to_safe_json }}}}"
 		f");"
 	)
 	tag.append(local_script)
@@ -989,6 +1051,7 @@ def append_child_with_context(parent: bs.Tag, child: bs.Tag, context: dict):
 	# Generate unique hash for this block instance
 	# This is unique for each block irrespective of loops or components
 	parent.append("{% with unique_hash = (loop.index if loop is defined else 0) | hash %}")
+	parent.append(f"{{% with block_id = '{context['block_id']}' %}}")
 
 	if context.get("default_props"):
 		props_str = ", ".join([f"'{var}': {var}" for var in context["default_props"]])
@@ -1001,10 +1064,6 @@ def append_child_with_context(parent: bs.Tag, child: bs.Tag, context: dict):
 	parent.append(f"{{% with props = {all_props_literal} | combine(passed_down_props) %}}")
 	parent.append(f"{{% with passed_down_props = passed_down_props | combine({passed_down_literal}) %}}")
 
-	if context.get("block_data_script"):
-		escaped_script = escape_single_quotes(context["block_data_script"])
-		parent.append(f"{{% with block = block | execute_script_and_combine('{escaped_script}', props) %}}")
-
 	if context.get("visibility_key"):
 		parent.append(f"{{% if {context['visibility_key']} %}}")
 
@@ -1013,15 +1072,13 @@ def append_child_with_context(parent: bs.Tag, child: bs.Tag, context: dict):
 	if context.get("visibility_key"):
 		parent.append("{% endif %}")
 
-	if context.get("block_data_script"):
-		parent.append("{% endwith %}")
-
 	parent.append("{% endwith %}")
 	parent.append("{% endwith %}")
 
 	if context.get("default_props"):
 		parent.append("{% endwith %}{% endwith %}")
 
+	parent.append("{% endwith %}")
 	parent.append("{% endwith %}")
 
 
@@ -1072,8 +1129,6 @@ def get_dynamic_value_key(dynamic_value_doc: dict, original_key: str, data_key: 
 
 	if comes_from == "props":
 		return jinja_safe_key(f"props.{original_key}")
-	elif comes_from == "blockDataScript":
-		return jinja_safe_key(f"block.{original_key}")
 	else:  # dataScript
 		key = dynamic_value_doc.get("key")
 		if data_key:
@@ -1091,13 +1146,6 @@ def wrap_html_with_context(html: str, context: dict) -> str:
 	"""
 	all_props_literal = to_jinja_literal(context["all_props"])
 	passed_down_literal = to_jinja_literal(context["passed_down_props"])
-
-	script_escaped = escape_single_quotes(context.get("block_data_script") or "")
-	html = (
-		f"{{% with block = {{}} | execute_script_and_combine('{script_escaped}', {all_props_literal}) %}}"
-		f"{html}"
-		f"{{% endwith %}}"
-	)
 
 	# Set props contexts
 	html = f"{{% with props = {all_props_literal} %}}{html}{{% endwith %}}"
@@ -1134,9 +1182,14 @@ def wrap_with_media_query(style_string, device):
 
 
 def get_style(style_obj):
+	def _css_value(key, value):
+		if key == "fontFamily" and isinstance(value, str):
+			value = value.strip("'\"").replace(" ", "\\ ")
+		return sanitize_style_value(value)
+
 	return (
 		"".join(
-			f"{camel_case_to_kebab_case(key)}: {sanitize_style_value(value)};"
+			f"{camel_case_to_kebab_case(key)}: {_css_value(key, value)};"
 			for key, value in style_obj.items()
 			if value is not None and value != "" and not key.startswith("__")
 		)
@@ -1162,7 +1215,7 @@ def append_state_style(style_obj, style_tag, style_class, device="desktop"):
 			style_tag.append(wrap_with_media_query(style_string, device))
 
 
-def set_fonts(styles, font_map):
+def set_fonts(styles, font_map, inherited_font=None):
 	weight_map = {
 		"thin": "100",
 		"extralight": "200",
@@ -1197,9 +1250,13 @@ def set_fonts(styles, font_map):
 		"cursive",
 		"fantasy",
 		"system-ui",
+		"intervar",  # loaded by default via reset.css
 	}
 	for style in styles:
 		font = style.get("fontFamily")
+		if not font and style.get("fontWeight") and inherited_font:
+			# fontWeight is set but fontFamily is not — use explicitly passed ancestor font
+			font = inherited_font
 		if font:
 			# AI often writes `fontFamily: "'Lato', sans-serif"` — split off
 			# the fallback stack, keep just the primary face, strip quotes
@@ -1214,9 +1271,6 @@ def set_fonts(styles, font_map):
 			# Skip if it is a system font
 			if font.lower() in system_fonts:
 				continue
-
-			# escape spaces in font name for CSS
-			style["fontFamily"] = font.replace(" ", "\\ ")
 
 			# Normalize fontWeight: accept named values ("bold") via weight_map
 			# then coerce to int for consistent comparison and sorting.
@@ -1286,9 +1340,6 @@ def extend_block(block, overridden_block):
 		block["blockClientScript"] = overridden_block.get("blockClientScript")
 		block["isBlockClientScriptOverridden"] = True
 
-	if overridden_block.get("blockDataScript"):
-		block["blockDataScript"] = overridden_block.get("blockDataScript")
-
 	dataKey = overridden_block.get("dataKey", {})
 	if not block.get("dataKey"):
 		block["dataKey"] = {}
@@ -1323,7 +1374,13 @@ def extend_block(block, overridden_block):
 @redis_cache(ttl=60 * 60)
 def find_page_with_path(route):
 	try:
-		return frappe.db.get_value("Builder Page", dict(route=route, published=1), "name", cache=True)
+		return frappe.db.get_value(
+			"Builder Page",
+			dict(route=route, published=1),
+			"name",
+			order_by="published_at desc, creation desc",
+			cache=True,
+		)
 	except frappe.DoesNotExistError:
 		pass
 
@@ -1386,7 +1443,6 @@ def reset_block(block):
 	block["dataKey"] = {}
 	block["props"] = {}
 	block["blockClientScript"] = None
-	block["blockDataScript"] = None
 	block["dynamicValues"] = []
 	return block
 

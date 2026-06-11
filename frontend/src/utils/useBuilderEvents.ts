@@ -5,7 +5,7 @@ import { webPages } from "@/data/webPage";
 import useBuilderStore from "@/stores/builderStore";
 import useCanvasStore from "@/stores/canvasStore";
 import usePageStore from "@/stores/pageStore";
-import { BuilderPage } from "@/types/Builder/BuilderPage";
+import { BuilderPage } from "@/types/doctypes";
 import blockController from "@/utils/blockController";
 import getBlockTemplate from "@/utils/blockTemplate";
 
@@ -20,11 +20,10 @@ import {
 	triggerCopyEvent,
 	uploadBuilderAsset,
 } from "@/utils/helpers";
-import { useShortcut } from "@/utils/useShortcut";
 import { useEventListener, useStorage } from "@vueuse/core";
+import { toast, useShortcut } from "frappe-ui";
 import { Ref } from "vue";
 import { useRoute, useRouter } from "vue-router";
-import { toast } from "vue-sonner";
 
 const builderStore = useBuilderStore();
 const canvasStore = useCanvasStore();
@@ -52,7 +51,9 @@ export function useBuilderEvents(
 	);
 
 	useEventListener(document, "copy", (e) => {
-		if (isTargetEditable(e) || canvasStore.editableBlock || isDialogOpen()) return;
+		if (isTargetEditable(e) || canvasStore.editableBlock) return;
+		if (isDialogOpen() && canvasStore.requiresConfirmationForCopyingEntirePage) return;
+		if (window.getSelection()?.toString()) return;
 		copySelectedBlocksToClipboard(e);
 	});
 
@@ -104,7 +105,7 @@ export function useBuilderEvents(
 			return;
 		}
 
-		let text = e.clipboardData?.getData("text/plain") as string || "";
+		let text = (e.clipboardData?.getData("text/plain") as string) || "";
 
 		await pasteBuilderBlocks(e, window.location.origin);
 
@@ -155,7 +156,7 @@ export function useBuilderEvents(
 				if (parentBlock) {
 					parentBlock.addChild(block);
 				} else {
-					canvasStore.pushBlocks([block]);
+					canvasStore.pushBlocks([block], false);
 				}
 			}
 			return;
@@ -277,6 +278,7 @@ export function useBuilderEvents(
 			ctrl: true,
 			description: "Focus property search",
 			group: "General",
+			allowInInput: true,
 			handler: () => {
 				document.querySelector(".properties-search-input")?.querySelector("input")?.focus();
 			},
@@ -508,6 +510,20 @@ export function useBuilderEvents(
 				builderStore.mode = "move";
 			},
 		},
+		{
+			key: "l",
+			ctrl: true,
+			shift: true,
+			triggeredOn: "hold",
+			description: "Highlight Blocks with Client Scripts",
+			group: "View",
+			onHold: () => {
+				builderStore.highlightBlocksWithClientScripts = true;
+			},
+			onRelease: () => {
+				builderStore.highlightBlocksWithClientScripts = false;
+			},
+		},
 	]);
 
 	// on tab activation, reload for latest data
@@ -586,5 +602,6 @@ const copySelectedBlocksToClipboard = (e: ClipboardEvent) => {
 	} else {
 		copyBuilderBlocks(e, window.location.origin, canvasStore.copyEntirePage);
 		canvasStore.requiresConfirmationForCopyingEntirePage = true;
+		canvasStore.copyEntirePage = false;
 	}
 };

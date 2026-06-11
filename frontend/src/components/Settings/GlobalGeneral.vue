@@ -71,16 +71,24 @@
 			@update:modelValue="
 				(val: Boolean) => builderStore.updateBuilderSettings('auto_convert_images_to_webp', val)
 			" />
+		<Switch
+			size="sm"
+			label="Disable Auto Dark Mode"
+			description="Prevent the site from automatically switching to dark mode"
+			:modelValue="Boolean(builderSettings.doc?.disable_auto_dark_mode)"
+			@update:modelValue="
+				(val: Boolean) => builderStore.updateBuilderSettings('disable_auto_dark_mode', val)
+			" />
 	</div>
 </template>
 <script setup lang="ts">
 import InlineInput from "@/components/Controls/InlineInput.vue";
-import Switch from "@/components/Controls/Switch.vue";
 import { allWebPages } from "@/data/allWebPages";
 import { builderSettings } from "@/data/builderSettings";
 import { websiteSettings } from "@/data/websiteSettings";
 import useBuilderStore from "@/stores/builderStore";
-import { BuilderPage } from "@/types/Builder/BuilderPage";
+import { BuilderPage } from "@/types/doctypes";
+import { Switch } from "frappe-ui";
 import { computed } from "vue";
 import ImageUploader from "../Controls/ImageUploader.vue";
 

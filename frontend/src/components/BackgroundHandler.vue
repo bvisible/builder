@@ -4,16 +4,19 @@
 			<div class="flex w-full items-center justify-between" @focusin="updateActiveState">
 				<StylePropertyControl
 					propertyKey="background"
-					:component="Input"
+					:component="BackgroundInput"
 					label="Background"
 					:enableStates="true"
 					:allowDynamicValue="true"
 					placeholder="Set Background"
+					readonly
+					:selectOnFocus="false"
+					class="[&_input]:cursor-pointer"
 					@focus="togglePopover"
 					:getModelValue="() => getDisplayValue(null)"
 					:getVariantValue="(v: string) => getDisplayValue(v)"
 					:setVariantValue="handleSetVariant"
-					@update:modelValue="setBGImageURL">
+					:setModelValue="(val: string) => setBGValue(val)">
 					<template #prefix="{ variant }">
 						<div
 							class="absolute left-2 top-[6px] size-4 cursor-pointer rounded shadow-md"
@@ -34,9 +37,9 @@
 				class="background-popover-body w-64 rounded-lg border border-outline-gray-2 bg-surface-white p-3 shadow-xl">
 				<TabButtons
 					:buttons="[
-						{ label: '', value: 'color', icon: 'droplet' },
-						{ label: '', value: 'image', icon: 'image' },
-						{ label: '', value: 'gradient', icon: 'aperture' },
+						{ label: '', value: 'color', icon: 'lucide-droplet' },
+						{ label: '', value: 'image', icon: 'lucide-image' },
+						{ label: '', value: 'gradient', icon: 'lucide-aperture' },
 					]"
 					v-model="activeTab"
 					class="mb-3" />
@@ -70,7 +73,7 @@
 										'!grid': !backgroundImageURL,
 										'group-hover:grid': backgroundImageURL,
 									}">
-									<BuilderButton @click="openFileSelector">Upload</BuilderButton>
+									<Button @click="openFileSelector">Upload</Button>
 								</div>
 							</template>
 						</FileUploader>
@@ -95,20 +98,20 @@
 							:options="repeatOptions"
 							@update:modelValue="setBGRepeat" />
 					</div>
-					<BuilderButton v-if="showServeLocallyButton" class="w-full" @click="serveBackgroundImageLocally">
+					<Button v-if="showServeLocallyButton" class="w-full" @click="serveBackgroundImageLocally">
 						{{ serveLocallyButtonText }}
-					</BuilderButton>
-					<BuilderButton v-if="backgroundImageURL" class="w-full" variant="subtle" @click="clearBGImage">
+					</Button>
+					<Button v-if="backgroundImageURL" class="w-full" variant="subtle" @click="clearBGImage">
 						Clear Image
-					</BuilderButton>
+					</Button>
 				</div>
 
 				<!-- Gradient Tab -->
 				<div v-else class="space-y-4">
 					<GradientEditor :modelValue="rawBackgroundImage" @update:modelValue="setGradient" />
-					<BuilderButton :disabled="!isGradient" class="w-full" variant="subtle" @click="clearBGImage">
+					<Button :disabled="!isGradient" class="w-full" variant="subtle" @click="clearBGImage">
 						Clear Gradient
-					</BuilderButton>
+					</Button>
 				</div>
 
 				<div
@@ -131,12 +134,47 @@ import GradientEditor from "@/components/Controls/GradientEditor.vue";
 import InlineInput from "@/components/Controls/InlineInput.vue";
 import Input from "@/components/Controls/Input.vue";
 import StylePropertyControl from "@/components/Controls/StylePropertyControl.vue";
-import Switch from "@/components/Controls/Switch.vue";
 import TabButtons from "@/components/Controls/TabButtons.vue";
+import useBuilderStore from "@/stores/builderStore";
 import blockController from "@/utils/blockController";
+import { cssUrl } from "@/utils/helpers";
 import { getOptimizeButtonText, optimizeImage, shouldShowOptimizeButton } from "@/utils/imageUtils";
-import { FileUploader, Popover } from "frappe-ui";
-import { computed, ref, watch } from "vue";
+import { useBuilderVariable } from "@/utils/useBuilderVariable";
+import { FileUploader, Popover, Switch } from "frappe-ui";
+import { computed, defineComponent, h, ref, watch } from "vue";
+
+const builderStore = useBuilderStore();
+const { getVariableName, resolveVariableValue, variables } = useBuilderVariable();
+
+// wraps Input to style the value like ColorInput does when it displays a variable name
+const BackgroundInput = defineComponent({
+	props: {
+		modelValue: { type: [String, Number, Boolean], default: "" },
+	},
+	setup(props, { attrs, slots }) {
+		const showsVariableName = computed(() => {
+			return (
+				!!props.modelValue &&
+				variables.value.some((builderVariable) => builderVariable.variable_name === props.modelValue)
+			);
+		});
+		return () =>
+			h(
+				Input,
+				{
+					...attrs,
+					modelValue: props.modelValue,
+					class: [
+						attrs.class,
+						showsVariableName.value
+							? "[&_input]:font-mono [&_input]:text-sm [&_input]:text-ink-violet-1"
+							: "",
+					],
+				},
+				slots,
+			);
+	},
+});
 
 const activeState = ref<string | null>(null);
 
@@ -146,7 +184,7 @@ const updateActiveState = (e: FocusEvent) => {
 	// If focusing popover controls, we preserve the current activeState
 	if (target.closest(".background-popover-body")) return;
 
-	const variantRow = target.closest("[data-variant]");
+	const variantRow = target.closest("[data-variant]:not(input)");
 	const mainPropRow = target.closest("[data-property]");
 
 	if (variantRow) {
@@ -188,7 +226,8 @@ const getDisplayValue = (state: string | null) => {
 		const parts = url.split("/");
 		return parts[parts.length - 1] || "Image";
 	}
-	if (color) return color;
+	// show the variable's name instead of its raw value e.g. var(--uuid)
+	if (color) return getVariableName(color) ?? color;
 	return "";
 };
 
@@ -228,11 +267,11 @@ const getPreviewStyle = (state: string | null) => {
 		bg = bgValue;
 	} else if (bgValue) {
 		const url = bgValue.replace(/^url\(['"]?|['"]?\)$/g, "");
-		bg = `url(${url})`;
+		bg = cssUrl(url);
 	}
 
 	return {
-		backgroundColor: colorValue,
+		backgroundColor: colorValue ? resolveVariableValue(colorValue, builderStore.canvasDarkMode) : colorValue,
 		backgroundImage: bg,
 		backgroundPosition: pos,
 		backgroundSize: size,
@@ -262,7 +301,7 @@ const repeatOptions = [
 ];
 
 const setBGImage = (file: { file_url: string }) => {
-	blockController.setStyle(getStyleKey("backgroundImage"), `url(${file.file_url})`);
+	blockController.setStyle(getStyleKey("backgroundImage"), cssUrl(file.file_url));
 	blockController.setStyle(getStyleKey("backgroundColor"), null);
 	if (!blockController.getStyle(getStyleKey("backgroundSize"))) {
 		blockController.setStyle(getStyleKey("backgroundSize"), "cover");
@@ -275,21 +314,23 @@ const setBGImage = (file: { file_url: string }) => {
 	}
 };
 
-const setBGImageURL = (url: string) => {
+const setBGValue = (value: string) => {
 	const bgKey = getStyleKey("backgroundImage");
 	const colorKey = getStyleKey("backgroundColor");
+	const isValidHexValue = (value: string) => /^([0-9A-F]{3}){1,2}$/i.test(value);
 
-	// Clean up input if it's a URL wrapper
-	let cleanURL = url;
-	if (url?.startsWith("url(")) {
-		cleanURL = url.replace(/^url\(['"]?|['"]?\)$/g, "");
+	let cleanURL = value;
+	if (value?.startsWith("url(")) {
+		cleanURL = value.replace(/^url\(['"]?|['"]?\)$/g, "");
 	}
-
-	if (cleanURL?.startsWith("#") || cleanURL?.startsWith("rgb") || cleanURL?.startsWith("hsl")) {
-		blockController.setStyle(colorKey, cleanURL);
+	if (isValidHexValue(value)) {
+		blockController.setStyle(colorKey, `#${value}`);
+		blockController.setStyle(bgKey, null);
+	} else if (value?.startsWith("#") || value?.startsWith("rgb") || value?.startsWith("hsl")) {
+		blockController.setStyle(colorKey, value);
 		blockController.setStyle(bgKey, null);
 	} else {
-		blockController.setStyle(bgKey, cleanURL ? `url(${cleanURL})` : null);
+		blockController.setStyle(bgKey, cleanURL ? cssUrl(cleanURL) : null);
 		blockController.setStyle(colorKey, null);
 	}
 };
@@ -339,32 +380,26 @@ const handleSetVariant = (variantName: string, value: string | number | boolean 
 	const bgKey = `${variantName}:backgroundImage`;
 	const colorKey = `${variantName}:backgroundColor`;
 
-	if (value === null) {
+	if (!value) {
 		blockController.setStyle(bgKey, null);
 		blockController.setStyle(colorKey, null);
-	} else {
-		// Basic transition logic for states
-		blockController.getSelectedBlocks().forEach((block) => {
-			if (!block.getStyle("transitionDuration")) {
-				block.setStyle("transitionDuration", "300ms");
-				block.setStyle("transitionTimingFunction", "ease");
-				block.setStyle("transitionProperty", "all");
-			}
-		});
-
-		// Differentiate color vs image/gradient
-		const cleanValue = typeof value === "string" ? value.replace(/^url\(['"]?|['"]?\)$/g, "") : value;
-		if (
-			typeof cleanValue === "string" &&
-			(cleanValue.startsWith("#") || cleanValue.startsWith("rgb") || cleanValue.startsWith("hsl"))
-		) {
-			blockController.setStyle(colorKey, cleanValue);
-			blockController.setStyle(bgKey, null);
-		} else {
-			blockController.setStyle(bgKey, value);
-			blockController.setStyle(colorKey, null);
-		}
+		return;
 	}
+
+	// Basic transition logic for states
+	blockController.getSelectedBlocks().forEach((block) => {
+		if (!block.getStyle("transitionDuration")) {
+			block.setStyle("transitionDuration", "300ms");
+			block.setStyle("transitionTimingFunction", "ease");
+			block.setStyle("transitionProperty", "all");
+		}
+	});
+
+	// the trigger input is read-only, so a non-null value here can only come from
+	// the "copy current value to state" dropdown — copy the actual base styles
+	// instead of the display text (e.g. "Gradient", variable name, image file name)
+	blockController.setStyle(bgKey, (blockController.getStyle("backgroundImage") as string) ?? null);
+	blockController.setStyle(colorKey, (blockController.getStyle("backgroundColor") as string) ?? null);
 };
 
 const showServeLocallyButton = computed(() => shouldShowOptimizeButton(backgroundImageURL.value));
@@ -378,7 +413,7 @@ const serveBackgroundImageLocally = () => {
 	return optimizeImage({
 		imageUrl: backgroundImageURL.value,
 		onSuccess: (newUrl: string) => {
-			blockController.setStyle(getStyleKey("backgroundImage"), `url(${newUrl})`);
+			blockController.setStyle(getStyleKey("backgroundImage"), cssUrl(newUrl));
 		},
 	});
 };

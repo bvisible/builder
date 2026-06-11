@@ -1,7 +1,7 @@
 <template>
-	<router-link :to="{ name: 'builder', params: { pageId: page.page_name } }" class="h-fit w-full">
+	<router-link :to="{ name: 'builder', params: { pageId: page.page_name } }" class="group block h-fit w-full">
 		<div
-			class="group relative flex w-full justify-between overflow-hidden rounded-2xl border-b-[1px] border-outline-gray-1 p-3 hover:cursor-pointer hover:bg-surface-gray-1"
+			class="group relative flex w-full justify-between overflow-hidden rounded-2xl p-3 hover:cursor-pointer hover:bg-surface-gray-1"
 			:class="{
 				'bg-surface-gray-2': selected,
 			}">
@@ -54,14 +54,15 @@
 					:title="`Created by ${owner.fullname}`" />
 				<PageActionsDropdown :page="page" size="sm" placement="right">
 					<template v-slot="{ open }">
-						<FeatherIcon
-							name="more-horizontal"
-							class="h-4 w-4 font-bold text-ink-gray-6"
-							@click="open"></FeatherIcon>
+						<span
+							class="lucide-more-horizontal h-4 w-4 font-bold text-ink-gray-6"
+							aria-hidden="true"
+							@click="open" />
 					</template>
 				</PageActionsDropdown>
 			</div>
 		</div>
+		<div class="mx-4 border-b border-outline-gray-1 group-last:hidden"></div>
 	</router-link>
 </template>
 <script setup lang="ts">
@@ -69,7 +70,7 @@ import AuthenticatedUserIcon from "@/components/Icons/AuthenticatedUser.vue";
 import GlobeIcon from "@/components/Icons/Globe.vue";
 import PageActionsDropdown from "@/components/PageActionsDropdown.vue";
 import usePageStore from "@/stores/pageStore";
-import { BuilderPage } from "@/types/Builder/BuilderPage";
+import { BuilderPage } from "@/types/doctypes";
 import { getUserInfo } from "@/usersInfo";
 import { UseTimeAgo } from "@vueuse/components";
 import { Avatar, Badge } from "frappe-ui";

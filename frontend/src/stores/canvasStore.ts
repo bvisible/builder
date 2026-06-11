@@ -11,6 +11,7 @@ const useCanvasStore = defineStore("canvasStore", {
 		copyEntirePage: <boolean>false,
 		layerDraggingOverBlock: <string | null>null,
 		preventClick: false,
+		isMarqueeActive: false,
 		guides: {
 			showX: false,
 			showY: false,
@@ -27,7 +28,7 @@ const useCanvasStore = defineStore("canvasStore", {
 			index: <number | null>null,
 		},
 		editableBlock: <Block | null>null,
-		editingContentType: <"html" | "css" | "js" | "python">"html",
+		editingContentType: <"html" | "css" | "js">"html",
 		editingMode: <EditingMode>"page",
 		settingPage: false,
 		showEditorDialog: false,
@@ -44,12 +45,12 @@ const useCanvasStore = defineStore("canvasStore", {
 		clearBlocks() {
 			this.activeCanvas?.clearCanvas();
 		},
-		pushBlocks(blocks: BlockOptions[]) {
+		pushBlocks(blocks: BlockOptions[], resetHistory: boolean = true) {
 			let parent = this.activeCanvas?.getRootBlock();
 			let firstBlock = getBlockInstance(blocks[0]);
 
 			if (this.editingMode === "page" && firstBlock.isRoot() && this.activeCanvas?.block) {
-				this.activeCanvas.setRootBlock(firstBlock);
+				this.activeCanvas.setRootBlock(firstBlock, false, resetHistory);
 			} else {
 				for (let block of blocks) {
 					parent?.addChild(block);
@@ -109,14 +110,6 @@ const useCanvasStore = defineStore("canvasStore", {
 		editBlockClientScript(block: Block) {
 			this.editableBlock = block;
 			this.editingContentType = "js";
-			nextTick(() => {
-				this.showEditorDialog = true;
-			});
-		},
-
-		editBlockDataScript(block: Block) {
-			this.editableBlock = block;
-			this.editingContentType = "python";
 			nextTick(() => {
 				this.showEditorDialog = true;
 			});

@@ -2,14 +2,12 @@
 # For license information, please see license.txt
 
 import copy
-import json
 import os
-from dataclasses import dataclass
-from typing import Union
 
 import frappe
 from frappe.model.document import Document
 from frappe.modules.export_file import export_to_files
+from frappe.utils.telemetry import capture
 from frappe.website.utils import clear_website_cache
 
 from builder.utils import Block
@@ -33,9 +31,20 @@ class BuilderComponent(Document):
 	def before_insert(self):
 		if not self.component_id:
 			self.component_id = frappe.generate_hash(length=16)
+		capture("builder_component_created", "builder")
 
 	def on_update(self):
-		self.queue_action("clear_page_cache")
+		# Skip the background cache-clear during bulk imports (install / migrate /
+		# import_doc). queue_action enqueues a job AND locks the doc, which can raise
+		# DocumentLockedError mid-import — e.g. when create_page_from_template
+		# import_doc's a hub template's components. Nothing to clear on a fresh import.
+		if not (
+			frappe.flags.in_import
+			or frappe.flags.in_install
+			or frappe.flags.in_migrate
+			or frappe.flags.in_patch
+		):
+			self.queue_action("clear_page_cache")
 		self.update_exported_component()
 
 	def clear_page_cache(self):
@@ -46,7 +55,17 @@ class BuilderComponent(Document):
 				clear_website_cache(page_doc.route)
 
 	def sync_component(self):
-		pages = frappe.get_all("Builder Page", fields=["name"])
+		# Only load pages whose blocks/draft_blocks mention this component; the
+		# precise is_component_used() check still runs below. Mirrors the filter
+		# used by Builder Settings.replace_component to avoid scanning every page.
+		pages = frappe.get_all(
+			"Builder Page",
+			fields=["name"],
+			or_filters={
+				"blocks": ["like", f"%{self.component_id}%"],
+				"draft_blocks": ["like", f"%{self.component_id}%"],
+			},
+		)
 		for page in pages:
 			page_doc = frappe.get_cached_doc("Builder Page", page.name)
 			if page_doc.is_component_used(self.component_id):

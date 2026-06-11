@@ -1,6 +1,4 @@
 import os
-import time
-from typing import cast
 
 import duckdb
 import frappe
@@ -23,9 +21,10 @@ class DuckDBConnection:
 			self.db.close()
 
 
-def _get_date_filter(from_date: str | None = None, to_date: str | None = None):
+def get_date_filter(from_date: str | None = None, to_date: str | None = None) -> tuple[str, list]:
+	"""Return a parameterized date filter clause and its bind values."""
 	if not from_date or not to_date:
-		return ""
+		return "", []
 
 	# Add time component if not present
 	if len(from_date) == 10:  # YYYY-MM-DD format
@@ -33,22 +32,46 @@ def _get_date_filter(from_date: str | None = None, to_date: str | None = None):
 	if len(to_date) == 10:  # YYYY-MM-DD format
 		to_date += " 23:59:59"
 
-	return f"creation >= '{from_date}' AND creation <= '{to_date}'"
+	return "creation >= CAST(? AS TIMESTAMP) AND creation <= CAST(? AS TIMESTAMP)", [from_date, to_date]
 
 
-def _get_empty_analytics():
+def get_empty_analytics():
 	return {"total_unique_views": 0, "total_views": 0, "data": [], "top_referrers": []}
 
 
-def _get_route_filter(route: str | None = None, route_filter_type: str = "wildcard") -> str:
-	"""Get route filter clause for SQL queries"""
+def get_route_filter(route: str | None = None, route_filter_type: str = "wildcard") -> tuple[str, list]:
+	"""Return a parameterized route filter clause and its bind values."""
 	if not route:
-		return ""
+		return "", []
 
 	if route_filter_type == "exact":
-		return f"path = '{route}'"
+		return "path = ?", [route]
 	else:  # wildcard
-		return f"path LIKE '%{route}%'"
+		return "path LIKE ?", [f"%{route}%"]
+
+
+def build_where_clause(
+	route: str | None = None,
+	from_date: str | None = None,
+	to_date: str | None = None,
+	route_filter_type: str = "wildcard",
+) -> tuple[str, list]:
+	"""Combine the date and route filters into a single WHERE clause and ordered params."""
+	conditions = []
+	params: list = []
+
+	date_clause, date_params = get_date_filter(from_date, to_date)
+	if date_clause:
+		conditions.append(date_clause)
+		params += date_params
+
+	route_clause, route_params = get_route_filter(route, route_filter_type)
+	if route_clause:
+		conditions.append(route_clause)
+		params += route_params
+
+	where_clause = " AND ".join(conditions) if conditions else "1=1"
+	return where_clause, params
 
 
 def setup_duckdb_table(table_name=DUCKDB_TABLE):
@@ -60,7 +83,7 @@ def setup_duckdb_table(table_name=DUCKDB_TABLE):
 		)
 		db.register("df", df)
 		db.execute(
-			f"CREATE OR REPLACE TABLE {table_name} AS SELECT creation, CAST(CASE WHEN is_unique = '' OR is_unique IS NULL THEN '0' ELSE CAST(is_unique AS VARCHAR) END AS INTEGER) as is_unique, path, referrer, time_zone, user_agent FROM df"
+			f"CREATE OR REPLACE TABLE {table_name} AS SELECT TRY_CAST(creation AS TIMESTAMP) as creation, CAST(CASE WHEN is_unique = '' OR is_unique IS NULL THEN '0' ELSE CAST(is_unique AS VARCHAR) END AS INTEGER) as is_unique, CAST(path AS VARCHAR) as path, CAST(referrer AS VARCHAR) as referrer, CAST(time_zone AS VARCHAR) as time_zone, CAST(user_agent AS VARCHAR) as user_agent FROM df"
 		)
 		print(f"Successfully ingested {len(df)} records into DuckDB")
 
@@ -71,6 +94,15 @@ def ingest_web_page_views_to_duckdb(table_name=DUCKDB_TABLE):
 			f"SELECT COUNT(*) FROM information_schema.tables WHERE table_name = '{table_name}'"
 		).fetchone()
 		if table_exists and table_exists[0] == 0:
+			setup_duckdb_table(table_name)
+			return
+
+		# Recreate table if creation column has a stale/incompatible type (not TIMESTAMP)
+		col_type = db.execute(
+			f"SELECT data_type FROM information_schema.columns WHERE table_name = '{table_name}' AND column_name = 'creation'"
+		).fetchone()
+		if col_type and col_type[0].upper() != "TIMESTAMP":
+			print(f"Recreating {table_name}: creation column type is {col_type[0]}, expected TIMESTAMP")
 			setup_duckdb_table(table_name)
 			return
 
@@ -106,7 +138,7 @@ def ingest_web_page_views_to_duckdb(table_name=DUCKDB_TABLE):
 				break
 
 			db.executemany(
-				f"INSERT INTO {table_name} (creation, is_unique, path, referrer, time_zone, user_agent) VALUES (?, CAST(? AS INTEGER), ?, ?, ?, ?)",
+				f"INSERT INTO {table_name} (creation, is_unique, path, referrer, time_zone, user_agent) VALUES (TRY_CAST(? AS TIMESTAMP), CAST(COALESCE(NULLIF(?, ''), '0') AS INTEGER), ?, ?, ?, ?)",
 				records,
 			)
 
@@ -123,7 +155,7 @@ def ingest_web_page_views_to_duckdb(table_name=DUCKDB_TABLE):
 		print(f"Successfully ingested {processed} records into DuckDB")
 
 
-def _get_interval_formats(interval):
+def get_interval_formats(interval):
 	"""Get display and sort formats for time intervals"""
 	display_formats = {
 		"hourly": "%b %d, %I:00 %p",
@@ -139,30 +171,34 @@ def _get_interval_formats(interval):
 		"monthly": "%Y-%m",
 	}
 
+	# Guard against unknown intervals (these strings end up in SQL format strings)
+	if interval not in display_formats:
+		interval = "daily"
+
 	return display_formats[interval], sort_formats.get(interval, display_formats[interval])
 
 
-def _get_aggregated_views_query(where_clause, table_name=DUCKDB_TABLE):
+def get_aggregated_views_query(where_clause, table_name=DUCKDB_TABLE):
 	"""Get query for total and unique view counts"""
 	return f"SELECT COUNT(*) as total_views, SUM(is_unique) as unique_views FROM {table_name} WHERE {where_clause}"
 
 
-def _get_interval_views_query(where_clause, interval, table_name=DUCKDB_TABLE):
+def get_interval_views_query(where_clause, interval, table_name=DUCKDB_TABLE):
 	"""Get query for views grouped by time interval"""
-	display_fmt, sort_fmt = _get_interval_formats(interval)
+	display_fmt, sort_fmt = get_interval_formats(interval)
 	return f"""
 		SELECT
 			strftime('{display_fmt}', creation) as interval,
 			COUNT(*) as total_page_views,
 			SUM(is_unique) as unique_page_views
 		FROM {table_name}
-		WHERE {where_clause}
+		WHERE ({where_clause}) AND creation IS NOT NULL
 		GROUP BY interval, strftime('{sort_fmt}', creation)
 		ORDER BY strftime('{sort_fmt}', creation)
 	"""
 
 
-def _get_referrer_domain_query(where_clause, limit=10, table_name=DUCKDB_TABLE):
+def get_referrer_domain_query(where_clause, limit=10, table_name=DUCKDB_TABLE):
 	"""Get query for top referrer domains with counts"""
 	return f"""
 		WITH parsed_referrers AS (
@@ -198,38 +234,28 @@ def get_page_analytics(
 ):
 	"""Get analytics data for a specific page route or all pages"""
 	try:
-		# Get date filter
-		date_filter = _get_date_filter(from_date, to_date)
+		# A date range is required for page analytics
+		date_filter, _ = get_date_filter(from_date, to_date)
 		if not date_filter:
-			return _get_empty_analytics()
+			return get_empty_analytics()
 
-		# Add route filter
-		route_filter = _get_route_filter(route, route_filter_type)
-
-		# Build WHERE clause properly
-		where_conditions = []
-		if date_filter:
-			where_conditions.append(date_filter)
-		if route_filter:
-			where_conditions.append(route_filter)
-
-		where_clause = " AND ".join(where_conditions) if where_conditions else "1=1"
+		where_clause, params = build_where_clause(route, from_date, to_date, route_filter_type)
 
 		# Use provided interval or default to daily
 		interval = interval or "daily"
 
 		with DuckDBConnection() as db:
 			# Get interval-based data
-			interval_query = _get_interval_views_query(where_clause, interval, table_name)
-			rows = db.execute(interval_query).fetchall()
+			interval_query = get_interval_views_query(where_clause, interval, table_name)
+			rows = db.execute(interval_query, params).fetchall()
 
 			# Get total views
-			total_query = _get_aggregated_views_query(where_clause, table_name)
-			total_views, total_unique_views = db.execute(total_query).fetchone() or (0, 0)
+			total_query = get_aggregated_views_query(where_clause, table_name)
+			total_views, total_unique_views = db.execute(total_query, params).fetchone() or (0, 0)
 
 			# Get top referrers for this specific page/route
-			referrer_query = _get_referrer_domain_query(where_clause, 10, table_name)
-			referrer_rows = db.execute(referrer_query).fetchall()
+			referrer_query = get_referrer_domain_query(where_clause, 10, table_name)
+			referrer_rows = db.execute(referrer_query, params).fetchall()
 
 		return {
 			"total_unique_views": total_unique_views or 0,
@@ -239,7 +265,7 @@ def get_page_analytics(
 		}
 	except Exception as e:
 		frappe.log_error("DuckDB Analytics Error", str(e))
-		return _get_empty_analytics()
+		return get_empty_analytics()
 
 
 def get_top_pages(
@@ -249,30 +275,24 @@ def get_top_pages(
 	to_date: str | None = None,
 	route_filter_type: str = "wildcard",
 ):
-	# Get date filter
-	date_filter = _get_date_filter(from_date, to_date)
-	route_filter = _get_route_filter(route, route_filter_type)
+	try:
+		inner_clause, params = build_where_clause(route, from_date, to_date, route_filter_type)
+		where_clause = "" if inner_clause == "1=1" else f"WHERE {inner_clause}"
 
-	# Build WHERE clause properly
-	where_conditions = []
-	if date_filter:
-		where_conditions.append(date_filter)
-	if route_filter:
-		where_conditions.append(route_filter)
-
-	where_clause = "WHERE " + " AND ".join(where_conditions) if where_conditions else ""
-
-	with DuckDBConnection() as db:
-		q = f"""
-			SELECT path as route, COUNT(*) as view_count, SUM(is_unique) as unique_view_count
-			FROM {table_name}
-			{where_clause}
-			GROUP BY path
-			ORDER BY view_count DESC
-			LIMIT 20
-		"""
-		rows = db.execute(q).fetchall()
-		return [{"route": r[0], "view_count": r[1], "unique_view_count": r[2]} for r in rows]
+		with DuckDBConnection() as db:
+			q = f"""
+				SELECT path as route, COUNT(*) as view_count, SUM(is_unique) as unique_view_count
+				FROM {table_name}
+				{where_clause}
+				GROUP BY path
+				ORDER BY view_count DESC
+				LIMIT 20
+			"""
+			rows = db.execute(q, params).fetchall()
+			return [{"route": r[0], "view_count": r[1], "unique_view_count": r[2]} for r in rows]
+	except Exception as e:
+		frappe.log_error("DuckDB Analytics Error in top pages", str(e))
+		return []
 
 
 def get_top_referrers(
@@ -284,22 +304,11 @@ def get_top_referrers(
 ):
 	"""Get top referrers from analytics data using SQL for domain extraction"""
 	try:
-		# Get date filter
-		date_filter = _get_date_filter(from_date, to_date)
-		route_filter = _get_route_filter(route, route_filter_type)
-
-		# Build WHERE clause properly
-		where_conditions = []
-		if date_filter:
-			where_conditions.append(date_filter)
-		if route_filter:
-			where_conditions.append(route_filter)
-
-		where_clause = " AND ".join(where_conditions) if where_conditions else "1=1"
+		where_clause, params = build_where_clause(route, from_date, to_date, route_filter_type)
 
 		with DuckDBConnection() as db:
-			referrer_query = _get_referrer_domain_query(where_clause, 20, table_name)
-			rows = db.execute(referrer_query).fetchall()
+			referrer_query = get_referrer_domain_query(where_clause, 20, table_name)
+			rows = db.execute(referrer_query, params).fetchall()
 			return [{"domain": r[0], "count": r[1], "unique_count": r[2]} for r in rows]
 	except Exception as e:
 		frappe.log_error("DuckDB Analytics Error in top referrers", str(e))

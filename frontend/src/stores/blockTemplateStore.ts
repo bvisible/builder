@@ -1,10 +1,12 @@
 import type Block from "@/block";
 import builderBlockTemplate from "@/data/builderBlockTemplate";
-import { BlockTemplate } from "@/types/Builder/BlockTemplate";
+import { BlockTemplate } from "@/types/doctypes";
 import { getBlockInstance, getBlockString } from "@/utils/helpers";
 import { createDocumentResource } from "frappe-ui";
 import { defineStore } from "pinia";
-import { toast } from "vue-sonner";
+import { nextTick } from "vue";
+import { toast } from "frappe-ui";
+import useBuilderStore from "./builderStore";
 import useCanvasStore from "./canvasStore";
 
 const useBlockTemplateStore = defineStore("blockTemplateStore", {
@@ -35,6 +37,7 @@ const useBlockTemplateStore = defineStore("blockTemplateStore", {
 			const blockTemplate = this.getBlockTemplate(blockTemplateName);
 			const blockTemplateBlock = this.getBlockTemplateBlock(blockTemplateName);
 			const canvasStore = useCanvasStore();
+			const builderStore = useBuilderStore();
 
 			canvasStore.editOnCanvas(
 				blockTemplateBlock,
@@ -44,6 +47,10 @@ const useBlockTemplateStore = defineStore("blockTemplateStore", {
 				"Save Template",
 				blockTemplate.template_name,
 			);
+			builderStore.leftPanelActiveTab = "Layers";
+			nextTick(() => {
+				canvasStore.fragmentData.block?.selectBlock();
+			});
 		},
 
 		getBlockTemplateBlock(blockTemplateName: string) {
@@ -86,6 +93,8 @@ const useBlockTemplateStore = defineStore("blockTemplateStore", {
 				args["description"] = description;
 				await builderBlockTemplate.insert.submit(args);
 			}
+			this.blockTemplateMap.delete(templateName);
+			await builderBlockTemplate.reload();
 
 			// FIX: Refresh cache to show new template immediately
 			await builderBlockTemplate.fetch();

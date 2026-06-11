@@ -5,9 +5,12 @@
 		open-on-click
 		open-on-focus
 		:reset-search-term-on-blur="false">
-		<div class="group relative" ref="containerRef">
+		<div class="group/autocomplete relative" ref="containerRef">
 			<div
-				class="group form-input flex h-7 flex-1 items-center gap-2 rounded bg-surface-gray-2 p-0 text-sm text-ink-gray-8 transition-colors focus-within:bg-surface-white focus-within:ring-2 focus-within:ring-outline-gray-3">
+				class="group form-input flex h-7 flex-1 items-center gap-2 rounded bg-surface-gray-2 p-0 text-sm text-ink-gray-8 transition-colors focus-within:bg-surface-white focus-within:ring-2 focus-within:ring-outline-gray-3"
+				:class="{
+					'can-show-arrows': canShowArrows,
+				}">
 				<div v-if="$slots.prefix" class="flex items-center pl-2">
 					<slot name="prefix" />
 				</div>
@@ -28,12 +31,11 @@
 					class="h-full w-full flex-1 border-none bg-transparent px-0 text-base placeholder:text-ink-gray-4 focus:outline-none focus:ring-0"
 					:class="{
 						'pl-2': !$slots.prefix,
-						'pr-2': !hasValue,
+						'pr-2': !hasValue && !canShowArrows,
 					}" />
-				<div class="flex items-center gap-0">
+				<div class="flex items-center gap-0.5">
 					<NumberArrows
-						v-if="hasNumber && isStrictNumber"
-						class="ml-1"
+						v-if="canShowArrows"
 						:modelValue="hasNumber"
 						@increment="incrementValue"
 						@decrement="decrementValue" />
@@ -81,7 +83,7 @@
 								:disabled="option.disabled"
 								class="group flex cursor-default select-none items-center gap-2 rounded px-2 py-1.5 text-sm text-ink-gray-9 transition-colors data-[disabled]:pointer-events-none data-[highlighted]:bg-surface-gray-1 data-[disabled]:opacity-50">
 								<component v-if="option.prefix" :is="option.prefix" class="h-4 w-4 flex-shrink-0" />
-								<span class="w-full flex-1 truncate">{{ option.label }}</span>
+								<MiddleTruncate :text="option.label" />
 								<component
 									v-if="option.suffix"
 									:is="option.suffix"
@@ -93,14 +95,14 @@
 					</div>
 					<div v-if="actionButton" class="border-t border-outline-gray-2 bg-surface-gray-1">
 						<component v-if="actionButton.component" :is="actionButton.component" @change="refreshOptions" />
-						<BuilderButton
+						<Button
 							v-else
 							:icon-left="actionButton.icon"
 							variant="ghost"
 							class="w-full justify-start rounded-none text-sm"
 							@click="actionButton.handler">
 							{{ actionButton.label }}
-						</BuilderButton>
+						</Button>
 					</div>
 				</ComboboxContent>
 			</Teleport>
@@ -109,7 +111,6 @@
 </template>
 
 <script setup lang="ts">
-import BuilderButton from "@/components/Controls/BuilderButton.vue";
 import NumberArrows from "@/components/Controls/NumberArrows.vue";
 import CrossIcon from "@/components/Icons/Cross.vue";
 import { useNumberInput } from "@/utils/useNumberInput";
@@ -123,6 +124,7 @@ import {
 } from "reka-ui";
 import type { Component, ComponentPublicInstance } from "vue";
 import { computed, nextTick, ref, useAttrs, watch } from "vue";
+import MiddleTruncate from "../MiddleTruncate.vue";
 
 interface Option {
 	label: string;
@@ -188,6 +190,8 @@ const isStrictNumber = computed(() => {
 	if (nonNumericValues.includes(props.modelValue)) return false;
 	return /^\d*\.?\d+(px|%|em|rem)?$/.test(props.modelValue.trim());
 });
+
+const canShowArrows = computed(() => hasNumber.value && isStrictNumber.value);
 
 const displayOptions = computed(() => {
 	let options = allOptions.value;
@@ -313,3 +317,8 @@ defineExpose({
 	clearSelection,
 });
 </script>
+<style scoped>
+.can-show-arrows:hover {
+	gap: 3px !important;
+}
+</style>

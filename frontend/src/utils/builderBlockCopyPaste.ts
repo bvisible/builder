@@ -2,9 +2,7 @@ import type Block from "@/block";
 import useCanvasStore from "@/stores/canvasStore";
 import useComponentStore from "@/stores/componentStore";
 import usePageStore from "@/stores/pageStore";
-import { BuilderComponent } from "@/types/Builder/BuilderComponent";
-import { BuilderPage } from "@/types/Builder/BuilderPage";
-import { BuilderVariable } from "@/types/Builder/BuilderVariable";
+import { BuilderClientScript, BuilderComponent, BuilderPage, BuilderVariable } from "@/types/doctypes";
 
 import builderVariables from "@/data/builderVariable";
 import {
@@ -16,11 +14,9 @@ import {
 	isJSONString,
 	showDialog,
 } from "@/utils/helpers";
-import { createListResource } from "frappe-ui";
+import { createListResource, toast } from "frappe-ui";
 import { nextTick } from "vue";
-import { toast } from "vue-sonner";
 import { webPages } from "../data/webPage";
-import { BuilderClientScript } from "../types/Builder/BuilderClientScript";
 
 type BuilderPageClientScriptRef = { builder_script: string; idx?: number };
 
@@ -102,10 +98,7 @@ export function copyBuilderBlocks(
 
 	const variableDocuments: BuilderVariable[] = [];
 	for (const variableName of variableNames) {
-		const variable = builderVariables.data?.find(
-			(v: BuilderVariable) =>
-				v.variable_name?.replace(/[\s_]/g, "-").toLowerCase() === variableName.toLowerCase(),
-		);
+		const variable = builderVariables.data?.find((v: BuilderVariable) => v.name === variableName);
 		if (variable) {
 			variableDocuments.push(variable);
 		}
@@ -217,7 +210,7 @@ async function handlePagePaste(
 					});
 					await pageStore.setPage(currentPage.name);
 					nextTick(() => {
-						canvasStore.pushBlocks(clipboardData.blocks);
+						canvasStore.pushBlocks(clipboardData.blocks, false);
 						pageStore.savePage();
 					});
 					toast.success("Done", { id: "paste-page" });
@@ -229,11 +222,13 @@ async function handlePagePaste(
 }
 
 async function handleVariables(clipboardData: BuilderClipboardData, crossSitePaste: boolean) {
+	const idMap = new Map<string, string>();
 	for (const variable of clipboardData.variables || []) {
 		if (crossSitePaste) {
 			const originalName = variable.name;
 			const newName = generateHash(originalName, clipboardData.sourceURL || "");
 			variable.name = newName;
+			idMap.set(originalName, newName);
 			try {
 				await builderVariables.insert.submit(variable);
 			} catch (error: any) {
@@ -242,10 +237,8 @@ async function handleVariables(clipboardData: BuilderClipboardData, crossSitePas
 				}
 			}
 		} else {
-			const existingVariable = builderVariables.data?.find(
-				(v: BuilderVariable) => v.variable_name === variable.variable_name,
-			);
-			if (!existingVariable) {
+			const existing = builderVariables.data?.find((v: BuilderVariable) => v.name === variable.name);
+			if (!existing) {
 				try {
 					await builderVariables.insert.submit(variable);
 				} catch (error: any) {
@@ -256,6 +249,36 @@ async function handleVariables(clipboardData: BuilderClipboardData, crossSitePas
 			}
 		}
 	}
+	if (crossSitePaste && idMap.size) {
+		clipboardData.blocks.forEach((block) => rewriteVariableRefsInBlock(block as BlockOptions, idMap));
+	}
+}
+
+function rewriteVariableRefsInBlock(block: BlockOptions, idMap: Map<string, string>) {
+	if (!idMap.size) return;
+	const pattern = new RegExp(
+		`var\\(--(${Array.from(idMap.keys())
+			.map((k) => k.replace(/[.*+?^${}()|[\]\\]/g, "\\$&"))
+			.join("|")})(?=[,\\s)])`,
+		"g",
+	);
+	const rewrite = (value: unknown): unknown => {
+		if (typeof value !== "string" || !value.includes("var(--")) return value;
+		return value.replace(pattern, (_match, name) => `var(--${idMap.get(name)}`);
+	};
+	const rewriteObj = (obj: Record<string, unknown> | undefined | null) => {
+		if (!obj) return;
+		for (const key of Object.keys(obj)) {
+			obj[key] = rewrite(obj[key]);
+		}
+	};
+	rewriteObj(block.baseStyles as Record<string, unknown> | undefined);
+	rewriteObj(block.mobileStyles as Record<string, unknown> | undefined);
+	rewriteObj(block.tabletStyles as Record<string, unknown> | undefined);
+	rewriteObj(block.rawStyles as Record<string, unknown> | undefined);
+	rewriteObj(block.attributes as Record<string, unknown> | undefined);
+	if (block.innerHTML) block.innerHTML = rewrite(block.innerHTML) as string;
+	block.children?.forEach((child) => rewriteVariableRefsInBlock(child, idMap));
 }
 
 async function handleComponents(clipboardData: BuilderClipboardData, crossSitePaste: boolean) {
@@ -297,7 +320,7 @@ async function insertBlocks(blocks: (Block | BlockOptions)[]) {
 		}
 		blocks.forEach((block) => parentBlock.addChild(getBlockCopy(block), null, true));
 	} else {
-		canvasStore.pushBlocks(blocks);
+		canvasStore.pushBlocks(blocks, false);
 	}
 }
 

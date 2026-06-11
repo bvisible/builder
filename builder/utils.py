@@ -13,7 +13,6 @@ import yaml
 from frappe.model.document import Document
 from frappe.modules.import_file import import_file_by_path
 from frappe.utils import get_url
-from frappe.utils.html_utils import unescape_html
 from frappe.utils.safe_exec import (
 	SERVER_SCRIPT_FILE_PREFIX,
 	FrappeTransformer,
@@ -29,25 +28,40 @@ from RestrictedPython import safe_globals as restricted_safe_globals
 from werkzeug.routing import Rule
 
 
-def has_page_write(message: str | None = None):
-	"""Decorator to check if user has permission to edit Builder Page.
+def has_page_permission(ptype: str = "write", message: str | None = None):
+	"""Decorator to check if user has the given permission on Builder Page.
 
 	Args:
+		ptype: Permission type — "read" or "write". Defaults to "write".
 		message: Custom error message to display if permission is denied.
-			 If not provided, defaults to "You do not have permission to modify pages"
+			 If not provided, a sensible default is used.
 	"""
 
 	def decorator(fn):
 		@wraps(fn)
 		def wrapper(*args, **kwargs):
-			if not frappe.has_permission("Builder Page", ptype="write"):
-				error_message = message or frappe._("You do not have permission to modify pages")
-				frappe.throw(error_message)
+			if not frappe.has_permission("Builder Page", ptype=ptype):
+				default_message = (
+					frappe._("You do not have permission to modify pages")
+					if ptype == "write"
+					else frappe._("You do not have permission to read pages")
+				)
+				frappe.throw(message or default_message)
 			return fn(*args, **kwargs)
 
 		return wrapper
 
 	return decorator
+
+
+def has_page_write(message: str | None = None):
+	"""Decorator to check if user has write permission on Builder Page."""
+	return has_page_permission(ptype="write", message=message)
+
+
+def has_page_read(message: str | None = None):
+	"""Decorator to check if user has read permission on Builder Page."""
+	return has_page_permission(ptype="read", message=message)
 
 
 @dataclass
@@ -90,7 +104,6 @@ class Block:
 	customAttributes: ClassVar[dict] = {}
 	dynamicValues: ClassVar[list[BlockDataKey]] = []
 	blockClientScript: str = ""
-	blockDataScript: str = ""
 	props: ClassVar[dict] = {}
 
 	def __init__(self, **kwargs) -> None:
@@ -157,7 +170,6 @@ class Block:
 			"customAttributes": self.customAttributes,
 			"dynamicValues": self.dynamicValues,
 			"blockClientScript": self.blockClientScript,
-			"blockDataScript": self.blockDataScript,
 			"props": self.props,
 		}
 
@@ -291,10 +303,6 @@ def sync_page_templates():
 	builder_script_path = frappe.get_module_path("builder", "builder_script")
 	make_records(builder_script_path)
 
-	print("Syncing Builder Page Templates")
-	builder_page_template_path = frappe.get_module_path("builder", "builder_page_template")
-	make_records(builder_page_template_path)
-
 
 def sync_block_templates():
 	print("Syncing Builder Block Templates")
@@ -316,34 +324,7 @@ def make_records(path):
 			import_file_by_path(f"{path}/{fname}/{fname}.json")
 
 
-# def generate_tailwind_css_file_from_html(html):
-# 	# execute tailwindcss cli command to generate css file
-# 	# create temp folder
-# 	temp_folder = os.path.join(get_site_base_path(), "temp")
-# 	if os.path.exists(temp_folder):
-# 		shutil.rmtree(temp_folder)
-# 	os.mkdir(temp_folder)
-
-# 	# create temp html file
-# 	temp_html_file_path = os.path.join(temp_folder, "temp.html")
-# 	with open(temp_html_file_path, "w") as f:
-# 		f.write(html)
-
-# 	# place tailwind.css file in public folder
-# 	tailwind_css_file_path = os.path.join(get_site_path(), "public", "files", "tailwind.css")
-
-# 	# create temp config file
-# 	temp_config_file_path = os.path.join(temp_folder, "tailwind.config.js")
-# 	with open(temp_config_file_path, "w") as f:
-# 		f.write("module.exports = {content: ['./temp.html']}")
-
-# 	# run tailwindcss cli command in production mode
-# 	subprocess.run(
-# 		["npx", "tailwindcss", "-o", tailwind_css_file_path, "--config", temp_config_file_path, "--minify"]
-# 	)
-
-
-def copy_img_to_asset_folder(block, page_doc):
+def copy_img_to_asset_folder(block, page_doc, app=None):
 	def safe_get(obj, attr, default=None):
 		if isinstance(obj, dict):
 			return obj.get(attr, default)
@@ -374,10 +355,10 @@ def copy_img_to_asset_folder(block, page_doc):
 			files = frappe.get_all("File", filters={"file_url": src}, fields=["name"])
 			if files:
 				_file = frappe.get_doc("File", files[0].name)
-				assets_folder_path = get_template_assets_folder_path(page_doc)
+				assets_folder_path = get_template_assets_folder_path(page_doc, app=app)
 				shutil.copy(_file.get_full_path(), assets_folder_path)
 
-			new_src = f"/builder_assets/{page_doc.name}/{src.split('/')[-1]}"
+			new_src = f"{get_template_assets_public_path(page_doc)}/{src.split('/')[-1]}"
 			if attributes:
 				if isinstance(attributes, dict):
 					attributes["src"] = new_src
@@ -386,21 +367,51 @@ def copy_img_to_asset_folder(block, page_doc):
 
 	children = safe_get(block, "children", [])
 	for child in children or []:
-		copy_img_to_asset_folder(child, page_doc)
+		copy_img_to_asset_folder(child, page_doc, app=app)
 
 
-def get_template_assets_folder_path(page_doc):
-	path = os.path.join(frappe.get_app_path("builder"), "www", "builder_assets", page_doc.name)
+def get_template_assets_subfolder(page_doc):
+	"""Relative folder under www/builder_assets for a page's exported assets.
+
+	Template-group pages are namespaced under their group folder so multiple
+	templates can ship assets without colliding."""
+	if getattr(page_doc, "is_template", None) and getattr(page_doc, "template_group", None):
+		return os.path.join(frappe.scrub(page_doc.template_group), str(page_doc.name))
+	return str(page_doc.name)
+
+
+def get_template_assets_public_path(page_doc):
+	"""Public URL prefix (no trailing slash) for a page's exported assets.
+
+	App-agnostic: whichever app/site serves the assets does so under
+	/builder_assets/, so only the filesystem write root (below) varies by app."""
+	return f"/builder_assets/{get_template_assets_subfolder(page_doc).replace(os.sep, '/')}"
+
+
+def template_target_app():
+	"""App whose www/builder_assets directory holds exported template assets.
+	Defaults to builder; the hub site sets template_target_app=builder_hub so
+	template authoring on the hub writes assets into the hub app."""
+	return frappe.conf.get("template_target_app") or "builder"
+
+
+def get_template_assets_folder_path(page_doc, app=None):
+	path = os.path.join(
+		frappe.get_app_path(app or template_target_app()),
+		"www",
+		"builder_assets",
+		get_template_assets_subfolder(page_doc),
+	)
 	if not os.path.exists(path):
 		os.makedirs(path)
 	return path
 
 
-def get_builder_page_preview_file_paths(page_doc):
-	public_path, public_path = None, None
+def get_builder_page_preview_file_paths(page_doc, app=None):
+	public_path, local_path = None, None
 	if page_doc.is_template:
-		local_path = os.path.join(get_template_assets_folder_path(page_doc), "preview.webp")
-		public_path = f"/builder_assets/{page_doc.name}/preview.webp"
+		local_path = os.path.join(get_template_assets_folder_path(page_doc, app=app), "preview.webp")
+		public_path = f"{get_template_assets_public_path(page_doc)}/preview.webp"
 	else:
 		file_name = f"{page_doc.name}-preview.webp"
 		local_path = os.path.join(frappe.local.site_path, "public", "files", file_name)
@@ -419,8 +430,8 @@ def is_component_used(blocks, component_id):
 			continue
 		if block.get("extendedFromComponent") == component_id:
 			return True
-		elif block.get("children"):
-			return is_component_used(block.get("children"), component_id)
+		if block.get("children") and is_component_used(block.get("children"), component_id):
+			return True
 
 	return False
 
@@ -460,27 +471,6 @@ def execute_script(script, _locals, script_filename):
 		safe_exec(script, None, _locals, script_filename=script_filename)
 	else:
 		safer_exec(script, None, _locals, script_filename=script_filename)
-
-
-def get_dummy_blocks():
-	return [
-		{
-			"element": "div",
-			"extendedFromComponent": "component-1",
-			"children": [
-				{
-					"element": "div",
-					"children": [
-						{
-							"element": "div",
-							"extendedFromComponent": "component-2",
-							"children": [],
-						},
-					],
-				},
-			],
-		},
-	]
 
 
 def clean_data(data):
@@ -706,15 +696,6 @@ def hash(s):
 
 def to_safe_json(data):
 	return frappe.as_json(data or {})
-
-
-def execute_script_and_combine(prev_block_data, block_data_script, props):
-	props = frappe._dict(frappe.parse_json(props or "{}"))
-	block_data = frappe._dict()
-	_locals = dict(block=to_dict_with_fallback(prev_block_data or {}), props=props)
-	execute_script(unescape_html(block_data_script), _locals, "sample")
-	block_data.update(_locals["block"])
-	return combine(prev_block_data, block_data)
 
 
 class CompactDumper(yaml.Dumper):

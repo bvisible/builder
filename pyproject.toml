@@ -14,7 +14,7 @@ dependencies = [
     "duckdb==1.4.3",
     "ollama>=0.4.0",
     "json-repair>=0.30.0",
-    "litellm>=1.51.8",
+    "litellm==1.83.7",
 ]
 
 [project.optional-dependencies]

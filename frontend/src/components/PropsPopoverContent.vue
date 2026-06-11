@@ -84,7 +84,7 @@
 				ref="optionsComponentRef"
 				@update:options="updateStandardPropOptions" />
 		</template>
-		<BuilderButton
+		<Button
 			:disabled="!key.trim().length && !label.trim().length"
 			label="Save"
 			variant="subtle"
@@ -99,7 +99,6 @@ import Block from "@/block";
 import InputLabel from "@/components/Controls/InputLabel.vue";
 import Input from "@/components/Controls/Input.vue";
 import OptionToggle from "@/components/Controls/OptionToggle.vue";
-import BuilderButton from "@/components/Controls/BuilderButton.vue";
 import Autocomplete from "@/components/Controls/Autocomplete.vue";
 
 import { computed, nextTick, reactive, ref, watch } from "vue";
@@ -114,8 +113,8 @@ import ObjectOptions from "@/components/PropsOptions/ObjectOptions.vue";
 import BooleanOptions from "@/components/PropsOptions/BooleanOptions.vue";
 import SelectOptions from "@/components/PropsOptions/SelectOptions.vue";
 
-import { getDataArray, toKebabCase } from "@/utils/helpers";
-import { useBlockDataStore } from "@/stores/blockStore";
+import { getDataArray, getRepeaterScopedData, toKebabCase } from "@/utils/helpers";
+import usePageStore from "@/stores/pageStore";
 import ColorOptions from "./PropsOptions/ColorOptions.vue";
 import ImageOptions from "./PropsOptions/ImageOptions.vue";
 import InlineInput from "./Controls/InlineInput.vue";
@@ -133,7 +132,7 @@ const props = withDefaults(
 );
 
 const canvasStore = useCanvasStore();
-const blockDataStore = useBlockDataStore();
+const pageStore = usePageStore();
 
 const STANDARD_PROP_TYPES = [
 	"string",
@@ -220,14 +219,7 @@ const currentBlock = computed(() => blockController.getFirstSelectedBlock());
 
 const pageDataArray = computed(() => {
 	if (currentBlock.value) {
-		return getDataArray(blockDataStore.getPageData(currentBlock.value.blockId) || {});
-	}
-	return [];
-});
-
-const blockDataArray = computed(() => {
-	if (currentBlock.value) {
-		return getDataArray(blockDataStore.getBlockData(currentBlock.value.blockId, "passedDown") || {});
+		return getDataArray(getRepeaterScopedData(currentBlock.value, pageStore.pageData));
 	}
 	return [];
 });
@@ -304,17 +296,10 @@ function filterDataOptions(dataArray: string[], query: string) {
 }
 
 const getOptions = async (query: string) => {
-	const pageOptions = filterDataOptions(pageDataArray.value, query).map((opt) => ({
+	return filterDataOptions(pageDataArray.value, query).map((opt) => ({
 		...opt,
 		value: `${opt.value}--dataScript`,
 	}));
-
-	const blockOptions = filterDataOptions(blockDataArray.value, query).map((opt) => ({
-		...opt,
-		value: `${opt.value}--blockDataScript`,
-	}));
-
-	return [...pageOptions, ...blockOptions];
 };
 
 const handleIsStandardChange = async (newVal: string) => {
