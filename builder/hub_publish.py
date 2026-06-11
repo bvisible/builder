@@ -199,6 +199,9 @@ def _upload_and_rewrite_assets(payload: dict, group: str, hub_url: str, headers:
     """Upload every referenced /files/* asset to the hub, then rewrite all
     occurrences in the payload to the returned hub-local URLs."""
     blob = frappe.as_json(payload, indent=0)
+    # Self-referencing absolute URLs (user pasted the full site URL) become
+    # relative so they're collected for upload like every other local asset.
+    blob = blob.replace(f"{frappe.utils.get_url()}/files/", "/files/")
     candidates = sorted(set(FILES_URL_RE.findall(blob)), key=len, reverse=True)
 
     url_map = {}
