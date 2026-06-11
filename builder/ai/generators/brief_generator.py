@@ -425,6 +425,7 @@ class BriefGenerator:
             api_key=self.config.api_key,
             base_url=self.config.base_url,
             temperature=0.7,  # Higher temperature for design variety
+            timeout=self.config.request_timeout,
         )
 
         # Validator for brief completeness

@@ -45,6 +45,7 @@ class PageGenerator:
             api_key=self.config.api_key,
             base_url=self.config.base_url,
             temperature=0.9,  # Higher temperature for more creative designs
+            timeout=self.config.request_timeout,
         )
 
         self.validator = BlockValidator()

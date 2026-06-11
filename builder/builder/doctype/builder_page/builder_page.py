@@ -24,10 +24,16 @@ from builder.export_import_standard_page import export_page_as_standard
 from builder.hooks import builder_path
 from builder.html_preview_image import generate_preview
 from builder.template_sync import delete_template_page_fixture, export_template_group
+# bvisible: Block, copy_img_to_asset_folder and export_to_files are missing
+# upstream too — their save_as_template path NameErrors at runtime without them.
+from frappe.modules.export_file import export_to_files
+
 from builder.utils import (
+	Block,
 	ColonRule,
 	camel_case_to_kebab_case,
 	clean_data,
+	copy_img_to_asset_folder,
 	escape_single_quotes,
 	execute_script,
 	get_builder_page_preview_file_paths,

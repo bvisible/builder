@@ -1052,14 +1052,24 @@ def _generate_complete_site_worker(
 							attempt=attempt + 1, error=str(e)[:100])
 						print(f"[SITE_GEN_WORKER] JSON error for {page_title}, will retry: {str(e)[:100]}")
 						continue
-					else:
-						# Max retries exceeded or non-JSON error
-						raise
+					break  # this page failed — keep generating the others
 
 				except Exception as e:
-					# Other errors - don't retry
 					last_error = e
-					raise
+					# bvisible: transient API failures (Moonshot timeout on a
+					# dense page, connection blips, rate limits) ARE retryable —
+					# raising here used to kill the WHOLE job after 30 minutes.
+					message = str(e).lower()
+					transient = any(token in message for token in (
+						"timed out", "timeout", "connection", "rate limit",
+						"429", "502", "503", "504",
+					))
+					if transient and attempt < MAX_PAGE_RETRIES:
+						ai_log("warning", "Transient API error, will retry",
+							page=page_title, attempt=attempt + 1, error=str(e)[:120])
+						print(f"[SITE_GEN_WORKER] Transient error for {page_title}, retrying: {str(e)[:120]}")
+						continue
+					break  # this page failed — keep generating the others
 
 			# After retry loop
 			if blocks:

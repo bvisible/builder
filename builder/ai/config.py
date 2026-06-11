@@ -38,7 +38,8 @@ DEFAULTS = {
     "api_key": None,
     "temperature": 0.6,
     "max_tokens": 16384,
-    "request_timeout": 900,
+    # 1200s: kimi-k2.6 with thinking can exceed 15 min on dense pages
+    "request_timeout": 1200,
     "connect_timeout": 30,
     "default_theme": "modern",
     "default_site_type": "multi_page",
