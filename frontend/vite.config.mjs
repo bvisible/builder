@@ -11,6 +11,13 @@ export default defineConfig({
 	plugins: [
 		frappeui({
 			frontendRoute: "/_builder",
+			buildConfig: {
+				// Standalone builds (local Mac / GitHub Actions) run outside a bench,
+				// where the plugin cannot infer these from an apps/ folder layout.
+				outDir: "../builder/public/frontend",
+				indexHtmlPath: "../builder/www/_builder.html",
+				baseUrl: "/assets/builder/frontend/",
+			},
 			frappeProxy: {
 				port: 8080,
 				source: "^/(app|desk|login|api|assets|files|pages|builder_assets)",

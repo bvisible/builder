@@ -2,13 +2,12 @@
 <html lang="en" class="overscroll-none">
 	<head>
 		<meta charset="UTF-8" />
-		<link rel="icon" href="/assets/builder/images/frappe_black.png"  media="(prefers-color-scheme: light)"/>
-		<link rel="icon" href="/assets/builder/images/frappe_white.png"  media="(prefers-color-scheme: dark)"/>
+		<link rel="icon" href="/assets/builder/frontend/builder_logo.png" />
 		<meta name="viewport" content="width=device-width, initial-scale=1.0" />
 		<!-- <script src="https://cdn.tailwindcss.com"></script> -->
-		<title>Neoffice Builder — auto-built</title>
-		<script type="module" crossorigin src="/assets/builder/frontend/assets/index-uxq5XacR.js"></script>
-		<link rel="stylesheet" crossorigin href="/assets/builder/frontend/assets/index-CwcaBYB9.css">
+		<title>Frappe Builder</title>
+		<script type="module" crossorigin src="/assets/builder/frontend/assets/index-Dfr3kOXb.js"></script>
+		<link rel="stylesheet" crossorigin href="/assets/builder/frontend/assets/index-BXgG8dwY.css">
 	</head>
 	<body class="overscroll-none bg-surface-white no-scrollbar selection:bg-gray-500/30" style="scrollbar-width: auto;">
 		<div id="app"></div>
@@ -22,5 +21,12 @@
 			window.is_fc_site = "{{ is_fc_site }}";
 			window.is_developer_mode = "{{ is_developer_mode }}";
 		</script>
-	</body>
+	
+          <script>
+              {% for key in boot %}
+              window["{{ key }}"] = {{ boot[key] | tojson }};
+              {% endfor %}
+          </script>
+          </body>
+          
 </html>
