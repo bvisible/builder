@@ -360,9 +360,9 @@ Consider these sizes, but feel free to adapt:
 | h3 | ~{typo.h3_size} | ~{typo.h3_size_mobile} | {typo.h3_weight} |
 | p  | ~{typo.body_size} | ~{typo.body_size_mobile} | 400 |
 
-### Fonts
-- Headings: consider "{self.heading_font}" or similar
-- Body: consider "{self.body_font}"
+### Fonts (CONTRACT — exactly these on every page)
+- Headings: "{self.heading_font}"
+- Body: "{self.body_font}"
 - Include fontFamily in baseStyles for text elements
 {heights_section}
 ### Section Paddings (suggestions)
@@ -371,18 +371,25 @@ Consider these sizes, but feel free to adapt:
 | Hero | ~{paddings.get('hero', '100px 24px')} | ~60px 16px |
 | Standard | ~{paddings.get('standard', '80px 24px')} | ~48px 16px |
 
-### Color Usage
-- **Primary color**: {self.primary_usage}
-- **Secondary color**: {self.secondary_usage}
+### COLOR CONTRACT (STRICT — every page, no exceptions)
+The ONLY colors allowed on this site:
+- Primary: {self.primary_color} → write it as var(--primary-color)
+- Secondary: {self.secondary_color} → write it as var(--secondary-color)
+- Neutrals: #ffffff, light grays (#f8fafc, #fafafa, #f5f5f5), var(--text-color), var(--muted-color), and dark fields derived from the palette above
+- **Primary color usage**: {self.primary_usage}
+- **Secondary color usage**: {self.secondary_usage}
+⚠️ Any OTHER saturated hex (a new gold, teal, coral...) is FORBIDDEN — including
+inside inline SVG fill/stroke attributes. Pages must read as chapters of ONE
+book: same palette, same fonts, same button system on every page.
 
 ### Section Background Alternation (suggested pattern)
 {bg_sequence}
 
-### Button Styles (suggested)
+### Button Styles (CONTRACT — identical on every page)
 Primary: {json.dumps(self.button_primary)}
 Secondary: {json.dumps(self.button_secondary)}
 
-### Card Style (suggested)
+### Card Style (CONTRACT — identical on every page)
 - background: {self.card_style.get('backgroundColor')}
 - borderRadius: {self.card_style.get('borderRadius')}
 - boxShadow: {self.card_style.get('boxShadow')}
@@ -411,7 +418,8 @@ Secondary: {json.dumps(self.button_secondary)}
 - Gradients: {"Yes" if self.use_gradients else "No"}
 - Border radius: {self.border_radius_style} ({self.get_border_radius()})
 {self._get_inspiration_section()}
-Use these as guidelines for visual consistency while exercising creative freedom.
+LAYOUT and composition are yours to design creatively, page by page. COLORS,
+FONTS, BUTTONS and CARDS are a binding contract: identical on every page.
 """
 
     def to_dict(self) -> dict:

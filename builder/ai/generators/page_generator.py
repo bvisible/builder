@@ -174,6 +174,12 @@ class PageGenerator:
         # on a CTA — black on black).
         blocks = self._fix_contrast_wcag(blocks, effective_primary, effective_secondary)
 
+        # Palette contract guard: the LLM sometimes improvises a new accent on
+        # one page (gold contact page on a violet site). Remap any saturated
+        # hex outside the brief palette — in styles AND inline SVG attributes —
+        # to the closest brief color, so all pages share one palette.
+        blocks = self._enforce_brief_palette(blocks, effective_primary, effective_secondary)
+
         # Sanitize Jinja includes — fix or remove invalid template paths
         blocks = self._sanitize_jinja_includes(blocks)
 
@@ -627,6 +633,100 @@ class PageGenerator:
             ) % addr
 
         return self.SHORTCODE_PATTERN.sub(replace_google_map, inner)
+
+    # ------------------------------------------------------------------
+    # Palette contract guard
+    # ------------------------------------------------------------------
+    COLOR_STYLE_KEYS = (
+        "color", "backgroundColor", "background", "borderColor", "border",
+        "borderTop", "borderBottom", "borderLeft", "borderRight",
+        "boxShadow", "outlineColor", "fill", "stroke", "backgroundImage",
+    )
+    HEX_RE = re.compile(r"#[0-9a-fA-F]{6}\b|#[0-9a-fA-F]{3}\b")
+
+    def _enforce_brief_palette(self, blocks: list[dict], primary: str = None,
+                               secondary: str = None) -> list[dict]:
+        """Remap saturated hex colors that don't belong to the brief palette.
+
+        Neutral colors (low saturation or near-white/near-black) and hues close
+        to the palette pass through; anything else (an improvised gold, teal,
+        coral...) is replaced by the hue-closest brief color. Applies to style
+        values and to fill/stroke attributes inside inline SVG markup."""
+        palette = [c for c in (primary, secondary) if c and self._to_hsl(c)]
+        if not palette:
+            return blocks
+        remapped = 0
+
+        def map_hex(match: re.Match) -> str:
+            nonlocal remapped
+            original = match.group(0)
+            replacement = self._palette_replacement(original, palette)
+            if replacement and replacement.lower() != original.lower():
+                remapped += 1
+                return replacement
+            return original
+
+        def walk(block: dict):
+            for styles_key in ("baseStyles", "mobileStyles", "tabletStyles", "rawStyles"):
+                styles = block.get(styles_key)
+                if not isinstance(styles, dict):
+                    continue
+                for key in self.COLOR_STYLE_KEYS:
+                    value = styles.get(key)
+                    if isinstance(value, str) and "#" in value:
+                        styles[key] = self.HEX_RE.sub(map_hex, value)
+            html = block.get("innerHTML")
+            if isinstance(html, str) and "#" in html and ("<svg" in html or "style=" in html):
+                block["innerHTML"] = self.HEX_RE.sub(map_hex, html)
+            for child in block.get("children") or []:
+                if isinstance(child, dict):
+                    walk(child)
+
+        for block in blocks:
+            walk(block)
+        if remapped:
+            ai_log("info", "Palette contract guard remapped off-palette colors",
+                   remapped=remapped, palette=palette)
+        return blocks
+
+    def _palette_replacement(self, hex_color: str, palette: list[str]):
+        """Return the brief color to use instead of hex_color, or None to keep it."""
+        hsl = self._to_hsl(hex_color)
+        if hsl is None:
+            return None
+        h, s, lightness = hsl
+        # Neutrals pass: barely saturated, or extreme lightness (white/black-ish)
+        if s < 0.14 or lightness > 0.93 or lightness < 0.09:
+            return None
+        best, best_dist = None, None
+        for candidate in palette:
+            c_hsl = self._to_hsl(candidate)
+            if not c_hsl:
+                continue
+            dist = abs(h - c_hsl[0])
+            dist = min(dist, 1 - dist)  # hue wheel wraps
+            if best_dist is None or dist < best_dist:
+                best, best_dist = candidate, dist
+        if best is None:
+            return None
+        # Close enough in hue to be a tint/shade of the palette: keep it
+        if best_dist <= 0.06:
+            return None
+        return best
+
+    @staticmethod
+    def _to_hsl(hex_color: str):
+        import colorsys
+
+        m = re.match(r"^#([0-9a-fA-F]{3}|[0-9a-fA-F]{6})$", (hex_color or "").strip())
+        if not m:
+            return None
+        raw = m.group(1)
+        if len(raw) == 3:
+            raw = "".join(c * 2 for c in raw)
+        r, g, b = (int(raw[i:i + 2], 16) / 255 for i in (0, 2, 4))
+        h, lightness, s = colorsys.rgb_to_hls(r, g, b)
+        return (h, s, lightness)
 
     # ------------------------------------------------------------------
     # Jinja syntax guard

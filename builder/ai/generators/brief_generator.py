@@ -525,7 +525,23 @@ Return ONLY the JSON object, no markdown code blocks."""
 
         # Add vision analysis prompts
         if logo_image:
-            user_prompt += "\n\nA logo image is attached. Analyze it to determine:\n- Its dominant colors\n- Whether it has a transparent background\n- Whether it works better on light or dark header backgrounds\nChoose header_bg_color and header_text_color accordingly. The logo must be readable on the header."
+            user_prompt += (
+                "\n\nThe client's LOGO is attached — it is the single strongest brand "
+                "signal you have. Analyze it carefully:\n"
+                "- EXTRACT its exact color palette (estimate the hex values you see). "
+                + (
+                    "The client's colors above stay imposed, but echo the logo palette in your choices."
+                    if colors_imposed
+                    else "DERIVE primary_color and secondary_color FROM the logo palette — "
+                    "the site must feel like it belongs to this logo, never clash with it."
+                )
+                + "\n- Read its typographic personality (serif/sans, weight, geometry, mood) "
+                "and choose a font pairing that harmonizes with it.\n"
+                "- Note whether it has a transparent background, and whether it reads "
+                "better on light or dark surfaces.\n"
+                "Choose header_bg_color and header_text_color accordingly — the logo "
+                "must be perfectly readable on the header."
+            )
         if inspiration_images:
             user_prompt += f"\n\n{len(inspiration_images)} inspiration image(s) are attached. Analyze them for color palettes, layout patterns, and visual style to inform your design brief."
 

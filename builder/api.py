@@ -799,6 +799,21 @@ def _generate_complete_site_worker(
 		# STEP 2.5: Generate Design Brief for visual consistency
 		# =====================================================================
 		ai_log("info", "Step 2.5: Generating design brief for consistency")
+
+		# bvisible: ground the generation in the site's REAL business data —
+		# the model must never invent an address/phone/email, and the logo
+		# (when the caller didn't pass one) feeds the brief's vision analysis
+		# (palette + typographic personality extracted from it).
+		contact_data = get_site_contact_context()
+		contact_prompt = _contact_context_prompt(contact_data)
+		if contact_prompt:
+			prompt = f"{prompt}{contact_prompt}"
+			ai_log("info", "Injected real business data into prompt",
+				   fields=[k for k in contact_data if contact_data.get(k)])
+		if not logo_image and contact_data.get("logo"):
+			logo_image = contact_data["logo"]
+			ai_log("info", "Using the site's existing logo for brief vision",
+				   logo=logo_image)
 		_update_generation_status(job_id, {
 			"status": "running",
 			"progress": 8,
@@ -2032,6 +2047,80 @@ def import_template_group(template_group: str, project_folder: str | None = None
 	_apply_template_header_footer(group.get("header_footer"))
 
 	return created
+
+
+def get_site_contact_context() -> dict:
+	"""bvisible: real, verified contact data of this site — ERPNext Company,
+	its linked Address, and the header config logo. Injected into generation
+	prompts so the model never fabricates an address/phone/email."""
+	data = {}
+	try:
+		company_name = frappe.db.get_default("company")
+		if not company_name:
+			companies = frappe.get_all("Company", limit=1, pluck="name")
+			company_name = companies[0] if companies else None
+		if company_name:
+			company = frappe.get_doc("Company", company_name)
+			data["company_name"] = company.company_name or company_name
+			if company.get("phone_no"):
+				data["phone"] = company.phone_no
+			if company.get("email"):
+				data["email"] = company.email
+			if company.get("website"):
+				data["website"] = company.website
+			if company.get("company_logo"):
+				data["logo"] = company.company_logo
+			address_name = frappe.db.get_value(
+				"Dynamic Link",
+				{"link_doctype": "Company", "link_name": company_name, "parenttype": "Address"},
+				"parent",
+			)
+			if address_name:
+				address = frappe.get_doc("Address", address_name)
+				parts = [
+					address.address_line1,
+					address.address_line2,
+					f"{address.get('pincode') or ''} {address.get('city') or ''}".strip(),
+					address.get("country"),
+				]
+				data["address"] = ", ".join(p for p in parts if p)
+				if not data.get("phone") and address.get("phone"):
+					data["phone"] = address.phone
+				if not data.get("email") and address.get("email_id"):
+					data["email"] = address.email_id
+	except Exception:
+		pass
+
+	try:
+		config = frappe.get_single("Website Header Footer Config")
+		logo = config.get("logo_image")
+		if not data.get("logo") and logo and "logo-default" not in logo:
+			data["logo"] = logo
+	except Exception:
+		pass
+
+	return data
+
+
+def _contact_context_prompt(data: dict) -> str:
+	"""Prompt section carrying the verified business data."""
+	labeled = [
+		("company_name", "Company name"),
+		("address", "Address"),
+		("phone", "Phone"),
+		("email", "Email"),
+		("website", "Website"),
+	]
+	lines = [f"- {label}: {data[key]}" for key, label in labeled if data.get(key)]
+	if not lines:
+		return ""
+	return (
+		"\n\n## REAL BUSINESS DATA (use EXACTLY these values)\n"
+		+ "\n".join(lines)
+		+ "\nNEVER invent contact details. If a detail is not listed above "
+		"(opening hours, extra phone numbers...), omit it or use an obviously "
+		"neutral placeholder — never a realistic-looking fabricated value."
+	)
 
 
 def _blocks_fingerprint(raw) -> str:
