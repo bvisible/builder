@@ -42,7 +42,12 @@ def _migrate_doctype(doctype_name: str) -> None:
         if frappe.conf.get(conf_key):
             continue  # site_config already has it — respect existing value
 
-        value = frappe.db.get_single_value(doctype_name, field)
+        try:
+            value = frappe.db.get_single_value(doctype_name, field)
+        except Exception:
+            # Older deployments may carry an intermediate version of the
+            # DocType that misses some fields — nothing to migrate then.
+            continue
 
         if is_password and value:
             try:
