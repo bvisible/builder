@@ -653,7 +653,18 @@ def _generate_complete_site_worker(
 		# =====================================================================
 		ai_log("info", "Step 1: Deleting existing pages")
 		print(f"[SITE_GEN_WORKER] Cleaning up existing Builder Pages...")
-		existing_pages = frappe.get_all("Builder Page", pluck="name")
+		# bvisible: full-site generation replaces the previous site, but NEVER
+		# template pages (the hub's catalog lives in this doctype!) nor the
+		# hub's editorial staging ("Hub Inbox — <group>" folders).
+		all_pages = frappe.get_all(
+			"Builder Page",
+			filters={"is_template": 0},
+			fields=["name", "project_folder"],
+		)
+		existing_pages = [
+			p.name for p in all_pages
+			if not (p.project_folder or "").startswith("Hub Inbox")
+		]
 		for page_name in existing_pages:
 			try:
 				frappe.delete_doc("Builder Page", page_name, ignore_permissions=True, force=True)
