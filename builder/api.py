@@ -852,22 +852,15 @@ def _generate_complete_site_worker(
 		print(f"[SITE_GEN_WORKER] Colors for pages: primary={primary_color}, secondary={secondary_color}")
 
 		# =====================================================================
-		# STEP 2.6.5: Apply header colors from design brief (logo analysis)
+		# STEP 2.6.5: Apply the brief's site chrome (header/footer design)
 		# =====================================================================
 		try:
-			config = frappe.get_single("Website Header Footer Config")
-			if hasattr(design_brief, "header_bg_color") and design_brief.header_bg_color:
-				config.header_bg_color = design_brief.header_bg_color
-			if hasattr(design_brief, "header_text_color") and design_brief.header_text_color:
-				config.header_text_color = design_brief.header_text_color
-			config.save(ignore_permissions=True)
-			frappe.db.commit()
-			ai_log("info", "Header colors applied from design brief",
-				   bg_color=design_brief.header_bg_color, text_color=design_brief.header_text_color)
-			print(f"[SITE_GEN_WORKER] Header colors from design brief: bg={design_brief.header_bg_color}, text={design_brief.header_text_color}")
+			applied = apply_brief_site_chrome(design_brief)
+			ai_log("info", "Site chrome applied from design brief", fields=applied)
+			print(f"[SITE_GEN_WORKER] Site chrome from design brief: {applied}")
 		except Exception as e:
-			ai_log("warning", "Failed to apply header colors from design brief", error=str(e)[:100])
-			frappe.log_error("Generation: header colors failed", str(e))
+			ai_log("warning", "Failed to apply site chrome from design brief", error=str(e)[:100])
+			frappe.log_error("Generation: site chrome failed", str(e))
 
 		# =====================================================================
 		# STEP 2.7: Propagate fonts from design brief to Website Header Footer Config
@@ -1965,6 +1958,33 @@ def import_template_group(template_group: str, project_folder: str | None = None
 	_apply_template_header_footer(group.get("header_footer"))
 
 	return created
+
+
+# Brief fields applied 1:1 to Website Header Footer Config (site chrome).
+# Colors are applied only when non-empty; enum fields always carry a value.
+BRIEF_CHROME_FIELDS = (
+	"header_bg_color", "header_text_color", "header_height", "header_border",
+	"cta_style", "cta_shape", "cta_size",
+	"footer_template", "footer_bg_color", "footer_text_color",
+)
+
+
+def apply_brief_site_chrome(design_brief) -> list[str]:
+	"""bvisible: apply the design brief's header/footer design (site chrome)
+	to the Website Header Footer Config. Returns the list of applied fields."""
+	config = frappe.get_single("Website Header Footer Config")
+	applied = []
+	for field in BRIEF_CHROME_FIELDS:
+		value = getattr(design_brief, field, None)
+		if value in (None, ""):
+			continue
+		if config.get(field) != value:
+			config.set(field, value)
+		applied.append(field)
+	if applied:
+		config.save(ignore_permissions=True)
+		frappe.db.commit()
+	return applied
 
 
 # Website Header Footer Config fields a hub template manifest may configure.

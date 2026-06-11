@@ -358,6 +358,18 @@ result feels genuinely designed or like yet another AI template.
 - button_primary / button_secondary / card_style: styled IN the direction (square,
   pill, bordered, shadowed — one deliberate system, used consistently).
 
+## 4b. SITE CHROME (header & footer — applied site-wide, choose deliberately)
+The site's locked header/footer take their design from YOUR brief:
+- header_height: Slim reads refined/editorial, Standard neutral, Tall bold.
+- header_border: Subtle fine line, or None for seamless chrome.
+- CTA: cta_style (Primary solid / Secondary / Outline = border only, refined),
+  cta_shape (Pill = soft/refined, Rounded, Square = editorial/brutalist),
+  cta_size (Small = discreet; Medium = bolder).
+- footer_template (Minimal / Standard / Extended) + footer_bg_color /
+  footer_text_color: often a deep field of the palette (dark footer) or the
+  surface tone — text MUST contrast with it.
+All chrome choices must express the same art direction as the pages.
+
 ## 5. NON-NEGOTIABLE TECHNICAL RULES
 - CONTRAST: colored/dark background → "#ffffff" text; light background (#fff, #f8fafc)
   → "var(--text-color)". NEVER white text on light background!

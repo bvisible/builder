@@ -253,7 +253,8 @@ class DesignBrief(BaseModel):
         description="Colors to avoid based on disliked inspirations"
     )
 
-    # Header colors for logo compatibility
+    # Site chrome — the locked, site-wide header/footer take their design from
+    # the brief (applied to Website Header Footer Config by the worker).
     header_bg_color: str = Field(
         default="#ffffff",
         description="Header background color — MUST be chosen based on logo analysis if logo is provided. Use white (#ffffff) for dark logos, dark for light logos. Must ensure logo readability."
@@ -261,6 +262,38 @@ class DesignBrief(BaseModel):
     header_text_color: str = Field(
         default="#1a1a1a",
         description="Header text color — MUST contrast with header_bg_color. Use dark text (#1a1a1a) on light header, white (#ffffff) on dark header."
+    )
+    header_height: Literal["Standard", "Slim", "Tall"] = Field(
+        default="Standard",
+        description="Header bar height — Slim (56px) reads refined/editorial, Tall (76px) reads bold"
+    )
+    header_border: Literal["None", "Subtle"] = Field(
+        default="Subtle",
+        description="Fine separation line under the header — Subtle or None"
+    )
+    cta_style: Literal["Primary", "Secondary", "Outline"] = Field(
+        default="Primary",
+        description="Header CTA fill: Primary (solid accent), Secondary, Outline (border only — refined)"
+    )
+    cta_shape: Literal["Rounded", "Pill", "Square"] = Field(
+        default="Rounded",
+        description="Header CTA shape: Pill (soft/refined), Rounded, Square (editorial/brutalist)"
+    )
+    cta_size: Literal["Medium", "Small"] = Field(
+        default="Small",
+        description="Header CTA size — Small reads discreet and refined"
+    )
+    footer_template: Literal["Minimal", "Standard", "Extended"] = Field(
+        default="Standard",
+        description="Footer density — Minimal (one line), Standard, Extended (rich columns)"
+    )
+    footer_bg_color: str = Field(
+        default="",
+        description="Footer background — often a deep field of the palette or the surface tone"
+    )
+    footer_text_color: str = Field(
+        default="",
+        description="Footer text color — must contrast with footer_bg_color"
     )
 
     def get_border_radius(self) -> str:

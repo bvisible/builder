@@ -221,7 +221,11 @@ class BriefValidator:
         result: BriefValidationResult,
     ) -> None:
         """Check color values are valid, and the palette passes basic contrast."""
-        color_fields = ["hero_text_color", "heading_color", "body_color", "link_color"]
+        color_fields = [
+            "hero_text_color", "heading_color", "body_color", "link_color",
+            "header_bg_color", "header_text_color",
+            "footer_bg_color", "footer_text_color",
+        ]
 
         for field_name in color_fields:
             value = getattr(brief, field_name, None)
