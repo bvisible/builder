@@ -33,7 +33,7 @@ THINK_LEVEL_MAP = {
 # Production defaults — matches the Moonshot/Kimi deployment pushed by devops.
 DEFAULTS = {
     "provider": "openai",
-    "model": "kimi-k2.5",
+    "model": "kimi-k2.6",
     "base_url": "https://api.moonshot.ai/v1",
     "api_key": None,
     "temperature": 0.6,
@@ -51,16 +51,16 @@ DEFAULTS = {
 # Per-provider recommended models.
 RECOMMENDED_MODELS = {
     "openai": {
-        "best_quality": "kimi-k2.5",
-        "balanced": "kimi-k2.5",
-        "fast": "kimi-k2.5",
-        "creative": "kimi-k2.5",
+        "best_quality": "kimi-k2.6",
+        "balanced": "kimi-k2.6",
+        "fast": "kimi-k2.6",
+        "creative": "kimi-k2.6",
     },
     "ollama": {
-        "best_quality": "kimi-k2.5:cloud",
-        "balanced": "kimi-k2.5:cloud",
+        "best_quality": "kimi-k2.6:cloud",
+        "balanced": "kimi-k2.6:cloud",
         "fast": "qwen2.5:7b",
-        "creative": "kimi-k2.5:cloud",
+        "creative": "kimi-k2.6:cloud",
         "code": "deepseek-coder:6.7b",
     },
 }
