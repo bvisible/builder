@@ -242,6 +242,19 @@ def get_default_brief(
 
     # Build the brief
     brief_data = {
+        # Generic art direction so the fallback brief PASSES validation —
+        # without it, an LLM outage degrades into 3 failed retries and an
+        # incoherent merged brief (seen on KM Home: vision error → defaults
+        # without design_concept → "Brief still invalid after merge").
+        "design_concept": (
+            f"A clean, {overrides.get('site_tone', 'professional')} direction in the "
+            f"{theme} register: clear hierarchy, generous spacing, consistent use of the "
+            "palette with one accent, and restrained, purposeful imagery."
+        ),
+        "signature_element": (
+            "A consistent section rhythm with oversized numbered markers and a single "
+            "accent color used sparingly for emphasis."
+        ),
         "site_tone": overrides.get("site_tone", "professional"),
         # Store actual colors for consistency
         "primary_color": effective_primary,

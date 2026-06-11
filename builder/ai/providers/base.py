@@ -178,12 +178,62 @@ class BaseProvider(ABC):
         if images:
             content = [{"type": "text", "text": prompt}]
             for url in images:
-                content.append({"type": "image_url", "image_url": {"url": url}})
+                data_url = self._image_to_data_url(url)
+                if data_url:
+                    content.append({"type": "image_url", "image_url": {"url": data_url}})
             messages.append({"role": "user", "content": content})
         else:
             messages.append({"role": "user", "content": prompt})
 
         return messages
+
+    @staticmethod
+    def _image_to_data_url(url: str):
+        """Encode an image reference as a base64 data URL.
+
+        Moonshot (and several OpenAI-compatible APIs) reject plain image URLs
+        ("unsupported image url") — only data URLs are reliable. Site files
+        (/files/..., /private/files/..., absolute URLs of this site) are read
+        from disk; external URLs are fetched. Returns None (image skipped,
+        generation continues without vision) when the image can't be loaded."""
+        import base64
+        import mimetypes
+        import os
+
+        if not url or not isinstance(url, str):
+            return None
+        if url.startswith("data:"):
+            return url
+
+        try:
+            import frappe
+
+            path = url
+            site_url = frappe.utils.get_url()
+            if path.startswith(site_url):
+                path = path[len(site_url):]
+
+            content = None
+            if path.startswith("/files/") or path.startswith("/private/files/"):
+                base = frappe.get_site_path("public" if path.startswith("/files/") else "")
+                full_path = os.path.join(base, path.lstrip("/"))
+                if os.path.exists(full_path):
+                    with open(full_path, "rb") as f:
+                        content = f.read()
+            elif url.startswith("http"):
+                import requests
+
+                resp = requests.get(url, timeout=15)
+                if resp.ok:
+                    content = resp.content
+
+            if not content:
+                return None
+            mimetype = mimetypes.guess_type(path)[0] or "image/png"
+            encoded = base64.b64encode(content).decode("ascii")
+            return f"data:{mimetype};base64,{encoded}"
+        except Exception:
+            return None
 
     def _extract_json_from_response(self, response: str) -> str:
         """
