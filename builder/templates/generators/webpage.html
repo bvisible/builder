@@ -72,8 +72,13 @@
 </head>
 {% block page_content %}
 <body {{ body_attrs or "" }}>
-	{# Include header/footer from Website Header Footer Config if configured #}
-	{%- set hf_config = get_header_footer_config() if get_header_footer_config is defined else None -%}
+	{# Include header/footer from Website Header Footer Config if configured.
+	   Template pages (is_template) are self-contained designs that ship their
+	   own navbar/footer components — injecting the site-wide header/footer on
+	   top of them double-stacks navigation and clashes with their design
+	   (e.g. Builder Hub template previews). #}
+	{%- set is_template_page = doc is defined and doc and doc.get("is_template") -%}
+	{%- set hf_config = get_header_footer_config() if (get_header_footer_config is defined and not is_template_page) else None -%}
 
 	{# Theme CSS variables are now injected by render_header() for all pages #}
 
@@ -81,7 +86,7 @@
 		{%- set colors = hf_config.get_header_colors() -%}
 		{% include "builder/templates/includes/header_footer/header_styles.html" %}
 		{{ render_header(hf_config) | safe }}
-	{%- else -%}
+	{%- elif not is_template_page -%}
 		{# Fallback to webshop navbar if no config #}
 		{% include "templates/includes/navbar/navbar.html" ignore missing %}
 	{%- endif -%}
@@ -92,7 +97,7 @@
 		{%- set footer_colors = hf_config.get_footer_colors() -%}
 		{% include "builder/templates/includes/header_footer/footer_styles.html" %}
 		{{ render_footer(hf_config) | safe }}
-	{%- else -%}
+	{%- elif not is_template_page -%}
 		{# Fallback to webshop footer if no config #}
 		{% include "templates/includes/footer/footer.html" ignore missing %}
 	{%- endif -%}

@@ -1818,6 +1818,40 @@ def get_template_groups() -> list[dict]:
 		return []
 
 
+def _strip_template_navigation(blocks: list, components: list) -> list:
+	"""bvisible: drop a template's own top-level navigation/footer blocks.
+
+	Neoffice sites render the centrally-managed header/footer (Website Header
+	Footer Config) around every page; importing a hub template verbatim would
+	stack the template's navbar/footer on top of ours. Removes root-level
+	<nav>/<footer> elements and root-level blocks extending a bundle component
+	whose name says it is a navbar/header/footer."""
+	nav_component_ids = set()
+	for comp in components:
+		label = f"{comp.get('component_name') or ''} {comp.get('name') or ''}".lower()
+		if any(token in label for token in ("navbar", "nav bar", "header", "footer")):
+			if comp.get("component_id"):
+				nav_component_ids.add(comp["component_id"])
+			if comp.get("name"):
+				nav_component_ids.add(comp["name"])
+
+	def is_navigation(block: dict) -> bool:
+		if not isinstance(block, dict):
+			return False
+		if block.get("element") in ("nav", "footer"):
+			return True
+		return block.get("extendedFromComponent") in nav_component_ids
+
+	def strip(level_blocks: list) -> list:
+		kept = [b for b in level_blocks if not is_navigation(b)]
+		# Single root container (body/wrapper): strip one level deeper too
+		if len(kept) == 1 and isinstance(kept[0], dict) and kept[0].get("children"):
+			kept[0]["children"] = [c for c in kept[0]["children"] if not is_navigation(c)]
+		return kept
+
+	return strip(blocks if isinstance(blocks, list) else [blocks])
+
+
 def create_page_from_bundle(bundle: dict, project_folder: str | None = None) -> str:
 	"""Create an editable page from a fetched hub bundle and return its name.
 
@@ -1835,12 +1869,18 @@ def create_page_from_bundle(bundle: dict, project_folder: str | None = None) -> 
 	page = bundle.get("page")
 	assert isinstance(page, dict)
 	preview = page.get("preview")
+	# bvisible: hub templates ship their own navbar/footer components, but on
+	# Neoffice instances navigation is provided site-wide by Website Header
+	# Footer Config — keeping both stacks two headers/footers on every page.
+	page_blocks = _strip_template_navigation(
+		page.get("blocks") or [], bundle.get("components") or []
+	)
 	new_page = frappe.get_doc(
 		{
 			"doctype": "Builder Page",
 			"page_title": page.get("page_title") or "My Page",
 			"preview": preview or None,
-			"draft_blocks": frappe.as_json(page.get("blocks") or []),
+			"draft_blocks": frappe.as_json(page_blocks),
 			"page_data_script": page.get("page_data_script"),
 			"head_html": page.get("head_html"),
 			"body_html": page.get("body_html"),
