@@ -265,8 +265,11 @@ frappe.ui.BuilderChatPage = class BuilderChatPage {
 			this.progress.chat.hideTyping();
 
 			if (response.message && response.message.success) {
-				if (response.message.response) {
-					this.progress.chat.addMessage('assistant', response.message.response, {
+				// Some flows (replace confirmation, cancel) answer in `message`
+				// instead of `response` — show whichever carries the text.
+				const assistant_text = response.message.response || response.message.message;
+				if (assistant_text) {
+					this.progress.chat.addMessage('assistant', assistant_text, {
 						buttons: response.message.buttons || []
 					});
 				}
@@ -334,8 +337,9 @@ frappe.ui.BuilderChatPage = class BuilderChatPage {
 			this.progress.chat.hideTyping();
 
 			if (response.message && response.message.success) {
-				if (response.message.response) {
-					this.progress.chat.addMessage('assistant', response.message.response, {
+				const assistant_text = response.message.response || response.message.message;
+				if (assistant_text) {
+					this.progress.chat.addMessage('assistant', assistant_text, {
 						buttons: response.message.buttons || []
 					});
 				}
@@ -511,9 +515,32 @@ frappe.ui.BuilderChatPage = class BuilderChatPage {
 			});
 
 			if (response.message && response.message.success) {
+				// Pre-check refused: existing pages were designed/edited by hand —
+				// surface the question and its Yes/No buttons instead of
+				// fake-starting a generation that never got enqueued.
+				if (response.message.status === 'confirmation_required') {
+					this.progress.setActionEnabled(true);
+					this.progress.setActionLabel(btn_label, 'fa-magic');
+					this.progress.chat.addMessage('assistant', response.message.message, {
+						buttons: response.message.buttons || []
+					});
+					this.progress.chat.scrollToBottom();
+					return;
+				}
+
 				// Check if generation completed synchronously (single page mode)
 				if (response.message.status === 'completed') {
 					this.on_generation_complete(response.message);
+					return;
+				}
+
+				// No job enqueued: show what the server said and re-enable
+				if (!response.message.job_id) {
+					this.progress.setActionEnabled(true);
+					this.progress.setActionLabel(btn_label, 'fa-magic');
+					if (response.message.message) {
+						this.progress.chat.addMessage('assistant', response.message.message);
+					}
 					return;
 				}
 

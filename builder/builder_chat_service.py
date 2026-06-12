@@ -217,11 +217,26 @@ class BuilderChatService:
 			if user_message.strip().lower() in {
 				"generate_site",
 				"generate site",
+				"generate_all",
+				"generate all",
 				"générer le site",
 				"générer le site maintenant",
+				"générer tout le site",
+				"tout générer",
 			}:
 				session.generation_mode = session.generation_mode or "full"
 				session.add_message(role="user", content=_("Generate entire site"))
+				session.save(ignore_permissions=True)
+				return self.trigger_generation(session.session_id)
+
+			if user_message.strip().lower() in {
+				"homepage_first",
+				"homepage first",
+				"la page d'accueil d'abord",
+				"page d'accueil d'abord",
+			}:
+				session.generation_mode = "progressive"
+				session.add_message(role="user", content=_("Homepage first"))
 				session.save(ignore_permissions=True)
 				return self.trigger_generation(session.session_id)
 
