@@ -1393,6 +1393,30 @@ When all required fields are collected, congratulate the user and tell them they
 				"missing_fields": session.get_missing_fields(),
 			}
 
+		# Replace-confirmation buttons (asked when existing pages were
+		# designed/edited by hand — see classify_existing_pages). They MUST be
+		# handled here: process_message dispatches every __TOKEN__ to this
+		# handler before its own routing, so a check there never matches.
+		elif command == "__FORCE_REGENERATE__":
+			session.add_message(role="user", content=_("Yes, replace everything"))
+			session.save(ignore_permissions=True)
+			return self.trigger_generation(session.session_id, force_replace=True)
+
+		elif command == "__CANCEL_REGENERATE__":
+			session.add_message(role="user", content=_("No, keep my pages"))
+			response = _(
+				"Understood — I kept all your existing pages. "
+				"You can adjust your project and generate again whenever you want."
+			)
+			session.add_message(role="assistant", content=response)
+			session.status = "Active"
+			session.save(ignore_permissions=True)
+			return {
+				"success": True,
+				"message": response,
+				"completion_percentage": session.completion_percentage,
+			}
+
 		# Default: treat as regular message
 		return self.process_message(session.session_id, command.strip("_"))
 
