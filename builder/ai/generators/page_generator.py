@@ -795,10 +795,90 @@ class PageGenerator:
 
         for block in blocks:
             walk(block)
-        if snapped:
-            ai_log("info", "Layout grid guard snapped drifting content widths",
-                   snapped=snapped, target=target_px)
+
+        # Structural pass: when the LLM styles a root section itself as the
+        # layout (grid 7fr/5fr directly on the full-width section, no inner
+        # container), its content runs edge-to-edge while sibling pages sit
+        # on the centered grid. Wrap such sections' children in a centered
+        # container at the canonical width; text-free sections (full-bleed
+        # image banners, marquees without copy) stay full-bleed.
+        wrapped = 0
+        for block in blocks:
+            wrapped += self._ensure_grid_container(block, target_px)
+
+        if snapped or wrapped:
+            ai_log("info", "Layout grid guard normalized content grid",
+                   snapped=snapped, wrapped_sections=wrapped, target=target_px)
         return blocks
+
+    # Layout props that belong on the grid container, not the full-width section
+    LAYOUT_CONTAINER_KEYS = (
+        "display", "gridTemplateColumns", "gridTemplateRows", "gridAutoFlow",
+        "flexDirection", "flexWrap", "alignItems", "justifyContent",
+        "justifyItems", "alignContent", "placeItems", "gap", "rowGap", "columnGap",
+    )
+    TEXT_ELEMENTS = {"h1", "h2", "h3", "h4", "h5", "h6", "p", "a", "button",
+                     "span", "blockquote", "li", "label"}
+
+    def _ensure_grid_container(self, section: dict, target_px: str) -> int:
+        """Wrap a root section's children in a centered grid container when
+        none exists. Returns 1 when a wrapper was inserted, else 0."""
+        if (section.get("element") or "").lower() not in ("section", "div", "main", "article"):
+            return 0
+        children = [c for c in (section.get("children") or []) if isinstance(c, dict)]
+        if not children:
+            return 0
+        # Already aligned: a direct child sits on the canonical grid width
+        for child in children:
+            styles = child.get("baseStyles") or {}
+            mw = styles.get("maxWidth") or styles.get("max-width")
+            if isinstance(mw, str) and mw.strip() == target_px:
+                return 0
+        # Full-bleed media sections (no text content) keep their freedom
+        if not self._contains_text(section, depth=3):
+            return 0
+
+        container = {
+            "blockId": f"grid-{frappe.generate_hash(length=8)}",
+            "element": "div",
+            "baseStyles": {
+                "width": "100%",
+                "maxWidth": target_px,
+                "marginLeft": "auto",
+                "marginRight": "auto",
+            },
+            "children": children,
+        }
+        # The layout system (grid/flex) moves from the section onto the
+        # container — including its responsive overrides — so the section
+        # keeps only background/padding and the content aligns to the grid.
+        for styles_key in ("baseStyles", "mobileStyles", "tabletStyles"):
+            styles = section.get(styles_key)
+            if not isinstance(styles, dict):
+                continue
+            moved = {k: styles.pop(k) for k in list(styles) if k in self.LAYOUT_CONTAINER_KEYS}
+            if not moved:
+                continue
+            if styles_key == "baseStyles":
+                container["baseStyles"].update(moved)
+            else:
+                container[styles_key] = moved
+        section["children"] = [container]
+        return 1
+
+    def _contains_text(self, block: dict, depth: int) -> bool:
+        """True when the block subtree carries textual content."""
+        if depth < 0:
+            return False
+        if (block.get("element") or "").lower() in self.TEXT_ELEMENTS:
+            return True
+        html = block.get("innerHTML")
+        if isinstance(html, str) and re.search(r"<(h[1-6]|p|a|button|span|li)\b", html):
+            return True
+        for child in block.get("children") or []:
+            if isinstance(child, dict) and self._contains_text(child, depth - 1):
+                return True
+        return False
 
     # ------------------------------------------------------------------
     # Jinja syntax guard
