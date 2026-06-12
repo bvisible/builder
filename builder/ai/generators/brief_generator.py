@@ -255,6 +255,11 @@ def get_default_brief(
             "A consistent section rhythm with oversized numbered markers and a single "
             "accent color used sparingly for emphasis."
         ),
+        "inner_page_header": (
+            "A compact solid band in the primary color (about 220px tall, 80px top "
+            "padding), left-aligned h1 at the standard scale in white, one short "
+            "intro line below — identical on every interior page."
+        ),
         "site_tone": overrides.get("site_tone", "professional"),
         # Store actual colors for consistency
         "primary_color": effective_primary,
@@ -370,6 +375,16 @@ result feels genuinely designed or like yet another AI template.
   Heroes may use minHeight 60-90vh when the composition needs presence.
 - button_primary / button_secondary / card_style: styled IN the direction (square,
   pill, bordered, shadowed — one deliberate system, used consistently).
+
+## 4a. LAYOUT SYSTEM (one grid, one interior page header)
+- content_max_width: ONE canonical content width for the whole site (e.g. "1140px",
+  "1200px", "1280px"). Every page aligns to it — mixed widths across pages is the
+  #1 thing that makes a site feel stitched together from parts.
+- inner_page_header: design the ONE standard header that every interior page
+  (about, services, team… — everything except home) opens with. Prescribe it in
+  2-3 sentences: exact height/padding, background treatment (a solid or image
+  field from the palette), title alignment and scale. Sibling pages must open
+  IDENTICALLY — only the texts change.
 
 ## 4b. SITE CHROME (header & footer — applied site-wide, choose deliberately)
 The site's locked header/footer take their design from YOUR brief:

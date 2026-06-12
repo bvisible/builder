@@ -102,6 +102,7 @@ class BriefValidator:
     REQUIRED_FIELDS = [
         "design_concept",
         "signature_element",
+        "inner_page_header",
         "heading_font",
         "body_font",
         "hero_background",
@@ -234,6 +235,15 @@ class BriefValidator:
                     field_name,
                     f"Invalid color format: '{value}' (expected: #hex, rgb(), var(--name))"
                 )
+
+        # Layout guard: the site grid must be a concrete px width — pages of
+        # different widths read as different websites.
+        cmw = (brief.content_max_width or "").strip()
+        if not re.match(r"^\d{3,4}px$", cmw):
+            result.add_invalid(
+                "content_max_width",
+                f"'{cmw}' is not a concrete grid width (expected e.g. '1200px')"
+            )
 
         # WCAG guard: primary buttons carry white text — the chosen primary must
         # contrast with white (>= 3:1, large-text/UI threshold). Keeps the freely

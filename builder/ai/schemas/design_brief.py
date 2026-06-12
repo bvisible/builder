@@ -66,6 +66,15 @@ class DesignBrief(BaseModel):
             "usage, a distinctive section rhythm or image treatment."
         ),
     )
+    inner_page_header: str = Field(
+        default="",
+        description=(
+            "Standard page header shared by ALL interior pages (everything except home): "
+            "exact height/padding, background treatment (solid/image field from the "
+            "palette), title alignment and scale. 2-3 prescriptive sentences — sibling "
+            "pages (about, services...) must open identically, only the texts change."
+        ),
+    )
 
     # Site tone
     site_tone: Literal["professional", "playful", "elegant", "bold", "minimal"] = Field(
@@ -382,6 +391,21 @@ The ONLY colors allowed on this site:
 inside inline SVG fill/stroke attributes. Pages must read as chapters of ONE
 book: same palette, same fonts, same button system on every page.
 
+### LAYOUT CONTRACT (STRICT — one grid for the whole site)
+- Every non-full-bleed section wraps its content in a container with
+  maxWidth: "{self.content_max_width}", marginLeft/marginRight: "auto" and consistent
+  horizontal padding. Full-bleed color/image fields are welcome, but the CONTENT
+  inside them still aligns to this same {self.content_max_width} grid.
+- NEVER introduce another content width (1140px, 1280px, 1320px…) anywhere.
+  One site = ONE grid — pages of different widths read as different websites.
+- INTERIOR PAGE HEADER — every page except the home page MUST open with this
+  exact standard header: {self.inner_page_header}
+  Identical height, identical background treatment, identical title scale on
+  every interior page; only the title/intro text changes. A functionally
+  distinct page (a contact page with a full-width map/form split…) may deviate
+  DELIBERATELY, but sibling content pages (about, services, team…) must look
+  like siblings.
+
 ### Section Background Alternation (suggested pattern)
 {bg_sequence}
 
@@ -418,7 +442,8 @@ Secondary: {json.dumps(self.button_secondary)}
 - Gradients: {"Yes" if self.use_gradients else "No"}
 - Border radius: {self.border_radius_style} ({self.get_border_radius()})
 {self._get_inspiration_section()}
-LAYOUT and composition are yours to design creatively, page by page. COLORS,
+Section composition WITHIN the grid is yours to design creatively, page by
+page. The GRID ({self.content_max_width}), the INTERIOR PAGE HEADER, COLORS,
 FONTS, BUTTONS and CARDS are a binding contract: identical on every page.
 """
 
