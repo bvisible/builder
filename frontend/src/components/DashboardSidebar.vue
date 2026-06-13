@@ -165,15 +165,6 @@
 		<p class="mt-2 p-2 text-center text-sm text-ink-gray-4">Version: {{ builderVersion }}</p>
 		<TrialBanner v-if="builderStore.isFCSite"></TrialBanner>
 	</section>
-	<Dialog v-model="showSettingsDialog" :dismissable="false" size="5xl" bare>
-		<template #default>
-			<DialogTitle class="sr-only">Global Builder Settings</DialogTitle>
-			<DialogDescription class="sr-only">
-				Configure global settings for this builder project.
-			</DialogDescription>
-			<BuilderSettings @close="showSettingsDialog = false" :onlyGlobal="true" bare />
-		</template>
-	</Dialog>
 </template>
 <script lang="ts" setup>
 import EditableSpan from "@/components/EditableSpan.vue";
@@ -187,18 +178,16 @@ import useBuilderStore from "@/stores/builderStore";
 import { BuilderProjectFolder } from "@/types/doctypes";
 import { confirm } from "@/utils/helpers";
 import { useDark, useToggle } from "@vueuse/core";
-import { createResource, Dialog, Dropdown } from "frappe-ui";
+import { createResource, Dropdown } from "frappe-ui";
 import { TrialBanner } from "frappe-ui/frappe";
-import { DialogDescription, DialogTitle } from "reka-ui";
-import { computed, defineAsyncComponent, h, ref } from "vue";
+import { computed, h, ref } from "vue";
 
-const BuilderSettings = defineAsyncComponent(() => import("@/components/BuilderSettings.vue"));
 const isDark = useDark({
 	attribute: "data-theme",
 });
 const toggleDark = useToggle(isDark);
 const builderStore = useBuilderStore();
-const { showTemplatesDialog } = useDashboardState();
+const { showTemplatesDialog, showSettingsDialog } = useDashboardState();
 const renamingFolder = ref("");
 
 const apps = createResource({
@@ -261,6 +250,5 @@ const deleteFolder = async (folderName: string) => {
 	);
 	setFolderActive("");
 };
-const showSettingsDialog = ref(false);
 const builderVersion = (window as any).builder_version;
 </script>
