@@ -101,6 +101,8 @@ declare module 'vue' {
     MarginHandler: typeof import('./src/components/MarginHandler.vue')['default']
     Meta: typeof import('./src/components/Icons/Meta.vue')['default']
     MiddleTruncate: typeof import('./src/components/MiddleTruncate.vue')['default']
+    NeoCockpitBridge: typeof import('./src/components/NeoCockpitBridge.vue')['default']
+    NeoCockpitBuilderSidebar: typeof import('./src/components/NeoCockpitBuilderSidebar.vue')['default']
     NewBlockTemplate: typeof import('./src/components/Modals/NewBlockTemplate.vue')['default']
     NewBuilderVariable: typeof import('./src/components/Modals/NewBuilderVariable.vue')['default']
     NumberArrows: typeof import('./src/components/Controls/NumberArrows.vue')['default']

@@ -77,3 +77,26 @@ p:empty::before {
 .PopoverContent {
 	z-index: 30;
 }
+
+/* === Neoffice Design System — recolor the frappe-ui blue accent to clay
+   #D68A59. Override the semantic --*-blue-* tokens so links/active/focus/
+   accent surfaces become warm clay instead of frappe blue (light + dark).
+   Primary buttons stay ink (frappe-ui solid = gray-900). */
+:root {
+	--outline-blue-1: 221 164 121;
+	--outline-blue-2: 214 138 89;
+	--surface-blue-1: 243 222 204;
+	--surface-blue-2: 214 138 89;
+	--text-ink-blue-1: 250 239 230;
+	--text-ink-blue-2: 194 114 63;
+	--text-ink-blue-3: 161 90 46;
+	--text-ink-blue-4: 126 69 35;
+}
+[data-theme="dark"] {
+	--outline-blue-1: 194 114 63;
+	--outline-blue-2: 194 114 63;
+	--surface-blue-1: 126 69 35;
+	--surface-blue-2: 214 138 89;
+	--text-ink-blue-2: 221 164 121;
+	--text-ink-blue-3: 233 197 164;
+}
