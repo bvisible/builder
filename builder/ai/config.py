@@ -34,6 +34,12 @@ THINK_LEVEL_MAP = {
 DEFAULTS = {
     "provider": "openai",
     "model": "kimi-k2.6",
+    # Pages are code (HTML/CSS/Jinja/blocks) → Kimi K2.7 Code: same price as
+    # K2.6, ~30% fewer tokens on long tasks, stronger instruction-following on
+    # our strict brief contracts. The brief stays on `model` (k2.6) because it
+    # is design direction + logo vision (Moonshot recommends K2.6 for
+    # non-coding tasks, and the *-code model is not relied on for vision).
+    "page_model": "kimi-k2.7-code",
     "base_url": "https://api.moonshot.ai/v1",
     "api_key": None,
     "temperature": 0.6,
@@ -73,6 +79,8 @@ class AIConfig:
 
     provider: ProviderType = DEFAULTS["provider"]
     model: Optional[str] = DEFAULTS["model"]
+    # Model used for page generation (code). Falls back to `model` when unset.
+    page_model: Optional[str] = DEFAULTS["page_model"]
     api_key: Optional[str] = DEFAULTS["api_key"]
     base_url: Optional[str] = DEFAULTS["base_url"]
 
@@ -96,10 +104,17 @@ class AIConfig:
             return THINK_LEVEL_MAP["default"].get(level, True)
 
         model_lower = self.model.lower()
+        value = THINK_LEVEL_MAP["default"].get(level, True)
         for model_key, mapping in THINK_LEVEL_MAP.items():
             if model_key != "default" and model_key in model_lower:
-                return mapping.get(level, True)
-        return THINK_LEVEL_MAP["default"].get(level, True)
+                value = mapping.get(level, True)
+                break
+        # Moonshot *-code models (e.g. kimi-k2.7-code) REQUIRE thinking — a
+        # request with thinking disabled returns a 400. Never send think=False
+        # for them, whatever the configured think level resolves to.
+        if value is False and "code" in model_lower:
+            return True
+        return value
 
 
 def get_ai_settings() -> AIConfig:
@@ -126,6 +141,11 @@ def get_ai_settings() -> AIConfig:
         or conf.get("ollama_model")
         or DEFAULTS["model"]
     )
+    page_model = (
+        conf.get("openai_page_model")
+        or conf.get("ollama_page_model")
+        or DEFAULTS["page_model"]
+    )
     base_url = (
         conf.get("openai_base_url")
         or conf.get("ollama_base_url")
@@ -141,6 +161,7 @@ def get_ai_settings() -> AIConfig:
     return AIConfig(
         provider=provider,
         model=model,
+        page_model=page_model,
         base_url=base_url,
         api_key=api_key,
         temperature=float(conf.get("ai_temperature") or DEFAULTS["temperature"]),

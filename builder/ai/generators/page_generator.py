@@ -36,8 +36,13 @@ class PageGenerator:
 
         if provider:
             self.config.provider = provider
+        # Page generation is code → prefer the dedicated page_model
+        # (Kimi K2.7 Code) over the general/brief model. An explicit `model`
+        # argument still wins (e.g. a per-request override from the chat).
         if model:
             self.config.model = model
+        elif getattr(self.config, "page_model", None):
+            self.config.model = self.config.page_model
 
         self.llm = get_provider(
             self.config.provider,
