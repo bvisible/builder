@@ -628,6 +628,24 @@ class PageGenerator:
                     block["baseStyles"] = styles
                     fixed_count += 1
 
+            # Invisible-CTA guard: an interactive element whose OWN background is
+            # nearly the same as its parent's (e.g. a brand-color button sitting
+            # on a brand-color hero) reads as no button at all. Flip it to a
+            # contrasting fill so it pops. Restricted to a/button so sections and
+            # cards are never touched. Runs after the text fix so the paired
+            # text color is set last and stays readable on the new fill.
+            if (element in ("a", "button") and own_bg_lum is not None
+                    and inherited_bg_lum is not None
+                    and contrast(own_bg_lum, inherited_bg_lum) < 1.5):
+                if inherited_bg_lum < 0.5:
+                    styles["backgroundColor"] = "#ffffff"
+                    styles["color"] = "var(--text-color)"
+                else:
+                    styles["backgroundColor"] = "var(--text-color)"
+                    styles["color"] = "#ffffff"
+                block["baseStyles"] = styles
+                fixed_count += 1
+
             for child in block.get("children") or []:
                 if isinstance(child, dict):
                     walk(child, bg_lum)
