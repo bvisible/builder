@@ -43,7 +43,25 @@ UNDERSTANDING_TIMEOUT = 120
 
 
 def _provider(cfg):
-    # Understanding is vision + classification (non-code) → general model (K2.6).
+    """Provider for the understanding pass.
+
+    Prefers the Olares "nora" vision model when configured: it is our own
+    infra (free), multimodal, returns valid structured output, and is ~15-30x
+    faster than Kimi K2.6 (~3s vs ~57s per image — measured on Osiris). Falls
+    back to the builder's general model (Kimi K2.6) when Nora isn't set.
+    """
+    conf = frappe.conf
+    nora_base = conf.get("nora_base_url")
+    nora_key = conf.get("nora_api_key")
+    if nora_base and nora_key:
+        return get_provider(
+            "openai",
+            model=conf.get("nora_ocr_model") or conf.get("nora_model") or "nora",
+            api_key=nora_key,
+            base_url=nora_base,
+            temperature=0.2,
+            timeout=UNDERSTANDING_TIMEOUT,
+        )
     return get_provider(
         cfg.provider,
         model=cfg.model,
