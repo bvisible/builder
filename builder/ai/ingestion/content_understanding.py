@@ -213,6 +213,19 @@ def understand_assets_batch(asset_names, user: str = None) -> list:
 
 
 @frappe.whitelist()
+def understand_session_pending(session_id: str) -> dict:
+    """Understand every still-pending (or previously failed) asset of a session,
+    sequentially. Reusable entry for bench execute and re-runs."""
+    names = frappe.get_all(
+        "Builder Content Asset",
+        filters={"session_id": session_id, "status": ["in", ["pending", "failed"]]},
+        pluck="name",
+    )
+    results = [understand_asset(n) for n in names]
+    return {"processed": len(results), "session_id": session_id}
+
+
+@frappe.whitelist()
 def ingest_content_assets(session_id: str, files, company: str = None) -> dict:
     """Create Builder Content Asset rows for a batch of uploaded files and queue
     the understanding pass.
