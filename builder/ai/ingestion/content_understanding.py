@@ -36,6 +36,12 @@ def detect_asset_type(filename: str) -> str:
     return "Image" if ext in IMAGE_EXTS else "Document"
 
 
+# Understanding is a short perception/classification task. Cap the request
+# well below the generator's request_timeout (1200s) so one slow/hung image
+# fails fast and the batch keeps moving instead of blocking for ~20 min.
+UNDERSTANDING_TIMEOUT = 120
+
+
 def _provider(cfg):
     # Understanding is vision + classification (non-code) → general model (K2.6).
     return get_provider(
@@ -44,7 +50,7 @@ def _provider(cfg):
         api_key=cfg.api_key,
         base_url=cfg.base_url,
         temperature=0.3,
-        timeout=cfg.request_timeout,
+        timeout=UNDERSTANDING_TIMEOUT,
     )
 
 
