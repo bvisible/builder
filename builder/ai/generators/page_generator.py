@@ -225,6 +225,65 @@ class PageGenerator:
         frappe.logger().info(f"Generated {len(blocks)} blocks successfully")
         return blocks
 
+    def revise_blocks(self, blocks: list, issues: list, design_brief=None,
+                      primary: str = None, secondary: str = None, page_title: str = "") -> list:
+        """Revise an existing page's blocks to fix a visual critique.
+
+        `issues` is a list of {area, severity, problem, fix}. The page model
+        (code-specialised) rewrites the blocks fixing ONLY those problems, then
+        the same post-processing guards as generation run. Returns the revised
+        blocks, or the originals unchanged if the revision can't be parsed.
+        """
+        if not issues:
+            return blocks
+
+        issues_text = "\n".join(
+            f"- [{i.get('severity', '')}] {i.get('area', '')}: {i.get('problem', '')}"
+            f"  → FIX: {i.get('fix', '')}"
+            for i in issues
+        )
+        system_prompt = (
+            "You revise an EXISTING web page given its FrappeBlock JSON and a design "
+            "review. Fix ONLY the listed problems. Keep everything else identical: same "
+            "sections, same images (same src URLs), same texts unless a problem requires "
+            "changing them, same colors and fonts. Do not drop content. Return ONLY the "
+            "corrected FrappeBlock JSON array — no prose, no markdown fences."
+        )
+        user_prompt = (
+            f"PAGE: {page_title}\n\n"
+            f"CURRENT BLOCKS (FrappeBlock JSON):\n{json.dumps(blocks, ensure_ascii=False)}\n\n"
+            f"DESIGN REVIEW — fix exactly these problems:\n{issues_text}\n\n"
+            "Return the full corrected blocks as a JSON array, same structure, only the "
+            "listed problems addressed."
+        )
+
+        try:
+            think_value = self.config.get_think_value(self.config.page_think_level)
+            response = self.llm.generate(prompt=user_prompt, system_prompt=system_prompt, think=think_value)
+            revised = self._parse_response(response)
+            revised = self.validator.validate_and_repair(revised)
+        except Exception as e:
+            ai_log("warning", "Page revision failed — keeping original", error=str(e)[:200])
+            return blocks
+        if not revised:
+            return blocks
+
+        # Re-apply the same guards as generation (each is guarded for missing brief/colors).
+        if primary or secondary:
+            revised = self._apply_custom_colors(revised, primary, secondary)
+        if design_brief:
+            revised = self._inject_fonts(revised, design_brief)
+        revised = self._fix_contrast(revised)
+        if primary or secondary:
+            revised = self._fix_contrast_wcag(revised, primary, secondary)
+            revised = self._enforce_brief_palette(revised, primary, secondary)
+        if design_brief:
+            revised = self._enforce_content_width(revised, design_brief)
+        revised = self._sanitize_jinja_includes(revised)
+        revised = self._sanitize_jinja_syntax(revised)
+        revised = self._sanitize_layout_styles(revised)
+        return revised
+
     def _parse_response(self, response: str) -> list[dict]:
         """Parse the LLM response into a list of blocks."""
         import json_repair
