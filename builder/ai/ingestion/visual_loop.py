@@ -42,14 +42,36 @@ def _actionable(critique) -> list:
 
 
 def refine_page(page_name: str, max_iterations: int = 2, critique_with: str = "nora",
-                design_brief=None, primary: str = None, secondary: str = None) -> dict:
-    """Run the see→critique→fix→recheck loop on one page. Returns a report."""
+                session_id: str = None, design_brief=None, primary: str = None,
+                secondary: str = None) -> dict:
+    """Run the see→critique→fix→recheck loop on one page. Returns a report.
+
+    When session_id is given, the saved brief and the ingested real content are
+    loaded and fed to the revision, so fixes use real copy (not generic filler).
+    """
     from builder.ai.generators.page_generator import PageGenerator
     from builder.ai.inspiration.screenshotter import capture_website_screenshot
+    from builder.ai.ingestion.content_understanding import get_content_context
     from builder.api import _blocks_fingerprint
 
     cfg = get_ai_settings()
     gen = PageGenerator(config=cfg)
+
+    # Load brief + palette from the session so revisions stay on-brand.
+    if session_id and not design_brief:
+        sess = frappe.db.get_value(
+            "Builder Chat Session", {"session_id": session_id},
+            ["saved_brief", "primary_color", "secondary_color"], as_dict=True)
+        if sess:
+            primary = primary or sess.primary_color
+            secondary = secondary or sess.secondary_color
+            if sess.saved_brief:
+                try:
+                    from builder.ai.schemas.design_brief import DesignBrief
+                    design_brief = DesignBrief(**json.loads(sess.saved_brief))
+                except Exception:
+                    pass
+
     url = _page_url(page_name)
     report = {"page": page_name, "url": url, "iterations": [], "fixed": 0}
 
@@ -77,8 +99,15 @@ def refine_page(page_name: str, max_iterations: int = 2, critique_with: str = "n
 
         page = frappe.get_doc("Builder Page", page_name)
         blocks = json.loads(page.blocks or "[]")
+        real_content = ""
+        if session_id:
+            try:
+                real_content = get_content_context(session_id, page.route or page.page_title)
+            except Exception:
+                real_content = ""
         revised = gen.revise_blocks(blocks, actionable, design_brief=design_brief,
-                                    primary=primary, secondary=secondary, page_title=page.page_title)
+                                    primary=primary, secondary=secondary,
+                                    page_title=page.page_title, real_content=real_content)
         new_json = json.dumps(revised, ensure_ascii=False)
         if new_json == json.dumps(blocks, ensure_ascii=False):
             ai_log("info", "Revision produced no change — stopping loop", page=page_name)
@@ -98,8 +127,8 @@ def refine_page(page_name: str, max_iterations: int = 2, critique_with: str = "n
 
 
 @frappe.whitelist()
-def chat_refine_page(page_name: str, max_iterations: int = 2) -> dict:
+def chat_refine_page(page_name: str, max_iterations: int = 2, session_id: str = None) -> dict:
     """Whitelisted entry: run the visual refinement loop on one page."""
     if not page_name:
         frappe.throw(_("page_name is required"))
-    return refine_page(page_name, int(max_iterations))
+    return refine_page(page_name, int(max_iterations), session_id=session_id)

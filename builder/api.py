@@ -998,6 +998,17 @@ def _generate_complete_site_worker(
 				"site_name": site_name,
 			})
 
+			# Pull the client's real ingested content for this page's section
+			# (no-op when nothing was uploaded → behaves exactly as before).
+			page_real_content = ""
+			if session_id:
+				try:
+					from builder.ai.ingestion.content_understanding import get_content_context
+					page_real_content = get_content_context(
+						session_id, page_def.get("type", "") or page_title)
+				except Exception as e:
+					ai_log("warning", "Content context fetch failed", error=str(e)[:150])
+
 			# Retry loop for page generation
 			blocks = None
 			last_error = None
@@ -1036,6 +1047,7 @@ def _generate_complete_site_worker(
 						page_title=page_title,
 						page_type=page_def.get("type", ""),
 						design_brief=design_brief,
+						real_content=page_real_content,
 					)
 
 					ai_log("info", "Page generation successful",

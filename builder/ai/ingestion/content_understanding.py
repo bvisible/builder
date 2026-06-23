@@ -236,6 +236,59 @@ def understand_assets_batch(asset_names, user: str = None) -> list:
     return results
 
 
+# Page hint (type/title/route) → canonical content section.
+_SECTION_KEYWORDS = {
+    "accueil": "home", "home": "home", "index": "home",
+    "propos": "about", "about": "about", "histoire": "about", "entreprise": "about", "qui-sommes": "about",
+    "service": "services", "prestation": "services", "expertise": "services", "metier": "services",
+    "galerie": "gallery", "gallery": "gallery", "realisation": "gallery", "projet": "gallery", "portfolio": "gallery",
+    "equipe": "team", "team": "team",
+    "contact": "contact",
+    "tarif": "pricing", "prix": "pricing", "pricing": "pricing",
+}
+
+
+def _section_of(hint: str) -> str:
+    h = (hint or "").lower()
+    for kw, sec in _SECTION_KEYWORDS.items():
+        if kw in h:
+            return sec
+    return ""
+
+
+@frappe.whitelist()
+def get_content_context(session_id: str, page_hint: str = "", max_chars: int = 5000) -> str:
+    """Real client text (from understood Document assets) for a page, prompt-ready.
+
+    Section-matched documents first (by page hint = type/title/route), falling
+    back to all documents. Empty string when no content was ingested — callers
+    then behave exactly as before.
+    """
+    if not session_id:
+        return ""
+    docs = frappe.get_all(
+        "Builder Content Asset",
+        filters={"session_id": session_id, "asset_type": "Document", "status": "understood"},
+        fields=["summary", "suggested_section", "tags", "extracted_text"],
+    )
+    if not docs:
+        return ""
+    section = _section_of(page_hint)
+    matched = [d for d in docs if section and (d.suggested_section or "").lower() == section]
+    pool = matched or docs
+    parts, used = [], 0
+    for d in pool:
+        text = (d.extracted_text or d.summary or "").strip()
+        if not text:
+            continue
+        snippet = text[:2200]
+        parts.append(f"[{d.suggested_section or 'generic'}] {snippet}")
+        used += len(snippet)
+        if used >= max_chars:
+            break
+    return "\n\n".join(parts)[:max_chars]
+
+
 @frappe.whitelist()
 def understand_session_pending(session_id: str) -> dict:
     """Understand every still-pending (or previously failed) asset of a session,

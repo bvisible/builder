@@ -65,6 +65,7 @@ class PageGenerator:
         page_title: str = None,
         page_type: str = None,
         design_brief: DesignBrief = None,
+        real_content: str = None,
     ) -> list[dict]:
         """
         Generate a complete page with full creative freedom.
@@ -124,6 +125,16 @@ class PageGenerator:
             page_type=page_type,
             output_language=output_language,
         )
+
+        # Inject the client's REAL content (ingested documents) so the page uses
+        # actual copy/facts instead of invented filler. No-op when absent.
+        if real_content:
+            user_prompt += (
+                "\n\n## REAL CLIENT CONTENT (authoritative)\n"
+                "Use these EXACT facts, names, services and wording for this page. "
+                "Do NOT invent business details or generic filler — base the copy on this:\n"
+                f"{real_content}\n"
+            )
 
         # Generate blocks via LLM
         ai_log("info", "PageGenerator.generate_page() calling LLM",
@@ -226,7 +237,8 @@ class PageGenerator:
         return blocks
 
     def revise_blocks(self, blocks: list, issues: list, design_brief=None,
-                      primary: str = None, secondary: str = None, page_title: str = "") -> list:
+                      primary: str = None, secondary: str = None, page_title: str = "",
+                      real_content: str = None) -> list:
         """Revise an existing page's blocks to fix a visual critique.
 
         `issues` is a list of {area, severity, problem, fix}. The page model
@@ -249,10 +261,17 @@ class PageGenerator:
             "changing them, same colors and fonts. Do not drop content. Return ONLY the "
             "corrected FrappeBlock JSON array — no prose, no markdown fences."
         )
+        content_block = ""
+        if real_content:
+            content_block = (
+                "\n\nREAL CLIENT CONTENT (use these EXACT facts/wording when a fix needs "
+                "copy — never invent generic filler):\n" + real_content + "\n"
+            )
         user_prompt = (
             f"PAGE: {page_title}\n\n"
             f"CURRENT BLOCKS (FrappeBlock JSON):\n{json.dumps(blocks, ensure_ascii=False)}\n\n"
-            f"DESIGN REVIEW — fix exactly these problems:\n{issues_text}\n\n"
+            f"DESIGN REVIEW — fix exactly these problems:\n{issues_text}\n"
+            f"{content_block}\n"
             "Return the full corrected blocks as a JSON array, same structure, only the "
             "listed problems addressed."
         )
