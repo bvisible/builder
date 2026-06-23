@@ -3028,18 +3028,21 @@ def chat_generate_images(session_id: str):
 			match_result = {"matched": 0}
 			frappe.log_error("Client image matching failed", str(e))
 
-		# STEP 2 — Flux fills only the slots no client photo matched, and only
-		# when enabled per-site via site_config ("image_generation_enabled").
+		# STEP 2 — image generation fills only the slots no client photo matched.
+		# Backend: self-hosted ComfyUI (our GPU) when configured, else the legacy
+		# Ollama generator gated by the "image_generation_enabled" flag.
+		from builder.ai.generators import comfyui_client
 		placeholder_images = _scan_placeholder_images(page_names)
 
 		if not placeholder_images:
 			return {"success": True, "matched": match_result.get("matched", 0),
 				"message": _("All images filled from the client's own photos.")}
 
-		if not frappe.conf.get("image_generation_enabled"):
+		gen_available = comfyui_client.is_configured() or frappe.conf.get("image_generation_enabled")
+		if not gen_available:
 			return {"success": True, "matched": match_result.get("matched", 0),
 				"remaining_placeholders": len(placeholder_images),
-				"message": _("Client photos placed. {0} slot(s) left as placeholders (Flux generation is off here).").format(len(placeholder_images))}
+				"message": _("Client photos placed. {0} slot(s) left as placeholders (image generation is off here).").format(len(placeholder_images))}
 
 		img_job_id = f"img_gen_{frappe.generate_hash(length=10)}"
 
@@ -3220,14 +3223,19 @@ def _walk_blocks_for_placeholders(blocks, page_name, results):
 
 
 def _generate_images_worker(img_job_id: str, placeholder_images: list):
-	"""Background worker that generates images and replaces placeholders in pages."""
+	"""Background worker that fills placeholder images. Prefers the self-hosted
+	ComfyUI server (FLUX.2, our GPU) when configured; falls back to the Ollama
+	ImageGenerator otherwise."""
+	import re as _re
 	from builder.ai.generators.image_generator import ImageGenerator
+	from builder.ai.generators import comfyui_client
 
 	total = len(placeholder_images)
 	completed = 0
 	failed = 0
 
-	generator = ImageGenerator()
+	use_comfy = comfyui_client.is_configured()
+	generator = None if use_comfy else ImageGenerator()
 
 	for idx, img_info in enumerate(placeholder_images):
 		prompt = img_info["alt"]
@@ -3247,9 +3255,14 @@ def _generate_images_worker(img_job_id: str, placeholder_images: list):
 		})
 
 		try:
-			result = generator.generate(prompt=prompt, size=size)
 			img_type = img_info.get("type", "img")
-			_replace_image_in_page(page_name, block_id, result.file_url, img_type=img_type)
+			if use_comfy:
+				m = _re.match(r"(\d+)x(\d+)", size or "")
+				w, h = (int(m.group(1)), int(m.group(2))) if m else (1024, 1024)
+				new_url = comfyui_client.generate_image(prompt, width=w, height=h)
+			else:
+				new_url = generator.generate(prompt=prompt, size=size).file_url
+			_replace_image_in_page(page_name, block_id, new_url, img_type=img_type)
 			completed += 1
 		except Exception as e:
 			failed += 1
