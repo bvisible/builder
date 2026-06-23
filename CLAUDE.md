@@ -1,3 +1,10 @@
+# RÈGLES DE TRAVAIL — Génération de sites clients (PRIORITAIRES)
+
+Ces deux règles s'appliquent à TOUT travail sur le Builder AI (chat, génération, ingestion) :
+
+1. **TOUJOURS tester avec Chrome.** Les `bench execute` / console sont OK pour les premiers tests de logique backend, mais la validation finale se fait DANS Chrome, sur l'interface réelle (`/app/builder-chat`, l'éditeur `/builder`, et les pages publiées rendues). Chrome est l'interface que les **clients** utilisent — donc ça doit être solide là, pas seulement « ça répond en console ». Pas de « c'est bon » sans avoir vu le résultat dans le navigateur.
+2. **TOUJOURS documenter dans Obsidian.** Toute décision durable, gotcha, ou avancée du projet va dans le vault Obsidian (`~/Documents/Obsidian/Obsidian/Neoffice/Builder/...`) — en plus de la mémoire projet. Si le vault est inaccessible (lock sandbox), créer une note dédiée (l'écriture de nouveaux fichiers passe même quand la lecture est bloquée) et le signaler.
+
 # Git Configuration
 
 ## Branch de production

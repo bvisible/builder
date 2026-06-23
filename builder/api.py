@@ -1392,6 +1392,24 @@ def _generate_complete_site_worker(
 		frappe.clear_cache()
 
 		# =====================================================================
+		# STEP 5.5: Place the client's own photos into the fresh pages
+		# =====================================================================
+		# If the client uploaded real photos for this session, drop them into
+		# the matching image slots now so the generated site shows real content
+		# immediately (Flux stays an opt-in fallback for the leftover slots).
+		# Guarded — never let image matching fail the whole generation.
+		if session_id:
+			try:
+				from builder.ai.ingestion.image_matcher import match_and_apply
+				page_names = [p["name"] for p in created_pages]
+				match_result = match_and_apply(session_id, page_names)
+				if match_result.get("matched"):
+					ai_log("info", "Placed client photos into generated pages",
+						matched=match_result["matched"], slots=match_result.get("slots"))
+			except Exception as e:
+				ai_log("warning", "Client photo matching skipped", error=str(e)[:200])
+
+		# =====================================================================
 		# STEP 6: Mark as completed
 		# =====================================================================
 		end_time = time.time()
@@ -2978,10 +2996,6 @@ def chat_generate_images(session_id: str):
 	try:
 		session = frappe.get_doc("Builder Chat Session", {"session_id": session_id})
 
-		# Image generation is enabled per-site via site_config ("image_generation_enabled")
-		if not frappe.conf.get("image_generation_enabled"):
-			return {"success": False, "message": _("Image generation is not enabled on this site")}
-
 		# Get generated pages
 		generated_pages = json.loads(session.generated_pages) if session.generated_pages else []
 		if not generated_pages and session.job_id:
@@ -2992,10 +3006,28 @@ def chat_generate_images(session_id: str):
 			return {"success": False, "message": _("No generated pages found")}
 
 		page_names = [p["name"] for p in generated_pages]
+
+		# STEP 1 — place the client's OWN photos first (free, no Flux, always on,
+		# not gated by image_generation_enabled).
+		from builder.ai.ingestion.image_matcher import match_and_apply
+		try:
+			match_result = match_and_apply(session_id, page_names)
+		except Exception as e:
+			match_result = {"matched": 0}
+			frappe.log_error("Client image matching failed", str(e))
+
+		# STEP 2 — Flux fills only the slots no client photo matched, and only
+		# when enabled per-site via site_config ("image_generation_enabled").
 		placeholder_images = _scan_placeholder_images(page_names)
 
 		if not placeholder_images:
-			return {"success": False, "message": _("No placeholder images found in pages")}
+			return {"success": True, "matched": match_result.get("matched", 0),
+				"message": _("All images filled from the client's own photos.")}
+
+		if not frappe.conf.get("image_generation_enabled"):
+			return {"success": True, "matched": match_result.get("matched", 0),
+				"remaining_placeholders": len(placeholder_images),
+				"message": _("Client photos placed. {0} slot(s) left as placeholders (Flux generation is off here).").format(len(placeholder_images))}
 
 		img_job_id = f"img_gen_{frappe.generate_hash(length=10)}"
 
