@@ -152,14 +152,31 @@ def _extract_html_like(path: str, ext: str) -> str:
 
         with open(path, "rb") as f:
             msg = email.message_from_binary_file(f, policy=policy.default)
+
+        def _decode(part):
+            # QP/base64-decode to bytes, then decode robustly (mhtml charset
+            # headers are often wrong → try the declared charset, then utf-8,
+            # then cp1252 to avoid mojibake like "��lectricit��").
+            raw = part.get_payload(decode=True)
+            if not raw:
+                return ""
+            for enc in (part.get_content_charset(), "utf-8", "cp1252"):
+                if not enc:
+                    continue
+                try:
+                    return raw.decode(enc)
+                except (UnicodeDecodeError, LookupError):
+                    continue
+            return raw.decode("utf-8", errors="replace")
+
         html = None
         for part in msg.walk():
             ctype = part.get_content_type()
             if ctype == "text/html":
-                html = part.get_content()
+                html = _decode(part)
                 break
             if ctype == "text/plain" and html is None:
-                html = part.get_content()
+                html = _decode(part)
         return _strip_html(html) if html else ""
     except Exception:
         return ""
