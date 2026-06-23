@@ -126,8 +126,43 @@ def _extract_text(path: str, filename: str) -> str:
         return _extract_pdf(path)
     if ext == "docx":
         return _extract_docx(path)
+    if ext in ("mhtml", "mht", "html", "htm"):
+        return _extract_html_like(path, ext)
     # Unknown type: best-effort plain read (binary returns garbage → caller trims).
     return _read_plain(path)
+
+
+def _strip_html(html: str) -> str:
+    """Plain text from an HTML string (stdlib only)."""
+    import html as _html
+    import re
+
+    text = re.sub(r"(?is)<(script|style)[^>]*>.*?</\1>", " ", html)
+    text = re.sub(r"(?s)<[^>]+>", " ", text)
+    return re.sub(r"\s+", " ", _html.unescape(text)).strip()
+
+
+def _extract_html_like(path: str, ext: str) -> str:
+    """Text from a saved web page: .mhtml/.mht (MIME archive) or .html/.htm."""
+    if ext in ("html", "htm"):
+        return _strip_html(_read_plain(path))
+    try:
+        import email
+        from email import policy
+
+        with open(path, "rb") as f:
+            msg = email.message_from_binary_file(f, policy=policy.default)
+        html = None
+        for part in msg.walk():
+            ctype = part.get_content_type()
+            if ctype == "text/html":
+                html = part.get_content()
+                break
+            if ctype == "text/plain" and html is None:
+                html = part.get_content()
+        return _strip_html(html) if html else ""
+    except Exception:
+        return ""
 
 
 def _read_plain(path: str) -> str:
