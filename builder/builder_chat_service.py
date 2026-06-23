@@ -356,7 +356,9 @@ class BuilderChatService:
 			# If we just entered inspiration step, override response with inspiration question
 			if session.current_step == "inspiration" and prev_step != "inspiration":
 				response_content = response_content.rstrip() + "\n\n" + _("**Do you have any websites you admire or reference images for the design?** This is optional but helps refine the visual style.")
+				response_content += "\n\n" + _("You can also drop the client's own content — photos, documents, the current site — and I'll sort it and reuse it on the site.")
 				parsed["buttons"] = [
+					{"label": _("Import client content (photos, docs)"), "value": "__UPLOAD_CONTENT__"},
 					{"label": _("I have inspiration sites"), "value": _("I'd like to share websites I like for inspiration")},
 					{"label": _("Upload reference images"), "value": "__UPLOAD_INSPIRATION__"},
 					{"label": _("No, let's continue"), "value": "__SKIP_INSPIRATION__"},

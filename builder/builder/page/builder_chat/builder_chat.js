@@ -310,6 +310,8 @@ frappe.ui.BuilderChatPage = class BuilderChatPage {
 		} else if (value === '__UPLOAD_INSPIRATION__') {
 			this.upload_mode = 'inspiration';
 			this.progress.chat.$wrapper.find('.nora-chat-file-input').click();
+		} else if (value === '__UPLOAD_CONTENT__') {
+			this.trigger_content_upload();
 		} else if (value.startsWith('__OPEN_PAGE_')) {
 			const page_name = value.replace('__OPEN_PAGE_', '').replace('__', '');
 			window.open(`/builder/page/${page_name}`, '_blank');
@@ -437,6 +439,93 @@ frappe.ui.BuilderChatPage = class BuilderChatPage {
 			console.error('File upload error:', error);
 			this.progress.chat.hideTyping();
 			this.progress.chat.addMessage('assistant', __('Failed to upload file. Please try again.'));
+		}
+	}
+
+	// ============ CLIENT CONTENT UPLOAD (batch) ============
+
+	trigger_content_upload() {
+		// Lazily create a hidden multi-file input for client content (photos +
+		// documents). Distinct from the single logo/inspiration input.
+		if (!this._content_input) {
+			const input = document.createElement('input');
+			input.type = 'file';
+			input.multiple = true;
+			input.accept = 'image/*,.pdf,.docx,.txt,.md,.csv,.mhtml,.mht,.html';
+			input.style.display = 'none';
+			input.addEventListener('change', (e) => {
+				const files = Array.from(e.target.files || []);
+				e.target.value = '';
+				if (files.length) {
+					this.upload_content_files(files);
+				}
+			});
+			document.body.appendChild(input);
+			this._content_input = input;
+		}
+		this._content_input.click();
+	}
+
+	async upload_content_files(files) {
+		this.progress.chat.addMessage('user',
+			`📎 ${files.length} ${__('file(s) — client content')}`);
+		this.progress.chat.showTyping(__('Uploading the content...'));
+
+		// Subscribe once to the understanding-complete event for the summary.
+		if (!this._content_listener && frappe.realtime) {
+			this._content_listener = true;
+			frappe.realtime.on('content_assets_understood', (data) => {
+				const results = (data && data.results) || [];
+				const by_section = {};
+				results.forEach((r) => {
+					const s = r.section || 'generic';
+					by_section[s] = (by_section[s] || 0) + 1;
+				});
+				const summary = Object.entries(by_section)
+					.map(([s, n]) => `${n} ${s}`).join(', ');
+				this.progress.chat.hideTyping();
+				this.progress.chat.addMessage('assistant',
+					`✅ ${__('Content analysed')} — ${results.length} ${__('item(s)')}` +
+					(summary ? ` (${summary})` : '') + `. ${__('I will reuse it on the site.')}`);
+				this.progress.chat.scrollToBottom();
+			});
+		}
+
+		try {
+			const uploaded = [];
+			for (const file of files) {
+				const fd = new FormData();
+				fd.append('file', file);
+				const r = await fetch('/api/method/upload_file', {
+					method: 'POST',
+					body: fd,
+					headers: { 'X-Frappe-CSRF-Token': frappe.csrf_token }
+				});
+				const j = await r.json();
+				if (j.message && j.message.file_url) {
+					uploaded.push({ file_url: j.message.file_url, filename: file.name });
+				}
+			}
+			if (!uploaded.length) {
+				throw new Error('No files uploaded');
+			}
+
+			const resp = await frappe.call({
+				method: 'builder.ai.ingestion.content_understanding.ingest_content_assets',
+				args: { session_id: this.session_id, files: JSON.stringify(uploaded) },
+				freeze: false
+			});
+
+			this.progress.chat.hideTyping();
+			const created = (resp.message && resp.message.created) || uploaded.length;
+			this.progress.chat.addMessage('assistant',
+				`${__('Imported')} ${created} ${__('file(s). Analysing them in the background — I will report when done.')}`);
+			this.progress.chat.scrollToBottom();
+		} catch (error) {
+			console.error('Content upload error:', error);
+			this.progress.chat.hideTyping();
+			this.progress.chat.addMessage('assistant',
+				__('Failed to import the content. Please try again.'));
 		}
 	}
 
