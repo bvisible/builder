@@ -66,11 +66,14 @@ def _understand_image(asset, cfg) -> None:
         "what is visible, the best page section and image slots it serves, its "
         "orientation and quality, up to three dominant colors, and keywords."
     )
+    # think=False: categorizing a photo is perception, not reasoning. Kimi
+    # defaults thinking ON (~80s/call); disabling it cuts that to a few seconds.
     result = llm.generate_structured(
         prompt=prompt,
         schema=ImageUnderstanding,
         system_prompt=_IMAGE_SYSTEM,
         images=[asset.file],
+        think=False,
     )
     asset.vision_description = (result.description or "")[:500]
     asset.summary = (result.description or "")[:240]
@@ -158,6 +161,7 @@ def _understand_document(asset, cfg) -> None:
         prompt=f"Classify and summarize this client document text:\n\n{text[:8000]}",
         schema=DocumentUnderstanding,
         system_prompt=_DOC_SYSTEM,
+        think=False,
     )
     asset.summary = (result.summary or "")[:240]
     asset.suggested_section = result.suggested_section or "generic"
