@@ -230,10 +230,38 @@ class BaseProvider(ABC):
             if not content:
                 return None
             mimetype = mimetypes.guess_type(path)[0] or "image/png"
+            # Downscale large rasters before base64 — vision models don't need
+            # full resolution, and a 3-4 MB client photo makes the call slow
+            # (~77s observed) and costly. Caps the longest side at 1280px.
+            content, mimetype = BaseProvider._downscale_for_vision(content, mimetype)
             encoded = base64.b64encode(content).decode("ascii")
             return f"data:{mimetype};base64,{encoded}"
         except Exception:
             return None
+
+    @staticmethod
+    def _downscale_for_vision(content: bytes, mimetype: str, max_dim: int = 1280):
+        """Shrink a raster image so vision calls stay fast and cheap. Returns
+        (content, mimetype) unchanged when PIL is unavailable, the image is
+        already small, it's a vector/SVG, or anything fails."""
+        if "svg" in (mimetype or "").lower():
+            return content, mimetype
+        try:
+            import io
+
+            from PIL import Image
+
+            img = Image.open(io.BytesIO(content))
+            if max(img.size) <= max_dim and len(content) <= 700_000:
+                return content, mimetype
+            img.thumbnail((max_dim, max_dim))
+            if img.mode in ("RGBA", "P", "LA"):
+                img = img.convert("RGB")
+            buf = io.BytesIO()
+            img.save(buf, format="JPEG", quality=85)
+            return buf.getvalue(), "image/jpeg"
+        except Exception:
+            return content, mimetype
 
     def _extract_json_from_response(self, response: str) -> str:
         """
