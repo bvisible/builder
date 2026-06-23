@@ -758,18 +758,27 @@ frappe.ui.BuilderChatPage = class BuilderChatPage {
 		$gen_step.find('.nora-chat-step-indicator').html('<i class="fa fa-check"></i>');
 		$gen_step.find('.nora-chat-step-status').html('<i class="fa fa-check" style="color: #48bb78;"></i>');
 
-		// Propose AI image generation (full site only)
+		// AI image generation is OPT-IN, and only offered when real client photos
+		// did NOT already cover every slot. The client decides whether we may
+		// generate the missing visuals with AI.
+		const remaining = status.remaining_image_slots;
 		if (!is_single) {
-			this.progress.chat.addMessage('assistant',
-				`**${__('Want to replace placeholder images with AI-generated ones?')}**\n\n` +
-				__('Your pages currently use placeholder images. I can generate real, contextual images using AI. This takes about 30-60 seconds per image.'),
-				{
-					buttons: [
-						{label: __("Generate real images"), value: "__GENERATE_IMAGES__"},
-						{label: __("Keep placeholders"), value: "__SKIP_IMAGES__"},
-					]
-				}
-			);
+			if (remaining && remaining > 0) {
+				this.progress.chat.addMessage('assistant',
+					`**${__('Generate the missing images with AI?')}**\n\n` +
+					`${remaining} ${__('image slot(s) have no client photo yet.')} ` +
+					__('Do you want me to generate them with AI (about 30-60s each), or leave them for now so you can add real photos later?'),
+					{
+						buttons: [
+							{label: __("Yes, generate with AI"), value: "__GENERATE_IMAGES__"},
+							{label: __("No, I'll add photos later"), value: "__SKIP_IMAGES__"},
+						]
+					}
+				);
+			} else {
+				this.progress.chat.addMessage('assistant',
+					`✅ ${__('Every image uses the client\'s own photos — nothing to generate.')}`);
+			}
 		}
 
 		// Re-enable chat input

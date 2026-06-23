@@ -1421,6 +1421,15 @@ def _generate_complete_site_worker(
 			except Exception as e:
 				ai_log("warning", "Client photo matching skipped", error=str(e)[:200])
 
+		# Count image slots still on placeholders (no client photo matched them).
+		# This drives the chat's consent question: only offer AI image generation
+		# when something is actually missing — never when real photos cover it.
+		remaining_image_slots = 0
+		try:
+			remaining_image_slots = len(_scan_placeholder_images([p["name"] for p in created_pages]))
+		except Exception:
+			remaining_image_slots = 0
+
 		# =====================================================================
 		# STEP 6: Mark as completed
 		# =====================================================================
@@ -1441,6 +1450,7 @@ def _generate_complete_site_worker(
 			"current_step": "Completed",
 			"current_page": None,
 			"pages_created": created_pages,
+			"remaining_image_slots": remaining_image_slots,
 			"error": None,
 			"site_name": site_name,
 			"completed_at": frappe.utils.now(),
