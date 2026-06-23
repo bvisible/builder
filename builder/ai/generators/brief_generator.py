@@ -588,13 +588,40 @@ IMPORTANT: Apply these revision instructions to the design brief. Adjust colors,
             think_value = self.config.get_think_value(self.config.brief_think_level)
             ai_log("debug", "Calling generate_structured for DesignBrief",
                 think_level=self.config.brief_think_level, think_value=think_value)
-            brief = self.llm.generate_structured(
-                prompt=user_prompt,
-                schema=DesignBrief,
-                system_prompt=BRIEF_SYSTEM_PROMPT,
-                think=think_value,
-                images=images_for_vision if images_for_vision else None,
-            )
+            # Logo/inspiration vision is best-effort: a non-responsive vision
+            # endpoint (observed with Moonshot kimi on image payloads — it
+            # accepts the request but never answers) must not stall the whole
+            # generation. Bound the vision attempt to a short timeout, then fall
+            # back to a text-only brief (fully sufficient — only the visual cue
+            # from the logo/inspiration is lost, the rest of the brief is intact).
+            VISION_TIMEOUT = 90
+            brief = None
+            if images_for_vision:
+                original_timeout = getattr(self.llm, "timeout", None)
+                try:
+                    if original_timeout:
+                        self.llm.timeout = min(original_timeout, VISION_TIMEOUT)
+                    brief = self.llm.generate_structured(
+                        prompt=user_prompt,
+                        schema=DesignBrief,
+                        system_prompt=BRIEF_SYSTEM_PROMPT,
+                        think=think_value,
+                        images=images_for_vision,
+                    )
+                except Exception as vision_err:
+                    ai_log("warning", "Brief vision attempt failed; using text-only brief",
+                           error=str(vision_err)[:120])
+                    brief = None
+                finally:
+                    self.llm.timeout = original_timeout
+            if brief is None:
+                brief = self.llm.generate_structured(
+                    prompt=user_prompt,
+                    schema=DesignBrief,
+                    system_prompt=BRIEF_SYSTEM_PROMPT,
+                    think=think_value,
+                    images=None,
+                )
 
             # Imposed values always win (the AI might return CSS variables or
             # drift from the client brand); free choices are kept but sanity-
@@ -716,6 +743,27 @@ Make sure ALL fields are properly filled with valid values."""
             if validation.is_valid:
                 ai_log("info", "Brief validation passed",
                     attempt=attempt + 1, warnings=len(validation.warnings))
+                return brief, validation
+
+            # An IMPOSED brand color (from the client's real identity) is
+            # authoritative — retrying can't change it (we re-impose the same
+            # value every attempt), so a contrast-only rejection on
+            # primary/secondary_color must NOT burn extra retries on a slow
+            # model. Accept the brief; the page generator handles readable
+            # button text on the brand color. Keeps generation fast and honors
+            # the real palette.
+            colors_imposed = bool(primary_color)
+            non_color_invalid = {
+                k for k in validation.invalid_fields
+                if k not in ("primary_color", "secondary_color")
+            }
+            if colors_imposed and not validation.missing_fields and not non_color_invalid:
+                ai_log("info", "Brief accepted with imposed-color contrast warning (no retry)",
+                    invalid=list(validation.invalid_fields.keys()))
+                for k in ("primary_color", "secondary_color"):
+                    if k in validation.invalid_fields:
+                        validation.add_warning(
+                            f"{k} kept as imposed brand color despite low white-contrast")
                 return brief, validation
 
             # Store for next iteration
