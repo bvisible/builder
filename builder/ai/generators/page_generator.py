@@ -287,6 +287,19 @@ class PageGenerator:
         if not revised:
             return blocks
 
+        # Anti-content-loss guard: the model is told to fix only the listed
+        # problems and never drop content, but a truncated response (or the model
+        # collapsing the tree) can come back with the page's main section gone,
+        # leaving only chrome (header/footer). Publishing that would gut a live
+        # page — reject any revision that loses most of the content and keep the
+        # original instead.
+        orig_len = len(json.dumps(blocks, ensure_ascii=False))
+        new_len = len(json.dumps(revised, ensure_ascii=False))
+        if orig_len > 800 and new_len < 0.5 * orig_len:
+            ai_log("warning", "Revision dropped too much content — keeping original",
+                   orig_chars=orig_len, revised_chars=new_len)
+            return blocks
+
         # Re-apply the same guards as generation (each is guarded for missing brief/colors).
         if primary or secondary:
             revised = self._apply_custom_colors(revised, primary, secondary)
