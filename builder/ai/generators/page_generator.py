@@ -202,6 +202,12 @@ class PageGenerator:
         # every page shares ONE grid.
         blocks = self._enforce_content_width(blocks, design_brief)
 
+        # Section grid-squeeze guard: a full-bleed section that is itself a
+        # multi-column grid AND wraps a single max-width container squeezes that
+        # container into column 1, leaving the rest of the band empty (observed
+        # on heroes: a tiny image + a huge dead color slab on the side).
+        blocks = self._fix_section_grid_squeeze(blocks)
+
         # Sanitize Jinja includes — fix or remove invalid template paths
         blocks = self._sanitize_jinja_includes(blocks)
 
@@ -311,6 +317,7 @@ class PageGenerator:
             revised = self._enforce_brief_palette(revised, primary, secondary)
         if design_brief:
             revised = self._enforce_content_width(revised, design_brief)
+        revised = self._fix_section_grid_squeeze(revised)
         revised = self._sanitize_jinja_includes(revised)
         revised = self._sanitize_jinja_syntax(revised)
         revised = self._sanitize_layout_styles(revised)
@@ -853,6 +860,47 @@ class PageGenerator:
     # ------------------------------------------------------------------
     GRID_WIDTH_MIN, GRID_WIDTH_MAX = 850, 1800
     MAXWIDTH_INLINE_RE = re.compile(r"(max-width\s*:\s*)(\d{3,4})px", re.IGNORECASE)
+
+    def _fix_section_grid_squeeze(self, blocks: list[dict]) -> list[dict]:
+        """Relax the section-level grid when a full-bleed section is itself a
+        multi-column grid wrapping a SINGLE max-width content container.
+
+        The generator sometimes emits the column grid on BOTH the section and
+        its inner content wrapper. The wrapper then lands in the section's first
+        column and the remaining column(s) become dead space — on heroes this
+        renders as a small image beside a large empty color slab. Drop the
+        section grid and center the wrapper so it spans its full max-width.
+        A legitimate multi-column section keeps its columns as direct children
+        (not a single wrapper), so it is left untouched.
+        """
+        fixed = 0
+
+        def walk(b):
+            nonlocal fixed
+            if not isinstance(b, dict):
+                return
+            if b.get("element") == "section":
+                bs = b.get("baseStyles") or {}
+                cols = (bs.get("gridTemplateColumns") or "").split()
+                if bs.get("display") == "grid" and len(cols) >= 2:
+                    kids = [c for c in (b.get("children") or []) if isinstance(c, dict)]
+                    containers = [c for c in kids if (c.get("baseStyles") or {}).get("maxWidth")]
+                    if len(kids) == 1 and len(containers) == 1:
+                        bs["display"] = "flex"
+                        bs["justifyContent"] = "center"
+                        bs["alignItems"] = "center"
+                        bs.pop("gridTemplateColumns", None)
+                        bs.pop("gridTemplateRows", None)
+                        b["baseStyles"] = bs
+                        fixed += 1
+            for c in (b.get("children") or []):
+                walk(c)
+
+        for b in blocks or []:
+            walk(b)
+        if fixed:
+            ai_log("info", "Section grid-squeeze guard relaxed full-bleed sections", fixes=fixed)
+        return blocks
 
     def _enforce_content_width(self, blocks: list[dict], design_brief=None) -> list[dict]:
         """Snap every content-grid maxWidth to the brief's canonical width.
