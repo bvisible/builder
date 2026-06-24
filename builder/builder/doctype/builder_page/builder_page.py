@@ -1187,10 +1187,42 @@ def wrap_with_media_query(style_string, device):
 	return style_string
 
 
+_GENERIC_FONT_KEYWORDS = {
+	"serif", "sans-serif", "monospace", "cursive", "fantasy", "system-ui",
+	"ui-serif", "ui-sans-serif", "ui-monospace", "ui-rounded", "math",
+	"emoji", "fangsong", "inherit", "initial", "unset", "revert", "revert-layer",
+}
+
+
+def normalize_font_family(value):
+	"""Emit a valid CSS font-family stack from a stored value that may arrive
+	already quoted ('"Raleway", sans-serif'), unquoted, or mixed. Naive
+	quote-stripping/space-escaping on the whole string corrupts it — e.g.
+	'"Raleway", sans-serif'.strip('\\'"') keeps the inner quote and yields a
+	family literally named 'Raleway"' that no font matches, so the browser falls
+	back to its default serif (the cross-page font drift). Split per family,
+	strip stray quotes, re-quote only multi-word custom names, leave generic
+	keywords bare."""
+	if not isinstance(value, str):
+		return value
+	families = []
+	for raw in value.split(","):
+		fam = raw.strip().strip("'\"").strip()
+		if not fam:
+			continue
+		if fam.lower() in _GENERIC_FONT_KEYWORDS:
+			families.append(fam.lower())
+		elif " " in fam:
+			families.append(f'"{fam}"')
+		else:
+			families.append(fam)
+	return ", ".join(families) or value
+
+
 def get_style(style_obj):
 	def _css_value(key, value):
 		if key == "fontFamily" and isinstance(value, str):
-			value = value.strip("'\"").replace(" ", "\\ ")
+			value = normalize_font_family(value)
 		return sanitize_style_value(value)
 
 	return (
