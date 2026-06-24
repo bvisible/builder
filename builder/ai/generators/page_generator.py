@@ -744,15 +744,20 @@ class PageGenerator:
         "webshop/templates/includes/google_map.html": "builder/templates/includes/google_map.html",
     }
 
-    # Pattern to match {{ google_map address="..." }} shortcode from AI
+    # Pattern to match {{ google_map address="..." }} shortcode from AI.
+    # The address may contain the OTHER quote char — Swiss addresses like
+    # "Caille d'en Haut" carry an apostrophe, so a naive [^"']+ stops early,
+    # leaves the raw shortcode in place and Jinja dies with a TemplateSyntaxError
+    # (expected end of print statement). Match a full double- OR single-quoted
+    # string and allow the opposite quote inside.
     SHORTCODE_PATTERN = re.compile(
-        r"""\{\{\s*google_map\s+address=["']([^"']+)["']\s*\}\}"""
+        r"""\{\{\s*google_map\s+address\s*=\s*(?:"([^"]*)"|'([^']*)')\s*\}\}"""
     )
 
     def _convert_shortcodes(self, inner: str) -> str:
         """Convert AI shortcode notation to valid Jinja includes."""
         def replace_google_map(m):
-            addr = m.group(1)
+            addr = (m.group(1) or m.group(2) or "").replace('"', '\\"')
             return (
                 '{%% set address = "%s" %%}'
                 '{%% set height = "400px" %%}'
@@ -1066,7 +1071,12 @@ class PageGenerator:
                         block["innerHTML"] = requoted
                         fixed += 1
                     else:
-                        block["innerHTML"] = re.sub(r"{%.*?%}", "", html, flags=re.S)
+                        # Last resort: drop BOTH statement ({% %}) AND print
+                        # ({{ }}) Jinja so a hallucinated/unconverted shortcode
+                        # (e.g. a google_map whose address broke the converter)
+                        # can never 500 the published page — render without it.
+                        block["innerHTML"] = re.sub(
+                            r"{%.*?%}|{{.*?}}", "", html, flags=re.S)
                         stripped += 1
             for child in block.get("children") or []:
                 if isinstance(child, dict):
