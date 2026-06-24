@@ -182,6 +182,18 @@ class PageGenerator:
                    heading_font=design_brief.heading_font,
                    body_font=design_brief.body_font)
             blocks = self._inject_fonts(blocks, design_brief)
+
+        # Interior-header consistency: force the first section of a NON-homepage
+        # page to one canonical light header band (the LLM occasionally gives one
+        # a green/brand or image header among light siblings). Runs before the
+        # contrast guards so the header text recolors correctly. The homepage
+        # keeps its full-bleed image hero.
+        blocks = self._enforce_interior_header_bg(
+            blocks,
+            page_type in {"accueil", "accueil_ecommerce", "one_page"},
+            effective_primary,
+        )
+
         # Fix text color contrast issues (white text on light backgrounds)
         blocks = self._fix_contrast(blocks)
 
@@ -732,6 +744,56 @@ class PageGenerator:
             walk(block, None)
         if fixed:
             ai_log("info", "Body-text neutral guard normalized core text", fixes=fixed)
+        return blocks
+
+    def _enforce_interior_header_bg(self, blocks: list[dict], is_homepage: bool,
+                                    primary: str = None) -> list[dict]:
+        """Every interior page must open with the SAME light header band. The
+        LLM sometimes gives one page a brand-color or image header (e.g. a green
+        contact header among light about/services headers). Force the first
+        section of a non-homepage page to a canonical light background and
+        recolor its text (heading → accent, eyebrow/subtitle → dark) so all
+        interior pages open identically. The homepage keeps its image hero."""
+        if is_homepage:
+            return blocks
+
+        def first_section(nodes):
+            for b in nodes:
+                if isinstance(b, dict):
+                    if b.get("element") == "section":
+                        return b
+                    found = first_section(b.get("children") or [])
+                    if found:
+                        return found
+            return None
+
+        sec = first_section(blocks)
+        if sec is None:
+            return blocks
+
+        styles = sec.get("baseStyles") or {}
+        styles["backgroundColor"] = "#f8fafc"
+        styles.pop("background", None)
+        styles.pop("backgroundImage", None)
+        sec["baseStyles"] = styles
+
+        heading_color = "var(--primary-color)" if primary else "var(--text-color)"
+
+        def recolor(block):
+            element = block.get("element", "")
+            if element in ("a", "button"):
+                return  # CTAs keep their own styling
+            if (block.get("innerHTML") or "").strip():
+                st = block.get("baseStyles") or {}
+                st["color"] = heading_color if element in (
+                    "h1", "h2", "h3", "h4", "h5", "h6") else "var(--text-color)"
+                block["baseStyles"] = st
+            for child in block.get("children") or []:
+                if isinstance(child, dict):
+                    recolor(child)
+
+        recolor(sec)
+        ai_log("info", "Interior header normalized to a light band")
         return blocks
 
     def _resolve_luminance(self, value: str, var_map: dict):
