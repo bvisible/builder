@@ -409,6 +409,31 @@ aesthetic direction for this site, not this shape.
 IMPORTANT: Return ONLY the JSON, without ```json or explanation."""
 
 
+_HOMEPAGE_HERO_RULE = """
+
+HERO — MANDATORY STRUCTURE (homepage):
+Open with a FULL-BLEED BACKGROUND-IMAGE hero. The hero photo goes on the <section> itself as a
+cover background WITH a dark legibility overlay (a linear-gradient OVER the image url), e.g.
+backgroundImage: "linear-gradient(rgba(0,0,0,0.55), rgba(0,0,0,0.30)), url('<HERO image placeholder per the image rules above>')",
+backgroundSize: "cover", backgroundPosition: "center", minHeight: "85vh".
+On top, in a centered max-width container (left-aligned): an uppercase eyebrow, the H1 headline,
+ONE subtitle line, then the primary + secondary CTAs. Hero text must be light (#ffffff) over the overlay.
+HARD RULES: the image IS the section background and covers the WHOLE hero — NOT a small side card,
+NOT a floating image box, NOT a flat single-color block beside text.
+"""
+
+_INTERIOR_HEADER_RULE = """
+
+INTERIOR PAGE HEADER — MUST BE IDENTICAL ON EVERY INTERIOR PAGE (about, services, contact, …):
+Open with ONE compact header <section>: minHeight "38vh", padding "96px 24px", a LIGHT neutral
+background (a very light tint of the palette, or #f8fafc — NOT a full-bleed photo, NOT a saturated
+color slab). Inside a centered max-width container, left-aligned: an uppercase eyebrow (the page
+category), the page H1 title, and ONE short subtitle line. Use the EXACT same structure, height,
+padding, background and alignment on EVERY interior page — only the texts change. Do NOT invent a
+different hero per page, and do NOT put a background image on interior headers.
+"""
+
+
 def get_page_generation_prompt(
     user_prompt: str,
     page_title: str = None,
@@ -505,9 +530,8 @@ CONTACT PAGE:
 Make it easy and inviting for visitors to get in touch. Build trust.
 This page must have visual substance — not just a bare form.
 
-Start with a strong hero section — a beautiful background image with overlay makes the page
-feel welcoming and professional. Follow with the company's contact details, a map, and the
-contact form. Add personality: a short intro message, office photos, or a "Why reach out?" section.
+After the standard interior page header, give the company's contact details, a map, and the
+contact form. Add personality: a short intro message or a "Why reach out?" section.
 
 AVAILABLE SHORTCODES:
 - Contact form: {% include 'builder/templates/includes/contact_form.html' %}
@@ -566,6 +590,15 @@ TECHNICAL CONSTRAINT: Shortcodes must be in a full-width container, not inside g
 
         if page_type in page_instructions:
             context += page_instructions[page_type]
+
+        # Hero/header consistency: the homepage gets a full-bleed background-image
+        # hero; EVERY interior page opens with the SAME compact header. Each page
+        # is generated in a separate LLM call, so these rules must be prescriptive
+        # enough that independent calls converge to one coherent design.
+        if page_type in {"accueil", "accueil_ecommerce", "one_page"}:
+            context += _HOMEPAGE_HERO_RULE
+        elif page_type:
+            context += _INTERIOR_HEADER_RULE
 
     return context
 
