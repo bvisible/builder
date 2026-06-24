@@ -191,6 +191,12 @@ class PageGenerator:
         # on a CTA — black on black).
         blocks = self._fix_contrast_wcag(blocks, effective_primary, effective_secondary)
 
+        # Body-text guard: core/running text (paragraphs, lists…) stays neutral
+        # black/white chosen by its background — never the brand accent. Only
+        # headings keep the freedom to be colored. Keeps text readable AND
+        # consistent across pages.
+        blocks = self._enforce_body_text_neutral(blocks, effective_primary, effective_secondary)
+
         # Palette contract guard: the LLM sometimes improvises a new accent on
         # one page (gold contact page on a violet site). Remap any saturated
         # hex outside the brief palette — in styles AND inline SVG attributes —
@@ -314,6 +320,7 @@ class PageGenerator:
         revised = self._fix_contrast(revised)
         if primary or secondary:
             revised = self._fix_contrast_wcag(revised, primary, secondary)
+            revised = self._enforce_body_text_neutral(revised, primary, secondary)
             revised = self._enforce_brief_palette(revised, primary, secondary)
         if design_brief:
             revised = self._enforce_content_width(revised, design_brief)
@@ -661,6 +668,70 @@ class PageGenerator:
             walk(block, None)
         if fixed_count:
             ai_log("info", "WCAG contrast guard repaired unreadable text", fixes=fixed_count)
+        return blocks
+
+    # Running/body text tags whose color must stay neutral (black/white by
+    # background). Headings (h1–h6) are intentionally NOT here — they may carry
+    # an accent color. Buttons/links keep their own contrast handling.
+    BODY_TEXT_TAGS = frozenset({
+        "p", "li", "blockquote", "figcaption", "small", "td", "th", "dd", "dt",
+    })
+
+    def _enforce_body_text_neutral(self, blocks: list[dict], primary: str = None,
+                                   secondary: str = None) -> list[dict]:
+        """Core/body text must read in neutral black-or-white chosen by its
+        background — never the brand/accent color. Brand-colored body copy reads
+        poorly (a green paragraph on white) and drifts page-to-page; only
+        HEADINGS keep the freedom to use an accent. Over an image/overlay band
+        (heroes) body text becomes white; on a solid background it follows the
+        background luminance; when the background can't be resolved the explicit
+        color is dropped so the text inherits its (already-correct) section color."""
+        var_map = {}
+        if primary:
+            var_map["var(--primary-color)"] = primary
+        if secondary:
+            var_map["var(--secondary-color)"] = secondary
+        fixed = 0
+
+        def walk(block: dict, inherited):
+            nonlocal fixed
+            styles = block.get("baseStyles") or {}
+            own_bg = (styles.get("backgroundColor") or styles.get("background")
+                      or styles.get("backgroundImage") or "")
+            own_lum = self._resolve_luminance(own_bg, var_map)
+            is_media = ("url(" in own_bg) or ("gradient" in own_bg)
+            if own_lum is not None:
+                eff = ("lum", own_lum)
+            elif is_media:
+                eff = ("media", None)
+            else:
+                eff = inherited
+
+            element = block.get("element", "")
+            has_text = bool((block.get("innerHTML") or "").strip())
+            if has_text and element in self.BODY_TEXT_TAGS:
+                kind = eff[0] if eff else None
+                if kind == "lum":
+                    styles["color"] = "#ffffff" if eff[1] < 0.5 else "var(--text-color)"
+                    block["baseStyles"] = styles
+                    fixed += 1
+                elif kind == "media":
+                    styles["color"] = "#ffffff"
+                    block["baseStyles"] = styles
+                    fixed += 1
+                elif "color" in styles:
+                    styles.pop("color", None)
+                    block["baseStyles"] = styles
+                    fixed += 1
+
+            for child in block.get("children") or []:
+                if isinstance(child, dict):
+                    walk(child, eff)
+
+        for block in blocks:
+            walk(block, None)
+        if fixed:
+            ai_log("info", "Body-text neutral guard normalized core text", fixes=fixed)
         return blocks
 
     def _resolve_luminance(self, value: str, var_map: dict):
