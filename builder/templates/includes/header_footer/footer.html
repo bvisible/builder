@@ -157,7 +157,7 @@
 
 		// Disable form
 		submitBtn.disabled = true;
-		submitBtn.textContent = '{{ _("Subscribing...") }}';
+		submitBtn.textContent = {{ _("Subscribing...") | tojson }};
 
 		// Call API
 		fetch('/api/method/builder.api.subscribe_to_newsletter', {
@@ -180,11 +180,11 @@
 				messageDiv.style.display = 'block';
 				emailInput.value = '';
 			} else if (data.exc_type) {
-				throw new Error(data._server_messages ? JSON.parse(data._server_messages)[0] : '{{ _("Subscription failed") }}');
+				throw new Error(data._server_messages ? JSON.parse(data._server_messages)[0] : {{ _("Subscription failed") | tojson }});
 			}
 		})
 		.catch(error => {
-			let errorMsg = '{{ _("Failed to subscribe. Please try again.") }}';
+			let errorMsg = {{ _("Failed to subscribe. Please try again.") | tojson }};
 			try {
 				const parsed = JSON.parse(error.message);
 				errorMsg = parsed.message || errorMsg;
@@ -197,7 +197,7 @@
 		})
 		.finally(() => {
 			submitBtn.disabled = false;
-			submitBtn.textContent = '{{ _("Subscribe") }}';
+			submitBtn.textContent = {{ _("Subscribe") | tojson }};
 		});
 	});
 })();
