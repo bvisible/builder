@@ -39,7 +39,11 @@ LEGACY_FIXES_CSS = (
 	"html body .builder-search-bar__wrapper{background:#fff !important;border:1px solid #fff !important;"
 	"height:44px;border-radius:8px}"
 	"html body .builder-search-bar__wrapper:focus-within{box-shadow:0 0 0 3px rgba(0,0,0,.08) !important}"
-	"html body .builder-search-bar__input{background:transparent !important;color:#1f2937 !important}"
+	# border/box-shadow: webshop's theme styles bare inputs, drawing a second box
+	# inside the wrapper; the native webkit clear button duplicates the component's.
+	"html body .builder-search-bar__input{background:transparent !important;color:#1f2937 !important;"
+	"border:none !important;outline:none !important;box-shadow:none !important;height:auto !important}"
+	"html body .builder-search-bar__input::-webkit-search-cancel-button{-webkit-appearance:none;display:none}"
 	"html body .builder-search-bar__input::placeholder{color:#9ca3af}"
 	"html body .builder-search-bar__icon{color:#9ca3af !important}</style>"
 )
