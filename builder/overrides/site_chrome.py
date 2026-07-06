@@ -1,0 +1,192 @@
+"""Legacy site chrome injection for migrated client sites.
+
+Ported from the deprecated ``neoffice_ia_builder`` app (utils/website_context.py).
+Some client sites (e.g. WordPress migrations like blowbackshop.ch) embed a Builder
+navbar/footer component on their Builder pages AND expect the same chrome plus the
+Builder CSS stack (DaisyUI/Tailwind CDN, reset, variables) on non-Builder pages
+(webshop /all-products, cart, item pages...).
+
+The whole hook is a no-op unless the site opts in via site_config:
+
+    "builder_legacy_site_chrome": 1
+
+so fleet instances without legacy sites are unaffected.
+"""
+
+import json
+
+import frappe
+
+
+def get_builder_component_html(component_name):
+	"""Get rendered HTML from a Builder Component.
+
+	Tries webshop's ``get_builder_page_content`` helper first (handles Jinja
+	rendering, styles and caching), then falls back to direct component
+	rendering via ``get_block_html``.
+
+	Args:
+		component_name (str): Builder Component name (e.g. "navbar", "footer")
+
+	Returns:
+		str: Rendered HTML or empty string if not found
+	"""
+	try:
+		# Try to use webshop's helper function if available
+		try:
+			builder_data = frappe.call(
+				"webshop.webshop.utils.builder.get_builder_page_content",
+				route=component_name,
+				use_cache=True,
+			)
+
+			if builder_data and builder_data.get("success"):
+				html_parts = []
+
+				# Add global styles
+				if builder_data.get("global_style"):
+					html_parts.append(f"<style>\n{builder_data['global_style']}\n</style>")
+
+				# Add component styles
+				if builder_data.get("style"):
+					html_parts.append(builder_data["style"])
+
+				# Add client styles
+				for style in builder_data.get("client_styles", []):
+					html_parts.append(f"<style>\n{style.get('content', '')}\n</style>")
+
+				# Add HTML content
+				content = builder_data.get("content", "")
+
+				# Webshop skips Jinja rendering for includes, assuming the parent template
+				# will render them. But our parent template {{ navbar_html }} doesn't
+				# interpret Jinja, so render includes here.
+				if content and ("{% " in content or "{{ " in content):
+					from frappe.utils.jinja import render_template
+
+					try:
+						ctx = builder_data.get("page_data", {}) or {}
+						content = render_template(content, ctx)
+					except Exception as e:
+						frappe.log_error("Legacy chrome Jinja render error", f"Component {component_name}: {e}")
+
+				if content:
+					html_parts.append(content)
+
+				return "\n".join(html_parts)
+		except Exception:
+			# Webshop helper not available, fall back to direct rendering
+			pass
+
+		# Fallback: direct component rendering
+		component = frappe.db.get_value(
+			"Builder Component",
+			{"component_name": component_name},
+			["name", "block"],
+			as_dict=True,
+		)
+
+		if not component or not component.block:
+			return ""
+
+		block_data = json.loads(component.block)
+
+		from builder.builder.doctype.builder_page.builder_page import get_block_html
+
+		result = get_block_html(block_data)
+
+		if isinstance(result, tuple) and len(result) >= 2:
+			html = result[0]
+			styles = result[1]
+		else:
+			html = result
+			styles = ""
+
+		# Render Jinja directives ({% include %}, {{ vars }})
+		if "{% " in html or "{{ " in html:
+			from frappe.utils.jinja import render_template
+
+			html = render_template(html, {})
+
+		if styles:
+			return f"{html}\n{styles}"
+
+		return html
+	except Exception as e:
+		frappe.log_error("Legacy chrome component error", f"Component {component_name}: {e}")
+		return ""
+
+
+def inject_site_chrome(context):
+	"""``update_website_context`` hook — inject legacy chrome on all web pages.
+
+	Sets the LLM Navbar/Footer Web Templates (rendered by frappe's base.html on
+	non-Builder pages), exposes the rendered Builder navbar/footer components to
+	those templates, and prepends the Builder CSS stack to ``_head_html``.
+
+	No-op unless site_config sets ``builder_legacy_site_chrome``.
+	"""
+	if not frappe.conf.get("builder_legacy_site_chrome"):
+		return
+
+	# Navbar and footer Web Templates for non-Builder pages (frappe base.html
+	# renders navbar_template/footer_template). The templates are created by the
+	# add_llm_chrome_web_templates patch and just print the variables below.
+	context["navbar_template"] = "LLM Navbar"
+	context["footer_template"] = "LLM Footer"
+
+	# Rendered Builder component HTML consumed by the Web Templates
+	context["navbar_html"] = get_builder_component_html("navbar")
+	context["footer_html"] = get_builder_component_html("footer")
+
+	if not context.get("_head_html"):
+		context["_head_html"] = ""
+
+	builder_css_tags = ""
+	head_html = str(context.get("_head_html", ""))
+
+	# DaisyUI + Tailwind for template-based components (navbar, hero, footer, cards...)
+	if "daisyui" not in head_html:
+		# DaisyUI CSS (must be loaded before Tailwind)
+		builder_css_tags += (
+			'<link href="https://cdn.jsdelivr.net/npm/daisyui@4.12.14/dist/full.min.css"'
+			' rel="stylesheet" type="text/css" />'
+		)
+		builder_css_tags += '<script src="https://cdn.tailwindcss.com"></script>'
+
+	# Builder reset CSS - normalizes browser defaults
+	if "builder/reset.css" not in head_html:
+		builder_css_tags += '<link rel="stylesheet" href="/assets/builder/reset.css?v=1">'
+
+	# Builder variables CSS - CSS custom properties used by components
+	if "builder_assets/variables.css" not in head_html:
+		builder_css_tags += '<link rel="stylesheet" href="/builder_assets/variables.css">'
+
+	# Fix: header product search must be full-width on ALL pages (webshop shop pages
+	# e.g. /magasin render the search .dropdown as inline-block, collapsing it).
+	builder_css_tags += (
+		"<style>html body .webshop-search-component .dropdown.w-100,"
+		"html body .webshop-search-component .input-group>.dropdown{display:block !important;width:100% !important}"
+		"html body .webshop-search-component .dropdown.w-100>.form-control{width:100% !important}</style>"
+	)
+	# Fix: avatar letter vertical centering on Builder pages (builder reset forces
+	# .standard-image to display:block, dropping the flex centering used on shop pages).
+	builder_css_tags += (
+		"<style>html body .avatar .standard-image,"
+		"html body .my-account-avatar .standard-image"
+		"{display:flex !important;align-items:center !important;justify-content:center !important}</style>"
+	)
+	# Navbar search widget (builder header_footer search_bar component): the stock
+	# component caps at 260-300px and themes for dark headers via CSS vars. Legacy
+	# navbars place it on a colored band and expect the original full-width white bar.
+	builder_css_tags += (
+		"<style>html body .builder-search-bar{width:100% !important;max-width:100% !important}"
+		"html body .builder-search-bar__wrapper{background:#fff !important;border:1px solid #fff !important;"
+		"height:44px;border-radius:8px}"
+		"html body .builder-search-bar__wrapper:focus-within{box-shadow:0 0 0 3px rgba(0,0,0,.08) !important}"
+		"html body .builder-search-bar__input{color:#1f2937 !important}"
+		"html body .builder-search-bar__input::placeholder{color:#9ca3af}"
+		"html body .builder-search-bar__icon{color:#9ca3af !important}</style>"
+	)
+
+	context["_head_html"] = builder_css_tags + context["_head_html"]

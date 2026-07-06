@@ -75,6 +75,13 @@ after_install = "builder.install.after_install"
 after_migrate = "builder.install.after_migrate"
 after_app_install = "builder.install.after_app_install"
 
+# Website
+# -------
+
+# Legacy site chrome (navbar/footer/CSS) for migrated client sites; no-op unless
+# site_config sets builder_legacy_site_chrome (see builder/overrides/site_chrome.py).
+update_website_context = "builder.overrides.site_chrome.inject_site_chrome"
+
 # Fixtures
 # --------
 fixtures = [
