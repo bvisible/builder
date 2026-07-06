@@ -53,6 +53,11 @@ LEGACY_FIXES_CSS = (
 	"<style>html body .builder-user-header__avatar .standard-image,"
 	"html body .builder-user-header__avatar .avatar-frame"
 	"{background:#f3f4f6 !important;color:#374151 !important}</style>"
+	# Webshop/system pages underline links on hover; Builder pages don't. Keep the
+	# injected chrome (navbar/footer web templates) consistent with Builder pages.
+	"<style>html body .llm-navbar a:hover,html body .llm-navbar a:focus,"
+	"html body .llm-footer a:hover,html body .llm-footer a:focus"
+	"{text-decoration:none !important}</style>"
 )
 
 

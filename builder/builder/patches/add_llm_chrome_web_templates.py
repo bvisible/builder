@@ -1,6 +1,7 @@
 import frappe
 
-NAVBAR_TEMPLATE = '{{ navbar_html or "" }}'
+# The .llm-navbar wrapper scopes CSS fixes (e.g. hover underline) on non-Builder pages.
+NAVBAR_TEMPLATE = '<div class="llm-navbar">{{ navbar_html or "" }}</div>'
 
 # No bootstrap .container wrapper: the Builder footer component manages its own
 # width; the container capped it at ~1200px on webshop pages while Builder pages

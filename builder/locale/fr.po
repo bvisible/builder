@@ -3604,3 +3604,6 @@ msgstr "vitrine_user"
 #: builder/templates/includes/contact_form.html:16
 msgid "your.email@example.com"
 msgstr "your.email@example.com"
+
+msgid "Recently viewed"
+msgstr "Récemment consultés"
