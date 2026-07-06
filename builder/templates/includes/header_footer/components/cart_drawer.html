@@ -826,8 +826,10 @@
 		if (!wrap || !list) return;
 		let items = [];
 		try { items = JSON.parse(localStorage.getItem('webshop_recently_viewed') || '[]'); } catch (e) {}
-		// don't re-suggest what's already in the cart
-		const inCart = new Set((cartState.items || []).map(i => i.item_code));
+		// don't re-suggest what's already in the cart (cartState lives inside initCart's scope)
+		let inCartCodes = [];
+		try { inCartCodes = (typeof cartState !== 'undefined' && cartState && cartState.items ? cartState.items : []).map(i => i.item_code); } catch (e) {}
+		const inCart = new Set(inCartCodes);
 		items = items.filter(i => i && i.route && !inCart.has(i.code)).slice(0, 4);
 		if (!items.length) { wrap.style.display = 'none'; return; }
 		list.innerHTML = items.map(i => {
