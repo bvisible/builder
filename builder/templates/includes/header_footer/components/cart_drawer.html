@@ -512,8 +512,13 @@
 						const amount = tax.tax_amount || 0;
 						// Skip zero-amount tax rows (unused VAT rates on the tax template)
 						if (Math.abs(amount) < 0.005) return;
+						// Clean technical noise from tax labels: drop leading account
+						// codes ("22007 - TVA 8.1%") and internal ids ("Economy_2kg").
+						let desc = tax.description || 'Tax';
+						const parts = desc.split(' - ').filter(p => !/^\d+$/.test(p.trim()) && !p.includes('_'));
+						if (parts.length) desc = parts.join(' - ');
 						cartState.taxes.push({
-							description: tax.description ? tax.description.split('%')[0] + '%' : 'Tax',
+							description: desc,
 							amount: amount
 						});
 					});
@@ -550,7 +555,9 @@
 
 		let html = '';
 		cartState.items.forEach(item => {
-			const image = item.website_image || item.thumbnail || '';
+			// Quotation Item rows expose `image` (copied from the Item); website_image
+			// is only present on enriched payloads. Try all of them before initials.
+			const image = item.website_image || item.image || item.thumbnail || '';
 			const name = item.item_name || '';
 			const brand = item.brand || '';
 			const price = item.rate || 0;
