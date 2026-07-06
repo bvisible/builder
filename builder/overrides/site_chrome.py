@@ -17,6 +17,33 @@ import json
 
 import frappe
 
+# CSS fixes shipped with the legacy chrome. Embedded BOTH in _head_html (Builder
+# pages render it) and in navbar_html (webshop/system pages render the navbar Web
+# Template but NOT _head_html — without this the search bar keeps the component's
+# dark-header defaults: 260px wide, translucent, white-on-white input).
+LEGACY_FIXES_CSS = (
+	# Header product search must be full-width on ALL pages (webshop shop pages
+	# e.g. /magasin render the search .dropdown as inline-block, collapsing it).
+	"<style>html body .webshop-search-component .dropdown.w-100,"
+	"html body .webshop-search-component .input-group>.dropdown{display:block !important;width:100% !important}"
+	"html body .webshop-search-component .dropdown.w-100>.form-control{width:100% !important}</style>"
+	# Avatar letter vertical centering on Builder pages (builder reset forces
+	# .standard-image to display:block, dropping the flex centering used on shop pages).
+	"<style>html body .avatar .standard-image,"
+	"html body .my-account-avatar .standard-image"
+	"{display:flex !important;align-items:center !important;justify-content:center !important}</style>"
+	# Navbar search widget (builder header_footer search_bar component): the stock
+	# component caps at 260-300px and themes for dark headers via CSS vars. Legacy
+	# navbars place it on a colored band and expect the original full-width white bar.
+	"<style>html body .builder-search-bar{width:100% !important;max-width:100% !important}"
+	"html body .builder-search-bar__wrapper{background:#fff !important;border:1px solid #fff !important;"
+	"height:44px;border-radius:8px}"
+	"html body .builder-search-bar__wrapper:focus-within{box-shadow:0 0 0 3px rgba(0,0,0,.08) !important}"
+	"html body .builder-search-bar__input{background:transparent !important;color:#1f2937 !important}"
+	"html body .builder-search-bar__input::placeholder{color:#9ca3af}"
+	"html body .builder-search-bar__icon{color:#9ca3af !important}</style>"
+)
+
 
 def get_builder_component_html(component_name):
 	"""Get rendered HTML from a Builder Component.
@@ -135,8 +162,13 @@ def inject_site_chrome(context):
 	context["navbar_template"] = "LLM Navbar"
 	context["footer_template"] = "LLM Footer"
 
-	# Rendered Builder component HTML consumed by the Web Templates
-	context["navbar_html"] = get_builder_component_html("navbar")
+	# Rendered Builder component HTML consumed by the Web Templates. Prefix the
+	# CSS fixes to the navbar so non-Builder pages (which don't render _head_html)
+	# get them too.
+	navbar_html = get_builder_component_html("navbar")
+	if navbar_html:
+		navbar_html = LEGACY_FIXES_CSS + navbar_html
+	context["navbar_html"] = navbar_html
 	context["footer_html"] = get_builder_component_html("footer")
 
 	if not context.get("_head_html"):
@@ -162,31 +194,8 @@ def inject_site_chrome(context):
 	if "builder_assets/variables.css" not in head_html:
 		builder_css_tags += '<link rel="stylesheet" href="/builder_assets/variables.css">'
 
-	# Fix: header product search must be full-width on ALL pages (webshop shop pages
-	# e.g. /magasin render the search .dropdown as inline-block, collapsing it).
-	builder_css_tags += (
-		"<style>html body .webshop-search-component .dropdown.w-100,"
-		"html body .webshop-search-component .input-group>.dropdown{display:block !important;width:100% !important}"
-		"html body .webshop-search-component .dropdown.w-100>.form-control{width:100% !important}</style>"
-	)
-	# Fix: avatar letter vertical centering on Builder pages (builder reset forces
-	# .standard-image to display:block, dropping the flex centering used on shop pages).
-	builder_css_tags += (
-		"<style>html body .avatar .standard-image,"
-		"html body .my-account-avatar .standard-image"
-		"{display:flex !important;align-items:center !important;justify-content:center !important}</style>"
-	)
-	# Navbar search widget (builder header_footer search_bar component): the stock
-	# component caps at 260-300px and themes for dark headers via CSS vars. Legacy
-	# navbars place it on a colored band and expect the original full-width white bar.
-	builder_css_tags += (
-		"<style>html body .builder-search-bar{width:100% !important;max-width:100% !important}"
-		"html body .builder-search-bar__wrapper{background:#fff !important;border:1px solid #fff !important;"
-		"height:44px;border-radius:8px}"
-		"html body .builder-search-bar__wrapper:focus-within{box-shadow:0 0 0 3px rgba(0,0,0,.08) !important}"
-		"html body .builder-search-bar__input{color:#1f2937 !important}"
-		"html body .builder-search-bar__input::placeholder{color:#9ca3af}"
-		"html body .builder-search-bar__icon{color:#9ca3af !important}</style>"
-	)
+	# CSS fixes (search bar, avatar...) for Builder pages; non-Builder pages get
+	# them via navbar_html above.
+	builder_css_tags += LEGACY_FIXES_CSS
 
 	context["_head_html"] = builder_css_tags + context["_head_html"]
