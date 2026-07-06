@@ -27,6 +27,12 @@
 
 		<div id="builder-cart-items" class="builder-cart-drawer__items"></div>
 
+		{# Frequently bought together (server-computed from real sales, based on cart items) #}
+		<div id="builder-cart-fbt" class="builder-cart-drawer__recent" style="display: none;">
+			<div class="builder-cart-drawer__recent-title">{{ _("Frequently bought together") }}</div>
+			<div id="builder-cart-fbt-items" class="builder-cart-drawer__recent-items"></div>
+		</div>
+
 		{# Recently viewed products (client-side, fed by the product page tracker) #}
 		<div id="builder-cart-recent" class="builder-cart-drawer__recent" style="display: none;">
 			<div class="builder-cart-drawer__recent-title">{{ _("Recently viewed") }}</div>
@@ -819,6 +825,41 @@
 		setTimeout(initCart, 0);
 	}
 
+	// ---- Frequently bought together (server API, based on cart content) ----
+	function renderCartRecos() {
+		const wrap = document.getElementById('builder-cart-fbt');
+		const list = document.getElementById('builder-cart-fbt-items');
+		if (!wrap || !list) return;
+		const codes = [...document.querySelectorAll('#builder-cart-items .builder-cart-item')]
+			.map(el => el.dataset.itemCode).filter(Boolean);
+		if (!codes.length) {
+			wrap.style.display = 'none';
+			window.__cartFbtCodes = [];
+			return;
+		}
+		fetch('/api/method/webshop.webshop.api.get_cart_recommendations?item_codes=' + encodeURIComponent(JSON.stringify(codes)))
+			.then(r => r.json())
+			.then(d => {
+				const items = ((d && d.message) || []).slice(0, 4);
+				window.__cartFbtCodes = items.map(i => i.item_code);
+				if (!items.length) { wrap.style.display = 'none'; return; }
+				list.innerHTML = items.map(i => {
+					const name = (i.name || '').replace(/</g, '&lt;');
+					const abbr = name.split(' ').map(w => w[0]).join('').toUpperCase().substring(0, 2);
+					const img = i.image
+						? `<img src="${i.image}" alt="${name}" loading="lazy" onerror="this.outerHTML='<div class=builder-cart-recent-abbr>${abbr}</div>'">`
+						: `<div class="builder-cart-recent-abbr">${abbr}</div>`;
+					const price = i.price ? `<div class="builder-cart-recent-price">${i.price}</div>` : '';
+					return `<a class="builder-cart-recent-card" href="/${i.route}">${img}<div class="builder-cart-recent-name">${name}</div>${price}</a>`;
+				}).join('');
+				wrap.style.display = '';
+				// re-render recents so they don't duplicate the cross-sell cards
+				renderRecentlyViewed();
+			})
+			.catch(() => { wrap.style.display = 'none'; });
+	}
+	window.builderCartRenderRecos = renderCartRecos;
+
 	// ---- Recently viewed (localStorage, fed by the product page tracker) ----
 	function renderRecentlyViewed() {
 		const wrap = document.getElementById('builder-cart-recent');
@@ -829,6 +870,7 @@
 		// don't re-suggest what's already in the cart (cartState lives inside initCart's scope)
 		let inCartCodes = [];
 		try { inCartCodes = (typeof cartState !== 'undefined' && cartState && cartState.items ? cartState.items : []).map(i => i.item_code); } catch (e) {}
+		(window.__cartFbtCodes || []).forEach(c => inCartCodes.push(c));
 		const inCart = new Set(inCartCodes);
 		items = items.filter(i => i && i.route && !inCart.has(i.code)).slice(0, 4);
 		if (!items.length) { wrap.style.display = 'none'; return; }
@@ -847,8 +889,10 @@
 	document.addEventListener('click', function(e) {
 		if (e.target.closest && e.target.closest('.header-icon--cart')) {
 			setTimeout(renderRecentlyViewed, 150);
+			setTimeout(renderCartRecos, 700);
 		}
 	});
 	setTimeout(renderRecentlyViewed, 400);
+	setTimeout(renderCartRecos, 900);
 })();
 </script>
