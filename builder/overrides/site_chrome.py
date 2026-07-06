@@ -46,6 +46,13 @@ LEGACY_FIXES_CSS = (
 	"html body .builder-search-bar__input::-webkit-search-cancel-button{-webkit-appearance:none;display:none}"
 	"html body .builder-search-bar__input::placeholder{color:#9ca3af}"
 	"html body .builder-search-bar__icon{color:#9ca3af !important}</style>"
+	# User avatar: the component colors it var(--primary-color, #2563eb). Config-driven
+	# headers (theme_variables.html) define that var on every page; legacy embedded
+	# navbars don't, so each page falls back differently (blue on Builder pages,
+	# frappe gray-900 on webshop pages). Pin the original neutral look everywhere.
+	"<style>html body .builder-user-header__avatar .standard-image,"
+	"html body .builder-user-header__avatar .avatar-frame"
+	"{background:#f3f4f6 !important;color:#374151 !important}</style>"
 )
 
 
