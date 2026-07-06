@@ -862,6 +862,10 @@ class PageGenerator:
         "builder/templates/includes/team_grid.html",
         "builder/templates/includes/company_timeline.html",
         "builder/templates/includes/google_map.html",
+        # Builder header/footer components (replace webshop widgets removed upstream 2026)
+        "builder/templates/includes/header_footer/components/user_header.html",
+        "builder/templates/includes/header_footer/components/cart_drawer.html",
+        "builder/templates/includes/header_footer/components/search_bar.html",
         # Webshop templates
         "webshop/templates/includes/product_carousel.html",
         "webshop/templates/includes/brand_carousel.html",
@@ -875,6 +879,10 @@ class PageGenerator:
         "webshop/templates/includes/contact_info.html": "builder/templates/includes/contact_info.html",
         "webshop/templates/includes/team_grid.html": "builder/templates/includes/team_grid.html",
         "webshop/templates/includes/google_map.html": "builder/templates/includes/google_map.html",
+        # Webshop header widgets removed upstream (2026) -> builder committed equivalents
+        "webshop/templates/includes/user_header.html": "builder/templates/includes/header_footer/components/user_header.html",
+        "webshop/templates/includes/cart_component.html": "builder/templates/includes/header_footer/components/cart_drawer.html",
+        "webshop/templates/includes/search_box.html": "builder/templates/includes/header_footer/components/search_bar.html",
     }
 
     # Pattern to match {{ google_map address="..." }} shortcode from AI.
