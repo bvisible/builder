@@ -22,7 +22,7 @@
 				<path d="M1 1h4l2.68 13.39a2 2 0 0 0 2 1.61h9.72a2 2 0 0 0 2-1.61L23 6H6"/>
 			</svg>
 			<p>{{ _("Your cart is empty") }}</p>
-			<a href="/shop" class="builder-cart-drawer__shop-btn">{{ _("Start Shopping") }}</a>
+			<a href="/all-products" class="builder-cart-drawer__shop-btn">{{ _("Start Shopping") }}</a>
 		</div>
 
 		<div id="builder-cart-items" class="builder-cart-drawer__items"></div>
@@ -509,9 +509,12 @@
 				cartState.taxes = [];
 				if (doc.taxes && doc.taxes.length > 0) {
 					doc.taxes.forEach(tax => {
+						const amount = tax.tax_amount || 0;
+						// Skip zero-amount tax rows (unused VAT rates on the tax template)
+						if (Math.abs(amount) < 0.005) return;
 						cartState.taxes.push({
 							description: tax.description ? tax.description.split('%')[0] + '%' : 'Tax',
-							amount: tax.tax_amount || 0
+							amount: amount
 						});
 					});
 				}
