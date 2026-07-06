@@ -287,8 +287,9 @@ class BuilderPage(WebsiteGenerator):
 			)
 
 		page_data = self._get_page_data(for_render=True)
-		if page_data.get("title"):
-			context.title = page_data.get("page_title")
+		# page_data may override the title; otherwise the page's own title is the
+		# <title> (it previously fell back to the route name, e.g. "Homepage").
+		context.title = page_data.get("title") or self.page_title
 
 		blocks = self.blocks
 
@@ -360,7 +361,9 @@ class BuilderPage(WebsiteGenerator):
 		context.language = self.language
 		if not context.language:
 			context.default_language = (
-				frappe.get_cached_value("Builder Settings", "Builder Settings", "default_language") or "en"
+				frappe.get_cached_value("Builder Settings", "Builder Settings", "default_language")
+				or frappe.local.lang
+				or "en"
 			)
 
 	def is_component_used(self, component_id):
