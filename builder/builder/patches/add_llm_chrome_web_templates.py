@@ -2,12 +2,11 @@ import frappe
 
 NAVBAR_TEMPLATE = '{{ navbar_html or "" }}'
 
+# No bootstrap .container wrapper: the Builder footer component manages its own
+# width; the container capped it at ~1200px on webshop pages while Builder pages
+# render it full-bleed.
 FOOTER_TEMPLATE = """<footer class="llm-footer">
-  <div class="container">
-    <div class="footer-content">
-      {{ footer_html or "" }}
-    </div>
-  </div>
+  {{ footer_html or "" }}
 </footer>"""
 
 
