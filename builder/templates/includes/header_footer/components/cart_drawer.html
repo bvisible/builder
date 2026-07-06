@@ -505,23 +505,31 @@
 				cartState.subtotal = doc.net_total || doc.total || 0;
 				cartState.itemsCount = doc.total_qty || 0;
 
-				// Extract taxes
+				// Extract taxes with customer-friendly labels: drop account codes
+				// ("22007 - ...") and internal ids ("Economy_2kg"), keep just the
+				// "TVA x%" segment for VAT rows and merge them by rate (product VAT
+				// + shipping VAT become a single line), like the cart/checkout summary.
 				cartState.taxes = [];
 				if (doc.taxes && doc.taxes.length > 0) {
+					const mergedTaxes = {};
 					doc.taxes.forEach(tax => {
 						const amount = tax.tax_amount || 0;
 						// Skip zero-amount tax rows (unused VAT rates on the tax template)
 						if (Math.abs(amount) < 0.005) return;
-						// Clean technical noise from tax labels: drop leading account
-						// codes ("22007 - TVA 8.1%") and internal ids ("Economy_2kg").
-						let desc = tax.description || 'Tax';
-						const parts = desc.split(' - ').filter(p => !/^\d+$/.test(p.trim()) && !p.includes('_'));
-						if (parts.length) desc = parts.join(' - ');
-						cartState.taxes.push({
-							description: desc,
-							amount: amount
-						});
+						const raw = tax.description || 'Tax';
+						const parts = raw.split(' - ').filter(p => p.trim() && !/^\d+$/.test(p.trim()) && !p.includes('_'));
+						let label = parts.length ? parts.join(' - ') : raw;
+						let key = label;
+						const pct = parts.find(p => p.includes('%'));
+						if (pct) {
+							label = pct.trim();
+							const m = label.match(/(\d+(?:\.\d+)?)\s*%/);
+							if (m) key = 'vat-' + m[1];
+						}
+						if (mergedTaxes[key]) mergedTaxes[key].amount += amount;
+						else mergedTaxes[key] = { description: label, amount: amount };
 					});
+					cartState.taxes = Object.values(mergedTaxes);
 				}
 			} else {
 				cartState.items = [];
