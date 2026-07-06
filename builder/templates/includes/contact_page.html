@@ -16,8 +16,10 @@
 #}
 
 {% set contact = frappe.get_doc("Contact Us Settings") -%}
-{% set theme = theme or "modern" -%}
-{% set layout = layout or "two_column" -%}
+{#- `theme`/`layout` may already exist in the page context (e.g. the Website
+    Theme doc on Web Pages) — only honor them when they are our known strings. -#}
+{% set contact_theme = theme if theme in ("modern", "elegant", "minimal") else "modern" -%}
+{% set contact_layout = layout if layout in ("two_column", "stacked", "form_only") else "two_column" -%}
 
 <style>
 /* Base styles */
@@ -27,11 +29,11 @@
 }
 
 .contact-page section {
-    padding: 60px 20px;
+    padding: 32px 20px;
 }
 
 .contact-page h1 {
-    font-size: 2.5rem;
+    font-size: 2.1rem;
     font-weight: 700;
     margin-bottom: 1rem;
 }
@@ -180,7 +182,7 @@
 
 /* Contact Content */
 .contact-content {
-    padding: 60px 20px;
+    padding: 24px 20px;
 }
 
 /* Contact Info Card */
@@ -324,7 +326,7 @@
 }
 </style>
 
-<div class="contact-page contact-theme-{{ theme }} contact-layout-{{ layout }}">
+<div class="contact-page contact-theme-{{ contact_theme }} contact-layout-{{ contact_layout }}">
 
     {# === HEADER (if heading exists) === #}
     {% if contact.heading -%}
@@ -343,7 +345,7 @@
         <div class="contact-grid">
 
             {# === CONTACT INFO (if layout != form_only and data exists) === #}
-            {% if layout != 'form_only' -%}
+            {% if contact_layout != 'form_only' -%}
             {% set has_address = contact.address_line1 or contact.city -%}
             {% set has_phone = contact.phone -%}
             {% set has_email = contact.email_id -%}
@@ -409,8 +411,8 @@
             {# === CONTACT FORM (always displayed) === #}
             <div class="contact-form-card">
                 <h3>{{ _("Envoyez-nous un message") }}</h3>
-                <div id="contact-message-{{ theme }}" class="contact-message"></div>
-                <form id="contact-form-{{ theme }}" onsubmit="sendContactMessage_{{ theme | replace('-', '_') }}(event)">
+                <div id="contact-message-{{ contact_theme }}" class="contact-message"></div>
+                <form id="contact-form-{{ contact_theme }}" onsubmit="sendContactMessage_{{ contact_theme | replace('-', '_') }}(event)">
                     <input type="text" name="sender_name" placeholder="{{ _('Votre nom') }}" required>
                     <input type="email" name="email" placeholder="{{ _('Votre email') }}" required>
 
@@ -438,11 +440,11 @@
 </div>
 
 <script>
-function sendContactMessage_{{ theme | replace('-', '_') }}(e) {
+function sendContactMessage_{{ contact_theme | replace('-', '_') }}(e) {
     e.preventDefault();
 
-    var form = document.getElementById('contact-form-{{ theme }}');
-    var messageDiv = document.getElementById('contact-message-{{ theme }}');
+    var form = document.getElementById('contact-form-{{ contact_theme }}');
+    var messageDiv = document.getElementById('contact-message-{{ contact_theme }}');
     var formData = new FormData(form);
     var submitBtn = form.querySelector('button[type="submit"]');
     var originalText = submitBtn.innerText;
