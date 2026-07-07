@@ -35,6 +35,7 @@ def execute():
 			frappe.get_doc(
 				{
 					"doctype": "Web Template",
+					"name": name,
 					"title": name,
 					"type": "Component",
 					"module": "Builder",
