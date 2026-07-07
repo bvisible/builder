@@ -58,6 +58,11 @@ LEGACY_FIXES_CSS = (
 	"<style>html body .llm-navbar a:hover,html body .llm-navbar a:focus,"
 	"html body .llm-footer a:hover,html body .llm-footer a:focus"
 	"{text-decoration:none !important}</style>"
+	# Webshop's base CSS gives <p> a 1rem bottom margin; Builder pages reset it.
+	# Menu labels and footer lines in the injected chrome are <p> blocks, so the
+	# margin skewed their vertical alignment on shop pages.
+	"<style>html body .llm-navbar p,html body .llm-footer p"
+	"{margin-top:0 !important;margin-bottom:0 !important}</style>"
 )
 
 
