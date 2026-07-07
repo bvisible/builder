@@ -58,9 +58,10 @@
 }
 
 .contact-theme-modern .contact-header {
-    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-    color: white;
-    text-align: center;
+    background: transparent;
+    color: #1a1a1a;
+    text-align: left;
+    padding-bottom: 8px;
 }
 
 .contact-theme-modern .contact-content {
@@ -80,13 +81,12 @@
 }
 
 .contact-theme-modern button[type="submit"] {
-    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    background: var(--primary-color, #1a1a1a);
     color: white;
 }
 
 .contact-theme-modern button[type="submit"]:hover {
-    transform: translateY(-2px);
-    box-shadow: 0 8px 25px rgba(102, 126, 234, 0.4);
+    background: var(--primary-hover, #333333);
 }
 
 /* Theme: Elegant */
@@ -266,8 +266,8 @@
 .contact-form-card select:focus,
 .contact-form-card textarea:focus {
     outline: none;
-    border-color: #667eea;
-    box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+    border-color: var(--primary-color, #1a1a1a);
+    box-shadow: 0 0 0 3px rgba(26, 26, 26, 0.08);
 }
 
 .contact-form-card textarea {
