@@ -49,13 +49,14 @@ DESKTOP_BREAKPOINT = 1024
 
 class BuilderPageRenderer(DocumentPage):
 	def can_render(self):
-		if page := find_page_with_path(self.path):
+		#//// Neoffice multi-site: resolve against the current site's profile
+		if page := find_page_with_path(self.path, _current_site_profile()):
 			self.doctype = "Builder Page"
 			self.docname = page
 			self.validate_access()
 			return True
 
-		for d in get_web_pages_with_dynamic_routes():
+		for d in get_web_pages_with_dynamic_routes(_current_site_profile()):
 			try:
 				if evaluate_dynamic_routes([ColonRule(f"/{d.route}", endpoint=d.name)], self.path):
 					self.doctype = "Builder Page"
@@ -1426,9 +1427,40 @@ def extend_block(block, overridden_block):
 	return block
 
 
-@redis_cache(ttl=60 * 60)
-def find_page_with_path(route):
+def _current_site_profile():
+	#//// Neoffice multi-site: resolved per-request by neoffice_theme's
+	#//// before_request hook. None on instances without Website Profiles.
+	return getattr(frappe.local, "website_profile", None)
+
+
+def _page_has_site_field():
 	try:
+		return frappe.db.has_column("Builder Page", "neo_website_profile")
+	except Exception:
+		return False
+
+
+@redis_cache(ttl=60 * 60)
+def find_page_with_path(route, website_profile=None):
+	try:
+		#//// Neoffice multi-site: a page tagged for the current profile wins on
+		#//// that site (allows two home pages sharing a route); untagged pages
+		#//// serve everywhere. Without a resolved profile: original behavior.
+		if website_profile and _page_has_site_field():
+			page = frappe.db.get_value(
+				"Builder Page",
+				dict(route=route, published=1, neo_website_profile=website_profile),
+				"name",
+				order_by="published_at desc, creation desc",
+			)
+			if page:
+				return page
+			return frappe.db.get_value(
+				"Builder Page",
+				dict(route=route, published=1, neo_website_profile=("is", "not set")),
+				"name",
+				order_by="published_at desc, creation desc",
+			)
 		return frappe.db.get_value(
 			"Builder Page",
 			dict(route=route, published=1),
@@ -1441,21 +1473,35 @@ def find_page_with_path(route):
 
 
 @redis_cache(ttl=60 * 60)
-def get_web_pages_with_dynamic_routes() -> list[dict]:
-	return frappe.get_all(
+def get_web_pages_with_dynamic_routes(website_profile=None) -> list[dict]:
+	fields = ["name", "route", "modified"]
+	#//// Neoffice multi-site: dynamic routes tagged for another profile are
+	#//// excluded on this site; untagged ones serve everywhere.
+	has_site_field = _page_has_site_field()
+	if has_site_field:
+		fields.append("neo_website_profile")
+	pages = frappe.get_all(
 		"Builder Page",
-		fields=["name", "route", "modified"],
+		fields=fields,
 		filters=dict(published=1, dynamic_route=1),
 		update={"doctype": "Builder Page"},
 	)
+	if website_profile and has_site_field:
+		pages = [
+			p for p in pages if not p.get("neo_website_profile") or p["neo_website_profile"] == website_profile
+		]
+	return pages
 
 
 def resolve_path(path):
 	try:
-		if find_page_with_path(path):
+		if find_page_with_path(path, _current_site_profile()):
 			return path
 		elif evaluate_dynamic_routes(
-			[ColonRule(f"/{d.route}", endpoint=d.name) for d in get_web_pages_with_dynamic_routes()],
+			[
+				ColonRule(f"/{d.route}", endpoint=d.name)
+				for d in get_web_pages_with_dynamic_routes(_current_site_profile())
+			],
 			path,
 		):
 			return path
