@@ -82,9 +82,15 @@ class BuilderPageRenderer(DocumentPage):
 		#//// not to its internal route). An explicit per-page canonical still wins.
 		profile = getattr(frappe.local, "website_profile_doc", None)
 		if profile and profile.get("primary_domain") and not self.doc.canonical_url:
-			request = getattr(frappe.local, "request", None)
-			request_path = (request.path if request is not None else "/" + self.path) or "/"
-			context["canonical_url"] = f"https://{profile['primary_domain']}{request_path}"
+			if profile.get("home_route") and self.doc.route == profile["home_route"]:
+				#//// the profile's home always canonicalizes to the site root, whatever
+				#//// URL it was reached through — deterministic even when the first
+				#//// render freezes into the per-profile page cache.
+				context["canonical_url"] = f"https://{profile['primary_domain']}/"
+			else:
+				request = getattr(frappe.local, "request", None)
+				request_path = (request.path if request is not None else "/" + self.path) or "/"
+				context["canonical_url"] = f"https://{profile['primary_domain']}{request_path}"
 		elif self.doc.is_home_page():
 			context["canonical_url"] = frappe.utils.get_url()
 		elif self.doc.canonical_url:
