@@ -77,7 +77,15 @@ class BuilderPageRenderer(DocumentPage):
 		if not self.doc:
 			return
 		context = getattr(self, "context", frappe._dict())
-		if self.doc.is_home_page():
+		#//// Neoffice multi-site: canonical follows the resolved Website Profile's
+		#//// domain and the requested path (a per-profile home canonicalizes to "/",
+		#//// not to its internal route). An explicit per-page canonical still wins.
+		profile = getattr(frappe.local, "website_profile_doc", None)
+		if profile and profile.get("primary_domain") and not self.doc.canonical_url:
+			request = getattr(frappe.local, "request", None)
+			request_path = (request.path if request is not None else "/" + self.path) or "/"
+			context["canonical_url"] = f"https://{profile['primary_domain']}{request_path}"
+		elif self.doc.is_home_page():
 			context["canonical_url"] = frappe.utils.get_url()
 		elif self.doc.canonical_url:
 			context["canonical_url"] = render_template(self.doc.canonical_url, context)

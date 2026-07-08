@@ -1,6 +1,5 @@
 """Legacy site chrome injection for migrated client sites.
 
-Ported from the deprecated ``neoffice_ia_builder`` app (utils/website_context.py).
 Some client sites (e.g. WordPress migrations like blowbackshop.ch) embed a Builder
 navbar/footer component on their Builder pages AND expect the same chrome plus the
 Builder CSS stack (DaisyUI/Tailwind CDN, reset, variables) on non-Builder pages
