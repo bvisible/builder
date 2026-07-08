@@ -14,9 +14,9 @@ FOOTER_TEMPLATE = """<footer class="llm-footer">
 def execute():
 	"""Own the LLM Navbar/Footer Web Templates under the Builder module.
 
-	They historically shipped as standard templates of the deprecated
-	neoffice_ia_builder app. Re-owning them here (standard=0, template stored
-	in the DB) keeps legacy sites rendering after that app is uninstalled —
+	They historically shipped as standard templates of a legacy app that has
+	been removed. Re-owning them here (standard=0, template stored in the DB)
+	keeps legacy sites rendering after that app is uninstalled —
 	builder.overrides.site_chrome points navbar_template/footer_template at
 	them when site_config enables builder_legacy_site_chrome.
 	"""
