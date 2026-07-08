@@ -344,6 +344,7 @@ def generate_complete_site(
 	generation_mode: str = "full",
 	inspiration_urls: str = None,
 	replace_existing: str = "auto",
+	website_profile: str = None,  #//// Neoffice multi-site: target Website Profile
 ):
 	"""
 	Generate a complete site asynchronously.
@@ -411,7 +412,7 @@ def generate_complete_site(
 	if replace_existing not in ("auto", "force", "none"):
 		frappe.throw(_("Invalid replace_existing value: {0}").format(replace_existing))
 	if replace_existing == "auto":
-		classes = classify_existing_pages()
+		classes = classify_existing_pages(website_profile)  #//// Neoffice multi-site
 		if classes["protected"]:
 			from builder.ai.logging import ai_log
 
@@ -456,6 +457,7 @@ def generate_complete_site(
 		generation_mode=generation_mode,
 		inspiration_urls=inspiration_urls,
 		replace_existing=replace_existing,
+		website_profile=website_profile,  #//// Neoffice multi-site
 	)
 
 	print(f"[SITE_GEN] Job enqueued successfully: job_id={job_id}, mode={generation_mode}")
@@ -617,6 +619,7 @@ def _generate_complete_site_worker(
 	generation_mode: str = "full",
 	inspiration_urls: str = None,
 	replace_existing: str = "auto",
+	website_profile: str = None,  #//// Neoffice multi-site: target Website Profile
 ):
 	"""
 	Background worker for site generation.
@@ -692,7 +695,7 @@ def _generate_complete_site_worker(
 		if replace_existing == "none":
 			existing_pages = []
 		else:
-			classes = classify_existing_pages()
+			classes = classify_existing_pages(website_profile)  #//// Neoffice multi-site
 			existing_pages = [p["name"] for p in classes["untouched"]]
 			if replace_existing == "force":
 				existing_pages += [p["name"] for p in classes["protected"]]
@@ -732,7 +735,8 @@ def _generate_complete_site_worker(
 			"site_name": site_name,
 		})
 
-		config = frappe.get_single("Website Header Footer Config")
+		#//// Neoffice multi-site: chrome goes to the profile's Variant when targeted
+		config = _get_site_chrome_config(website_profile)
 
 		# Apply site_type defaults
 		defaults = SITE_TYPE_HEADER_FOOTER_DEFAULTS.get(site_type, SITE_TYPE_HEADER_FOOTER_DEFAULTS["vitrine"])
@@ -804,7 +808,7 @@ def _generate_complete_site_worker(
 		# the model must never invent an address/phone/email, and the logo
 		# (when the caller didn't pass one) feeds the brief's vision analysis
 		# (palette + typographic personality extracted from it).
-		contact_data = get_site_contact_context()
+		contact_data = get_site_contact_context(website_profile)  #//// Neoffice multi-site
 		contact_prompt = _contact_context_prompt(contact_data)
 		if contact_prompt:
 			prompt = f"{prompt}{contact_prompt}"
@@ -916,7 +920,7 @@ def _generate_complete_site_worker(
 		# STEP 2.6.5: Apply the brief's site chrome (header/footer design)
 		# =====================================================================
 		try:
-			applied = apply_brief_site_chrome(design_brief)
+			applied = apply_brief_site_chrome(design_brief, website_profile=website_profile)  #//// Neoffice multi-site
 			ai_log("info", "Site chrome applied from design brief", fields=applied)
 			print(f"[SITE_GEN_WORKER] Site chrome from design brief: {applied}")
 		except Exception as e:
@@ -928,7 +932,7 @@ def _generate_complete_site_worker(
 		# =====================================================================
 		if hasattr(design_brief, 'heading_font') and design_brief.heading_font:
 			try:
-				config = frappe.get_single("Website Header Footer Config")
+				config = _get_site_chrome_config(website_profile)  #//// Neoffice multi-site
 				config.heading_font = design_brief.heading_font
 				config.body_font = design_brief.body_font or "Inter"
 				# Also propagate typography scale if available
@@ -1134,6 +1138,9 @@ def _generate_complete_site_worker(
 				page.blocks = json.dumps(wrapped_blocks)
 				page.draft_blocks = json.dumps(wrapped_blocks)
 				page.published = 1
+				#//// Neoffice multi-site: tag the page for its target site
+				if website_profile and frappe.db.has_column("Builder Page", "neo_website_profile"):
+					page.neo_website_profile = website_profile
 				page.insert(ignore_permissions=True)
 
 				# Force route (no /pages/ prefix)
@@ -1142,9 +1149,14 @@ def _generate_complete_site_worker(
 				# the occupant only when it is an untouched AI page, otherwise
 				# keep the user's page and shift the new route.
 				if replace_existing == "none":
+					occupant_filters = {"route": route, "is_template": 0, "name": ("!=", page.name)}
+					#//// Neoffice multi-site: route collisions are per site — only
+					#//// consider the target profile's pages (or untagged ones).
+					if frappe.db.has_column("Builder Page", "neo_website_profile"):
+						occupant_filters["neo_website_profile"] = website_profile if website_profile else ("is", "not set")
 					occupant = frappe.db.get_value(
 						"Builder Page",
-						{"route": route, "is_template": 0, "name": ("!=", page.name)},
+						occupant_filters,
 						["name", "ai_generated_at", "ai_blocks_hash", "blocks", "draft_blocks"],
 						as_dict=True,
 					)
@@ -1294,7 +1306,7 @@ def _generate_complete_site_worker(
 			"site_name": site_name,
 		})
 
-		config = frappe.get_single("Website Header Footer Config")
+		config = _get_site_chrome_config(website_profile)  #//// Neoffice multi-site
 
 		# ---- Update Menu ----
 		config.menu_items = []
@@ -1393,14 +1405,29 @@ def _generate_complete_site_worker(
 
 		config.save(ignore_permissions=True)
 
-		# Point BOTH settings to the generated home page. Website Settings
-		# is Frappe's standard pointer; Builder Settings is what
-		# BuilderPage.is_home_page() checks for rendering — if only Website
-		# Settings is set, BuilderPageRenderer still resolves the Builder
-		# Page at /home but "/" shows Frappe's fallback. Keep them in sync.
-		frappe.db.set_value("Website Settings", "Website Settings", "home_page", "home")
-		frappe.db.set_value("Builder Settings", "Builder Settings", "home_page", "home")
-		frappe.db.commit()
+		#//// Neoffice multi-site: a profile-targeted generation sets the PROFILE's
+		#//// home page (Link to the Builder Page docname) and must never touch the
+		#//// default site's Website Settings / Builder Settings pointers.
+		if website_profile and frappe.db.exists("DocType", "Website Profile"):
+			home_page_name = None
+			for created_page in created_pages:
+				if created_page["route"] in ("/", "/home", "/index"):
+					home_page_name = created_page["name"]
+					break
+			if home_page_name:
+				frappe.db.set_value("Website Profile", website_profile, "home_page", home_page_name)
+			frappe.db.commit()
+			frappe.cache.delete_value("nt_website_profiles_by_host")
+			frappe.cache.delete_value("website_page")
+		else:
+			# Point BOTH settings to the generated home page. Website Settings
+			# is Frappe's standard pointer; Builder Settings is what
+			# BuilderPage.is_home_page() checks for rendering — if only Website
+			# Settings is set, BuilderPageRenderer still resolves the Builder
+			# Page at /home but "/" shows Frappe's fallback. Keep them in sync.
+			frappe.db.set_value("Website Settings", "Website Settings", "home_page", "home")
+			frappe.db.set_value("Builder Settings", "Builder Settings", "home_page", "home")
+			frappe.db.commit()
 		frappe.clear_cache()
 
 		# =====================================================================
@@ -1573,6 +1600,8 @@ def continue_generation(
 		body_font=session.body_font,
 		pages_config=json.dumps(remaining_pages),
 		generation_mode="full",  # Generate all remaining pages normally
+		#//// Neoffice multi-site: keep the continuation targeted at the same site
+		website_profile=getattr(session, "website_profile", None),
 	)
 
 	# Update session
@@ -1671,6 +1700,8 @@ def regenerate_homepage(
 		body_font=session.body_font,
 		pages_config=json.dumps(homepage_config),
 		generation_mode="progressive",  # Still progressive, will return homepage_ready
+		#//// Neoffice multi-site: keep the regeneration targeted at the same site
+		website_profile=getattr(session, "website_profile", None),
 	)
 
 	# Update session
@@ -2099,7 +2130,7 @@ def import_template_group(template_group: str, project_folder: str | None = None
 	return created
 
 
-def get_site_contact_context() -> dict:
+def get_site_contact_context(website_profile=None) -> dict:  #//// Neoffice multi-site
 	"""bvisible: real, verified contact data of this site — ERPNext Company,
 	its linked Address, and the header config logo. Injected into generation
 	prompts so the model never fabricates an address/phone/email."""
@@ -2144,7 +2175,8 @@ def get_site_contact_context() -> dict:
 		pass
 
 	try:
-		config = frappe.get_single("Website Header Footer Config")
+		#//// Neoffice multi-site: logo fallback comes from the target site's chrome
+		config = _get_site_chrome_config(website_profile)
 		if not data.get("logo") and config.get("logo_image"):
 			data["logo"] = config.logo_image
 	except Exception:
@@ -2188,7 +2220,31 @@ def _blocks_fingerprint(raw) -> str:
 	return hashlib.md5(normalized.encode("utf-8")).hexdigest()
 
 
-def classify_existing_pages() -> dict:
+def _get_site_chrome_config(website_profile=None):
+	"""#//// Neoffice multi-site: generation targeting a profile writes its chrome
+	into the profile's Website Header Footer Variant (bootstrapped from the
+	Single on first use); otherwise the global Single (default site / fleet)."""
+	if website_profile and frappe.db.exists("DocType", "Website Header Footer Variant"):
+		if not frappe.db.exists("Website Header Footer Variant", website_profile):
+			single = frappe.get_single("Website Header Footer Config")
+			variant = frappe.new_doc("Website Header Footer Variant")
+			for f in variant.meta.fields:
+				if f.fieldtype in ("Section Break", "Column Break", "Tab Break", "HTML", "Table", "Table MultiSelect"):
+					continue
+				if f.fieldname == "website_profile":
+					continue
+				try:
+					variant.set(f.fieldname, single.get(f.fieldname))
+				except Exception:
+					pass
+			variant.website_profile = website_profile
+			variant.insert(ignore_permissions=True)
+			frappe.db.commit()
+		return frappe.get_doc("Website Header Footer Variant", website_profile)
+	return frappe.get_single("Website Header Footer Config")
+
+
+def classify_existing_pages(website_profile=None) -> dict:
 	"""bvisible: classify the site's pages for the regenerate decision.
 
 	- untouched: AI-generated pages never edited since (current blocks hash
@@ -2198,9 +2254,14 @@ def classify_existing_pages() -> dict:
 	  generation) — replacing them requires explicit confirmation
 	Template pages and hub staging are excluded entirely.
 	"""
+	filters = {"is_template": 0}
+	#//// Neoffice multi-site: a profile-targeted generation only classifies its
+	#//// own pages; an untargeted one never touches profile-tagged pages.
+	if frappe.db.has_column("Builder Page", "neo_website_profile"):
+		filters["neo_website_profile"] = website_profile if website_profile else ("is", "not set")
 	pages = frappe.get_all(
 		"Builder Page",
-		filters={"is_template": 0},
+		filters=filters,
 		fields=[
 			"name", "page_title", "project_folder",
 			"ai_generated_at", "ai_blocks_hash", "blocks", "draft_blocks",
@@ -2228,10 +2289,11 @@ BRIEF_CHROME_FIELDS = (
 )
 
 
-def apply_brief_site_chrome(design_brief) -> list[str]:
+def apply_brief_site_chrome(design_brief, website_profile=None) -> list[str]:
 	"""bvisible: apply the design brief's header/footer design (site chrome)
 	to the Website Header Footer Config. Returns the list of applied fields."""
-	config = frappe.get_single("Website Header Footer Config")
+	#//// Neoffice multi-site: targeted generations write the profile's Variant
+	config = _get_site_chrome_config(website_profile)
 	applied = []
 	for field in BRIEF_CHROME_FIELDS:
 		value = getattr(design_brief, field, None)

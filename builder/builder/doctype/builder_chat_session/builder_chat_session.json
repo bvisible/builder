@@ -48,7 +48,8 @@
   "saved_brief",
   "section_meta",
   "missing_fields",
-  "validation_errors"
+  "validation_errors",
+  "website_profile"
  ],
  "fields": [
   {
@@ -292,6 +293,12 @@
    "fieldname": "validation_errors",
    "fieldtype": "JSON",
    "label": "Validation Errors"
+  },
+  {
+   "fieldname": "website_profile",
+   "fieldtype": "Link",
+   "label": "Website Profile",
+   "options": "Website Profile"
   }
  ],
  "index_web_pages_for_search": 0,
