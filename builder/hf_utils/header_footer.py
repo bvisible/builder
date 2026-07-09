@@ -15,12 +15,20 @@ from frappe.utils import cstr
 
 @frappe.whitelist(allow_guest=True)
 def get_header_footer_config():
-	"""Get the Website Header Footer Config singleton if it exists.
+	"""Get the header/footer configuration for the current website.
 
 	Returns None if the DocType doesn't exist or is not configured,
 	allowing graceful fallback to default header/footer.
 	"""
 	try:
+		#//// Neoffice multi-site: a resolved Website Profile with its own
+		#//// variant gets it; everything else (default site, fleet instances
+		#//// without profiles) falls back to the global Single.
+		profile = getattr(frappe.local, "website_profile", None)
+		if profile and frappe.db.exists("DocType", "Website Header Footer Variant"):
+			if frappe.db.exists("Website Header Footer Variant", profile):
+				return frappe.get_cached_doc("Website Header Footer Variant", profile)
+
 		# Check if the DocType exists first
 		if not frappe.db.exists("DocType", "Website Header Footer Config"):
 			return None

@@ -535,6 +535,9 @@ class BuilderChatService:
 			if session.social_links:
 				social_links_str = session.social_links if isinstance(session.social_links, str) else json.dumps(session.social_links)
 
+			#//// Neoffice multi-site: carry the session's target site into generation
+			website_profile = getattr(session, "website_profile", None)
+
 			result = generate_complete_site(
 				prompt=generation_prompt,
 				site_name=session.site_name,
@@ -553,6 +556,7 @@ class BuilderChatService:
 				pages_config=session.pages_config if session.pages_config else None,
 				generation_mode=session.generation_mode or "full",
 				replace_existing="force" if force_replace else "auto",
+				website_profile=website_profile,  #//// Neoffice multi-site
 			)
 
 			# Existing pages were designed/edited by hand: ask before wiping
