@@ -215,7 +215,7 @@
 
 		// Set greeting
 		if (userGreeting) {
-			userGreeting.textContent = '{{ _("Hello") }} ' + (userInfo.first_name || '');
+			userGreeting.textContent = {{ _("Hello") | to_safe_json }} + ' ' + (userInfo.first_name || '');
 		}
 
 		// Setup dropdown behavior
