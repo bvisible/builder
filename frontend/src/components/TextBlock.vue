@@ -1,6 +1,10 @@
 <template>
 	<component :is="block.getTag()" ref="component" :key="editor" class="__text_block__">
-		<div v-html="textContent" v-show="!editor && textContent" @click="handleClick"></div>
+		<div
+			class="__text_content__ bg-clip-[inherit] bg-inherit [-webkit-background-clip:inherit] [background-image:inherit]"
+			v-html="textContent"
+			v-show="!editor && textContent"
+			@click="handleClick"></div>
 		<TextBlockBubbleMenu
 			v-if="editor"
 			:block="block"
@@ -18,7 +22,7 @@
 			v-on-click-outside="handleClickOutside"
 			@mouseup="selectionTriggered = false"
 			v-if="editor && showEditor"
-			class="bg-clip-[inherit] relative bg-inherit [-webkit-background-clip:inherit] [background-image:inherit]"
+			class="__text_editor__ bg-clip-[inherit] relative bg-inherit [-webkit-background-clip:inherit] [background-image:inherit]"
 			:style="block.getRawStyles()"
 			@keydown="(e: KeyboardEvent) => bubbleMenu?.handleKeydown(e)" />
 		<slot />
@@ -57,12 +61,14 @@ const props = withDefaults(
 		block: Block;
 		preview?: boolean;
 		data?: Record<string, any>;
+		componentData?: Record<string, any> | null;
 		defaultProps?: Record<string, any> | null;
 		breakpoint?: string;
 	}>(),
 	{
 		preview: false,
 		data: () => ({}),
+		componentData: null,
 		defaultProps: null,
 		breakpoint: "desktop",
 	},
@@ -101,9 +107,13 @@ const hasBlockProps = computed(() => {
 	return props.defaultProps || Object.keys(props.block.getBlockProps()).length > 0;
 });
 
+const hasComponentData = computed(() => {
+	return props.componentData && Object.keys(props.componentData).length > 0;
+});
+
 const textContent = computed(() => {
 	let innerHTML = props.block.getInnerHTML();
-	if (props.data || hasBlockProps.value) {
+	if (props.data || hasBlockProps.value || hasComponentData.value) {
 		const dynamicContent = getDynamicContent();
 		if (dynamicContent) {
 			innerHTML = dynamicContent;
@@ -116,19 +126,25 @@ const getDataScriptValue = (path: string): any => {
 	return getDataForKey(props.data, path);
 };
 
+const getComponentDataValue = (path: string): any => {
+	return getDataForKey(props.componentData || {}, path);
+};
+
 const getDynamicContent = () => {
 	let innerHTML = null as string | null;
 
 	if (props.block.getDataKey("property") === "innerHTML") {
 		let value;
 		if (props.block.getDataKey("comesFrom") === "props") {
-			// props are checked first as unavailablity of comesFrom means it comes from dataScript (legacy)
 			value = getPropValue(
 				props.block.getDataKey("key"),
 				props.block,
 				getDataScriptValue,
 				props.defaultProps,
+				getComponentDataValue,
 			);
+		} else if (props.block.getDataKey("comesFrom") === "componentData") {
+			value = getComponentDataValue(props.block.getDataKey("key"));
 		} else {
 			value = getDataScriptValue(props.block.getDataKey("key"));
 		}
@@ -142,7 +158,15 @@ const getDynamicContent = () => {
 		?.forEach((dataKeyObj: BlockDataKey) => {
 			let value;
 			if (dataKeyObj.comesFrom === "props") {
-				value = getPropValue(dataKeyObj.key as string, props.block, getDataScriptValue, props.defaultProps);
+				value = getPropValue(
+					dataKeyObj.key as string,
+					props.block,
+					getDataScriptValue,
+					props.defaultProps,
+					getComponentDataValue,
+				);
+			} else if (dataKeyObj.comesFrom === "componentData") {
+				value = getComponentDataValue(dataKeyObj.key as string);
 			} else {
 				value = getDataScriptValue(dataKeyObj.key as string);
 			}
@@ -233,6 +257,13 @@ const getInnerHTML = (editor: Editor | null) => {
 	) {
 		innerHTML = editor?.getText();
 	}
+	// a lone attribute-less <p> wrapper is redundant inside the block's own tag
+	// (and a block box inside inline elements like span/a breaks their layout)
+	const doc = editor.state.doc;
+	const wrapped = innerHTML.match(/^<p>([\s\S]*)<\/p>$/);
+	if (doc.childCount === 1 && doc.firstChild?.type.name === "paragraph" && wrapped) {
+		innerHTML = wrapped[1];
+	}
 	return innerHTML;
 };
 
@@ -255,6 +286,11 @@ if (!props.preview) {
 						StarterKit.configure({
 							link: { openOnClick: false },
 							underline: false,
+							// Disable the auto-appended trailing paragraph. StarterKit's TrailingNode
+							// extension re-adds an empty <p> after any non-paragraph block (lists,
+							// headings, etc.), which makes the trailing empty line undeletable and
+							// leaks into the saved/rendered innerHTML as a blank line.
+							trailingNode: false,
 						}),
 						TextStyle.extend({
 							addGlobalAttributes() {
@@ -338,6 +374,19 @@ defineExpose({
 });
 </script>
 <style scoped>
+/* no box — a block box inside inline tags (span/a) fragments their background/radius */
+.__text_content__ {
+	display: contents;
+}
+
+/* the contenteditable editor root needs a box, so keep it inline-level inside inline tags */
+:is(span, a, b, i, em, strong, cite, label).__text_block__ > .__text_editor__ {
+	display: inline-block;
+}
+:is(span, a, b, i, em, strong, cite, label).__text_block__ :deep(.ProseMirror p) {
+	display: inline;
+}
+
 .__text_block__ :deep([contenteditable="true"]) {
 	caret-color: currentcolor;
 	/* blocks inherit `select-none`; re-enable native text selection while editing */

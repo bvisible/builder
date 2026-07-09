@@ -9,12 +9,12 @@
 				class="aspect-video w-full rounded-md bg-surface-gray-1 object-cover object-top" />
 			<div
 				class="absolute inset-0 flex flex-col items-center justify-center gap-2 bg-black/40 opacity-0 transition-opacity duration-150 group-hover:opacity-100">
-				<Button size="sm" variant="solid" @click.stop="$emit('select', group)">View templates</Button>
+				<Button size="sm" variant="solid" @click.stop="$emit('select', group)">Select Template</Button>
 				<Button v-if="previewPage" size="sm" variant="subtle" @click.stop="openPreview">Preview</Button>
 			</div>
 		</div>
 		<div class="flex items-center justify-between gap-2 px-[2px]">
-			<p class="truncate text-sm font-medium text-ink-gray-7 group-hover:text-ink-gray-9">
+			<p class="text-sm-medium truncate text-ink-gray-7 group-hover:text-ink-gray-9">
 				{{ group.title }}
 			</p>
 			<span class="shrink-0 text-xs text-ink-gray-4">
@@ -25,7 +25,7 @@
 </template>
 <script setup lang="ts">
 import router from "@/router";
-import { TemplateGroup } from "@/types/doctypes";
+import { TemplateGroup } from "@/types/template";
 import { computed } from "vue";
 
 const props = defineProps<{

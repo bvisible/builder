@@ -34,6 +34,7 @@ const useBuilderStore = defineStore("builderStore", {
 		leftPanelActiveTab: <LeftSidebarTabOption>"Layers",
 		showRightPanel: <boolean>true,
 		showLeftPanel: <boolean>true,
+		showVersionHistory: <boolean>false,
 		showHTMLDialog: false,
 		showDataScriptDialog: <"page" | null>null,
 		realtime: new RealTimeHandler(),
@@ -47,7 +48,7 @@ const useBuilderStore = defineStore("builderStore", {
 		canvasDarkMode: useStorage("canvasDarkMode", false),
 		highlightBlocksWithClientScripts: false,
 		showSettingsDialog: false,
-		settingsActiveTab: <string>"page_general",
+		settingsActiveTab: useStorage("settingsActiveTab", "page_general"),
 		openImageUpload: false,
 	}),
 	getters: {

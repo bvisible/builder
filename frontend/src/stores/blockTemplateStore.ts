@@ -41,6 +41,7 @@ const useBlockTemplateStore = defineStore("blockTemplateStore", {
 
 			canvasStore.editOnCanvas(
 				blockTemplateBlock,
+				"blockTemplate",
 				(block: Block) => {
 					this.saveBlockTemplate(block, blockTemplateName);
 				},

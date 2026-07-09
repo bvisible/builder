@@ -15,7 +15,7 @@
 			</div>
 		</div>
 		<div class="flex items-center justify-between gap-2 px-[2px]">
-			<p class="truncate text-sm font-medium text-ink-gray-7 group-hover:text-ink-gray-9">
+			<p class="text-sm-medium truncate text-ink-gray-7 group-hover:text-ink-gray-9">
 				{{ page.page_title || page.name }}
 			</p>
 			<Button
@@ -31,7 +31,7 @@
 </template>
 <script setup lang="ts">
 import router from "@/router";
-import { TemplatePageSummary } from "@/types/doctypes";
+import { TemplatePageSummary } from "@/types/template";
 
 const props = defineProps<{
 	page: TemplatePageSummary;
