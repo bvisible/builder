@@ -59,6 +59,7 @@ jinja = {
 		"builder.hf_utils.header_footer.render_header",
 		"builder.hf_utils.header_footer.render_footer",
 		"builder.hf_utils.header_footer.get_header_footer_config",
+		"builder.builder.doctype.builder_component.builder_component.get_component_data",
 	],
 	"filters": [
 		"builder.utils.combine",
@@ -141,6 +142,7 @@ scheduler_events = {
 		"*/10 * * * *": [
 			"builder.builder_analytics.ingest_web_page_views_to_duckdb",
 			"builder.api.check_stuck_generations",
+			"builder.builder_analytics.ingest_clicks_to_duckdb",
 		],
 	}
 }

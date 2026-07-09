@@ -4,20 +4,17 @@ import { BuilderPage } from "@/types/doctypes";
 import getBlockTemplate from "@/utils/blockTemplate";
 import { dialog, FileUploadHandler, toast } from "frappe-ui";
 import { reactive, toRaw } from "vue";
-import { getRandomColor, getRGB, HexToHSV, HSVToHex } from "./colors";
+import { getRGB, HexToHSV, HSVToHex } from "./colors";
 import {
 	addPxToNumber,
-	addUnitToNumber,
 	extractNumberAndUnit,
 	getBoxSpacing,
 	getNumberFromPx,
 	normalizeValueWithUnits,
 	parseAndSetBackground,
-	parseBackground,
 	setBoxSpacing,
 	shortenNumber,
 } from "./cssUtils";
-import { executeBlockClientScriptRestricted, executeBlockClientScriptUnrestricted } from "./scriptSandbox";
 
 function toTitleCase(str: string): string {
 	return str.replace(/_/g, " ").replace(/\b\w/g, (l) => l.toUpperCase());
@@ -237,6 +234,7 @@ const detachBlockFromComponent = (block: Block, componentId: null | string) => {
 	);
 
 	delete blockCopy.extendedFromComponent;
+	delete blockCopy.componentVersion;
 	delete blockCopy.isChildOfComponent;
 	delete blockCopy.referenceBlockId;
 	blockCopy.children = blockCopy.children.map((block) => detachBlockFromComponent(block, componentId));
@@ -256,7 +254,47 @@ function getCopyWithoutParent(block: BlockOptions | Block): BlockOptions {
 	blockCopy.children = blockCopy.children?.map((child) => getCopyWithoutParent(child));
 	delete blockCopy.parentBlock;
 	delete blockCopy.referenceComponent;
-	return blockCopy;
+	if (!blockCopy.extendedFromComponent) {
+		delete blockCopy.componentVersion;
+	}
+	return removeEmptyBlockValues(blockCopy);
+}
+
+function isEmptyValue(value: unknown): boolean {
+	if (value === null || value === "") {
+		return true;
+	}
+	if (Array.isArray(value)) {
+		return value.length === 0;
+	}
+	if (value && typeof value === "object") {
+		return Object.keys(value).length === 0;
+	}
+	return false;
+}
+
+const diffArray = <T>(src: T[] | undefined, oldComp: T[] | undefined): T[] => {
+	const oldJson = new Set((oldComp || []).map((item) => JSON.stringify(item)));
+	return (src || []).filter((item) => !oldJson.has(JSON.stringify(item)));
+};
+
+const deepEqual = (a: unknown, b: unknown) => JSON.stringify(a) === JSON.stringify(b);
+
+function removeEmptyBlockValues(block: BlockOptions): BlockOptions {
+	if (block.clientScript) {
+		block.clientScript = { ...block.clientScript };
+		for (const key of Object.keys(block.clientScript) as Array<keyof BlockClientScript>) {
+			if (isEmptyValue(block.clientScript[key])) {
+				delete block.clientScript[key];
+			}
+		}
+	}
+	for (const key of Object.keys(block)) {
+		if (isEmptyValue(block[key])) {
+			delete block[key];
+		}
+	}
+	return block;
 }
 
 function getRouteVariables(route: string) {
@@ -381,16 +419,6 @@ async function decompressFontIfWoff2(arrayBuffer: ArrayBuffer, isWoff2: boolean)
 		await loadScript(path).then(() => init);
 	}
 	return Uint8Array.from(window.Module.decompress(arrayBuffer)).buffer;
-}
-
-async function getFontArrayBuffer(file_url: string) {
-	const arrayBuffer = await fetch(file_url).then((res) => res.arrayBuffer());
-	return decompressFontIfWoff2(arrayBuffer, file_url.endsWith(".woff2"));
-}
-
-async function getFontName(file_url: string) {
-	const opentype = await import("opentype.js");
-	return opentype.parse(await getFontArrayBuffer(file_url)).names.fullName.en;
 }
 
 async function getFontNameFromFile(file: File): Promise<string> {
@@ -588,11 +616,15 @@ function getCollectionKeys(block: any, type: BlockDataKey["comesFrom"] = "dataSc
 	return keys;
 }
 
-// Drill into page data for blocks inside repeaters (uses the first item of each collection)
-function getRepeaterScopedData(block: Block | null, pageData: Record<string, any>): Record<string, any> {
-	let collectionObject = pageData || {};
+// Drill into data for blocks inside repeaters (uses the first item of each collection)
+function getRepeaterScopedData(
+	block: Block | null,
+	data: Record<string, any>,
+	type: BlockDataKey["comesFrom"] = "dataScript",
+): Record<string, any> {
+	let collectionObject = data || {};
 	if (block?.isInsideRepeater()) {
-		const keys = getCollectionKeys(block);
+		const keys = getCollectionKeys(block, type);
 		collectionObject = keys.reduce((acc: any, key: string) => {
 			const data = getDataForKey(acc, key);
 			return Array.isArray(data) && data.length > 0 ? data[0] : data;
@@ -631,16 +663,16 @@ const getParentProps = (
 	}
 };
 
-const getDefaultPropsList = (block: Block, blockController: any): BlockProps => {
-	// we need to pass blockController because during initialization phase, blockController can't use canvasStore
+const getDefaultPropsList = (block: Block): BlockProps => {
 	const isCurrentBlockInRepeater = block?.isInsideRepeater();
 	const repeaterRoot = isCurrentBlockInRepeater ? block?.getRepeaterParent() : null;
 	if (repeaterRoot) {
 		const key = repeaterRoot.getDataKey("key");
 		const comesFrom = repeaterRoot.getDataKey("comesFrom");
 		if (key && comesFrom === "props") {
-			const componentRoot = blockController.getComponentRootBlock(repeaterRoot);
-			const parsedValue = getStandardPropValue(key, componentRoot)?.value;
+			const propsRoot = repeaterRoot.getPropsRoot();
+			if (!propsRoot) return {};
+			const parsedValue = getStandardPropValue(key, propsRoot)?.value;
 			if (!parsedValue) return {};
 			if (Array.isArray(parsedValue)) {
 				return {
@@ -677,11 +709,13 @@ const getDefaultPropsList = (block: Block, blockController: any): BlockProps => 
 
 const PARSEABLE_STANDARD_TYPES = ["number", "boolean", "object", "array"];
 
+// TODO: re-visit all props related functions as block props are now replaced with component props
 const getPropValue = (
 	propName: string,
 	block: Block,
 	getDataScriptValue: (path: string) => any = () => undefined,
 	defaultProps?: BlockProps | null,
+	getComponentScopedDataValue: (path: string) => any = () => undefined,
 ): any => {
 	// Check default props first
 	if (defaultProps?.[propName] !== undefined) {
@@ -702,15 +736,27 @@ const getPropValue = (
 	// Handle dynamic props
 	if (matchingProp.isDynamic) {
 		if (matchingProp.comesFrom === "props" && matchingProp.value) {
+			if (defaultProps?.[matchingProp.value] !== undefined) {
+				return defaultProps[matchingProp.value].value;
+			}
 			if (parentProps === null) {
 				parentProps = getParentProps(block);
 			}
 			const newMatchingProp = parentProps[matchingProp.value];
 			if (!newMatchingProp?.block) return undefined;
-			return getPropValue(matchingProp.value, newMatchingProp.block, getDataScriptValue, defaultProps);
+			return getPropValue(
+				matchingProp.value,
+				newMatchingProp.block,
+				getDataScriptValue,
+				defaultProps,
+				getComponentScopedDataValue,
+			);
 		}
 		if (matchingProp.comesFrom === "dataScript" && matchingProp.value) {
 			return getDataScriptValue(matchingProp.value);
+		}
+		if (matchingProp.comesFrom === "componentData" && matchingProp.value) {
+			return getComponentScopedDataValue(matchingProp.value);
 		}
 
 		// Fallback to default props
@@ -772,6 +818,16 @@ const getStandardPropValue = (
 	}
 };
 
+const extractComponentId = (block: Block): string | null => {
+	const { editingMode, fragmentData } = useCanvasStore();
+	let componentId = block.extendedFromComponent || null;
+	if (!componentId) {
+		// in fragment mode the component root does not have extendedFromComponent
+		if (editingMode == "fragment" && !block.getParentBlock()) componentId = fragmentData.fragmentId!;
+	}
+	return componentId;
+};
+
 const getDataArray = (collectionObject: Record<string, any>) => {
 	const result: string[] = [];
 	let collectionObjectCopy = { ...collectionObject };
@@ -798,17 +854,28 @@ function isDialogOpen() {
 	return !!document.querySelector("[role='dialog']");
 }
 
+function parseJSONWithFallback<T>(value: T | string | undefined, fallback: T): T {
+	if (value === undefined || value === null || value === "") {
+		return fallback;
+	}
+	if (typeof value === "string") {
+		try {
+			return JSON.parse(value) as T;
+		} catch {
+			return fallback;
+		}
+	}
+	return value as T;
+}
+
 export {
 	addPxToNumber,
-	addUnitToNumber,
 	alert,
 	confirm,
 	copyToClipboard,
 	cssUrl,
 	dataURLtoFile,
 	detachBlockFromComponent,
-	executeBlockClientScriptRestricted,
-	executeBlockClientScriptUnrestricted,
 	extractNumberAndUnit,
 	findNearestSiblingIndex,
 	generateId,
@@ -819,22 +886,20 @@ export {
 	getBlockObjectCopy as getBlockObject,
 	getBlockString,
 	getBoxSpacing,
-	getCollectionKeys,
 	getCopyWithoutParent,
 	getDataArray,
 	getDataForKey,
 	getDefaultPropsList,
-	getFontName,
 	getImageBlock,
 	getNumberFromPx,
 	getParentProps,
 	getPropValue,
-	getRandomColor,
 	getRepeaterScopedData,
 	getRGB,
 	getRootBlockTemplate,
 	getRouteVariables,
 	getStandardPropValue,
+	extractComponentId,
 	getTextContent,
 	getVideoBlock,
 	handleBase64Attribute,
@@ -851,7 +916,6 @@ export {
 	normalizeValueWithUnits,
 	openInDesk,
 	parseAndSetBackground,
-	parseBackground,
 	replaceMapKey,
 	setBoxSpacing,
 	shortenNumber,
@@ -861,4 +925,7 @@ export {
 	triggerCopyEvent,
 	uploadBuilderAsset,
 	uploadUserFont,
+	parseJSONWithFallback,
+	deepEqual,
+	diffArray,
 };

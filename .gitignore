@@ -11,6 +11,7 @@ node_modules
 # builder/public/frontend
 builder/public/page_scripts
 builder/public/page_styles
+# Upstream ignores **/www/_builder.html; we commit it (commit-the-build).
 # builder/www/_builder.html
 builder/public/dist
 # CLAUDE.md  # 2026-05-07 unshipped to document commit-the-build pipeline
