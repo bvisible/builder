@@ -451,7 +451,7 @@ function sendContactMessage_{{ contact_theme | replace('-', '_') }}(e) {
 
     // Disable button and show loading
     submitBtn.disabled = true;
-    submitBtn.innerText = '{{ _("Envoi en cours...") }}';
+    submitBtn.innerText = {{ _("Envoi en cours...") | to_safe_json }};
 
     frappe.call({
         method: 'frappe.www.contact.send_message',
@@ -467,11 +467,11 @@ function sendContactMessage_{{ contact_theme | replace('-', '_') }}(e) {
 
             if (r.message === 'okay') {
                 messageDiv.className = 'contact-message success';
-                messageDiv.innerText = '{{ _("Merci ! Votre message a été envoyé avec succès.") }}';
+                messageDiv.innerText = {{ _("Merci ! Votre message a été envoyé avec succès.") | to_safe_json }};
                 form.reset();
             } else {
                 messageDiv.className = 'contact-message error';
-                messageDiv.innerText = '{{ _("Une erreur est survenue. Veuillez réessayer.") }}';
+                messageDiv.innerText = {{ _("Une erreur est survenue. Veuillez réessayer.") | to_safe_json }};
             }
 
             // Hide message after 5 seconds
@@ -483,7 +483,7 @@ function sendContactMessage_{{ contact_theme | replace('-', '_') }}(e) {
             submitBtn.disabled = false;
             submitBtn.innerText = originalText;
             messageDiv.className = 'contact-message error';
-            messageDiv.innerText = '{{ _("Une erreur est survenue. Veuillez réessayer.") }}';
+            messageDiv.innerText = {{ _("Une erreur est survenue. Veuillez réessayer.") | to_safe_json }};
         }
     });
 }
