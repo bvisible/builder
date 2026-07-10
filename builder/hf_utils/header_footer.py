@@ -21,6 +21,24 @@ def get_header_footer_config():
 	allowing graceful fallback to default header/footer.
 	"""
 	try:
+		#//// Neoffice website switch: an offline site (website_online=0, the fleet
+		#//// default) has NO chrome for visitors — the login and every web page
+		#//// render bare ("no website = just a login page", directive 2026-07-10).
+		#//// This is THE seat of the chrome: the webshop navbar/footer overrides,
+		#//// builder's webpage generator and the legacy injector all resolve their
+		#//// config here. Staff (System/Website Manager) keeps the chrome so the
+		#//// offline-site preview stays faithful. Keyed on the key existing in the
+		#//// resolved profile dict, like every other gate.
+		profile_doc = getattr(frappe.local, "website_profile_doc", None)
+		if (
+			profile_doc is not None
+			and "website_online" in profile_doc
+			and not profile_doc.get("website_online")
+		):
+			roles = frappe.get_roles()
+			if "System Manager" not in roles and "Website Manager" not in roles:
+				return None
+
 		#//// Neoffice multi-site: a resolved Website Profile with its own
 		#//// variant gets it; everything else (default site, fleet instances
 		#//// without profiles) falls back to the global Single.
