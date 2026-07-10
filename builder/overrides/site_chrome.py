@@ -176,6 +176,15 @@ def inject_site_chrome(context):
 	if not frappe.conf.get("builder_legacy_site_chrome"):
 		return
 
+	#//// Neoffice website switch: an offline site (website_online=0, the fleet
+	#//// default) leaks nothing — the login page and every remaining web page
+	#//// render bare, no site header/footer ("no website = just a login page",
+	#//// directive 2026-07-10, seen live on lo-alabouche's login). Keyed on the
+	#//// key existing in the resolved profile dict, like every other gate.
+	profile = getattr(frappe.local, "website_profile_doc", None)
+	if profile is not None and "website_online" in profile and not profile.get("website_online"):
+		return
+
 	# Navbar and footer Web Templates for non-Builder pages (frappe base.html
 	# renders navbar_template/footer_template). The templates are created by the
 	# add_llm_chrome_web_templates patch and just print the variables below.
