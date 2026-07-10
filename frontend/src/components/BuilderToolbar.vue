@@ -132,6 +132,7 @@
 					</Tooltip>
 				</router-link>
 			</div>
+			<WebsiteOnlineToggle />
 			<PublishButton
 				v-if="!(builderStore.readOnlyMode && pageStore.activePage?.is_template)"
 				:disabled="builderStore.readOnlyMode"></PublishButton>
@@ -165,6 +166,7 @@ import PlayIcon from "@/components/Icons/Play.vue";
 import SettingsGearIcon from "@/components/Icons/SettingsGear.vue";
 import ComponentUpdates from "@/components/ComponentUpdates.vue";
 import PublishButton from "@/components/PublishButton.vue";
+import WebsiteOnlineToggle from "@/components/WebsiteOnlineToggle.vue";
 import router from "@/router";
 import useBuilderStore from "@/stores/builderStore";
 import usePageStore from "@/stores/pageStore";

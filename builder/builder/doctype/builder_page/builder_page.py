@@ -1574,6 +1574,20 @@ def _page_has_site_field():
 
 @redis_cache(ttl=60 * 60)
 def find_page_with_path(route, website_profile=None):
+	#//// Neoffice website switch: an offline site (Website Profile.website_online=0)
+	#//// hides its pages from visitors — deep links 404 like the site never existed.
+	#//// Editors keep seeing them logged-in: that IS the preview before going live.
+	#//// Keyed on the key existing in the dict (pre-switch caches stay untouched).
+	profile_doc = getattr(frappe.local, "website_profile_doc", None)
+	if (
+		profile_doc is not None
+		and "website_online" in profile_doc
+		and not profile_doc.get("website_online")
+	):
+		roles = frappe.get_roles()
+		if "System Manager" not in roles and "Website Manager" not in roles:
+			return None
+
 	try:
 		#//// Neoffice multi-site: a page tagged for the current profile wins on
 		#//// that site (allows two home pages sharing a route); untagged pages
