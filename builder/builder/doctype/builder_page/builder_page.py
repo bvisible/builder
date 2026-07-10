@@ -460,6 +460,10 @@ class BuilderPage(WebsiteGenerator):
 			context.favicon = self.favicon
 		if not context.get("favicon"):
 			context.favicon = frappe.get_cached_value("Builder Settings", "Builder Settings", "favicon")
+		if not context.get("favicon") and "neoffice_theme" not in frappe.get_installed_apps():
+			# Standalone bench (no neoffice_theme): the template's Neoffice
+			# default SVG does not exist -- fall back to a builder-shipped asset.
+			context.favicon = "/assets/builder/frontend/builder_logo.png"
 
 	def set_language(self, context):
 		# Set page-specific language or fall back to default language from Builder Settings
