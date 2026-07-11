@@ -86,8 +86,10 @@ body {
 	background-color: var(--background-color);
 }
 
+/* No !important here: explicit block-level fonts (.fb-* classes set in the
+   editor or by the WP migrator) must win over the theme default. */
 h1, h2, h3, h4, h5, h6 {
-	font-family: var(--heading-font) !important;
+	font-family: var(--heading-font);
 }
 
 /* Override Webshop product page fonts */
