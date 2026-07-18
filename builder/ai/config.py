@@ -22,6 +22,9 @@ SiteType = Literal["single_page", "multi_page", "multi_page_auth", "ecommerce", 
 # Think level → per-model value. Kimi expects bool, GPT-OSS expects string,
 # everything else defaults to bool.
 THINK_LEVEL_MAP = {
+    # K3 ships with reasoning ALWAYS ON (no instruct variant) — never send
+    # think=False, whatever the configured level.
+    "kimi-k3": {"low": True, "medium": True, "high": True},
     "kimi-k2.5": {"low": False, "medium": True, "high": True},
     "kimi-k2": {"low": False, "medium": True, "high": True},
     "glm": {"low": True, "medium": True, "high": True},
@@ -31,6 +34,10 @@ THINK_LEVEL_MAP = {
 
 
 # Production defaults — matches the Moonshot/Kimi deployment pushed by devops.
+# The Unpress test bench overrides these via site_config (openai_model /
+# openai_page_model = "kimi-k3") — K3 (2.8T MoE, native vision, 1M ctx,
+# reasoning always on, released 2026-07-16) is under evaluation there before
+# any production default change ($3/M in, $15/M out vs K2.x pricing).
 DEFAULTS = {
     "provider": "openai",
     "model": "kimi-k2.6",
@@ -58,10 +65,12 @@ DEFAULTS = {
 # Per-provider recommended models.
 RECOMMENDED_MODELS = {
     "openai": {
-        "best_quality": "kimi-k2.6",
+        # K3 leads Frontend Code Arena and has native vision + 1M context;
+        # kept out of "balanced"/"fast" for cost (5× K2.x on output tokens).
+        "best_quality": "kimi-k3",
         "balanced": "kimi-k2.6",
         "fast": "kimi-k2.6",
-        "creative": "kimi-k2.6",
+        "creative": "kimi-k3",
     },
     "ollama": {
         "best_quality": "kimi-k2.6:cloud",

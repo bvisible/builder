@@ -87,9 +87,16 @@ class OpenAIProvider(BaseProvider):
         return any(m in model_lower for m in reasoning_models)
 
     @property
+    def _always_thinking(self) -> bool:
+        """K3-class models reason unconditionally server-side: the `think`
+        field must NOT be sent (there is no off switch), and the API rejects
+        any temperature other than 1."""
+        return "kimi-k3" in (self.model or "").lower()
+
+    @property
     def _fixed_temperature(self) -> bool:
         """Check if model requires fixed temperature (reasoning models)."""
-        return self._is_reasoning_model
+        return self._is_reasoning_model or self._always_thinking
 
     def generate(
         self,
@@ -117,7 +124,8 @@ class OpenAIProvider(BaseProvider):
         # must pass think=False explicitly to disable it, and in that case
         # we send `think: false` to Moonshot so the server actually skips
         # reasoning (omitting the field leaves Moonshot's default = True).
-        if self._is_reasoning_model:
+        # K3 (always-thinking) takes no think field at all.
+        if self._is_reasoning_model and not self._always_thinking:
             payload["think"] = False if think is False else True
 
         try:
@@ -177,8 +185,8 @@ class OpenAIProvider(BaseProvider):
             "max_tokens": self.max_tokens,
         }
 
-        # Same explicit think flag as generate() above.
-        if self._is_reasoning_model:
+        # Same explicit think flag as generate() above; K3 takes none.
+        if self._is_reasoning_model and not self._always_thinking:
             payload["think"] = False if think is False else True
 
         if supports_structured:

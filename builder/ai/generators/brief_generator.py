@@ -408,6 +408,13 @@ All chrome choices must express the same art direction as the pages.
   The logo must be clearly readable on the chosen header background.
   header_text_color must be readable on header_bg_color.
 
+## 6. DESIGN CANDIDATES (when provided in the user prompt)
+A "DESIGN CANDIDATES" block may list styles, palettes, typography pairings and UX
+rules matched to this business from a professional database. Use it as a moodboard:
+pick what genuinely serves THIS business and ADAPT it (hexes, pairings) to the brand —
+or overrule it with a stronger idea. The UX "Don'ts" are the only part to always
+respect. Never copy a candidate verbatim; §1 stays in charge.
+
 Consistency matters — all pages share ONE visual language (this brief) — but the
 language itself must be distinctive to this site, never a reusable template.
 Output a valid JSON object matching the DesignBrief schema with ALL fields populated.
@@ -544,6 +551,19 @@ then derive every concrete value of the DesignBrief from it. All pages must shar
 distinctive visual language.
 
 Return ONLY the JSON object, no markdown code blocks."""
+
+        # Professional design candidates (BM25 over the vendored UI/UX database).
+        # Best-effort: None keeps the prompt exactly as before.
+        from builder.ai.design_intelligence import get_design_candidates
+
+        design_candidates = get_design_candidates(
+            description=prompt,
+            site_type=site_type,
+            theme=theme_name,
+            colors_imposed=colors_imposed,
+        )
+        if design_candidates:
+            user_prompt += f"\n\n{design_candidates}"
 
         # Build images list for vision capabilities
         images_for_vision = []
