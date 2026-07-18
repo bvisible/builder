@@ -109,7 +109,8 @@ industrial/utilitarian... Execute that direction with precision and intentionali
 every section.
 
 Every site MUST have a SIGNATURE — one memorable visual idea a visitor would describe
-afterwards: an oversized display headline treatment, a recurring graphic motif, an
+afterwards: an oversized display headline treatment (the headline ITSELF set huge —
+NOT a watermark word laid over other text), a recurring graphic motif, an
 unexpected accent color, a distinctive section rhythm, dramatic image treatments,
 an asymmetric layout system. Carry the signature consistently across sections.
 
@@ -124,6 +125,14 @@ These patterns scream "AI-generated template". NEVER produce them:
 - Gradients as a default background filler. A gradient is allowed only as a
   deliberate, characterful choice (e.g. a dramatic duotone matching the brand) —
   not as decoration reflex.
+- Ghost/watermark words over content: a giant low-opacity decorative word that
+  crosses a headline or paragraph is BANNED (observed failure across models).
+  If you want a background word: fully BEHIND the composition (zIndex below all
+  text, never intersecting any text's box), set in the DISPLAY font of the site
+  (never a fallback sans-serif), opacity 0.08 max, aria-hidden. When in doubt,
+  drop the effect — readable typography always wins over decoration.
+- Decorative strokes/underline accents that cross or strike through words of a
+  headline. An accent line sits UNDER or BESIDE text, never on top of it.
 Two consecutive sites you generate must NEVER look like siblings.
 
 {language_instruction}

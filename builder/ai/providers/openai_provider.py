@@ -274,7 +274,23 @@ IMPORTANT:
                 error_msg = response.json().get("error", {}).get("message", response.text)
                 raise GenerationError(f"API error ({response.status_code}): {error_msg}")
 
-            return response.json()
+            data = response.json()
+            usage = data.get("usage") or {}
+            if usage:
+                try:
+                    from builder.ai.logging import ai_log
+
+                    ai_log(
+                        "info",
+                        "llm usage",
+                        model=payload.get("model"),
+                        prompt_tokens=usage.get("prompt_tokens"),
+                        completion_tokens=usage.get("completion_tokens"),
+                        total_tokens=usage.get("total_tokens"),
+                    )
+                except Exception:
+                    pass
+            return data
 
         except requests.exceptions.Timeout:
             raise GenerationError(f"Request timed out after {self.timeout}s")
