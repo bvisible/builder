@@ -33,19 +33,17 @@ THINK_LEVEL_MAP = {
 }
 
 
-# Production defaults — matches the Moonshot/Kimi deployment pushed by devops.
-# The Unpress test bench overrides these via site_config (openai_model /
-# openai_page_model = "kimi-k3") — K3 (2.8T MoE, native vision, 1M ctx,
-# reasoning always on, released 2026-07-16) is under evaluation there before
-# any production default change ($3/M in, $15/M out vs K2.x pricing).
+# Production defaults — decision validated by Jérémy on 2026-07-18 after the
+# A/B on the dev16 bench (see Unpress/16-Design-Intelligence-Et-K3):
+# - brief on kimi-k3: the quality step comes from the K3 brief + design
+#   candidates; one call per site, so the 5× output pricing is negligible there.
+# - pages on kimi-k2.7-code: ~90% of K3 page quality at ~1/7 the cost and
+#   2.5× the speed (K3 pages: 47 min/91.8k tokens vs k2.7: 19 min/64k).
+# Fleet rollout note: instances whose site_config pins openai_model override
+# this default — SiteConfigPhase (neoffice-devops) must push kimi-k3 there.
 DEFAULTS = {
     "provider": "openai",
-    "model": "kimi-k2.6",
-    # Pages are code (HTML/CSS/Jinja/blocks) → Kimi K2.7 Code: same price as
-    # K2.6, ~30% fewer tokens on long tasks, stronger instruction-following on
-    # our strict brief contracts. The brief stays on `model` (k2.6) because it
-    # is design direction + logo vision (Moonshot recommends K2.6 for
-    # non-coding tasks, and the *-code model is not relied on for vision).
+    "model": "kimi-k3",
     "page_model": "kimi-k2.7-code",
     "base_url": "https://api.moonshot.ai/v1",
     "api_key": None,
