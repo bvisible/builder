@@ -324,10 +324,13 @@ ALWAYS use hex colors (#ffffff, #f8fafc) or gradients with real colors.
 
 ### Images (CRITICAL: Alt Text = AI Image Prompt)
 - For images, use placehold.co placeholders with these sizes:
-  - Hero/Banner: "https://placehold.co/1200x600/{primary_placeholder}/ffffff?text=<SHORT_2-4_WORDS>"
-  - Cards/Features: "https://placehold.co/400x300/{secondary_placeholder}/ffffff?text=<SHORT_2-4_WORDS>"
+  - Hero/Banner: "https://placehold.co/1200x600/{primary_placeholder}/{primary_placeholder}"
+  - Cards/Features: "https://placehold.co/400x300/{secondary_placeholder}/{secondary_placeholder}"
   - Team/Avatars: "https://placehold.co/80x80/{primary_placeholder}/ffffff?text=<INITIALS>"
-  - Adapt the background/text colors to match the site's palette
+  - Adapt the colors to the site's palette (background and text colors identical = clean solid block)
+  - NEVER add ?text= on hero/card/banner placeholders: the service prints that text as a
+    giant word across the image — it reads as a broken watermark crossing the content.
+    (?text= is allowed ONLY for 80x80 avatar initials.)
 
 - CRITICAL: The "alt" attribute MUST be a DETAILED description suitable for AI image generation.
   DO NOT use generic text like "Hero Image", "Feature", "Photo".
