@@ -317,6 +317,14 @@ const allSettingsCommands: SettingsCommand[] = [
 		section: "global",
 		action: () => openSettings("global_ai"),
 	},
+	{
+		name: "global_theme",
+		title: "Theme",
+		description: "Settings",
+		icon: "lucide-palette",
+		section: "global",
+		action: () => openSettings("global_theme"),
+	},
 ];
 
 const settingsCommands = computed<SettingsCommand[]>(() =>

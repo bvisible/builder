@@ -52,6 +52,7 @@ import GlobalCode from "./Settings/GlobalCode.vue";
 import GlobalDeveloper from "./Settings/GlobalDeveloper.vue";
 import GlobalDomains from "./Settings/GlobalDomains.vue";
 import GlobalGeneral from "./Settings/GlobalGeneral.vue";
+import GlobalTheme from "./Settings/GlobalTheme.vue";
 import PageAnalytics from "./Settings/PageAnalytics.vue";
 import PageGeneral from "./Settings/PageGeneral.vue";
 import PageMeta from "./Settings/PageMeta.vue";
@@ -179,6 +180,13 @@ const globalSettings = {
 			component: GlobalAI,
 			title: "AI Settings",
 			icon: "lucide-sparkles",
+		},
+		{
+			label: "Theme",
+			value: "global_theme",
+			component: GlobalTheme,
+			title: "Theme, Header & Footer",
+			icon: "lucide-palette",
 		},
 	],
 };
