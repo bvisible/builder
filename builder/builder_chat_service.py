@@ -121,6 +121,9 @@ class BuilderChatService:
 					# what the user already attached, so the UI can say so again
 					"logo_image": session.logo_image,
 					"inspiration_count": len(self._parse_inspirations(session)),
+					"content_count": frappe.db.count(
+						"Builder Content Asset", {"session_id": session.session_id}
+					),
 				}
 				if session.status in ("Generating", "Homepage Ready") and session.job_id:
 					payload["job_id"] = session.job_id
@@ -189,7 +192,11 @@ class BuilderChatService:
 		first_name = self._get_user_first_name()
 		greeting = _("Hello {name}!").format(name=first_name) if first_name else _("Hello!")
 
-		intro = _("I'm **Builder AI**, your website creation assistant.")
+		from builder.ai.config import get_assistant_name
+
+		intro = _("I'm **{name}**, your website creation assistant.").format(
+			name=get_assistant_name()
+		)
 		guide = _("I'll guide you step by step to generate a complete website. Let's start!")
 		question = _("**What type of website do you want to create?** Briefly describe your business or project, and I'll take care of the rest.")
 
@@ -706,7 +713,9 @@ INSPIRATION:
 			except Exception as e:
 				frappe.log_error("Builder Chat: company data lookup failed", str(e))
 
-		system_prompt = f"""You are Builder AI, an assistant that guides users to create a website.
+		from builder.ai.config import get_assistant_name
+
+		system_prompt = f"""You are {get_assistant_name()}, an assistant that guides users to create a website.
 Your goal is to collect the required parameters through a natural conversation.
 
 CURRENT STATE:

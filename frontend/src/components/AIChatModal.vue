@@ -100,6 +100,24 @@
 								</button>
 							</template>
 						</FileUploader>
+						<!-- the content library: photos and documents the AI reads,
+						     places in the pages and quotes from. Rolled by hand rather
+						     than with FileUploader, which only ever takes one file —
+						     sharing a folder of photos is the whole point here. -->
+						<input
+							ref="contentInput"
+							type="file"
+							multiple
+							class="hidden"
+							@change="onContentPicked" />
+						<button class="flex items-center gap-1 hover:text-ink-gray-9" @click="contentInput?.click()">
+							<span class="lucide-paperclip size-3.5" aria-hidden="true" />
+							{{
+								contentCount
+									? __("{0} file(s) shared").format(contentCount)
+									: __("Share photos and documents")
+							}}
+						</button>
 						<span v-if="uploading" class="text-ink-gray-5">{{ __("Uploading...") }}</span>
 					</div>
 
@@ -130,10 +148,13 @@
 </template>
 <script setup lang="ts">
 import { allWebPages } from "@/data/allWebPages";
-import { createResource, Dialog, FileUploader, FormControl } from "frappe-ui";
+import useBuilderStore from "@/stores/builderStore";
+import { createResource, Dialog, FileUploader, FileUploadHandler, FormControl } from "frappe-ui";
 import { computed, nextTick, onBeforeUnmount, ref, watch } from "vue";
 
 type FileDoc = { file_url: string; file_name?: string };
+
+const builderStore = useBuilderStore();
 
 // `__` is installed globally by the translation plugin (see src/translation.ts).
 // The cast keeps the `{0}` placeholder contract (`__("..").format(x)`) visible to TS.
@@ -168,6 +189,8 @@ const msgBox = ref<HTMLElement>();
 const uploading = ref(false);
 const logoName = ref("");
 const inspirationCount = ref(0);
+const contentCount = ref(0);
+const contentInput = ref<HTMLInputElement>();
 // image generation runs after the pages exist, so it has its own progress
 const imagesRunning = ref(false);
 const imagesDone = ref(0);
@@ -179,8 +202,14 @@ let pollTimer: ReturnType<typeof setTimeout> | null = null;
 let imagePollTimer: ReturnType<typeof setTimeout> | null = null;
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
-const call = (method: string, params?: Record<string, any>) =>
-	createResource({ url: `${API}.${method}` }).submit(params || {});
+const callPath = (path: string, params?: Record<string, any>) =>
+	createResource({ url: path }).submit(params || {});
+
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+const call = (method: string, params?: Record<string, any>) => callPath(`${API}.${method}`, params);
+
+// the content library lives in the ingestion module, not with the chat endpoints
+const INGEST_API = "builder.ai.ingestion.content_understanding";
 
 const md = (t: string) => {
 	const esc = String(t || "")
@@ -226,6 +255,7 @@ const boot = async () => {
 		// a resumed session already carries what the user attached last time
 		if (r.logo_image) logoName.value = String(r.logo_image).split("/").pop() || "";
 		inspirationCount.value = r.inspiration_count || 0;
+		contentCount.value = r.content_count || 0;
 		// a generation may already be running from a previous visit
 		try {
 			const s = await call("chat_get_generation_status", { session_id: sid.value });
@@ -300,6 +330,67 @@ const answerConfirm = async (button: ChatButton) => {
 	} catch (error) {
 		pushMessage("err", error instanceof Error ? error.message : String(error));
 	}
+};
+
+// Photos and documents the client already has. They are not decoration: the
+// generator places these photos in the pages and quotes the documents, so the
+// site says what the business actually says.
+const onContentPicked = async (event: Event) => {
+	const input = event.target as HTMLInputElement;
+	const files = Array.from(input.files || []);
+	input.value = ""; // let the same file be picked again after a failure
+	if (!files.length || !sid.value) return;
+
+	uploading.value = true;
+	const uploaded: { file_url: string; filename: string }[] = [];
+	try {
+		for (const file of files) {
+			const doc = await new FileUploadHandler().upload(file, {
+				private: false,
+				folder: "Home/Builder Uploads",
+			});
+			if (doc?.file_url) uploaded.push({ file_url: doc.file_url, filename: file.name });
+		}
+		if (!uploaded.length) throw new Error(__("No file could be uploaded."));
+
+		const r = await callPath(`${INGEST_API}.ingest_content_assets`, {
+			session_id: sid.value,
+			files: JSON.stringify(uploaded),
+		});
+		const created = r?.created ?? uploaded.length;
+		contentCount.value += created;
+		pushMessage(
+			"bot",
+			__("{0} file(s) received — I am reading them, I will tell you what I found.").format(created),
+		);
+	} catch (error) {
+		pushMessage("err", error instanceof Error ? error.message : String(error));
+	} finally {
+		uploading.value = false;
+	}
+};
+
+// The understanding pass runs in a worker and announces itself when done.
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+const onContentUnderstood = (data: any) => {
+	const results = (data && data.results) || [];
+	if (!results.length) return;
+	const bySection: Record<string, number> = {};
+	// eslint-disable-next-line @typescript-eslint/no-explicit-any
+	results.forEach((r: any) => {
+		const s = r.section || "generic";
+		bySection[s] = (bySection[s] || 0) + 1;
+	});
+	const detail = Object.entries(bySection)
+		.map(([s, n]) => `${n} ${s}`)
+		.join(", ");
+	pushMessage(
+		"bot",
+		__("Content analysed — {0} item(s) ({1}). I will reuse it on the site.").format(
+			results.length,
+			detail,
+		),
+	);
 };
 
 // The FileUploader has already stored the file; we only tell the session about it.
@@ -393,6 +484,7 @@ const resetSession = async () => {
 	genDone.value = false;
 	logoName.value = "";
 	inspirationCount.value = 0;
+	contentCount.value = 0;
 	imagesRunning.value = false;
 	imagesDone.value = 0;
 	imagesTotal.value = 0;
@@ -410,8 +502,11 @@ const finish = () => {
 
 watch(show, (open) => {
 	if (open && !sid.value) boot();
-	if (!open) {
+	if (open) {
+		builderStore.realtime?.on("content_assets_understood", onContentUnderstood);
+	} else {
 		// nothing is displayed, so stop hitting the server
+		builderStore.realtime?.off("content_assets_understood", onContentUnderstood);
 		if (pollTimer) {
 			clearTimeout(pollTimer);
 			pollTimer = null;
@@ -426,6 +521,7 @@ watch(show, (open) => {
 });
 
 onBeforeUnmount(() => {
+	builderStore.realtime?.off("content_assets_understood", onContentUnderstood);
 	if (pollTimer) clearTimeout(pollTimer);
 	if (imagePollTimer) clearTimeout(imagePollTimer);
 });

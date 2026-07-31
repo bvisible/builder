@@ -318,11 +318,19 @@ def get_content_context(session_id: str, page_hint: str = "", max_chars: int = 5
     """
     if not session_id:
         return ""
+    # `failed` documents count too when the text came out: extraction happens
+    # before the LLM pass, so a model hiccup (or a bench with no vision model
+    # at all) must not silently drop what the client actually wrote.
     docs = frappe.get_all(
         "Builder Content Asset",
-        filters={"session_id": session_id, "asset_type": "Document", "status": "understood"},
-        fields=["summary", "suggested_section", "tags", "extracted_text"],
+        filters={
+            "session_id": session_id,
+            "asset_type": "Document",
+            "status": ["in", ["understood", "failed"]],
+        },
+        fields=["summary", "suggested_section", "tags", "extracted_text", "status"],
     )
+    docs = [d for d in docs if d.status == "understood" or (d.extracted_text or "").strip()]
     if not docs:
         return ""
     section = _section_of(page_hint)

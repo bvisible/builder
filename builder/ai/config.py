@@ -180,6 +180,18 @@ def get_ai_settings() -> AIConfig:
     )
 
 
+ASSISTANT_NAME = "Unpress AI"
+
+
+def get_assistant_name() -> str:
+    """How the assistant introduces itself.
+
+    The engine is Unpress AI wherever it runs; a site that wants to put its own
+    product name in front of the user sets `unpress_ai_name` in site_config.
+    """
+    return frappe.conf.get("unpress_ai_name") or ASSISTANT_NAME
+
+
 def get_model_for_task(task: str, provider: str = None) -> str:
     """Return the recommended model name for a given task + provider."""
     if not provider:

@@ -1397,7 +1397,7 @@ msgid "I'll type it"
 msgstr ""
 
 #: builder/builder_chat_service.py:189
-msgid "I'm **Builder AI**, your website creation assistant."
+msgid "I'm **{name}**, your website creation assistant."
 msgstr ""
 
 #. Option for the 'Search' (Select) field in DocType 'Website Header Footer
@@ -3520,4 +3520,24 @@ msgstr ""
 
 #: frontend/src/components
 msgid "The generation failed."
+msgstr ""
+
+#: frontend/src/components
+msgid "{0} file(s) shared"
+msgstr ""
+
+#: frontend/src/components
+msgid "Share photos and documents"
+msgstr ""
+
+#: frontend/src/components
+msgid "No file could be uploaded."
+msgstr ""
+
+#: frontend/src/components
+msgid "{0} file(s) received — I am reading them, I will tell you what I found."
+msgstr ""
+
+#: frontend/src/components
+msgid "Content analysed — {0} item(s) ({1}). I will reuse it on the site."
 msgstr ""
