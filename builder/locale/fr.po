@@ -3610,3 +3610,99 @@ msgstr "Récemment consultés"
 
 msgid "Frequently bought together"
 msgstr "Souvent achetés ensemble"
+
+#: frontend/src/components
+msgid "Create with AI"
+msgstr "Créer avec l'IA"
+
+#: frontend/src/components
+msgid "Start over"
+msgstr "Recommencer"
+
+#: frontend/src/components
+msgid "Thinking..."
+msgstr "Réflexion..."
+
+#: frontend/src/components
+msgid "Generating your site..."
+msgstr "Génération de votre site..."
+
+#: frontend/src/components
+msgid "This takes a few minutes."
+msgstr "Cela prend quelques minutes."
+
+#: frontend/src/components
+msgid "Generating images ({0}/{1})"
+msgstr "Génération des images ({0}/{1})"
+
+#: frontend/src/components
+msgid "Your pages are ready — you can already edit them."
+msgstr "Vos pages sont prêtes — vous pouvez déjà les modifier."
+
+#: frontend/src/components
+msgid "Your site is ready!"
+msgstr "Votre site est prêt !"
+
+#: frontend/src/components
+msgid "View my pages"
+msgstr "Voir mes pages"
+
+#: frontend/src/components
+msgid "Logo: {0}"
+msgstr "Logo : {0}"
+
+#: frontend/src/components
+msgid "Add the logo"
+msgstr "Ajouter le logo"
+
+#: frontend/src/components
+msgid "{0} reference(s)"
+msgstr "{0} référence(s)"
+
+#: frontend/src/components
+msgid "Add a reference"
+msgstr "Ajouter une référence"
+
+#: frontend/src/components
+msgid "Uploading..."
+msgstr "Envoi en cours..."
+
+#: frontend/src/components
+msgid "Describe your site — for example: a showcase site for my bakery in Lausanne"
+msgstr "Décrivez votre site — par exemple : un site vitrine pour ma boulangerie à Lausanne"
+
+#: frontend/src/components
+msgid "Send"
+msgstr "Envoyer"
+
+#: frontend/src/components
+msgid "Generate"
+msgstr "Générer"
+
+#: frontend/src/components
+msgid "Something went wrong"
+msgstr "Une erreur est survenue"
+
+#: frontend/src/components
+msgid "Could not start the generation"
+msgstr "Impossible de lancer la génération"
+
+#: frontend/src/components
+msgid "Please confirm."
+msgstr "Merci de confirmer."
+
+#: frontend/src/components
+msgid "The upload failed."
+msgstr "L'envoi a échoué."
+
+#: frontend/src/components
+msgid "Logo received — I will use its colours and style."
+msgstr "Logo reçu — je m'en inspire pour les couleurs et le style."
+
+#: frontend/src/components
+msgid "Reference received — I will draw inspiration from it."
+msgstr "Référence reçue — je m'en inspire pour la direction visuelle."
+
+#: frontend/src/components
+msgid "The generation failed."
+msgstr "La génération a échoué."

@@ -3425,3 +3425,99 @@ msgstr ""
 msgid "your.email@example.com"
 msgstr ""
 
+
+#: frontend/src/components
+msgid "Create with AI"
+msgstr ""
+
+#: frontend/src/components
+msgid "Start over"
+msgstr ""
+
+#: frontend/src/components
+msgid "Thinking..."
+msgstr ""
+
+#: frontend/src/components
+msgid "Generating your site..."
+msgstr ""
+
+#: frontend/src/components
+msgid "This takes a few minutes."
+msgstr ""
+
+#: frontend/src/components
+msgid "Generating images ({0}/{1})"
+msgstr ""
+
+#: frontend/src/components
+msgid "Your pages are ready — you can already edit them."
+msgstr ""
+
+#: frontend/src/components
+msgid "Your site is ready!"
+msgstr ""
+
+#: frontend/src/components
+msgid "View my pages"
+msgstr ""
+
+#: frontend/src/components
+msgid "Logo: {0}"
+msgstr ""
+
+#: frontend/src/components
+msgid "Add the logo"
+msgstr ""
+
+#: frontend/src/components
+msgid "{0} reference(s)"
+msgstr ""
+
+#: frontend/src/components
+msgid "Add a reference"
+msgstr ""
+
+#: frontend/src/components
+msgid "Uploading..."
+msgstr ""
+
+#: frontend/src/components
+msgid "Describe your site — for example: a showcase site for my bakery in Lausanne"
+msgstr ""
+
+#: frontend/src/components
+msgid "Send"
+msgstr ""
+
+#: frontend/src/components
+msgid "Generate"
+msgstr ""
+
+#: frontend/src/components
+msgid "Something went wrong"
+msgstr ""
+
+#: frontend/src/components
+msgid "Could not start the generation"
+msgstr ""
+
+#: frontend/src/components
+msgid "Please confirm."
+msgstr ""
+
+#: frontend/src/components
+msgid "The upload failed."
+msgstr ""
+
+#: frontend/src/components
+msgid "Logo received — I will use its colours and style."
+msgstr ""
+
+#: frontend/src/components
+msgid "Reference received — I will draw inspiration from it."
+msgstr ""
+
+#: frontend/src/components
+msgid "The generation failed."
+msgstr ""

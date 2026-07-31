@@ -9,6 +9,7 @@ import "./setupFrappeUIResource";
 
 import App from "@/App.vue";
 import Input from "@/components/Controls/Input.vue";
+import translationPlugin from "@/translation";
 
 const app = createApp(App);
 const pinia = createPinia();
@@ -16,6 +17,7 @@ const pinia = createPinia();
 app.use(router);
 app.use(FrappeUI);
 app.use(pinia);
+app.use(translationPlugin);
 app.use(telemetryPlugin, { app_name: "builder" });
 
 window.name = "frappe-builder";
@@ -31,6 +33,8 @@ declare global {
 	interface Window {
 		is_developer_mode?: boolean;
 		builder_version: string;
+		translatedMessages?: Record<string, string>;
+		__?: (message: string) => string;
 	}
 }
 

@@ -118,6 +118,9 @@ class BuilderChatService:
 					"messages": self._format_messages(session.messages),
 					"missing_fields": session.get_missing_fields(),
 					"status": session.status,
+					# what the user already attached, so the UI can say so again
+					"logo_image": session.logo_image,
+					"inspiration_count": len(self._parse_inspirations(session)),
 				}
 				if session.status in ("Generating", "Homepage Ready") and session.job_id:
 					payload["job_id"] = session.job_id
@@ -430,6 +433,17 @@ class BuilderChatService:
 			frappe.log_error("Builder Chat: Upload logo error", str(e))
 			return {"success": False, "message": _("Failed to process logo")}
 
+	@staticmethod
+	def _parse_inspirations(session) -> list:
+		"""The references attached so far — never raises on malformed JSON."""
+		if not session.inspiration_urls:
+			return []
+		try:
+			parsed = json.loads(session.inspiration_urls)
+		except (json.JSONDecodeError, TypeError):
+			return []
+		return parsed if isinstance(parsed, list) else []
+
 	def upload_inspiration(self, session_id: str, file_url: str) -> Dict:
 		"""Handle inspiration image upload."""
 		try:
@@ -440,12 +454,7 @@ class BuilderChatService:
 			from builder.api import capture_inspiration
 			result = capture_inspiration(image=file_url, sentiment="like")
 
-			existing = []
-			if session.inspiration_urls:
-				try:
-					existing = json.loads(session.inspiration_urls)
-				except (json.JSONDecodeError, TypeError):
-					existing = []
+			existing = self._parse_inspirations(session)
 
 			if result and result.get("name"):
 				existing.append({"url": file_url, "name": result["name"], "type": "image"})

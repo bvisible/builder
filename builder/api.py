@@ -505,6 +505,54 @@ def _get_generation_status(job_id: str) -> dict:
 	return frappe.cache().get_value(cache_key) or {"status": "not_found", "error": "Job not found"}
 
 
+def _image_backend_available() -> bool:
+	"""Is an image backend usable on this site?
+
+	ComfyUI must be explicitly pointed at a server; otherwise the legacy
+	generator has to be switched on in site_config.
+	"""
+	from builder.ai.generators import comfyui_client
+
+	return bool(comfyui_client.is_configured() or frappe.conf.get("image_generation_enabled"))
+
+
+def _enqueue_image_generation(placeholder_images: list, session_id: str = None) -> str:
+	"""Queue the image worker and return its job id.
+
+	Shared by the automatic post-generation path and the chat's explicit
+	trigger, so both report progress under the same cache key.
+	"""
+	img_job_id = f"img_gen_{frappe.generate_hash(length=10)}"
+
+	_update_generation_status(img_job_id, {
+		"status": "queued",
+		"progress": 0,
+		"total_images": len(placeholder_images),
+		"images_completed": 0,
+		"images_failed": 0,
+		"current_image": None,
+		"error": None,
+	})
+
+	if session_id:
+		try:
+			name = frappe.db.get_value("Builder Chat Session", {"session_id": session_id})
+			if name:
+				frappe.db.set_value("Builder Chat Session", name, "image_job_id", img_job_id)
+		except Exception:
+			pass
+
+	frappe.enqueue(
+		"builder.api._generate_images_worker",
+		queue="default",
+		timeout=1800,
+		job_name=img_job_id,
+		img_job_id=img_job_id,
+		placeholder_images=placeholder_images,
+	)
+	return img_job_id
+
+
 # Max minutes we allow a generation to be "running" without a cache update
 # before the watchdog declares it dead. Workers can get OOM-killed, hit
 # supervisorctl restart, lose their Moonshot HTTP connection — in all cases
@@ -1454,14 +1502,19 @@ def _generate_complete_site_worker(
 			except Exception as e:
 				ai_log("warning", "Client photo matching skipped", error=str(e)[:200])
 
-		# Count image slots still on placeholders (no client photo matched them).
-		# This drives the chat's consent question: only offer AI image generation
-		# when something is actually missing — never when real photos cover it.
+		# Count image slots still on placeholders (no client photo matched them),
+		# and fill them right away when a backend is configured. This used to
+		# wait for a button in the desk chat, so self-serve sites simply never
+		# got real images.
 		remaining_image_slots = 0
+		image_job_id = None
 		try:
-			remaining_image_slots = len(_scan_placeholder_images([p["name"] for p in created_pages]))
-		except Exception:
-			remaining_image_slots = 0
+			pending_images = _scan_placeholder_images([p["name"] for p in created_pages])
+			remaining_image_slots = len(pending_images)
+			if pending_images and _image_backend_available():
+				image_job_id = _enqueue_image_generation(pending_images, session_id=session_id)
+		except Exception as e:
+			ai_log("warning", "Image generation not started", error=str(e)[:200])
 
 		# =====================================================================
 		# STEP 6: Mark as completed
@@ -1484,6 +1537,7 @@ def _generate_complete_site_worker(
 			"current_page": None,
 			"pages_created": created_pages,
 			"remaining_image_slots": remaining_image_slots,
+			"image_job_id": image_job_id,
 			"error": None,
 			"site_name": site_name,
 			"completed_at": frappe.utils.now(),
@@ -3177,41 +3231,18 @@ def chat_generate_images(session_id: str):
 		# STEP 2 — image generation fills only the slots no client photo matched.
 		# Backend: self-hosted ComfyUI (our GPU) when configured, else the legacy
 		# Ollama generator gated by the "image_generation_enabled" flag.
-		from builder.ai.generators import comfyui_client
 		placeholder_images = _scan_placeholder_images(page_names)
 
 		if not placeholder_images:
 			return {"success": True, "matched": match_result.get("matched", 0),
 				"message": _("All images filled from the client's own photos.")}
 
-		gen_available = comfyui_client.is_configured() or frappe.conf.get("image_generation_enabled")
-		if not gen_available:
+		if not _image_backend_available():
 			return {"success": True, "matched": match_result.get("matched", 0),
 				"remaining_placeholders": len(placeholder_images),
 				"message": _("Client photos placed. {0} slot(s) left as placeholders (image generation is off here).").format(len(placeholder_images))}
 
-		img_job_id = f"img_gen_{frappe.generate_hash(length=10)}"
-
-		_update_generation_status(img_job_id, {
-			"status": "queued",
-			"progress": 0,
-			"total_images": len(placeholder_images),
-			"images_completed": 0,
-			"images_failed": 0,
-			"current_image": None,
-			"error": None,
-		})
-
-		session.db_set("image_job_id", img_job_id)
-
-		frappe.enqueue(
-			"builder.api._generate_images_worker",
-			queue="default",
-			timeout=1800,
-			job_name=img_job_id,
-			img_job_id=img_job_id,
-			placeholder_images=placeholder_images,
-		)
+		img_job_id = _enqueue_image_generation(placeholder_images, session_id=session_id)
 
 		return {
 			"success": True,

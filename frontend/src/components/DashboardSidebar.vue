@@ -91,6 +91,12 @@
 				<span>All Pages</span>
 			</span>
 			<span
+				class="flex cursor-pointer gap-2 rounded p-2 text-base text-ink-gray-6"
+				@click="showAIChat = true">
+				<span class="lucide-sparkles size-4" aria-hidden="true" />
+				<span>{{ __("Create with AI") }}</span>
+			</span>
+			<span
 				class="flex cursor-pointer gap-2 p-2 text-base text-ink-gray-6"
 				@click="showSettingsDialog = true">
 				<SettingsIcon class="size-4"></SettingsIcon>
@@ -166,6 +172,7 @@
 		<p class="mt-2 p-2 text-center text-sm text-ink-gray-4">Version: {{ builderVersion }}</p>
 		<TrialBanner v-if="builderStore.isFCSite"></TrialBanner>
 	</section>
+	<AIChatModal v-model="showAIChat" />
 </template>
 <script lang="ts" setup>
 import EditableSpan from "@/components/EditableSpan.vue";
@@ -180,7 +187,13 @@ import { confirm } from "@/utils/helpers";
 import { useDark, useToggle } from "@vueuse/core";
 import { createResource, Dropdown } from "frappe-ui";
 import { TrialBanner } from "frappe-ui/frappe";
-import { computed, h, ref } from "vue";
+import { computed, defineAsyncComponent, h, ref } from "vue";
+
+// loaded on demand: the chat pulls in its own chunk and most visits never open it
+const AIChatModal = defineAsyncComponent(() => import("@/components/AIChatModal.vue"));
+
+// `__` is installed globally by the translation plugin (see src/translation.ts).
+const __ = window.__!;
 
 const isDark = useDark({
 	attribute: "data-theme",
@@ -189,6 +202,7 @@ const toggleDark = useToggle(isDark);
 const builderStore = useBuilderStore();
 const { showTemplatesDialog, showSettingsDialog } = useDashboardState();
 const renamingFolder = ref("");
+const showAIChat = ref(false);
 
 const apps = createResource({
 	url: "builder.api.get_apps",
