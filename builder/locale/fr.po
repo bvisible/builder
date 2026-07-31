@@ -3726,3 +3726,15 @@ msgstr "{0} fichier(s) reçu(s) — je les lis, je vous dirai ce que j'y ai trou
 #: frontend/src/components
 msgid "Content analysed — {0} item(s) ({1}). I will reuse it on the site."
 msgstr "Contenu analysé — {0} élément(s) ({1}). Je le réutiliserai sur le site."
+
+#: frontend/src/components
+msgid "All Pages"
+msgstr "Toutes les pages"
+
+#: frontend/src/components
+msgid "Settings"
+msgstr "Réglages"
+
+#: frontend/src/components
+msgid "Folders"
+msgstr "Dossiers"

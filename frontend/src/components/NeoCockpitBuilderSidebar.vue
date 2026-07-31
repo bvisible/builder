@@ -1,12 +1,15 @@
 <template>
 	<DashboardSidebar v-if="failed" />
-	<NeoCockpitBridge
-		v-else
-		:surface-app="surfaceApp"
-		:context-nav="contextNav"
-		:navigate="navigate"
-		@failed="failed = true"
-	/>
+	<template v-else>
+		<NeoCockpitBridge
+			:surface-app="surfaceApp"
+			:context-nav="contextNav"
+			:navigate="navigate"
+			@failed="failed = true"
+		/>
+		<!-- the fallback DashboardSidebar mounts its own, so only here -->
+		<AIChatModal v-model="showAIChat" />
+	</template>
 </template>
 
 <script setup lang="ts">
@@ -24,12 +27,19 @@ import builderProjectFolder from "@/data/builderProjectFolder";
 import useBuilderStore from "@/stores/builderStore";
 import { useDashboardState } from "@/composables/useDashboardState";
 import { useRouter } from "vue-router";
-import { computed, ref } from "vue";
+import { computed, defineAsyncComponent, ref } from "vue";
+
+// loaded on demand: the chat pulls in its own chunk and most visits never open it
+const AIChatModal = defineAsyncComponent(() => import("@/components/AIChatModal.vue"));
+
+// `__` is installed globally by the translation plugin (see src/translation.ts).
+const __ = window.__!;
 
 const router = useRouter();
 const builderStore = useBuilderStore();
 const { showSettingsDialog } = useDashboardState();
 const failed = ref(false);
+const showAIChat = ref(false);
 
 const surfaceApp = {
 	name: "builder",
@@ -58,7 +68,7 @@ const contextNav = computed(() => {
 		{
 			items: [
 				{
-					label: "All Pages",
+					label: __("All Pages"),
 					icon: "lucide-files",
 					active: !builderStore.activeFolder,
 					onClick: () => {
@@ -66,7 +76,14 @@ const contextNav = computed(() => {
 					},
 				},
 				{
-					label: "Settings",
+					label: __("Create with AI"),
+					icon: "lucide-sparkles",
+					onClick: () => {
+						showAIChat.value = true;
+					},
+				},
+				{
+					label: __("Settings"),
 					icon: "lucide-settings",
 					onClick: () => {
 						showSettingsDialog.value = true;
@@ -74,7 +91,7 @@ const contextNav = computed(() => {
 				},
 			],
 		},
-		folders.length ? { label: "Folders", items: folders } : null,
+		folders.length ? { label: __("Folders"), items: folders } : null,
 	].filter(Boolean);
 });
 </script>

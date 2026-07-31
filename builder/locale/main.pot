@@ -3541,3 +3541,15 @@ msgstr ""
 #: frontend/src/components
 msgid "Content analysed — {0} item(s) ({1}). I will reuse it on the site."
 msgstr ""
+
+#: frontend/src/components
+msgid "All Pages"
+msgstr ""
+
+#: frontend/src/components
+msgid "Settings"
+msgstr ""
+
+#: frontend/src/components
+msgid "Folders"
+msgstr ""
