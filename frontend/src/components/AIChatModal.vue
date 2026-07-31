@@ -406,10 +406,11 @@ const attach = async (kind: "logo" | "inspiration", fileUrl: string) => {
 		}
 		if (kind === "logo") {
 			logoName.value = fileUrl.split("/").pop() || "";
-			pushMessage("bot", r?.message || __("Logo received — I will use its colours and style."));
+			// the service answers under `response`; `message` is only set on failure
+			pushMessage("bot", r?.response || r?.message || __("Logo received — I will use its colours and style."));
 		} else {
 			inspirationCount.value += 1;
-			pushMessage("bot", r?.message || __("Reference received — I will draw inspiration from it."));
+			pushMessage("bot", r?.response || r?.message || __("Reference received — I will draw inspiration from it."));
 		}
 		applyState(r);
 	} catch (error) {
