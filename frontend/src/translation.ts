@@ -4,13 +4,17 @@
 // Extraction: frappe's default babel map routes **.vue through the html_template
 // extractor, whose regex pass picks up __() in both <template> and <script>.
 import { createResource } from "frappe-ui";
-import type { App } from "vue";
+import { ref, type App } from "vue";
 
 type Formattable = { format: (...args: unknown[]) => string };
 
+// Reactive on purpose. The catalog arrives from the server after the first
+// render, and a plain object would leave every already-evaluated computed
+// (a sidebar's nav list, say) stuck on the English source string forever.
+const catalog = ref<Record<string, string>>({});
+
 export function translate(message: string): string & Partial<Formattable> {
-	const catalog: Record<string, string> = window.translatedMessages || {};
-	const translated = catalog[message] || message;
+	const translated = catalog.value[message] || message;
 
 	if (!/{\d+}/.test(message)) {
 		return translated;
@@ -27,14 +31,17 @@ export function translate(message: string): string & Partial<Formattable> {
 export default function translationPlugin(app: App) {
 	app.config.globalProperties.__ = translate;
 	window.__ = translate;
-	if (!window.translatedMessages) {
-		createResource({
-			url: "builder.i18n.get_translations",
-			cache: "translations",
-			auto: true,
-			transform: (data: Record<string, string>) => {
-				window.translatedMessages = data;
-			},
-		});
+	if (window.translatedMessages) {
+		catalog.value = window.translatedMessages;
+		return;
 	}
+	createResource({
+		url: "builder.i18n.get_translations",
+		cache: "translations",
+		auto: true,
+		transform: (data: Record<string, string>) => {
+			window.translatedMessages = data;
+			catalog.value = data;
+		},
+	});
 }
