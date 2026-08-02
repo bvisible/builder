@@ -1,9 +1,15 @@
 """
 AI Configuration Module
-Reads AI provider settings exclusively from site_config.json (frappe.conf).
 
-Managed by neoffice-devops which pushes the canonical values to each
-instance via SiteConfigPhase. There is no DocType for these settings.
+Resolution order (first non-empty wins):
+
+1. site_config.json (frappe.conf) — the operator layer. neoffice-devops
+   pushes the canonical values to each instance via SiteConfigPhase;
+   anything set there always wins.
+2. Builder Settings — the Settings > AI tab, for instances the fleet does
+   not pin. Added 2026-08-02; an instance whose site_config already covers
+   everything behaves exactly as before.
+3. The DEFAULTS below.
 
 Local dev overrides: edit sites/<site>/site_config.json manually.
 """
@@ -124,9 +130,39 @@ class AIConfig:
         return value
 
 
+def _settings_value(field: str) -> str | None:
+    """One field from the Builder Settings single (the AI tab).
+
+    Returns None when the table is missing (pre-migrate) or the field is
+    empty — resolution then falls through to the code defaults.
+    """
+    try:
+        return getattr(frappe.get_cached_doc("Builder Settings"), field, None) or None
+    except Exception:
+        return None
+
+
+def _settings_api_key() -> str | None:
+    """Builder Settings ai_api_key (Password field, encrypted)."""
+    try:
+        from frappe.utils.password import get_decrypted_password
+
+        return (
+            get_decrypted_password(
+                "Builder Settings", "Builder Settings", "ai_api_key", raise_exception=False
+            )
+            or None
+        )
+    except Exception:
+        return None
+
+
 def get_ai_settings() -> AIConfig:
     """
-    Resolve AI settings from site_config.json with hardcoded defaults.
+    Resolve AI settings: site_config.json > Builder Settings (the AI tab) > defaults.
+
+    site_config always wins, so an instance that pins everything there keeps
+    behaving exactly as it did before this middle layer existed.
 
     Keys read from frappe.conf:
         ai_provider        (default: "openai")
@@ -142,26 +178,35 @@ def get_ai_settings() -> AIConfig:
     """
     conf = frappe.conf
 
-    provider = conf.get("ai_provider") or conf.get("ollama_provider") or DEFAULTS["provider"]
+    provider = (
+        conf.get("ai_provider")
+        or conf.get("ollama_provider")
+        or _settings_value("unpress_ai_provider")
+        or DEFAULTS["provider"]
+    )
     model = (
         conf.get("openai_model")
         or conf.get("ollama_model")
+        or _settings_value("unpress_ai_brief_model")
         or DEFAULTS["model"]
     )
     page_model = (
         conf.get("openai_page_model")
         or conf.get("ollama_page_model")
+        or _settings_value("unpress_ai_page_model")
         or DEFAULTS["page_model"]
     )
     base_url = (
         conf.get("openai_base_url")
         or conf.get("ollama_base_url")
         or conf.get("ollama_url")
+        or _settings_value("unpress_ai_base_url")
         or DEFAULTS["base_url"]
     )
     api_key = (
         conf.get("openai_api_key")
         or conf.get("ollama_api_key")
+        or _settings_api_key()
         or DEFAULTS["api_key"]
     )
 
@@ -176,8 +221,55 @@ def get_ai_settings() -> AIConfig:
         request_timeout=int(conf.get("ai_request_timeout") or DEFAULTS["request_timeout"]),
         default_theme=conf.get("ai_default_theme") or DEFAULTS["default_theme"],
         default_site_type=conf.get("ai_default_site_type") or DEFAULTS["default_site_type"],
-        output_language=conf.get("ai_output_language") or DEFAULTS["output_language"],
+        output_language=(
+            conf.get("ai_output_language")
+            or _settings_value("unpress_ai_output_language")
+            or DEFAULTS["output_language"]
+        ),
     )
+
+
+# site_config keys that silently win over anything chosen in the AI tab.
+# Kept next to get_ai_settings so the two never drift.
+PINNING_KEYS = {
+    "provider": ("ai_provider", "ollama_provider"),
+    "base_url": ("openai_base_url", "ollama_base_url", "ollama_url"),
+    "api_key": ("openai_api_key", "ollama_api_key"),
+    "model": ("openai_model", "ollama_model"),
+    "output_language": ("ai_output_language",),
+}
+
+
+@frappe.whitelist()
+def describe_resolution() -> dict:
+    """Which AI settings are pinned in site_config, and to what.
+
+    Neoffice instances are fleet-managed, so most of them ARE pinned. Without
+    this the AI tab would show a provider the engine is not using — which is
+    exactly what it did before. Never returns a secret: an API key is reported
+    as pinned, not quoted.
+    """
+    frappe.only_for("System Manager")
+    conf = frappe.conf
+    pinned = {}
+    for field, keys in PINNING_KEYS.items():
+        for key in keys:
+            if conf.get(key):
+                pinned[field] = {
+                    "key": key,
+                    "value": "********" if "key" in field else str(conf.get(key)),
+                }
+                break
+
+    settings = get_ai_settings()
+    return {
+        "pinned": pinned,
+        "effective": {
+            "provider": settings.provider,
+            "base_url": settings.base_url,
+            "model": settings.model,
+        },
+    }
 
 
 ASSISTANT_NAME = "Unpress AI"
