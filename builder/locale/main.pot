@@ -3553,3 +3553,115 @@ msgstr ""
 #: frontend/src/components
 msgid "Folders"
 msgstr ""
+
+#: frontend/src/components
+msgid "Provider"
+msgstr ""
+
+#: frontend/src/components
+msgid "API Key"
+msgstr ""
+
+#: frontend/src/components
+msgid "optional"
+msgstr ""
+
+#: frontend/src/components
+msgid "sk-…"
+msgstr ""
+
+#: frontend/src/components
+msgid "Testing..."
+msgstr ""
+
+#: frontend/src/components
+msgid "Test key"
+msgstr ""
+
+#: frontend/src/components
+msgid "API Base URL"
+msgstr ""
+
+#: frontend/src/components
+msgid "This server pins {0} in site_config.json — what you choose here is ignored for those."
+msgstr ""
+
+#: frontend/src/components
+msgid "In effect: {0}"
+msgstr ""
+
+#: frontend/src/components
+msgid "Brief model"
+msgstr ""
+
+#: frontend/src/components
+msgid "Creative brief + design system. Empty = the code default"
+msgstr ""
+
+#: frontend/src/components
+msgid "Page model"
+msgstr ""
+
+#: frontend/src/components
+msgid "Page generation (code). Empty = the code default"
+msgstr ""
+
+#: frontend/src/components
+msgid "Content language"
+msgstr ""
+
+#: frontend/src/components
+msgid "Language of the generated content. Empty = French"
+msgstr ""
+
+#: frontend/src/components
+msgid "French"
+msgstr ""
+
+#: frontend/src/components
+msgid "Moonshot AI (recommended)"
+msgstr ""
+
+#: frontend/src/components
+msgid "OpenRouter"
+msgstr ""
+
+#: frontend/src/components
+msgid "OpenAI — API key"
+msgstr ""
+
+#: frontend/src/components
+msgid "Ollama (local)"
+msgstr ""
+
+#: frontend/src/components
+msgid "Custom (OpenAI-compatible)"
+msgstr ""
+
+#: frontend/src/components
+msgid "Powers the built-in site generation (kimi models). Get an API key from"
+msgstr ""
+
+#: frontend/src/components
+msgid "Claude, Gemini, GPT and more under one key. Get it from"
+msgstr ""
+
+#: frontend/src/components
+msgid "Get an API key from"
+msgstr ""
+
+#: frontend/src/components
+msgid "A local Ollama server needs no API key; cloud endpoints may require one."
+msgstr ""
+
+#: frontend/src/components
+msgid "Any OpenAI-compatible endpoint (must serve /chat/completions)."
+msgstr ""
+
+#: frontend/src/components
+msgid "API key test failed"
+msgstr ""
+
+#: frontend/src/components
+msgid "Failed to test the API key"
+msgstr ""

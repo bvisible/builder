@@ -3738,3 +3738,115 @@ msgstr "Réglages"
 #: frontend/src/components
 msgid "Folders"
 msgstr "Dossiers"
+
+#: frontend/src/components
+msgid "Provider"
+msgstr "Fournisseur"
+
+#: frontend/src/components
+msgid "API Key"
+msgstr "Clé API"
+
+#: frontend/src/components
+msgid "optional"
+msgstr "facultatif"
+
+#: frontend/src/components
+msgid "sk-…"
+msgstr "sk-…"
+
+#: frontend/src/components
+msgid "Testing..."
+msgstr "Test en cours..."
+
+#: frontend/src/components
+msgid "Test key"
+msgstr "Tester la clé"
+
+#: frontend/src/components
+msgid "API Base URL"
+msgstr "URL de base de l'API"
+
+#: frontend/src/components
+msgid "This server pins {0} in site_config.json — what you choose here is ignored for those."
+msgstr "Ce serveur épingle {0} dans site_config.json — ce que vous choisissez ici est ignoré pour ces valeurs."
+
+#: frontend/src/components
+msgid "In effect: {0}"
+msgstr "En vigueur : {0}"
+
+#: frontend/src/components
+msgid "Brief model"
+msgstr "Modèle pour le brief"
+
+#: frontend/src/components
+msgid "Creative brief + design system. Empty = the code default"
+msgstr "Brief créatif + design system. Vide = le défaut du code"
+
+#: frontend/src/components
+msgid "Page model"
+msgstr "Modèle pour les pages"
+
+#: frontend/src/components
+msgid "Page generation (code). Empty = the code default"
+msgstr "Génération des pages (code). Vide = le défaut du code"
+
+#: frontend/src/components
+msgid "Content language"
+msgstr "Langue du contenu"
+
+#: frontend/src/components
+msgid "Language of the generated content. Empty = French"
+msgstr "Langue du contenu généré. Vide = français"
+
+#: frontend/src/components
+msgid "French"
+msgstr "Français"
+
+#: frontend/src/components
+msgid "Moonshot AI (recommended)"
+msgstr "Moonshot AI (recommandé)"
+
+#: frontend/src/components
+msgid "OpenRouter"
+msgstr "OpenRouter"
+
+#: frontend/src/components
+msgid "OpenAI — API key"
+msgstr "OpenAI — clé API"
+
+#: frontend/src/components
+msgid "Ollama (local)"
+msgstr "Ollama (local)"
+
+#: frontend/src/components
+msgid "Custom (OpenAI-compatible)"
+msgstr "Personnalisé (compatible OpenAI)"
+
+#: frontend/src/components
+msgid "Powers the built-in site generation (kimi models). Get an API key from"
+msgstr "Alimente la génération de sites intégrée (modèles kimi). Obtenez une clé API sur"
+
+#: frontend/src/components
+msgid "Claude, Gemini, GPT and more under one key. Get it from"
+msgstr "Claude, Gemini, GPT et d'autres avec une seule clé. À obtenir sur"
+
+#: frontend/src/components
+msgid "Get an API key from"
+msgstr "Obtenez une clé API sur"
+
+#: frontend/src/components
+msgid "A local Ollama server needs no API key; cloud endpoints may require one."
+msgstr "Un serveur Ollama local ne nécessite pas de clé API ; les endpoints cloud peuvent en exiger une."
+
+#: frontend/src/components
+msgid "Any OpenAI-compatible endpoint (must serve /chat/completions)."
+msgstr "Tout endpoint compatible OpenAI (doit servir /chat/completions)."
+
+#: frontend/src/components
+msgid "API key test failed"
+msgstr "Le test de la clé API a échoué"
+
+#: frontend/src/components
+msgid "Failed to test the API key"
+msgstr "Impossible de tester la clé API"

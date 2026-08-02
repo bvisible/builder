@@ -216,7 +216,36 @@ class BuilderPage(WebsiteGenerator):
 				frappe.PermissionError,
 			)
 
+	FALLBACK_PREVIEW = "/assets/builder/images/fallback.png"
+
+	def ensure_preview(self):
+		"""Give a thumbnail to pages that never went through publish().
+
+		publish() is the only path that used to enqueue a preview, so every
+		page born anywhere else — the AI chat, a WordPress import, the REST
+		API — kept the blank fallback forever and the dashboard was a wall of
+		white rectangles.
+
+		Fires once: as soon as the page has content and a preview exists, the
+		guard below stops matching.
+		"""
+		if self.flags.get("skip_preview") or not self.published:
+			return
+		if self.preview and self.preview != self.FALLBACK_PREVIEW:
+			return
+		if not self.blocks or self.blocks == "[]":
+			return
+		frappe.enqueue_doc(
+			self.doctype,
+			self.name,
+			"generate_page_preview_image",
+			queue="short",
+			enqueue_after_commit=True,
+		)
+
 	def on_update(self):
+		self.ensure_preview()
+
 		if self.has_value_changed("route"):
 			if self.route and (":" in self.route or "<" in self.route):
 				self.db_set("dynamic_route", 1)
