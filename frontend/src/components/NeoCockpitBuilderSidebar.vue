@@ -37,7 +37,7 @@ const __ = window.__!;
 
 const router = useRouter();
 const builderStore = useBuilderStore();
-const { showSettingsDialog } = useDashboardState();
+const { showSettingsDialog, settingsTab } = useDashboardState();
 const failed = ref(false);
 const showAIChat = ref(false);
 
@@ -83,9 +83,20 @@ const contextNav = computed(() => {
 					},
 				},
 				{
+					label: __("Theme"),
+					icon: "lucide-palette",
+					onClick: () => {
+						// colours and fonts are what a site owner touches first;
+						// three clicks deep under Settings is the wrong place
+						settingsTab.value = "global_theme";
+						showSettingsDialog.value = true;
+					},
+				},
+				{
 					label: __("Settings"),
 					icon: "lucide-settings",
 					onClick: () => {
+						settingsTab.value = undefined;
 						showSettingsDialog.value = true;
 					},
 				},

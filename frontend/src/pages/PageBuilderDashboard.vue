@@ -15,7 +15,11 @@
 			<DialogDescription class="sr-only">
 				Configure global settings for this builder project.
 			</DialogDescription>
-			<BuilderSettings @close="showSettingsDialog = false" :onlyGlobal="true" bare />
+			<BuilderSettings
+				@close="showSettingsDialog = false"
+				:onlyGlobal="true"
+				:initialTab="settingsTab"
+				bare />
 		</template>
 	</Dialog>
 </template>
@@ -36,7 +40,7 @@ import { DialogDescription, DialogTitle } from "reka-ui";
 import { defineAsyncComponent, onMounted, watch } from "vue";
 
 const BuilderSettings = defineAsyncComponent(() => import("@/components/BuilderSettings.vue"));
-const { showSettingsDialog } = useDashboardState();
+const { showSettingsDialog, settingsTab } = useDashboardState();
 
 const telemetry = useTelemetry();
 

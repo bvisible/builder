@@ -185,17 +185,26 @@ def get_ai_settings() -> AIConfig:
         or _studio_value("unpress_ai_provider")
         or DEFAULTS["provider"]
     )
+    # DEFAULTS["model"] is a Moonshot model name. Handing it to a provider that
+    # has never heard of it turns a working setup into a 400 — a ChatGPT plan
+    # answers "The 'kimi-k3' model is not supported when using Codex with a
+    # ChatGPT account". A subscription picks its own model, so when nobody has
+    # named one explicitly, name none.
+    model_default = None if provider == "codex" else DEFAULTS["model"]
+    page_model_default = None if provider == "codex" else DEFAULTS["page_model"]
     model = (
         conf.get("openai_model")
         or conf.get("ollama_model")
+        or conf.get("codex_model")
         or _studio_value("unpress_ai_brief_model")
-        or DEFAULTS["model"]
+        or model_default
     )
     page_model = (
         conf.get("openai_page_model")
         or conf.get("ollama_page_model")
+        or conf.get("codex_model")
         or _studio_value("unpress_ai_page_model")
-        or DEFAULTS["page_model"]
+        or page_model_default
     )
     base_url = (
         conf.get("openai_base_url")

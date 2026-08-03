@@ -9,6 +9,9 @@ const showTemplatesDialog = ref(false);
 // shared so the cockpit sidebar wrapper can open Settings too (the dialog
 // itself is rendered on the dashboard, not inside the native sidebar)
 const showSettingsDialog = ref(false);
+// which tab the dialog opens on ("" / undefined = its default). Shared so a
+// sidebar entry can send the user straight to Theme.
+const settingsTab = ref<string | undefined>(undefined);
 
 // remembers the template group the picker was last drilled into ("" = gallery)
 const lastTemplateGroup = useStorage("lastTemplateGroup", "") as Ref<string>;
@@ -30,6 +33,7 @@ export function useDashboardState() {
 		treeExpanded,
 		showTemplatesDialog,
 		showSettingsDialog,
+		settingsTab,
 		lastTemplateGroup,
 		displayType,
 		typeFilter,
