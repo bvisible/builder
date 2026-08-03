@@ -163,8 +163,10 @@ class WebsiteHeaderFooterConfig(Document):
 
 	def get_logo_data(self) -> dict:
 		"""Get logo configuration. Uses default logo if none attached."""
-		# Builder-shipped asset: always present, unlike an uploaded /files/ default
-		DEFAULT_LOGO = "/assets/builder/frontend/builder_logo.png"
+		# Neoffice ships its own identity in neoffice_theme — the same place the
+		# published-page favicon already comes from. A client site with no logo
+		# of its own must not fall back to the framework's.
+		DEFAULT_LOGO = "/assets/neoffice_theme/images/neoffice_logo.svg"
 		return {
 			"type": self.logo_type,
 			"text": self.logo_text or "My Site",
@@ -173,8 +175,10 @@ class WebsiteHeaderFooterConfig(Document):
 
 	def get_footer_logo_data(self) -> dict:
 		"""Get footer logo configuration. Uses default logo if none attached."""
-		# Builder-shipped asset: always present, unlike an uploaded /files/ default
-		DEFAULT_LOGO = "/assets/builder/frontend/builder_logo.png"
+		# Neoffice ships its own identity in neoffice_theme — the same place the
+		# published-page favicon already comes from. A client site with no logo
+		# of its own must not fall back to the framework's.
+		DEFAULT_LOGO = "/assets/neoffice_theme/images/neoffice_logo.svg"
 		if self.footer_logo_type == "Same as Header":
 			return self.get_logo_data()
 		return {

@@ -35,12 +35,19 @@
    rather than a pile of switches the user has to combine correctly.
    ========================================================================== */
 
-/* Floating — a detached bar above the content. Sticky or not, it keeps its
-   margins, so it never touches the edges of the viewport. */
+/* Floating — a detached bar OVER the content. Sticky or not, it keeps its
+   margins, so it never touches the edges of the viewport.
+
+   Same negative margin as the transparent preset: the bar keeps its place in
+   the flow (so sticky still works) but gives back the vertical space it
+   takes. Without it the page starts below the bar and the hero sits under a
+   white band the height of the header — which is not a floating header, it is
+   a normal one with padding. */
 .site-header--floating {
 	background: transparent;
 	border-bottom: none;
 	padding: 12px var(--container-padding, 24px);
+	margin-bottom: calc(-1 * (var(--header-height, 64px) + 24px));
 }
 
 .site-header--floating.site-header--sticky {
