@@ -4,6 +4,12 @@
  "doctype": "DocType",
  "engine": "InnoDB",
  "field_order": [
+  "design_tokens_section",
+  "radius_style",
+  "shadow_style",
+  "design_tokens_column",
+  "button_hover",
+  "motion_style",
   "header_tab",
   "header_section",
   "header_layout",
@@ -113,6 +119,48 @@
   "body_size_mobile"
  ],
  "fields": [
+  {
+   "fieldname": "design_tokens_section",
+   "fieldtype": "Section Break",
+   "label": "Design system",
+   "description": "Set once, respected everywhere — header, footer and every generated page."
+  },
+  {
+   "fieldname": "radius_style",
+   "fieldtype": "Select",
+   "label": "Corners",
+   "options": "Sharp\nSubtle\nRounded\nSoft",
+   "default": "Subtle",
+   "description": "The site's corner radius: Sharp (0), Subtle (4px), Rounded (12px), Soft (20px)."
+  },
+  {
+   "fieldname": "shadow_style",
+   "fieldtype": "Select",
+   "label": "Elevation",
+   "options": "None\nSoft\nStrong",
+   "default": "Soft",
+   "description": "How much cards and raised surfaces lift off the page."
+  },
+  {
+   "fieldname": "design_tokens_column",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "button_hover",
+   "fieldtype": "Select",
+   "label": "Button hover",
+   "options": "None\nDarken\nLift\nGrow",
+   "default": "Darken",
+   "description": "What every button does on hover — one behaviour for the whole site."
+  },
+  {
+   "fieldname": "motion_style",
+   "fieldtype": "Select",
+   "label": "Motion",
+   "options": "None\nCalm\nBrisk",
+   "default": "Calm",
+   "description": "Transition speed for hovers and state changes. None disables them."
+  },
   {
    "fieldname": "header_tab",
    "fieldtype": "Tab Break",

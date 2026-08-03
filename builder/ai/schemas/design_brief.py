@@ -252,6 +252,40 @@ class DesignBrief(BaseModel):
         description="Border radius style"
     )
 
+    # ------------------------------------------------------------------
+    # Design system — decided ONCE here, written to the site's CSS
+    # variables, and then never repeated on a block. Their whole purpose is
+    # that a page does not carry its own radius, shadow or hover: it asks
+    # for a role (u-btn, u-card) and the site answers.
+    # ------------------------------------------------------------------
+    radius_style: Literal["Sharp", "Subtle", "Rounded", "Soft"] = Field(
+        default="Subtle",
+        description=(
+            "The site's corners, applied to buttons, cards, inputs and images. "
+            "Sharp reads editorial/brutalist, Soft reads friendly. Must agree "
+            "with border_radius_style."
+        )
+    )
+    shadow_style: Literal["None", "Soft", "Strong"] = Field(
+        default="Soft",
+        description=(
+            "How much raised surfaces lift off the page. None reads flat and "
+            "editorial; Strong reads playful. Must agree with use_shadows."
+        )
+    )
+    button_hover: Literal["None", "Darken", "Lift", "Grow"] = Field(
+        default="Darken",
+        description=(
+            "What every button on the site does on hover. One behaviour for "
+            "the whole site — Darken is the safe default, Lift adds elevation, "
+            "Grow scales slightly."
+        )
+    )
+    motion_style: Literal["None", "Calm", "Brisk"] = Field(
+        default="Calm",
+        description="Transition speed for hovers and state changes."
+    )
+
     # Inspiration context (from user-provided reference sites/images)
     inspiration_context: Optional[str] = Field(
         default=None,
@@ -430,8 +464,22 @@ Secondary: {json.dumps(self.button_secondary)}
 
 ### Card Style (CONTRACT — identical on every page)
 - background: {self.card_style.get('backgroundColor')}
-- borderRadius: {self.card_style.get('borderRadius')}
-- boxShadow: {self.card_style.get('boxShadow')}
+
+### THE DESIGN SYSTEM IS ALREADY WRITTEN — DO NOT REPEAT IT
+The site's corners, elevation, motion and hover behaviour are set once, in
+CSS. Ask for a role and you get them:
+
+| You want | Put in `classes` | Then DO NOT set |
+|---|---|---|
+| a button | `["u-btn", "u-btn--primary"]` (or `--secondary`, `--outline`, `--ghost`) | borderRadius, boxShadow, transition, any :hover |
+| a card | `["u-card"]` (or `u-card--raised`, `u-card--flat`) | borderRadius, boxShadow, border, padding |
+| an image | `["u-media"]` | borderRadius, overflow |
+| a text input | `["u-input"]` | borderRadius, border |
+
+Corners: {self.radius_style} · Elevation: {self.shadow_style} · Hover: {self.button_hover}
+
+Setting those properties on a block is not an error the site will show — it
+is how two pages end up with different buttons. Leave them out.
 
 ### Hero Section
 - Background: {self.hero_background}
@@ -455,7 +503,8 @@ Secondary: {json.dumps(self.button_secondary)}
 ### Visual Effects
 - Shadows: {"Yes" if self.use_shadows else "No"}
 - Gradients: {"Yes" if self.use_gradients else "No"}
-- Border radius: {self.border_radius_style} ({self.get_border_radius()})
+- Border radius: {self.border_radius_style} ({self.get_border_radius()}) — but
+  prefer the `u-` classes over writing it per block
 {self._get_inspiration_section()}
 Section composition WITHIN the grid is yours to design creatively, page by
 page. The GRID ({self.content_max_width}), the INTERIOR PAGE HEADER, COLORS,

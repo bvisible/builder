@@ -144,6 +144,7 @@ Block structure:
 {{
   "blockId": "unique-id",           // REQUIRED - format: "section-name-001"
   "element": "section",             // REQUIRED - see list below
+  "classes": ["u-btn", "u-btn--primary"],  // the design system: see below
   "innerHTML": "Text here",         // For text elements (h1, p, span, etc.)
   "baseStyles": {{                   // CSS styles in camelCase
     "display": "flex",
@@ -171,6 +172,25 @@ Block structure:
 - Lists: ul, ol, li
 - Forms: form, input, textarea, select
 - Other: hr, figure, figcaption
+
+## THE DESIGN SYSTEM — ASK FOR A ROLE, DO NOT RESTATE IT
+
+The site's corners, elevation, motion and hover behaviour are decided once and
+live in CSS. Put a role in `classes` and the site supplies the rest:
+
+| Role | classes | Never set on it |
+|---|---|---|
+| button | `["u-btn", "u-btn--primary"]` — also `--secondary`, `--outline`, `--ghost` | borderRadius, boxShadow, transition, hover styles |
+| card / tile | `["u-card"]` — also `u-card--raised`, `u-card--flat` | borderRadius, boxShadow, border, padding |
+| image | `["u-media"]` | borderRadius, overflow |
+| text input | `["u-input"]` | borderRadius, border |
+
+Colours stay yours: a primary button may carry a different backgroundColor
+when the section calls for it. What must not vary page to page is the SHAPE.
+
+Two pages whose buttons have different corners look like two different sites.
+That is the single most visible tell of a generated site — and the reason
+these classes exist. Use them.
 
 ## CRITICAL CSS RULES
 1. Properties in camelCase: backgroundColor (NOT background-color)
@@ -393,21 +413,16 @@ aesthetic direction for this site, not this shape.
           {{
             "blockId": "hero-cta",
             "element": "a",
+            "classes": ["u-btn", "u-btn--primary"],
             "innerHTML": "Action label",
-            "attributes": {{ "href": "/contact" }},
-            "baseStyles": {{
-              "display": "inline-block",
-              "backgroundColor": "var(--primary-color)",
-              "color": "#ffffff",
-              "padding": "14px 32px",
-              "textDecoration": "none"
-            }}
+            "attributes": {{ "href": "/contact" }}
           }}
         ]
       }},
       {{
         "blockId": "hero-media",
         "element": "img",
+        "classes": ["u-media"],
         "attributes": {{
           "src": "https://placehold.co/900x1100/{primary_placeholder}/ffffff?text=Scene",
           "alt": "Vivid, business-specific description used as an AI image prompt"

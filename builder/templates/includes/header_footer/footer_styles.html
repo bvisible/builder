@@ -128,7 +128,7 @@
 	font-size: 0.9375rem;
 	color: var(--footer-text-muted);
 	text-decoration: none;
-	transition: color 0.2s ease;
+	transition: color var(--transition, 0.2s ease);
 }
 
 .site-footer__link:hover {
@@ -149,8 +149,8 @@
 	width: 36px;
 	height: 36px;
 	color: var(--footer-text-muted);
-	border-radius: 8px;
-	transition: all 0.2s ease;
+	border-radius: var(--radius, 8px);
+	transition: all var(--transition, 0.2s ease);
 	text-decoration: none;
 }
 
@@ -183,11 +183,11 @@
 	padding: 10px 14px;
 	font-size: 0.9375rem;
 	border: 1px solid var(--footer-border);
-	border-radius: 8px;
+	border-radius: var(--radius, 8px);
 	background: var(--footer-hover-bg);
 	color: var(--footer-text);
 	outline: none;
-	transition: border-color 0.2s ease;
+	transition: border-color var(--transition, 0.2s ease);
 }
 
 .newsletter-form__input:focus {
@@ -205,9 +205,9 @@
 	color: white;
 	background: var(--primary-color, #2563eb);
 	border: none;
-	border-radius: 8px;
+	border-radius: var(--radius, 8px);
 	cursor: pointer;
-	transition: background-color 0.2s ease;
+	transition: background-color var(--transition, 0.2s ease);
 	white-space: nowrap;
 }
 
@@ -223,7 +223,7 @@
 .newsletter-form__message {
 	margin-top: 12px;
 	padding: 10px 14px;
-	border-radius: 8px;
+	border-radius: var(--radius, 8px);
 	font-size: 0.875rem;
 }
 
@@ -291,7 +291,7 @@
 .site-footer__powered-by a {
 	color: var(--footer-text-muted);
 	text-decoration: none;
-	transition: color 0.2s ease;
+	transition: color var(--transition, 0.2s ease);
 }
 
 .site-footer__powered-by a:hover {

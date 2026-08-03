@@ -13,6 +13,39 @@
 				{{ __("Colors & typography") }}
 			</button>
 			<template v-if="open.theme">
+				<!-- The design system. Set here once; the header, the footer and
+				     every generated block read it, so pages stay coherent
+				     without anyone repeating a radius or a shadow. -->
+				<div class="grid grid-cols-2 gap-3">
+					<FormControl
+						type="select"
+						size="sm"
+						:label="__('Corners')"
+						:options="options.radius_style"
+						:modelValue="state.radius_style"
+						@update:modelValue="(v: string) => (state.radius_style = v)" />
+					<FormControl
+						type="select"
+						size="sm"
+						:label="__('Elevation')"
+						:options="options.shadow_style"
+						:modelValue="state.shadow_style"
+						@update:modelValue="(v: string) => (state.shadow_style = v)" />
+					<FormControl
+						type="select"
+						size="sm"
+						:label="__('Button hover')"
+						:options="options.button_hover"
+						:modelValue="state.button_hover"
+						@update:modelValue="(v: string) => (state.button_hover = v)" />
+					<FormControl
+						type="select"
+						size="sm"
+						:label="__('Motion')"
+						:options="options.motion_style"
+						:modelValue="state.motion_style"
+						@update:modelValue="(v: string) => (state.motion_style = v)" />
+				</div>
 				<div class="grid grid-cols-2 gap-3">
 					<div v-for="color in themeColors" :key="color.field" class="flex items-end gap-2">
 						<FormControl

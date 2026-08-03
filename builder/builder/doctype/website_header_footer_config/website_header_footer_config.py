@@ -238,6 +238,12 @@ class WebsiteHeaderFooterConfig(Document):
 			"text_color": getattr(self, "text_color", None) or "#1a1a1a",
 			"heading_font": getattr(self, "heading_font", None) or "Inter",
 			"body_font": getattr(self, "body_font", None) or "Inter",
+			# design system — one source for corners, elevation, motion and
+			# hover, read by the chrome and by every generated block
+			"radius_style": getattr(self, "radius_style", None) or "Subtle",
+			"shadow_style": getattr(self, "shadow_style", None) or "Soft",
+			"button_hover": getattr(self, "button_hover", None) or "Darken",
+			"motion_style": getattr(self, "motion_style", None) or "Calm",
 		}
 
 

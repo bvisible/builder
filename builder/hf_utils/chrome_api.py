@@ -49,6 +49,11 @@ SIMPLE_FIELDS = (
 	"youtube_url",
 	"show_newsletter",
 	"newsletter_title",
+	# design system
+	"radius_style",
+	"shadow_style",
+	"button_hover",
+	"motion_style",
 	# theme
 	"primary_color",
 	"secondary_color",
@@ -60,6 +65,10 @@ SIMPLE_FIELDS = (
 
 # Select fields whose options the UI needs
 OPTION_FIELDS = (
+	"radius_style",
+	"shadow_style",
+	"button_hover",
+	"motion_style",
 	"header_layout",
 	"header_style",
 	"header_height",

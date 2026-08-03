@@ -3982,3 +3982,19 @@ msgstr "logo"
 #: frontend/src/components/Settings/GlobalTheme.vue
 msgid "Header style"
 msgstr "Style d'en-tête"
+
+#: frontend/src/components/Settings/GlobalTheme.vue
+msgid "Corners"
+msgstr "Coins"
+
+#: frontend/src/components/Settings/GlobalTheme.vue
+msgid "Elevation"
+msgstr "Élévation"
+
+#: frontend/src/components/Settings/GlobalTheme.vue
+msgid "Button hover"
+msgstr "Survol des boutons"
+
+#: frontend/src/components/Settings/GlobalTheme.vue
+msgid "Motion"
+msgstr "Animation"

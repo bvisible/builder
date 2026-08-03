@@ -3797,3 +3797,19 @@ msgstr ""
 #: frontend/src/components/Settings/GlobalTheme.vue
 msgid "Header style"
 msgstr ""
+
+#: frontend/src/components/Settings/GlobalTheme.vue
+msgid "Corners"
+msgstr ""
+
+#: frontend/src/components/Settings/GlobalTheme.vue
+msgid "Elevation"
+msgstr ""
+
+#: frontend/src/components/Settings/GlobalTheme.vue
+msgid "Button hover"
+msgstr ""
+
+#: frontend/src/components/Settings/GlobalTheme.vue
+msgid "Motion"
+msgstr ""

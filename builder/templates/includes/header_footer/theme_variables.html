@@ -71,6 +71,36 @@
 	--body-weight: {{ theme.body_weight if theme and theme.body_weight else '400' }};
 	--body-line-height: {{ theme.body_line_height if theme and theme.body_line_height else '1.6' }};
 
+	/* ------------------------------------------------------------------
+	   Design system — set once in the Theme, respected everywhere.
+	   The header, the footer and every generated block read these, so a
+	   site stays coherent page to page without anyone repeating values.
+	   ------------------------------------------------------------------ */
+	{%- set radii = {"Sharp": "0px", "Subtle": "4px", "Rounded": "12px", "Soft": "20px"} -%}
+	{%- set radius = radii.get(theme.radius_style if theme and theme.radius_style else "Subtle", "4px") -%}
+	--radius: {{ radius }};
+	--radius-sm: {{ "0px" if radius == "0px" else "calc(" ~ radius ~ " / 2)" }};
+	--radius-lg: {{ "0px" if radius == "0px" else "calc(" ~ radius ~ " * 1.6)" }};
+	--radius-pill: 9999px;
+
+	{%- set shadow_style = theme.shadow_style if theme and theme.shadow_style else "Soft" -%}
+	{%- if shadow_style == "None" -%}
+	--shadow-sm: none;
+	--shadow: none;
+	--shadow-lg: none;
+	{%- elif shadow_style == "Strong" -%}
+	--shadow-sm: 0 2px 6px rgba(0, 0, 0, 0.10);
+	--shadow: 0 10px 24px rgba(0, 0, 0, 0.14);
+	--shadow-lg: 0 24px 48px rgba(0, 0, 0, 0.18);
+	{%- else -%}
+	--shadow-sm: 0 1px 3px rgba(0, 0, 0, 0.05);
+	--shadow: 0 4px 14px rgba(0, 0, 0, 0.07);
+	--shadow-lg: 0 12px 32px rgba(0, 0, 0, 0.10);
+	{%- endif -%}
+
+	{%- set motion = theme.motion_style if theme and theme.motion_style else "Calm" -%}
+	--transition: {{ "0ms" if motion == "None" else ("120ms" if motion == "Brisk" else "200ms") }} ease;
+
 	/* Typography Scale - Mobile */
 	--h1-size-mobile: {{ theme.h1_size_mobile if theme and theme.h1_size_mobile else '32px' }};
 	--h2-size-mobile: {{ theme.h2_size_mobile if theme and theme.h2_size_mobile else '26px' }};
@@ -158,5 +188,131 @@ a:hover {
 .btn-primary-dark:hover {
 	background-color: var(--primary-hover);
 	border-color: var(--primary-hover);
+}
+
+/* ==========================================================================
+   The design system, as classes.
+
+   A generated block asks for a role — u-btn, u-card — and gets the site's
+   corners, elevation, motion and hover behaviour. Nothing repeats those
+   values per block, so nothing can drift between two pages. The header and
+   the footer read the same variables, so the CTA up top matches the CTAs
+   in the pages.
+
+   A user is still free to override any of it in the editor; the point is
+   that the default is coherent, not that it is locked.
+   ========================================================================== */
+
+{%- set hover = theme.button_hover if theme and theme.button_hover else "Darken" -%}
+
+.u-btn {
+	display: inline-flex;
+	align-items: center;
+	justify-content: center;
+	gap: 8px;
+	padding: 12px 24px;
+	border-radius: var(--radius);
+	border: 1px solid transparent;
+	font-family: var(--body-font);
+	font-size: 0.95rem;
+	font-weight: 500;
+	line-height: 1;
+	text-decoration: none;
+	cursor: pointer;
+	transition: background-color var(--transition), color var(--transition),
+		border-color var(--transition), box-shadow var(--transition),
+		transform var(--transition), filter var(--transition);
+}
+
+.u-btn--primary {
+	background: var(--primary-color);
+	color: #ffffff;
+}
+
+.u-btn--secondary {
+	background: var(--secondary-color);
+	color: #ffffff;
+}
+
+.u-btn--outline {
+	background: transparent;
+	color: var(--primary-color);
+	border-color: var(--primary-color);
+}
+
+.u-btn--ghost {
+	background: transparent;
+	color: var(--primary-color);
+	padding-left: 0;
+	padding-right: 0;
+}
+
+/* One hover behaviour for the whole site. */
+{%- if hover == "Darken" %}
+.u-btn:hover { filter: brightness(0.92); }
+.u-btn--outline:hover { background: var(--primary-color); color: #ffffff; filter: none; }
+{%- elif hover == "Lift" %}
+.u-btn:hover { transform: translateY(-2px); box-shadow: var(--shadow); }
+{%- elif hover == "Grow" %}
+.u-btn:hover { transform: scale(1.03); }
+{%- endif %}
+
+.u-btn:focus-visible {
+	outline: 2px solid var(--primary-color);
+	outline-offset: 2px;
+}
+
+.u-card {
+	background: var(--surface-color);
+	border: 1px solid var(--border-color);
+	border-radius: var(--radius-lg);
+	box-shadow: var(--shadow-sm);
+	padding: 24px;
+	transition: box-shadow var(--transition), transform var(--transition);
+}
+
+.u-card--raised {
+	box-shadow: var(--shadow);
+}
+
+.u-card--flat {
+	box-shadow: none;
+}
+
+/* Images share the site's corners — a rounded site with square photos is
+   the single most common way a generated page looks improvised. */
+.u-media {
+	border-radius: var(--radius-lg);
+	overflow: hidden;
+	display: block;
+	width: 100%;
+}
+
+.u-input {
+	border-radius: var(--radius);
+	border: 1px solid var(--border-color);
+	padding: 12px 14px;
+	font-family: var(--body-font);
+	font-size: 0.95rem;
+	background: var(--background-color);
+	color: var(--text-color);
+	transition: border-color var(--transition), box-shadow var(--transition);
+}
+
+.u-input:focus {
+	outline: none;
+	border-color: var(--primary-color);
+	box-shadow: 0 0 0 3px color-mix(in srgb, var(--primary-color) 18%, transparent);
+}
+
+@media (prefers-reduced-motion: reduce) {
+	.u-btn,
+	.u-card,
+	.u-input {
+		transition: none;
+	}
+	.u-btn:hover {
+		transform: none;
+	}
 }
 </style>

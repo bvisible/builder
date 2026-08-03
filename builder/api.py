@@ -2358,6 +2358,9 @@ def classify_existing_pages(website_profile=None) -> dict:
 # Brief fields applied 1:1 to Website Header Footer Config (site chrome).
 # Colors are applied only when non-empty; enum fields always carry a value.
 BRIEF_CHROME_FIELDS = (
+	# the design system first: these become the site's CSS variables, and the
+	# pages reference them instead of carrying their own copies
+	"radius_style", "shadow_style", "button_hover", "motion_style",
 	"header_bg_color", "header_text_color", "header_height", "header_border",
 	"header_style",
 	"cta_style", "cta_shape", "cta_size",
@@ -2386,6 +2389,7 @@ def apply_brief_site_chrome(design_brief, website_profile=None) -> list[str]:
 
 # Website Header Footer Config fields a hub template manifest may configure.
 TEMPLATE_HF_ALLOWED_FIELDS = {
+	"radius_style", "shadow_style", "button_hover", "motion_style",
 	"header_layout", "header_style", "sticky_header", "header_height", "header_border",
 	"header_bg_color", "header_text_color",
 	"show_cta", "cta_text", "cta_url", "cta_style", "cta_shape", "cta_size",

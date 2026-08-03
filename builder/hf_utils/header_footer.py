@@ -189,6 +189,10 @@ def get_theme_css(config=None) -> str:
 		"text_color": "#1a1a1a",
 		"heading_font": "Inter",
 		"body_font": "Inter",
+		"radius_style": "Subtle",
+		"shadow_style": "Soft",
+		"button_hover": "Darken",
+		"motion_style": "Calm",
 	}
 
 	return frappe.render_template(
