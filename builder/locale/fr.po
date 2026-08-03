@@ -3970,3 +3970,11 @@ msgstr "Aucun fichier n'a été reçu."
 #: builder/builder_chat_service.py
 msgid "Failed to process the files: {0}"
 msgstr "Échec du traitement des fichiers : {0}"
+
+#: frontend/src/components/AIChatModal.vue
+msgid "{0} file(s)"
+msgstr "{0} fichier(s)"
+
+#: frontend/src/components/AIChatModal.vue
+msgid "logo"
+msgstr "logo"

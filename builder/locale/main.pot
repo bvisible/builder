@@ -3785,3 +3785,11 @@ msgstr ""
 #: builder/builder_chat_service.py
 msgid "Failed to process the files: {0}"
 msgstr ""
+
+#: frontend/src/components/AIChatModal.vue
+msgid "{0} file(s)"
+msgstr ""
+
+#: frontend/src/components/AIChatModal.vue
+msgid "logo"
+msgstr ""
