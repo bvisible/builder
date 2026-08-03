@@ -5,7 +5,7 @@ Ensures visual consistency across all generated pages.
 
 from __future__ import annotations
 import json
-from typing import Literal, Optional
+from typing import ClassVar, Literal, Optional
 from pydantic import BaseModel, Field
 
 
@@ -258,21 +258,6 @@ class DesignBrief(BaseModel):
     # that a page does not carry its own radius, shadow or hover: it asks
     # for a role (u-btn, u-card) and the site answers.
     # ------------------------------------------------------------------
-    radius_style: Literal["Sharp", "Subtle", "Rounded", "Soft"] = Field(
-        default="Subtle",
-        description=(
-            "The site's corners, applied to buttons, cards, inputs and images. "
-            "Sharp reads editorial/brutalist, Soft reads friendly. Must agree "
-            "with border_radius_style."
-        )
-    )
-    shadow_style: Literal["None", "Soft", "Strong"] = Field(
-        default="Soft",
-        description=(
-            "How much raised surfaces lift off the page. None reads flat and "
-            "editorial; Strong reads playful. Must agree with use_shadows."
-        )
-    )
     button_hover: Literal["None", "Darken", "Lift", "Grow"] = Field(
         default="Darken",
         description=(
@@ -353,6 +338,37 @@ class DesignBrief(BaseModel):
         default="",
         description="Footer text color — must contrast with footer_bg_color"
     )
+
+    # ------------------------------------------------------------------
+    # The design system, derived — never asked of the model twice.
+    # border_radius_style and use_shadows are decisions it already makes (and
+    # that every theme preset already sets). Asking for a second field saying
+    # the same thing is how a brief ends up contradicting itself.
+    # ------------------------------------------------------------------
+    RADIUS_TOKENS: ClassVar[dict] = {
+        "none": "Sharp",
+        "subtle": "Subtle",
+        "rounded": "Rounded",
+        # "pill" means "as round as it goes" — on cards and inputs that reads
+        # as Soft; genuinely pill-shaped buttons come from cta_shape.
+        "pill": "Soft",
+    }
+
+    @property
+    def radius_style(self) -> str:
+        """The site's corners, for --radius."""
+        return self.RADIUS_TOKENS.get(self.border_radius_style, "Subtle")
+
+    @property
+    def shadow_style(self) -> str:
+        """How much raised surfaces lift, for --shadow.
+
+        A bold site earns the heavier scale: flat shadows are what make a
+        neobrutalist page look timid.
+        """
+        if not self.use_shadows:
+            return "None"
+        return "Strong" if self.site_tone == "bold" else "Soft"
 
     def get_border_radius(self) -> str:
         """Get border radius value based on style."""
@@ -503,8 +519,9 @@ is how two pages end up with different buttons. Leave them out.
 ### Visual Effects
 - Shadows: {"Yes" if self.use_shadows else "No"}
 - Gradients: {"Yes" if self.use_gradients else "No"}
-- Border radius: {self.border_radius_style} ({self.get_border_radius()}) — but
-  prefer the `u-` classes over writing it per block
+- Border radius: {self.border_radius_style} ({self.get_border_radius()}) — the
+  site already applies it through `--radius`; use the `u-` classes rather than
+  writing it per block
 {self._get_inspiration_section()}
 Section composition WITHIN the grid is yours to design creatively, page by
 page. The GRID ({self.content_max_width}), the INTERIOR PAGE HEADER, COLORS,
