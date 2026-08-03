@@ -9,6 +9,7 @@
 		/>
 		<!-- the fallback DashboardSidebar mounts its own, so only here -->
 		<AIChatModal v-model="showAIChat" />
+		<MediaLibrary v-model="showMedia" />
 	</template>
 </template>
 
@@ -31,6 +32,7 @@ import { computed, defineAsyncComponent, ref } from "vue";
 
 // loaded on demand: the chat pulls in its own chunk and most visits never open it
 const AIChatModal = defineAsyncComponent(() => import("@/components/AIChatModal.vue"));
+const MediaLibrary = defineAsyncComponent(() => import("@/components/MediaLibrary.vue"));
 
 // `__` is installed globally by the translation plugin (see src/translation.ts).
 const __ = window.__!;
@@ -40,6 +42,7 @@ const builderStore = useBuilderStore();
 const { showSettingsDialog, settingsTab } = useDashboardState();
 const failed = ref(false);
 const showAIChat = ref(false);
+const showMedia = ref(false);
 
 const surfaceApp = {
 	name: "builder",
@@ -90,6 +93,15 @@ const contextNav = computed(() => {
 						// three clicks deep under Settings is the wrong place
 						settingsTab.value = "global_theme";
 						showSettingsDialog.value = true;
+					},
+				},
+				{
+					label: __("Media"),
+					icon: "lucide-image",
+					onClick: () => {
+						// which images the site holds, where each one is used, and
+						// which links lead nowhere — none of it was visible before
+						showMedia.value = true;
 					},
 				},
 				{

@@ -94,6 +94,7 @@ declare module 'vue' {
     Loading: typeof import('./src/components/Icons/Loading.vue')['default']
     MainMenu: typeof import('./src/components/MainMenu.vue')['default']
     MarginHandler: typeof import('./src/components/MarginHandler.vue')['default']
+    MediaLibrary: typeof import('./src/components/MediaLibrary.vue')['default']
     MiddleTruncate: typeof import('./src/components/MiddleTruncate.vue')['default']
     NeoCockpitBridge: typeof import('./src/components/NeoCockpitBridge.vue')['default']
     NeoCockpitBuilderSidebar: typeof import('./src/components/NeoCockpitBuilderSidebar.vue')['default']

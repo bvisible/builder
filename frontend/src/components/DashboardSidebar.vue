@@ -97,6 +97,12 @@
 				<span>{{ __("Create with AI") }}</span>
 			</span>
 			<span
+				class="flex cursor-pointer gap-2 rounded p-2 text-base text-ink-gray-6"
+				@click="showMedia = true">
+				<span class="lucide-image size-4" aria-hidden="true" />
+				<span>{{ __("Media") }}</span>
+			</span>
+			<span
 				class="flex cursor-pointer gap-2 p-2 text-base text-ink-gray-6"
 				@click="showSettingsDialog = true">
 				<SettingsIcon class="size-4"></SettingsIcon>
@@ -173,6 +179,7 @@
 		<TrialBanner v-if="builderStore.isFCSite"></TrialBanner>
 	</section>
 	<AIChatModal v-model="showAIChat" />
+	<MediaLibrary v-model="showMedia" />
 </template>
 <script lang="ts" setup>
 import EditableSpan from "@/components/EditableSpan.vue";
@@ -191,6 +198,7 @@ import { computed, defineAsyncComponent, h, ref } from "vue";
 
 // loaded on demand: the chat pulls in its own chunk and most visits never open it
 const AIChatModal = defineAsyncComponent(() => import("@/components/AIChatModal.vue"));
+const MediaLibrary = defineAsyncComponent(() => import("@/components/MediaLibrary.vue"));
 
 // `__` is installed globally by the translation plugin (see src/translation.ts).
 const __ = window.__!;
@@ -203,6 +211,7 @@ const builderStore = useBuilderStore();
 const { showTemplatesDialog, showSettingsDialog } = useDashboardState();
 const renamingFolder = ref("");
 const showAIChat = ref(false);
+const showMedia = ref(false);
 
 const apps = createResource({
 	url: "builder.api.get_apps",

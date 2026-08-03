@@ -3998,3 +3998,107 @@ msgstr "Survol des boutons"
 #: frontend/src/components/Settings/GlobalTheme.vue
 msgid "Motion"
 msgstr "Animation"
+
+#: frontend/src/components/MediaLibrary.vue
+msgid "Images"
+msgstr "Images"
+
+#: frontend/src/components/MediaLibrary.vue
+msgid "Search by file name"
+msgstr "Rechercher par nom de fichier"
+
+#: frontend/src/components/MediaLibrary.vue
+msgid "Unused only"
+msgstr "Non utilisées uniquement"
+
+#: frontend/src/components/MediaLibrary.vue
+msgid "{0} image(s), {1} unused"
+msgstr "{0} image(s), {1} non utilisée(s)"
+
+#: frontend/src/components/MediaLibrary.vue
+msgid "{0} remote image(s) on pages"
+msgstr "{0} image(s) distante(s) dans les pages"
+
+#: frontend/src/components/MediaLibrary.vue
+msgid "No image yet."
+msgstr "Aucune image pour l'instant."
+
+#: frontend/src/components/MediaLibrary.vue
+msgid "Used on"
+msgstr "Utilisée sur"
+
+#: frontend/src/components/MediaLibrary.vue
+msgid "The site logo"
+msgstr "Le logo du site"
+
+#: frontend/src/components/MediaLibrary.vue
+msgid "Nowhere — safe to delete."
+msgstr "Nulle part — suppression sans risque."
+
+#: frontend/src/components/MediaLibrary.vue
+msgid "Copy the address"
+msgstr "Copier l'adresse"
+
+#: frontend/src/components/MediaLibrary.vue
+msgid "Address copied"
+msgstr "Adresse copiée"
+
+#: frontend/src/components/MediaLibrary.vue
+msgid "Could not copy the address"
+msgstr "Impossible de copier l'adresse"
+
+#: frontend/src/components/MediaLibrary.vue
+msgid "Image deleted"
+msgstr "Image supprimée"
+
+#: frontend/src/components/MediaLibrary.vue
+msgid "Site logo"
+msgstr "Logo du site"
+
+#: frontend/src/components/MediaLibrary.vue
+msgid "Not used"
+msgstr "Non utilisée"
+
+#: frontend/src/components/MediaLibrary.vue
+msgid "File is gone"
+msgstr "Fichier introuvable"
+
+#: frontend/src/components/MediaLibrary.vue
+msgid "{0} pages"
+msgstr "{0} pages"
+
+#: frontend/src/components/MediaLibrary.vue
+msgid "draft"
+msgstr "brouillon"
+
+#: frontend/src/components/MediaLibrary.vue
+msgid "{0} internal"
+msgstr "{0} internes"
+
+#: frontend/src/components/MediaLibrary.vue
+msgid "{0} external"
+msgstr "{0} externes"
+
+#: frontend/src/components/MediaLibrary.vue
+msgid "{0} leading nowhere"
+msgstr "{0} sans destination"
+
+#: frontend/src/components/MediaLibrary.vue
+msgid "These links point at a page that does not exist:"
+msgstr "Ces liens pointent vers une page qui n'existe pas :"
+
+#: frontend/src/components/MediaLibrary.vue
+msgid "Every internal link lands somewhere."
+msgstr "Tous les liens internes aboutissent."
+
+#: frontend/src/components/MediaLibrary.vue
+msgid "External links"
+msgstr "Liens externes"
+
+#: frontend/src/components/MediaLibrary.vue
+msgid "Still used on: {0}"
+msgstr "Encore utilisée sur : {0}"
+
+#: frontend/src/components/MediaLibrary.vue
+msgid "This image is the site's logo."
+msgstr "Cette image est le logo du site."

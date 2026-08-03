@@ -3813,3 +3813,107 @@ msgstr ""
 #: frontend/src/components/Settings/GlobalTheme.vue
 msgid "Motion"
 msgstr ""
+
+#: frontend/src/components/MediaLibrary.vue
+msgid "Images"
+msgstr ""
+
+#: frontend/src/components/MediaLibrary.vue
+msgid "Search by file name"
+msgstr ""
+
+#: frontend/src/components/MediaLibrary.vue
+msgid "Unused only"
+msgstr ""
+
+#: frontend/src/components/MediaLibrary.vue
+msgid "{0} image(s), {1} unused"
+msgstr ""
+
+#: frontend/src/components/MediaLibrary.vue
+msgid "{0} remote image(s) on pages"
+msgstr ""
+
+#: frontend/src/components/MediaLibrary.vue
+msgid "No image yet."
+msgstr ""
+
+#: frontend/src/components/MediaLibrary.vue
+msgid "Used on"
+msgstr ""
+
+#: frontend/src/components/MediaLibrary.vue
+msgid "The site logo"
+msgstr ""
+
+#: frontend/src/components/MediaLibrary.vue
+msgid "Nowhere — safe to delete."
+msgstr ""
+
+#: frontend/src/components/MediaLibrary.vue
+msgid "Copy the address"
+msgstr ""
+
+#: frontend/src/components/MediaLibrary.vue
+msgid "Address copied"
+msgstr ""
+
+#: frontend/src/components/MediaLibrary.vue
+msgid "Could not copy the address"
+msgstr ""
+
+#: frontend/src/components/MediaLibrary.vue
+msgid "Image deleted"
+msgstr ""
+
+#: frontend/src/components/MediaLibrary.vue
+msgid "Site logo"
+msgstr ""
+
+#: frontend/src/components/MediaLibrary.vue
+msgid "Not used"
+msgstr ""
+
+#: frontend/src/components/MediaLibrary.vue
+msgid "File is gone"
+msgstr ""
+
+#: frontend/src/components/MediaLibrary.vue
+msgid "{0} pages"
+msgstr ""
+
+#: frontend/src/components/MediaLibrary.vue
+msgid "draft"
+msgstr ""
+
+#: frontend/src/components/MediaLibrary.vue
+msgid "{0} internal"
+msgstr ""
+
+#: frontend/src/components/MediaLibrary.vue
+msgid "{0} external"
+msgstr ""
+
+#: frontend/src/components/MediaLibrary.vue
+msgid "{0} leading nowhere"
+msgstr ""
+
+#: frontend/src/components/MediaLibrary.vue
+msgid "These links point at a page that does not exist:"
+msgstr ""
+
+#: frontend/src/components/MediaLibrary.vue
+msgid "Every internal link lands somewhere."
+msgstr ""
+
+#: frontend/src/components/MediaLibrary.vue
+msgid "External links"
+msgstr ""
+
+#: frontend/src/components/MediaLibrary.vue
+msgid "Still used on: {0}"
+msgstr ""
+
+#: frontend/src/components/MediaLibrary.vue
+msgid "This image is the site's logo."
+msgstr ""
