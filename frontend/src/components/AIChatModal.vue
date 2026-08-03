@@ -73,65 +73,55 @@
 					<Button variant="solid" :label="__('View my pages')" @click="finish" />
 				</div>
 
-				<div v-if="!generating && !genDone && !imagesRunning" class="flex flex-col gap-2">
-					<!-- the client's own material: the brief reads the logo for its
-					     palette and typographic personality, and the references
-					     steer the visual direction -->
-					<div class="flex items-center gap-3 text-xs text-ink-gray-6">
-						<FileUploader file-types="image/*" @success="(f: FileDoc) => attach('logo', f.file_url)">
-							<template v-slot="{ openFileSelector }">
-								<button class="flex items-center gap-1 hover:text-ink-gray-9" @click="openFileSelector">
-									<span class="lucide-image size-3.5" aria-hidden="true" />
-									{{ logoName ? __("Logo: {0}").format(logoName) : __("Add the logo") }}
-								</button>
-							</template>
-						</FileUploader>
-						<FileUploader
-							file-types="image/*"
-							@success="(f: FileDoc) => attach('inspiration', f.file_url)">
-							<template v-slot="{ openFileSelector }">
-								<button class="flex items-center gap-1 hover:text-ink-gray-9" @click="openFileSelector">
-									<span class="lucide-sparkles size-3.5" aria-hidden="true" />
-									{{
-										inspirationCount
-											? __("{0} reference(s)").format(inspirationCount)
-											: __("Add a reference")
-									}}
-								</button>
-							</template>
-						</FileUploader>
-						<!-- the content library: photos and documents the AI reads,
-						     places in the pages and quotes from. Rolled by hand rather
-						     than with FileUploader, which only ever takes one file —
-						     sharing a folder of photos is the whole point here. -->
-						<input
-							ref="contentInput"
-							type="file"
-							multiple
-							class="hidden"
-							@change="onContentPicked" />
-						<button class="flex items-center gap-1 hover:text-ink-gray-9" @click="contentInput?.click()">
-							<span class="lucide-paperclip size-3.5" aria-hidden="true" />
-							{{
-								contentCount
-									? __("{0} file(s) shared").format(contentCount)
-									: __("Share photos and documents")
-							}}
-						</button>
-						<span v-if="uploading" class="text-ink-gray-5">{{ __("Uploading...") }}</span>
-					</div>
+				<!-- One composer, the way a chat should look: the textarea and its
+				     controls share a single rounded surface, attachments sit bottom
+				     left, send is a round arrow bottom right. No stack of buttons
+				     hanging off the side. -->
+				<div
+					v-if="!generating && !genDone && !imagesRunning"
+					class="flex flex-col gap-2 rounded-2xl border border-outline-gray-2 bg-surface-white p-2 focus-within:border-outline-gray-4">
+					<textarea
+						ref="composer"
+						v-model="draft"
+						rows="2"
+						class="max-h-40 w-full resize-none border-0 bg-transparent px-2 py-1.5 text-base text-ink-gray-9 outline-none placeholder:text-ink-gray-4 focus:ring-0"
+						:placeholder="__('Describe your site — for example: a showcase site for my bakery in Lausanne')"
+						:disabled="thinking"
+						@input="autoGrow"
+						@keydown.enter.exact.prevent="send" />
 
-					<div class="flex items-center gap-2">
-						<FormControl
-							type="textarea"
-							class="flex-1"
-							:modelValue="draft"
-							@update:modelValue="(v: string) => (draft = v)"
-							:placeholder="__('Describe your site — for example: a showcase site for my bakery in Lausanne')"
-							:disabled="thinking"
-							@keydown.enter.exact.prevent="send" />
-						<div class="flex flex-col gap-2">
-							<Button variant="solid" :label="__('Send')" :disabled="thinking || !draft.trim()" @click="send" />
+					<div class="flex items-center justify-between gap-2 px-1">
+						<div class="flex items-center gap-2 text-ink-gray-6">
+							<!-- One attach button. A client hands over what they have —
+							     a logo, photos of the shop, a PDF menu — without having to
+							     say which is which; the server sorts it out. -->
+							<input
+								ref="contentInput"
+								type="file"
+								multiple
+								class="hidden"
+								@change="onFilesPicked" />
+							<button
+								class="flex size-8 items-center justify-center rounded-full hover:bg-surface-gray-2 hover:text-ink-gray-9"
+								:class="{ 'text-ink-gray-9': attachmentSummary }"
+								:title="__('Attach your logo, photos or documents')"
+								@click="contentInput?.click()">
+								<span class="lucide-paperclip size-4" aria-hidden="true" />
+							</button>
+							<!-- the logo, once it is the site's logo, shown as such -->
+							<img
+								v-if="logoUrl"
+								:src="logoUrl"
+								:title="__('This is your site logo')"
+								class="size-7 rounded border border-outline-gray-2 bg-surface-white object-contain p-0.5"
+								alt="" />
+							<span v-if="attachmentSummary" class="text-xs text-ink-gray-5">
+								{{ attachmentSummary }}
+							</span>
+							<span v-if="uploading" class="text-xs text-ink-gray-5">{{ __("Uploading...") }}</span>
+						</div>
+
+						<div class="flex items-center gap-2">
 							<Button
 								v-if="canGenerate"
 								variant="solid"
@@ -139,6 +129,13 @@
 								:label="__('Generate')"
 								:disabled="triggering"
 								@click="triggerGeneration" />
+							<button
+								class="flex size-8 items-center justify-center rounded-full bg-surface-gray-7 text-ink-white transition disabled:cursor-not-allowed disabled:bg-surface-gray-3"
+								:disabled="thinking || !draft.trim()"
+								:title="__('Send')"
+								@click="send">
+								<span class="lucide-arrow-up size-4" aria-hidden="true" />
+							</button>
 						</div>
 					</div>
 				</div>
@@ -149,10 +146,9 @@
 <script setup lang="ts">
 import { allWebPages } from "@/data/allWebPages";
 import useBuilderStore from "@/stores/builderStore";
-import { createResource, Dialog, FileUploader, FileUploadHandler, FormControl } from "frappe-ui";
+import { createResource, Dialog, FileUploadHandler, FormControl } from "frappe-ui";
 import { computed, nextTick, onBeforeUnmount, ref, watch } from "vue";
 
-type FileDoc = { file_url: string; file_name?: string };
 
 const builderStore = useBuilderStore();
 
@@ -170,7 +166,6 @@ const show = computed({
 	set: (v: boolean) => emit("update:modelValue", v),
 });
 
-// v15 keeps the whole chat/generation stack inside the builder app itself
 const API = "builder.api";
 
 const sid = ref("");
@@ -188,9 +183,29 @@ const genMessage = ref("");
 const msgBox = ref<HTMLElement>();
 const uploading = ref(false);
 const logoName = ref("");
+const logoUrl = ref("");
 const inspirationCount = ref(0);
 const contentCount = ref(0);
 const contentInput = ref<HTMLInputElement>();
+const composer = ref<HTMLTextAreaElement>();
+
+// the composer grows with the text instead of scrolling inside two fixed rows
+const autoGrow = () => {
+	const el = composer.value;
+	if (!el) return;
+	el.style.height = "auto";
+	el.style.height = `${Math.min(el.scrollHeight, 160)}px`;
+};
+
+// what is attached, in one short line under the icons — the icons alone say
+// "you can attach", this says "you did"
+const attachmentSummary = computed(() => {
+	const bits: string[] = [];
+	if (logoName.value) bits.push(__("logo"));
+	if (inspirationCount.value) bits.push(__("{0} reference(s)").format(inspirationCount.value));
+	if (contentCount.value) bits.push(__("{0} file(s)").format(contentCount.value));
+	return bits.join(" · ");
+});
 // image generation runs after the pages exist, so it has its own progress
 const imagesRunning = ref(false);
 const imagesDone = ref(0);
@@ -207,9 +222,6 @@ const callPath = (path: string, params?: Record<string, any>) =>
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 const call = (method: string, params?: Record<string, any>) => callPath(`${API}.${method}`, params);
-
-// the content library lives in the ingestion module, not with the chat endpoints
-const INGEST_API = "builder.ai.ingestion.content_understanding";
 
 const md = (t: string) => {
 	const esc = String(t || "")
@@ -254,6 +266,7 @@ const boot = async () => {
 		applyState(r);
 		// a resumed session already carries what the user attached last time
 		if (r.logo_image) logoName.value = String(r.logo_image).split("/").pop() || "";
+		if (r.logo_url) logoUrl.value = r.logo_url;
 		inspirationCount.value = r.inspiration_count || 0;
 		contentCount.value = r.content_count || 0;
 		// a generation may already be running from a previous visit
@@ -335,7 +348,7 @@ const answerConfirm = async (button: ChatButton) => {
 // Photos and documents the client already has. They are not decoration: the
 // generator places these photos in the pages and quotes the documents, so the
 // site says what the business actually says.
-const onContentPicked = async (event: Event) => {
+const onFilesPicked = async (event: Event) => {
 	const input = event.target as HTMLInputElement;
 	const files = Array.from(input.files || []);
 	input.value = ""; // let the same file be picked again after a failure
@@ -353,16 +366,20 @@ const onContentPicked = async (event: Event) => {
 		}
 		if (!uploaded.length) throw new Error(__("No file could be uploaded."));
 
-		const r = await callPath(`${INGEST_API}.ingest_content_assets`, {
+		const r = await call("chat_attach_files", {
 			session_id: sid.value,
 			files: JSON.stringify(uploaded),
 		});
-		const created = r?.created ?? uploaded.length;
-		contentCount.value += created;
-		pushMessage(
-			"bot",
-			__("{0} file(s) received — I am reading them, I will tell you what I found.").format(created),
-		);
+		if (r && r.success === false) {
+			pushMessage("err", r.message || __("The upload failed."));
+			return;
+		}
+		if (r?.logo_taken) logoName.value = uploaded[0]?.filename || "";
+		if (r?.logo_url) logoUrl.value = r.logo_url;
+		inspirationCount.value += r?.references_added || 0;
+		contentCount.value += r?.content_added || 0;
+		pushMessage("bot", r?.response || __("Files received."));
+		applyState(r);
 	} catch (error) {
 		pushMessage("err", error instanceof Error ? error.message : String(error));
 	} finally {
@@ -391,33 +408,6 @@ const onContentUnderstood = (data: any) => {
 			detail,
 		),
 	);
-};
-
-// The FileUploader has already stored the file; we only tell the session about it.
-const attach = async (kind: "logo" | "inspiration", fileUrl: string) => {
-	if (!sid.value || !fileUrl) return;
-	uploading.value = true;
-	try {
-		const method = kind === "logo" ? "chat_upload_logo" : "chat_upload_inspiration";
-		const r = await call(method, { session_id: sid.value, file_url: fileUrl });
-		if (r && r.success === false) {
-			pushMessage("err", r.message || __("The upload failed."));
-			return;
-		}
-		if (kind === "logo") {
-			logoName.value = fileUrl.split("/").pop() || "";
-			// the service answers under `response`; `message` is only set on failure
-			pushMessage("bot", r?.response || r?.message || __("Logo received — I will use its colours and style."));
-		} else {
-			inspirationCount.value += 1;
-			pushMessage("bot", r?.response || r?.message || __("Reference received — I will draw inspiration from it."));
-		}
-		applyState(r);
-	} catch (error) {
-		pushMessage("err", error instanceof Error ? error.message : String(error));
-	} finally {
-		uploading.value = false;
-	}
 };
 
 const pollImages = async () => {
@@ -484,6 +474,7 @@ const resetSession = async () => {
 	generating.value = false;
 	genDone.value = false;
 	logoName.value = "";
+	logoUrl.value = "";
 	inspirationCount.value = 0;
 	contentCount.value = 0;
 	imagesRunning.value = false;

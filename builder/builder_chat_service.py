@@ -58,6 +58,64 @@ REQUIRED_FIELDS = {
 }
 
 
+def _is_neutral(hex_color: str) -> bool:
+	"""Near-white, near-black or grey — not a brand colour.
+
+	Most logos sit on a white or transparent background, so the dominant
+	colour by area is almost always the background. Without this filter the
+	brand colour comes out #ffffff.
+	"""
+	value = (hex_color or "").lstrip("#")
+	if len(value) != 6:
+		return True
+	try:
+		r, g, b = (int(value[i : i + 2], 16) for i in (0, 2, 4))
+	except ValueError:
+		return True
+	if max(r, g, b) > 235 or max(r, g, b) < 25:
+		return True
+	# low saturation = grey, whatever the lightness
+	return (max(r, g, b) - min(r, g, b)) < 25
+
+IMAGE_EXTENSIONS = {".png", ".jpg", ".jpeg", ".webp", ".gif", ".svg", ".avif", ".bmp"}
+
+# A logo announces itself, most of the time by its filename.
+LOGO_HINTS = ("logo", "logotype", "wordmark", "brandmark", "marque", "isotype")
+
+
+def _is_image(filename: str) -> bool:
+	import os
+
+	return os.path.splitext(filename or "")[1].lower() in IMAGE_EXTENSIONS
+
+
+def _looks_like_logo(filename: str, file_url: str) -> bool:
+	"""Whether an image is the brand mark rather than a photo.
+
+	Nobody uploads a photo as an SVG, and a logo is almost always a small
+	image on transparency — a photo is neither. Cheap heuristics, and the
+	conversation step decides when they are silent.
+	"""
+	import os
+
+	stem = os.path.basename(filename or "").lower()
+	if any(hint in stem for hint in LOGO_HINTS):
+		return True
+	if os.path.splitext(stem)[1] == ".svg":
+		return True
+	try:
+		from PIL import Image
+
+		from frappe.utils.file_manager import get_file_path
+
+		with Image.open(get_file_path(file_url)) as image:
+			transparent = image.mode in ("RGBA", "LA") or "transparency" in image.info
+			widest = max(image.size)
+		return transparent and widest <= 1200
+	except Exception:
+		return False
+
+
 class BuilderChatService:
 	"""Service for managing AI-guided builder chat conversations."""
 
@@ -120,6 +178,7 @@ class BuilderChatService:
 					"status": session.status,
 					# what the user already attached, so the UI can say so again
 					"logo_image": session.logo_image,
+					"logo_url": self._site_logo_url(),
 					"inspiration_count": len(self._parse_inspirations(session)),
 					"content_count": frappe.db.count(
 						"Builder Content Asset", {"session_id": session.session_id}
@@ -414,14 +473,84 @@ class BuilderChatService:
 				"message": _("Failed to process message: {0}").format(str(e))
 			}
 
+	@staticmethod
+	def _colors_from_logo(file_url: str) -> tuple:
+		"""(primary, secondary) read off the logo, or (None, None).
+
+		A client's brand lives in their logo. Asking them to name a palette
+		when they just handed us the answer is busy-work — and the model
+		writes better copy when the site already looks like the brand.
+		Pure inference: the caller decides whether to overwrite anything.
+		"""
+		from frappe.utils.file_manager import get_file_path
+
+		from builder.ai.inspiration.analyzer import DesignAnalyzer
+
+		path = get_file_path(file_url)
+		colors = DesignAnalyzer().extract_dominant_colors(path, n_colors=5)
+		# skip near-white / near-black: a logo on a white background would
+		# otherwise hand us #ffffff as the brand colour
+		vivid = [
+			c for c in colors
+			if c.get("hex") and not _is_neutral(c["hex"])
+		]
+		if not vivid:
+			return None, None
+		primary = vivid[0]["hex"]
+		secondary = vivid[1]["hex"] if len(vivid) > 1 else None
+		return primary, secondary
+
+	def _accept_logo(self, session, file_url: str) -> str:
+		"""Take a logo into the session AND onto the site. Returns what to say.
+
+		A logo handed to the assistant is the site's logo — leaving it inside
+		the conversation would mean the client uploads their brand and their
+		header keeps showing someone else's.
+		"""
+		session.logo_image = file_url
+		message = _("Logo received! I'll use it for your site generation.")
+
+		# Push it to the site chrome, on the stable path. Never fatal: a chat
+		# that refuses a logo because the header could not be written is worse
+		# than a header that stays behind for a moment.
+		try:
+			from builder import branding
+
+			branding.apply_logo(file_url)
+			message += " " + _("It is now your site logo.")
+		except Exception as e:
+			from builder.ai.logging import ai_log
+
+			ai_log("warning", "logo not applied to site chrome", error=str(e)[:200])
+
+		# Read the brand colours off the logo — but never overwrite a choice
+		# the user already made in the conversation.
+		try:
+			primary, secondary = self._colors_from_logo(file_url)
+			picked = []
+			if primary and not session.primary_color:
+				session.primary_color = primary
+				picked.append(primary)
+			if secondary and not session.secondary_color:
+				session.secondary_color = secondary
+				picked.append(secondary)
+			if picked:
+				message += " " + _("I read these colours off it: {0}.").format(", ".join(picked))
+		except Exception as e:
+			# a logo we cannot read is not a reason to reject the logo
+			from builder.ai.logging import ai_log
+
+			ai_log("warning", "logo colour extraction failed", error=str(e)[:200])
+
+		return message
+
 	def upload_logo(self, session_id: str, file_url: str) -> Dict:
 		"""Handle logo upload."""
 		try:
 			session = frappe.get_doc("Builder Chat Session", {"session_id": session_id})
-			session.logo_image = file_url
 			session.add_message(role="user", content=_("(Logo uploaded)"))
 
-			logo_msg = _("Logo received! I'll use it for your site generation.")
+			logo_msg = self._accept_logo(session, file_url)
 			next_q = self._get_next_question(session)
 			response = f"{logo_msg}\n\n{next_q}"
 
@@ -431,6 +560,7 @@ class BuilderChatService:
 			return {
 				"success": True,
 				"response": response,
+				"logo_url": self._site_logo_url(),
 				"current_step": session.current_step,
 				"completion_percentage": session.completion_percentage,
 				"missing_fields": session.get_missing_fields(),
@@ -439,6 +569,16 @@ class BuilderChatService:
 		except Exception as e:
 			frappe.log_error("Builder Chat: Upload logo error", str(e))
 			return {"success": False, "message": _("Failed to process logo")}
+
+	@staticmethod
+	def _site_logo_url() -> str:
+		"""The logo as the site renders it, for the composer preview."""
+		try:
+			from builder import branding
+
+			return branding.logo_url() if branding.logo_version() else ""
+		except Exception:
+			return ""
 
 	@staticmethod
 	def _parse_inspirations(session) -> list:
@@ -451,23 +591,33 @@ class BuilderChatService:
 			return []
 		return parsed if isinstance(parsed, list) else []
 
+	def _accept_inspiration(self, session, file_url: str) -> str:
+		"""Capture a design reference into the session. Returns what to say."""
+		from builder.api import capture_inspiration
+
+		result = capture_inspiration(image=file_url, sentiment="like")
+		existing = self._parse_inspirations(session)
+
+		if result and result.get("name"):
+			existing.append({"url": file_url, "name": result["name"], "type": "image"})
+			session.inspiration_urls = json.dumps(existing)
+
+		return _("Reference image received! I'll use it as design inspiration for your site.")
+
+	def _accept_content(self, session, files: List[Dict]) -> int:
+		"""Hand photos and documents to the understanding pass. Returns the count."""
+		from builder.ai.ingestion.content_understanding import ingest_content_assets
+
+		result = ingest_content_assets(session.session_id, files) or {}
+		return result.get("created", len(files))
+
 	def upload_inspiration(self, session_id: str, file_url: str) -> Dict:
 		"""Handle inspiration image upload."""
 		try:
 			session = frappe.get_doc("Builder Chat Session", {"session_id": session_id})
 			session.add_message(role="user", content=_("(Reference image uploaded)"))
 
-			# Capture as inspiration via existing infrastructure
-			from builder.api import capture_inspiration
-			result = capture_inspiration(image=file_url, sentiment="like")
-
-			existing = self._parse_inspirations(session)
-
-			if result and result.get("name"):
-				existing.append({"url": file_url, "name": result["name"], "type": "image"})
-				session.inspiration_urls = json.dumps(existing)
-
-			inspo_msg = _("Reference image received! I'll use it as design inspiration for your site.")
+			inspo_msg = self._accept_inspiration(session, file_url)
 
 			# Advance from inspiration to page_selection
 			if session.current_step == "inspiration":
@@ -497,6 +647,93 @@ class BuilderChatService:
 		except Exception as e:
 			frappe.log_error("Builder Chat: Upload inspiration error", str(e))
 			return {"success": False, "message": _("Failed to process reference image")}
+
+	def attach_files(self, session_id: str, files) -> Dict:
+		"""One door for everything the client hands over.
+
+		A client does not think "this one is a logo upload, that one is a
+		content upload" — they drop what they have. Sorting it is our job:
+		the filename and the pixels answer for the logo, and the question
+		currently on screen answers for the rest.
+		"""
+		try:
+			if isinstance(files, str):
+				files = frappe.parse_json(files)
+			files = [f for f in (files or []) if (f or {}).get("file_url")]
+			if not files:
+				return {"success": False, "message": _("No file was received.")}
+
+			session = frappe.get_doc("Builder Chat Session", {"session_id": session_id})
+			step = session.current_step
+
+			logo_url = None
+			references: List[str] = []
+			content: List[Dict] = []
+
+			for entry in files:
+				url = entry["file_url"]
+				name = entry.get("filename") or url
+				if not _is_image(name):
+					content.append({"file_url": url, "filename": name})
+					continue
+				# only one logo, and only while the site has none
+				if not session.logo_image and not logo_url and (
+					step == "logo" or _looks_like_logo(name, url)
+				):
+					logo_url = url
+				elif step == "inspiration":
+					references.append(url)
+				else:
+					content.append({"file_url": url, "filename": name})
+
+			session.add_message(
+				role="user", content=_("({0} file(s) attached)").format(len(files))
+			)
+
+			parts = []
+			if logo_url:
+				parts.append(self._accept_logo(session, logo_url))
+			for url in references:
+				parts.append(self._accept_inspiration(session, url))
+			created = 0
+			if content:
+				created = self._accept_content(session, content)
+				if created:
+					parts.append(
+						_("{0} file(s) received — I am reading them, I will tell you what I found.").format(created)
+					)
+
+			# the reference step is a checkpoint: once we have one, move on
+			if references and step == "inspiration":
+				self._auto_populate_pages(session)
+				session.current_step = "page_selection"
+				parts.append(self._get_pages_recap(session))
+				parts.append(_("Would you like to add optional pages to your site?"))
+				buttons = self._get_page_selection_buttons(session)
+			else:
+				parts.append(self._get_next_question(session))
+				buttons = self._get_fallback_buttons(session)
+
+			response = "\n\n".join(p for p in parts if p)
+			session.add_message(role="assistant", content=response, buttons=buttons)
+			session.save(ignore_permissions=True)
+
+			return {
+				"success": True,
+				"response": response,
+				"buttons": buttons,
+				"logo_url": self._site_logo_url(),
+				"logo_taken": bool(logo_url),
+				"references_added": len(references),
+				"content_added": created,
+				"current_step": session.current_step,
+				"completion_percentage": session.completion_percentage,
+				"missing_fields": session.get_missing_fields(),
+			}
+
+		except Exception as e:
+			frappe.log_error("Builder Chat: Attach files error", frappe.get_traceback())
+			return {"success": False, "message": _("Failed to process the files: {0}").format(str(e))}
 
 	def trigger_generation(self, session_id: str, force_replace: bool = False) -> Dict:
 		"""Trigger site generation with collected parameters.

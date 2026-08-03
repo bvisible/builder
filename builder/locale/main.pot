@@ -3725,3 +3725,63 @@ msgstr ""
 #: frontend/src/components
 msgid "Codex CLI (ChatGPT plan)"
 msgstr ""
+
+#: frontend/src/components/AIChatModal.vue
+msgid "Attach your logo, photos or documents"
+msgstr ""
+
+#: frontend/src/components/AIChatModal.vue
+msgid "This is your site logo"
+msgstr ""
+
+#: frontend/src/components/AIChatModal.vue
+msgid "Files received."
+msgstr ""
+
+#: frontend/src/components/Settings/GlobalTheme.vue
+msgid "Upload a logo"
+msgstr ""
+
+#: frontend/src/components/Settings/GlobalTheme.vue
+msgid "Replace the logo"
+msgstr ""
+
+#: frontend/src/components/Settings/GlobalTheme.vue
+msgid "The address stays {0} — a new file replaces the old one."
+msgstr ""
+
+#: frontend/src/components/Settings/GlobalTheme.vue
+msgid "Logo updated"
+msgstr ""
+
+#: frontend/src/components/Settings/GlobalTheme.vue
+msgid "The file could not be uploaded."
+msgstr ""
+
+#: builder/branding.py
+msgid "That file is not attached to this site."
+msgstr ""
+
+#: builder/branding.py
+msgid "That file is empty."
+msgstr ""
+
+#: builder/branding.py
+msgid "No file provided."
+msgstr ""
+
+#: builder/builder_chat_service.py
+msgid "It is now your site logo."
+msgstr ""
+
+#: builder/builder_chat_service.py
+msgid "({0} file(s) attached)"
+msgstr ""
+
+#: builder/builder_chat_service.py
+msgid "No file was received."
+msgstr ""
+
+#: builder/builder_chat_service.py
+msgid "Failed to process the files: {0}"
+msgstr ""

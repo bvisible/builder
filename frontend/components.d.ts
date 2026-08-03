@@ -11,6 +11,7 @@ export {}
 /* prettier-ignore */
 declare module 'vue' {
   export interface GlobalComponents {
+    AIChatModal: typeof import('./src/components/AIChatModal.vue')['default']
     AIPageGeneratorModal: typeof import('./src/components/AIPageGeneratorModal.vue')['default']
     AnalyticsEmptyState: typeof import('./src/components/Settings/AnalyticsEmptyState.vue')['default']
     AnalyticsFilters: typeof import('./src/components/Settings/AnalyticsFilters.vue')['default']
@@ -46,6 +47,7 @@ declare module 'vue' {
     BuilderToolbar: typeof import('./src/components/BuilderToolbar.vue')['default']
     CodeEditor: typeof import('./src/components/Controls/CodeEditor.vue')['default']
     CodeMirrorEditor: typeof import('./src/components/Controls/CodeMirror/CodeMirrorEditor.vue')['default']
+    CodexPairing: typeof import('./src/components/Settings/CodexPairing.vue')['default']
     CollapsibleSection: typeof import('./src/components/CollapsibleSection.vue')['default']
     ColorInput: typeof import('./src/components/Controls/ColorInput.vue')['default']
     ColorOptions: typeof import('./src/components/PropsOptions/ColorOptions.vue')['default']
@@ -79,6 +81,7 @@ declare module 'vue' {
     GlobalDomains: typeof import('./src/components/Settings/GlobalDomains.vue')['default']
     GlobalGeneral: typeof import('./src/components/Settings/GlobalGeneral.vue')['default']
     GlobalRedirects: typeof import('./src/components/Settings/GlobalRedirects.vue')['default']
+    GlobalTheme: typeof import('./src/components/Settings/GlobalTheme.vue')['default']
     GradientEditor: typeof import('./src/components/Controls/GradientEditor.vue')['default']
     ImageOptions: typeof import('./src/components/PropsOptions/ImageOptions.vue')['default']
     ImageUploader: typeof import('./src/components/Controls/ImageUploader.vue')['default']
@@ -150,5 +153,6 @@ declare module 'vue' {
     VersionHistory: typeof import('./src/components/VersionHistory.vue')['default']
     VisibilityInput: typeof import('./src/components/VisibilityInput.vue')['default']
     WebPagePresetPicker: typeof import('./src/components/WebPagePresetPicker.vue')['default']
+    WebsiteOnlineToggle: typeof import('./src/components/WebsiteOnlineToggle.vue')['default']
   }
 }

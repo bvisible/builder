@@ -1,5 +1,5 @@
 <template>
-	<div v-if="!loaded" class="text-base text-ink-gray-5">Loading...</div>
+	<div v-if="!loaded" class="text-base text-ink-gray-5">{{ __("Loading...") }}</div>
 	<div v-else class="flex flex-col gap-4">
 		<!-- Theme -->
 		<div class="flex flex-col gap-3">
@@ -10,7 +10,7 @@
 					class="inline-block size-4"
 					:class="open.theme ? 'lucide-chevron-down' : 'lucide-chevron-right'"
 					aria-hidden="true" />
-				Colors & typography
+				{{ __("Colors & typography") }}
 			</button>
 			<template v-if="open.theme">
 				<div class="grid grid-cols-2 gap-3">
@@ -33,14 +33,14 @@
 					<FormControl
 						type="select"
 						size="sm"
-						label="Heading font"
+						:label="__('Heading font')"
 						:options="options.heading_font"
 						:modelValue="state.heading_font"
 						@update:modelValue="(v: string) => (state.heading_font = v)" />
 					<FormControl
 						type="select"
 						size="sm"
-						label="Body font"
+						:label="__('Body font')"
 						:options="options.body_font"
 						:modelValue="state.body_font"
 						@update:modelValue="(v: string) => (state.body_font = v)" />
@@ -57,48 +57,78 @@
 					class="inline-block size-4"
 					:class="open.header ? 'lucide-chevron-down' : 'lucide-chevron-right'"
 					aria-hidden="true" />
-				Header
+				{{ __("Header") }}
 			</button>
 			<template v-if="open.header">
 				<div class="grid grid-cols-2 gap-3">
 					<FormControl
 						type="select"
 						size="sm"
-						label="Layout"
+						:label="__('Layout')"
 						:options="options.header_layout"
 						:modelValue="state.header_layout"
 						@update:modelValue="(v: string) => (state.header_layout = v)" />
 					<FormControl
 						type="select"
 						size="sm"
-						label="Height"
+						:label="__('Height')"
 						:options="options.header_height"
 						:modelValue="state.header_height"
 						@update:modelValue="(v: string) => (state.header_height = v)" />
 					<FormControl
 						type="select"
 						size="sm"
-						label="Logo type"
+						:label="__('Logo type')"
 						:options="options.logo_type"
 						:modelValue="state.logo_type"
 						@update:modelValue="(v: string) => (state.logo_type = v)" />
 					<FormControl
 						v-if="state.logo_type === 'Text'"
 						size="sm"
-						label="Logo text"
+						:label="__('Logo text')"
 						:modelValue="state.logo_text"
 						@update:modelValue="(v: string) => (state.logo_text = v)" />
-					<FormControl
-						v-else
-						size="sm"
-						label="Logo image URL"
-						:modelValue="state.logo_image"
-						@update:modelValue="(v: string) => (state.logo_image = v)"
-						placeholder="/files/logo.png" />
+					<!-- The logo is the one thing every client brings. It gets an
+					     uploader and a preview, not a path to type. The address is
+					     deliberately fixed: a hosted fleet points at it everywhere, so
+					     a new logo replaces the file rather than minting a new URL. -->
+					<div v-else class="col-span-2 flex flex-col gap-2">
+						<span class="text-xs text-ink-gray-5">{{ __("Logo") }}</span>
+						<div class="flex items-center gap-3">
+							<div
+								class="flex size-16 shrink-0 items-center justify-center rounded-lg border border-outline-gray-2 bg-surface-white p-1">
+								<img v-if="logoPreview" :src="logoPreview" class="max-h-full max-w-full object-contain" alt="" />
+								<span v-else class="lucide-image size-5 text-ink-gray-4" aria-hidden="true" />
+							</div>
+							<div class="flex flex-col items-start gap-1">
+								<input
+									ref="logoInput"
+									type="file"
+									accept="image/*"
+									class="hidden"
+									@change="onLogoPicked" />
+								<Button
+									size="sm"
+									:loading="logoBusy"
+									:label="logoPreview ? __('Replace the logo') : __('Upload a logo')"
+									@click="logoInput?.click()" />
+								<span class="text-xs text-ink-gray-5">
+									{{ __("The address stays {0} — a new file replaces the old one.").format(LOGO_PATH) }}
+								</span>
+							</div>
+						</div>
+						<FormControl
+							v-if="state.logo_image && state.logo_image !== LOGO_PATH"
+							size="sm"
+							:label="__('Logo image URL')"
+							:modelValue="state.logo_image"
+							@update:modelValue="(v: string) => (state.logo_image = v)"
+							placeholder="/files/logo.png" />
+					</div>
 					<FormControl
 						type="select"
 						size="sm"
-						label="Search"
+						:label="__('Search')"
 						:options="options.search_type"
 						:modelValue="state.search_type"
 						@update:modelValue="(v: string) => (state.search_type = v)" />
@@ -106,30 +136,30 @@
 				<div class="flex items-center gap-5">
 					<Switch
 						size="sm"
-						label="Sticky header"
+						:label="__('Sticky header')"
 						:modelValue="!!state.sticky_header"
 						@update:modelValue="(v: boolean) => (state.sticky_header = v ? 1 : 0)" />
 					<Switch
 						size="sm"
-						label="CTA button"
+						:label="__('CTA button')"
 						:modelValue="!!state.show_cta"
 						@update:modelValue="(v: boolean) => (state.show_cta = v ? 1 : 0)" />
 				</div>
 				<div v-if="state.show_cta" class="grid grid-cols-3 gap-3">
 					<FormControl
 						size="sm"
-						label="CTA text"
+						:label="__('CTA text')"
 						:modelValue="state.cta_text"
 						@update:modelValue="(v: string) => (state.cta_text = v)" />
 					<FormControl
 						size="sm"
-						label="CTA URL"
+						:label="__('CTA URL')"
 						:modelValue="state.cta_url"
 						@update:modelValue="(v: string) => (state.cta_url = v)" />
 					<FormControl
 						type="select"
 						size="sm"
-						label="CTA style"
+						:label="__('CTA style')"
 						:options="options.cta_style"
 						:modelValue="state.cta_style"
 						@update:modelValue="(v: string) => (state.cta_style = v)" />
@@ -146,7 +176,7 @@
 					class="inline-block size-4"
 					:class="open.menu ? 'lucide-chevron-down' : 'lucide-chevron-right'"
 					aria-hidden="true" />
-				Menu
+				{{ __("Menu") }}
 			</button>
 			<template v-if="open.menu">
 				<div
@@ -155,7 +185,7 @@
 					class="flex items-center gap-2">
 					<FormControl
 						size="sm"
-						placeholder="Label"
+						:placeholder="__('Label')"
 						:modelValue="item.label"
 						@update:modelValue="(v: string) => (item.label = v)"
 						class="flex-1" />
@@ -175,7 +205,7 @@
 					class="w-fit"
 					icon-left="lucide-plus"
 					@click="state.menu_items.push({ label: '', url: '', open_in_new_tab: 0 })">
-					Add menu item
+					{{ __("Add menu item") }}
 				</Button>
 			</template>
 		</div>
@@ -189,32 +219,32 @@
 					class="inline-block size-4"
 					:class="open.footer ? 'lucide-chevron-down' : 'lucide-chevron-right'"
 					aria-hidden="true" />
-				Footer
+				{{ __("Footer") }}
 			</button>
 			<template v-if="open.footer">
 				<div class="grid grid-cols-2 gap-3">
 					<FormControl
 						type="select"
 						size="sm"
-						label="Template"
+						:label="__('Template')"
 						:options="options.footer_template"
 						:modelValue="state.footer_template"
 						@update:modelValue="(v: string) => (state.footer_template = v)" />
 					<FormControl
 						size="sm"
-						label="Copyright"
+						:label="__('Copyright')"
 						:modelValue="state.copyright_text"
 						@update:modelValue="(v: string) => (state.copyright_text = v)" />
 				</div>
 				<FormControl
 					type="textarea"
 					size="sm"
-					label="Description"
+					:label="__('Description')"
 					:modelValue="state.footer_description"
 					@update:modelValue="(v: string) => (state.footer_description = v)" />
 				<Switch
 					size="sm"
-					label="Social links"
+					:label="__('Social links')"
 					:modelValue="!!state.show_social_links"
 					@update:modelValue="(v: boolean) => (state.show_social_links = v ? 1 : 0)" />
 				<div v-if="state.show_social_links" class="grid grid-cols-2 gap-3">
@@ -231,30 +261,42 @@
 		</div>
 
 		<p class="text-xs text-ink-gray-5">
-			{{ saving ? "Saving..." : "Changes save automatically and apply to the whole site." }}
+			{{ saving ? __("Saving...") : __("Changes save automatically and apply to the whole site.") }}
 		</p>
 	</div>
 </template>
 <script setup lang="ts">
 import { watchDebounced } from "@vueuse/core";
-import { createResource, FormControl, Switch, toast } from "frappe-ui";
+import { Button, createResource, FileUploadHandler, FormControl, Switch, toast } from "frappe-ui";
 import { computed, reactive, ref } from "vue";
+
+// `__` is installed globally by the translation plugin (see src/translation.ts).
+const __ = window.__!;
 
 const API = "builder.hf_utils.chrome_api";
 
 const themeColors = [
-	{ field: "primary_color", label: "Primary" },
-	{ field: "secondary_color", label: "Secondary" },
-	{ field: "background_color", label: "Background" },
-	{ field: "text_color", label: "Text" },
+	{ field: "primary_color", label: __("Primary") },
+	{ field: "secondary_color", label: __("Secondary") },
+	{ field: "background_color", label: __("Background") },
+	{ field: "text_color", label: __("Text") },
 ];
 
 const socials = [
-	{ field: "facebook_url", label: "Facebook" },
-	{ field: "instagram_url", label: "Instagram" },
-	{ field: "linkedin_url", label: "LinkedIn" },
-	{ field: "youtube_url", label: "YouTube" },
+	{ field: "facebook_url", label: __("Facebook") },
+	{ field: "instagram_url", label: __("Instagram") },
+	{ field: "linkedin_url", label: __("LinkedIn") },
+	{ field: "youtube_url", label: __("YouTube") },
 ];
+
+// Kept in step with builder.branding.LOGO_PATH — the one address the
+// site logo ever has.
+const LOGO_PATH = "/files/logo-default.png";
+const BRANDING_API = "builder.branding";
+
+const logoInput = ref<HTMLInputElement>();
+const logoBusy = ref(false);
+const logoPreview = ref("");
 
 const loaded = ref(false);
 const saving = ref(false);
@@ -265,8 +307,46 @@ let snapshot = "";
 
 const payload = () => {
 	// eslint-disable-next-line @typescript-eslint/no-unused-vars
-	const { _options, _profile, ...rest } = state;
+	const { _options, ...rest } = state;
 	return JSON.parse(JSON.stringify(rest));
+};
+
+createResource({
+	url: `${BRANDING_API}.get_logo`,
+	auto: true,
+	onSuccess(data: { url?: string }) {
+		logoPreview.value = data?.url || "";
+	},
+});
+
+// The upload goes through the server so the file lands on the stable path and
+// the chrome is pointed at it in one move — the chat does exactly the same.
+const onLogoPicked = async (event: Event) => {
+	const input = event.target as HTMLInputElement;
+	const file = (input.files || [])[0];
+	input.value = "";
+	if (!file) return;
+	logoBusy.value = true;
+	try {
+		const doc = await new FileUploadHandler().upload(file, {
+			private: false,
+			folder: "Home/Builder Uploads",
+		});
+		if (!doc?.file_url) throw new Error(__("The file could not be uploaded."));
+		const r = await createResource({ url: `${BRANDING_API}.set_logo` }).submit({
+			file_url: doc.file_url,
+		});
+		logoPreview.value = r?.url || "";
+		// keep the form in step, or the next debounced save would push the old
+		// value back over what the server just wrote
+		state.logo_image = LOGO_PATH;
+		state.logo_type = "Image";
+		toast.success(__("Logo updated"));
+	} catch (error) {
+		toast.error(error instanceof Error ? error.message : String(error));
+	} finally {
+		logoBusy.value = false;
+	}
 };
 
 createResource({
@@ -291,12 +371,7 @@ watchDebounced(
 		if (serialized === snapshot) return;
 		saving.value = true;
 		try {
-			// echo the resolved Website Profile back so the write lands on the
-			// same doc the read came from (variant vs global single)
-			await createResource({ url: `${API}.update_chrome_settings` }).submit({
-				settings: current,
-				profile: state._profile || undefined,
-			});
+			await createResource({ url: `${API}.update_chrome_settings` }).submit({ settings: current });
 			snapshot = serialized;
 		} catch (error) {
 			toast.error(error instanceof Error ? error.message : String(error));

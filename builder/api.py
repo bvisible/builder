@@ -3150,6 +3150,18 @@ def chat_upload_inspiration(session_id: str, file_url: str):
 
 
 @frappe.whitelist()
+def chat_attach_files(session_id: str, files):
+	"""Attach any files to a chat session — the service decides what they are."""
+	from builder.builder_chat_service import BuilderChatService
+	if not session_id:
+		return {"success": False, "message": _("Session ID is required")}
+	if not files:
+		return {"success": False, "message": _("File URL is required")}
+	service = BuilderChatService()
+	return service.attach_files(session_id, files)
+
+
+@frappe.whitelist()
 def chat_trigger_generation(session_id: str):
 	"""Trigger site generation with collected parameters."""
 	from builder.builder_chat_service import BuilderChatService

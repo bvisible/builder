@@ -168,7 +168,7 @@ class WebsiteHeaderFooterConfig(Document):
 		return {
 			"type": self.logo_type,
 			"text": self.logo_text or "My Site",
-			"image": self.logo_image or DEFAULT_LOGO,
+			"image": _versioned(self.logo_image) or DEFAULT_LOGO,
 		}
 
 	def get_footer_logo_data(self) -> dict:
@@ -180,7 +180,7 @@ class WebsiteHeaderFooterConfig(Document):
 		return {
 			"type": self.footer_logo_type,
 			"text": self.footer_logo_text or "My Site",
-			"image": self.footer_logo_image or DEFAULT_LOGO,
+			"image": _versioned(self.footer_logo_image) or DEFAULT_LOGO,
 		}
 
 	def get_cta_data(self) -> dict | None:
@@ -244,3 +244,17 @@ class WebsiteHeaderFooterConfig(Document):
 def get_header_footer_config() -> "WebsiteHeaderFooterConfig":
 	"""Get the Website Header Footer Config singleton."""
 	return frappe.get_single("Website Header Footer Config")
+
+
+def _versioned(url: str | None) -> str | None:
+	"""Append the content version to the stable logo path.
+
+	The path never changes so a fleet can reference it everywhere; without a
+	token every visitor would keep the previous logo out of their cache.
+	"""
+	from builder.branding import LOGO_PATH, logo_version
+
+	if url != LOGO_PATH:
+		return url
+	version = logo_version()
+	return f"{LOGO_PATH}?v={version}" if version else url

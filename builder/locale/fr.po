@@ -3910,3 +3910,63 @@ msgstr "Endpoint API (compatible OpenAI)"
 #: frontend/src/components
 msgid "Codex CLI (ChatGPT plan)"
 msgstr "Codex CLI (abonnement ChatGPT)"
+
+#: frontend/src/components/AIChatModal.vue
+msgid "Attach your logo, photos or documents"
+msgstr "Joignez votre logo, vos photos ou vos documents"
+
+#: frontend/src/components/AIChatModal.vue
+msgid "This is your site logo"
+msgstr "C'est le logo de votre site"
+
+#: frontend/src/components/AIChatModal.vue
+msgid "Files received."
+msgstr "Fichiers reçus."
+
+#: frontend/src/components/Settings/GlobalTheme.vue
+msgid "Upload a logo"
+msgstr "Téléverser un logo"
+
+#: frontend/src/components/Settings/GlobalTheme.vue
+msgid "Replace the logo"
+msgstr "Remplacer le logo"
+
+#: frontend/src/components/Settings/GlobalTheme.vue
+msgid "The address stays {0} — a new file replaces the old one."
+msgstr "L'adresse reste {0} — un nouveau fichier remplace l'ancien."
+
+#: frontend/src/components/Settings/GlobalTheme.vue
+msgid "Logo updated"
+msgstr "Logo mis à jour"
+
+#: frontend/src/components/Settings/GlobalTheme.vue
+msgid "The file could not be uploaded."
+msgstr "Le fichier n'a pas pu être téléversé."
+
+#: builder/branding.py
+msgid "That file is not attached to this site."
+msgstr "Ce fichier n'est pas rattaché à ce site."
+
+#: builder/branding.py
+msgid "That file is empty."
+msgstr "Ce fichier est vide."
+
+#: builder/branding.py
+msgid "No file provided."
+msgstr "Aucun fichier fourni."
+
+#: builder/builder_chat_service.py
+msgid "It is now your site logo."
+msgstr "C'est désormais le logo de votre site."
+
+#: builder/builder_chat_service.py
+msgid "({0} file(s) attached)"
+msgstr "({0} fichier(s) joint(s))"
+
+#: builder/builder_chat_service.py
+msgid "No file was received."
+msgstr "Aucun fichier n'a été reçu."
+
+#: builder/builder_chat_service.py
+msgid "Failed to process the files: {0}"
+msgstr "Échec du traitement des fichiers : {0}"

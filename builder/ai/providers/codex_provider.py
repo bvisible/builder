@@ -154,7 +154,58 @@ class CodexProvider(BaseProvider):
 	# generation
 	# ------------------------------------------------------------------
 
-	def _run(self, prompt: str, schema: dict = None, timeout: int = None) -> str:
+	@classmethod
+	def _strict_schema(cls, node):
+		"""A JSON Schema the structured-output endpoint will accept.
+
+		It insists on additionalProperties: false and on every property being
+		listed in `required`. Pydantic emits neither, so a model with defaults
+		came back as HTTP 400 and the call looked like the model had simply
+		refused to answer. Defaults still apply on our side: the schema only
+		says the model must emit the key, and validation fills the rest.
+		"""
+		if isinstance(node, list):
+			return [cls._strict_schema(item) for item in node]
+		if not isinstance(node, dict):
+			return node
+
+		out = {key: cls._strict_schema(value) for key, value in node.items()}
+		if out.get("type") == "object" or "properties" in out:
+			properties = out.get("properties") or {}
+			out["additionalProperties"] = False
+			out["required"] = list(properties.keys())
+		return out
+
+	@staticmethod
+	def _local_images(images: list = None) -> list:
+		"""Site file URLs turned into paths the CLI can open.
+
+		Without this the model is asked about a picture it was never given,
+		and answers nothing — which is exactly how it failed before.
+		"""
+		if not images:
+			return []
+		from frappe.utils.file_manager import get_file_path
+
+		paths = []
+		for image in images:
+			if not image:
+				continue
+			try:
+				# "/files/x.png" is a site URL, not a path — and it looks
+				# absolute, so test for a real file before trusting it.
+				path = image if os.path.isfile(image) else get_file_path(image)
+			except Exception:
+				continue
+			# frappe answers relative to the sites directory, and the CLI runs
+			# in a scratch dir of ours — a relative path resolves to nothing
+			# there, which reads exactly like a model that ignored the image.
+			path = os.path.abspath(path)
+			if os.path.isfile(path):
+				paths.append(path)
+		return paths
+
+	def _run(self, prompt: str, schema: dict = None, timeout: int = None, images: list = None) -> str:
 		from builder.ai.logging import ai_log
 
 		binary = self.binary()
@@ -182,14 +233,23 @@ class CodexProvider(BaseProvider):
 			]
 			if self.model:
 				argv += ["-m", self.model]
+			for path in self._local_images(images):
+				argv += ["-i", path]
 			if schema:
 				schema_path = os.path.join(workdir, "schema.json")
 				with open(schema_path, "w", encoding="utf-8") as f:
-					json.dump(schema, f)
+					json.dump(self._strict_schema(schema), f)
 				argv += ["--output-schema", schema_path]
 			argv.append("-")  # prompt on stdin
 
-			ai_log("info", "codex exec", model=self.model, structured=bool(schema), prompt_chars=len(prompt or ""))
+			ai_log(
+				"info",
+				"codex exec",
+				model=self.model,
+				structured=bool(schema),
+				prompt_chars=len(prompt or ""),
+				images=len(images or []),
+			)
 			try:
 				proc = subprocess.run(
 					argv,
@@ -225,9 +285,9 @@ class CodexProvider(BaseProvider):
 		**kwargs,
 	) -> str:
 		# temperature/max_tokens have no equivalent on the CLI — the plan's
-		# model settings apply. Images would need -i FILE; unused so far.
+		# model settings apply.
 		full = f"{system_prompt}\n\n{prompt}" if system_prompt else prompt
-		return self._run(full, timeout=kwargs.get("timeout"))
+		return self._run(full, timeout=kwargs.get("timeout"), images=images)
 
 	def generate_structured(
 		self,
@@ -245,7 +305,7 @@ class CodexProvider(BaseProvider):
 		"""
 		json_schema = schema.model_json_schema() if hasattr(schema, "model_json_schema") else schema
 		full = f"{system_prompt}\n\n{prompt}" if system_prompt else prompt
-		raw = self._run(full, schema=json_schema, timeout=kwargs.get("timeout"))
+		raw = self._run(full, schema=json_schema, timeout=kwargs.get("timeout"), images=images)
 
 		try:
 			data = json.loads(raw)
