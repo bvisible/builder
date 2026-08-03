@@ -64,15 +64,32 @@ class OllamaProvider(BaseProvider):
     ):
         conf = frappe.conf
 
+        # Resolved settings (site_config > Builder Settings UI) apply only when
+        # they actually point at ollama; a bare OllamaProvider built while the
+        # configured provider is openai must not inherit openai's key/url.
+        resolved = None
+        try:
+            from ..config import get_ai_settings
+
+            resolved = get_ai_settings()
+            if resolved.provider != "ollama":
+                resolved = None
+        except Exception:
+            resolved = None
+
         super().__init__(
-            model=model or conf.get("ollama_model") or self.DEFAULT_MODEL,
+            model=model
+            or conf.get("ollama_model")
+            or (resolved.model if resolved else None)
+            or self.DEFAULT_MODEL,
             base_url=(
                 base_url
                 or conf.get("ollama_base_url")
                 or conf.get("ollama_url")
+                or (resolved.base_url if resolved else None)
                 or self.DEFAULT_BASE_URL
             ),
-            api_key=api_key or conf.get("ollama_api_key"),
+            api_key=api_key or conf.get("ollama_api_key") or (resolved.api_key if resolved else None),
             temperature=temperature if temperature is not None else 0.6,
             max_tokens=max_tokens or self.DEFAULT_MAX_TOKENS,
             timeout=timeout or int(conf.get("ollama_timeout") or self.DEFAULT_TIMEOUT),

@@ -61,9 +61,12 @@ class OpenAIProvider(BaseProvider):
             **kwargs
         )
 
-        # Get API key from config if not provided
+        # Get API key from resolved settings if not provided
+        # (site_config > Builder Settings UI > defaults — see ai/config.py)
         if not self.api_key:
-            self.api_key = frappe.conf.get("openai_api_key")
+            from ..config import get_ai_settings
+
+            self.api_key = get_ai_settings().api_key
 
     @property
     def _api_url(self) -> str:

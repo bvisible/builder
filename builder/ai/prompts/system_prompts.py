@@ -646,14 +646,25 @@ def get_shortcodes_context(site_type: str = None) -> str:
     except Exception:
         pass
 
-    # Get regular Builder Shortcodes (e-commerce, etc.)
-    try:
-        from builder.builder.doctype.builder_shortcode.builder_shortcode import get_shortcodes_for_prompt
-        shortcodes_doc = get_shortcodes_for_prompt()
-        if shortcodes_doc:
-            lines.append(shortcodes_doc)
-    except Exception:
-        pass
+    # Whatever else is installed on this bench can add to the prompt through the
+    # `unpress_ai_prompt_context` hook — one dotted path per contributor,
+    # each returning a markdown block (or "" to stay out of it). That is how a
+    # host application injects its own shortcodes without this app having to
+    # know it exists.
+    for method in frappe.get_hooks("unpress_ai_prompt_context") or []:
+        try:
+            contributor = frappe.get_attr(method)
+            try:
+                block = contributor(site_type=site_type)
+            except TypeError:
+                # a contributor that takes no argument is fine too
+                block = contributor()
+            if block:
+                lines.append(block)
+        except Exception as e:
+            from builder.ai.logging import ai_log
+
+            ai_log("warning", "prompt context contributor failed", method=method, error=str(e)[:200])
 
     if not lines:
         return ""

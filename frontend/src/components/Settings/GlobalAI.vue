@@ -1,5 +1,19 @@
 <template>
 	<div class="flex flex-col gap-5">
+		<!-- Managed install: the operator pinned the endpoint AND the credential,
+		     so there is genuinely nothing to choose. Dead input fields here would
+		     only invite people to change settings that are already ignored. -->
+		<div v-if="managed" class="flex flex-col gap-2 rounded-lg bg-surface-gray-1 p-4">
+			<span class="text-base font-medium text-ink-gray-9">
+				{{ __("AI comes with your hosting") }}
+			</span>
+			<p class="text-sm text-ink-gray-6">
+				{{ __("Your provider runs the models for you — there is nothing to configure here.") }}
+			</p>
+			<span class="mt-1 text-xs text-ink-gray-5">{{ effectiveSummary }}</span>
+		</div>
+
+		<template v-else>
 		<FormControl
 			type="select"
 			:label="__('Provider')"
@@ -7,7 +21,7 @@
 			:modelValue="preset"
 			@update:modelValue="setPreset" />
 
-		<div class="flex flex-col gap-2">
+		<div v-if="usesApiKey" class="flex flex-col gap-2">
 			<label class="text-sm text-ink-gray-9">{{ __("API Key") }}</label>
 			<div class="flex items-center gap-2">
 				<FormControl
@@ -16,8 +30,8 @@
 					@update:modelValue="updateApiKey"
 					:placeholder="preset === 'ollama' ? __('optional') : __('sk-…')"
 					class="flex-1" />
-				<Button variant="subtle" @click="testApiKey" :disabled="testing || !apiKey">
-					{{ testing ? __("Testing...") : __("Test key") }}
+				<Button variant="subtle" @click="testConnection" :disabled="testing">
+					{{ testing ? __("Testing...") : __("Test connection") }}
 				</Button>
 			</div>
 			<p class="text-xs text-ink-gray-6">
@@ -41,9 +55,10 @@
 			@update:modelValue="(v: string) => (baseUrl = v)"
 			:placeholder="preset === 'ollama' ? 'http://localhost:11434' : 'https://api.example.com/v1'" />
 
-		<!-- Neoffice instances are fleet-managed, so most of them ARE pinned.
-		     Saying nothing would leave this tab showing a provider the engine
-		     is not using — which is exactly what it did before. -->
+		<p v-if="!usesApiKey" class="text-xs text-ink-gray-6">{{ keyHint }}</p>
+
+		<!-- site_config wins over anything chosen here; saying nothing about it
+		     would make this tab show a provider that is not the one in use -->
 		<div
 			v-if="pinnedFields.length"
 			class="rounded-lg bg-surface-amber-1 p-3 text-sm text-ink-amber-9">
@@ -61,11 +76,32 @@
 			{{ statusMessage }}
 		</div>
 
+		<!-- only when the ChatGPT subscription is the chosen provider: pairing a
+		     personal plan has nothing to do with a Moonshot or OpenRouter key -->
+		<CodexPairing v-if="preset === 'codex'" />
+
+		<Switch
+			:label="__('Generate images with AI')"
+			:description="__('Replace placeholders with generated images after a site is built')"
+			:modelValue="!!imagesEnabled"
+			@update:modelValue="setImagesEnabled" />
+		<FormControl
+			v-if="imagesEnabled"
+			type="select"
+			size="sm"
+			:label="__('Image backend')"
+			:options="imageBackendOptions"
+			:modelValue="imageProvider"
+			@update:modelValue="setImageProvider" />
+
 		<div class="flex flex-col gap-3">
 			<button
 				class="flex w-fit items-center gap-1 text-sm text-ink-gray-7 hover:text-ink-gray-9"
 				@click="advancedOpen = !advancedOpen">
-				<span :class="advancedOpen ? 'lucide-chevron-down' : 'lucide-chevron-right'" class="size-4" />
+				<span
+					class="inline-block size-4"
+					:class="advancedOpen ? 'lucide-chevron-down' : 'lucide-chevron-right'"
+					aria-hidden="true" />
 				{{ __("Advanced") }}
 			</button>
 			<template v-if="advancedOpen">
@@ -73,7 +109,7 @@
 					type="text"
 					size="sm"
 					:label="__('Brief model')"
-					:description="__('Creative brief + design system. Empty = the code default')"
+					:description="__('Creative brief + design system. Empty = kimi-k3')"
 					:modelValue="briefModel"
 					@update:modelValue="(v: string) => (briefModel = v)"
 					placeholder="kimi-k3" />
@@ -81,7 +117,7 @@
 					type="text"
 					size="sm"
 					:label="__('Page model')"
-					:description="__('Page generation (code). Empty = the code default')"
+					:description="__('Page generation (code). Empty = kimi-k2.7-code')"
 					:modelValue="pageModel"
 					@update:modelValue="(v: string) => (pageModel = v)"
 					placeholder="kimi-k2.7-code" />
@@ -95,38 +131,56 @@
 					:placeholder="__('French')" />
 			</template>
 		</div>
+		</template>
 	</div>
 </template>
 <script setup lang="ts">
+import CodexPairing from "@/components/Settings/CodexPairing.vue";
 import { builderSettings } from "@/data/builderSettings";
 import useBuilderStore from "@/stores/builderStore";
 import { watchDebounced } from "@vueuse/core";
-import { createResource, FormControl } from "frappe-ui";
+import { createResource, FormControl, Switch } from "frappe-ui";
 import { computed, onMounted, ref } from "vue";
 
 // `__` is installed globally by the translation plugin (see src/translation.ts).
-// The cast keeps the `{0}` placeholder contract (`__("..").format(x)`) visible to TS.
-const __ = window.__ as (message: string) => string & { format: (...args: unknown[]) => string };
+const __ = window.__!;
 
 const builderStore = useBuilderStore();
 
 // Presets are UI sugar over two stored fields (unpress_ai_provider +
-// unpress_ai_base_url). No Codex here on purpose: driving a personal ChatGPT
-// plan is a self-host feature, it has no place on a fleet-managed instance.
+// unpress_ai_base_url); empty stored values mean "engine defaults" (Moonshot).
 const PRESETS: Record<string, { provider: string; base_url: string }> = {
 	moonshot: { provider: "", base_url: "" },
+	// drives a ChatGPT subscription through the Codex CLI — no API key, no
+	// endpoint, so it clears both rather than pointing anywhere
+	codex: { provider: "codex", base_url: "" },
 	openai: { provider: "", base_url: "https://api.openai.com/v1" },
 	openrouter: { provider: "", base_url: "https://openrouter.ai/api/v1" },
 	ollama: { provider: "ollama", base_url: "http://localhost:11434" },
 };
 
-const providerOptions = [
-	{ label: __("Moonshot AI (recommended)"), value: "moonshot" },
-	{ label: __("OpenRouter"), value: "openrouter" },
-	{ label: __("OpenAI — API key"), value: "openai" },
-	{ label: __("Ollama (local)"), value: "ollama" },
-	{ label: __("Custom (OpenAI-compatible)"), value: "custom" },
-];
+// Labels are translatable and live here; WHICH of them to offer comes from the
+// server (describe_resolution). That is what lets one component serve every
+// edition: Codex only appears where the CLI is usable, and a fork adds a
+// provider once, server-side, instead of patching this file.
+const PROVIDER_LABELS: Record<string, string> = {
+	moonshot: __("Moonshot AI (recommended)"),
+	codex: __("OpenAI — ChatGPT subscription"),
+	openai: __("OpenAI — API key"),
+	openrouter: __("OpenRouter"),
+	ollama: __("Ollama (local)"),
+	custom: __("Custom (OpenAI-compatible)"),
+};
+
+const allowedProviders = ref<string[]>(Object.keys(PROVIDER_LABELS));
+const providerOptions = computed(() =>
+	allowedProviders.value
+		.filter((v) => PROVIDER_LABELS[v])
+		.map((v) => ({ label: PROVIDER_LABELS[v], value: v })),
+);
+
+// a subscription is not a key: the whole API-key block is meaningless here
+const usesApiKey = computed(() => preset.value !== "codex");
 
 const KEY_HINTS: Record<string, { hint: string; link?: string; linkLabel?: string }> = {
 	moonshot: {
@@ -134,16 +188,17 @@ const KEY_HINTS: Record<string, { hint: string; link?: string; linkLabel?: strin
 		link: "https://platform.moonshot.ai/console/api-keys",
 		linkLabel: "platform.moonshot.ai",
 	},
-	openrouter: {
-		hint: __("Claude, Gemini, GPT and more under one key. Get it from"),
-		link: "https://openrouter.ai/keys",
-		linkLabel: "openrouter.ai/keys",
-	},
 	openai: {
 		hint: __("Get an API key from"),
 		link: "https://platform.openai.com/api-keys",
 		linkLabel: "platform.openai.com",
 	},
+	openrouter: {
+		hint: __("Claude, Gemini, GPT and more under one key. Get it from"),
+		link: "https://openrouter.ai/keys",
+		linkLabel: "openrouter.ai/keys",
+	},
+	codex: { hint: __("Uses your ChatGPT Plus/Pro plan through the Codex CLI — no API key, no metered billing.") },
 	ollama: { hint: __("A local Ollama server needs no API key; cloud endpoints may require one.") },
 	custom: { hint: __("Any OpenAI-compatible endpoint (must serve /chat/completions).") },
 };
@@ -151,11 +206,29 @@ const KEY_HINTS: Record<string, { hint: string; link?: string; linkLabel?: strin
 const testing = ref(false);
 const statusMessage = ref("");
 const statusClass = ref("");
-const advancedOpen = ref(false);
 
-// what site_config pins, so the tab can admit when it is not in charge
+// what the server says this install allows
+const managed = ref(false);
 const pinnedFields = ref<string[]>([]);
 const effectiveSummary = ref("");
+
+const loadResolution = () => {
+	createResource({ url: "builder.ai.config.describe_resolution" })
+		.submit()
+		.then((r: any) => {
+			managed.value = !!r?.managed;
+			pinnedFields.value = Object.keys(r?.pinned || {});
+			// eslint-disable-next-line @typescript-eslint/no-explicit-any
+			const list = (r?.providers || []).map((p: any) => p.value).filter(Boolean);
+			if (list.length) allowedProviders.value = list;
+			const e = r?.effective || {};
+			effectiveSummary.value = [e.provider, e.base_url, e.model].filter(Boolean).join(" · ");
+		})
+		.catch(() => {
+			managed.value = false;
+			pinnedFields.value = [];
+		});
+};
 
 const preset = ref("moonshot");
 const apiKey = ref("");
@@ -168,27 +241,12 @@ const keyHint = computed(() => KEY_HINTS[preset.value]?.hint || "");
 const keyLink = computed(() => KEY_HINTS[preset.value]?.link || "");
 const keyLinkLabel = computed(() => KEY_HINTS[preset.value]?.linkLabel || "");
 
-const loadResolution = () => {
-	createResource({ url: "builder.ai.config.describe_resolution" })
-		.submit()
-		// eslint-disable-next-line @typescript-eslint/no-explicit-any
-		.then((r: any) => {
-			pinnedFields.value = Object.keys(r?.pinned || {});
-			const e = r?.effective || {};
-			effectiveSummary.value = [e.provider, e.base_url, e.model].filter(Boolean).join(" · ");
-		})
-		.catch(() => {
-			pinnedFields.value = [];
-		});
-};
-
 const save = (values: Record<string, string>) => {
-	Object.entries(values).forEach(([field, value]) => {
-		builderStore.updateBuilderSettings(field, value);
-	});
+	(builderSettings.setValue as any).submit(values).then(() => builderSettings.reload());
 };
 
 const derivePreset = (provider: string, base_url: string): string => {
+	if (provider === "codex") return "codex";
 	if (provider === "ollama") return "ollama";
 	if (!base_url) return "moonshot";
 	if (base_url.includes("openai.com")) return "openai";
@@ -210,54 +268,80 @@ const setPreset = (value: string) => {
 
 const updateApiKey = (value: string) => {
 	apiKey.value = value;
-	builderStore.updateBuilderSettings("ai_api_key", value);
 };
 
+// Debounced: the upstream pattern saved on every keystroke, which fired a
+// frappe.client.set_value per character typed.
 watchDebounced(
-	[baseUrl, briefModel, pageModel, language],
-	() => {
-		save({
-			unpress_ai_base_url: baseUrl.value,
-			unpress_ai_brief_model: briefModel.value,
-			unpress_ai_page_model: pageModel.value,
-			unpress_ai_output_language: language.value,
-		});
+	apiKey,
+	(value) => {
+		if (value !== (builderSettings.doc as any)?.ai_api_key) {
+			builderStore.updateBuilderSettings("ai_api_key", value);
+		}
 	},
 	{ debounce: 600 },
 );
 
-const testApiKey = async () => {
-	if (!apiKey.value) return;
+const testConnection = async () => {
 	testing.value = true;
 	statusMessage.value = "";
 	try {
 		const result = (await createResource({
-			url: "builder.ai_page_generator.test_api_key",
+			url: "builder.api.test_ai_connection",
 		}).submit()) as { success: boolean; message?: string };
-
-		if (result.success) {
-			statusMessage.value = __("API key is valid");
-			statusClass.value = "text-ink-green-6 bg-surface-green-1";
-		} else {
-			statusMessage.value = result.message || __("API key test failed");
-			statusClass.value = "text-ink-red-6 bg-surface-red-1";
-		}
+		statusMessage.value = result.message || (result.success ? __("Connected!") : __("Connection failed"));
+		statusClass.value = result.success
+			? "text-ink-green-6 bg-surface-green-1"
+			: "text-ink-red-6 bg-surface-red-1";
 	} catch (error: unknown) {
-		statusMessage.value = error instanceof Error ? error.message : __("Failed to test the API key");
+		statusMessage.value = error instanceof Error ? error.message : __("Failed to test connection");
 		statusClass.value = "text-ink-red-6 bg-surface-red-1";
 	} finally {
 		testing.value = false;
 		setTimeout(() => {
 			statusMessage.value = "";
-		}, 5000);
+		}, 8000);
 	}
+};
+
+// Text inputs auto-save debounced, like the rest of the Settings dialog.
+// Skip when the value already matches the doc (hydration on mount, preset
+// writes) so opening the tab never fires spurious saves.
+const saveIfChanged = (field: string, v: string) => {
+	const current = (((builderSettings.doc as any) || {})[field] || "") as string;
+	if (v !== current) save({ [field]: v });
+};
+watchDebounced(baseUrl, (v) => saveIfChanged("unpress_ai_base_url", v), { debounce: 500 });
+watchDebounced(briefModel, (v) => saveIfChanged("unpress_ai_brief_model", v), { debounce: 500 });
+watchDebounced(pageModel, (v) => saveIfChanged("unpress_ai_page_model", v), { debounce: 500 });
+watchDebounced(language, (v) => saveIfChanged("unpress_ai_output_language", v), { debounce: 500 });
+
+const advancedOpen = ref(false);
+
+// images: on/off plus which backend fills the placeholders
+const imagesEnabled = ref(0);
+const imageProvider = ref("");
+const imageBackendOptions = computed(() => [
+	{ label: __("API endpoint (OpenAI-compatible)"), value: "API" },
+	{ label: __("Codex CLI (ChatGPT plan)"), value: "codex" },
+]);
+
+const setImagesEnabled = (value: boolean) => {
+	imagesEnabled.value = value ? 1 : 0;
+	save({ unpress_ai_image_enabled: imagesEnabled.value } as never);
+};
+
+const setImageProvider = (value: string) => {
+	imageProvider.value = value;
+	save({ unpress_ai_image_provider: value });
 };
 
 onMounted(() => {
 	loadResolution();
-	// eslint-disable-next-line @typescript-eslint/no-explicit-any
 	const doc = builderSettings.doc as any;
 	if (!doc) return;
+	imagesEnabled.value = doc.unpress_ai_image_enabled || 0;
+	imageProvider.value = doc.unpress_ai_image_provider || "API";
 	apiKey.value = doc.ai_api_key || "";
 	baseUrl.value = doc.unpress_ai_base_url || "";
 	briefModel.value = doc.unpress_ai_brief_model || "";

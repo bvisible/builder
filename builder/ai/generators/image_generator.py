@@ -33,6 +33,9 @@ class ImageGenerator:
     DEFAULT_MODEL = "x/flux2-klein:latest"
     DEFAULT_SIZE = "1024x1024"
     DEFAULT_QUALITY = "standard"
+    # a 1MP Flux render measured ~31s on the shared endpoint; leave room for
+    # a cold model load
+    TIMEOUT = 300
 
     def __init__(
         self,
@@ -64,14 +67,10 @@ class ImageGenerator:
         self.width, self.height = self._parse_size(self.size)
 
     def _get_settings(self) -> dict:
-        """Get image generation settings from site_config.json."""
-        conf = frappe.conf
-        return {
-            "base_url": conf.get("ollama_base_url") or conf.get("ollama_url"),
-            "api_key": conf.get("ollama_api_key"),
-            "model": conf.get("image_model") or self.DEFAULT_MODEL,
-            "size": conf.get("image_size") or self.DEFAULT_SIZE,
-        }
+        """Resolved image settings (site_config > Studio Settings > defaults)."""
+        from builder.ai.config import get_image_settings
+
+        return get_image_settings()
 
     def _parse_size(self, size: str) -> tuple[int, int]:
         """Parse size string to width, height tuple"""
@@ -102,7 +101,7 @@ class ImageGenerator:
         Returns:
             GeneratedImage with file URL and metadata
         """
-        from openai import OpenAI
+        import requests
 
         # Apply default negative prompt to prevent text/logos in generated images
         if not negative_prompt:
@@ -117,42 +116,41 @@ class ImageGenerator:
         else:
             width, height = self.width, self.height
 
-        # Create OpenAI client pointing to Ollama
-        client = OpenAI(
-            base_url=f"{self.base_url.rstrip('/')}/v1/",
-            api_key=self.api_key,
-            default_headers={
-                "X-API-Key": self.api_key,
-            } if self.api_key != "ollama" else {},
-        )
+        # Plain HTTP against the OpenAI-compatible /v1/images/generations
+        # endpoint — the `openai` SDK is NOT a dependency of this app, so
+        # importing it made this whole path an ImportError away from dead.
+        url = f"{self.base_url.rstrip('/')}/v1/images/generations"
+        headers = {"Content-Type": "application/json"}
+        if self.api_key and self.api_key != "ollama":
+            headers["Authorization"] = f"Bearer {self.api_key}"
+            headers["X-API-Key"] = self.api_key
 
-        # Build generation parameters
         params = {
             "model": self.model,
             "prompt": full_prompt,
             "size": f"{width}x{height}",
             "response_format": "b64_json",
             "n": 1,
-            "quality": self.quality,
         }
-
-        # Note: seed and steps may not be supported via OpenAI API
-        # They might need to be passed differently
 
         frappe.logger().info(f"Generating image with Flux: {prompt[:50]}...")
 
         try:
-            response = client.images.generate(**params)
-
-            if not response.data or not response.data[0].b64_json:
+            response = requests.post(url, headers=headers, json=params, timeout=self.TIMEOUT)
+            if not response.ok:
+                raise ValueError(f"HTTP {response.status_code} from {url}: {response.text[:200]}")
+            payload = response.json()
+            items = payload.get("data") or []
+            if not items or not items[0].get("b64_json"):
                 raise ValueError("No image data in response")
 
-            # Decode and save the image
-            image_data = base64.b64decode(response.data[0].b64_json)
+            image_data = base64.b64decode(items[0]["b64_json"])
 
-            # Generate filename from prompt hash
-            prompt_hash = hashlib.md5(prompt.encode()).hexdigest()[:12]
-            filename = f"ai_generated_{prompt_hash}.png"
+            # Hash the FULL prompt plus a nonce: hashing only the visible
+            # prompt made two slots with the same description overwrite each
+            # other's file.
+            prompt_hash = hashlib.md5(full_prompt.encode()).hexdigest()[:12]
+            filename = f"ai_generated_{prompt_hash}_{frappe.generate_hash(length=6)}.png"
 
             # Save as Frappe File
             file_doc = self._save_image(image_data, filename, prompt)

@@ -23,21 +23,59 @@ import requests
 from builder.ai.logging import ai_log
 
 
-DEFAULT_URL = "https://comfyui.noraai.ch"
 POLL_SECONDS = 180  # 1024² generation ~30s; allow for a shared-GPU queue
 
 
 def _settings():
+    """ComfyUI endpoint for THIS site. No default URL on purpose: this app is
+    open source, so it must never point at someone else's private GPU. Set
+    comfyui_url (+ comfyui_api_key if the server is protected) per site."""
     conf = frappe.conf
-    url = (conf.get("comfyui_url") or DEFAULT_URL).rstrip("/")
-    # The ComfyUI admin key is the same as the LLM admin key (nora_api_key).
+    url = (conf.get("comfyui_url") or "").rstrip("/")
     key = conf.get("comfyui_api_key") or conf.get("nora_api_key")
     return url, key
 
 
 def is_configured() -> bool:
-    _, key = _settings()
-    return bool(key)
+    """True only when ComfyUI was DELIBERATELY chosen for this site.
+
+    Key presence alone is not enough: nora_api_key is the shared LLM admin key,
+    so every AI-enabled site used to look "ComfyUI-ready" and got routed here.
+    When the shared GPU is busy the graph dies with an out-of-memory error that
+    the worker swallows per-image — sites silently kept their placeholders
+    (observed on the Neoffice fleet). ComfyUI now requires an explicit opt-in
+    (comfyui_url or comfyui_api_key); everything else takes the Ollama/Flux
+    path, which loads and unloads the model per request.
+    """
+    url, key = _settings()
+    return bool(url and key)
+
+
+def health() -> tuple[bool, str]:
+    """Live check: server reachable AND the GPU has room for the graph."""
+    base, key = _settings()
+    if not base:
+        return False, "No comfyui_url configured"
+    if not key:
+        return False, "No ComfyUI key configured"
+    try:
+        resp = requests.get(f"{base}/system_stats", headers=_headers(), timeout=15)
+    except Exception as e:
+        return False, f"Unreachable: {e}"
+    if resp.status_code in (401, 403):
+        return False, f"Key rejected (HTTP {resp.status_code})"
+    if not resp.ok:
+        return False, f"HTTP {resp.status_code}"
+    try:
+        devices = resp.json().get("devices") or []
+        if devices:
+            free = devices[0].get("vram_free") or 0
+            # FLUX.2 klein 4b + qwen text encoder need ~12 GB of headroom
+            if free and free < 12 * 1024**3:
+                return False, f"GPU busy ({round(free / 1024**3, 1)} GB free, needs ~12 GB)"
+    except Exception:
+        pass
+    return True, "ComfyUI ready"
 
 
 # ---------------------------------------------------------------------------
@@ -85,8 +123,8 @@ def _headers():
 def _run_workflow(workflow: dict) -> bytes:
     """Queue a workflow and return the first output image's bytes."""
     base, key = _settings()
-    if not key:
-        raise RuntimeError("ComfyUI not configured (no comfyui_api_key / nora_api_key)")
+    if not base or not key:
+        raise RuntimeError("ComfyUI not configured (set comfyui_url and comfyui_api_key)")
 
     pid = requests.post(
         f"{base}/prompt",
@@ -102,7 +140,19 @@ def _run_workflow(workflow: dict) -> bytes:
         if pid in hist:
             status = hist[pid].get("status", {})
             if status.get("status_str") != "success":
-                raise RuntimeError(f"ComfyUI generation failed: {status.get('status_str')}")
+                # surface the node's own exception — "error" alone told us
+                # nothing and hid a plain out-of-memory for months
+                detail = ""
+                for kind, payload in status.get("messages", []):
+                    if kind == "execution_error":
+                        detail = (payload.get("exception_message") or "").splitlines()[0]
+                        node = payload.get("node_type") or payload.get("node_id")
+                        detail = f"{node}: {detail}" if node else detail
+                        break
+                raise RuntimeError(
+                    f"ComfyUI generation failed ({status.get('status_str')})"
+                    + (f" — {detail}" if detail else "")
+                )
             for node in hist[pid].get("outputs", {}).values():
                 for im in node.get("images", []):
                     q = f"filename={im['filename']}&subfolder={im.get('subfolder', '')}&type={im.get('type', 'output')}"
@@ -169,7 +219,9 @@ def generate_image(prompt: str, width: int = 1024, height: int = 1024, seed: int
     wf["4"]["inputs"]["text"] = prompt or "professional photography, clean composition, no text"
     w, h = _norm_size(width, height)
     wf["7"]["inputs"]["width"], wf["7"]["inputs"]["height"] = w, h
-    wf["8"]["inputs"]["seed"] = int(seed) if seed is not None else frappe.utils.cint(frappe.generate_hash(length=6), 0) or 42
+    # generate_hash returns hex, so cint() on it was always 0 -> every image
+    # shared seed 42 and identical prompts produced byte-identical pictures
+    wf["8"]["inputs"]["seed"] = int(seed) if seed is not None else int(frappe.generate_hash(length=8), 16) % (2**31)
     ai_log("info", "ComfyUI generate", w=w, h=h, prompt=(prompt or "")[:60])
     return _save_png(_run_workflow(wf), prefix="gen")
 

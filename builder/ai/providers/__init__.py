@@ -2,12 +2,15 @@
 # Supports multiple AI providers: OpenAI, Ollama, Anthropic
 
 from builder.ai.providers.base import BaseProvider
+from builder.ai.providers.codex_provider import CodexProvider
 from builder.ai.providers.openai_provider import OpenAIProvider
 from builder.ai.providers.ollama_provider import OllamaProvider
 
 PROVIDERS = {
     "openai": OpenAIProvider,
     "ollama": OllamaProvider,
+    # local Codex CLI driven by a ChatGPT plan (self-host / dogfooding)
+    "codex": CodexProvider,
 }
 
 

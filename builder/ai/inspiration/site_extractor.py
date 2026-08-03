@@ -14,6 +14,7 @@ import colorsys
 import re
 
 import frappe
+from frappe import _
 
 from builder.ai.logging import ai_log
 
@@ -160,7 +161,7 @@ def import_existing_site(url: str, session_id: str = None) -> dict:
     (palette + fonts) + store its content as a Builder Content Asset + the
     screenshot as design inspiration. The 'we already have a site' path."""
     if not url:
-        frappe.throw(frappe._("A site URL is required"))
+        frappe.throw(_("A site URL is required"))
     if not (url.startswith("http://") or url.startswith("https://")):
         url = "https://" + url
 

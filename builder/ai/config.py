@@ -3,15 +3,13 @@ AI Configuration Module
 
 Resolution order (first non-empty wins):
 
-1. site_config.json (frappe.conf) — the operator layer. neoffice-devops
-   pushes the canonical values to each instance via SiteConfigPhase;
-   anything set there always wins.
-2. Builder Settings — the Settings > AI tab, for instances the fleet does
-   not pin. Added 2026-08-02; an instance whose site_config already covers
-   everything behaves exactly as before.
-3. The DEFAULTS below.
-
-Local dev overrides: edit sites/<site>/site_config.json manually.
+1. site_config.json (frappe.conf) — the operator layer. Managed fleets
+   (neoffice-devops SiteConfigPhase, the Unpress managed cloud) pin values
+   here; anything set in site_config always wins.
+2. Builder Settings (the Studio UI) — the self-host layer. The custom
+   fields unpress_ai_* plus the upstream ai_api_key Password field, all
+   editable from the builder Settings > AI tab. No desk, no SSH needed.
+3. Hardcoded DEFAULTS below.
 """
 
 from dataclasses import dataclass
@@ -130,20 +128,22 @@ class AIConfig:
         return value
 
 
-def _settings_value(field: str) -> str | None:
-    """One field from the Builder Settings single (the AI tab).
+def _studio_value(field: str) -> Optional[str]:
+    """One field from the Builder Settings single (the Studio UI settings).
 
-    Returns None when the table is missing (pre-migrate) or the field is
-    empty — resolution then falls through to the code defaults.
+    Returns None when builder is not installed yet, the table is missing
+    (pre-migrate), or the field is empty — resolution then falls through
+    to the code defaults.
     """
     try:
-        return getattr(frappe.get_cached_doc("Builder Settings"), field, None) or None
+        value = getattr(frappe.get_cached_doc("Builder Settings"), field, None)
+        return value or None
     except Exception:
         return None
 
 
-def _settings_api_key() -> str | None:
-    """Builder Settings ai_api_key (Password field, encrypted)."""
+def _studio_api_key() -> Optional[str]:
+    """The upstream Builder Settings ai_api_key (Password field, encrypted)."""
     try:
         from frappe.utils.password import get_decrypted_password
 
@@ -159,14 +159,12 @@ def _settings_api_key() -> str | None:
 
 def get_ai_settings() -> AIConfig:
     """
-    Resolve AI settings: site_config.json > Builder Settings (the AI tab) > defaults.
+    Resolve AI settings: site_config.json > Builder Settings (Studio UI) > DEFAULTS.
 
-    site_config always wins, so an instance that pins everything there keeps
-    behaving exactly as it did before this middle layer existed.
-
-    Keys read from frappe.conf:
+    Keys read from frappe.conf (always win when set):
         ai_provider        (default: "openai")
         openai_model       aliases: ollama_model
+        openai_page_model  aliases: ollama_page_model
         openai_base_url    aliases: ollama_base_url, ollama_url
         openai_api_key     aliases: ollama_api_key
         ai_temperature
@@ -175,38 +173,42 @@ def get_ai_settings() -> AIConfig:
         ai_default_theme
         ai_default_site_type
         ai_output_language
+
+    Builder Settings fields (Settings > AI in the Studio):
+        unpress_ai_provider, unpress_ai_brief_model, unpress_ai_page_model,
+        unpress_ai_base_url, unpress_ai_output_language, ai_api_key
     """
     conf = frappe.conf
 
     provider = (
         conf.get("ai_provider")
         or conf.get("ollama_provider")
-        or _settings_value("unpress_ai_provider")
+        or _studio_value("unpress_ai_provider")
         or DEFAULTS["provider"]
     )
     model = (
         conf.get("openai_model")
         or conf.get("ollama_model")
-        or _settings_value("unpress_ai_brief_model")
+        or _studio_value("unpress_ai_brief_model")
         or DEFAULTS["model"]
     )
     page_model = (
         conf.get("openai_page_model")
         or conf.get("ollama_page_model")
-        or _settings_value("unpress_ai_page_model")
+        or _studio_value("unpress_ai_page_model")
         or DEFAULTS["page_model"]
     )
     base_url = (
         conf.get("openai_base_url")
         or conf.get("ollama_base_url")
         or conf.get("ollama_url")
-        or _settings_value("unpress_ai_base_url")
+        or _studio_value("unpress_ai_base_url")
         or DEFAULTS["base_url"]
     )
     api_key = (
         conf.get("openai_api_key")
         or conf.get("ollama_api_key")
-        or _settings_api_key()
+        or _studio_api_key()
         or DEFAULTS["api_key"]
     )
 
@@ -223,13 +225,13 @@ def get_ai_settings() -> AIConfig:
         default_site_type=conf.get("ai_default_site_type") or DEFAULTS["default_site_type"],
         output_language=(
             conf.get("ai_output_language")
-            or _settings_value("unpress_ai_output_language")
+            or _studio_value("unpress_ai_output_language")
             or DEFAULTS["output_language"]
         ),
     )
 
 
-# site_config keys that silently win over anything chosen in the AI tab.
+# site_config keys that silently win over anything chosen in the Studio UI.
 # Kept next to get_ai_settings so the two never drift.
 PINNING_KEYS = {
     "provider": ("ai_provider", "ollama_provider"),
@@ -240,14 +242,51 @@ PINNING_KEYS = {
 }
 
 
+# What makes an install "managed": the operator has pinned the endpoint AND
+# the credential, so there is genuinely nothing left for a user to choose.
+# A hosted fleet (Neoffice on its own inference server, the Unpress managed
+# cloud) is exactly this; a self-host is not.
+MANAGED_REQUIRES = ("base_url", "api_key")
+
+
+def _available_providers() -> list[dict]:
+    """The provider choices this particular install can honour.
+
+    Computed here rather than hardcoded in the UI so that one component serves
+    every edition: Codex only shows up where the CLI is actually usable, and a
+    fork that adds a provider adds it once, server-side.
+    """
+    providers = [
+        {"value": "moonshot", "label": "Moonshot AI"},
+        {"value": "openrouter", "label": "OpenRouter"},
+        {"value": "openai", "label": "OpenAI"},
+        {"value": "ollama", "label": "Ollama"},
+        {"value": "custom", "label": "Custom"},
+    ]
+    try:
+        from builder.ai.providers.codex_provider import CodexProvider
+
+        if CodexProvider.enabled_here() and CodexProvider.binary():
+            # a personal ChatGPT plan: only where it was deliberately enabled
+            providers.insert(1, {"value": "codex", "label": "ChatGPT subscription"})
+    except Exception:
+        pass
+    return providers
+
+
 @frappe.whitelist()
 def describe_resolution() -> dict:
-    """Which AI settings are pinned in site_config, and to what.
+    """What this install lets a user configure, and what is already decided.
 
-    Neoffice instances are fleet-managed, so most of them ARE pinned. Without
-    this the AI tab would show a provider the engine is not using — which is
-    exactly what it did before. Never returns a secret: an API key is reported
-    as pinned, not quoted.
+    The AI tab renders whatever this returns — that is the whole point. A
+    hosted instance pins its endpoint and credential in site_config, so it
+    comes back `managed` and the tab shows a read-only statement instead of
+    dead input fields. A self-host pins nothing, so it gets the full form,
+    with the provider list this install can actually honour.
+
+    One component, one code path; the difference between editions is data.
+
+    Never returns a secret — an API key is reported as pinned, not quoted.
     """
     frappe.only_for("System Manager")
     conf = frappe.conf
@@ -264,6 +303,8 @@ def describe_resolution() -> dict:
     settings = get_ai_settings()
     return {
         "pinned": pinned,
+        "managed": all(field in pinned for field in MANAGED_REQUIRES),
+        "providers": _available_providers(),
         "effective": {
             "provider": settings.provider,
             "base_url": settings.base_url,
@@ -278,10 +319,56 @@ ASSISTANT_NAME = "Unpress AI"
 def get_assistant_name() -> str:
     """How the assistant introduces itself.
 
-    The engine is Unpress AI wherever it runs; a site that wants to put its own
-    product name in front of the user sets `unpress_ai_name` in site_config.
+    Overridable per site (`unpress_ai_name` in site_config) so a fork or a host
+    application can put its own product name in front of the user without
+    patching the prompts.
     """
     return frappe.conf.get("unpress_ai_name") or ASSISTANT_NAME
+
+
+def get_image_settings() -> dict:
+    """Image backend for this site: site_config > Builder Settings > defaults.
+
+    Deliberately provider-agnostic and endpoint-less by default — this app is
+    open source, so it must never ship someone's private GPU as a fallback.
+    Any OpenAI-compatible /v1/images/generations host works (OpenAI itself, a
+    local Ollama serving Flux, a gateway); ComfyUI has its own client.
+    """
+    conf = frappe.conf
+    enabled = conf.get("image_generation_enabled")
+    if enabled is None:
+        enabled = _studio_value("unpress_ai_image_enabled")
+
+    base_url = (
+        conf.get("image_base_url")
+        or conf.get("ollama_base_url")
+        or conf.get("ollama_url")
+        or _studio_value("unpress_ai_image_base_url")
+    )
+    api_key = conf.get("image_api_key") or conf.get("ollama_api_key")
+    if not api_key:
+        try:
+            from frappe.utils.password import get_decrypted_password
+
+            api_key = (
+                get_decrypted_password(
+                    "Builder Settings", "Builder Settings", "unpress_ai_image_api_key", raise_exception=False
+                )
+                or None
+            )
+        except Exception:
+            api_key = None
+
+    return {
+        "enabled": bool(frappe.utils.cint(enabled)),
+        # "codex" routes images through the local Codex CLI (ChatGPT plan);
+        # anything else means the OpenAI-compatible endpoint below.
+        "provider": conf.get("image_provider") or _studio_value("unpress_ai_image_provider") or "",
+        "base_url": base_url,
+        "api_key": api_key,
+        "model": conf.get("image_model") or _studio_value("unpress_ai_image_model") or "gpt-image-1",
+        "size": conf.get("image_size") or _studio_value("unpress_ai_image_size") or "1024x1024",
+    }
 
 
 def get_model_for_task(task: str, provider: str = None) -> str:
@@ -296,16 +383,16 @@ def validate_provider_config(config: AIConfig) -> tuple[bool, str]:
     """Ensure the resolved config has enough info to call the provider."""
     if config.provider == "openai":
         if not config.api_key:
-            return False, "openai_api_key missing from site_config.json"
+            return False, "No API key configured (Studio Settings > AI, or openai_api_key in site_config.json)"
         if not config.model:
-            return False, "openai_model missing from site_config.json"
+            return False, "No model configured (Studio Settings > AI, or openai_model in site_config.json)"
         return True, ""
 
     if config.provider == "ollama":
         if not config.base_url:
-            return False, "ollama_base_url missing from site_config.json"
+            return False, "No Ollama URL configured (Studio Settings > AI, or ollama_base_url in site_config.json)"
         if not config.model:
-            return False, "ollama_model missing from site_config.json"
+            return False, "No model configured (Studio Settings > AI, or ollama_model in site_config.json)"
         return True, ""
 
     return False, f"Unknown provider: {config.provider}"
@@ -320,6 +407,7 @@ __all__ = [
     "SiteType",
     "ThemeType",
     "get_ai_settings",
+    "get_image_settings",
     "get_model_for_task",
     "validate_provider_config",
 ]
