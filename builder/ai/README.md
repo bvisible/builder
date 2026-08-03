@@ -151,7 +151,7 @@ footer = footer_gen.generate(
 ### Site config keys
 
 All AI settings live in `sites/<site>/site_config.json` (pushed by
-`neoffice-devops` via `SiteConfigPhase`). Recognised keys:
+the operator, e.g. by a fleet provisioning tool). Recognised keys:
 
 - **ai_provider**: `openai` (default) or `ollama`
 - **openai_api_key**: Moonshot / OpenAI-compatible API key

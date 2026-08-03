@@ -43,7 +43,7 @@ def is_configured() -> bool:
     so every AI-enabled site used to look "ComfyUI-ready" and got routed here.
     When the shared GPU is busy the graph dies with an out-of-memory error that
     the worker swallows per-image — sites silently kept their placeholders
-    (observed on the Neoffice fleet). ComfyUI now requires an explicit opt-in
+    (observed on a managed fleet). ComfyUI now requires an explicit opt-in
     (comfyui_url or comfyui_api_key); everything else takes the Ollama/Flux
     path, which loads and unloads the model per request.
     """

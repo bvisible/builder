@@ -20,7 +20,9 @@
 				</Button>
 			</div>
 		</div>
-		<div class="flex flex-1 flex-col gap-5 overflow-hidden bg-surface-base p-14 px-16 pb-0">
+		<!-- overflow-y-auto, not hidden: a tab taller than the pane (the AI tab with
+	     Advanced expanded) was simply clipped, with no way to reach the rest -->
+		<div class="flex flex-1 flex-col gap-5 overflow-y-auto overflow-x-hidden bg-surface-base p-14 px-16 pb-0">
 			<h2 class="text-2xl-semibold leading-none text-ink-gray-9">{{ selectedItemDoc?.title }}</h2>
 			<Button
 				icon="lucide-x"

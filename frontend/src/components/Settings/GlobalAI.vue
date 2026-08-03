@@ -67,9 +67,6 @@
 					pinnedFields.join(", "),
 				)
 			}}
-			<span class="mt-1 block text-xs">
-				{{ __("In effect: {0}").format(effectiveSummary) }}
-			</span>
 		</div>
 
 		<div v-if="statusMessage" class="rounded-lg p-3 text-sm" :class="statusClass">
@@ -94,7 +91,8 @@
 			:modelValue="imageProvider"
 			@update:modelValue="setImageProvider" />
 
-		<div class="flex flex-col gap-3">
+		<!-- a subscription picks its own model; there is nothing to override -->
+		<div v-if="preset !== 'codex'" class="flex flex-col gap-3">
 			<button
 				class="flex w-fit items-center gap-1 text-sm text-ink-gray-7 hover:text-ink-gray-9"
 				@click="advancedOpen = !advancedOpen">
@@ -109,18 +107,18 @@
 					type="text"
 					size="sm"
 					:label="__('Brief model')"
-					:description="__('Creative brief + design system. Empty = kimi-k3')"
+					:description="modelHint"
 					:modelValue="briefModel"
 					@update:modelValue="(v: string) => (briefModel = v)"
-					placeholder="kimi-k3" />
+					:placeholder="defaultBriefModel" />
 				<FormControl
 					type="text"
 					size="sm"
 					:label="__('Page model')"
-					:description="__('Page generation (code). Empty = kimi-k2.7-code')"
+					:description="modelHint"
 					:modelValue="pageModel"
 					@update:modelValue="(v: string) => (pageModel = v)"
-					placeholder="kimi-k2.7-code" />
+					:placeholder="defaultPageModel" />
 				<FormControl
 					type="text"
 					size="sm"
@@ -182,6 +180,23 @@ const providerOptions = computed(() =>
 // a subscription is not a key: the whole API-key block is meaningless here
 const usesApiKey = computed(() => preset.value !== "codex");
 
+// What "empty" resolves to depends on the provider: suggesting kimi while
+// OpenRouter is selected is just wrong information.
+const MODEL_DEFAULTS: Record<string, [string, string]> = {
+	moonshot: ["kimi-k3", "kimi-k2.7-code"],
+	openai: ["gpt-5.5", "gpt-5.5"],
+	openrouter: ["moonshotai/kimi-k3", "moonshotai/kimi-k2.7-code"],
+	ollama: ["", ""],
+	custom: ["", ""],
+};
+const defaultBriefModel = computed(() => MODEL_DEFAULTS[preset.value]?.[0] || "");
+const defaultPageModel = computed(() => MODEL_DEFAULTS[preset.value]?.[1] || "");
+const modelHint = computed(() =>
+	defaultBriefModel.value
+		? __("Leave empty to use this provider's default.")
+		: __("Required for this provider — no default is assumed."),
+);
+
 const KEY_HINTS: Record<string, { hint: string; link?: string; linkLabel?: string }> = {
 	moonshot: {
 		hint: __("Powers the built-in site generation (kimi models). Get an API key from"),
@@ -209,20 +224,19 @@ const statusClass = ref("");
 
 // what the server says this install allows
 const managed = ref(false);
+// the NAMES of the fields site_config decides — never their values, which can
+// name private infrastructure
 const pinnedFields = ref<string[]>([]);
-const effectiveSummary = ref("");
 
 const loadResolution = () => {
 	createResource({ url: "builder.ai.config.describe_resolution" })
 		.submit()
 		.then((r: any) => {
 			managed.value = !!r?.managed;
-			pinnedFields.value = Object.keys(r?.pinned || {});
+			pinnedFields.value = Array.isArray(r?.pinned) ? r.pinned : Object.keys(r?.pinned || {});
 			// eslint-disable-next-line @typescript-eslint/no-explicit-any
 			const list = (r?.providers || []).map((p: any) => p.value).filter(Boolean);
 			if (list.length) allowedProviders.value = list;
-			const e = r?.effective || {};
-			effectiveSummary.value = [e.provider, e.base_url, e.model].filter(Boolean).join(" · ");
 		})
 		.catch(() => {
 			managed.value = false;
@@ -263,6 +277,15 @@ const setPreset = (value: string) => {
 	} else {
 		// custom: keep whatever URL is typed, just clear the ollama flag
 		save({ unpress_ai_provider: "" });
+	}
+	if (value === "codex") {
+		// The plan that writes the pages also draws the images, at no extra
+		// cost. Leaving the user to find two more switches for something they
+		// already paid for is just friction.
+		imagesEnabled.value = 1;
+		imageProvider.value = "codex";
+		save({ unpress_ai_image_provider: "codex" });
+		builderSettings.setValue.submit({ unpress_ai_image_enabled: 1 } as never);
 	}
 };
 

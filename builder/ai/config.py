@@ -3,9 +3,8 @@ AI Configuration Module
 
 Resolution order (first non-empty wins):
 
-1. site_config.json (frappe.conf) — the operator layer. Managed fleets
-   (neoffice-devops SiteConfigPhase, the Unpress managed cloud) pin values
-   here; anything set in site_config always wins.
+1. site_config.json (frappe.conf) — the operator layer. A managed host
+   pins its values here; anything set in site_config always wins.
 2. Builder Settings (the Studio UI) — the self-host layer. The custom
    fields unpress_ai_* plus the upstream ai_api_key Password field, all
    editable from the builder Settings > AI tab. No desk, no SSH needed.
@@ -43,8 +42,8 @@ THINK_LEVEL_MAP = {
 #   candidates; one call per site, so the 5× output pricing is negligible there.
 # - pages on kimi-k2.7-code: ~90% of K3 page quality at ~1/7 the cost and
 #   2.5× the speed (K3 pages: 47 min/91.8k tokens vs k2.7: 19 min/64k).
-# Fleet rollout note: instances whose site_config pins openai_model override
-# this default — SiteConfigPhase (neoffice-devops) must push kimi-k3 there.
+# Note: an instance whose site_config pins openai_model overrides this
+# default — the operator has to push the new value there too.
 DEFAULTS = {
     "provider": "openai",
     "model": "kimi-k3",
@@ -302,27 +301,16 @@ def describe_resolution() -> dict:
     if managed:
         return {"managed": True, "pinned": {}, "providers": [], "effective": {}}
 
-    pinned = {}
-    for field, keys in PINNING_KEYS.items():
-        for key in keys:
-            if conf.get(key):
-                pinned[field] = {
-                    "key": key,
-                    "value": "********" if "key" in field else str(conf.get(key)),
-                }
-                break
+    # Which fields site_config decides — the NAMES only. The values are the
+    # operator's business and can name private infrastructure; echoing them
+    # into a settings screen is how an internal hostname ends up on someone
+    # else's monitor.
+    pinned = [field for field, keys in PINNING_KEYS.items() if any(conf.get(k) for k in keys)]
 
-    settings = get_ai_settings()
     return {
         "managed": False,
         "pinned": pinned,
         "providers": _available_providers(),
-        # only ever the operator's own values, shown back to the operator
-        "effective": {
-            "provider": settings.provider,
-            "base_url": settings.base_url,
-            "model": settings.model,
-        },
     }
 
 
