@@ -3850,3 +3850,63 @@ msgstr "Le test de la clé API a échoué"
 #: frontend/src/components
 msgid "Failed to test the API key"
 msgstr "Impossible de tester la clé API"
+
+#: frontend/src/components
+msgid "AI comes with your hosting"
+msgstr "L'IA est fournie avec votre hébergement"
+
+#: frontend/src/components
+msgid "Your provider runs the models for you — there is nothing to configure here."
+msgstr "Votre hébergeur fait tourner les modèles pour vous — il n'y a rien à configurer ici."
+
+#: frontend/src/components
+msgid "Test connection"
+msgstr "Tester la connexion"
+
+#: frontend/src/components
+msgid "Generate images with AI"
+msgstr "Générer les images avec l'IA"
+
+#: frontend/src/components
+msgid "Replace placeholders with generated images after a site is built"
+msgstr "Remplacer les images d'attente par des images générées après la création d'un site"
+
+#: frontend/src/components
+msgid "Image backend"
+msgstr "Backend d'images"
+
+#: frontend/src/components
+msgid "Creative brief + design system. Empty = kimi-k3"
+msgstr "Brief créatif + système de design. Vide = kimi-k3"
+
+#: frontend/src/components
+msgid "Page generation (code). Empty = kimi-k2.7-code"
+msgstr "Génération des pages (code). Vide = kimi-k2.7-code"
+
+#: frontend/src/components
+msgid "OpenAI — ChatGPT subscription"
+msgstr "OpenAI — abonnement ChatGPT"
+
+#: frontend/src/components
+msgid "Uses your ChatGPT Plus/Pro plan through the Codex CLI — no API key, no metered billing."
+msgstr "Utilise votre abonnement ChatGPT Plus/Pro via le CLI Codex — aucune clé API, aucune facturation à l'usage."
+
+#: frontend/src/components
+msgid "Connected!"
+msgstr "Connecté !"
+
+#: frontend/src/components
+msgid "Connection failed"
+msgstr "Échec de la connexion"
+
+#: frontend/src/components
+msgid "Failed to test connection"
+msgstr "Impossible de tester la connexion"
+
+#: frontend/src/components
+msgid "API endpoint (OpenAI-compatible)"
+msgstr "Endpoint API (compatible OpenAI)"
+
+#: frontend/src/components
+msgid "Codex CLI (ChatGPT plan)"
+msgstr "Codex CLI (abonnement ChatGPT)"

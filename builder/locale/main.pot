@@ -3665,3 +3665,63 @@ msgstr ""
 #: frontend/src/components
 msgid "Failed to test the API key"
 msgstr ""
+
+#: frontend/src/components
+msgid "AI comes with your hosting"
+msgstr ""
+
+#: frontend/src/components
+msgid "Your provider runs the models for you — there is nothing to configure here."
+msgstr ""
+
+#: frontend/src/components
+msgid "Test connection"
+msgstr ""
+
+#: frontend/src/components
+msgid "Generate images with AI"
+msgstr ""
+
+#: frontend/src/components
+msgid "Replace placeholders with generated images after a site is built"
+msgstr ""
+
+#: frontend/src/components
+msgid "Image backend"
+msgstr ""
+
+#: frontend/src/components
+msgid "Creative brief + design system. Empty = kimi-k3"
+msgstr ""
+
+#: frontend/src/components
+msgid "Page generation (code). Empty = kimi-k2.7-code"
+msgstr ""
+
+#: frontend/src/components
+msgid "OpenAI — ChatGPT subscription"
+msgstr ""
+
+#: frontend/src/components
+msgid "Uses your ChatGPT Plus/Pro plan through the Codex CLI — no API key, no metered billing."
+msgstr ""
+
+#: frontend/src/components
+msgid "Connected!"
+msgstr ""
+
+#: frontend/src/components
+msgid "Connection failed"
+msgstr ""
+
+#: frontend/src/components
+msgid "Failed to test connection"
+msgstr ""
+
+#: frontend/src/components
+msgid "API endpoint (OpenAI-compatible)"
+msgstr ""
+
+#: frontend/src/components
+msgid "Codex CLI (ChatGPT plan)"
+msgstr ""
