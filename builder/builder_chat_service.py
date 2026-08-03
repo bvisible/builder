@@ -232,6 +232,9 @@ class BuilderChatService:
 				"completion_percentage": session.completion_percentage,
 				"messages": self._format_messages(session.messages),
 				"missing_fields": session.get_missing_fields(),
+				# a fresh conversation on a site that already has a logo should
+				# show it: the question "which logo is on my site" comes up here
+				"logo_url": self._site_logo_url(),
 			}
 
 		except Exception as e:
