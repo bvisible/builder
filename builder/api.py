@@ -1509,7 +1509,10 @@ def _generate_complete_site_worker(
 		remaining_image_slots = 0
 		image_job_id = None
 		try:
-			pending_images = _scan_placeholder_images([p["name"] for p in created_pages])
+			pending_images = _scan_placeholder_images(
+				[p["name"] for p in created_pages],
+				subject=_image_subject(session_id, site_name, prompt),
+			)
 			remaining_image_slots = len(pending_images)
 			if pending_images and _image_backend_available():
 				image_job_id = _enqueue_image_generation(pending_images, session_id=session_id)
@@ -3243,7 +3246,7 @@ def chat_generate_images(session_id: str):
 		# STEP 2 — image generation fills only the slots no client photo matched.
 		# Backend: self-hosted ComfyUI (our GPU) when configured, else the legacy
 		# Ollama generator gated by the "image_generation_enabled" flag.
-		placeholder_images = _scan_placeholder_images(page_names)
+		placeholder_images = _scan_placeholder_images(page_names, subject=_image_subject(session_id))
 
 		if not placeholder_images:
 			return {"success": True, "matched": match_result.get("matched", 0),
@@ -3284,7 +3287,7 @@ def chat_get_image_generation_status(job_id: str = None, session_id: str = None)
 	return _get_generation_status(job_id)
 
 
-def _scan_placeholder_images(page_names: list) -> list:
+def _scan_placeholder_images(page_names: list, subject: str = "") -> list:
 	"""Scan Builder Pages for img blocks with placehold.co URLs."""
 	import re
 	results = []
@@ -3293,26 +3296,71 @@ def _scan_placeholder_images(page_names: list) -> list:
 		try:
 			page = frappe.get_doc("Builder Page", page_name)
 			blocks = json.loads(page.blocks) if page.blocks else []
-			_walk_blocks_for_placeholders(blocks, page_name, results)
+			_walk_blocks_for_placeholders(blocks, page_name, results, subject=subject)
 		except Exception as e:
 			frappe.log_error("Scan placeholder images error", f"Page {page_name}: {str(e)}")
 
 	return results
 
 
-def _build_image_prompt(context: str, is_background: bool = False) -> str:
+def _image_subject(session_id: str = None, site_name: str = None, site_description: str = None) -> str:
+	"""One short phrase describing the business, for image slots with no text.
+
+	A hero background rarely carries a description; without this the model is
+	asked for a stock photo and answers with one.
+	"""
+	description = (site_description or "").strip()
+	name = (site_name or "").strip()
+	if not description and session_id:
+		try:
+			row = frappe.db.get_value(
+				"Builder Chat Session",
+				{"session_id": session_id},
+				["site_name", "site_description"],
+				as_dict=True,
+			)
+			if row:
+				description = (row.site_description or "").strip()
+				name = name or (row.site_name or "").strip()
+		except Exception:
+			pass
+	subject = description or name
+	if len(subject) <= 180:
+		return subject.rstrip(" .,;")
+	# the model reads a sentence better than a paragraph — and a phrase cut
+	# mid-word reads as noise, so stop on the last clean break
+	head = subject[:180]
+	for stop in (". ", " ; ", ", "):
+		cut = head.rfind(stop)
+		if cut > 60:
+			return head[:cut].rstrip(" .,;")
+	return head[: head.rfind(" ")].rstrip(" .,;")
+
+
+QUALITY_SUFFIX = "photorealistic, high resolution, no text, no words, no logos, no letters"
+
+
+def _build_image_prompt(context: str, is_background: bool = False, subject: str = "") -> str:
 	"""Build an image generation prompt from context text.
 
 	Avoids words like 'website', 'section', 'page' that cause Flux
 	to generate website mockups instead of photographs.
+
+	`subject` is what the site is about. It is the fallback when a slot
+	carries no description of its own — a hero background usually does not.
+	Without it the fallback used to ask for "beautiful landscape photography",
+	which is why a yoga studio got a mountain lake above the fold.
 	"""
 	# Words that are too generic/abstract for image generation
 	generic_words = {"Hero Image", "Feature", "Image", "Photo", "Hero", "Section", "Banner"}
 
 	if not context or context.strip() in generic_words:
+		if subject:
+			lead = "atmospheric photography of" if is_background else "professional photography of"
+			return f"{lead} {subject}, natural lighting, {QUALITY_SUFFIX}"
 		if is_background:
-			return "beautiful landscape photography, soft natural lighting, photorealistic, high resolution, no text, no words, no logos, no letters"
-		return "professional product photography, clean background, photorealistic, high resolution, no text, no words, no logos, no letters"
+			return f"atmospheric interior photography, soft natural lighting, {QUALITY_SUFFIX}"
+		return f"professional product photography, clean background, {QUALITY_SUFFIX}"
 
 	# Clean up context: remove page-type words that confuse image models
 	import re as _re
@@ -3327,16 +3375,14 @@ def _build_image_prompt(context: str, is_background: bool = False) -> str:
 	cleaned = _re.sub(r'\s+', ' ', cleaned).strip()
 
 	if not cleaned or len(cleaned) < 3:
-		if is_background:
-			return "beautiful landscape photography, soft natural lighting, photorealistic, high resolution, no text, no words, no logos, no letters"
-		return "professional product photography, clean background, photorealistic, high resolution, no text, no words, no logos, no letters"
+		return _build_image_prompt("", is_background=is_background, subject=subject)
 
 	if is_background:
 		return f"beautiful photography related to {cleaned}, atmospheric lighting, photorealistic, high resolution, no text, no words, no logos, no letters"
 	return f"professional photography of {cleaned}, clean composition, photorealistic, high resolution, no text, no words, no logos, no letters"
 
 
-def _walk_blocks_for_placeholders(blocks, page_name, results):
+def _walk_blocks_for_placeholders(blocks, page_name, results, subject: str = ""):
 	"""Recursively walk blocks to find placehold.co URLs in img src or background images."""
 	import re
 
@@ -3361,7 +3407,7 @@ def _walk_blocks_for_placeholders(blocks, page_name, results):
 						pass  # Skip small images (avatars, icons)
 					else:
 						size = f"{w}x{h}"
-						alt = _build_image_prompt(attrs.get("alt", ""), is_background=False)
+						alt = _build_image_prompt(attrs.get("alt", ""), is_background=False, subject=subject)
 						results.append({
 							"page_name": page_name,
 							"block_id": block_id,
@@ -3371,7 +3417,7 @@ def _walk_blocks_for_placeholders(blocks, page_name, results):
 							"type": "img",
 						})
 				else:
-					alt = _build_image_prompt(attrs.get("alt", ""), is_background=False)
+					alt = _build_image_prompt(attrs.get("alt", ""), is_background=False, subject=subject)
 					results.append({
 						"page_name": page_name,
 						"block_id": block_id,
@@ -3396,7 +3442,7 @@ def _walk_blocks_for_placeholders(blocks, page_name, results):
 				# Extract text param as thematic context (NOT literal text to render in image)
 				text_match = re.search(r"text=([^&'\"]+)", bg)
 				context = text_match.group(1).replace("+", " ") if text_match else ""
-				alt = _build_image_prompt(context, is_background=True)
+				alt = _build_image_prompt(context, is_background=True, subject=subject)
 				results.append({
 					"page_name": page_name,
 					"block_id": block_id,
@@ -3408,7 +3454,7 @@ def _walk_blocks_for_placeholders(blocks, page_name, results):
 
 		# Recurse into children
 		if block.get("children"):
-			_walk_blocks_for_placeholders(block["children"], page_name, results)
+			_walk_blocks_for_placeholders(block["children"], page_name, results, subject=subject)
 
 
 def _generate_images_worker(img_job_id: str, placeholder_images: list):
