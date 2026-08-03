@@ -248,6 +248,9 @@ const applyState = (r: any) => {
 		}));
 		scrollDown();
 	}
+	// every step comes with its own suggestions (themes, palettes, pages) —
+	// they are how the wizard is meant to be answered
+	if (r.buttons !== undefined) confirmButtons.value = r.buttons || [];
 	if (r.current_step) progressStep.value = String(r.current_step).replace(/_/g, " ");
 	if (r.completion_percentage != null) progressPct.value = r.completion_percentage;
 	canGenerate.value = !!(
@@ -292,6 +295,18 @@ const boot = async () => {
 	}
 };
 
+// process_message can itself start the generation (typing "go", or confirming a
+// replace), and then the answer carries a job. Without this the modal keeps
+// chatting while the site is already being built.
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+const maybeStartGenerating = (r: any) => {
+	if (generating.value) return;
+	if (r?.job_id || r?.status === "queued") {
+		generating.value = true;
+		pollGeneration();
+	}
+};
+
 const send = async () => {
 	const text = draft.value.trim();
 	if (!text || !sid.value || thinking.value) return;
@@ -302,7 +317,14 @@ const send = async () => {
 	try {
 		const r = await call("chat_send_message", { session_id: sid.value, message: text });
 		applyState(r);
-		if (r && r.success === false) pushMessage("err", r.message || __("Something went wrong"));
+		if (r && r.success === false) {
+			pushMessage("err", r.message || __("Something went wrong"));
+			return;
+		}
+		// the service answers under `response`; without this the assistant is
+		// mute and the conversation cannot be carried on by typing at all
+		if (r?.response || r?.message) pushMessage("bot", r.response || r.message);
+		maybeStartGenerating(r);
 	} catch (error) {
 		pushMessage("err", error instanceof Error ? error.message : String(error));
 	} finally {
@@ -333,15 +355,26 @@ const triggerGeneration = async () => {
 	}
 };
 
+// A chip is an answer like any other. Only the replace-confirmation ones start
+// a generation, and the server says so — assuming it here left the modal
+// claiming "generating" after every single suggestion click.
 const answerConfirm = async (button: ChatButton) => {
 	confirmButtons.value = [];
+	pushMessage("user", button.label || button.value);
+	thinking.value = true;
 	try {
 		const r = await call("chat_send_message", { session_id: sid.value, message: button.value });
 		applyState(r);
-		generating.value = true;
-		pollGeneration();
+		if (r && r.success === false) {
+			pushMessage("err", r.message || __("Something went wrong"));
+			return;
+		}
+		if (r?.response || r?.message) pushMessage("bot", r.response || r.message);
+		maybeStartGenerating(r);
 	} catch (error) {
 		pushMessage("err", error instanceof Error ? error.message : String(error));
+	} finally {
+		thinking.value = false;
 	}
 };
 
