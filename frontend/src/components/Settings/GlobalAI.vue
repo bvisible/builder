@@ -1,8 +1,9 @@
 <template>
 	<div class="flex flex-col gap-5">
-		<!-- Managed install: the operator pinned the endpoint AND the credential,
-		     so there is genuinely nothing to choose. Dead input fields here would
-		     only invite people to change settings that are already ignored. -->
+		<!-- Managed install: the host runs the models for its customers, so there
+		     is nothing to choose. No endpoint, no model name — which
+		     infrastructure a host runs is its business, not a line to publish in
+		     a customer's settings screen. -->
 		<div v-if="managed" class="flex flex-col gap-2 rounded-lg bg-surface-gray-1 p-4">
 			<span class="text-base font-medium text-ink-gray-9">
 				{{ __("AI comes with your hosting") }}
@@ -10,7 +11,6 @@
 			<p class="text-sm text-ink-gray-6">
 				{{ __("Your provider runs the models for you — there is nothing to configure here.") }}
 			</p>
-			<span class="mt-1 text-xs text-ink-gray-5">{{ effectiveSummary }}</span>
 		</div>
 
 		<template v-else>

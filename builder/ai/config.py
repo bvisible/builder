@@ -242,11 +242,18 @@ PINNING_KEYS = {
 }
 
 
-# What makes an install "managed": the operator has pinned the endpoint AND
-# the credential, so there is genuinely nothing left for a user to choose.
-# A hosted fleet (Neoffice on its own inference server, the Unpress managed
-# cloud) is exactly this; a self-host is not.
-MANAGED_REQUIRES = ("base_url", "api_key")
+# "Managed" is DECLARED, never inferred.
+#
+# It first tried to guess — endpoint + credential pinned in site_config meant
+# managed — and that was wrong: a self-hoster who puts their own key in
+# site_config (a perfectly normal thing to do) got locked out of their own
+# settings. Hosting is a commercial fact about the install, not a shape its
+# configuration happens to have.
+#
+#     bench --site <site> set-config ai_managed 1
+#
+# Only a provider that actually runs the models for its customers sets it.
+MANAGED_KEY = "ai_managed"
 
 
 def _available_providers() -> list[dict]:
@@ -279,17 +286,22 @@ def describe_resolution() -> dict:
     """What this install lets a user configure, and what is already decided.
 
     The AI tab renders whatever this returns — that is the whole point. A
-    hosted instance pins its endpoint and credential in site_config, so it
-    comes back `managed` and the tab shows a read-only statement instead of
-    dead input fields. A self-host pins nothing, so it gets the full form,
-    with the provider list this install can actually honour.
+    provider that runs the models for its customers declares `ai_managed`, so
+    the tab shows a short statement instead of dead input fields. Everyone
+    else gets the full form, with the provider list this install can honour.
 
     One component, one code path; the difference between editions is data.
 
-    Never returns a secret — an API key is reported as pinned, not quoted.
+    Returns NOTHING about the infrastructure when managed: which endpoint and
+    which model a host runs is the host's business, not a detail to publish in
+    a customer's settings screen.
     """
     frappe.only_for("System Manager")
     conf = frappe.conf
+    managed = bool(frappe.utils.cint(conf.get(MANAGED_KEY)))
+    if managed:
+        return {"managed": True, "pinned": {}, "providers": [], "effective": {}}
+
     pinned = {}
     for field, keys in PINNING_KEYS.items():
         for key in keys:
@@ -302,9 +314,10 @@ def describe_resolution() -> dict:
 
     settings = get_ai_settings()
     return {
+        "managed": False,
         "pinned": pinned,
-        "managed": all(field in pinned for field in MANAGED_REQUIRES),
         "providers": _available_providers(),
+        # only ever the operator's own values, shown back to the operator
         "effective": {
             "provider": settings.provider,
             "base_url": settings.base_url,
