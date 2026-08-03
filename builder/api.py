@@ -38,6 +38,7 @@ def get_versioned_doc(snapshot: str) -> dict:
 # Default header/footer settings for each site type
 SITE_TYPE_HEADER_FOOTER_DEFAULTS = {
 	"one_page": {
+		"header_style": "Transparent",
 		"header_layout": "Logo | Menu Center | Icons",
 		"search_type": "None",
 		"show_cta": True,
@@ -48,6 +49,7 @@ SITE_TYPE_HEADER_FOOTER_DEFAULTS = {
 		"sticky_header": True,  # Important for one-page navigation
 	},
 	"vitrine": {
+		"header_style": "Classic",
 		"header_layout": "Logo | Menu Center | Icons",
 		"search_type": "None",
 		"show_cta": True,
@@ -57,6 +59,7 @@ SITE_TYPE_HEADER_FOOTER_DEFAULTS = {
 		"footer_template": "Standard",
 	},
 	"vitrine_user": {
+		"header_style": "Classic",
 		"header_layout": "Logo | Menu Center | Icons",
 		"search_type": "None",
 		"show_cta": True,
@@ -66,6 +69,7 @@ SITE_TYPE_HEADER_FOOTER_DEFAULTS = {
 		"footer_template": "Standard",
 	},
 	"blog": {
+		"header_style": "Minimal",
 		"header_layout": "Logo | Menu Center | Icons",
 		"search_type": "Icon (overlay)",
 		"show_cta": True,
@@ -75,6 +79,7 @@ SITE_TYPE_HEADER_FOOTER_DEFAULTS = {
 		"footer_template": "Standard",
 	},
 	"ecommerce": {
+		"header_style": "Classic",
 		"header_layout": "Logo | Menu Center | Icons",
 		"search_type": "Icon (overlay)",
 		"show_cta": False,
@@ -84,6 +89,7 @@ SITE_TYPE_HEADER_FOOTER_DEFAULTS = {
 		"footer_template": "Extended",
 	},
 	"ecommerce_search": {
+		"header_style": "Classic",
 		"header_layout": "Logo | Menu Center | Icons",
 		"search_type": "Search Bar (inline)",
 		"show_cta": False,
@@ -93,6 +99,7 @@ SITE_TYPE_HEADER_FOOTER_DEFAULTS = {
 		"footer_template": "Extended",
 	},
 	"saas": {
+		"header_style": "Floating",
 		"header_layout": "Logo | Menu Right | Icons",
 		"search_type": "None",
 		"show_cta": True,
@@ -102,6 +109,7 @@ SITE_TYPE_HEADER_FOOTER_DEFAULTS = {
 		"footer_template": "Extended",
 	},
 	"portfolio": {
+		"header_style": "Minimal",
 		"header_layout": "Logo | Menu Center | Icons",
 		"search_type": "None",
 		"show_cta": True,
@@ -1181,6 +1189,10 @@ def _generate_complete_site_worker(
 				root_block = {
 					"blockId": f"root-{frappe.generate_hash(length=8)}",
 					"element": "body",
+					# The editor recognises its root by `originalElement`; without
+					# it the body is treated as an ordinary block — resizable,
+					# deletable, and free to take a fixed width.
+					"originalElement": "body",
 					"baseStyles": {},
 					"children": blocks
 				}
@@ -2347,6 +2359,7 @@ def classify_existing_pages(website_profile=None) -> dict:
 # Colors are applied only when non-empty; enum fields always carry a value.
 BRIEF_CHROME_FIELDS = (
 	"header_bg_color", "header_text_color", "header_height", "header_border",
+	"header_style",
 	"cta_style", "cta_shape", "cta_size",
 	"footer_template", "footer_bg_color", "footer_text_color",
 )
@@ -2373,7 +2386,7 @@ def apply_brief_site_chrome(design_brief, website_profile=None) -> list[str]:
 
 # Website Header Footer Config fields a hub template manifest may configure.
 TEMPLATE_HF_ALLOWED_FIELDS = {
-	"header_layout", "sticky_header", "header_height", "header_border",
+	"header_layout", "header_style", "sticky_header", "header_height", "header_border",
 	"header_bg_color", "header_text_color",
 	"show_cta", "cta_text", "cta_url", "cta_style", "cta_shape", "cta_size",
 	"footer_template", "footer_bg_color", "footer_text_color",

@@ -18,6 +18,7 @@ CHROME_ROLES = ("System Manager", "Website Manager")
 SIMPLE_FIELDS = (
 	# header
 	"header_layout",
+	"header_style",
 	"sticky_header",
 	"header_height",
 	"header_bg_color",
@@ -60,6 +61,7 @@ SIMPLE_FIELDS = (
 # Select fields whose options the UI needs
 OPTION_FIELDS = (
 	"header_layout",
+	"header_style",
 	"header_height",
 	"logo_type",
 	"cta_style",

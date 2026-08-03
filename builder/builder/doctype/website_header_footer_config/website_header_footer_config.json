@@ -7,6 +7,7 @@
   "header_tab",
   "header_section",
   "header_layout",
+  "header_style",
   "sticky_header",
   "header_height",
   "header_border",
@@ -130,6 +131,14 @@
    "label": "Layout",
    "options": "Logo | Menu Center | Icons\nLogo | Menu Right | Icons\nMenu Left | Logo Center | Icons",
    "reqd": 1
+  },
+  {
+   "fieldname": "header_style",
+   "fieldtype": "Select",
+   "label": "Header style",
+   "options": "Classic\nFloating\nTransparent\nMinimal",
+   "default": "Classic",
+   "description": "Classic: full-width bar. Floating: detached, rounded, above the content. Transparent: blends into the hero, solid once scrolled. Minimal: no background, no border."
   },
   {
    "default": "1",
@@ -339,7 +348,7 @@
    "fieldname": "footer_template",
    "fieldtype": "Select",
    "label": "Footer Template",
-   "options": "Minimal\nStandard\nExtended"
+   "options": "Minimal\nStandard\nExtended\nCentered"
   },
   {
    "fieldname": "column_break_footer_1",

@@ -346,4 +346,46 @@
 		width: 100%;
 	}
 }
+
+/* ==========================================================================
+   Centered footer — logo, links on one row, social underneath.
+   For sites with few links, where the column layouts look empty.
+   ========================================================================== */
+.site-footer__centered {
+	display: flex;
+	flex-direction: column;
+	align-items: center;
+	gap: 20px;
+	text-align: center;
+	padding-bottom: 32px;
+}
+
+.site-footer__centered .site-footer__description {
+	max-width: 520px;
+	margin: 0;
+}
+
+.site-footer__inline-links {
+	display: flex;
+	flex-wrap: wrap;
+	justify-content: center;
+	gap: 8px 28px;
+}
+
+/* The bottom bar is a flex row whose children size to content, so centring
+   has to happen on the container, not inside the row. */
+.site-footer--centered .site-footer__bottom {
+	justify-content: center;
+}
+
+.site-footer--centered .site-footer__copyright-row {
+	justify-content: center;
+	text-align: center;
+}
+
+@media (max-width: 576px) {
+	.site-footer__inline-links {
+		gap: 8px 18px;
+	}
+}
 </style>

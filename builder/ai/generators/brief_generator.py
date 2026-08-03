@@ -390,10 +390,17 @@ result feels genuinely designed or like yet another AI template.
 The site's locked header/footer take their design from YOUR brief:
 - header_height: Slim reads refined/editorial, Standard neutral, Tall bold.
 - header_border: Subtle fine line, or None for seamless chrome.
+- header_style: Classic (full-width bar — the safe default), Floating
+  (detached rounded bar, modern/premium), Transparent (blends into the hero,
+  turns solid on scroll — ONLY when the first section is a full-bleed image
+  or a deep colour, otherwise the menu is unreadable), Minimal (no background,
+  no border, editorial).
 - CTA: cta_style (Primary solid / Secondary / Outline = border only, refined),
   cta_shape (Pill = soft/refined, Rounded, Square = editorial/brutalist),
   cta_size (Small = discreet; Medium = bolder).
-- footer_template (Minimal / Standard / Extended) + footer_bg_color /
+- footer_template (Minimal one line / Standard columns / Extended rich
+  columns + newsletter / Centered logo + one row of links, for few links)
+  + footer_bg_color /
   footer_text_color: often a deep field of the palette (dark footer) or the
   surface tone — text MUST contrast with it.
 All chrome choices must express the same art direction as the pages.

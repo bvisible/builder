@@ -28,6 +28,98 @@
 	top: 0;
 }
 
+/* ==========================================================================
+   Header presets — how the bar sits on the page.
+   Orthogonal to data-layout, which only decides where the logo goes: any
+   preset works with any layout. Each one is a complete, deliberate look
+   rather than a pile of switches the user has to combine correctly.
+   ========================================================================== */
+
+/* Floating — a detached bar above the content. Sticky or not, it keeps its
+   margins, so it never touches the edges of the viewport. */
+.site-header--floating {
+	background: transparent;
+	border-bottom: none;
+	padding: 12px var(--container-padding, 24px);
+}
+
+.site-header--floating.site-header--sticky {
+	top: 12px;
+}
+
+.site-header--floating .site-header__container {
+	background: var(--header-bg);
+	border: 1px solid var(--header-border);
+	border-radius: 14px;
+	box-shadow: 0 10px 30px rgba(0, 0, 0, 0.12);
+	padding: 0 20px;
+	max-width: var(--container-width, 1280px);
+}
+
+/* Transparent — sits OVER the hero and turns solid once scrolled past it.
+   The .is-solid class is set by the script in header.html.
+
+   The negative margin is what makes it overlay: the bar keeps its place in
+   the flow (so sticky still works) but gives back the vertical space it
+   takes, and the first section starts at the very top of the page. */
+.site-header--transparent {
+	background: transparent;
+	border-bottom: none;
+	margin-bottom: calc(-1 * var(--header-height, 64px));
+	transition: background 200ms ease, border-color 200ms ease, box-shadow 200ms ease;
+}
+
+/* Over a hero the configured header colours no longer apply — that palette
+   was chosen against the header's own background, which is now the image.
+   White reads on the overwhelming majority of heroes; once solid, the site's
+   real colours come back. */
+.site-header--transparent:not(.is-solid) {
+	--header-text: var(--header-transparent-text, #ffffff);
+	--header-text-muted: var(--header-transparent-text, #ffffff);
+	--header-hover-bg: rgba(255, 255, 255, 0.16);
+	text-shadow: 0 1px 12px rgba(0, 0, 0, 0.35);
+}
+
+/* The style is site-wide, but only the home page is guaranteed to open on a
+   hero. On a pale interior page white links would vanish, so the bar carries
+   its own scrim: invisible over a dark photo, just enough over a light one. */
+.site-header--transparent:not(.is-solid)::before {
+	content: "";
+	position: absolute;
+	inset: 0;
+	background: linear-gradient(to bottom, rgba(0, 0, 0, 0.42), rgba(0, 0, 0, 0));
+	pointer-events: none;
+	z-index: -1;
+}
+
+.site-header--transparent {
+	isolation: isolate;
+}
+
+.site-header--transparent.is-solid {
+	background: var(--header-bg);
+	border-bottom: 1px solid var(--header-border);
+	box-shadow: 0 2px 14px rgba(0, 0, 0, 0.08);
+	text-shadow: none;
+}
+
+/* Minimal — no chrome at all: the bar disappears into the page and only the
+   logo and the links remain. */
+.site-header--minimal {
+	background: transparent;
+	border-bottom: none;
+}
+
+.site-header--minimal .site-header__container {
+	height: calc(var(--header-height, 64px) - 8px);
+}
+
+@media (prefers-reduced-motion: reduce) {
+	.site-header--transparent {
+		transition: none;
+	}
+}
+
 .site-header__container {
 	display: flex;
 	align-items: center;

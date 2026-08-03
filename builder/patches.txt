@@ -18,3 +18,4 @@ builder.builder.patches.add_llm_chrome_web_templates
 builder.builder.patches.reset_builder_page_clicks
 execute:frappe.call("builder.builder_analytics.enqueue_web_page_view_ingesion")
 execute:frappe.call("builder.builder_analytics.setup_duckdb_table")
+builder.builder.patches.repair_generated_page_roots

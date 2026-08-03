@@ -280,6 +280,17 @@ class DesignBrief(BaseModel):
         default="Subtle",
         description="Fine separation line under the header — Subtle or None"
     )
+    header_style: Literal["Classic", "Floating", "Transparent", "Minimal"] = Field(
+        default="Classic",
+        description=(
+            "How the bar sits on the page. Classic: full-width bar, the safe "
+            "default. Floating: detached rounded bar above the content, reads "
+            "modern/premium. Transparent: blends into the hero and turns solid "
+            "on scroll — only when the first section is a full-bleed image or "
+            "a deep colour, otherwise the menu is unreadable. Minimal: no "
+            "background, no border, for editorial sites."
+        )
+    )
     cta_style: Literal["Primary", "Secondary", "Outline"] = Field(
         default="Primary",
         description="Header CTA fill: Primary (solid accent), Secondary, Outline (border only — refined)"
@@ -292,9 +303,13 @@ class DesignBrief(BaseModel):
         default="Small",
         description="Header CTA size — Small reads discreet and refined"
     )
-    footer_template: Literal["Minimal", "Standard", "Extended"] = Field(
+    footer_template: Literal["Minimal", "Standard", "Extended", "Centered"] = Field(
         default="Standard",
-        description="Footer density — Minimal (one line), Standard, Extended (rich columns)"
+        description=(
+            "Footer density — Minimal (one line), Standard (columns), Extended "
+            "(rich columns + newsletter), Centered (logo, one row of links, "
+            "social underneath — for sites with few links)"
+        )
     )
     footer_bg_color: str = Field(
         default="",

@@ -11,7 +11,7 @@
 {% include "builder/templates/includes/header_footer/components/cart_drawer.html" %}
 {%- endif -%}
 
-<header class="site-header{% if sticky %} site-header--sticky{% endif %}{% if icons.search_bar_full %} site-header--with-search-bar{% endif %}" data-layout="{{ layout }}">
+<header class="site-header site-header--{{ (header_style or "Classic") | lower }}{% if sticky %} site-header--sticky{% endif %}{% if icons.search_bar_full %} site-header--with-search-bar{% endif %}" data-layout="{{ layout }}" data-style="{{ header_style or "Classic" }}">
 	<div class="site-header__container">
 		{%- if layout == "B" -%}
 		{# Layout B: [Menu] [Logo centered] [Icons/CTA] #}
@@ -111,3 +111,24 @@
 	</div>
 	{%- endif -%}
 </header>
+
+{%- if header_style == "Transparent" -%}
+<script>
+	// Solid once scrolled: over a hero the bar is transparent, everywhere else
+	// it must stay readable. Passive listener, no layout read per frame.
+	(function () {
+		var header = document.querySelector(".site-header--transparent");
+		if (!header) return;
+		var solid = false;
+		function sync() {
+			var next = window.scrollY > 24;
+			if (next !== solid) {
+				solid = next;
+				header.classList.toggle("is-solid", solid);
+			}
+		}
+		sync();
+		window.addEventListener("scroll", sync, { passive: true });
+	})();
+</script>
+{%- endif -%}

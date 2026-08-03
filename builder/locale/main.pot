@@ -3793,3 +3793,7 @@ msgstr ""
 #: frontend/src/components/AIChatModal.vue
 msgid "logo"
 msgstr ""
+
+#: frontend/src/components/Settings/GlobalTheme.vue
+msgid "Header style"
+msgstr ""

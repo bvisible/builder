@@ -3978,3 +3978,7 @@ msgstr "{0} fichier(s)"
 #: frontend/src/components/AIChatModal.vue
 msgid "logo"
 msgstr "logo"
+
+#: frontend/src/components/Settings/GlobalTheme.vue
+msgid "Header style"
+msgstr "Style d'en-tête"

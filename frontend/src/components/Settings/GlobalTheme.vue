@@ -75,6 +75,15 @@
 						:options="options.header_height"
 						:modelValue="state.header_height"
 						@update:modelValue="(v: string) => (state.header_height = v)" />
+					<!-- How the bar sits on the page — a complete prefab look, not
+					     a switch to combine with three others. -->
+					<FormControl
+						type="select"
+						size="sm"
+						:label="__('Header style')"
+						:options="options.header_style"
+						:modelValue="state.header_style"
+						@update:modelValue="(v: string) => (state.header_style = v)" />
 					<FormControl
 						type="select"
 						size="sm"

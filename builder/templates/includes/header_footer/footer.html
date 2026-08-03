@@ -101,6 +101,35 @@
 			{%- endif -%}
 		</div>
 
+		{%- elif template == "Centered" -%}
+		{# Centered: logo, one row of links, social underneath. For sites with
+		   few links, where columns would look empty. #}
+		<div class="site-footer__centered">
+			{%- if logo -%}
+			<div class="site-footer__brand-logo">{{ render_logo(logo) }}</div>
+			{%- endif -%}
+			{%- if description -%}
+			<p class="site-footer__description">{{ description }}</p>
+			{%- endif -%}
+			{%- if footer_columns -%}
+			<nav class="site-footer__inline-links">
+				{%- for column_name, links in footer_columns.items() -%}
+					{%- for link in links -%}
+					<a href="{{ link.url }}" class="site-footer__link"
+					   {% if link.is_external or link.open_in_new_tab %}target="_blank" rel="noopener noreferrer"{% endif %}>{{ link.label }}</a>
+					{%- endfor -%}
+				{%- endfor -%}
+			</nav>
+			{%- endif -%}
+			{%- if social_links -%}
+			<div class="site-footer__social">
+				{%- for link in social_links -%}
+				{{ render_social_link(link) }}
+				{%- endfor -%}
+			</div>
+			{%- endif -%}
+		</div>
+
 		{%- else -%}
 		{# Minimal footer: Logo + social + copyright on one line #}
 		<div class="site-footer__minimal">
@@ -122,7 +151,7 @@
 			<div class="site-footer__copyright-row">
 				<p class="site-footer__copyright">{{ copyright_text }}</p>
 				<span class="site-footer__powered-by">
-					Powered by <a href="https://neoffice.ch" target="_blank" rel="noopener noreferrer">neoffice.ch</a>
+					Powered by <a href="https://unpress.cloud" target="_blank" rel="noopener noreferrer">Unpress</a>
 				</span>
 			</div>
 			{%- if template != "Extended" and social_links and template == "Standard" -%}
