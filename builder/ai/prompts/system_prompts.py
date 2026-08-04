@@ -78,6 +78,14 @@ Use font: {font_family}
 
     # Get available shortcodes for dynamic content
     shortcodes_section = get_shortcodes_context(page_type)
+    # The hero guidance above is written for a homepage. An interior page opens
+    # on the shared page header instead, and has to be told so here — the user
+    # prompt alone loses against the structural example in the system prompt.
+    interior_section = (
+        _INTERIOR_SYSTEM_RULE
+        if page_type and page_type not in {"accueil", "accueil_ecommerce", "one_page"}
+        else ""
+    )
 
     # Language instruction section
     language_instruction = f"""
@@ -451,7 +459,8 @@ aesthetic direction for this site, not this shape.
   }}
 ]
 
-IMPORTANT: Return ONLY the JSON, without ```json or explanation."""
+IMPORTANT: Return ONLY the JSON, without ```json or explanation.{interior_section}
+"""
 
 
 _HOMEPAGE_HERO_RULE = """
@@ -467,15 +476,35 @@ HARD RULES: the image IS the section background and covers the WHOLE hero — NO
 NOT a floating image box, NOT a flat single-color block beside text.
 """
 
+_INTERIOR_SYSTEM_RULE = """
+
+THIS PAGE IS AN INTERIOR PAGE — IT HAS NO HERO:
+The section above on heroes and openings describes the homepage. This page is
+rendered underneath the site's shared page header — a band carrying the
+breadcrumb, the page title and one subtitle line, the same on every interior
+page. Drawing a second opening puts two titles on top of each other, which is
+the most visible way a generated page looks unfinished.
+
+So for THIS page, override the hero guidance:
+- The first <section> is the first section of REAL CONTENT, not an announcement.
+- No full-bleed opening image, no eyebrow + display title + subtitle + CTA band,
+  no minHeight of 70-90vh on the first section.
+- Do not repeat the page title as an H1 anywhere.
+- 4-6 sections of substance, opening straight into the subject.
+"""
+
+
 _INTERIOR_HEADER_RULE = """
 
-INTERIOR PAGE HEADER — MUST BE IDENTICAL ON EVERY INTERIOR PAGE (about, services, contact, …):
-Open with ONE compact header <section>: minHeight "38vh", padding "96px 24px", a LIGHT neutral
-background (a very light tint of the palette, or #f8fafc — NOT a full-bleed photo, NOT a saturated
-color slab). Inside a centered max-width container, left-aligned: an uppercase eyebrow (the page
-category), the page H1 title, and ONE short subtitle line. Use the EXACT same structure, height,
-padding, background and alignment on EVERY interior page — only the texts change. Do NOT invent a
-different hero per page, and do NOT put a background image on interior headers.
+INTERIOR PAGE OPENING — THE SITE ALREADY DRAWS ONE, DO NOT DRAW ANOTHER:
+This page will be rendered underneath a shared page header: a band carrying the
+breadcrumb, the page title and one subtitle line, identical on every interior
+page of the site and styled from the theme.
+
+So do NOT open with a hero, a title band, or any section whose job is to
+announce the page. Start directly with the first section of real content. Do not
+repeat the page title as an H1 — the band already prints it, and two titles
+stacked is the most visible way a generated page looks unfinished.
 """
 
 

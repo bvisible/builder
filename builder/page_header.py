@@ -23,6 +23,18 @@ DEFAULTS = {
 	"show_breadcrumbs": 1,
 }
 
+# The band carries its own CSS, the way the header and the footer do.
+#
+# `web_include_css` only reaches pages frappe renders. A Builder page loads its
+# own assets, so a stylesheet rule for the band would style it on the blog and
+# leave it unstyled — breadcrumbs flush against the window edge — on every page
+# the AI generated. Shipping the rules with the markup is what makes one band
+# actually mean one band.
+_CSS = (
+	"<style>.site-page-header{border-bottom:1px solid var(--footer-border,rgba(0,0,0,0.08))}.site-page-header__inner{max-width:var(--content-max-width,1200px);margin:0 auto;padding:44px 24px 36px}.site-page-header__crumbs{display:flex;flex-wrap:wrap;align-items:center;gap:6px;font-size:0.8125rem;color:var(--muted-color,#6b7280);margin-bottom:12px}.site-page-header__crumbs a{color:inherit;text-decoration:none}.site-page-header__crumbs a:hover{color:var(--primary-color,#111)}.site-page-header__sep{opacity:0.5}.site-page-header__title{font-size:clamp(1.9rem,1.2rem + 2.2vw,3rem);font-weight:700;font-family:var(--heading-font,inherit);line-height:1.15;margin:0}.site-page-header__subtitle{max-width:62ch;margin:10px 0 0;color:var(--muted-color,#6b7280);line-height:1.6}.site-page-header--centered .site-page-header__inner{text-align:center}.site-page-header--centered .site-page-header__crumbs{justify-content:center}.site-page-header--centered .site-page-header__subtitle{margin-left:auto;margin-right:auto}.site-page-header--tinted{background:color-mix(in srgb,var(--primary-color,#111) 8%,transparent);border-bottom-color:transparent}</style>"
+)
+
+
 # Pages that carry their own opening and must not get a second one.
 SKIP_PATHS = ("", "home", "index")
 
@@ -102,7 +114,7 @@ def render(context) -> str:
 	if context.get("show_page_header") is False:
 		return ""
 
-	path = (frappe.request.path if frappe.request else "").strip("/")
+	path = (getattr(frappe.local, "page_header_route", None) or (frappe.request.path if frappe.request else "")).strip("/")
 	if path in SKIP_PATHS:
 		return ""
 
@@ -116,7 +128,7 @@ def render(context) -> str:
 	if not title:
 		return ""
 
-	return frappe.render_template(
+	return _CSS + frappe.render_template(
 		"builder/templates/includes/header_footer/page_header.html",
 		{
 			"style": style,
@@ -139,3 +151,44 @@ def render_page_header() -> str:
 	if context is None:
 		return ""
 	return render(context)
+
+
+@frappe.whitelist(allow_guest=True)
+def render_builder_page_header(doc=None) -> str:
+	"""The same band, for a page the editor built.
+
+	Called from the Builder page template. The homepage keeps the hero the AI
+	composed for it; every interior page opens on this instead of a title band
+	each generation improvises differently — which is the whole point of having
+	one.
+	"""
+	if doc is None:
+		return ""
+
+	route = (doc.get("route") if hasattr(doc, "get") else getattr(doc, "route", "")) or ""
+	route = str(route).strip("/")
+	if route in SKIP_PATHS:
+		return ""
+
+	title = (
+		(doc.get("page_title") if hasattr(doc, "get") else getattr(doc, "page_title", ""))
+		or ""
+	)
+	if not title:
+		return ""
+
+	def _field(name):
+		return (doc.get(name) if hasattr(doc, "get") else getattr(doc, name, None)) or ""
+
+	# The page's meta description is already one descriptive line about this
+	# page, written by whoever made it. Reusing it beats adding a second field
+	# that says the same thing and that nothing fills.
+	subtitle = _field("page_header_subtitle") or _field("meta_description")
+
+	context = frappe._dict({"title": title, "page_header_subtitle": subtitle})
+	# a Builder page has no `parents`; the route is the trail
+	frappe.local.page_header_route = route
+	try:
+		return render(context)
+	finally:
+		frappe.local.page_header_route = None

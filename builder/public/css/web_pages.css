@@ -480,77 +480,13 @@
 
 /* --- the page header ------------------------------------------------------ */
 /*
- * The third piece of the chrome, beside the header and the footer. A generated
- * page opens on a hero the AI composed; everything else used to open on
- * whatever heading its own app printed, which is why /blog read as a different
- * website. One band, decided once in the Theme.
+ * The band that opens a page lives in `page_header.py`, not here.
+ *
+ * It has to render on Builder pages too, and those load their own assets —
+ * `web_include_css` never reaches them. The header and the footer solved this
+ * years ago by carrying their CSS with their markup; the band does the same,
+ * so there is one source of truth instead of one that works on half the site.
  */
-.site-page-header {
-	border-bottom: 1px solid var(--footer-border, rgba(0, 0, 0, 0.08));
-}
-
-.site-page-header__inner {
-	max-width: var(--content-max-width, 1200px);
-	margin: 0 auto;
-	padding: 44px 24px 36px;
-}
-
-.site-page-header__crumbs {
-	display: flex;
-	flex-wrap: wrap;
-	align-items: center;
-	gap: 6px;
-	font-size: 0.8125rem;
-	color: var(--muted-color, #6b7280);
-	margin-bottom: 12px;
-}
-
-.site-page-header__crumbs a {
-	color: inherit;
-	text-decoration: none;
-}
-
-.site-page-header__crumbs a:hover {
-	color: var(--primary-color, #111);
-}
-
-.site-page-header__sep {
-	opacity: 0.5;
-}
-
-.site-page-header__title {
-	font-family: var(--heading-font, inherit);
-	line-height: 1.15;
-	margin: 0;
-}
-
-.site-page-header__subtitle {
-	max-width: 62ch;
-	margin: 10px 0 0;
-	color: var(--muted-color, #6b7280);
-	line-height: 1.6;
-}
-
-/* Centered — for a site whose pages open on a statement rather than a label. */
-.site-page-header--centered .site-page-header__inner {
-	text-align: center;
-}
-
-.site-page-header--centered .site-page-header__crumbs {
-	justify-content: center;
-}
-
-.site-page-header--centered .site-page-header__subtitle {
-	margin-left: auto;
-	margin-right: auto;
-}
-
-/* Tinted — the same band on the primary colour, for sites that want the
-   section to announce itself. */
-.site-page-header--tinted {
-	background: color-mix(in srgb, var(--primary-color, #111) 8%, transparent);
-	border-bottom-color: transparent;
-}
 
 /* Frappe puts a portal sidebar ("My Account") beside web pages and indents the
    content behind it. On a blog that is a column of nothing pushing the articles

@@ -96,6 +96,13 @@
 		{% include "templates/includes/navbar/navbar.html" ignore missing %}
 	{%- endif -%}
 
+	{#- The shared page header: the same band the blog and the other app pages
+	    get, so an interior page opens the same way wherever its content comes
+	    from. The homepage keeps the hero the AI composed for it. -#}
+	{%- if render_builder_page_header is defined and not is_template_page -%}
+	{{ render_builder_page_header(doc) | safe }}
+	{%- endif -%}
+
 	{{ __content }}
 
 	{%- if hf_config and hf_config.footer_template -%}
