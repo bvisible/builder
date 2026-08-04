@@ -718,7 +718,19 @@ createResource({
 	},
 });
 
-const options = computed<Record<string, string[]>>(() => state._options || {});
+// The server sends the canonical option tokens ("Rounded", "Darken"): those are
+// what gets stored, and they must not change with the reader's language. Only
+// the label is translated, so a French screen reads French while the document
+// keeps the same value it has always had.
+const options = computed<Record<string, { label: string; value: string }[]>>(() => {
+	const raw = (state._options || {}) as Record<string, string[]>;
+	return Object.fromEntries(
+		Object.entries(raw).map(([key, values]) => [
+			key,
+			(values || []).map((value) => ({ label: __(value), value })),
+		]),
+	);
+});
 
 watchDebounced(
 	state,

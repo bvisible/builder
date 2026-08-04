@@ -1,7 +1,7 @@
 <template>
 	<div class="flex h-[88vh] max-h-[800px] overflow-hidden">
 		<div class="flex w-48 shrink-0 flex-col gap-5 bg-surface-gray-1 p-4 px-2">
-			<span class="text-lg-semibold px-2 text-ink-gray-9">Settings</span>
+			<span class="text-lg-semibold px-2 text-ink-gray-9">{{ __("Settings") }}</span>
 			<div class="flex flex-col gap-0.5" v-for="(item, index) in settingsSidebarItems" :key="index">
 				<span class="text-base-medium mb-2 px-2 text-ink-gray-5">
 					{{ item.title }}
@@ -100,110 +100,110 @@ const selectedItemDoc = computed(() => {
 });
 
 const pageSettings = {
-	title: "Current Page",
+	title: __("Current Page"),
 	items: [
 		{
-			label: "General",
+			label: __("General"),
 			value: "page_general",
 			component: PageGeneral,
-			title: "General",
+			title: __("General"),
 			icon: "lucide-settings",
 		},
-		{ label: "Code", value: "page_code", component: PageCode, title: "Page Code", icon: "lucide-code" },
+		{ label: __("Code"), value: "page_code", component: PageCode, title: __("Page Code"), icon: "lucide-code" },
 		{
-			label: "Meta",
+			label: __("Meta"),
 			value: "page_meta",
 			component: PageMeta,
-			title: "Meta",
+			title: __("Meta"),
 			icon: "lucide-square-dashed-bottom-code",
 		},
 		{
-			label: "Analytics",
+			label: __("Analytics"),
 			value: "page_analytics",
 			component: PageAnalytics,
-			title: "Page Analytics",
+			title: __("Page Analytics"),
 			icon: "lucide-chart-bar",
 		},
 	],
 };
 
 const globalSettings = {
-	title: "Global",
+	title: __("Global"),
 	items: [
 		{
-			label: "General",
+			label: __("General"),
 			value: "global_general",
 			component: GlobalGeneral,
-			title: "General",
+			title: __("General"),
 			icon: "lucide-settings",
 			disabled: false,
 		},
-		{ label: "Code", value: "global_code", component: GlobalCode, title: "Global Code", icon: "lucide-code" },
+		{ label: __("Code"), value: "global_code", component: GlobalCode, title: __("Global Code"), icon: "lucide-code" },
 		{
-			label: "Redirects",
+			label: __("Redirects"),
 			value: "global_redirects",
 			component: GlobalRedirects,
-			title: "Redirects",
+			title: __("Redirects"),
 			icon: "lucide-shuffle",
 		},
 		{
-			label: "Robots",
+			label: __("Robots"),
 			value: "global_robots",
 			component: PageRobots,
-			title: "Robots.txt",
+			title: __("Robots.txt"),
 			icon: "lucide-bot",
 		},
 		...(window.is_fc_site || window.is_developer_mode
 			? [
 					{
-						label: "Domains",
+						label: __("Domains"),
 						value: "global_domains",
 						component: GlobalDomains,
-						title: "Custom Domains",
+						title: __("Custom Domains"),
 						icon: "lucide-globe",
 					},
 				]
 			: []),
 		{
-			label: "Analytics",
+			label: __("Analytics"),
 			value: "global_analytics",
 			component: GlobalAnalytics,
-			title: "Site Analytics",
+			title: __("Site Analytics"),
 			icon: "lucide-chart-bar",
 		},
 		{
-			label: "Developer",
+			label: __("Developer"),
 			value: "global_developer",
 			component: GlobalDeveloper,
-			title: "Developer Settings",
+			title: __("Developer Settings"),
 			icon: "lucide-terminal",
 		},
 		{
-			label: "AI",
+			label: __("AI"),
 			value: "global_ai",
 			component: GlobalAI,
-			title: "AI Settings",
+			title: __("AI Settings"),
 			icon: "lucide-sparkles",
 		},
 		{
-			label: "Theme",
+			label: __("Theme"),
 			value: "global_theme",
 			component: GlobalTheme,
-			title: "Theme, Header & Footer",
+			title: __("Theme, Header & Footer"),
 			icon: "lucide-palette",
 		},
 		{
-			label: "Social",
+			label: __("Social"),
 			value: "global_social",
 			component: GlobalSocial,
-			title: "Social Accounts",
+			title: __("Social Accounts"),
 			icon: "lucide-at-sign",
 		},
 		{
-			label: "Plugins",
+			label: __("Plugins"),
 			value: "global_plugins",
 			component: GlobalPlugins,
-			title: "Plugins",
+			title: __("Plugins"),
 			icon: "lucide-puzzle",
 		},
 	],

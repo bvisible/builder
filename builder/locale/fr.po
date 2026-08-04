@@ -4291,3 +4291,126 @@ msgstr "En-tête de page"
 #: frontend/src/components/Settings/GlobalTheme.vue:408
 msgid "Shown above the content of pages the editor does not build — the blog, a section that is coming. Pages that open on a hero of their own keep it."
 msgstr "Affiché au-dessus du contenu des pages que l'éditeur ne construit pas — le blog, une section à venir. Les pages qui s'ouvrent sur leur propre héros le gardent."
+
+msgid "General"
+msgstr "Général"
+
+msgid "Redirects"
+msgstr "Redirections"
+
+msgid "Domains"
+msgstr "Domaines"
+
+msgid "Developer"
+msgstr "Développeur"
+
+msgid "AI"
+msgstr "IA"
+
+msgid "Users"
+msgstr "Utilisateurs"
+
+msgid "Analytics"
+msgstr "Statistiques"
+
+msgid "Current Page"
+msgstr "Page courante"
+
+msgid "Page Code"
+msgstr "Code de la page"
+
+msgid "Global Code"
+msgstr "Code global"
+
+msgid "Custom Domains"
+msgstr "Domaines personnalisés"
+
+msgid "Site Analytics"
+msgstr "Statistiques du site"
+
+msgid "Developer Settings"
+msgstr "Réglages développeur"
+
+msgid "Social Accounts"
+msgstr "Comptes sociaux"
+
+msgid "Outgoing Email"
+msgstr "Courrier sortant"
+
+msgid "Page Analytics"
+msgstr "Statistiques de la page"
+
+msgid "Reasoning effort"
+msgstr "Effort de réflexion"
+
+msgid "How long the model thinks before answering. More is slower and usually better."
+msgstr "Combien de temps le modèle réfléchit avant de répondre. Plus c'est long, plus c'est lent, et généralement meilleur."
+
+msgid "Image model"
+msgstr "Modèle d'images"
+
+msgid "Provider default"
+msgstr "Défaut du fournisseur"
+
+msgid "Required for this provider — no default is assumed."
+msgstr "Requis pour ce fournisseur — aucune valeur par défaut n'est supposée."
+
+msgid "Theme, Header & Footer"
+msgstr "Thème, en-tête et pied de page"
+
+msgid "Sharp"
+msgstr "Nette"
+
+msgid "Soft"
+msgstr "Douce"
+
+msgid "Strong"
+msgstr "Marquée"
+
+msgid "Darken"
+msgstr "Assombrir"
+
+msgid "Lift"
+msgstr "Soulever"
+
+msgid "Grow"
+msgstr "Agrandir"
+
+msgid "Calm"
+msgstr "Calme"
+
+msgid "Brisk"
+msgstr "Vive"
+
+msgid "Classic"
+msgstr "Classique"
+
+msgid "Floating"
+msgstr "Flottant"
+
+msgid "Centered"
+msgstr "Centré"
+
+msgid "Rounded"
+msgstr "Arrondie"
+
+msgid "Same as header"
+msgstr "Comme l'en-tête"
+
+msgid "Custom links"
+msgstr "Liens personnalisés"
+
+msgid "Grid"
+msgstr "Grille"
+
+msgid "List"
+msgstr "Liste"
+
+msgid "Magazine"
+msgstr "Magazine"
+
+msgid "Simple"
+msgstr "Simple"
+
+msgid "Tinted"
+msgstr "Teinté"
