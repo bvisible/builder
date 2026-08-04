@@ -1,6 +1,8 @@
 from frappe.core.api.file import create_new_folder
 
 from builder.ai_settings_fields import ensure_ai_custom_fields
+from builder.plugins import sync_plugins
+from builder.web_chrome import ensure_web_chrome_templates
 from builder.export_import_standard_page import sync_standard_builder_pages
 from builder.utils import (
 	add_composite_index_to_web_page_view,
@@ -19,6 +21,7 @@ def after_install():
 	add_composite_index_to_web_page_view()
 	sync_standard_builder_pages()
 	ensure_ai_custom_fields()
+	ensure_web_chrome_templates()
 
 
 def after_migrate():
@@ -27,7 +30,11 @@ def after_migrate():
 	sync_builder_variables()
 	sync_standard_builder_pages()
 	ensure_ai_custom_fields()
+	ensure_web_chrome_templates()
+	sync_plugins()
 
 
 def after_app_install(app_name=None):
 	sync_standard_builder_pages(app_name)
+	# installing the blog app is what makes the blog plugin appear
+	sync_plugins(app_name)

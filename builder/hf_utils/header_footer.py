@@ -300,3 +300,38 @@ def get_editor_footer_html():
 		"html": html,
 		"css": css,
 	}
+
+
+# The whole-page chrome, as Jinja methods. api.py exposes the same thing as
+# whitelisted endpoints; these are what a template calls — the Builder page
+# generator, and the Web Templates frappe's base.html renders on every other
+# web page.
+
+def render_site_header(is_template_page=False, standalone=False) -> str:
+	"""The site header.
+
+	`standalone` is for pages Builder does not render — the blog, a portal
+	page. Two of the header presets deliberately pull the page up underneath
+	themselves, because a generated page opens on a hero built to sit under
+	the bar. A frappe web page has no hero, so its first line would land
+	behind the header; these pages get a spacer instead.
+	"""
+	if is_template_page:
+		return ""
+	config = get_header_footer_config()
+	if not config or not config.header_layout:
+		return ""
+
+	html = get_header_css(config) + render_header(config)
+	if standalone and (config.get("header_style") or "Classic") in ("Floating", "Transparent"):
+		html += '<div class="site-header__spacer" aria-hidden="true"></div>'
+	return html
+
+
+def render_site_footer(is_template_page=False) -> str:
+	if is_template_page:
+		return ""
+	config = get_header_footer_config()
+	if not config or not config.footer_template:
+		return ""
+	return get_footer_css(config) + render_footer(config)

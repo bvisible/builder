@@ -58,6 +58,8 @@ jinja = {
 		"builder.hf_utils.header_footer.render_header",
 		"builder.hf_utils.header_footer.render_footer",
 		"builder.hf_utils.header_footer.get_header_footer_config",
+		"builder.hf_utils.header_footer.render_site_header",
+		"builder.hf_utils.header_footer.render_site_footer",
 		"builder.builder.doctype.builder_component.builder_component.get_component_data",
 	],
 	"filters": [
@@ -81,6 +83,11 @@ after_app_install = "builder.install.after_app_install"
 # Legacy site chrome (navbar/footer/CSS) for migrated client sites; no-op unless
 # site_config sets builder_legacy_site_chrome (see builder/overrides/site_chrome.py).
 update_website_context = "builder.overrides.site_chrome.inject_site_chrome"
+# A disabled plugin does not serve its public routes.
+before_request = ["builder.plugins.route_guard"]
+# The site's tokens dressing the markup other apps' web views emit (the blog's
+# cards, its article page). Scoped to selectors we do not own.
+web_include_css = "/assets/builder/css/web_pages.css"
 
 # Fixtures
 # --------

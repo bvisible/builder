@@ -174,7 +174,7 @@ def inject_site_chrome(context):
 	No-op unless site_config sets ``builder_legacy_site_chrome``.
 	"""
 	if not frappe.conf.get("builder_legacy_site_chrome"):
-		return
+		return _inject_config_chrome(context)
 
 	#//// Neoffice website switch: an offline site (website_online=0, the fleet
 	#//// default) leaks nothing — the login page and every remaining web page
@@ -230,3 +230,41 @@ def inject_site_chrome(context):
 	builder_css_tags += LEGACY_FIXES_CSS
 
 	context["_head_html"] = builder_css_tags + context["_head_html"]
+
+
+# ---------------------------------------------------------------------------
+# The config-driven chrome on pages Builder does not render
+# ---------------------------------------------------------------------------
+#
+# A Builder page calls render_site_header/render_site_footer from its own
+# template. Every other web page — the blog, a portal page, login — goes
+# through frappe's base.html, which renders `navbar_template` / `footer_template`
+# and knows nothing about us. Without this, installing the blog plugin gives a
+# /blog that looks like a different website: no menu, no logo, no footer.
+#
+# Two Web Templates carry the call (see setup.ensure_web_chrome_templates); the
+# hook just points base.html at them.
+
+NAVBAR_TEMPLATE = "Site Header"
+FOOTER_TEMPLATE = "Site Footer"
+
+
+def _inject_config_chrome(context):
+	"""Point frappe's base.html at the site's own header and footer."""
+	# A site that never configured the chrome keeps frappe's default navbar —
+	# this must not redecorate benches that do not use the subsystem.
+	try:
+		from builder.hf_utils.header_footer import get_header_footer_config
+
+		config = get_header_footer_config()
+	except Exception:
+		return
+	if not config or not config.get("header_layout"):
+		return
+
+	# An explicit choice by the page wins: the Builder's own generator template
+	# renders the chrome itself, and portal pages may set their own.
+	if not context.get("navbar_template") and frappe.db.exists("Web Template", NAVBAR_TEMPLATE):
+		context["navbar_template"] = NAVBAR_TEMPLATE
+	if not context.get("footer_template") and frappe.db.exists("Web Template", FOOTER_TEMPLATE):
+		context["footer_template"] = FOOTER_TEMPLATE

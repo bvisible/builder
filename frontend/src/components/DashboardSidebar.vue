@@ -103,6 +103,13 @@
 				<span>{{ __("Media") }}</span>
 			</span>
 			<span
+				v-if="capabilities.blog !== false"
+				class="flex cursor-pointer gap-2 rounded p-2 text-base text-ink-gray-6"
+				@click="showBlog = true">
+				<span class="lucide-newspaper size-4" aria-hidden="true" />
+				<span>{{ __("Articles") }}</span>
+			</span>
+			<span
 				class="flex cursor-pointer gap-2 p-2 text-base text-ink-gray-6"
 				@click="showSettingsDialog = true">
 				<SettingsIcon class="size-4"></SettingsIcon>
@@ -180,6 +187,7 @@
 	</section>
 	<AIChatModal v-model="showAIChat" />
 	<MediaLibrary v-model="showMedia" />
+	<BlogManager v-model="showBlog" />
 	<ThemeDialog v-model="showTheme" />
 </template>
 <script lang="ts" setup>
@@ -200,6 +208,7 @@ import { computed, defineAsyncComponent, h, ref } from "vue";
 // loaded on demand: the chat pulls in its own chunk and most visits never open it
 const AIChatModal = defineAsyncComponent(() => import("@/components/AIChatModal.vue"));
 const MediaLibrary = defineAsyncComponent(() => import("@/components/MediaLibrary.vue"));
+const BlogManager = defineAsyncComponent(() => import("@/components/BlogManager.vue"));
 const ThemeDialog = defineAsyncComponent(() => import("@/components/ThemeDialog.vue"));
 
 // `__` is installed globally by the translation plugin (see src/translation.ts).
@@ -214,6 +223,23 @@ const { showTemplatesDialog, showSettingsDialog } = useDashboardState();
 const renamingFolder = ref("");
 const showAIChat = ref(false);
 const showMedia = ref(false);
+const showBlog = ref(false);
+
+// What this bench is allowed to show. A plugin the owner turned off must not
+// leave a dead button behind — and `!== false` is deliberate: an unknown
+// plugin, or a bench whose registry has not synced yet, stays visible.
+const capabilities = ref<Record<string, boolean>>({});
+const capabilitiesResource = createResource({
+	url: "builder.plugins.get_capabilities",
+	auto: true,
+	onSuccess(data: Record<string, boolean>) {
+		capabilities.value = data || {};
+	},
+	onError() {
+		capabilities.value = {};
+	},
+});
+window.addEventListener("unpress:capabilities-changed", () => capabilitiesResource.reload());
 const showTheme = ref(false);
 
 const apps = createResource({

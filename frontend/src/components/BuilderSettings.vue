@@ -54,6 +54,7 @@ import GlobalCode from "./Settings/GlobalCode.vue";
 import GlobalDeveloper from "./Settings/GlobalDeveloper.vue";
 import GlobalDomains from "./Settings/GlobalDomains.vue";
 import GlobalGeneral from "./Settings/GlobalGeneral.vue";
+import GlobalPlugins from "./Settings/GlobalPlugins.vue";
 import GlobalSocial from "./Settings/GlobalSocial.vue";
 import GlobalTheme from "./Settings/GlobalTheme.vue";
 import PageAnalytics from "./Settings/PageAnalytics.vue";
@@ -197,6 +198,13 @@ const globalSettings = {
 			component: GlobalSocial,
 			title: "Social Accounts",
 			icon: "lucide-at-sign",
+		},
+		{
+			label: "Plugins",
+			value: "global_plugins",
+			component: GlobalPlugins,
+			title: "Plugins",
+			icon: "lucide-puzzle",
 		},
 	],
 };
