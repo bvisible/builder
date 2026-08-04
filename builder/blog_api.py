@@ -189,6 +189,10 @@ def save_post(post) -> dict:
 	else:
 		doc = frappe.new_doc("Blog Post")
 		doc.blogger = _ensure_blogger()
+		# off unless the site opted in — the box nobody watches fills with spam
+		from builder.blog_chrome import comments_allowed
+
+		doc.disable_comments = 0 if comments_allowed() else 1
 
 	for field in WRITABLE:
 		if field in post:
@@ -281,6 +285,9 @@ def write_article(topic: str, publish=False) -> dict:
 	doc.meta_description = (article.meta_description or article.intro or "")[:500]
 	doc.blog_category = _ensure_category()
 	doc.blogger = _ensure_blogger()
+	from builder.blog_chrome import comments_allowed
+
+	doc.disable_comments = 0 if comments_allowed() else 1
 	doc.published = 1 if frappe.parse_json(str(publish).lower()) else 0
 	if doc.published:
 		doc.published_on = now_datetime()
@@ -374,3 +381,29 @@ def article_status(job_id: str) -> dict:
 		"status": "unknown",
 		"step": _("No such job"),
 	}
+
+
+@frappe.whitelist()
+def generate_missing_covers() -> dict:
+	"""Queue a cover for every article that has none.
+
+	Articles written before covers existed, or imported from elsewhere, show a
+	gradient with their title on it. That is a decent fallback and a poor
+	default once the site has real photographs everywhere else.
+	"""
+	_check()
+
+	from builder.ai.generators.article_generator import cover_prompt, request_cover
+
+	queued = []
+	for name in frappe.get_all("Blog Post", filters={"meta_image": ["in", (None, "")]}, pluck="name"):
+		doc = frappe.get_doc("Blog Post", name)
+
+		class _Article:
+			title = doc.title
+			intro = doc.blog_intro
+
+		if request_cover(_Article(), name):
+			queued.append(doc.title)
+
+	return {"queued": len(queued), "titles": queued}

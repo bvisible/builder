@@ -4255,3 +4255,23 @@ msgstr "L'article n'a pas pu être rédigé."
 #: frontend/src/components/BlogManager.vue:234
 msgid "The cover image is still being generated."
 msgstr "L'image de couverture est encore en cours de génération."
+
+#: frontend/src/components/Settings/GlobalTheme.vue:428
+msgid "Allow comments"
+msgstr "Autoriser les commentaires"
+
+#: frontend/src/components/Settings/GlobalTheme.vue:409
+msgid "Article list"
+msgstr "Liste des articles"
+
+#: frontend/src/components/Settings/GlobalTheme.vue:416
+msgid "Article page"
+msgstr "Page d'article"
+
+#: frontend/src/components/Settings/GlobalTheme.vue:429
+msgid "Off by default. A comment box nobody watches fills with spam."
+msgstr "Désactivé par défaut. Un espace de commentaires que personne ne surveille se remplit de spam."
+
+#: frontend/src/components/Settings/GlobalTheme.vue:423
+msgid "Show the author"
+msgstr "Afficher l'auteur"

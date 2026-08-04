@@ -390,6 +390,48 @@
 			</template>
 		</div>
 
+		<!-- Blog. Only there when the site has one — the plugin decides. -->
+		<div v-if="capabilities.blog !== false" class="flex flex-col gap-3 border-t border-outline-gray-1 pt-4">
+			<button
+				class="flex w-fit items-center gap-1 text-sm font-medium text-ink-gray-8"
+				@click="open.blog = !open.blog">
+				<span
+					class="inline-block size-4"
+					:class="open.blog ? 'lucide-chevron-down' : 'lucide-chevron-right'"
+					aria-hidden="true" />
+				{{ __("Blog") }}
+			</button>
+			<template v-if="open.blog">
+				<div class="grid grid-cols-2 gap-3">
+					<FormControl
+						type="select"
+						size="sm"
+						:label="__('Article list')"
+						:options="options.blog_layout"
+						:modelValue="state.blog_layout"
+						@update:modelValue="(v: string) => (state.blog_layout = v)" />
+					<FormControl
+						type="select"
+						size="sm"
+						:label="__('Article page')"
+						:options="options.blog_post_layout"
+						:modelValue="state.blog_post_layout"
+						@update:modelValue="(v: string) => (state.blog_post_layout = v)" />
+				</div>
+				<Switch
+					size="sm"
+					:label="__('Show the author')"
+					:modelValue="!!state.blog_show_author"
+					@update:modelValue="(v: boolean) => (state.blog_show_author = v ? 1 : 0)" />
+				<Switch
+					size="sm"
+					:label="__('Allow comments')"
+					:description="__('Off by default. A comment box nobody watches fills with spam.')"
+					:modelValue="!!state.blog_allow_comments"
+					@update:modelValue="(v: boolean) => (state.blog_allow_comments = v ? 1 : 0)" />
+			</template>
+		</div>
+
 		<!-- Where these settings came from. The generator already saved its brief
 		     on the session and read it back to finish the site; nobody could read
 		     it. The Theme is the durable home for it — the chat opens a fresh
@@ -538,7 +580,27 @@ watch(savedAt, (at) => {
 	justSaved.value = true;
 	setTimeout(() => (justSaved.value = false), 2200);
 });
-const open = reactive({ theme: true, header: false, menu: false, footer: false, brief: false });
+const open = reactive({
+	theme: true,
+	header: false,
+	menu: false,
+	footer: false,
+	blog: false,
+	brief: false,
+});
+
+// The blog section is only worth showing on a site that has a blog.
+const capabilities = ref<Record<string, boolean>>({});
+createResource({
+	url: "builder.plugins.get_capabilities",
+	auto: true,
+	onSuccess(data: Record<string, boolean>) {
+		capabilities.value = data || {};
+	},
+	onError() {
+		capabilities.value = {};
+	},
+});
 
 // The brief behind the site as it stands. Absent on a site nobody generated,
 // in which case the whole section stays hidden.

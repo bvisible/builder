@@ -82,6 +82,12 @@
   "footer_html_section",
   "show_footer_html",
   "footer_html",
+  "blog_section",
+  "blog_layout",
+  "blog_post_layout",
+  "column_break_blog",
+  "blog_allow_comments",
+  "blog_show_author",
   "theme_tab",
   "theme_colors_section",
   "primary_color",
@@ -843,6 +849,44 @@
    "label": "HTML",
    "options": "HTML",
    "depends_on": "show_footer_html"
+  },
+  {
+   "fieldname": "blog_section",
+   "fieldtype": "Section Break",
+   "label": "Blog"
+  },
+  {
+   "fieldname": "blog_layout",
+   "fieldtype": "Select",
+   "label": "Article list",
+   "options": "Grid\nList\nMagazine",
+   "default": "Grid",
+   "description": "How /blog lays its articles out."
+  },
+  {
+   "fieldname": "blog_post_layout",
+   "fieldtype": "Select",
+   "label": "Article page",
+   "options": "Cover hero\nCover above\nNo cover",
+   "default": "Cover hero",
+   "description": "Where the cover image goes on an article."
+  },
+  {
+   "fieldname": "column_break_blog",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "blog_allow_comments",
+   "fieldtype": "Check",
+   "label": "Allow comments",
+   "default": "0",
+   "description": "Off by default. A comment box nobody watches fills with spam."
+  },
+  {
+   "fieldname": "blog_show_author",
+   "fieldtype": "Check",
+   "label": "Show the author",
+   "default": "1"
   }
  ],
  "index_web_pages_for_search": 1,

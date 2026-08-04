@@ -82,3 +82,398 @@
 .blog-container .breadcrumb {
 	font-size: 0.8125rem;
 }
+
+/* --- the article index ---------------------------------------------------- */
+.u-blog .blog-list-content,
+.u-blog .page_content > .row {
+	max-width: var(--content-max-width, 1200px);
+	margin: 0 auto;
+	padding-left: 24px;
+	padding-right: 24px;
+}
+
+.u-blog .hero h1 {
+	font-family: var(--heading-font, inherit);
+}
+
+
+
+
+
+
+
+.u-blog .blog-list.row {
+	margin-left: 0;
+	margin-right: 0;
+}
+
+.u-blog .blog-list {
+	display: grid;
+	gap: 28px;
+}
+
+/* the cards carry bootstrap column classes; the grid owns the widths now */
+.u-blog .blog-card {
+	max-width: none;
+	flex: none;
+	width: auto;
+	padding: 0;
+}
+
+.u-blog .btn-more {
+	margin: 36px auto 0;
+	display: block;
+}
+
+.u-blog .btn-more.hidden {
+	display: none;
+}
+
+/* Grid — the default. Cards of equal weight. */
+.u-blog--grid .blog-list {
+	grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+}
+
+/* List — one per row, image beside the text. Reads faster when there are
+   many articles and the titles are what matters. */
+.u-blog--list .blog-list {
+	grid-template-columns: 1fr;
+	gap: 20px;
+}
+
+.u-blog--list .blog-card .card {
+	display: grid;
+	grid-template-columns: minmax(180px, 34%) 1fr;
+	align-items: stretch;
+}
+
+.u-blog--list .blog-card .card-img-top,
+.u-blog--list .blog-card .default-cover {
+	height: 100%;
+}
+
+.u-blog--list .blog-card .card-img-top img,
+.u-blog--list .blog-card .default-cover {
+	aspect-ratio: auto;
+	height: 100%;
+	min-height: 160px;
+}
+
+/* Magazine — the first article large, the rest beside it. For a blog that
+   publishes rarely and wants the latest to lead. */
+.u-blog--magazine .blog-list {
+	grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+}
+
+.u-blog--magazine .blog-list > :first-child {
+	grid-column: 1 / -1;
+}
+
+.u-blog--magazine .blog-list > :first-child .card {
+	display: grid;
+	grid-template-columns: 1fr 1fr;
+	align-items: stretch;
+}
+
+.u-blog--magazine .blog-list > :first-child .card-img-top img,
+.u-blog--magazine .blog-list > :first-child .default-cover {
+	aspect-ratio: auto;
+	height: 100%;
+	min-height: 260px;
+}
+
+.u-blog--magazine .blog-list > :first-child .card-body {
+	display: flex;
+	flex-direction: column;
+	justify-content: center;
+	padding: 32px;
+}
+
+.u-blog--magazine .blog-list > :first-child h5 {
+	font-size: 1.6rem;
+}
+
+@media (max-width: 720px) {
+	.u-blog--list .blog-card .card,
+	.u-blog--magazine .blog-list > :first-child .card {
+		grid-template-columns: 1fr;
+	}
+}
+
+/* --- the article --------------------------------------------------------- */
+/*
+ * A blog article is the one page on a site that is pure reading, and reading
+ * has a measure — past roughly 65 characters the eye loses its place coming
+ * back to the next line. Full-bleed body text is the single most common way a
+ * blog looks unfinished.
+ */
+.u-article__body,
+.u-article__head,
+.u-article__footer,
+.u-article__comments,
+.u-article__cta {
+	max-width: 68ch;
+	margin-left: auto;
+	margin-right: auto;
+	padding-left: 24px;
+	padding-right: 24px;
+}
+
+.u-article__head {
+	padding-top: 64px;
+}
+
+.u-article__eyebrow {
+	display: inline-block;
+	font-size: 0.75rem;
+	font-weight: 600;
+	letter-spacing: 0.08em;
+	text-transform: uppercase;
+	text-decoration: none;
+	color: var(--primary-color, #111);
+	margin-bottom: 12px;
+}
+
+.u-article__title {
+	font-family: var(--heading-font, inherit);
+	line-height: 1.15;
+	margin: 0 0 16px;
+}
+
+.u-article__intro {
+	font-size: 1.15rem;
+	line-height: 1.6;
+	color: var(--muted-color, #6b7280);
+	margin: 0 0 16px;
+}
+
+.u-article__meta {
+	font-size: 0.875rem;
+	color: var(--muted-color, #9ca3af);
+	margin: 0;
+}
+
+/* Cover hero: the image carries the title, the way a generated homepage does. */
+.u-article__hero {
+	position: relative;
+	display: flex;
+	align-items: flex-end;
+	min-height: 58vh;
+	background-size: cover;
+	background-position: center;
+	color: #fff;
+}
+
+.u-article__hero-inner {
+	position: relative;
+	z-index: 1;
+	width: 100%;
+	max-width: 68ch;
+	margin: 0 auto;
+	padding: 48px 24px;
+}
+
+/* The theme sets a heading colour on h1 globally, and it wins over inheritance
+   from the hero — so the title has to say so itself, or it lands dark on a
+   dark photograph. */
+.u-article__hero .u-article__title {
+	color: #fff;
+	text-shadow: 0 1px 24px rgba(0, 0, 0, 0.35);
+}
+
+.u-article__hero .u-article__eyebrow,
+.u-article__hero .u-article__intro,
+.u-article__hero .u-article__meta {
+	color: rgba(255, 255, 255, 0.9);
+}
+
+/* Its own scrim rather than the shared block one: a hero that carries a whole
+   headline needs more cover than a caption does, and it must read against a
+   photograph we did not choose. */
+.u-article__hero::before {
+	content: "";
+	position: absolute;
+	inset: 0;
+	background: linear-gradient(
+		to top,
+		rgba(0, 0, 0, 0.72) 0%,
+		rgba(0, 0, 0, 0.45) 45%,
+		rgba(0, 0, 0, 0.12) 100%
+	);
+}
+
+.u-article__cover {
+	max-width: 980px;
+	margin: 32px auto 0;
+	padding: 0 24px;
+}
+
+.u-article__cover img {
+	width: 100%;
+	border-radius: var(--radius-lg, 12px);
+	aspect-ratio: 16 / 9;
+	object-fit: cover;
+}
+
+.u-article__body {
+	padding-top: 40px;
+	padding-bottom: 8px;
+	font-size: 1.0625rem;
+	line-height: 1.75;
+}
+
+.u-article__body > * + * {
+	margin-top: 1.15em;
+}
+
+.u-article__body h2 {
+	font-family: var(--heading-font, inherit);
+	font-size: 1.5rem;
+	line-height: 1.3;
+	margin-top: 2.2em;
+}
+
+.u-article__body h3 {
+	font-size: 1.2rem;
+	margin-top: 1.8em;
+}
+
+.u-article__body img {
+	max-width: 100%;
+	border-radius: var(--radius, 8px);
+}
+
+.u-article__body blockquote {
+	margin-left: 0;
+	padding-left: 20px;
+	border-left: 3px solid var(--primary-color, #111);
+	color: var(--muted-color, #4b5563);
+}
+
+.u-article__body a {
+	color: var(--primary-color, #111);
+}
+
+.u-article__footer {
+	display: flex;
+	flex-wrap: wrap;
+	align-items: center;
+	justify-content: space-between;
+	gap: 16px;
+	margin-top: 48px;
+	padding-top: 24px;
+	padding-bottom: 24px;
+	border-top: 1px solid var(--footer-border, rgba(0, 0, 0, 0.1));
+}
+
+.u-article__author {
+	display: flex;
+	align-items: center;
+	gap: 12px;
+}
+
+.u-article__avatar {
+	width: 40px;
+	height: 40px;
+	border-radius: 50%;
+	object-fit: cover;
+}
+
+.u-article__author-name {
+	display: block;
+	font-weight: 600;
+}
+
+.u-article__author-bio {
+	display: block;
+	font-size: 0.8125rem;
+	color: var(--muted-color, #6b7280);
+}
+
+.u-article__actions {
+	display: flex;
+	align-items: center;
+	gap: 16px;
+}
+
+.u-article__share a {
+	margin-left: 10px;
+	color: var(--muted-color, #6b7280);
+}
+
+.u-article__comments {
+	padding-bottom: 72px;
+}
+
+@media (max-width: 720px) {
+	.u-article__hero {
+		min-height: 42vh;
+	}
+}
+
+/* --- not found, and not built yet ----------------------------------------- */
+/*
+ * Frappe's own 404 blocks the navbar and the footer, so the visitor loses the
+ * site at the exact moment they need a way back into it. Ours keeps the chrome
+ * and gives them somewhere to go.
+ */
+.u-404 {
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	min-height: 62vh;
+	padding: 72px 24px;
+	text-align: center;
+}
+
+.u-404__inner {
+	max-width: 46ch;
+}
+
+.u-404__code {
+	font-family: var(--heading-font, inherit);
+	font-size: 0.8125rem;
+	font-weight: 600;
+	letter-spacing: 0.14em;
+	text-transform: uppercase;
+	color: var(--primary-color, #111);
+	margin: 0 0 12px;
+}
+
+.u-404__title {
+	font-family: var(--heading-font, inherit);
+	line-height: 1.15;
+	margin: 0 0 14px;
+}
+
+.u-404__text {
+	color: var(--muted-color, #6b7280);
+	line-height: 1.6;
+	margin: 0 0 28px;
+}
+
+.u-404__actions {
+	display: flex;
+	justify-content: center;
+	gap: 12px;
+}
+
+.u-404__menu {
+	display: flex;
+	flex-wrap: wrap;
+	justify-content: center;
+	gap: 6px 20px;
+	margin-top: 36px;
+	padding-top: 24px;
+	border-top: 1px solid var(--footer-border, rgba(0, 0, 0, 0.1));
+}
+
+.u-404__menu a {
+	font-size: 0.9375rem;
+	color: var(--muted-color, #6b7280);
+	text-decoration: none;
+}
+
+.u-404__menu a:hover {
+	color: var(--primary-color, #111);
+}

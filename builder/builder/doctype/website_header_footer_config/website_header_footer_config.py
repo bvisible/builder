@@ -132,11 +132,22 @@ class WebsiteHeaderFooterConfig(Document):
 			"bar_full": search_type == "Search Bar (full width bottom)",
 		}
 
+	# Header icons whose component calls into the shop. Rendered on a bench
+	# without it, they raise at render time and take the whole page with them —
+	# the same failure as a Jinja include from an app that is not there.
+	SHOP_ICONS = ("user", "wishlist", "cart", "search_bar", "search_bar_full")
+
 	def get_visible_icons(self) -> dict:
-		"""Get which icons should be visible based on checkboxes."""
+		"""Which icons the header shows — minus the ones this bench cannot serve.
+
+		The choice is the owner's; whether it is possible is the server's. A
+		site generated as e-commerce asks for a cart even on a bench with no
+		shop, and the honest answer is to leave it out rather than to break
+		every page that renders a header.
+		"""
 		search_config = self.get_search_config()
 
-		return {
+		icons = {
 			"search": search_config["icon"],
 			"search_bar": search_config["bar"],
 			"search_bar_full": search_config["bar_full"],
@@ -144,6 +155,19 @@ class WebsiteHeaderFooterConfig(Document):
 			"wishlist": self.show_wishlist,
 			"cart": self.show_cart,
 		}
+
+		try:
+			shop_available = "webshop" in set(frappe.get_installed_apps())
+		except Exception:
+			shop_available = True
+
+		if not shop_available:
+			for key in self.SHOP_ICONS:
+				icons[key] = 0
+			# the plain search icon opens an overlay that also searches products
+			icons["search"] = 0
+
+		return icons
 
 	def get_header_colors(self) -> dict:
 		"""Get header color configuration."""

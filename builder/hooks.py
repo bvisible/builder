@@ -82,12 +82,32 @@ after_app_install = "builder.install.after_app_install"
 
 # Legacy site chrome (navbar/footer/CSS) for migrated client sites; no-op unless
 # site_config sets builder_legacy_site_chrome (see builder/overrides/site_chrome.py).
-update_website_context = "builder.overrides.site_chrome.inject_site_chrome"
+update_website_context = [
+	"builder.overrides.site_chrome.inject_site_chrome",
+	# the blog wears the site's design: our templates, chosen after the app's
+	"builder.blog_chrome.apply",
+]
 # A disabled plugin does not serve its public routes.
 before_request = ["builder.plugins.route_guard"]
 # The site's tokens dressing the markup other apps' web views emit (the blog's
 # cards, its article page). Scoped to selectors we do not own.
-web_include_css = "/assets/builder/css/web_pages.css"
+# Cache-busted by content hash, the same trick the logo uses: /assets is served
+# with a long max-age, so without this a visitor keeps yesterday's stylesheet
+# after a deploy and the site looks half-updated. Computed at import, so a
+# restart after deploying picks up the new hash.
+def _asset_version(relative_path: str) -> str:
+	import hashlib
+	import os
+
+	full = os.path.join(os.path.dirname(__file__), "public", relative_path)
+	try:
+		with open(full, "rb") as handle:
+			return hashlib.md5(handle.read()).hexdigest()[:8]
+	except OSError:
+		return "0"
+
+
+web_include_css = f"/assets/builder/css/web_pages.css?v={_asset_version('css/web_pages.css')}"
 
 # Fixtures
 # --------
