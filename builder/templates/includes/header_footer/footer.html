@@ -131,10 +131,22 @@
 		</div>
 
 		{%- else -%}
-		{# Minimal footer: Logo + social + copyright on one line #}
+		{# Minimal footer: Logo + links + social on one line. The links are a
+		   single row here — a minimal footer that cannot carry a privacy link
+		   is not minimal, it is incomplete. #}
 		<div class="site-footer__minimal">
 			{%- if logo -%}
 			{{ render_logo(logo) }}
+			{%- endif -%}
+			{%- if footer_columns -%}
+			<nav class="site-footer__inline-links">
+				{%- for column_name, links in footer_columns.items() -%}
+					{%- for link in links -%}
+					<a href="{{ link.url }}" class="site-footer__link"
+					   {% if link.is_external or link.open_in_new_tab %}target="_blank" rel="noopener noreferrer"{% endif %}>{{ link.label }}</a>
+					{%- endfor -%}
+				{%- endfor -%}
+			</nav>
 			{%- endif -%}
 			{%- if social_links -%}
 			<div class="site-footer__social">
@@ -147,6 +159,16 @@
 		{%- endif -%}
 
 		{# Copyright bar #}
+		{%- if footer_html -%}
+		{# The client's own embed, above the copyright line.
+
+		   `safe` is deliberate: escaping it would render the markup as text and
+		   defeat the entire point. The field is on the chrome config, which only
+		   System Manager and Website Manager can write — the same trust level as
+		   a client script. It is their code on their own site. #}
+		<div class="site-footer__custom">{{ footer_html | safe }}</div>
+		{%- endif -%}
+
 		<div class="site-footer__bottom">
 			<div class="site-footer__copyright-row">
 				<p class="site-footer__copyright">{{ copyright_text }}</p>

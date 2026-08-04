@@ -37,6 +37,9 @@ SIMPLE_FIELDS = (
 	"show_cart",
 	# footer
 	"footer_template",
+	"footer_menu_source",
+	"show_footer_html",
+	"footer_html",
 	"footer_bg_color",
 	"footer_text_color",
 	"show_footer_logo",
@@ -78,6 +81,7 @@ OPTION_FIELDS = (
 	"cta_style",
 	"search_type",
 	"footer_template",
+	"footer_menu_source",
 	"heading_font",
 	"body_font",
 )
@@ -138,6 +142,16 @@ def get_chrome_settings(profile: str | None = None) -> dict:
 	meta = frappe.get_meta(doc.doctype)
 
 	settings = {field: doc.get(field) for field in SIMPLE_FIELDS}
+	settings["footer_links"] = [
+		{
+			"column_name": row.column_name,
+			"label": row.label,
+			"url": row.url,
+			"is_external": row.is_external,
+			"open_in_new_tab": row.open_in_new_tab,
+		}
+		for row in (doc.footer_links or [])
+	]
 	settings["menu_items"] = [
 		{"label": row.label, "url": row.url, "open_in_new_tab": row.open_in_new_tab}
 		for row in (doc.menu_items or [])
@@ -162,6 +176,25 @@ def update_chrome_settings(settings: str | dict, profile: str | None = None) -> 
 	for field in SIMPLE_FIELDS:
 		if field in settings:
 			doc.set(field, settings[field])
+
+	if "footer_links" in settings:
+		doc.set("footer_links", [])
+		for row in settings["footer_links"] or []:
+			label = (row.get("label") or "").strip()
+			url = (row.get("url") or "").strip()
+			if label and url:
+				doc.append(
+					"footer_links",
+					{
+						"column_name": (row.get("column_name") or "").strip(),
+						"label": label,
+						"url": url,
+						# derived, not asked: nobody wants to tick "external"
+						# after pasting an https:// address
+						"is_external": 1 if url.startswith(("http://", "https://")) else 0,
+						"open_in_new_tab": 1 if row.get("open_in_new_tab") else 0,
+					},
+				)
 
 	if "menu_items" in settings:
 		doc.set("menu_items", [])

@@ -124,13 +124,19 @@ def render_footer(config=None) -> str:
 	social_links = config.get_social_links()
 	copyright_text = config.get_copyright_text()
 
-	# Group footer links by column
+	# Where the footer menu comes from. A site with four links does not want to
+	# retype them; a site whose footer should carry legal pages the header does
+	# not show needs its own set. Both are legitimate, so it is a choice.
+	source = config.get("footer_menu_source") or "Custom links"
 	footer_columns = {}
-	for link in (config.footer_links or []):
-		column = link.column_name or _("Links")
-		if column not in footer_columns:
-			footer_columns[column] = []
-		footer_columns[column].append(link)
+	if source == "Same as header":
+		footer_columns[_("Menu")] = list(config.menu_items or [])
+	elif source == "Custom links":
+		for link in (config.footer_links or []):
+			column = link.column_name or _("Links")
+			if column not in footer_columns:
+				footer_columns[column] = []
+			footer_columns[column].append(link)
 
 	return frappe.render_template(
 		"builder/templates/includes/header_footer/footer.html",
@@ -145,6 +151,10 @@ def render_footer(config=None) -> str:
 			"newsletter_title": config.newsletter_title,
 			"newsletter_placeholder": config.newsletter_placeholder,
 			"footer_columns": footer_columns,
+			# an embed the client already has — a newsletter form, a booking
+			# widget. Rendered as-is: it is their code, not ours to sanitise
+			# into uselessness.
+			"footer_html": config.get("footer_html") if config.get("show_footer_html") else None,
 		}
 	)
 

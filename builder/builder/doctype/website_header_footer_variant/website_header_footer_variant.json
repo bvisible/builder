@@ -44,6 +44,7 @@
   "footer_tab",
   "footer_section",
   "footer_template",
+  "footer_menu_source",
   "column_break_footer_1",
   "footer_bg_color",
   "footer_text_color",
@@ -73,6 +74,9 @@
   "newsletter_placeholder",
   "footer_links_section",
   "footer_links",
+  "footer_html_section",
+  "show_footer_html",
+  "footer_html",
   "theme_tab",
   "theme_colors_section",
   "primary_color",
@@ -424,7 +428,7 @@
    "label": "Footer Description"
   },
   {
-   "default": "\u00a9 {year} {site_name}. All rights reserved.",
+   "default": "© {year} {site_name}. All rights reserved.",
    "description": "Use {year} for current year, {site_name} for site name. 'Powered by neoffice.ch' is always shown.",
    "fieldname": "copyright_text",
    "fieldtype": "Data",
@@ -759,6 +763,32 @@
    "fieldname": "body_size_mobile",
    "fieldtype": "Data",
    "label": "Body Size (Mobile)"
+  },
+  {
+   "fieldname": "footer_menu_source",
+   "fieldtype": "Select",
+   "label": "Footer menu",
+   "options": "None\nSame as header\nCustom links",
+   "default": "Custom links",
+   "description": "None: no menu in the footer. Same as header: reuse the header's menu. Custom links: the columns below."
+  },
+  {
+   "fieldname": "footer_html_section",
+   "fieldtype": "Section Break",
+   "label": "Custom block",
+   "description": "Rendered in the footer, above the copyright line. For an embed a client already has — a newsletter form, a booking widget, a badge."
+  },
+  {
+   "fieldname": "show_footer_html",
+   "fieldtype": "Check",
+   "label": "Show the custom block"
+  },
+  {
+   "fieldname": "footer_html",
+   "fieldtype": "Code",
+   "label": "HTML",
+   "options": "HTML",
+   "depends_on": "show_footer_html"
   }
  ],
  "index_web_pages_for_search": 1,

@@ -4110,3 +4110,59 @@ msgstr "Au défilement"
 #: frontend/src/components/Settings/GlobalTheme.vue
 msgid "Saved"
 msgstr "Enregistré"
+
+#: frontend/src/components/Settings/GlobalTheme.vue:361
+msgid "Add column"
+msgstr "Ajouter une colonne"
+
+#: frontend/src/components/Settings/GlobalTheme.vue:353
+msgid "Add link"
+msgstr "Ajouter un lien"
+
+#: frontend/src/components/Settings/GlobalSocial.vue:34
+msgid "Changes save automatically."
+msgstr "Les modifications sont enregistrées automatiquement."
+
+#: frontend/src/components/Settings/GlobalTheme.vue:317
+msgid "Column heading"
+msgstr "Titre de la colonne"
+
+#: frontend/src/components/Settings/GlobalTheme.vue:377
+msgid "Custom block"
+msgstr "Bloc personnalisé"
+
+#: frontend/src/components/Settings/GlobalSocial.vue:50
+msgid "Facebook"
+msgstr "Facebook"
+
+#: frontend/src/components/Settings/GlobalSocial.vue:51
+msgid "Instagram"
+msgstr "Instagram"
+
+#: frontend/src/components/Settings/GlobalSocial.vue:52
+msgid "LinkedIn"
+msgstr "LinkedIn"
+
+#: frontend/src/components/Settings/GlobalTheme.vue:324
+msgid "Remove this column"
+msgstr "Supprimer cette colonne"
+
+#: frontend/src/components/Settings/GlobalTheme.vue:370
+msgid "Set the accounts in Settings → Social"
+msgstr "Renseignez les comptes dans Réglages → Social"
+
+#: frontend/src/components/Settings/GlobalSocial.vue:6
+msgid "The accounts this business has. Set them once here; the footer and anywhere else that shows them only decides whether to display them."
+msgstr "Les comptes de cette entreprise. Renseignez-les une fois ici ; le pied de page et tout autre emplacement décident seulement de les afficher ou non."
+
+#: frontend/src/components/Settings/GlobalSocial.vue:53
+msgid "Twitter"
+msgstr "Twitter"
+
+#: frontend/src/components/Settings/GlobalSocial.vue:54
+msgid "YouTube"
+msgstr "YouTube"
+
+#: frontend/src/components/Settings/GlobalTheme.vue:378
+msgid "Your own HTML — a newsletter form, a badge, a widget"
+msgstr "Votre propre HTML — un formulaire de newsletter, un badge, un widget"

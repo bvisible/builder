@@ -81,6 +81,7 @@ declare module 'vue' {
     GlobalDomains: typeof import('./src/components/Settings/GlobalDomains.vue')['default']
     GlobalGeneral: typeof import('./src/components/Settings/GlobalGeneral.vue')['default']
     GlobalRedirects: typeof import('./src/components/Settings/GlobalRedirects.vue')['default']
+    GlobalSocial: typeof import('./src/components/Settings/GlobalSocial.vue')['default']
     GlobalTheme: typeof import('./src/components/Settings/GlobalTheme.vue')['default']
     GradientEditor: typeof import('./src/components/Controls/GradientEditor.vue')['default']
     ImageOptions: typeof import('./src/components/PropsOptions/ImageOptions.vue')['default']

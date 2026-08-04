@@ -54,6 +54,7 @@ import GlobalCode from "./Settings/GlobalCode.vue";
 import GlobalDeveloper from "./Settings/GlobalDeveloper.vue";
 import GlobalDomains from "./Settings/GlobalDomains.vue";
 import GlobalGeneral from "./Settings/GlobalGeneral.vue";
+import GlobalSocial from "./Settings/GlobalSocial.vue";
 import GlobalTheme from "./Settings/GlobalTheme.vue";
 import PageAnalytics from "./Settings/PageAnalytics.vue";
 import PageGeneral from "./Settings/PageGeneral.vue";
@@ -189,6 +190,13 @@ const globalSettings = {
 			component: GlobalTheme,
 			title: "Theme, Header & Footer",
 			icon: "lucide-palette",
+		},
+		{
+			label: "Social",
+			value: "global_social",
+			component: GlobalSocial,
+			title: "Social Accounts",
+			icon: "lucide-at-sign",
 		},
 	],
 };

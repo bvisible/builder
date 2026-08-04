@@ -22,3 +22,4 @@ builder.builder.patches.repair_generated_page_roots
 builder.builder.patches.set_default_header_style
 builder.builder.patches.set_default_design_tokens
 builder.builder.patches.set_default_header_scroll
+builder.builder.patches.set_default_footer_menu_source

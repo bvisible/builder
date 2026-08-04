@@ -1448,13 +1448,21 @@ def _generate_complete_site_worker(
 				short_desc = short_desc.split(" - ", 1)[1]
 			config.footer_description = short_desc
 
-		# Footer links: same as menu
+		# Footer links: the pages we just created, under a named heading.
+		# The heading matters: an unnamed column renders as "Links", and the
+		# Extended template puts headings above each column. Owners add their
+		# own columns (Legal, Support) from the Theme; we do not invent pages
+		# that do not exist to fill a second column.
+		if hasattr(config, "footer_menu_source"):
+			config.footer_menu_source = "Custom links"
 		if hasattr(config, "footer_links"):
 			config.footer_links = []
+			navigation = _("Navigation")
 			if site_type == "one_page":
 				# Use same anchor links for footer
 				for anchor in one_page_anchors:
 					config.append("footer_links", {
+						"column_name": navigation,
 						"label": anchor["label"],
 						"url": anchor["url"],
 					})
@@ -1462,9 +1470,10 @@ def _generate_complete_site_worker(
 				for page in created_pages:
 					route = page["route"]
 					if route in seen_routes:
-						label = "Accueil" if route in ("/", "/home", "/index") else page["title"]
+						label = _("Home") if route in ("/", "/home", "/index") else page["title"]
 						footer_url = "/" if route in ("/", "/home", "/index") else route
 						config.append("footer_links", {
+							"column_name": navigation,
 							"label": label,
 							"url": footer_url,
 						})

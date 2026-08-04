@@ -258,6 +258,15 @@
 	justify-content: space-between;
 	gap: 24px;
 	margin-bottom: 24px;
+	/* logo | links | social on one line, wrapping rather than crushing the
+	   links when there are more of them than a minimal footer expects */
+	flex-wrap: wrap;
+}
+
+.site-footer__minimal .site-footer__inline-links {
+	margin: 0;
+	flex: 1 1 auto;
+	justify-content: center;
 }
 
 /* Bottom bar */
@@ -387,5 +396,16 @@
 	.site-footer__inline-links {
 		gap: 8px 18px;
 	}
+}
+
+/* The client's own block. Given room and the site's rhythm, then left alone —
+   whatever is inside is theirs. */
+.site-footer__custom {
+	padding: 24px 0;
+	border-top: 1px solid var(--footer-border);
+}
+
+.site-footer__custom:first-child {
+	border-top: none;
 }
 </style>

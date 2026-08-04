@@ -291,21 +291,102 @@
 					:label="__('Description')"
 					:modelValue="state.footer_description"
 					@update:modelValue="(v: string) => (state.footer_description = v)" />
+
+				<!-- The footer menu. "Same as header" is the cheap answer, but a
+				     footer is where a site puts what the header has no room for —
+				     legal pages, a second product line — so it can have its own. -->
+				<FormControl
+					type="select"
+					size="sm"
+					:label="__('Menu')"
+					:options="options.footer_menu_source"
+					:modelValue="state.footer_menu_source"
+					@update:modelValue="(v: string) => (state.footer_menu_source = v)" />
+
+				<template v-if="state.footer_menu_source === 'Custom links'">
+					<!-- Grouped by column heading: one group is one column in the
+					     rendered footer. Extended shows them side by side; the other
+					     templates flatten them into a single row. -->
+					<div
+						v-for="(column, columnIndex) in footerColumns"
+						:key="columnIndex"
+						class="flex flex-col gap-2 rounded border border-outline-gray-1 p-3">
+						<div class="flex items-center gap-2">
+							<FormControl
+								size="sm"
+								:placeholder="__('Column heading')"
+								:modelValue="column.name"
+								@update:modelValue="(v: string) => renameColumn(column.name, v)"
+								class="flex-1" />
+							<Button
+								variant="ghost"
+								icon="lucide-trash-2"
+								:title="__('Remove this column')"
+								@click="removeColumn(column.name)" />
+						</div>
+						<div
+							v-for="link in column.links"
+							:key="link._key"
+							class="flex items-center gap-2 pl-2">
+							<FormControl
+								size="sm"
+								:placeholder="__('Label')"
+								:modelValue="link.label"
+								@update:modelValue="(v: string) => (link.label = v)"
+								class="flex-1" />
+							<FormControl
+								size="sm"
+								placeholder="/route"
+								:modelValue="link.url"
+								@update:modelValue="(v: string) => (link.url = v)"
+								class="flex-1" />
+							<Button
+								variant="ghost"
+								icon="lucide-trash-2"
+								@click="removeLink(link)" />
+						</div>
+						<Button
+							variant="ghost"
+							class="w-fit"
+							icon-left="lucide-plus"
+							@click="addLink(column.name)">
+							{{ __("Add link") }}
+						</Button>
+					</div>
+					<Button
+						variant="subtle"
+						class="w-fit"
+						icon-left="lucide-plus"
+						@click="addColumn()">
+						{{ __("Add column") }}
+					</Button>
+				</template>
+
+				<!-- The accounts themselves live in Settings; here we only decide
+				     whether the footer shows them. -->
 				<Switch
 					size="sm"
 					:label="__('Social links')"
+					:description="__('Set the accounts in Settings → Social')"
 					:modelValue="!!state.show_social_links"
 					@update:modelValue="(v: boolean) => (state.show_social_links = v ? 1 : 0)" />
-				<div v-if="state.show_social_links" class="grid grid-cols-2 gap-3">
-					<FormControl
-						v-for="social in socials"
-						:key="social.field"
-						size="sm"
-						:label="social.label"
-						:modelValue="state[social.field]"
-						@update:modelValue="(v: string) => (state[social.field] = v)"
-						placeholder="https://" />
-				</div>
+
+				<!-- Somewhere to drop a newsletter embed until we ship our own. -->
+				<Switch
+					size="sm"
+					:label="__('Custom block')"
+					:description="__('Your own HTML — a newsletter form, a badge, a widget')"
+					:modelValue="!!state.show_footer_html"
+					@update:modelValue="(v: boolean) => (state.show_footer_html = v ? 1 : 0)" />
+				<FormControl
+					v-if="state.show_footer_html"
+					type="textarea"
+					size="sm"
+					:rows="6"
+					class="font-mono text-xs"
+					placeholder="&lt;form action=&quot;...&quot;&gt;…&lt;/form&gt;"
+					:modelValue="state.footer_html"
+					@update:modelValue="(v: string) => (state.footer_html = v)" />
 			</template>
 		</div>
 
@@ -345,12 +426,62 @@ const themeColors = [
 	{ field: "text_color", label: __("Text") },
 ];
 
-const socials = [
-	{ field: "facebook_url", label: __("Facebook") },
-	{ field: "instagram_url", label: __("Instagram") },
-	{ field: "linkedin_url", label: __("LinkedIn") },
-	{ field: "youtube_url", label: __("YouTube") },
-];
+// The footer links are stored flat, each row carrying the heading of the column
+// it belongs to. The editor groups them; the renderer groups them again. A row
+// needs an identity that survives regrouping, hence `_key` — it is stripped
+// before the payload goes out.
+type FooterLink = { _key: number; column_name: string; label: string; url: string };
+let linkKey = 0;
+
+const footerColumns = computed(() => {
+	const groups: { name: string; links: FooterLink[] }[] = [];
+	for (const link of (state.footer_links || []) as FooterLink[]) {
+		const name = link.column_name || "";
+		let group = groups.find((g) => g.name === name);
+		if (!group) {
+			group = { name, links: [] };
+			groups.push(group);
+		}
+		group.links.push(link);
+	}
+	return groups;
+});
+
+const newLink = (columnName: string): FooterLink => ({
+	_key: ++linkKey,
+	column_name: columnName,
+	label: "",
+	url: "",
+});
+
+function addColumn() {
+	// A column exists because rows point at it, so a new one starts with a row.
+	let name = __("Links");
+	let n = 2;
+	while (footerColumns.value.some((g) => g.name === name)) name = `${__("Links")} ${n++}`;
+	state.footer_links.push(newLink(name));
+}
+
+function addLink(columnName: string) {
+	state.footer_links.push(newLink(columnName));
+}
+
+function removeLink(link: FooterLink) {
+	const index = state.footer_links.indexOf(link);
+	if (index >= 0) state.footer_links.splice(index, 1);
+}
+
+function removeColumn(name: string) {
+	state.footer_links = (state.footer_links as FooterLink[]).filter(
+		(link) => (link.column_name || "") !== name,
+	);
+}
+
+function renameColumn(oldName: string, newName: string) {
+	for (const link of state.footer_links as FooterLink[]) {
+		if ((link.column_name || "") === oldName) link.column_name = newName;
+	}
+}
 
 // Kept in step with builder.branding.LOGO_PATH — the one address the
 // site logo ever has.
@@ -374,13 +505,19 @@ watch(savedAt, (at) => {
 });
 const open = reactive({ theme: true, header: false, menu: false, footer: false });
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
-const state = reactive<Record<string, any>>({ menu_items: [] });
+const state = reactive<Record<string, any>>({ menu_items: [], footer_links: [] });
 let snapshot = "";
 
 const payload = () => {
 	// eslint-disable-next-line @typescript-eslint/no-unused-vars
 	const { _options, ...rest } = state;
-	return JSON.parse(JSON.stringify(rest));
+	const clone = JSON.parse(JSON.stringify(rest));
+	// `_key` only exists to keep the editor's v-for stable
+	clone.footer_links = (clone.footer_links || []).map(
+		// eslint-disable-next-line @typescript-eslint/no-unused-vars
+		({ _key, ...link }: Record<string, unknown>) => link,
+	);
+	return clone;
 };
 
 createResource({
@@ -427,6 +564,10 @@ createResource({
 	onSuccess(data: Record<string, unknown>) {
 		Object.assign(state, data);
 		state.menu_items = data.menu_items || [];
+		state.footer_links = ((data.footer_links || []) as Record<string, unknown>[]).map((link) => ({
+			...link,
+			_key: ++linkKey,
+		}));
 		snapshot = JSON.stringify(payload());
 		loaded.value = true;
 	},
