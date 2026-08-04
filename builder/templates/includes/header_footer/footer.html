@@ -173,7 +173,8 @@
 			<div class="site-footer__copyright-row">
 				<p class="site-footer__copyright">{{ copyright_text }}</p>
 				<span class="site-footer__powered-by">
-					Powered by <a href="https://unpress.cloud" target="_blank" rel="noopener noreferrer">Unpress</a>
+					{# both halves are ours, so marking the result safe only lets the link through #}
+					{{ _("Powered by {0}").format('<a href="https://unpress.cloud" target="_blank" rel="noopener noreferrer">Unpress</a>') | safe }}
 				</span>
 			</div>
 			{%- if template != "Extended" and social_links and template == "Standard" -%}

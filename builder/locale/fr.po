@@ -4414,3 +4414,9 @@ msgstr "Simple"
 
 msgid "Tinted"
 msgstr "Teinté"
+
+msgid "© {year} {site_name}. All rights reserved."
+msgstr "© {year} {site_name}. Tous droits réservés."
+
+msgid "Powered by {0}"
+msgstr "Propulsé par {0}"

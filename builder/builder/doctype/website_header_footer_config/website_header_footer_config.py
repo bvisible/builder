@@ -245,14 +245,35 @@ class WebsiteHeaderFooterConfig(Document):
 
 		return links
 
+	#: what the doctype seeds the field with — recognising it lets us translate
+	#: a line nobody actually chose, without touching one someone rewrote
+	DEFAULT_COPYRIGHT = "© {year} {site_name}. All rights reserved."
+
 	def get_copyright_text(self) -> str:
-		"""Get formatted copyright text."""
+		"""The copyright line, with the site's own name in it.
+
+		It used to read `frappe.local.site`, which is the bench identifier — a
+		generated club site announced "© 2026 unpress16.localhost". The brand
+		the owner set in the chrome is the right answer; the bench host is only
+		a last resort.
+		"""
 		import datetime
-		text = self.copyright_text or "© {year} {site_name}. All rights reserved."
+
+		text = (self.copyright_text or "").strip()
+		if not text or text == self.DEFAULT_COPYRIGHT:
+			text = _("© {year} {site_name}. All rights reserved.")
+
 		return text.format(
 			year=datetime.datetime.now().year,
-			site_name=frappe.local.site or "Website"
+			site_name=(
+				(self.get("footer_logo_text") or "").strip()
+				or (self.get("logo_text") or "").strip()
+				or (frappe.db.get_single_value("Website Settings", "app_name") or "").strip()
+				or frappe.local.site
+				or "Website"
+			),
 		)
+
 
 	def get_theme_data(self) -> dict:
 		"""Get theme configuration for CSS variables injection.
