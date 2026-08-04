@@ -390,6 +390,41 @@
 			</template>
 		</div>
 
+		<!-- Where these settings came from. The generator already saved its brief
+		     on the session and read it back to finish the site; nobody could read
+		     it. The Theme is the durable home for it — the chat opens a fresh
+		     session every time, so a panel living only there is unreachable the
+		     day after. -->
+		<div v-if="briefGroups.length" class="flex flex-col gap-3 border-t border-outline-gray-1 pt-4">
+			<button
+				class="flex w-fit items-center gap-1 text-sm font-medium text-ink-gray-8"
+				@click="open.brief = !open.brief">
+				<span
+					class="inline-block size-4"
+					:class="open.brief ? 'lucide-chevron-down' : 'lucide-chevron-right'"
+					aria-hidden="true" />
+				{{ __("What the AI decided") }}
+			</button>
+			<template v-if="open.brief">
+				<p class="text-xs text-ink-gray-5">
+					{{ __("The brief every page was generated from. Changing a setting above overrides it; the brief itself does not change.") }}
+				</p>
+				<div v-for="group in briefGroups" :key="group.title" class="flex flex-col gap-1">
+					<span class="text-xs font-medium uppercase text-ink-gray-5">{{ group.title }}</span>
+					<div v-for="row in group.rows" :key="row.label" class="flex items-start gap-2 text-sm">
+						<span class="w-40 shrink-0 text-ink-gray-5">{{ row.label }}</span>
+						<span class="flex items-center gap-1.5 text-ink-gray-8">
+							<span
+								v-if="row.is_color"
+								class="size-3 shrink-0 rounded-sm border border-outline-gray-2"
+								:style="{ background: row.value }" />
+							{{ row.value }}
+						</span>
+					</div>
+				</div>
+			</template>
+		</div>
+
 		<!-- "Saving..." flashes for a few hundred milliseconds and is gone before
 		     anyone reads it. The confirmation is what tells a user their change
 		     was taken; it lingers a couple of seconds, then steps out of the way. -->
@@ -503,7 +538,22 @@ watch(savedAt, (at) => {
 	justSaved.value = true;
 	setTimeout(() => (justSaved.value = false), 2200);
 });
-const open = reactive({ theme: true, header: false, menu: false, footer: false });
+const open = reactive({ theme: true, header: false, menu: false, footer: false, brief: false });
+
+// The brief behind the site as it stands. Absent on a site nobody generated,
+// in which case the whole section stays hidden.
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+const briefGroups = ref<any[]>([]);
+createResource({
+	url: "builder.brief_view.get_latest_brief",
+	auto: true,
+	onSuccess(data: { exists?: boolean; groups?: unknown[] }) {
+		briefGroups.value = data?.exists ? (data.groups as never[]) || [] : [];
+	},
+	onError() {
+		briefGroups.value = [];
+	},
+});
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 const state = reactive<Record<string, any>>({ menu_items: [], footer_links: [] });
 let snapshot = "";

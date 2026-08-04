@@ -73,6 +73,43 @@
 					<Button variant="solid" :label="__('View my pages')" @click="finish" />
 				</div>
 
+				<!-- The brief is what every page was generated from. It was already
+				     saved on the session and read back to generate the remaining
+				     pages; it just had nowhere to be read by a person. "Why is my
+				     site like this?" has an answer now — and it stays available
+				     long after the generation that produced it. -->
+				<div v-if="briefGroups.length && !generating && !imagesRunning" class="flex flex-col gap-2">
+					<button
+						class="flex w-fit items-center gap-1.5 text-sm text-ink-gray-6 hover:text-ink-gray-8"
+						@click="showBrief = !showBrief">
+						<span
+							class="inline-block size-3.5"
+							:class="showBrief ? 'lucide-chevron-down' : 'lucide-chevron-right'"
+							aria-hidden="true" />
+						{{ __("What the AI decided") }}
+					</button>
+					<div
+						v-if="showBrief"
+						class="flex flex-col gap-3 rounded-lg border border-outline-gray-1 p-3">
+						<div v-for="group in briefGroups" :key="group.title" class="flex flex-col gap-1">
+							<span class="text-xs font-medium uppercase text-ink-gray-5">{{ group.title }}</span>
+							<div
+								v-for="row in group.rows"
+								:key="row.label"
+								class="flex items-start gap-2 text-sm">
+								<span class="w-36 shrink-0 text-ink-gray-5">{{ row.label }}</span>
+								<span class="flex items-center gap-1.5 text-ink-gray-8">
+									<span
+										v-if="row.is_color"
+										class="size-3 shrink-0 rounded-sm border border-outline-gray-2"
+										:style="{ background: row.value }" />
+									{{ row.value }}
+								</span>
+							</div>
+						</div>
+					</div>
+				</div>
+
 				<!-- One composer, the way a chat should look: the textarea and its
 				     controls share a single rounded surface, attachments sit bottom
 				     left, send is a round arrow bottom right. No stack of buttons
@@ -179,6 +216,29 @@ const progressStep = ref("");
 const progressPct = ref(0);
 const generating = ref(false);
 const genDone = ref(false);
+
+// The brief the generator worked from. Loaded once the site is done, because
+// that is when someone asks why it looks the way it does.
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+const briefGroups = ref<any[]>([]);
+const showBrief = ref(false);
+
+async function loadBrief() {
+	if (!sid.value || briefGroups.value.length) return;
+	try {
+		const r = await createResource({ url: "builder.brief_view.get_brief" }).submit({
+			session_id: sid.value,
+		});
+		briefGroups.value = r?.exists ? r.groups || [] : [];
+	} catch {
+		// the panel simply does not appear; never break the "site is ready" screen
+		briefGroups.value = [];
+	}
+}
+
+watch(genDone, (done) => {
+	if (done) loadBrief();
+});
 const genMessage = ref("");
 const msgBox = ref<HTMLElement>();
 const uploading = ref(false);
@@ -241,6 +301,9 @@ const pushMessage = (role: string, content: string) => {
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 const applyState = (r: any) => {
 	if (!r) return;
+	// a resumed session may already carry a brief, and it is worth reading long
+	// after the generation that produced it
+	if (sid.value) loadBrief();
 	if (r.messages) {
 		messages.value = r.messages.map((m: ChatMessage) => ({
 			role: m.role === "user" ? "user" : "bot",

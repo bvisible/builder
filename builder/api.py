@@ -322,13 +322,22 @@ def check_ai_provider_status():
 	except Exception as e:
 		result["ollama"]["message"] = str(e)
 
-	# Check OpenAI
+	# Check OpenAI-compatible (site_config > Builder Settings UI > defaults)
+	#
+	# This used to read frappe.conf directly, which made the panel say "not
+	# configured" on every instance that set its key through Builder Settings —
+	# the normal way. ai/config.get_ai_settings is the one resolver.
 	try:
-		api_key = frappe.conf.get("openai_api_key")
-		if api_key:
+		from builder.ai.config import get_ai_settings
+
+		settings = get_ai_settings()
+		if settings.provider == "openai" and settings.api_key:
 			result["openai"] = {
 				"available": True,
-				"message": "API key configured"
+				"message": f"API key configured - Model: {settings.model}",
+				"model": settings.model,
+				"page_model": settings.page_model,
+				"base_url": settings.base_url,
 			}
 	except Exception as e:
 		result["openai"]["message"] = str(e)
