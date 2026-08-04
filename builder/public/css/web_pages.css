@@ -477,3 +477,118 @@
 .u-404__menu a:hover {
 	color: var(--primary-color, #111);
 }
+
+/* --- the page header ------------------------------------------------------ */
+/*
+ * The third piece of the chrome, beside the header and the footer. A generated
+ * page opens on a hero the AI composed; everything else used to open on
+ * whatever heading its own app printed, which is why /blog read as a different
+ * website. One band, decided once in the Theme.
+ */
+.site-page-header {
+	border-bottom: 1px solid var(--footer-border, rgba(0, 0, 0, 0.08));
+}
+
+.site-page-header__inner {
+	max-width: var(--content-max-width, 1200px);
+	margin: 0 auto;
+	padding: 44px 24px 36px;
+}
+
+.site-page-header__crumbs {
+	display: flex;
+	flex-wrap: wrap;
+	align-items: center;
+	gap: 6px;
+	font-size: 0.8125rem;
+	color: var(--muted-color, #6b7280);
+	margin-bottom: 12px;
+}
+
+.site-page-header__crumbs a {
+	color: inherit;
+	text-decoration: none;
+}
+
+.site-page-header__crumbs a:hover {
+	color: var(--primary-color, #111);
+}
+
+.site-page-header__sep {
+	opacity: 0.5;
+}
+
+.site-page-header__title {
+	font-family: var(--heading-font, inherit);
+	line-height: 1.15;
+	margin: 0;
+}
+
+.site-page-header__subtitle {
+	max-width: 62ch;
+	margin: 10px 0 0;
+	color: var(--muted-color, #6b7280);
+	line-height: 1.6;
+}
+
+/* Centered — for a site whose pages open on a statement rather than a label. */
+.site-page-header--centered .site-page-header__inner {
+	text-align: center;
+}
+
+.site-page-header--centered .site-page-header__crumbs {
+	justify-content: center;
+}
+
+.site-page-header--centered .site-page-header__subtitle {
+	margin-left: auto;
+	margin-right: auto;
+}
+
+/* Tinted — the same band on the primary colour, for sites that want the
+   section to announce itself. */
+.site-page-header--tinted {
+	background: color-mix(in srgb, var(--primary-color, #111) 8%, transparent);
+	border-bottom-color: transparent;
+}
+
+/* Frappe puts a portal sidebar ("My Account") beside web pages and indents the
+   content behind it. On a blog that is a column of nothing pushing the articles
+   off centre — the page header above already says where the visitor is. */
+.u-blog .web-sidebar,
+.u-404 .web-sidebar {
+	display: none;
+}
+
+/* Hiding the sidebar is not enough: frappe still lays the content in the ten
+   columns beside it, so the articles sat pushed to the right of an empty
+   third. The main column takes the row back. */
+.u-blog .main-column,
+.u-404 .main-column {
+	max-width: 100%;
+	flex: 0 0 100%;
+}
+
+/* The blog app prints its own "Blog" heading in a .hero. With the band above
+   it that is the same words twice, so the band wins and the hero steps out. */
+.u-blog .site-page-header ~ .page_content .hero,
+.u-blog .hero {
+	display: none;
+}
+
+/* The hidden hero still sits in a padded row; without this the band and the
+   first card are separated by the height of something nobody can see. */
+.u-blog .page_content > .row {
+	padding-top: 0 !important;
+	padding-bottom: 0 !important;
+	margin-bottom: 0;
+}
+
+.u-blog .blog-list-content {
+	padding-top: 40px;
+}
+
+/* Neither does the 404 need its own title under the band. */
+.u-404 .u-404__title {
+	margin-top: 0;
+}

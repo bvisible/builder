@@ -82,6 +82,9 @@
   "footer_html_section",
   "show_footer_html",
   "footer_html",
+  "page_header_section",
+  "page_header_style",
+  "show_breadcrumbs",
   "blog_section",
   "blog_layout",
   "blog_post_layout",
@@ -886,6 +889,25 @@
    "fieldname": "blog_show_author",
    "fieldtype": "Check",
    "label": "Show the author",
+   "default": "1"
+  },
+  {
+   "fieldname": "page_header_section",
+   "fieldtype": "Section Break",
+   "label": "Page header"
+  },
+  {
+   "fieldname": "page_header_style",
+   "fieldtype": "Select",
+   "label": "Style",
+   "options": "None\nSimple\nCentered\nTinted",
+   "default": "Simple",
+   "description": "The band above the content on pages the editor does not build — the blog, the 404, a section that is coming."
+  },
+  {
+   "fieldname": "show_breadcrumbs",
+   "fieldtype": "Check",
+   "label": "Breadcrumbs",
    "default": "1"
   }
  ],

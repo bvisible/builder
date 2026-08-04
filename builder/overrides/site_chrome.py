@@ -262,6 +262,10 @@ def _inject_config_chrome(context):
 	if not config or not config.get("header_layout"):
 		return
 
+	# The page header renders inside a Web Template, which has its own scope and
+	# cannot see this dict. Stash it where render_page_header can find it.
+	frappe.local.page_header_context = context
+
 	# An explicit choice by the page wins: the Builder's own generator template
 	# renders the chrome itself, and portal pages may set their own.
 	if not context.get("navbar_template") and frappe.db.exists("Web Template", NAVBAR_TEMPLATE):

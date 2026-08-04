@@ -2,9 +2,7 @@
 	<!-- The blog app administers itself through the Frappe desk, which the Studio
 	     hides. Without this screen, enabling the blog gives an owner a site
 	     section they can read but never write. -->
-	<Dialog v-model="show" :options="{ size: '5xl' }">
-		<template #body>
-			<div class="flex h-[82vh] flex-col gap-4 p-5">
+				<div class="flex h-full flex-1 flex-col gap-4 overflow-hidden p-6">
 				<div class="flex items-center gap-3">
 					<span class="lucide-newspaper size-4 text-ink-gray-8" aria-hidden="true" />
 					<h2 class="text-lg font-semibold text-ink-gray-9">{{ __("Articles") }}</h2>
@@ -171,19 +169,16 @@
 					</div>
 				</template>
 			</div>
-		</template>
-	</Dialog>
 </template>
 <script setup lang="ts">
-import { Button, createResource, Dialog, FormControl, Switch, toast } from "frappe-ui";
-import { computed, reactive, ref, watch } from "vue";
+import { Button, createResource, FormControl, Switch, toast } from "frappe-ui";
+import { computed, onMounted, reactive, ref, watch } from "vue";
 
 // `__` is installed globally by the translation plugin (see src/translation.ts).
 const __ = window.__!;
 
 const API = "builder.blog_api";
 
-const show = defineModel<boolean>({ default: false });
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 type Post = Record<string, any>;
@@ -297,14 +292,13 @@ async function refresh() {
 	}
 }
 
-watch(show, (open) => {
-	if (open) {
-		editing.value = false;
-		refresh();
-	}
+// A page, not a dialog: it loads when it is opened, which is when it mounts.
+onMounted(() => {
+	editing.value = false;
+	refresh();
 });
 watch([search, statusFilter], () => {
-	if (show.value && !editing.value) refresh();
+	if (!editing.value) refresh();
 });
 
 function startNew() {

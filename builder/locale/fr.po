@@ -4275,3 +4275,7 @@ msgstr "Désactivé par défaut. Un espace de commentaires que personne ne surve
 #: frontend/src/components/Settings/GlobalTheme.vue:423
 msgid "Show the author"
 msgstr "Afficher l'auteur"
+
+#: unpress_core/templates/includes/header_footer/page_header.html:17
+msgid "Breadcrumb"
+msgstr "Fil d'Ariane"

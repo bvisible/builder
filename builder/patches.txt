@@ -25,3 +25,4 @@ builder.builder.patches.set_default_header_scroll
 builder.builder.patches.set_default_footer_menu_source
 builder.builder.patches.drop_unpress_plugin_doctype
 builder.builder.patches.drop_builder_site_config
+builder.builder.patches.set_default_page_header

@@ -1,7 +1,5 @@
 <template>
-	<Dialog v-model="show" :options="{ size: '3xl' }">
-		<template #body>
-			<div class="flex h-[78vh] flex-col gap-3 p-5">
+				<div class="flex h-full flex-1 flex-col gap-4 overflow-hidden p-6">
 				<div class="flex items-center justify-between">
 					<div class="flex items-center gap-2">
 						<span class="lucide-sparkles size-4 text-ink-gray-8" aria-hidden="true" />
@@ -177,14 +175,13 @@
 					</div>
 				</div>
 			</div>
-		</template>
-	</Dialog>
 </template>
 <script setup lang="ts">
 import { allWebPages } from "@/data/allWebPages";
+import router from "@/router";
 import useBuilderStore from "@/stores/builderStore";
-import { createResource, Dialog, FileUploadHandler, FormControl } from "frappe-ui";
-import { computed, nextTick, onBeforeUnmount, ref, watch } from "vue";
+import { createResource, FileUploadHandler, FormControl } from "frappe-ui";
+import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from "vue";
 
 
 const builderStore = useBuilderStore();
@@ -196,12 +193,7 @@ const __ = window.__ as (message: string) => string & { format: (...args: unknow
 type ChatMessage = { role: string; content: string };
 type ChatButton = { label: string; value: string };
 
-const props = defineProps<{ modelValue: boolean }>();
-const emit = defineEmits(["update:modelValue"]);
-const show = computed({
-	get: () => props.modelValue,
-	set: (v: boolean) => emit("update:modelValue", v),
-});
+
 
 const API = "builder.api";
 
@@ -604,28 +596,18 @@ const resetSession = async () => {
 
 const finish = () => {
 	allWebPages.reload();
-	show.value = false;
+	router.push({ name: "home" });
 };
 
-watch(show, (open) => {
-	if (open && !sid.value) boot();
-	if (open) {
-		builderStore.realtime?.on("content_assets_understood", onContentUnderstood);
-	} else {
-		// nothing is displayed, so stop hitting the server
-		builderStore.realtime?.off("content_assets_understood", onContentUnderstood);
-		if (pollTimer) {
-			clearTimeout(pollTimer);
-			pollTimer = null;
-		}
-		if (imagePollTimer) {
-			clearTimeout(imagePollTimer);
-			imagePollTimer = null;
-		}
-	}
-	if (open && generating.value) pollGeneration();
-	if (open && imagesRunning.value) pollImages();
+// A page now: it boots when it mounts and lets go when it unmounts.
+onMounted(() => {
+	if (!sid.value) boot();
+	builderStore.realtime?.on("content_assets_understood", onContentUnderstood);
 });
+onBeforeUnmount(() => {
+	builderStore.realtime?.off("content_assets_understood", onContentUnderstood);
+});
+
 
 onBeforeUnmount(() => {
 	builderStore.realtime?.off("content_assets_understood", onContentUnderstood);

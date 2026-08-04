@@ -60,6 +60,7 @@ jinja = {
 		"builder.hf_utils.header_footer.get_header_footer_config",
 		"builder.hf_utils.header_footer.render_site_header",
 		"builder.hf_utils.header_footer.render_site_footer",
+		"builder.page_header.render_page_header",
 		"builder.builder.doctype.builder_component.builder_component.get_component_data",
 	],
 	"filters": [

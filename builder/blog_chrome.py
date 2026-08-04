@@ -75,6 +75,16 @@ def apply(context):
 		layout = str(settings.get("blog_layout") or "Grid").lower()
 		existing = context.get("body_class") or ""
 		context["body_class"] = f"{existing} u-blog u-blog--{layout}".strip()
+
+		# The list page's own title is frappe's generic "Portal", which is what
+		# the page header would print. Name it what the visitor came for.
+		category = context.get("category") or {}
+		context["page_header_title"] = (
+			(category.get("title") if isinstance(category, dict) else None)
+			or context.get("blog_title")
+			or frappe._("Blog")
+		)
+		context["page_header_subtitle"] = context.get("blog_introduction") or ""
 	else:
 		# The article page has to be ours: the cover comes from a field their
 		# markup never prints, and no stylesheet can conjure an image.

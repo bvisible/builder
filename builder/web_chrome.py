@@ -14,7 +14,10 @@ import frappe
 WEB_CHROME_TEMPLATES = (
 	{
 		"name": "Site Header",
-		"template": "{%- if render_site_header is defined -%}{{ render_site_header(standalone=True) }}{%- endif -%}",
+		"template": (
+			"{%- if render_site_header is defined -%}{{ render_site_header(standalone=True) }}{%- endif -%}"
+			"{%- if render_page_header is defined -%}{{ render_page_header() }}{%- endif -%}"
+		),
 	},
 	{
 		"name": "Site Footer",

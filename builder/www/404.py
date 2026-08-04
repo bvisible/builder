@@ -51,6 +51,9 @@ def get_context(context):
 			reserved = None
 
 	context.no_cache = 1
+	# This page is its own opening statement, centred on the page: the shared
+	# band above it would print the same words a second time.
+	context.show_page_header = False
 	context.is_reserved = bool(reserved)
 	context.reserved_label = _(reserved["label"]) if reserved else ""
 	context.title = _("Coming soon") if reserved else _("Page not found")

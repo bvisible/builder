@@ -38,6 +38,8 @@ SIMPLE_FIELDS = (
 	# footer
 	"footer_template",
 	"footer_menu_source",
+	"page_header_style",
+	"show_breadcrumbs",
 	"blog_layout",
 	"blog_post_layout",
 	"blog_allow_comments",
@@ -86,6 +88,7 @@ OPTION_FIELDS = (
 	"search_type",
 	"footer_template",
 	"footer_menu_source",
+	"page_header_style",
 	"blog_layout",
 	"blog_post_layout",
 	"heading_font",
