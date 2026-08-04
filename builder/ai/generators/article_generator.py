@@ -220,7 +220,12 @@ def request_cover(article, blog_post_name: str) -> str | None:
 		return frappe.enqueue(
 			"builder.ai.generators.article_generator.cover_job",
 			queue="long",
-			timeout=600,
+			# One image, but through whichever backend the site has: Codex has
+			# taken over ten minutes on a single cover under load, and the
+			# 600 s this used to allow killed it mid-generation. The site's own
+			# image worker allows 5400 s for a batch; one image gets a third of
+			# that rather than a number that looked generous.
+			timeout=1800,
 			blog_post_name=blog_post_name,
 			prompt=cover_prompt(article),
 		).id
