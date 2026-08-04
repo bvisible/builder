@@ -1487,7 +1487,7 @@ def _generate_complete_site_worker(
 		# Footer description: extract from prompt
 		if hasattr(config, "footer_description"):
 			# Use a short version of the prompt as description
-			short_desc = prompt[:200] if len(prompt) > 200 else prompt
+			short_desc = _shorten_for_footer(prompt)
 			# Clean up if it contains site name prefix
 			if " - " in short_desc:
 				short_desc = short_desc.split(" - ", 1)[1]
@@ -3619,6 +3619,32 @@ def _has_light_text(block, depth: int = 0) -> bool:
 		if colour in _LIGHT_TEXT:
 			return True
 	return any(_has_light_text(child, depth + 1) for child in block.get("children") or [])
+
+
+def _shorten_for_footer(text: str, limit: int = 200) -> str:
+	"""A short version of the brief that does not stop mid-word.
+
+	`text[:200]` left the footer of a generated site reading "... et les
+	possib", on every page. Prefer whole sentences; failing that, the last
+	complete word, with an ellipsis so the cut is visibly deliberate.
+	"""
+	import re
+
+	text = (text or "").strip()
+	if len(text) <= limit:
+		return text
+
+	kept = ""
+	for sentence in re.findall(r"[^.!?]*[.!?]", text):
+		if len(kept) + len(sentence) > limit:
+			break
+		kept += sentence
+	if kept.strip():
+		return kept.strip()
+
+	cut = text[:limit]
+	space = cut.rfind(" ")
+	return (cut[:space] if space > 0 else cut).rstrip(" ,;:") + "…"
 
 
 def _background_with_scrim(block, new_src: str) -> str:
