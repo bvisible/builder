@@ -3606,6 +3606,46 @@ def _replace_image_in_page(page_name: str, block_id: str, new_src: str, img_type
 	frappe.db.commit()
 
 
+_SCRIM = "linear-gradient(rgba(0, 0, 0, 0.55), rgba(0, 0, 0, 0.30))"
+_LIGHT_TEXT = {"#fff", "#ffff", "#ffffff", "white", "rgb(255,255,255)"}
+
+
+def _has_light_text(block, depth: int = 0) -> bool:
+	"""Does anything inside this block rely on the background being dark?"""
+	if depth > 6 or not isinstance(block, dict):
+		return False
+	for key in ("baseStyles", "mobileStyles", "tabletStyles"):
+		colour = str((block.get(key) or {}).get("color", "")).strip().lower().replace(" ", "")
+		if colour in _LIGHT_TEXT:
+			return True
+	return any(_has_light_text(child, depth + 1) for child in block.get("children") or [])
+
+
+def _background_with_scrim(block, new_src: str) -> str:
+	"""The new photo, keeping (or earning) the veil the text needs to stay readable.
+
+	Two failures this prevents, both seen on a generated homepage:
+
+	- Overwriting `backgroundImage` wholesale **destroyed** the gradient the AI
+	  had put in front of its own placeholder. The scrim is part of the design,
+	  not part of the placeholder.
+	- Where the AI never wrote one, a slate placeholder hid the problem: white
+	  text on a dark rectangle reads fine. Swap in a real photo with a bright
+	  sky and the headline disappears.
+
+	So: keep an existing gradient, and add a default one when the block draws
+	light text over the image. A section with dark text is left alone — a veil
+	there would only muddy the photo.
+	"""
+	previous = str((block.get("baseStyles") or {}).get("backgroundImage") or "")
+	prefix = previous.split("url(")[0].strip().rstrip(",").strip()
+	if "gradient(" in prefix:
+		return f"{prefix}, url('{new_src}')"
+	if _has_light_text(block):
+		return f"{_SCRIM}, url('{new_src}')"
+	return f"url('{new_src}')"
+
+
 def _replace_block_src(blocks, block_id: str, new_src: str, img_type: str = "img") -> bool:
 	"""Recursively find a block by blockId and replace its image source."""
 	if not isinstance(blocks, list):
@@ -3620,7 +3660,7 @@ def _replace_block_src(blocks, block_id: str, new_src: str, img_type: str = "img
 				# Replace CSS background image with proper cover styles
 				if "baseStyles" not in block:
 					block["baseStyles"] = {}
-				block["baseStyles"]["backgroundImage"] = f"url('{new_src}')"
+				block["baseStyles"]["backgroundImage"] = _background_with_scrim(block, new_src)
 				block["baseStyles"]["backgroundSize"] = "cover"
 				block["baseStyles"]["backgroundPosition"] = "center"
 				block["baseStyles"]["backgroundRepeat"] = "no-repeat"
