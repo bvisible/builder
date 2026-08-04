@@ -345,7 +345,11 @@ the layout collapses.
 ### Content
 - Write REALISTIC text ADAPTED to the business
 - NO Lorem ipsum, NO "[Placeholder]"
-- Invent company names, testimonials, credible stats
+- Invent the supporting cast: testimonial authors, partner names, credible stats
+- NEVER invent a name for the site's own business. It has one, it is given to
+  you, and it is the only one that may appear as the brand, in an eyebrow, in a
+  signature or in a footer credit. A generated site that credits a studio nobody
+  has ever heard of is the kind of mistake the client notices first.
 
 ### Design
 - Vary layouts: 2/3/4 column grids, flex, asymmetric
