@@ -133,6 +133,14 @@
 		var transparent = header.classList.contains("site-header--transparent");
 		if (!transparent && mode === "Always visible") return;
 
+		// Hidden is a STATE, not a recomputation. The first version rebuilt it
+		// every frame from "are we moving down right now", so the moment a
+		// scroll came to rest the movement was zero, the condition went false
+		// and the bar sprang back — mid-flick, which is where the jump came
+		// from. It now stays hidden until an actual upward move says otherwise.
+		var TOLERANCE = 6; // below this a move is trackpad noise, not intent
+		var TOP_ZONE = 120; // near the top the bar always shows
+
 		var lastY = window.scrollY;
 		var solid = false;
 		var hidden = false;
@@ -141,8 +149,12 @@
 
 		function apply() {
 			ticking = false;
-			var y = window.scrollY;
-			var goingDown = y > lastY;
+
+			// clamp: macOS rubber-banding reports positions past both ends,
+			// and a negative delta there reads as "scrolled up"
+			var max = Math.max(0, document.documentElement.scrollHeight - window.innerHeight);
+			var y = Math.min(Math.max(window.scrollY, 0), max);
+			var delta = y - lastY;
 
 			if (transparent) {
 				var nextSolid = y > 24;
@@ -152,14 +164,21 @@
 				}
 			}
 
+			// In the top zone the bar is always shown, whatever the direction.
+			if (mode === "Hide going down" && y <= TOP_ZONE && hidden) {
+				hidden = false;
+				header.classList.toggle("is-hidden", false);
+			}
+
+			// Everything below reacts to a deliberate move. A smaller one leaves
+			// every state exactly as it is — including lastY, so slow scrolling
+			// still accumulates instead of being swallowed frame by frame.
+			if (Math.abs(delta) < TOLERANCE) return;
+
 			if (mode === "Hide going down") {
-				// the 8px deadband keeps a trackpad's jitter from flapping it,
-				// and above the fold the bar always stays put
-				var nextHidden = goingDown && y > 160 && Math.abs(y - lastY) > 8;
-				if (!goingDown && Math.abs(y - lastY) > 8) nextHidden = false;
-				if (y <= 160) nextHidden = false;
-				if (nextHidden !== hidden) {
-					hidden = nextHidden;
+				var next = y > TOP_ZONE && delta > 0;
+				if (next !== hidden) {
+					hidden = next;
 					header.classList.toggle("is-hidden", hidden);
 				}
 			} else if (mode === "Shrink") {
@@ -170,7 +189,7 @@
 				}
 			}
 
-			if (Math.abs(y - lastY) > 8) lastY = y;
+			lastY = y;
 		}
 
 		function onScroll() {
