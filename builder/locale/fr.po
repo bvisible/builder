@@ -4166,3 +4166,60 @@ msgstr "YouTube"
 #: frontend/src/components/Settings/GlobalTheme.vue:378
 msgid "Your own HTML — a newsletter form, a badge, a widget"
 msgstr "Votre propre HTML — un formulaire de newsletter, un badge, un widget"
+
+#: frontend/src/components/Settings/GlobalPlugins.vue:58
+msgid "A plugin is a Frappe app. It runs with full access to this server — install only what you trust."
+msgstr "Un plugin est une application Frappe. Elle s'exécute avec un accès complet à ce serveur — n'installez que ce en quoi vous avez confiance."
+
+#: frontend/src/components/Settings/GlobalPlugins.vue:71
+msgid "Branch"
+msgstr "Branche"
+
+#: frontend/src/components/Settings/GlobalPlugins.vue:64
+msgid "Git URL"
+msgstr "URL git"
+
+#: frontend/src/components/Settings/GlobalPlugins.vue:80
+msgid "Install"
+msgstr "Installer"
+
+#: frontend/src/components/Settings/GlobalPlugins.vue:56
+msgid "Install a plugin"
+msgstr "Installer un plugin"
+
+#: frontend/src/components/Settings/GlobalPlugins.vue:90
+msgid "Installed. Restart the site's workers for the new app's hooks to take effect."
+msgstr "Installé. Redémarrez les workers du site pour que les hooks de la nouvelle application prennent effet."
+
+#: frontend/src/components/Settings/GlobalPlugins.vue:211
+msgid "Plugin installed"
+msgstr "Plugin installé"
+
+#: frontend/src/components/Settings/GlobalPlugins.vue:233
+msgid "Plugin removed"
+msgstr "Plugin supprimé"
+
+#: frontend/src/components/Settings/GlobalPlugins.vue:100
+msgid "Remove"
+msgstr "Supprimer"
+
+#: frontend/src/components/Settings/GlobalPlugins.vue:47
+msgid "Remove from the site"
+msgstr "Supprimer du site"
+
+#: frontend/src/components/Settings/GlobalPlugins.vue:97
+msgid "Remove this plugin?"
+msgstr "Supprimer ce plugin ?"
+
+#: frontend/src/components/Settings/GlobalTheme.vue:410
+msgid "The brief every page was generated from. Changing a setting above overrides it; the brief itself does not change."
+msgstr "Le brief à partir duquel chaque page a été générée. Modifier un réglage ci-dessus le remplace ; le brief lui-même ne change pas."
+
+#: frontend/src/components/Settings/GlobalPlugins.vue:157
+msgid "This uninstalls {0} from the site and drops its tables. Turning it off instead keeps everything and is instant."
+msgstr "Cela désinstalle {0} du site et supprime ses tables. Le désactiver à la place conserve tout et est instantané."
+
+#: frontend/src/components/AIChatModal.vue:89
+#: frontend/src/components/Settings/GlobalTheme.vue:406
+msgid "What the AI decided"
+msgstr "Ce que l'IA a décidé"

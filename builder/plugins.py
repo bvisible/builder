@@ -144,6 +144,23 @@ def guard(plugin_name: str):
 		)
 
 
+def _installed_apps() -> set:
+	"""What is really installed, read from the table rather than the cache.
+
+	`frappe.get_installed_apps()` is cached per process, and the install path
+	runs `bench install-app` in a **subprocess** — so the worker that installed
+	an app would otherwise still believe it is absent and mark the plugin
+	unavailable the moment it became available.
+	"""
+	try:
+		rows = frappe.get_all("Installed Application", pluck="app_name")
+		if rows:
+			return set(rows)
+	except Exception:
+		pass
+	return set(frappe.get_installed_apps())
+
+
 def sync_plugins(app_name: str | None = None):
 	"""Seed and refresh the registry.
 
@@ -158,7 +175,7 @@ def sync_plugins(app_name: str | None = None):
 	if not frappe.db.exists("DocType", REGISTRY_DOCTYPE):
 		return
 
-	installed = set(frappe.get_installed_apps())
+	installed = _installed_apps()
 
 	for spec in BUILT_INS:
 		available = 1 if spec["app_name"] in installed else 0

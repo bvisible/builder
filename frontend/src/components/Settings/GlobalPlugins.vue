@@ -39,8 +39,68 @@
 					:disabled="!!plugin.is_core || !plugin.is_available || busy === plugin.name"
 					:modelValue="!!plugin.enabled"
 					@update:modelValue="(v: boolean) => toggle(plugin, v)" />
+				<Button
+					v-if="canInstall && !plugin.is_core && plugin.app_name && plugin.is_available"
+					variant="ghost"
+					size="sm"
+					icon="lucide-trash-2"
+					:title="__('Remove from the site')"
+					@click="askRemove(plugin)" />
 			</div>
 		</div>
+
+		<!-- Installing is a different kind of act from switching: a Frappe app
+		     runs with full server access, so the URL is explicit, the operator
+		     can turn the whole thing off, and nothing is installed from a name. -->
+		<div v-if="canInstall" class="flex flex-col gap-2 border-t border-outline-gray-1 pt-4">
+			<span class="text-sm font-medium text-ink-gray-8">{{ __("Install a plugin") }}</span>
+			<p class="text-xs text-ink-gray-5">
+				{{ __("A plugin is a Frappe app. It runs with full access to this server — install only what you trust.") }}
+			</p>
+			<div class="flex items-end gap-2">
+				<FormControl
+					size="sm"
+					class="flex-1"
+					:label="__('Git URL')"
+					placeholder="https://github.com/owner/app"
+					:modelValue="installUrl"
+					@update:modelValue="(v: string) => (installUrl = v)" />
+				<FormControl
+					size="sm"
+					class="w-40"
+					:label="__('Branch')"
+					placeholder="main"
+					:modelValue="installBranch"
+					@update:modelValue="(v: string) => (installBranch = v)" />
+				<Button
+					variant="solid"
+					:loading="!!jobId"
+					:disabled="!installUrl.trim()"
+					@click="startInstall">
+					{{ __("Install") }}
+				</Button>
+			</div>
+			<div v-if="jobStep" class="flex items-center gap-2 text-xs">
+				<span
+					v-if="jobId"
+					class="size-3 animate-spin rounded-full border-2 border-outline-gray-2 border-t-ink-gray-6" />
+				<span :class="jobFailed ? 'text-ink-red-3' : 'text-ink-gray-6'">{{ jobStep }}</span>
+			</div>
+			<p v-if="jobNeedsRestart" class="text-xs text-ink-amber-3">
+				{{ __("Installed. Restart the site's workers for the new app's hooks to take effect.") }}
+			</p>
+		</div>
+
+		<Dialog
+			v-model="confirmRemove"
+			:options="{
+				title: __('Remove this plugin?'),
+				message: removeMessage,
+				actions: [
+					{ label: __('Remove'), variant: 'solid', theme: 'red', onClick: doRemove },
+					{ label: __('Cancel'), onClick: () => (confirmRemove = false) },
+				],
+			}" />
 
 		<p class="text-xs text-ink-gray-5">
 			{{ __("More plugins will come from the community hub. This list is where they land.") }}
@@ -48,8 +108,8 @@
 	</div>
 </template>
 <script setup lang="ts">
-import { Switch, createResource, toast } from "frappe-ui";
-import { ref } from "vue";
+import { Button, Dialog, FormControl, Switch, createResource, toast } from "frappe-ui";
+import { computed, ref } from "vue";
 
 // `__` is installed globally by the translation plugin (see src/translation.ts).
 const __ = window.__!;
@@ -63,7 +123,7 @@ const loading = ref(true);
 const busy = ref("");
 const plugins = ref<Plugin[]>([]);
 
-createResource({
+const listResource = createResource({
 	url: `${API}.list_plugins`,
 	auto: true,
 	onSuccess(data: Plugin[]) {
@@ -74,6 +134,109 @@ createResource({
 		loading.value = false;
 	},
 });
+
+function reload() {
+	listResource.reload();
+	window.dispatchEvent(new CustomEvent("unpress:capabilities-changed"));
+}
+
+const INSTALL_API = "builder.plugin_install";
+
+const canInstall = ref(false);
+const installUrl = ref("");
+const installBranch = ref("");
+const jobId = ref("");
+const jobStep = ref("");
+const jobFailed = ref(false);
+const jobNeedsRestart = ref(false);
+const confirmRemove = ref(false);
+const removeTarget = ref<Plugin | null>(null);
+
+const removeMessage = computed(() =>
+	removeTarget.value
+		? __(
+				"This uninstalls {0} from the site and drops its tables. Turning it off instead keeps everything and is instant.",
+			).replace("{0}", __(removeTarget.value.title))
+		: "",
+);
+
+createResource({
+	url: `${INSTALL_API}.install_capability`,
+	auto: true,
+	onSuccess(data: { allowed?: boolean }) {
+		canInstall.value = !!data?.allowed;
+	},
+	onError() {
+		canInstall.value = false;
+	},
+});
+
+// One poll loop for both install and uninstall — same progress shape.
+async function follow(id: string, onDone: () => void) {
+	jobId.value = id;
+	jobFailed.value = false;
+	jobNeedsRestart.value = false;
+	const tick = async () => {
+		try {
+			const r = await createResource({ url: `${INSTALL_API}.install_status` }).submit({ job_id: id });
+			jobStep.value = r?.step || "";
+			if (r?.status === "done") {
+				jobId.value = "";
+				jobNeedsRestart.value = !!r.needs_restart;
+				onDone();
+				return;
+			}
+			if (r?.status === "failed") {
+				jobId.value = "";
+				jobFailed.value = true;
+				return;
+			}
+		} catch {
+			// a dropped poll is not a failed job; keep waiting
+		}
+		setTimeout(tick, 2000);
+	};
+	tick();
+}
+
+async function startInstall() {
+	try {
+		const r = await createResource({ url: `${INSTALL_API}.install_plugin` }).submit({
+			git_url: installUrl.value.trim(),
+			branch: installBranch.value.trim() || undefined,
+		});
+		follow(r.job_id, () => {
+			installUrl.value = "";
+			installBranch.value = "";
+			toast.success(__("Plugin installed"));
+			reload();
+		});
+	} catch (error) {
+		toast.error(error instanceof Error ? error.message : String(error));
+	}
+}
+
+function askRemove(plugin: Plugin) {
+	removeTarget.value = plugin;
+	confirmRemove.value = true;
+}
+
+async function doRemove() {
+	const plugin = removeTarget.value;
+	confirmRemove.value = false;
+	if (!plugin) return;
+	try {
+		const r = await createResource({ url: `${INSTALL_API}.uninstall_plugin` }).submit({
+			plugin_name: plugin.plugin_name,
+		});
+		follow(r.job_id, () => {
+			toast.success(__("Plugin removed"));
+			reload();
+		});
+	} catch (error) {
+		toast.error(error instanceof Error ? error.message : String(error));
+	}
+}
 
 async function toggle(plugin: Plugin, enabled: boolean) {
 	busy.value = plugin.name;
