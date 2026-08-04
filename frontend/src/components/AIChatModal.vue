@@ -223,6 +223,24 @@ const genDone = ref(false);
 const briefGroups = ref<any[]>([]);
 const showBrief = ref(false);
 
+// Once the site exists, writing an article is the obvious next thing — but
+// only if this site has a blog. Offered as a chip so nobody has to guess the
+// phrasing; typing "écris un article sur…" works just as well.
+async function offerArticle() {
+	try {
+		const caps = await createResource({
+			url: "builder.plugins.get_capabilities",
+		}).submit({});
+		if (caps?.blog === false) return;
+	} catch {
+		return;
+	}
+	confirmButtons.value = [
+		...(confirmButtons.value || []),
+		{ label: __("Write an article"), value: "__WRITE_ARTICLE__" },
+	];
+}
+
 async function loadBrief() {
 	if (!sid.value || briefGroups.value.length) return;
 	try {
@@ -535,6 +553,7 @@ const pollGeneration = async () => {
 			generating.value = false;
 			genDone.value = true;
 			allWebPages.reload();
+			offerArticle();
 			// pages exist; illustrations keep coming in the background
 			if (s.image_job_id) {
 				imagesTotal.value = s.remaining_image_slots || 0;

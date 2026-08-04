@@ -20,6 +20,31 @@
 
 				<!-- List -->
 				<template v-if="!editing">
+					<!-- Writing one is the thing this screen is for; searching is
+					     what you do once there are enough to search. -->
+					<div class="flex items-end gap-2 rounded-lg border border-outline-gray-1 p-3">
+						<FormControl
+							size="sm"
+							class="flex-1"
+							:label="__('Ask the AI for an article')"
+							:placeholder="__('What should it be about? e.g. how we roast our Ethiopian beans')"
+							:modelValue="topic"
+							:disabled="writing"
+							@update:modelValue="(v: string) => (topic = v)"
+							@keydown.enter="writeArticle" />
+						<Button
+							variant="solid"
+							icon-left="lucide-sparkles"
+							:loading="writing"
+							:disabled="!topic.trim()"
+							@click="writeArticle">
+							{{ __("Write it") }}
+						</Button>
+					</div>
+					<p v-if="writing" class="text-xs text-ink-gray-5">
+						{{ __("Writing — this takes about a minute. It lands as a draft.") }}
+					</p>
+
 					<div class="flex items-center gap-2">
 						<FormControl
 							size="sm"
@@ -171,6 +196,29 @@ const posts = ref<Post[]>([]);
 const status = ref<Record<string, any>>({});
 const draft = reactive<Post>({});
 const draftRoute = ref("");
+const topic = ref("");
+const writing = ref(false);
+
+// The article is written server-side against this site's own context — its
+// business, the tone the design brief settled on, the pages that exist. It
+// lands as a draft: nobody should find a post on their site because a
+// generation finished.
+async function writeArticle() {
+	const subject = topic.value.trim();
+	if (!subject || writing.value) return;
+	writing.value = true;
+	try {
+		const r = await call("write_article", { topic: subject });
+		topic.value = "";
+		toast.success(__("Draft ready: {0}").replace("{0}", r.title));
+		await refresh();
+		startEdit({ name: r.name });
+	} catch (error) {
+		toast.error(error instanceof Error ? error.message : String(error));
+	} finally {
+		writing.value = false;
+	}
+}
 
 const statusOptions = [
 	{ label: __("All"), value: "all" },

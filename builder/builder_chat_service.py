@@ -273,6 +273,101 @@ class BuilderChatService:
 
 		return {"content": content, "buttons": buttons}
 
+	ARTICLE_REQUEST = re.compile(
+		r"^\s*(?:"
+		# "je voudrais / j'aimerais (que tu) écrire un article", and friends
+		r"(?:j[e'\u2019]\s*)?(?:voudrais|veux|aimerais|souhaite)\s+(?:bien\s+)?"
+		r"(?:qu(?:e|[\'\u2019])?\s*(?:tu|vous|on)\s+)?(?:écri\w*|ecri\w*|rédige\w*|redige\w*|publie\w*)"
+		# or the imperative, which is how most people actually ask
+		r"|(?:écris|ecris|rédige|redige|publie|poste)"
+		r"|(?:write|draft|publish|post)"
+		r")"
+		r"[^\n]*?"
+		r"\b(?:article|billet|post|blog)\b"
+		r"\s*(?:sur|à\s+propos\s+d[eu\'\u2019]?|about|on|:)?\s*(?P<topic>.*)$",
+		re.IGNORECASE | re.DOTALL,
+	)
+
+	def _article_request(self, message: str):
+		"""The topic, if this message is asking for an article. None otherwise.
+
+		Returns "" — not None — when someone asks for an article without saying
+		what about, so the caller knows to ask rather than to ignore.
+		"""
+		if not message or message.startswith("__"):
+			return None
+		try:
+			from builder.plugins import is_enabled
+
+			if not is_enabled("blog"):
+				return None
+		except ImportError:
+			return None
+
+		match = self.ARTICLE_REQUEST.match(message.strip())
+		if not match:
+			return None
+
+		# On a bench with no site yet, the wizard's opening question is "what
+		# site do you want" — and "I'd like to publish articles about X" is a
+		# perfectly good answer to it. The article path only makes sense once
+		# there is a site to publish on.
+		if not frappe.db.count("Builder Page", {"published": 1}):
+			return None
+
+		return (match.group("topic") or "").strip(" .:—-")
+
+	def _write_article(self, session, topic: str) -> Dict:
+		"""Write it, keep it as a draft, and say where it went."""
+		session.add_message(role="user", content=topic or _("Write an article"))
+
+		if not topic:
+			response = _("What should it be about? A subject, an angle, anything you would tell a writer.")
+			session.add_message(role="assistant", content=response)
+			session.db_set("homepage_feedback", "__AWAITING_ARTICLE_TOPIC__", update_modified=False)
+			session.save(ignore_permissions=True)
+			return {
+				"success": True,
+				"response": response,
+				"current_step": session.current_step,
+				"completion_percentage": session.completion_percentage,
+			}
+
+		try:
+			from builder.blog_api import write_article
+
+			article = write_article(topic=topic)
+		except Exception as e:
+			frappe.log_error("Chat article generation failed", f"{topic}\n{e}")
+			response = _("I could not write that one: {0}").format(str(e)[:200])
+			session.add_message(role="assistant", content=response)
+			session.save(ignore_permissions=True)
+			return {
+				"success": True,
+				"response": response,
+				"current_step": session.current_step,
+				"completion_percentage": session.completion_percentage,
+			}
+
+		# A draft on purpose. Publishing is one click in Articles, and an
+		# article nobody has read should not appear on the site because a
+		# generation finished.
+		response = _("**{0}** is written and waiting as a draft in Articles.").format(article["title"])
+		response += "\n\n" + _("Read it before it goes live — I write from your brief, but you know the business.")
+		buttons = [
+			{"label": _("Write another"), "value": "__WRITE_ARTICLE__"},
+			{"label": _("Publish it"), "value": "__PUBLISH_LAST_ARTICLE__:" + article["name"]},
+		]
+		session.add_message(role="assistant", content=response, buttons=buttons)
+		session.save(ignore_permissions=True)
+		return {
+			"success": True,
+			"response": response,
+			"buttons": buttons,
+			"current_step": session.current_step,
+			"completion_percentage": session.completion_percentage,
+		}
+
 	def process_message(self, session_id: str, user_message: str) -> Dict:
 		"""Process a user message and generate AI response."""
 		try:
@@ -328,6 +423,16 @@ class BuilderChatService:
 				session.status = "Active"
 				session.save(ignore_permissions=True)
 				return {"success": True, "message": response, "completion_percentage": session.completion_percentage}
+
+			# Writing an article. Two ways in: the button offered once the site
+			# exists, and asking for one in plain words. Both land here.
+			if session.homepage_feedback == "__AWAITING_ARTICLE_TOPIC__":
+				session.db_set("homepage_feedback", "", update_modified=False)
+				return self._write_article(session, user_message.strip())
+
+			topic = self._article_request(user_message)
+			if topic is not None:
+				return self._write_article(session, topic)
 
 			# Handle custom page name input
 			if session.homepage_feedback == "__AWAITING_CUSTOM_PAGE_NAME__":
@@ -1591,6 +1696,36 @@ When all required fields are collected, congratulate the user and tell them they
 				"current_step": session.current_step,
 				"completion_percentage": session.completion_percentage,
 				"missing_fields": session.get_missing_fields(),
+			}
+
+		elif command.startswith("__PUBLISH_LAST_ARTICLE__:"):
+			name = command.split(":", 1)[1]
+			try:
+				from builder.blog_api import set_published
+
+				result = set_published(name=name, published=1)
+				response = _("Published — it is live at /{0}.").format(result["route"])
+			except Exception as e:
+				response = _("I could not publish it: {0}").format(str(e)[:200])
+			session.add_message(role="assistant", content=response)
+			session.save(ignore_permissions=True)
+			return {
+				"success": True,
+				"response": response,
+				"current_step": session.current_step,
+				"completion_percentage": session.completion_percentage,
+			}
+
+		elif command == "__WRITE_ARTICLE__":
+			response = _("What should the article be about? A subject, an angle, anything you would tell a writer.")
+			session.add_message(role="assistant", content=response)
+			session.db_set("homepage_feedback", "__AWAITING_ARTICLE_TOPIC__", update_modified=False)
+			session.save(ignore_permissions=True)
+			return {
+				"success": True,
+				"response": response,
+				"current_step": session.current_step,
+				"completion_percentage": session.completion_percentage,
 			}
 
 		elif command == "__ADD_CUSTOM_PAGE__":

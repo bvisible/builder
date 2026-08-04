@@ -895,6 +895,26 @@ class PageGenerator:
         r"""\{\{\s*google_map\s+address\s*=\s*(?:"([^"]*)"|'([^']*)')\s*\}\}"""
     )
 
+    def _available_includes(self) -> set:
+        """VALID_INCLUDES minus the ones whose app is not on this bench.
+
+        The webshop carousels are real on Neoffice and absent on Unpress.
+        Keeping one in a page turns the whole page into a 500 at render time —
+        the worst way to find out, because the generation reports success.
+        """
+        try:
+            installed = set(frappe.get_installed_apps())
+        except Exception:
+            return self.VALID_INCLUDES
+
+        available = set()
+        for path in self.VALID_INCLUDES:
+            app = path.split("/", 1)[0]
+            # "templates/..." is frappe's own, always there
+            if app == "templates" or app in installed:
+                available.add(path)
+        return available
+
     def _convert_shortcodes(self, inner: str) -> str:
         """Convert AI shortcode notation to valid Jinja includes."""
         def replace_google_map(m):
@@ -1278,6 +1298,8 @@ class PageGenerator:
             r"""{%[-\s]*include\s+['"]([^'"]+)['"]\s*[-\s]*%}"""
         )
 
+        available_includes = self._available_includes()
+
         def sanitize_block(block: dict) -> bool:
             """Sanitize a block's innerHTML. Returns False if block should be removed."""
             inner = block.get("innerHTML", "")
@@ -1308,7 +1330,7 @@ class PageGenerator:
 
             matches = include_pattern.findall(inner)
             for template_path in matches:
-                if template_path in self.VALID_INCLUDES:
+                if template_path in available_includes:
                     continue
 
                 # Try to correct the path

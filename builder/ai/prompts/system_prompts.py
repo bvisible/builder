@@ -634,7 +634,7 @@ TECHNICAL CONSTRAINT: Shortcodes must be in a full-width container, not inside g
         }
 
         if page_type in page_instructions:
-            context += page_instructions[page_type]
+            context += _drop_unavailable_shortcodes(page_instructions[page_type])
 
         # Hero/header consistency: the homepage gets a full-bleed background-image
         # hero; EVERY interior page opens with the SAME compact header. Each page
@@ -646,6 +646,31 @@ TECHNICAL CONSTRAINT: Shortcodes must be in a full-width container, not inside g
             context += _INTERIOR_HEADER_RULE
 
     return context
+
+
+def _drop_unavailable_shortcodes(text: str) -> str:
+    """Remove shortcode lines whose app is not on this bench.
+
+    The webshop carousels exist on Neoffice and not on Unpress. Offering one to
+    the model there produces a page that renders as a 500 — the sanitiser
+    catches it afterwards, but a model told about a tool it cannot use spends
+    its attention on it and writes a worse section around the hole.
+    """
+    import frappe
+    import re as _re
+
+    try:
+        installed = set(frappe.get_installed_apps())
+    except Exception:
+        return text
+
+    kept = []
+    for line in text.split("\n"):
+        apps = _re.findall(r'include\s+"([a-z_][a-z0-9_]*)/templates/', line)
+        if apps and not all(app in installed for app in apps):
+            continue
+        kept.append(line)
+    return "\n".join(kept)
 
 
 def get_shortcodes_context(site_type: str = None) -> str:

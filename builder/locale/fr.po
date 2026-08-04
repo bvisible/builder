@@ -4223,3 +4223,27 @@ msgstr "Cela désinstalle {0} du site et supprime ses tables. Le désactiver à 
 #: frontend/src/components/Settings/GlobalTheme.vue:406
 msgid "What the AI decided"
 msgstr "Ce que l'IA a décidé"
+
+#: frontend/src/components/BlogManager.vue:29
+msgid "Ask the AI for an article"
+msgstr "Demandez un article à l'IA"
+
+#: frontend/src/components/BlogManager.vue:213
+msgid "Draft ready: {0}"
+msgstr "Brouillon prêt : {0}"
+
+#: frontend/src/components/BlogManager.vue:30
+msgid "What should it be about? e.g. how we roast our Ethiopian beans"
+msgstr "De quoi doit-il parler ? Par exemple : comment nous torréfions nos grains éthiopiens"
+
+#: frontend/src/components/AIChatModal.vue:240
+msgid "Write an article"
+msgstr "Écrire un article"
+
+#: frontend/src/components/BlogManager.vue:41
+msgid "Write it"
+msgstr "Écrire"
+
+#: frontend/src/components/BlogManager.vue:45
+msgid "Writing — this takes about a minute. It lands as a draft."
+msgstr "Rédaction en cours — environ une minute. L'article arrive en brouillon."

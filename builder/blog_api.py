@@ -125,11 +125,31 @@ def get_post(name: str) -> dict:
 	return data
 
 
+def _clear_orphan_blogger_permissions():
+	"""Drop User Permissions pointing at Bloggers that no longer exist.
+
+	Blogger.on_update calls add_user_permission("Blogger", ...). Removing the
+	blog plugin drops tabBlogger but not those permissions — they live in
+	frappe core. Reinstalling then fails on the first author with
+	"User permission already exists", and the article silently never appears.
+	"""
+	rows = frappe.get_all(
+		"User Permission",
+		filters={"allow": "Blogger", "user": frappe.session.user},
+		fields=["name", "for_value"],
+	)
+	for row in rows:
+		if not frappe.db.exists("Blogger", row.for_value):
+			frappe.delete_doc("User Permission", row.name, force=True, ignore_permissions=True)
+
+
 def _ensure_blogger() -> str:
 	"""Every post needs an author. Use this user's, creating it once."""
 	existing = frappe.db.get_value("Blogger", {"user": frappe.session.user}, "name")
 	if existing:
 		return existing
+
+	_clear_orphan_blogger_permissions()
 
 	full_name = frappe.utils.get_fullname(frappe.session.user) or frappe.session.user
 	doc = frappe.new_doc("Blogger")
@@ -234,3 +254,42 @@ def delete_category(name: str) -> dict:
 	frappe.delete_doc("Blog Category", name)
 	frappe.db.commit()
 	return {"ok": True}
+
+
+@frappe.whitelist()
+def write_article(topic: str, publish=False) -> dict:
+	"""Have the AI write an article for this site, and keep it.
+
+	Saved as a draft unless asked otherwise: an article nobody has read should
+	not appear on the site because a generation finished.
+	"""
+	_check()
+
+	topic = (topic or "").strip()
+	if not topic:
+		frappe.throw(_("Tell me what the article should be about."))
+
+	from builder.ai.generators.article_generator import generate_article
+
+	article = generate_article(topic)
+
+	doc = frappe.new_doc("Blog Post")
+	doc.title = article.title
+	doc.blog_intro = article.intro
+	doc.content_type = "Markdown"
+	doc.content_md = article.content_md
+	doc.meta_description = (article.meta_description or article.intro or "")[:500]
+	doc.blog_category = _ensure_category()
+	doc.blogger = _ensure_blogger()
+	doc.published = 1 if frappe.parse_json(str(publish).lower()) else 0
+	if doc.published:
+		doc.published_on = now_datetime()
+	doc.save()
+	frappe.db.commit()
+
+	return {
+		"name": doc.name,
+		"title": doc.title,
+		"route": doc.route,
+		"published": doc.published,
+	}
