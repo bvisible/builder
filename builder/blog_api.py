@@ -287,9 +287,90 @@ def write_article(topic: str, publish=False) -> dict:
 	doc.save()
 	frappe.db.commit()
 
+	# The cover comes later and on its own: a blog card without an image is a
+	# gradient with the title on it, which is fine, and waiting two minutes for
+	# a picture before showing the text is not.
+	from builder.ai.generators.article_generator import request_cover
+
+	cover_job = request_cover(article, doc.name)
+
 	return {
 		"name": doc.name,
 		"title": doc.title,
 		"route": doc.route,
 		"published": doc.published,
+		"cover_job": cover_job,
+	}
+
+
+# ---------------------------------------------------------------------------
+# Writing in the background
+# ---------------------------------------------------------------------------
+#
+# Writing takes the better part of a minute, and the cover another. That fits
+# inside a request, but only just, and a spinner that might be a hung tab is a
+# poor way to spend it. The screen starts a job and follows it; the chat still
+# calls write_article directly, because it has a conversation to hold and its
+# other steps are inline too.
+
+ARTICLE_PROGRESS_PREFIX = "unpress_article_write:"
+ARTICLE_PROGRESS_TTL = 1800
+
+
+def _article_progress(progress_id: str, step: str, status: str = "running", **extra):
+	frappe.cache().set_value(
+		ARTICLE_PROGRESS_PREFIX + progress_id,
+		{"job_id": progress_id, "status": status, "step": step, **extra},
+		expires_in_sec=ARTICLE_PROGRESS_TTL,
+	)
+
+
+@frappe.whitelist()
+def start_article(topic: str, publish=False) -> dict:
+	_check()
+	topic = (topic or "").strip()
+	if not topic:
+		frappe.throw(_("Tell me what the article should be about."))
+
+	progress_id = frappe.generate_hash(length=10)
+	_article_progress(progress_id, _("Queued"))
+
+	frappe.enqueue(
+		"builder.blog_api._write_article_worker",
+		queue="long",
+		timeout=900,
+		progress_id=progress_id,
+		topic=topic,
+		publish=publish,
+	)
+	return {"job_id": progress_id}
+
+
+def _write_article_worker(progress_id: str, topic: str, publish):
+	try:
+		_article_progress(progress_id, _("Writing"))
+		result = write_article(topic=topic, publish=publish)
+		_article_progress(
+			progress_id,
+			_("Written"),
+			status="done",
+			name=result["name"],
+			title=result["title"],
+			route=result.get("route"),
+			# the cover keeps going after this; the screen says so rather than
+			# pretending the article is unfinished
+			cover_pending=bool(result.get("cover_job")),
+		)
+	except Exception as e:
+		frappe.log_error("Article generation failed", f"{topic}\n{e}")
+		_article_progress(progress_id, str(e)[:400], status="failed")
+
+
+@frappe.whitelist()
+def article_status(job_id: str) -> dict:
+	_check()
+	return frappe.cache().get_value(ARTICLE_PROGRESS_PREFIX + job_id) or {
+		"job_id": job_id,
+		"status": "unknown",
+		"step": _("No such job"),
 	}

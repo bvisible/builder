@@ -164,3 +164,87 @@ def generate_article(topic: str, language: str | None = None) -> GeneratedArticl
 
 	ai_log("info", "Article generated", title=article.title[:120], chars=len(article.content_md or ""))
 	return article
+
+
+COVER_NEGATIVE = (
+	"text, words, letters, headlines, captions, logos, watermarks, typography, "
+	"UI elements, signatures, borders, collage, split frames"
+)
+
+
+def cover_prompt(article) -> str:
+	"""What the cover image should show.
+
+	Deliberately concrete and about the subject, not about the article: a photo
+	of the thing, not an illustration of "an article about the thing". The
+	failure mode of generated blog covers is an abstract swirl that could
+	illustrate anything.
+	"""
+	site = _site_context()
+	subject = (article.title or "").strip()
+	intro = (article.intro or "").strip()
+
+	parts = [
+		"Editorial photograph for a blog article.",
+		f"The article is titled: {subject}." if subject else "",
+		f"It is about: {intro}" if intro else "",
+	]
+	if site.get("site_description"):
+		parts.append(f"The business it belongs to: {site['site_description'][:300]}")
+
+	parts.append(
+		"Photograph the subject itself — real objects, real hands, a real place. "
+		"Natural light, shallow depth of field, room around the subject so a "
+		"title can sit over it. No text of any kind in the image."
+	)
+	return " ".join(p for p in parts if p)
+
+
+def request_cover(article, blog_post_name: str) -> str | None:
+	"""Queue the cover image, writing it back onto the post when it lands.
+
+	Returns the image job id, or None when this site has no image backend —
+	the article is worth publishing either way, so a missing cover is never a
+	reason to fail the write.
+	"""
+	try:
+		from builder.api import _image_backend_available
+
+		if not _image_backend_available():
+			ai_log("info", "No image backend; article gets no cover", post=blog_post_name)
+			return None
+	except Exception:
+		return None
+
+	try:
+		return frappe.enqueue(
+			"builder.ai.generators.article_generator.cover_job",
+			queue="long",
+			timeout=600,
+			blog_post_name=blog_post_name,
+			prompt=cover_prompt(article),
+		).id
+	except Exception as e:
+		ai_log("warning", "Could not queue article cover", error=str(e)[:200])
+		return None
+
+
+def cover_job(blog_post_name: str, prompt: str):
+	"""Generate the cover and put it on the post.
+
+	Its own job because it goes through whichever image backend the site has,
+	and those take minutes. A failure here leaves the article exactly as it
+	was — with the gradient card the blog falls back to.
+	"""
+	from builder.api import generate_one_image
+
+	try:
+		url = generate_one_image(prompt, width=1024, height=576)
+	except Exception as e:
+		frappe.log_error("Article cover generation failed", f"{blog_post_name}\n{e}")
+		return
+
+	if url and frappe.db.exists("Blog Post", blog_post_name):
+		frappe.db.set_value("Blog Post", blog_post_name, "meta_image", url, update_modified=False)
+		frappe.db.commit()
+		ai_log("info", "Article cover set", post=blog_post_name, url=url)

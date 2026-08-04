@@ -522,6 +522,42 @@ def _get_generation_status(job_id: str) -> dict:
 	return frappe.cache().get_value(cache_key) or {"status": "not_found", "error": "Job not found"}
 
 
+def generate_one_image(prompt: str, width: int = 1024, height: int = 576) -> str:
+	"""One image, through whichever backend this site actually has.
+
+	The site image worker picks between Codex, ComfyUI and an OpenAI-compatible
+	endpoint. Anything else that wants a picture — an article cover — has to
+	make the same choice, or it works on the developer's bench and silently
+	produces nothing on a site configured differently.
+
+	Returns the /files/ URL. Raises if no backend produced one.
+	"""
+	from builder.ai.config import get_image_settings
+	from builder.ai.generators import comfyui_client
+	from builder.ai.logging import ai_log
+
+	settings = get_image_settings()
+
+	if settings.get("provider") == "codex":
+		from builder.ai.providers.codex_provider import CodexProvider
+
+		ok, why = CodexProvider.login_status()
+		if ok:
+			content = CodexProvider().generate_image_file(prompt, width=width, height=height)
+			return _save_generated_png(content, prefix="codex")
+		ai_log("warning", "Codex unavailable for image, falling back", reason=why)
+
+	if comfyui_client.is_configured():
+		healthy, why = comfyui_client.health()
+		if healthy:
+			return comfyui_client.generate_image(prompt, width=width, height=height)
+		ai_log("warning", "ComfyUI unavailable for image, falling back", reason=why)
+
+	from builder.ai.generators.image_generator import ImageGenerator
+
+	return ImageGenerator().generate(prompt=prompt, size=f"{width}x{height}").file_url
+
+
 def _image_backend_available() -> bool:
 	"""Is an image backend usable on this site?
 

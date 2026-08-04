@@ -4247,3 +4247,11 @@ msgstr "Écrire"
 #: frontend/src/components/BlogManager.vue:45
 msgid "Writing — this takes about a minute. It lands as a draft."
 msgstr "Rédaction en cours — environ une minute. L'article arrive en brouillon."
+
+#: frontend/src/components/BlogManager.vue:241
+msgid "The article could not be written."
+msgstr "L'article n'a pas pu être rédigé."
+
+#: frontend/src/components/BlogManager.vue:234
+msgid "The cover image is still being generated."
+msgstr "L'image de couverture est encore en cours de génération."

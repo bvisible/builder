@@ -41,8 +41,10 @@
 							{{ __("Write it") }}
 						</Button>
 					</div>
-					<p v-if="writing" class="text-xs text-ink-gray-5">
-						{{ __("Writing — this takes about a minute. It lands as a draft.") }}
+					<p v-if="writing" class="flex items-center gap-2 text-xs text-ink-gray-5">
+						<span
+							class="size-3 animate-spin rounded-full border-2 border-outline-gray-2 border-t-ink-gray-6" />
+						{{ writeStep || __("Writing — this takes about a minute. It lands as a draft.") }}
 					</p>
 
 					<div class="flex items-center gap-2">
@@ -198,6 +200,7 @@ const draft = reactive<Post>({});
 const draftRoute = ref("");
 const topic = ref("");
 const writing = ref(false);
+const writeStep = ref("");
 
 // The article is written server-side against this site's own context — its
 // business, the tone the design brief settled on, the pages that exist. It
@@ -207,17 +210,43 @@ async function writeArticle() {
 	const subject = topic.value.trim();
 	if (!subject || writing.value) return;
 	writing.value = true;
+	writeStep.value = "";
 	try {
-		const r = await call("write_article", { topic: subject });
-		topic.value = "";
-		toast.success(__("Draft ready: {0}").replace("{0}", r.title));
-		await refresh();
-		startEdit({ name: r.name });
+		const started = await call("start_article", { topic: subject });
+		follow(started.job_id);
 	} catch (error) {
-		toast.error(error instanceof Error ? error.message : String(error));
-	} finally {
 		writing.value = false;
+		toast.error(error instanceof Error ? error.message : String(error));
 	}
+}
+
+// Writing takes the better part of a minute and the cover another; the step
+// name is what makes that wait readable rather than suspicious.
+function follow(jobId: string) {
+	const tick = async () => {
+		try {
+			const r = await call("article_status", { job_id: jobId });
+			writeStep.value = r?.step || "";
+			if (r?.status === "done") {
+				writing.value = false;
+				topic.value = "";
+				toast.success(__("Draft ready: {0}").replace("{0}", r.title));
+				if (r.cover_pending) toast.info(__("The cover image is still being generated."));
+				await refresh();
+				startEdit({ name: r.name });
+				return;
+			}
+			if (r?.status === "failed") {
+				writing.value = false;
+				toast.error(r.step || __("The article could not be written."));
+				return;
+			}
+		} catch {
+			// a dropped poll is not a failed job; keep waiting
+		}
+		setTimeout(tick, 2500);
+	};
+	tick();
 }
 
 const statusOptions = [
