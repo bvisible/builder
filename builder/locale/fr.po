@@ -4279,3 +4279,15 @@ msgstr "Afficher l'auteur"
 #: unpress_core/templates/includes/header_footer/page_header.html:17
 msgid "Breadcrumb"
 msgstr "Fil d'Ariane"
+
+#: frontend/src/components/Settings/GlobalTheme.vue:419
+msgid "Breadcrumbs"
+msgstr "Fil d'Ariane"
+
+#: frontend/src/components/Settings/GlobalTheme.vue:404
+msgid "Page header"
+msgstr "En-tête de page"
+
+#: frontend/src/components/Settings/GlobalTheme.vue:408
+msgid "Shown above the content of pages the editor does not build — the blog, a section that is coming. Pages that open on a hero of their own keep it."
+msgstr "Affiché au-dessus du contenu des pages que l'éditeur ne construit pas — le blog, une section à venir. Les pages qui s'ouvrent sur leur propre héros le gardent."

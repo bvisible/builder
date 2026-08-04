@@ -390,6 +390,38 @@
 			</template>
 		</div>
 
+		<!-- The band above the content on pages the editor does not build. It
+		     sits between the header and the footer settings because that is what
+		     it is: the third piece of the site chrome. -->
+		<div class="flex flex-col gap-3 border-t border-outline-gray-1 pt-4">
+			<button
+				class="flex w-fit items-center gap-1 text-sm font-medium text-ink-gray-8"
+				@click="open.pageHeader = !open.pageHeader">
+				<span
+					class="inline-block size-4"
+					:class="open.pageHeader ? 'lucide-chevron-down' : 'lucide-chevron-right'"
+					aria-hidden="true" />
+				{{ __("Page header") }}
+			</button>
+			<template v-if="open.pageHeader">
+				<p class="text-xs text-ink-gray-5">
+					{{ __("Shown above the content of pages the editor does not build — the blog, a section that is coming. Pages that open on a hero of their own keep it.") }}
+				</p>
+				<FormControl
+					type="select"
+					size="sm"
+					:label="__('Style')"
+					:options="options.page_header_style"
+					:modelValue="state.page_header_style"
+					@update:modelValue="(v: string) => (state.page_header_style = v)" />
+				<Switch
+					size="sm"
+					:label="__('Breadcrumbs')"
+					:modelValue="!!state.show_breadcrumbs"
+					@update:modelValue="(v: boolean) => (state.show_breadcrumbs = v ? 1 : 0)" />
+			</template>
+		</div>
+
 		<!-- Blog. Only there when the site has one — the plugin decides. -->
 		<div v-if="capabilities.blog !== false" class="flex flex-col gap-3 border-t border-outline-gray-1 pt-4">
 			<button
@@ -585,6 +617,7 @@ const open = reactive({
 	header: false,
 	menu: false,
 	footer: false,
+	pageHeader: false,
 	blog: false,
 	brief: false,
 });
