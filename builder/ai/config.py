@@ -60,6 +60,7 @@ DEFAULTS = {
     "output_language": "French",
     "brief_think_level": "high",
     "page_think_level": "high",
+    "reasoning_effort": None,
 }
 
 
@@ -107,6 +108,11 @@ class AIConfig:
 
     brief_think_level: str = DEFAULTS["brief_think_level"]
     page_think_level: str = DEFAULTS["page_think_level"]
+
+    # Codex exposes this as model_reasoning_effort; empty means the provider
+    # picks. Kept on the config rather than in the provider so the Studio and
+    # site_config reach it the same way as the model.
+    reasoning_effort: Optional[str] = None
 
     def get_think_value(self, level: str) -> bool | str:
         """Convert a think level to the value expected by the current model."""
@@ -220,10 +226,18 @@ def get_ai_settings() -> AIConfig:
         or DEFAULTS["api_key"]
     )
 
+    reasoning_effort = (
+        conf.get("codex_reasoning_effort")
+        or conf.get("ai_reasoning_effort")
+        or _studio_value("unpress_ai_reasoning_effort")
+        or DEFAULTS["reasoning_effort"]
+    )
+
     return AIConfig(
         provider=provider,
         model=model,
         page_model=page_model,
+        reasoning_effort=reasoning_effort or None,
         base_url=base_url,
         api_key=api_key,
         temperature=float(conf.get("ai_temperature") or DEFAULTS["temperature"]),

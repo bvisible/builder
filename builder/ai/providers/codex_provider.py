@@ -45,6 +45,12 @@ class CodexProvider(BaseProvider):
 	DEFAULT_MODEL = None
 	DEFAULT_TIMEOUT = 900
 
+	# How hard the model thinks before answering. Codex exposes this as a
+	# config override rather than a flag; it is the single biggest lever on
+	# both quality and wall-clock, so it belongs in the Studio next to the
+	# model rather than buried in site_config.
+	REASONING_EFFORTS = ("minimal", "low", "medium", "high")
+
 	def __init__(
 		self,
 		model: str = None,
@@ -53,8 +59,14 @@ class CodexProvider(BaseProvider):
 		temperature: float = 0.7,
 		max_tokens: int = None,
 		timeout: int = None,
+		reasoning_effort: str = None,
 		**kwargs,
 	):
+		self.reasoning_effort = (
+			reasoning_effort or frappe.conf.get("codex_reasoning_effort") or ""
+		).strip().lower() or None
+		if self.reasoning_effort and self.reasoning_effort not in self.REASONING_EFFORTS:
+			self.reasoning_effort = None
 		super().__init__(
 			model=model or frappe.conf.get("codex_model") or self.DEFAULT_MODEL,
 			api_key=api_key,
@@ -233,6 +245,8 @@ class CodexProvider(BaseProvider):
 			]
 			if self.model:
 				argv += ["-m", self.model]
+			if self.reasoning_effort:
+				argv += ["-c", f'model_reasoning_effort="{self.reasoning_effort}"']
 			for path in self._local_images(images):
 				argv += ["-i", path]
 			if schema:
@@ -246,6 +260,7 @@ class CodexProvider(BaseProvider):
 				"info",
 				"codex exec",
 				model=self.model,
+				reasoning=self.reasoning_effort,
 				structured=bool(schema),
 				prompt_chars=len(prompt or ""),
 				images=len(images or []),
@@ -323,7 +338,9 @@ class CodexProvider(BaseProvider):
 	# images
 	# ------------------------------------------------------------------
 
-	def generate_image_file(self, prompt: str, width: int = 1024, height: int = 1024, timeout: int = None) -> bytes:
+	def generate_image_file(
+		self, prompt: str, width: int = 1024, height: int = 1024, timeout: int = None, model: str = None
+	) -> bytes:
 		"""Generate one image and return its bytes.
 
 		Images need a writable workspace, so the sandbox is widened to
@@ -361,9 +378,24 @@ class CodexProvider(BaseProvider):
 				"never",
 				"-C",
 				workdir,
-				"-",
 			]
-			ai_log("info", "codex image", w=width, h=height, prompt=(prompt or "")[:60])
+			# The image model is its own choice: drawing and writing are not the
+			# same job, and a plan may expose different models for each.
+			image_model = model or self.model
+			if image_model:
+				argv += ["-m", image_model]
+			if self.reasoning_effort:
+				argv += ["-c", f'model_reasoning_effort="{self.reasoning_effort}"']
+			argv.append("-")
+
+			ai_log(
+				"info",
+				"codex image",
+				w=width,
+				h=height,
+				model=image_model,
+				prompt=(prompt or "")[:60],
+			)
 			try:
 				proc = subprocess.run(
 					argv,

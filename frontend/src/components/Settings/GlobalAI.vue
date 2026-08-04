@@ -91,8 +91,10 @@
 			:modelValue="imageProvider"
 			@update:modelValue="setImageProvider" />
 
-		<!-- a subscription picks its own model; there is nothing to override -->
-		<div v-if="preset !== 'codex'" class="flex flex-col gap-3">
+		<!-- A subscription still lets you name the model and how hard it thinks:
+		     both change the result and the wait, so both belong here rather
+		     than in site_config where only an operator can reach them. -->
+		<div class="flex flex-col gap-3">
 			<button
 				class="flex w-fit items-center gap-1 text-sm text-ink-gray-7 hover:text-ink-gray-9"
 				@click="advancedOpen = !advancedOpen">
@@ -119,6 +121,22 @@
 					:modelValue="pageModel"
 					@update:modelValue="(v: string) => (pageModel = v)"
 					:placeholder="defaultPageModel" />
+				<FormControl
+					type="select"
+					size="sm"
+					:label="__('Reasoning effort')"
+					:description="__('How long the model thinks before answering. More is slower and usually better.')"
+					:options="reasoningOptions"
+					:modelValue="reasoningEffort"
+					@update:modelValue="(v: string) => (reasoningEffort = v)" />
+				<FormControl
+					v-if="imagesEnabled && imageProvider === 'codex'"
+					type="text"
+					size="sm"
+					:label="__('Image model')"
+					:description="__('Drawing and writing are different jobs; a plan may expose a different model for each. Empty = the same as above.')"
+					:modelValue="imageModel"
+					@update:modelValue="(v: string) => (imageModel = v)" />
 				<FormControl
 					type="text"
 					size="sm"
@@ -250,6 +268,18 @@ const baseUrl = ref("");
 const briefModel = ref("");
 const pageModel = ref("");
 const language = ref("");
+const reasoningEffort = ref("");
+const imageModel = ref("");
+
+// Codex's own vocabulary. Empty leaves the choice to the provider, which is
+// the right default: a plan may not expose every level.
+const reasoningOptions = [
+	{ label: __("Provider default"), value: "" },
+	{ label: __("Minimal"), value: "minimal" },
+	{ label: __("Low"), value: "low" },
+	{ label: __("Medium"), value: "medium" },
+	{ label: __("High"), value: "high" },
+];
 
 const keyHint = computed(() => KEY_HINTS[preset.value]?.hint || "");
 const keyLink = computed(() => KEY_HINTS[preset.value]?.link || "");
@@ -338,6 +368,8 @@ watchDebounced(baseUrl, (v) => saveIfChanged("unpress_ai_base_url", v), { deboun
 watchDebounced(briefModel, (v) => saveIfChanged("unpress_ai_brief_model", v), { debounce: 500 });
 watchDebounced(pageModel, (v) => saveIfChanged("unpress_ai_page_model", v), { debounce: 500 });
 watchDebounced(language, (v) => saveIfChanged("unpress_ai_output_language", v), { debounce: 500 });
+watchDebounced(reasoningEffort, (v) => saveIfChanged("unpress_ai_reasoning_effort", v), { debounce: 500 });
+watchDebounced(imageModel, (v) => saveIfChanged("unpress_ai_image_model", v), { debounce: 500 });
 
 const advancedOpen = ref(false);
 
@@ -370,7 +402,15 @@ onMounted(() => {
 	briefModel.value = doc.unpress_ai_brief_model || "";
 	pageModel.value = doc.unpress_ai_page_model || "";
 	language.value = doc.unpress_ai_output_language || "";
+	reasoningEffort.value = doc.unpress_ai_reasoning_effort || "";
+	imageModel.value = doc.unpress_ai_image_model || "";
 	preset.value = derivePreset(doc.unpress_ai_provider || "", doc.unpress_ai_base_url || "");
-	advancedOpen.value = !!(briefModel.value || pageModel.value || language.value);
+	advancedOpen.value = !!(
+		briefModel.value ||
+		pageModel.value ||
+		language.value ||
+		reasoningEffort.value ||
+		imageModel.value
+	);
 });
 </script>

@@ -44,10 +44,21 @@ AI_SETTINGS_FIELDS = {
 			"description": "Model for page generation. Empty = the code default",
 		},
 		{
+			# How hard the model thinks before answering. The single biggest
+			# lever on both quality and wall-clock, and it was only reachable
+			# from site_config until now.
+			"fieldname": "unpress_ai_reasoning_effort",
+			"fieldtype": "Select",
+			"label": "AI Reasoning Effort",
+			"options": "\nminimal\nlow\nmedium\nhigh",
+			"insert_after": "unpress_ai_page_model",
+			"description": "How long the model thinks before answering. Empty = the provider decides.",
+		},
+		{
 			"fieldname": "unpress_ai_output_language",
 			"fieldtype": "Data",
 			"label": "AI Content Language",
-			"insert_after": "unpress_ai_page_model",
+			"insert_after": "unpress_ai_reasoning_effort",
 			"description": "Language of the generated content. Empty = French",
 		},
 	]

@@ -36,6 +36,18 @@ def get_provider(provider_name: str, model: str = None, **kwargs) -> BaseProvide
         )
 
     provider_class = PROVIDERS[provider_name]
+
+    # The reasoning effort is a site-wide setting, and every call site would
+    # otherwise have to remember to thread it through. Read it here once; a
+    # caller that passes its own still wins.
+    if provider_name == "codex" and "reasoning_effort" not in kwargs:
+        try:
+            from builder.ai.config import get_ai_settings
+
+            kwargs["reasoning_effort"] = get_ai_settings().reasoning_effort
+        except Exception:
+            pass
+
     return provider_class(model=model, **kwargs)
 
 

@@ -12,13 +12,19 @@
 				</span>
 			</div>
 			<Badge v-if="status.logged_in" theme="green" variant="subtle">{{ __("Paired") }}</Badge>
+			<Badge v-else-if="status.unreachable" theme="gray" variant="subtle">
+				{{ __("Status unavailable") }}
+			</Badge>
 			<Badge v-else-if="!status.installed" theme="orange" variant="subtle">
 				{{ __("CLI not installed") }}
 			</Badge>
 			<Badge v-else theme="gray" variant="subtle">{{ __("Not paired") }}</Badge>
 		</div>
 
-		<p v-if="!status.installed" class="text-xs text-ink-gray-6">
+		<p v-if="status.unreachable" class="text-xs text-ink-gray-6">
+			{{ __("Could not reach the server to check. Reload the page.") }}
+		</p>
+		<p v-else-if="!status.installed" class="text-xs text-ink-gray-6">
 			{{ __("Install it on the server:") }}
 			<code class="rounded bg-surface-gray-2 px-1">npm install -g @openai/codex</code>
 		</p>
@@ -83,7 +89,7 @@ const __ = window.__!;
 const API = "builder.codex_api";
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
-const status = reactive<Record<string, any>>({ installed: false, logged_in: false });
+const status = reactive<Record<string, any>>({ installed: false, logged_in: false, unreachable: false });
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 const pending = reactive<Record<string, any>>({ url: null, code: null });
 const pairing = ref(false);
@@ -108,8 +114,13 @@ const refresh = async () => {
 		const data = await call("get_codex_status");
 		Object.assign(status, data);
 		Object.assign(pending, data.pending_login || { url: null, code: null });
-	} catch {
-		/* the tab may be open without permission; stay quiet */
+		status.unreachable = false;
+	} catch (error) {
+		// Swallowing this used to make the panel announce "CLI not installed"
+		// for a CLI that was installed: the call failed, the empty default
+		// stood, and nothing said so. An unknown state is not a negative one.
+		status.unreachable = true;
+		status.error = error instanceof Error ? error.message : String(error);
 	}
 };
 

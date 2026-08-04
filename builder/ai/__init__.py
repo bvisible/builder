@@ -4,32 +4,59 @@
 # This module implements direct LLM generation with full creative freedom.
 # The AI generates unique, context-adapted websites while respecting
 # the FrappeBlock JSON format.
-
-from builder.ai.config import AIConfig, get_ai_settings
-from builder.ai.providers import get_provider
-from builder.ai.generators.page_generator import PageGenerator, generate_page
-from builder.ai.validators import BlockValidator
-from builder.ai.design_system import get_theme, list_themes, DESIGN_TOKENS
-from builder.ai.logging import ai_log, get_log_path
+#
+# NOTHING is imported eagerly here, on purpose.
+#
+# This package used to pull its own submodules at import time — providers,
+# generators, validators. Every one of them imports `builder.ai.logging`,
+# which re-enters this file, which is halfway through importing providers. A
+# single-threaded import survives that by luck of ordering; two requests
+# importing at once do not, and Python raises either
+#
+#     ImportError: cannot import name 'get_provider' from partially
+#     initialized module 'builder.ai.providers' (circular import)
+#
+# or, from the other thread, `_frozen_importlib._DeadlockError`.
+#
+# It showed as the AI settings panel announcing "CLI not installed" for a CLI
+# that was installed and paired: the first two calls after a restart raced each
+# other, both failed, and the screen believed the empty answer.
+#
+# `__getattr__` (PEP 562) keeps the same public surface while importing each
+# name only when someone asks for it, by which time the package is fully
+# initialised.
 
 __version__ = "2.0.0"
 
-__all__ = [
-    # Config
-    "AIConfig",
-    "get_ai_settings",
-    # Providers
-    "get_provider",
-    # Generators
-    "PageGenerator",
-    "generate_page",
-    # Validators
-    "BlockValidator",
-    # Design System
-    "get_theme",
-    "list_themes",
-    "DESIGN_TOKENS",
-    # Logging
-    "ai_log",
-    "get_log_path",
-]
+_EXPORTS = {
+	"AIConfig": "builder.ai.config",
+	"get_ai_settings": "builder.ai.config",
+	"get_provider": "builder.ai.providers",
+	"PageGenerator": "builder.ai.generators.page_generator",
+	"generate_page": "builder.ai.generators.page_generator",
+	"BlockValidator": "builder.ai.validators",
+	"get_theme": "builder.ai.design_system",
+	"list_themes": "builder.ai.design_system",
+	"DESIGN_TOKENS": "builder.ai.design_system",
+	"ai_log": "builder.ai.logging",
+	"get_log_path": "builder.ai.logging",
+}
+
+__all__ = list(_EXPORTS)
+
+
+def __getattr__(name: str):
+	"""Import on first use — see the note above about the circular import."""
+	module_path = _EXPORTS.get(name)
+	if not module_path:
+		raise AttributeError(f"module {__name__!r} has no attribute {name!r}")
+
+	import importlib
+
+	value = getattr(importlib.import_module(module_path), name)
+	globals()[name] = value  # later lookups skip this function entirely
+	return value
+
+
+def __dir__():
+	return sorted(set(list(globals()) + __all__))
