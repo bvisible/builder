@@ -20,6 +20,7 @@ SIMPLE_FIELDS = (
 	"header_layout",
 	"header_style",
 	"sticky_header",
+	"header_scroll",
 	"header_height",
 	"header_bg_color",
 	"header_text_color",
@@ -65,6 +66,7 @@ SIMPLE_FIELDS = (
 
 # Select fields whose options the UI needs
 OPTION_FIELDS = (
+	"header_scroll",
 	"radius_style",
 	"shadow_style",
 	"button_hover",

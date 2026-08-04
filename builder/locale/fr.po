@@ -4102,3 +4102,11 @@ msgstr "Encore utilisée sur : {0}"
 #: frontend/src/components/MediaLibrary.vue
 msgid "This image is the site's logo."
 msgstr "Cette image est le logo du site."
+
+#: frontend/src/components/Settings/GlobalTheme.vue
+msgid "On scroll"
+msgstr "Au défilement"
+
+#: frontend/src/components/Settings/GlobalTheme.vue
+msgid "Saved"
+msgstr "Enregistré"

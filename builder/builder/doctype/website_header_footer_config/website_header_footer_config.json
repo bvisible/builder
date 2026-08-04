@@ -15,6 +15,7 @@
   "header_layout",
   "header_style",
   "sticky_header",
+  "header_scroll",
   "header_height",
   "header_border",
   "column_break_header_1",
@@ -194,6 +195,14 @@
    "fieldname": "sticky_header",
    "fieldtype": "Check",
    "label": "Sticky Header"
+  },
+  {
+   "fieldname": "header_scroll",
+   "fieldtype": "Select",
+   "label": "On scroll",
+   "options": "Always visible\nHide going down\nShrink",
+   "default": "Hide going down",
+   "description": "Always visible: the bar never moves. Hide going down: it slips away as you read and comes back the moment you scroll up. Shrink: it stays, but slimmer."
   },
   {
    "fieldname": "header_height",

@@ -184,6 +184,24 @@ live in CSS. Put a role in `classes` and the site supplies the rest:
 | card / tile | `["u-card"]` — also `u-card--raised`, `u-card--flat` | borderRadius, boxShadow, border, padding |
 | image | `["u-media"]` | borderRadius, overflow |
 | text input | `["u-input"]` | borderRadius, border |
+| a section whose background is a photo, with text on it | add `["u-over-image"]` — plus `--bottom`, `--diagonal` or `--soft` | any full-surface overlay of your own |
+| a secondary button sitting ON that photo | `["u-btn", "u-btn--on-image"]` | backgroundColor, border, backdropFilter |
+
+**Text over a photograph.** You cannot see the image you asked for, so you
+cannot judge whether the text will read on it. Do not guess, and do not wash
+the whole picture with a flat dark layer — that kills the photo, which is the
+reason the section exists.
+
+Put `u-over-image` on the section instead: it darkens only the side where the
+text sits and fades to nothing across the rest, so the image still breathes.
+Pick the variant that matches where your text is — the default covers a left
+column, `--bottom` a caption, `--diagonal` a corner, `--soft` an image that is
+already dark.
+
+And a secondary button on a photo must be `u-btn--on-image`, never
+`u-btn--outline`: a thin border over a photograph disappears into it. That is
+the single most common way a generated hero comes out with an invisible
+button.
 
 Colours stay yours: a primary button may carry a different backgroundColor
 when the section calls for it. What must not vary page to page is the SHAPE.

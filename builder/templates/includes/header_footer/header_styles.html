@@ -29,6 +29,47 @@
 }
 
 /* ==========================================================================
+   What the bar does while you scroll. Set by the script in header.html.
+   ========================================================================== */
+
+/* Hide going down — the bar slides out of the way as you read, and comes back
+   the instant you scroll up. Only meaningful on a sticky header: a static one
+   is already out of the way. */
+.site-header--sticky {
+	transition: transform var(--transition, 200ms ease);
+	will-change: transform;
+}
+
+.site-header--sticky.is-hidden {
+	/* 120% clears the shadow as well as the bar */
+	transform: translateY(-120%);
+}
+
+/* Floating keeps its top margin, so it has further to travel. */
+.site-header--floating.site-header--sticky.is-hidden {
+	transform: translateY(calc(-100% - 24px));
+}
+
+/* Shrink — it stays, just takes less room once you are into the page. */
+.site-header.is-compact .site-header__container {
+	height: calc(var(--header-height, 64px) - 12px);
+}
+
+.site-header.is-compact {
+	box-shadow: var(--shadow-sm);
+}
+
+@media (prefers-reduced-motion: reduce) {
+	.site-header--sticky {
+		transition: none;
+	}
+	/* someone who asked for less motion should not lose the menu entirely */
+	.site-header--sticky.is-hidden {
+		transform: none;
+	}
+}
+
+/* ==========================================================================
    Header presets — how the bar sits on the page.
    Orthogonal to data-layout, which only decides where the logo goes: any
    preset works with any layout. Each one is a complete, deliberate look

@@ -3917,3 +3917,11 @@ msgstr ""
 #: frontend/src/components/MediaLibrary.vue
 msgid "This image is the site's logo."
 msgstr ""
+
+#: frontend/src/components/Settings/GlobalTheme.vue
+msgid "On scroll"
+msgstr ""
+
+#: frontend/src/components/Settings/GlobalTheme.vue
+msgid "Saved"
+msgstr ""

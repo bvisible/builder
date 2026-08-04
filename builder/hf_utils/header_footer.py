@@ -97,6 +97,7 @@ def render_header(config=None) -> str:
 			"menu_items": config.menu_items or [],
 			"sticky": config.sticky_header,
 			"header_style": config.get("header_style") or "Classic",
+			"header_scroll": config.get("header_scroll") or "Hide going down",
 		}
 	)
 	return theme_css + header_html

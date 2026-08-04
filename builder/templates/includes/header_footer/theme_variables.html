@@ -315,4 +315,88 @@ a:hover {
 		transform: none;
 	}
 }
+
+/* ==========================================================================
+   Reading over a photograph.
+
+   A hero looks best when the image breathes — no flat wash over the whole
+   thing. But text and buttons still have to be legible, and the model cannot
+   see the picture it just asked for, so it cannot judge the contrast.
+
+   These give it a way to ask for exactly as much help as a section needs:
+   a scrim on one edge, or a button that carries its own backing.
+   ========================================================================== */
+
+/* The section becomes the positioning context for its own scrim. */
+.u-over-image {
+	position: relative;
+	isolation: isolate;
+}
+
+.u-over-image > * {
+	position: relative;
+	z-index: 1;
+}
+
+.u-over-image::before {
+	content: "";
+	position: absolute;
+	inset: 0;
+	z-index: 0;
+	pointer-events: none;
+	/* the default: darker where the text sits, gone by the middle */
+	background: linear-gradient(
+		to right,
+		rgba(0, 0, 0, 0.55) 0%,
+		rgba(0, 0, 0, 0.28) 35%,
+		rgba(0, 0, 0, 0) 65%
+	);
+}
+
+/* text at the bottom — a caption, a title over a full-bleed shot */
+.u-over-image--bottom::before {
+	background: linear-gradient(
+		to top,
+		rgba(0, 0, 0, 0.6) 0%,
+		rgba(0, 0, 0, 0.25) 30%,
+		rgba(0, 0, 0, 0) 60%
+	);
+}
+
+/* a corner, when the composition wants the diagonal free */
+.u-over-image--diagonal::before {
+	background: linear-gradient(
+		135deg,
+		rgba(0, 0, 0, 0.55) 0%,
+		rgba(0, 0, 0, 0.2) 40%,
+		rgba(0, 0, 0, 0) 70%
+	);
+}
+
+/* barely there — for an image that is already dark */
+.u-over-image--soft::before {
+	background: linear-gradient(
+		to right,
+		rgba(0, 0, 0, 0.3) 0%,
+		rgba(0, 0, 0, 0.12) 30%,
+		rgba(0, 0, 0, 0) 55%
+	);
+}
+
+/* An outline button over a photograph is the single most common thing a
+   generated hero gets wrong: the border disappears into whatever is behind
+   it. This one carries its own frosted backing, so it reads on anything. */
+.u-btn--on-image {
+	background: rgba(255, 255, 255, 0.14);
+	color: #ffffff;
+	border-color: rgba(255, 255, 255, 0.55);
+	backdrop-filter: blur(6px);
+	-webkit-backdrop-filter: blur(6px);
+}
+
+.u-btn--on-image:hover {
+	background: rgba(255, 255, 255, 0.26);
+	border-color: #ffffff;
+	filter: none;
+}
 </style>

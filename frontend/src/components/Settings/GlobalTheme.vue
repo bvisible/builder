@@ -113,6 +113,13 @@
 					<FormControl
 						type="select"
 						size="sm"
+						:label="__('On scroll')"
+						:options="options.header_scroll"
+						:modelValue="state.header_scroll"
+						@update:modelValue="(v: string) => (state.header_scroll = v)" />
+					<FormControl
+						type="select"
+						size="sm"
 						:label="__('Header style')"
 						:options="options.header_style"
 						:modelValue="state.header_style"
@@ -302,15 +309,29 @@
 			</template>
 		</div>
 
-		<p class="text-xs text-ink-gray-5">
-			{{ saving ? __("Saving...") : __("Changes save automatically and apply to the whole site.") }}
-		</p>
+		<!-- "Saving..." flashes for a few hundred milliseconds and is gone before
+		     anyone reads it. The confirmation is what tells a user their change
+		     was taken; it lingers a couple of seconds, then steps out of the way. -->
+		<div class="flex items-center gap-2 text-xs">
+			<span v-if="saving" class="flex items-center gap-1.5 text-ink-gray-5">
+				<span
+					class="size-3 animate-spin rounded-full border-2 border-outline-gray-2 border-t-ink-gray-6" />
+				{{ __("Saving...") }}
+			</span>
+			<span v-else-if="justSaved" class="flex items-center gap-1.5 text-ink-green-3">
+				<span class="lucide-check size-3.5" aria-hidden="true" />
+				{{ __("Saved") }}
+			</span>
+			<span v-else class="text-ink-gray-5">
+				{{ __("Changes save automatically and apply to the whole site.") }}
+			</span>
+		</div>
 	</div>
 </template>
 <script setup lang="ts">
 import { watchDebounced } from "@vueuse/core";
 import { Button, createResource, FileUploadHandler, FormControl, Switch, toast } from "frappe-ui";
-import { computed, reactive, ref } from "vue";
+import { computed, reactive, ref, watch } from "vue";
 
 // `__` is installed globally by the translation plugin (see src/translation.ts).
 const __ = window.__!;
@@ -342,6 +363,15 @@ const logoPreview = ref("");
 
 const loaded = ref(false);
 const saving = ref(false);
+// Everything here saves on its own. Without a mark that says so, a user
+// changes a colour, sees nothing happen, and changes it again.
+const savedAt = ref(0);
+const justSaved = ref(false);
+watch(savedAt, (at) => {
+	if (!at) return;
+	justSaved.value = true;
+	setTimeout(() => (justSaved.value = false), 2200);
+});
 const open = reactive({ theme: true, header: false, menu: false, footer: false });
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 const state = reactive<Record<string, any>>({ menu_items: [] });
@@ -415,6 +445,7 @@ watchDebounced(
 		try {
 			await createResource({ url: `${API}.update_chrome_settings` }).submit({ settings: current });
 			snapshot = serialized;
+			savedAt.value = Date.now();
 		} catch (error) {
 			toast.error(error instanceof Error ? error.message : String(error));
 		} finally {

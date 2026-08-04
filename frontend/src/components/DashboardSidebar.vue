@@ -180,6 +180,7 @@
 	</section>
 	<AIChatModal v-model="showAIChat" />
 	<MediaLibrary v-model="showMedia" />
+	<ThemeDialog v-model="showTheme" />
 </template>
 <script lang="ts" setup>
 import EditableSpan from "@/components/EditableSpan.vue";
@@ -199,6 +200,7 @@ import { computed, defineAsyncComponent, h, ref } from "vue";
 // loaded on demand: the chat pulls in its own chunk and most visits never open it
 const AIChatModal = defineAsyncComponent(() => import("@/components/AIChatModal.vue"));
 const MediaLibrary = defineAsyncComponent(() => import("@/components/MediaLibrary.vue"));
+const ThemeDialog = defineAsyncComponent(() => import("@/components/ThemeDialog.vue"));
 
 // `__` is installed globally by the translation plugin (see src/translation.ts).
 const __ = window.__!;
@@ -212,6 +214,7 @@ const { showTemplatesDialog, showSettingsDialog } = useDashboardState();
 const renamingFolder = ref("");
 const showAIChat = ref(false);
 const showMedia = ref(false);
+const showTheme = ref(false);
 
 const apps = createResource({
 	url: "builder.api.get_apps",

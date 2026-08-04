@@ -490,6 +490,8 @@ CSS. Ask for a role and you get them:
 | a button | `["u-btn", "u-btn--primary"]` (or `--secondary`, `--outline`, `--ghost`) | borderRadius, boxShadow, transition, any :hover |
 | a card | `["u-card"]` (or `u-card--raised`, `u-card--flat`) | borderRadius, boxShadow, border, padding |
 | an image | `["u-media"]` | borderRadius, overflow |
+| a section over a photo | `["u-over-image"]` (+ `--bottom`/`--diagonal`/`--soft`) | any full-surface overlay |
+| a secondary button on that photo | `["u-btn", "u-btn--on-image"]` | backgroundColor, border |
 | a text input | `["u-input"]` | borderRadius, border |
 
 Corners: {self.radius_style} · Elevation: {self.shadow_style} · Hover: {self.button_hover}

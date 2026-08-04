@@ -11,7 +11,7 @@
 {% include "builder/templates/includes/header_footer/components/cart_drawer.html" %}
 {%- endif -%}
 
-<header class="site-header site-header--{{ (header_style or "Classic") | lower }}{% if sticky %} site-header--sticky{% endif %}{% if icons.search_bar_full %} site-header--with-search-bar{% endif %}" data-layout="{{ layout }}" data-style="{{ header_style or "Classic" }}">
+<header class="site-header site-header--{{ (header_style or "Classic") | lower }}{% if sticky %} site-header--sticky{% endif %}{% if icons.search_bar_full %} site-header--with-search-bar{% endif %}" data-layout="{{ layout }}" data-style="{{ header_style or "Classic" }}" data-scroll="{{ header_scroll or "Hide going down" }}">
 	<div class="site-header__container">
 		{%- if layout == "B" -%}
 		{# Layout B: [Menu] [Logo centered] [Icons/CTA] #}
@@ -112,23 +112,74 @@
 	{%- endif -%}
 </header>
 
-{%- if header_style == "Transparent" -%}
 <script>
-	// Solid once scrolled: over a hero the bar is transparent, everywhere else
-	// it must stay readable. Passive listener, no layout read per frame.
+	// One listener for everything the bar does while you scroll.
+	//
+	// `is-solid`  — the transparent preset turns opaque once past the hero,
+	//               otherwise its menu is unreadable over pale content.
+	// `is-hidden` — "Hide going down": the bar slips away as you read and
+	//               comes back the moment you scroll up. A header that is
+	//               always there eats the top of every screen; one that never
+	//               follows costs a scroll to the top to navigate.
+	// `is-compact` — "Shrink": it stays, but slimmer.
+	//
+	// Passive listener, and the work happens in a rAF: reading scrollY on
+	// every scroll event is what makes a page feel heavy.
 	(function () {
-		var header = document.querySelector(".site-header--transparent");
+		var header = document.querySelector(".site-header");
 		if (!header) return;
+
+		var mode = header.getAttribute("data-scroll") || "Hide going down";
+		var transparent = header.classList.contains("site-header--transparent");
+		if (!transparent && mode === "Always visible") return;
+
+		var lastY = window.scrollY;
 		var solid = false;
-		function sync() {
-			var next = window.scrollY > 24;
-			if (next !== solid) {
-				solid = next;
-				header.classList.toggle("is-solid", solid);
+		var hidden = false;
+		var compact = false;
+		var ticking = false;
+
+		function apply() {
+			ticking = false;
+			var y = window.scrollY;
+			var goingDown = y > lastY;
+
+			if (transparent) {
+				var nextSolid = y > 24;
+				if (nextSolid !== solid) {
+					solid = nextSolid;
+					header.classList.toggle("is-solid", solid);
+				}
 			}
+
+			if (mode === "Hide going down") {
+				// the 8px deadband keeps a trackpad's jitter from flapping it,
+				// and above the fold the bar always stays put
+				var nextHidden = goingDown && y > 160 && Math.abs(y - lastY) > 8;
+				if (!goingDown && Math.abs(y - lastY) > 8) nextHidden = false;
+				if (y <= 160) nextHidden = false;
+				if (nextHidden !== hidden) {
+					hidden = nextHidden;
+					header.classList.toggle("is-hidden", hidden);
+				}
+			} else if (mode === "Shrink") {
+				var nextCompact = y > 80;
+				if (nextCompact !== compact) {
+					compact = nextCompact;
+					header.classList.toggle("is-compact", compact);
+				}
+			}
+
+			if (Math.abs(y - lastY) > 8) lastY = y;
 		}
-		sync();
-		window.addEventListener("scroll", sync, { passive: true });
+
+		function onScroll() {
+			if (ticking) return;
+			ticking = true;
+			window.requestAnimationFrame(apply);
+		}
+
+		apply();
+		window.addEventListener("scroll", onScroll, { passive: true });
 	})();
 </script>
-{%- endif -%}

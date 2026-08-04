@@ -10,6 +10,7 @@
 		<!-- the fallback DashboardSidebar mounts its own, so only here -->
 		<AIChatModal v-model="showAIChat" />
 		<MediaLibrary v-model="showMedia" />
+		<ThemeDialog v-model="showTheme" />
 	</template>
 </template>
 
@@ -33,6 +34,7 @@ import { computed, defineAsyncComponent, ref } from "vue";
 // loaded on demand: the chat pulls in its own chunk and most visits never open it
 const AIChatModal = defineAsyncComponent(() => import("@/components/AIChatModal.vue"));
 const MediaLibrary = defineAsyncComponent(() => import("@/components/MediaLibrary.vue"));
+const ThemeDialog = defineAsyncComponent(() => import("@/components/ThemeDialog.vue"));
 
 // `__` is installed globally by the translation plugin (see src/translation.ts).
 const __ = window.__!;
@@ -43,6 +45,7 @@ const { showSettingsDialog, settingsTab } = useDashboardState();
 const failed = ref(false);
 const showAIChat = ref(false);
 const showMedia = ref(false);
+const showTheme = ref(false);
 
 const surfaceApp = {
 	name: "builder",
@@ -90,9 +93,8 @@ const contextNav = computed(() => {
 					icon: "lucide-palette",
 					onClick: () => {
 						// colours and fonts are what a site owner touches first;
-						// three clicks deep under Settings is the wrong place
-						settingsTab.value = "global_theme";
-						showSettingsDialog.value = true;
+						// its own screen, not a tab three clicks into Settings
+						showTheme.value = true;
 					},
 				},
 				{
