@@ -58,7 +58,10 @@ def execute():
 		# seen on Osiris for the multi-site Variant.
 		if not frappe.db.table_exists(doctype):
 			continue
-		if not frappe.db.has_column(f"tab{doctype}", "page_header_style"):
+		# has_column() takes a DOCTYPE, not a table name. Passing "tab" + doctype
+		# made it look for `tabtabWebsite Header Footer Variant` and raise
+		# TableMissingError — which read like a missing table and was not one.
+		if not frappe.db.has_column(doctype, "page_header_style"):
 			# nothing to translate, but the rows still deserve a defined state
 			for name in frappe.get_all(doctype, pluck="name"):
 				if not frappe.db.get_value(doctype, name, "page_header_template"):
