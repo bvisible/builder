@@ -83,7 +83,10 @@
   "show_footer_html",
   "footer_html",
   "page_header_section",
-  "page_header_style",
+  "page_header_template",
+  "page_header_background",
+  "page_header_bg_color",
+  "page_header_image",
   "show_breadcrumbs",
   "blog_section",
   "blog_layout",
@@ -897,12 +900,32 @@
    "label": "Page header"
   },
   {
-   "fieldname": "page_header_style",
+   "fieldname": "page_header_template",
    "fieldtype": "Select",
-   "label": "Style",
-   "options": "None\nSimple\nCentered\nTinted",
-   "default": "Simple",
-   "description": "The band above the content on pages the editor does not build — the blog, the 404, a section that is coming."
+   "label": "Page Header Template",
+   "options": "None\nMinimal\nStandard\nCentered\nSplit",
+   "default": "Standard",
+   "description": "Which preset the shared band uses on interior pages"
+  },
+  {
+   "fieldname": "page_header_background",
+   "fieldtype": "Select",
+   "label": "Page Header Background",
+   "options": "None\nTinted\nSolid\nImage",
+   "default": "None",
+   "description": "What that band sits on"
+  },
+  {
+   "fieldname": "page_header_bg_color",
+   "fieldtype": "Color",
+   "label": "Page Header Background Colour",
+   "depends_on": "eval:['Solid','Tinted'].includes(doc.page_header_background)"
+  },
+  {
+   "fieldname": "page_header_image",
+   "fieldtype": "Attach Image",
+   "label": "Page Header Image",
+   "depends_on": "eval:doc.page_header_background=='Image'"
   },
   {
    "fieldname": "show_breadcrumbs",
