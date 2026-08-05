@@ -84,12 +84,17 @@
 }
 
 /* --- the article index ---------------------------------------------------- */
+/* The outer `.container` already carries the site's width and inset (rule
+   further down). This inner wrapper used to carry a SECOND one, and on a
+   private token of its own rather than the site's — the same mistake the band
+   had made. Two nested containers put the cards 63px to the right of the title
+   above them. It keeps its role as a block, not as a container. */
 .u-blog .blog-list-content,
 .u-blog .page_content > .row {
-	max-width: var(--content-max-width, 1200px);
-	margin: 0 auto;
-	padding-left: 24px;
-	padding-right: 24px;
+	max-width: none;
+	margin: 0;
+	padding-left: 0;
+	padding-right: 0;
 }
 
 .u-blog .hero h1 {
@@ -130,8 +135,11 @@
 }
 
 /* Grid — the default. Cards of equal weight. */
+/* auto-FIT, not auto-fill: with three articles in a row wide enough for
+   four, auto-fill keeps the empty fourth track and leaves a hole on the
+   right. auto-fit collapses it and the cards share the width. */
 .u-blog--grid .blog-list {
-	grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+	grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
 }
 
 /* List — one per row, image beside the text. Reads faster when there are
@@ -162,7 +170,7 @@
 /* Magazine — the first article large, the rest beside it. For a blog that
    publishes rarely and wants the latest to lead. */
 .u-blog--magazine .blog-list {
-	grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+	grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
 }
 
 .u-blog--magazine .blog-list > :first-child {
@@ -496,6 +504,38 @@
 	display: none;
 }
 
+/* The blog app renders inside frappe's own `.container`: max-width 1290px and
+   80px of horizontal padding. Its cards therefore began 160px to the right of
+   the band, the logo and the footer above and below them — on the very page
+   the shared band exists to unify. The site's rhythm wins here too. */
+.u-blog > .container,
+.u-404 > .container,
+.u-blog body > .container,
+.u-404 body > .container {
+	max-width: var(--container-width, 1280px);
+	padding-left: 24px;
+	padding-right: 24px;
+}
+
+/* Frappe nests a SECOND `.container` inside a bootstrap column inside the
+   first. Measured: outer content at 24, column gutter +15, inner container
+   +24 — the cards ended up 39px right of the title above them. The inset is
+   the outer container's job; everything below it just fills the width. */
+.u-blog .container .container,
+.u-404 .container .container {
+	max-width: none;
+	padding-left: 0;
+	padding-right: 0;
+}
+
+/* frappe's grid row pulls its own gutter back out; without this the cards keep
+   half of the offset we just removed. */
+.u-blog .container > .row,
+.u-404 .container > .row {
+	margin-left: 0;
+	margin-right: 0;
+}
+
 /* Hiding the sidebar is not enough: frappe still lays the content in the ten
    columns beside it, so the articles sat pushed to the right of an empty
    third. The main column takes the row back. */
@@ -503,6 +543,9 @@
 .u-404 .main-column {
 	max-width: 100%;
 	flex: 0 0 100%;
+	/* bootstrap's column gutter, on top of the container inset above */
+	padding-left: 0;
+	padding-right: 0;
 }
 
 /* The blog app prints its own "Blog" heading in a .hero. With the band above
