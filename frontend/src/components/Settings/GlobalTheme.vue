@@ -407,13 +407,43 @@
 				<p class="text-xs text-ink-gray-5">
 					{{ __("Shown above the content of pages the editor does not build — the blog, a section that is coming. Pages that open on a hero of their own keep it.") }}
 				</p>
+				<!-- A preset and a fill, the same shape as the footer: we draw the
+				     presets, the site picks one and picks what it sits on. The
+				     single enum this replaces mixed a composition (Centered)
+				     with a background (Tinted), so half the pairs were unsayable. -->
 				<FormControl
 					type="select"
 					size="sm"
-					:label="__('Style')"
-					:options="options.page_header_style"
-					:modelValue="state.page_header_style"
-					@update:modelValue="(v: string) => (state.page_header_style = v)" />
+					:label="__('Template')"
+					:options="options.page_header_template"
+					:modelValue="state.page_header_template"
+					@update:modelValue="(v: string) => (state.page_header_template = v)" />
+				<FormControl
+					type="select"
+					size="sm"
+					:label="__('Background')"
+					:options="options.page_header_background"
+					:modelValue="state.page_header_background"
+					@update:modelValue="(v: string) => (state.page_header_background = v)" />
+				<FormControl
+					v-if="['Solid', 'Tinted'].includes(state.page_header_background)"
+					type="color"
+					size="sm"
+					:label="__('Background colour')"
+					:description="__('Empty: a wash of the site\'s primary colour')"
+					:modelValue="state.page_header_bg_color"
+					@update:modelValue="(v: string) => (state.page_header_bg_color = v)" />
+				<!-- Same idiom as the logo URL above: a plain field. The generation
+				     fills it with the site's own photograph when the brief asks
+				     for an Image background, so this is for overriding it. -->
+				<FormControl
+					v-if="state.page_header_background === 'Image'"
+					size="sm"
+					:label="__('Background image URL')"
+					:description="__('Left empty, the site uses its own generated photograph')"
+					:modelValue="state.page_header_image"
+					@update:modelValue="(v: string) => (state.page_header_image = v)"
+					placeholder="/files/page-header.jpg" />
 				<Switch
 					size="sm"
 					:label="__('Breadcrumbs')"
@@ -526,7 +556,7 @@ import { computed, reactive, ref, watch } from "vue";
 // `__` is installed globally by the translation plugin (see src/translation.ts).
 const __ = window.__!;
 
-const API = "builder.hf_utils.chrome_api";
+const API = "unpress_core.hf_utils.chrome_api";
 
 const themeColors = [
 	{ field: "primary_color", label: __("Primary") },
@@ -592,10 +622,10 @@ function renameColumn(oldName: string, newName: string) {
 	}
 }
 
-// Kept in step with builder.branding.LOGO_PATH — the one address the
+// Kept in step with unpress_core.branding.LOGO_PATH — the one address the
 // site logo ever has.
 const LOGO_PATH = "/files/logo-default.png";
-const BRANDING_API = "builder.branding";
+const BRANDING_API = "unpress_core.branding";
 
 const logoInput = ref<HTMLInputElement>();
 const logoBusy = ref(false);
@@ -625,7 +655,7 @@ const open = reactive({
 // The blog section is only worth showing on a site that has a blog.
 const capabilities = ref<Record<string, boolean>>({});
 createResource({
-	url: "builder.plugins.get_capabilities",
+	url: "unpress_core.plugins.get_capabilities",
 	auto: true,
 	onSuccess(data: Record<string, boolean>) {
 		capabilities.value = data || {};
@@ -640,7 +670,7 @@ createResource({
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 const briefGroups = ref<any[]>([]);
 createResource({
-	url: "builder.brief_view.get_latest_brief",
+	url: "unpress_core.brief_view.get_latest_brief",
 	auto: true,
 	onSuccess(data: { exists?: boolean; groups?: unknown[] }) {
 		briefGroups.value = data?.exists ? (data.groups as never[]) || [] : [];
