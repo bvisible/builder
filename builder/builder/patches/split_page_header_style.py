@@ -29,6 +29,10 @@ def execute():
 		if not meta.get_field("page_header_template"):
 			continue
 
+		# Re-runnable on purpose: an earlier pass could leave the fields empty
+		# when there was nothing to translate, and an empty Select is not a
+		# configured site.
+
 		if meta.issingle:
 			# A Single has no table of its own — its values live as rows in
 			# `tabSingles`, so has_column() would raise TableMissingError. And
@@ -39,6 +43,11 @@ def execute():
 				(doctype, "page_header_style"),
 			)
 			old = row[0][0] if row else None
+			# A Single that was never written has no row at all, so the doctype's
+			# `default` never applies — the field reads back as "". Rendering
+			# survives (settings() falls back in code) but the Theme would show
+			# empty selects, and nothing would say what the site actually uses.
+			# The patch writes a defined state either way.
 			template, background = TRANSLATION.get(old or "Simple", ("Standard", "None"))
 			frappe.db.set_single_value(doctype, "page_header_template", template)
 			frappe.db.set_single_value(doctype, "page_header_background", background)
