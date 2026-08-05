@@ -322,6 +322,27 @@ class DesignBrief(BaseModel):
         default="Small",
         description="Header CTA size — Small reads discreet and refined"
     )
+    page_header_style: Literal["Simple", "Centered", "Tinted", "None"] = Field(
+        default="Simple",
+        description=(
+            "The band that opens every interior page — breadcrumb, title, one "
+            "line. The SITE draws it, once, on every page except home: you "
+            "choose how it looks, not what each page puts in it. Simple: "
+            "left-aligned on the page background, the safe default. Centered: "
+            "for a site whose pages open on a statement rather than a label. "
+            "Tinted: the same band on a wash of the primary colour, when the "
+            "section should announce itself. None: no band at all — only for a "
+            "site whose every page genuinely opens on its own full-bleed image."
+        )
+    )
+    show_breadcrumbs: bool = Field(
+        default=True,
+        description=(
+            "Breadcrumb trail in that band. True on any site with more than a "
+            "handful of pages; False on a very short site where every page is "
+            "one click from home."
+        )
+    )
     footer_template: Literal["Minimal", "Standard", "Extended", "Centered"] = Field(
         default="Standard",
         description=(
@@ -461,15 +482,18 @@ book: same palette, same fonts, same button system on every page.
   maxWidth: "{self.content_max_width}", marginLeft/marginRight: "auto" and consistent
   horizontal padding. Full-bleed color/image fields are welcome, but the CONTENT
   inside them still aligns to this same {self.content_max_width} grid.
-- NEVER introduce another content width (1140px, 1280px, 1320px…) anywhere.
-  One site = ONE grid — pages of different widths read as different websites.
-- INTERIOR PAGE HEADER — every page except the home page MUST open with this
-  exact standard header: {self.inner_page_header}
-  Identical height, identical background treatment, identical title scale on
-  every interior page; only the title/intro text changes. A functionally
-  distinct page (a contact page with a full-width map/form split…) may deviate
-  DELIBERATELY, but sibling content pages (about, services, team…) must look
-  like siblings.
+- NEVER introduce another content width (1140px, 1200px, 1320px…) anywhere, and
+  never a horizontal padding of your own on a <section> (48px, 6vw, 5%…). The
+  site header and footer already sit in `var(--container-width, 1280px)`; a
+  section that invents its own inset puts the body copy on a different x from
+  the logo above it. One site = ONE grid — pages of different widths read as
+  different websites.
+- INTERIOR PAGE HEADER — the SITE draws it, you do not. Every page except the
+  home page is rendered underneath one shared band (breadcrumb, page title, one
+  line), styled once from the theme, identical everywhere. So do NOT open an
+  interior page with a header, a title band or any section whose job is to
+  announce the page: it would sit directly under the real one. Start on the
+  first section of actual content.
 
 ### Section Background Alternation (suggested pattern)
 {bg_sequence}
