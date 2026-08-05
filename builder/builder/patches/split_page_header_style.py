@@ -53,7 +53,21 @@ def execute():
 			frappe.db.set_single_value(doctype, "page_header_background", background)
 			continue
 
+		# The doctype can exist without its table: declared by the app, never
+		# created on this site. has_column() raises TableMissingError there —
+		# seen on Osiris for the multi-site Variant.
+		if not frappe.db.table_exists(doctype):
+			continue
 		if not frappe.db.has_column(f"tab{doctype}", "page_header_style"):
+			# nothing to translate, but the rows still deserve a defined state
+			for name in frappe.get_all(doctype, pluck="name"):
+				if not frappe.db.get_value(doctype, name, "page_header_template"):
+					frappe.db.set_value(
+						doctype,
+						name,
+						{"page_header_template": "Standard", "page_header_background": "None"},
+						update_modified=False,
+					)
 			continue
 
 		for name, old in frappe.db.get_all(
