@@ -325,7 +325,9 @@ def get_default_brief(
         }),
     }
 
-    return DesignBrief(**brief_data)
+    brief = DesignBrief(**brief_data)
+    brief._is_fallback = True
+    return brief
 
 
 BRIEF_SYSTEM_PROMPT = """You are the CREATIVE DIRECTOR for this website. Your brief is the single

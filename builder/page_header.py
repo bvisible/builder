@@ -18,10 +18,30 @@ a title.
 import frappe
 from frappe import _
 
+# The band is a preset plus a fill — the same shape as the header and the
+# footer, and for the same reason.
+#
+# It used to be one enum: None / Simple / Centered / Tinted. "Centered" is a
+# composition and "Tinted" is a background, so mixing them in one field made
+# half the combinations unsayable — there was no way to ask for a centred title
+# over a photograph. And letting the model invent a band per site would repeat
+# the mistake the interior pages already made.
+#
+# So: WE design the presets, the AI picks one and picks a fill. `footer_template`
+# works exactly this way.
+TEMPLATES = ("Minimal", "Standard", "Centered", "Split", "None")
+BACKGROUNDS = ("None", "Tinted", "Solid", "Image")
+
 DEFAULTS = {
-	"page_header_style": "Simple",
+	"page_header_template": "Standard",
+	"page_header_background": "None",
+	"page_header_bg_color": "",     # empty: Tinted washes the primary colour
+	"page_header_image": "",
 	"show_breadcrumbs": 1,
 }
+
+# Fills that put the title over something dark enough to need light text.
+_DARK_BACKGROUNDS = ("Image", "Solid")
 
 # The band carries its own CSS, the way the header and the footer do.
 #
@@ -31,7 +51,7 @@ DEFAULTS = {
 # the AI generated. Shipping the rules with the markup is what makes one band
 # actually mean one band.
 _CSS = (
-	"<style>.site-page-header{border-bottom:1px solid var(--footer-border,rgba(0,0,0,0.08))}.site-page-header__inner{max-width:var(--container-width,1280px);margin:0 auto;padding:44px 24px 36px}.site-page-header__crumbs{display:flex;flex-wrap:wrap;align-items:center;gap:6px;font-size:0.8125rem;color:var(--muted-color,#6b7280);margin-bottom:12px}.site-page-header__crumbs a{color:inherit;text-decoration:none}.site-page-header__crumbs a:hover{color:var(--primary-color,#111)}.site-page-header__sep{opacity:0.5}.site-page-header__title{font-size:clamp(1.9rem,1.2rem + 2.2vw,3rem);font-weight:700;font-family:var(--heading-font,inherit);line-height:1.15;margin:0}.site-page-header__subtitle{max-width:62ch;margin:10px 0 0;color:var(--muted-color,#6b7280);line-height:1.6}.site-page-header--centered .site-page-header__inner{text-align:center}.site-page-header--centered .site-page-header__crumbs{justify-content:center}.site-page-header--centered .site-page-header__subtitle{margin-left:auto;margin-right:auto}.site-page-header--tinted{background:color-mix(in srgb,var(--primary-color,#111) 8%,transparent);border-bottom-color:transparent}</style>"
+	"<style>.site-page-header{border-bottom:1px solid var(--footer-border,rgba(0,0,0,0.08))}.site-page-header__inner{max-width:var(--container-width,1280px);margin:0 auto;padding:44px 24px 36px}.site-page-header__crumbs{display:flex;flex-wrap:wrap;align-items:center;gap:6px;font-size:0.8125rem;color:var(--muted-color,#6b7280);margin-bottom:12px}.site-page-header__crumbs a{color:inherit;text-decoration:none}.site-page-header__crumbs a:hover{color:var(--primary-color,#111)}.site-page-header__sep{opacity:0.5}.site-page-header__title{font-size:clamp(1.9rem,1.2rem + 2.2vw,3rem);font-weight:700;font-family:var(--heading-font,inherit);line-height:1.15;margin:0}.site-page-header__subtitle{max-width:62ch;margin:10px 0 0;color:var(--muted-color,#6b7280);line-height:1.6}.site-page-header--minimal .site-page-header__inner{padding-top:32px;padding-bottom:24px}.site-page-header--centered .site-page-header__inner{text-align:center}.site-page-header--centered .site-page-header__crumbs{justify-content:center}.site-page-header--centered .site-page-header__subtitle{margin-left:auto;margin-right:auto}.site-page-header__split{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:32px;align-items:end}.site-page-header__split .site-page-header__subtitle{margin-top:0}@media (max-width:768px){.site-page-header__split{grid-template-columns:1fr;gap:12px}}.site-page-header--bg-image .site-page-header__inner,.site-page-header--bg-solid .site-page-header__inner{padding-top:72px;padding-bottom:64px}.site-page-header--on-dark{border-bottom-color:transparent}.site-page-header--on-dark .site-page-header__title{color:#fff}.site-page-header--on-dark .site-page-header__subtitle,.site-page-header--on-dark .site-page-header__crumbs{color:rgba(255,255,255,0.82)}.site-page-header--on-dark .site-page-header__crumbs a:hover{color:#fff}.site-page-header--bg-tinted{border-bottom-color:transparent}</style>"
 )
 
 
@@ -105,8 +125,8 @@ def _breadcrumbs(context, path: str, current: str) -> list:
 def render(context) -> str:
 	"""The band, or an empty string when this page should not have one."""
 	config = settings()
-	style = config.get("page_header_style") or "Simple"
-	if style == "None":
+	template = config.get("page_header_template") or "Standard"
+	if template == "None":
 		return ""
 
 	# A page may say it opens on its own composition — our 404 is a centred
@@ -128,15 +148,49 @@ def render(context) -> str:
 	if not title:
 		return ""
 
+	background = config.get("page_header_background") or "None"
 	return _CSS + frappe.render_template(
 		"builder/templates/includes/header_footer/page_header.html",
 		{
-			"style": style,
+			"template": template,
+			"background": background,
+			"fill": _fill(background, config),
+			"on_dark": background in _DARK_BACKGROUNDS,
 			"title": title,
 			"subtitle": context.get("page_header_subtitle") or "",
 			"breadcrumbs": _breadcrumbs(context, path, title) if config.get("show_breadcrumbs") else [],
 		},
 	)
+
+
+def _fill(background: str, config: dict) -> str:
+	"""The `background` declaration for the chosen fill, or an empty string.
+
+	Written here rather than in the template so the image URL is quoted once, in
+	Python, instead of being interpolated into a style attribute by hand.
+	"""
+	colour = (config.get("page_header_bg_color") or "").strip()
+
+	if background == "Solid":
+		return f"background-color:{colour};" if colour else ""
+
+	if background == "Tinted":
+		wash = colour or "var(--primary-color, #111)"
+		return f"background:color-mix(in srgb,{wash} 8%,transparent);"
+
+	if background == "Image":
+		image = (config.get("page_header_image") or "").strip()
+		if not image:
+			return ""
+		# the scrim is not decoration: the title is light on top of a photograph
+		# nobody chose, and without it the words vanish on a bright sky
+		safe = image.replace("\\", "").replace("'", "%27").replace('"', "%22")
+		return (
+			"background-image:linear-gradient(rgba(0,0,0,0.55),rgba(0,0,0,0.35)),"
+			f"url('{safe}');background-size:cover;background-position:center;"
+		)
+
+	return ""
 
 
 @frappe.whitelist(allow_guest=True)

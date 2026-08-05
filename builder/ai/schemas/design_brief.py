@@ -6,7 +6,7 @@ Ensures visual consistency across all generated pages.
 from __future__ import annotations
 import json
 from typing import ClassVar, Literal, Optional
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, PrivateAttr
 
 
 class TypographyScale(BaseModel):
@@ -48,6 +48,15 @@ class DesignBrief(BaseModel):
     Design brief for visual consistency across pages.
     Generated ONCE at the start, then used for ALL page generations.
     """
+
+    # True when this brief is the hand-built fallback, not the model's answer.
+    #
+    # The fallback used to be indistinguishable from a real brief: the caller
+    # logged "generated and validated" either way, because a fallback IS valid.
+    # A schema the endpoint rejected therefore produced identical chrome on
+    # every site for as long as nobody compared the values with the defaults.
+    _is_fallback: bool = PrivateAttr(default=False)
+
     # Art direction — the creative core of the brief. Written by the brief LLM,
     # injected verbatim at the top of every page-generation prompt.
     design_concept: str = Field(
@@ -119,6 +128,26 @@ class DesignBrief(BaseModel):
             "border": "none",
             "cursor": "pointer",
         },
+        # A bare `dict` becomes `{"type": "object"}` with no properties, and the
+        # strict structured-output schema turns that into an object allowing no
+        # keys at all — which the API rejects with HTTP 400. Every brief then
+        # fell back to the hand-built defaults, silently, which is why every
+        # generated site wore the same header, footer, colours and band. The
+        # shape is declared here so the model can actually fill it; the runtime
+        # type stays `dict`, so nothing that reads it has to change.
+        json_schema_extra={
+            "properties": {
+                    "backgroundColor": {"type": "string"},
+                    "color": {"type": "string"},
+                    "padding": {"type": "string"},
+                    "borderRadius": {"type": "string"},
+                    "fontWeight": {"type": "string"},
+                    "border": {"type": "string"},
+                    "cursor": {"type": "string"}
+            },
+            "required": ["backgroundColor", "color", "padding", "borderRadius", "fontWeight", "border", "cursor"],
+            "additionalProperties": False,
+        },
         description="Primary button styles"
     )
     button_secondary: dict = Field(
@@ -131,6 +160,26 @@ class DesignBrief(BaseModel):
             "border": "2px solid var(--primary-color)",
             "cursor": "pointer",
         },
+        # A bare `dict` becomes `{"type": "object"}` with no properties, and the
+        # strict structured-output schema turns that into an object allowing no
+        # keys at all — which the API rejects with HTTP 400. Every brief then
+        # fell back to the hand-built defaults, silently, which is why every
+        # generated site wore the same header, footer, colours and band. The
+        # shape is declared here so the model can actually fill it; the runtime
+        # type stays `dict`, so nothing that reads it has to change.
+        json_schema_extra={
+            "properties": {
+                    "backgroundColor": {"type": "string"},
+                    "color": {"type": "string"},
+                    "padding": {"type": "string"},
+                    "borderRadius": {"type": "string"},
+                    "fontWeight": {"type": "string"},
+                    "border": {"type": "string"},
+                    "cursor": {"type": "string"}
+            },
+            "required": ["backgroundColor", "color", "padding", "borderRadius", "fontWeight", "border", "cursor"],
+            "additionalProperties": False,
+        },
         description="Secondary/outline button styles"
     )
 
@@ -142,6 +191,24 @@ class DesignBrief(BaseModel):
             "boxShadow": "0 4px 20px rgba(0, 0, 0, 0.08)",
             "padding": "24px",
             "border": "1px solid rgba(0, 0, 0, 0.05)",
+        },
+        # A bare `dict` becomes `{"type": "object"}` with no properties, and the
+        # strict structured-output schema turns that into an object allowing no
+        # keys at all — which the API rejects with HTTP 400. Every brief then
+        # fell back to the hand-built defaults, silently, which is why every
+        # generated site wore the same header, footer, colours and band. The
+        # shape is declared here so the model can actually fill it; the runtime
+        # type stays `dict`, so nothing that reads it has to change.
+        json_schema_extra={
+            "properties": {
+                    "backgroundColor": {"type": "string"},
+                    "borderRadius": {"type": "string"},
+                    "boxShadow": {"type": "string"},
+                    "padding": {"type": "string"},
+                    "border": {"type": "string"}
+            },
+            "required": ["backgroundColor", "borderRadius", "boxShadow", "padding", "border"],
+            "additionalProperties": False,
         },
         description="Card container styles"
     )
@@ -214,6 +281,23 @@ class DesignBrief(BaseModel):
             "standard": "80px 24px",
             "compact": "60px 24px",
             "cta": "60px 24px",
+        },
+        # A bare `dict` becomes `{"type": "object"}` with no properties, and the
+        # strict structured-output schema turns that into an object allowing no
+        # keys at all — which the API rejects with HTTP 400. Every brief then
+        # fell back to the hand-built defaults, silently, which is why every
+        # generated site wore the same header, footer, colours and band. The
+        # shape is declared here so the model can actually fill it; the runtime
+        # type stays `dict`, so nothing that reads it has to change.
+        json_schema_extra={
+            "properties": {
+                    "hero": {"type": "string"},
+                    "standard": {"type": "string"},
+                    "compact": {"type": "string"},
+                    "cta": {"type": "string"}
+            },
+            "required": ["hero", "standard", "compact", "cta"],
+            "additionalProperties": False,
         },
         description="Padding values per section type"
     )
@@ -322,17 +406,40 @@ class DesignBrief(BaseModel):
         default="Small",
         description="Header CTA size — Small reads discreet and refined"
     )
-    page_header_style: Literal["Simple", "Centered", "Tinted", "None"] = Field(
-        default="Simple",
+    page_header_template: Literal["Minimal", "Standard", "Centered", "Split", "None"] = Field(
+        default="Standard",
         description=(
             "The band that opens every interior page — breadcrumb, title, one "
-            "line. The SITE draws it, once, on every page except home: you "
-            "choose how it looks, not what each page puts in it. Simple: "
-            "left-aligned on the page background, the safe default. Centered: "
-            "for a site whose pages open on a statement rather than a label. "
-            "Tinted: the same band on a wash of the primary colour, when the "
-            "section should announce itself. None: no band at all — only for a "
-            "site whose every page genuinely opens on its own full-bleed image."
+            "line. The SITE draws it, once, on every page except home; you pick "
+            "which of OUR presets it uses, never its markup. Minimal: breadcrumb "
+            "and title only, announces and steps aside — for a site with many "
+            "short pages. Standard: breadcrumb, title, one line. Centered: the "
+            "same, centred, for a site whose pages open on a statement rather "
+            "than a label. Split: title left, the line to its right, editorial. "
+            "None: no band, only for a site whose every page genuinely opens on "
+            "its own full-bleed image."
+        )
+    )
+    page_header_background: Literal["None", "Tinted", "Solid", "Image"] = Field(
+        default="None",
+        description=(
+            "What that band sits on. None: the page background, quiet, lets the "
+            "content start. Tinted: a light wash of the primary colour, when the "
+            "section should announce itself. Solid: a full colour block, bold — "
+            "the title turns white. Image: a photograph with a scrim, the title "
+            "white on top; only when the site HAS photography worth showing on "
+            "every interior page, otherwise it reads like a stock-photo header."
+        )
+    )
+    page_header_bg_color: str = Field(
+        default="",
+        description=(
+            "The colour that band sits on, as #rrggbb — only meaningful when "
+            "the background is Solid or Tinted. Leave EMPTY to wash the site's "
+            "primary colour, which is the right answer most of the time. Give a "
+            "colour only when the band should read differently from the rest of "
+            "the chrome: a deep neutral under a colourful site, for instance. "
+            "It must pass contrast with white text when the background is Solid."
         )
     )
     show_breadcrumbs: bool = Field(

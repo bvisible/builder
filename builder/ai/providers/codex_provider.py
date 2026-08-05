@@ -175,13 +175,32 @@ class CodexProvider(BaseProvider):
 		came back as HTTP 400 and the call looked like the model had simply
 		refused to answer. Defaults still apply on our side: the schema only
 		says the model must emit the key, and validation fills the rest.
+
+		It also STRIPS every `default`. Requiring the key was not enough: pydantic
+		writes `"default": "#6366f1"` next to each property, and the model reads
+		that as the expected answer. Measured on a brief for a wine estate: 16 of
+		18 chrome fields came back byte-identical to their default — indigo and
+		violet for a vineyard, the same header, the same footer, the same band, on
+		every site. A default is our fallback, not a suggestion to the model, and
+		it has no business travelling in the schema.
 		"""
 		if isinstance(node, list):
 			return [cls._strict_schema(item) for item in node]
 		if not isinstance(node, dict):
 			return node
 
-		out = {key: cls._strict_schema(value) for key, value in node.items()}
+		out = {
+			key: cls._strict_schema(value)
+			for key, value in node.items()
+			if key != "default"
+		}
+
+		# `$ref` tolerates no company. Pydantic writes the field's description
+		# beside it — {"$ref": "#/$defs/TypographyScale", "description": "..."} —
+		# and the endpoint answers 400. The reference carries the shape; the
+		# prose belongs to the field it came from and is lost here on purpose.
+		if "$ref" in out:
+			return {"$ref": out["$ref"]}
 		if out.get("type") == "object" or "properties" in out:
 			properties = out.get("properties") or {}
 			out["additionalProperties"] = False
