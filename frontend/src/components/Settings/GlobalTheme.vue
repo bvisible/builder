@@ -556,7 +556,7 @@ import { computed, reactive, ref, watch } from "vue";
 // `__` is installed globally by the translation plugin (see src/translation.ts).
 const __ = window.__!;
 
-const API = "unpress_core.hf_utils.chrome_api";
+const API = "builder.hf_utils.chrome_api";
 
 const themeColors = [
 	{ field: "primary_color", label: __("Primary") },
@@ -622,10 +622,10 @@ function renameColumn(oldName: string, newName: string) {
 	}
 }
 
-// Kept in step with unpress_core.branding.LOGO_PATH — the one address the
+// Kept in step with builder.branding.LOGO_PATH — the one address the
 // site logo ever has.
 const LOGO_PATH = "/files/logo-default.png";
-const BRANDING_API = "unpress_core.branding";
+const BRANDING_API = "builder.branding";
 
 const logoInput = ref<HTMLInputElement>();
 const logoBusy = ref(false);
@@ -655,7 +655,7 @@ const open = reactive({
 // The blog section is only worth showing on a site that has a blog.
 const capabilities = ref<Record<string, boolean>>({});
 createResource({
-	url: "unpress_core.plugins.get_capabilities",
+	url: "builder.plugins.get_capabilities",
 	auto: true,
 	onSuccess(data: Record<string, boolean>) {
 		capabilities.value = data || {};
@@ -670,7 +670,7 @@ createResource({
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 const briefGroups = ref<any[]>([]);
 createResource({
-	url: "unpress_core.brief_view.get_latest_brief",
+	url: "builder.brief_view.get_latest_brief",
 	auto: true,
 	onSuccess(data: { exists?: boolean; groups?: unknown[] }) {
 		briefGroups.value = data?.exists ? (data.groups as never[]) || [] : [];

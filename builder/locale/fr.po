@@ -4420,3 +4420,9 @@ msgstr "© {year} {site_name}. Tous droits réservés."
 
 msgid "Powered by {0}"
 msgstr "Propulsé par {0}"
+
+msgid "Split"
+msgstr "Séparé"
+
+msgid "Solid"
+msgstr "Uni"
