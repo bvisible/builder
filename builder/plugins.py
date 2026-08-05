@@ -40,6 +40,12 @@ BUILT_INS = (
 		"title": "Blog",
 		"description": "Articles, categories and an RSS feed, on /blog.",
 		"app_name": "blog",
+		# The capability exists wherever this doctype does — and on Frappe v15
+		# it comes from the CORE, not from an app. Testing only for the app
+		# hid the Articles screen on every Neoffice site, on sites that had a
+		# working blog with published posts. What matters is whether the
+		# feature is usable, not where it came from.
+		"witness_doctype": "Blog Post",
 		"icon": "lucide-newspaper",
 		"route_prefix": "blog",
 		"is_core": 0,
@@ -179,6 +185,9 @@ def sync_plugins(app_name: str | None = None):
 
 	for spec in BUILT_INS:
 		available = 1 if spec["app_name"] in installed else 0
+		witness = spec.get("witness_doctype")
+		if not available and witness and frappe.db.exists("DocType", witness):
+			available = 1
 		name = spec["plugin_name"]
 
 		if frappe.db.exists(REGISTRY_DOCTYPE, name):
