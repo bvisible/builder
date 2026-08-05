@@ -1244,8 +1244,18 @@ def _generate_complete_site_worker(
 				wrapped_blocks = [root_block]
 
 				# Create the Builder Page
+				# The opening line moves up into the shared band — but only on an
+				# interior page. The homepage keeps the hero the AI composed for
+				# it, and lifting its headline out would leave a hero with no
+				# words on it.
+				opening = ""
+				if str(page_def.get("route", "")).strip("/") not in ("", "home", "index"):
+					opening = _lift_opening_into_header(blocks)
+					wrapped_blocks[0]["children"] = blocks
+
 				page = frappe.new_doc("Builder Page")
 				page.page_title = page_def["title"]
+				page.meta_description = opening or _describe_page(blocks)
 				page.blocks = json.dumps(wrapped_blocks)
 				page.draft_blocks = json.dumps(wrapped_blocks)
 				page.published = 1
@@ -3619,6 +3629,132 @@ def _has_light_text(block, depth: int = 0) -> bool:
 		if colour in _LIGHT_TEXT:
 			return True
 	return any(_has_light_text(child, depth + 1) for child in block.get("children") or [])
+
+
+def _lift_opening_into_header(blocks) -> str:
+	"""Move the page's opening line up into the shared band, and return it.
+
+	Every generated interior page opened on the same shape — an eyebrow in caps,
+	then a large coloured headline — composed differently each time. The band
+	above it was identical everywhere, but the eye read the headline as the real
+	top of the page, so the pages still looked unrelated. That is the
+	homogeneity the band was built for, undone one centimetre below it.
+
+	Rather than delete that line, or ask the model again not to write it, the
+	line moves: the headline becomes the band's subtitle, the eyebrow goes (the
+	breadcrumb already says where the visitor is), and the body keeps every
+	paragraph, figure and card it had.
+
+	Only the FIRST heading of the page is eligible, and only while nothing of
+	substance precedes it — a heading further down is a section title and stays
+	where it belongs.
+	"""
+	import html
+	import re
+
+	HEADINGS = {"h1", "h2", "h3", "h4"}
+
+	def clean(node) -> str:
+		raw = node.get("innerHTML") or node.get("innerText") or ""
+		text = re.sub(r"<[^>]+>", " ", str(raw))
+		return re.sub(r"\s+", " ", html.unescape(text).replace("\u00a0", " ")).strip()
+
+	state = {"line": "", "done": False}
+
+	def visit(parent):
+		"""Depth-first, in document order, pruning each parent's children once."""
+		if state["done"] or not isinstance(parent, dict):
+			return
+		children = parent.get("children")
+		if not isinstance(children, list):
+			return
+
+		keep, eyebrow_index = [], None
+		for child in children:
+			if state["done"]:
+				keep.append(child)
+				continue
+			if not isinstance(child, dict):
+				keep.append(child)
+				continue
+
+			text = clean(child)
+			element = str(child.get("element", "")).lower()
+
+			if text and element in HEADINGS and len(text) <= 120:
+				state["line"] = text
+				state["done"] = True
+				# the eyebrow directly above it goes too
+				if eyebrow_index is not None:
+					keep.pop(eyebrow_index)
+				continue
+
+			if text and text.isupper() and len(text) <= 60:
+				eyebrow_index = len(keep)  # a candidate, until something else lands
+			elif text:
+				# real copy before any heading: this page opens on content
+				state["done"] = True
+			else:
+				visit(child)
+
+			keep.append(child)
+
+		parent["children"] = keep
+
+	for block in blocks if isinstance(blocks, list) else []:
+		visit(block)
+		if state["done"]:
+			break
+
+	return state["line"]
+
+
+def _describe_page(blocks) -> str:
+	"""One line describing this page, taken from what the page itself says.
+
+	It fills `meta_description`, which does two jobs: the search snippet, and
+	the line under the title in the shared page header. Generated pages had
+	neither — the prompt never asked for a description, so every page shipped
+	without one and every band rendered as a bare breadcrumb + title.
+
+	It deliberately prefers a **paragraph** over the page's headline. Taking the
+	headline printed the same sentence twice, a few centimetres apart: once as
+	the band's subtitle, once as the big coloured heading right below it. The
+	first real sentence of body copy says the same thing without the echo.
+	"""
+	import html
+	import re
+
+	HEADINGS = {"h1", "h2", "h3", "h4", "h5", "h6"}
+
+	def walk(node, found, depth=0):
+		if depth > 8 or not isinstance(node, dict):
+			return
+		raw = node.get("innerHTML") or node.get("innerText") or ""
+		if raw:
+			# the blocks carry markup: strip the tags, then turn &nbsp; and
+			# friends back into characters — this line is read by a human and
+			# by a search engine, not by a browser
+			clean = re.sub(r"<[^>]+>", " ", str(raw))
+			clean = html.unescape(clean).replace("\u00a0", " ")
+			clean = re.sub(r"\s+", " ", clean).strip()
+			# skip eyebrows (short, shouted) and bare stat numerals
+			if len(clean) > 40 and not clean.isupper():
+				found.setdefault(
+					"heading" if str(node.get("element", "")).lower() in HEADINGS else "body",
+					clean,
+				)
+		for child in node.get("children") or []:
+			walk(child, found, depth + 1)
+
+	found = {}
+	for block in blocks if isinstance(blocks, list) else []:
+		walk(block, found)
+		if "body" in found:
+			break
+
+	chosen = found.get("body") or found.get("heading") or ""
+	return _shorten_for_footer(chosen, limit=180) if chosen else ""
 
 
 def _shorten_for_footer(text: str, limit: int = 200) -> str:
