@@ -21,7 +21,71 @@ TRANSLATION = {
 }
 
 
+def _pages_already_open_on_their_own() -> bool:
+	"""Do the site's interior pages already draw an opening of their own?
+
+	A site generated before the shared band exists carries its opening inside
+	each page — an eyebrow, then a large heading. Switching the band on above
+	that stacks two titles, which is worse than having no band at all. Seen on a
+	live client site: /about opened on "À PROPOS / Daniel Moret Info Service"
+	and the band would have added "Accueil / À propos" over it.
+
+	So the band defaults to off wherever the pages already speak for themselves.
+	Turning it on stays one setting away, once those openings have been lifted.
+	"""
+	import json
+	import re
+
+	HEADINGS = {"h1", "h2", "h3"}
+
+	def opens_with_heading(blocks, depth=0):
+		if depth > 6 or not isinstance(blocks, list):
+			return False
+		for block in blocks:
+			if not isinstance(block, dict):
+				continue
+			raw = block.get("innerHTML") or block.get("innerText") or ""
+			text = re.sub(r"<[^>]+>", " ", str(raw)).strip()
+			if text and str(block.get("element", "")).lower() in HEADINGS:
+				return True
+			if text and len(text) > 60:
+				return False  # real copy first: this page opens on content
+			if opens_with_heading(block.get("children") or [], depth + 1):
+				return True
+		return False
+
+	try:
+		routes = frappe.get_all(
+			"Builder Page",
+			filters={"published": 1, "is_template": 0},
+			fields=["name", "route", "blocks"],
+			limit=20,
+		)
+	except Exception:
+		return False
+
+	interior = [r for r in routes if (r.route or "").strip("/") not in ("", "home", "index")]
+	if not interior:
+		return False
+
+	own = 0
+	for page in interior:
+		try:
+			blocks = json.loads(page.blocks or "[]")
+		except (ValueError, TypeError):
+			continue
+		if len(blocks) == 1 and blocks[0].get("children"):
+			blocks = blocks[0]["children"]
+		if opens_with_heading(blocks):
+			own += 1
+
+	return own >= max(1, len(interior) // 2)
+
+
 def execute():
+	# Decided once, before touching anything, and used for every doctype below.
+	safe_default = "None" if _pages_already_open_on_their_own() else "Standard"
+
 	for doctype in DOCTYPES:
 		if not frappe.db.exists("DocType", doctype):
 			continue
@@ -48,7 +112,7 @@ def execute():
 			# survives (settings() falls back in code) but the Theme would show
 			# empty selects, and nothing would say what the site actually uses.
 			# The patch writes a defined state either way.
-			template, background = TRANSLATION.get(old or "Simple", ("Standard", "None"))
+			template, background = TRANSLATION.get(old, (safe_default, "None")) if old else (safe_default, "None")
 			frappe.db.set_single_value(doctype, "page_header_template", template)
 			frappe.db.set_single_value(doctype, "page_header_background", background)
 
@@ -80,7 +144,7 @@ def execute():
 					frappe.db.set_value(
 						doctype,
 						name,
-						{"page_header_template": "Standard", "page_header_background": "None"},
+						{"page_header_template": safe_default, "page_header_background": "None"},
 						update_modified=False,
 					)
 			continue
@@ -88,7 +152,7 @@ def execute():
 		for name, old in frappe.db.get_all(
 			doctype, fields=["name", "page_header_style"], as_list=True
 		):
-			template, background = TRANSLATION.get(old or "Simple", ("Standard", "None"))
+			template, background = TRANSLATION.get(old, (safe_default, "None")) if old else (safe_default, "None")
 			frappe.db.set_value(
 				doctype,
 				name,
