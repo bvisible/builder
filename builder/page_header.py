@@ -209,11 +209,18 @@ def render_builder_page_header(doc=None) -> str:
 		# rules do: `web_include_css` never reaches a Builder page, so the rule
 		# in web_pages.css would leave this div at zero height here — present in
 		# the markup, invisible in effect, header still on the title.
+		# The floating height cannot ride on `.site-header--floating + .spacer`
+		# here: on a frappe page the spacer follows the header directly, but on
+		# a Builder page it is the band that emits it, so it is no longer the
+		# header's adjacent sibling. Measured before fixing: /blog got 104px and
+		# /about 64px — the same band sitting 40px higher on half the site. A
+		# modifier class says it outright instead of inferring it from position.
 		band = (
 			"<style>.site-header__spacer{height:var(--header-height,64px)}"
-			".site-header--floating + .site-header__spacer"
+			".site-header__spacer--floating"
 			"{height:calc(var(--header-height,64px) + 40px)}</style>"
-			'<div class="site-header__spacer" aria-hidden="true"></div>'
+			'<div class="site-header__spacer site-header__spacer--floating"'
+			' aria-hidden="true"></div>'
 		) + band
 
 	return band

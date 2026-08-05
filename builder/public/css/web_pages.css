@@ -16,7 +16,8 @@
 	height: var(--header-height, 64px);
 }
 
-.site-header--floating + .site-header__spacer {
+.site-header--floating + .site-header__spacer,
+.site-header__spacer--floating {
 	height: calc(var(--header-height, 64px) + 40px);
 }
 
