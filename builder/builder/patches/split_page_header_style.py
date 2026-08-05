@@ -51,6 +51,18 @@ def execute():
 			template, background = TRANSLATION.get(old or "Simple", ("Standard", "None"))
 			frappe.db.set_single_value(doctype, "page_header_template", template)
 			frappe.db.set_single_value(doctype, "page_header_background", background)
+
+			# A Check that was never written reads back as 0 — indistinguishable
+			# from someone deliberately turning breadcrumbs off. The absence of
+			# the row is the only honest witness, and it has to be consulted
+			# before anything is written. Seen on Osiris: breadcrumbs silently
+			# off on a site that had never been asked.
+			written = frappe.db.sql(
+				"select 1 from `tabSingles` where `doctype`=%s and `field`=%s",
+				(doctype, "show_breadcrumbs"),
+			)
+			if not written:
+				frappe.db.set_single_value(doctype, "show_breadcrumbs", 1)
 			continue
 
 		# The doctype can exist without its table: declared by the app, never
