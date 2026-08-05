@@ -309,6 +309,23 @@ deserve radically different openings.
 
 ### FORBIDDEN - NEVER DO:
 - **NEVER generate <nav> element** - header is managed globally
+### CONTENT RHYTHM — ONE INSET FOR THE WHOLE SITE (CRITICAL)
+The site header and footer put their content in a container of
+`max-width: var(--container-width, 1280px); margin: 0 auto; padding: 0 24px`.
+Every section you write MUST use that same container, or the page reads as a
+staircase: the logo starts at one x, the headline at another, the footer at a
+third.
+
+So a section is TWO elements, never one:
+1. the `<section>`: background, vertical padding, `padding-left/right: 24px`
+2. a `<div>` inside it: `max-width: var(--container-width, 1280px)`,
+   `margin-left/right: auto`, and ALL the layout (display grid/flex, columns,
+   gap, alignment)
+
+NEVER put `display: grid` or `display: flex` on the `<section>` itself, and
+NEVER give a section a horizontal padding other than 24px — no `48px`, no `6vw`,
+no `5%`. The background stays full-bleed; only the content is constrained.
+
 - **NEVER generate <footer> element** - footer is managed globally
 - **NEVER generate navigation menu** - it's managed globally
 - ALWAYS start with a <section> (hero, main content, etc.)

@@ -31,7 +31,7 @@ DEFAULTS = {
 # the AI generated. Shipping the rules with the markup is what makes one band
 # actually mean one band.
 _CSS = (
-	"<style>.site-page-header{border-bottom:1px solid var(--footer-border,rgba(0,0,0,0.08))}.site-page-header__inner{max-width:var(--content-max-width,1200px);margin:0 auto;padding:44px 24px 36px}.site-page-header__crumbs{display:flex;flex-wrap:wrap;align-items:center;gap:6px;font-size:0.8125rem;color:var(--muted-color,#6b7280);margin-bottom:12px}.site-page-header__crumbs a{color:inherit;text-decoration:none}.site-page-header__crumbs a:hover{color:var(--primary-color,#111)}.site-page-header__sep{opacity:0.5}.site-page-header__title{font-size:clamp(1.9rem,1.2rem + 2.2vw,3rem);font-weight:700;font-family:var(--heading-font,inherit);line-height:1.15;margin:0}.site-page-header__subtitle{max-width:62ch;margin:10px 0 0;color:var(--muted-color,#6b7280);line-height:1.6}.site-page-header--centered .site-page-header__inner{text-align:center}.site-page-header--centered .site-page-header__crumbs{justify-content:center}.site-page-header--centered .site-page-header__subtitle{margin-left:auto;margin-right:auto}.site-page-header--tinted{background:color-mix(in srgb,var(--primary-color,#111) 8%,transparent);border-bottom-color:transparent}</style>"
+	"<style>.site-page-header{border-bottom:1px solid var(--footer-border,rgba(0,0,0,0.08))}.site-page-header__inner{max-width:var(--container-width,1280px);margin:0 auto;padding:44px 24px 36px}.site-page-header__crumbs{display:flex;flex-wrap:wrap;align-items:center;gap:6px;font-size:0.8125rem;color:var(--muted-color,#6b7280);margin-bottom:12px}.site-page-header__crumbs a{color:inherit;text-decoration:none}.site-page-header__crumbs a:hover{color:var(--primary-color,#111)}.site-page-header__sep{opacity:0.5}.site-page-header__title{font-size:clamp(1.9rem,1.2rem + 2.2vw,3rem);font-weight:700;font-family:var(--heading-font,inherit);line-height:1.15;margin:0}.site-page-header__subtitle{max-width:62ch;margin:10px 0 0;color:var(--muted-color,#6b7280);line-height:1.6}.site-page-header--centered .site-page-header__inner{text-align:center}.site-page-header--centered .site-page-header__crumbs{justify-content:center}.site-page-header--centered .site-page-header__subtitle{margin-left:auto;margin-right:auto}.site-page-header--tinted{background:color-mix(in srgb,var(--primary-color,#111) 8%,transparent);border-bottom-color:transparent}</style>"
 )
 
 
@@ -189,6 +189,31 @@ def render_builder_page_header(doc=None) -> str:
 	# a Builder page has no `parents`; the route is the trail
 	frappe.local.page_header_route = route
 	try:
-		return render(context)
+		band = render(context)
 	finally:
 		frappe.local.page_header_route = None
+
+	if not band:
+		return ""
+
+	# Two header presets deliberately pull the page up underneath themselves,
+	# because a generated homepage opens on a tall hero built to sit under the
+	# bar. An interior page now opens on this band instead — without a spacer
+	# the floating header lands squarely on its title. A frappe page gets its
+	# spacer from render_site_header(standalone=True); this is the Builder side
+	# of the same rule.
+	config = _config()
+	style = (config.get("header_style") if config else "") or "Classic"
+	if style in ("Floating", "Transparent"):
+		# ...and its height travels with it, for the same reason the band's own
+		# rules do: `web_include_css` never reaches a Builder page, so the rule
+		# in web_pages.css would leave this div at zero height here — present in
+		# the markup, invisible in effect, header still on the title.
+		band = (
+			"<style>.site-header__spacer{height:var(--header-height,64px)}"
+			".site-header--floating + .site-header__spacer"
+			"{height:calc(var(--header-height,64px) + 40px)}</style>"
+			'<div class="site-header__spacer" aria-hidden="true"></div>'
+		) + band
+
+	return band

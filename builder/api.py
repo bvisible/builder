@@ -1248,6 +1248,10 @@ def _generate_complete_site_worker(
 				# interior page. The homepage keeps the hero the AI composed for
 				# it, and lifting its headline out would leave a hero with no
 				# words on it.
+				# One horizontal rhythm for the whole site — the model invents an
+				# inset per page unless something enforces it.
+				_normalise_section_rhythm(wrapped_blocks)
+
 				opening = ""
 				if str(page_def.get("route", "")).strip("/") not in ("", "home", "index"):
 					opening = _lift_opening_into_header(blocks)
@@ -3629,6 +3633,119 @@ def _has_light_text(block, depth: int = 0) -> bool:
 		if colour in _LIGHT_TEXT:
 			return True
 	return any(_has_light_text(child, depth + 1) for child in block.get("children") or [])
+
+
+# Layout properties that belong on the constrained container, not on the
+# full-bleed section that carries the background.
+_LAYOUT_PROPS = (
+	"display", "gridTemplateColumns", "gridTemplateRows", "gridAutoFlow",
+	"gap", "rowGap", "columnGap", "alignItems", "justifyContent",
+	"flexDirection", "flexWrap", "alignContent",
+)
+
+_SITE_CONTAINER = {
+	"maxWidth": "var(--container-width, 1280px)",
+	"marginLeft": "auto",
+	"marginRight": "auto",
+	"width": "100%",
+}
+
+
+def _split_padding(styles: dict) -> tuple:
+	"""(vertical, horizontal) from whatever padding notation the block used."""
+	for axis in ("paddingLeft", "paddingRight"):
+		if styles.get(axis):
+			return None, str(styles[axis])
+	shorthand = str(styles.get("padding") or "").strip()
+	if not shorthand:
+		return None, None
+	parts = shorthand.split()
+	if len(parts) == 1:
+		return parts[0], parts[0]
+	if len(parts) in (2, 3):
+		return parts[0], parts[1]
+	return parts[0], parts[1]
+
+
+def _normalise_section_rhythm(blocks) -> int:
+	"""Give every top-level section the site's own horizontal rhythm.
+
+	The header and the footer put their content in a 1280px container. Nothing
+	told the model that, so it invented an inset per page — 48px here, 6vw
+	there, a 1200px container on the homepage. Measured on a generated site: the
+	header's content began at x=139, the page header band at x=179 and the body
+	copy at x=48. Three rhythms, one page: a staircase.
+
+	The section keeps its background full-bleed and its vertical padding; a
+	container takes over the width and the layout. The layout has to MOVE, not
+	be copied — a grid left on the section would fight the container it now
+	holds.
+
+	Returns how many sections were changed, so the caller can log it.
+	"""
+	changed = 0
+
+	def normalise(section) -> bool:
+		styles = section.get("baseStyles") or {}
+		if styles.get("maxWidth"):
+			return False  # already constrained by whoever wrote it
+
+		vertical, horizontal = _split_padding(styles)
+		layout = {k: styles[k] for k in _LAYOUT_PROPS if k in styles}
+		# nothing to do for a plain section already sitting at the site inset
+		if not layout and horizontal in (None, "24px", "0", "0px"):
+			return False
+
+		container = {
+			"blockId": f"container-{frappe.generate_hash(length=8)}",
+			"element": "div",
+			"baseStyles": {**_SITE_CONTAINER, **layout},
+			"children": section.get("children") or [],
+		}
+		# a responsive layout the block declared for narrow screens belongs with
+		# the layout it overrides
+		for key in ("mobileStyles", "tabletStyles"):
+			breakpoint = section.get(key) or {}
+			moved = {k: breakpoint.pop(k) for k in list(breakpoint) if k in _LAYOUT_PROPS}
+			if moved:
+				container[key] = moved
+
+		for prop in layout:
+			styles.pop(prop, None)
+		styles.pop("padding", None)
+		styles.pop("paddingLeft", None)
+		styles.pop("paddingRight", None)
+		if vertical:
+			styles["paddingTop"] = styles.get("paddingTop") or vertical
+			styles["paddingBottom"] = styles.get("paddingBottom") or vertical
+		styles["paddingLeft"] = "24px"
+		styles["paddingRight"] = "24px"
+
+		section["baseStyles"] = styles
+		section["children"] = [container]
+		return True
+
+	def walk(node, depth=0):
+		nonlocal changed
+		if depth > 3 or not isinstance(node, dict):
+			return
+		for child in node.get("children") or []:
+			if not isinstance(child, dict):
+				continue
+			if str(child.get("element", "")).lower() == "section":
+				if normalise(child):
+					changed += 1
+			else:
+				walk(child, depth + 1)
+
+	for block in blocks if isinstance(blocks, list) else []:
+		if str(block.get("element", "")).lower() == "section":
+			if normalise(block):
+				changed += 1
+		else:
+			walk(block)
+
+	return changed
 
 
 def _lift_opening_into_header(blocks) -> str:

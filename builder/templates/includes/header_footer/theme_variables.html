@@ -205,7 +205,29 @@ a:hover {
 
 {%- set hover = theme.button_hover if theme and theme.button_hover else "Darken" -%}
 
-.u-btn {
+/* The utilities below are wrapped in :where() on purpose.
+ *
+ * `.u-card` and a generated block's own `.fb-xxxxx` have the same specificity,
+ * so the winner was decided by source order — and the chrome's CSS is emitted
+ * in the body, after the page's own CSS in the head. The utility won.
+ *
+ * On a generated homepage that produced a card the AI had painted dark navy
+ * with white text: `.u-card` repainted it white, the white text stayed white,
+ * and the block rendered as an empty white rectangle. In the Builder canvas the
+ * utilities are not loaded, so the editor showed it correctly — a page that
+ * looked right while editing and was blank once published.
+ *
+ * :where() gives them zero specificity. A utility is a default; what the block
+ * declares about itself is a decision, and a decision must win.
+ *
+ * The four .u-btn--* modifiers are the exception, and keep their weight. A
+ * modifier is not a default: "make this a secondary button" states the
+ * background AND the label colour, as a pair. A block that declares only
+ * `color` while wearing one is contradictory — and on a site whose primary and
+ * secondary are the same navy, letting it win painted the label the exact
+ * colour of its own background.
+ */
+:where(.u-btn) {
 	display: inline-flex;
 	align-items: center;
 	justify-content: center;
@@ -262,7 +284,7 @@ a:hover {
 	outline-offset: 2px;
 }
 
-.u-card {
+:where(.u-card) {
 	background: var(--surface-color);
 	border: 1px solid var(--border-color);
 	border-radius: var(--radius-lg);
@@ -271,24 +293,24 @@ a:hover {
 	transition: box-shadow var(--transition), transform var(--transition);
 }
 
-.u-card--raised {
+:where(.u-card--raised) {
 	box-shadow: var(--shadow);
 }
 
-.u-card--flat {
+:where(.u-card--flat) {
 	box-shadow: none;
 }
 
 /* Images share the site's corners — a rounded site with square photos is
    the single most common way a generated page looks improvised. */
-.u-media {
+:where(.u-media) {
 	border-radius: var(--radius-lg);
 	overflow: hidden;
 	display: block;
 	width: 100%;
 }
 
-.u-input {
+:where(.u-input) {
 	border-radius: var(--radius);
 	border: 1px solid var(--border-color);
 	padding: 12px 14px;
@@ -328,7 +350,7 @@ a:hover {
    ========================================================================== */
 
 /* The section becomes the positioning context for its own scrim. */
-.u-over-image {
+:where(.u-over-image) {
 	position: relative;
 	isolation: isolate;
 }
