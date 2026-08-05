@@ -37,6 +37,7 @@ DEFAULTS = {
 	"page_header_background": "None",
 	"page_header_bg_color": "",     # empty: Tinted washes the primary colour
 	"page_header_image": "",
+	"page_header_excluded_routes": "",
 	"show_breadcrumbs": 1,
 }
 
@@ -56,7 +57,34 @@ _CSS = (
 
 
 # Pages that carry their own opening and must not get a second one.
+#
+# This is the DEFAULT, not the law: the list lives in a setting so an owner can
+# add a route without touching the code. It mattered the day the shop arrives —
+# a product page opens on its gallery, a cart is not an editorial page — but
+# also for any one-off landing page a client wants bare.
 SKIP_PATHS = ("", "home", "index")
+
+
+def _excluded_routes(config: dict) -> tuple:
+	"""Routes that get no band: the setting, or the default when it is empty.
+
+	One route per line, `*` allowed at the end of a pattern.
+	"""
+	raw = (config.get("page_header_excluded_routes") or "").strip()
+	if not raw:
+		return SKIP_PATHS
+	return tuple(line.strip().strip("/") for line in raw.splitlines() if line.strip())
+
+
+def _is_excluded(path: str, routes: tuple) -> bool:
+	path = (path or "").strip("/")
+	for pattern in routes:
+		if pattern.endswith("*"):
+			if path.startswith(pattern[:-1]):
+				return True
+		elif path == pattern:
+			return True
+	return False
 
 
 def _config():
@@ -135,7 +163,7 @@ def render(context) -> str:
 		return ""
 
 	path = (getattr(frappe.local, "page_header_route", None) or (frappe.request.path if frappe.request else "")).strip("/")
-	if path in SKIP_PATHS:
+	if _is_excluded(path, _excluded_routes(config)):
 		return ""
 
 	# an article opens on its cover; that hero already is the page header
@@ -221,7 +249,7 @@ def render_builder_page_header(doc=None) -> str:
 
 	route = (doc.get("route") if hasattr(doc, "get") else getattr(doc, "route", "")) or ""
 	route = str(route).strip("/")
-	if route in SKIP_PATHS:
+	if _is_excluded(route, _excluded_routes(settings())):
 		return ""
 
 	title = (

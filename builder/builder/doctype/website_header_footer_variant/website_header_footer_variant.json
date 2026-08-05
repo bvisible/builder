@@ -82,6 +82,7 @@
   "page_header_background",
   "page_header_bg_color",
   "page_header_image",
+  "page_header_excluded_routes",
   "show_breadcrumbs",
   "blog_section",
   "blog_layout",
@@ -872,6 +873,12 @@
    "fieldtype": "Attach Image",
    "label": "Page Header Image",
    "depends_on": "eval:doc.page_header_background=='Image'"
+  },
+  {
+   "fieldname": "page_header_excluded_routes",
+   "fieldtype": "Small Text",
+   "label": "Pages Without a Page Header",
+   "description": "One route per line; * allowed at the end. Empty: home only."
   },
   {
    "fieldname": "show_breadcrumbs",
