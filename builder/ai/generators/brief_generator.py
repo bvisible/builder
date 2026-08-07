@@ -303,7 +303,10 @@ def get_default_brief(
         "hero_style": fallback_hero_style,
         "section_padding": "80px 24px",
         "section_padding_mobile": "48px 16px",
-        "content_max_width": "1200px",
+        # The site's token, never a number — see DesignBrief.content_max_width.
+        # Left at "1200px" here, this fallback failed the Literal and took the
+        # whole generation down with it.
+        "content_max_width": "var(--container-width, 1280px)",
         "heading_color": "var(--text-color)",
         "body_color": "var(--muted-color)",
         "link_color": "var(--primary-color)",
