@@ -259,13 +259,24 @@ class DesignBrief(BaseModel):
 
     # NEW: Font families (empty defaults — chosen per site by the brief LLM or
     # the varied theme fallback, never a hardcoded generic face)
-    heading_font: str = Field(
-        default="",
-        description="Distinctive Google Font for headings — characterful, fits the art direction"
+    #: The fonts the SITE can actually wear.
+    #:
+    #: This list must match the `heading_font` / `body_font` Select on
+    #: `Website Header Footer Config`. It used to be a free string here and a
+    #: Select of 22 there: the brief picked "Syne", the chrome refused it, and
+    #: the propagation failed silently — so the header, the footer and the page
+    #: header kept the PREVIOUS site's fonts while the pages wore the new ones.
+    #: A font the site cannot store is not a choice, it is a bug waiting.
+    heading_font: Literal["Inter", "Montserrat", "Poppins", "Roboto", "Open Sans", "Lato", "Raleway", "Playfair Display", "Source Sans 3", "Nunito", "Lora", "DM Sans", "Manrope", "Cormorant Garamond", "Sora", "Plus Jakarta Sans", "Outfit", "Space Grotesk", "Archivo Black", "Bebas Neue", "Merriweather", "Roboto Slab"] = Field(
+        default="Inter",
+        description=(
+            "Font for headings — characterful, fits the art direction. Pick the "
+            "one that says what this business is, not the safest one."
+        )
     )
-    body_font: str = Field(
-        default="",
-        description="Readable Google Font for body text, pairs with heading_font"
+    body_font: Literal["Inter", "Montserrat", "Poppins", "Roboto", "Open Sans", "Lato", "Raleway", "Playfair Display", "Source Sans 3", "Nunito", "Lora", "DM Sans", "Manrope", "Cormorant Garamond", "Sora", "Plus Jakarta Sans", "Outfit", "Space Grotesk", "Archivo Black", "Bebas Neue", "Merriweather", "Roboto Slab"] = Field(
+        default="Inter",
+        description="Font for body text — readable at length, pairs with heading_font"
     )
 
     # NEW: Section Heights
