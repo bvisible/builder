@@ -38,7 +38,15 @@ SIMPLE_FIELDS = (
 	# footer
 	"footer_template",
 	"footer_menu_source",
-	"page_header_style",
+	# The band: a preset and a fill, plus what the fills need. The single
+	# `page_header_style` these replace was still listed here after the doctype
+	# had dropped it — so the Theme read a field that no longer existed and
+	# showed two empty selects over values that were sitting in the database.
+	"page_header_template",
+	"page_header_background",
+	"page_header_bg_color",
+	"page_header_image",
+	"page_header_excluded_routes",
 	"show_breadcrumbs",
 	"blog_layout",
 	"blog_post_layout",
@@ -88,7 +96,8 @@ OPTION_FIELDS = (
 	"search_type",
 	"footer_template",
 	"footer_menu_source",
-	"page_header_style",
+	"page_header_template",
+	"page_header_background",
 	"blog_layout",
 	"blog_post_layout",
 	"heading_font",
