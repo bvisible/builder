@@ -125,7 +125,13 @@ def disabled_route_prefixes() -> tuple:
 	for name, enabled in state.items():
 		if enabled:
 			continue
+		# The prefix has to come from the registry row, not only from the
+		# built-in manifest: a third-party plugin's routes were never blocked,
+		# so turning it off hid its Studio entry and refused its endpoints
+		# while its public pages kept answering. Half-off is not off.
 		prefix = (BUILT_IN_BY_NAME.get(name, {}) or {}).get("route_prefix")
+		if not prefix:
+			prefix = frappe.db.get_value(REGISTRY_DOCTYPE, name, "route_prefix")
 		if not prefix and frappe.db.exists(REGISTRY_DOCTYPE, name):
 			prefix = frappe.db.get_value(REGISTRY_DOCTYPE, name, "route_prefix")
 		if prefix:
