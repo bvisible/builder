@@ -246,9 +246,21 @@ class DesignBrief(BaseModel):
         default="48px 16px",
         description="Mobile section padding"
     )
-    content_max_width: str = Field(
-        default="1200px",
-        description="Maximum content width"
+    #: NOT a decision. The site's content width belongs to the chrome, which
+    #: the header and the footer already obey, so this carries the token rather
+    #: than a number.
+    #:
+    #: It used to default to "1200px" while another rule in the same prompt
+    #: asked for `var(--container-width, 1280px)` — and the list of forbidden
+    #: widths right below it named 1200px. Two instructions fighting: measured
+    #: on a generated page, the header sat at x=248 and the body copy at x=264.
+    #: Sixteen pixels of staircase, from a contradiction we wrote ourselves.
+    content_max_width: Literal["var(--container-width, 1280px)"] = Field(
+        default="var(--container-width, 1280px)",
+        description=(
+            "The site's content width. Always this token — never a number, so "
+            "the page and the chrome cannot drift apart."
+        )
     )
 
     # NEW: Typography Scale (prescriptive sizes)
@@ -600,7 +612,7 @@ book: same palette, same fonts, same button system on every page.
   maxWidth: "{self.content_max_width}", marginLeft/marginRight: "auto" and consistent
   horizontal padding. Full-bleed color/image fields are welcome, but the CONTENT
   inside them still aligns to this same {self.content_max_width} grid.
-- NEVER introduce another content width (1140px, 1200px, 1320px…) anywhere, and
+- NEVER introduce a content width of your own (1140px, 1200px, 1320px…), and
   never a horizontal padding of your own on a <section> (48px, 6vw, 5%…). The
   site header and footer already sit in `var(--container-width, 1280px)`; a
   section that invents its own inset puts the body copy on a different x from

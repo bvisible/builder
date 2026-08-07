@@ -1258,6 +1258,7 @@ def _generate_complete_site_worker(
 				# One horizontal rhythm for the whole site — the model invents an
 				# inset per page unless something enforces it.
 				_normalise_section_rhythm(wrapped_blocks)
+				_retune_container_widths(wrapped_blocks)
 
 				opening = ""
 				if str(page_def.get("route", "")).strip("/") not in ("", "home", "index"):
@@ -3672,6 +3673,34 @@ def _split_padding(styles: dict) -> tuple:
 	if len(parts) in (2, 3):
 		return parts[0], parts[1]
 	return parts[0], parts[1]
+
+
+def _retune_container_widths(blocks, depth: int = 0) -> int:
+	"""Put any hard-coded content width back on the site's token.
+
+	The normalisation below only acts when a section has NO container. A
+	container that exists with the WRONG width slips through — measured on a
+	generated page whose sections sat on 1200px while the chrome sat on 1280:
+	sixteen pixels of staircase, invisible in the markup and obvious to the eye.
+	"""
+	import re
+
+	changed = 0
+	if not isinstance(blocks, list):
+		return 0
+	for block in blocks:
+		if not isinstance(block, dict):
+			continue
+		styles = block.get("baseStyles") or {}
+		width = str(styles.get("maxWidth") or "")
+		# a bare pixel width in the 1000-1400 range is a content container
+		match = re.fullmatch(r"(1[0-4]\d{2})px", width.strip())
+		if match:
+			styles["maxWidth"] = "var(--container-width, 1280px)"
+			block["baseStyles"] = styles
+			changed += 1
+		changed += _retune_container_widths(block.get("children") or [], depth + 1)
+	return changed
 
 
 def _normalise_section_rhythm(blocks) -> int:
