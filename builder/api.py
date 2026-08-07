@@ -856,10 +856,17 @@ def _generate_complete_site_worker(
 		config.logo_type = "Image"
 		if logo_image:
 			config.logo_image = logo_image
+		# A full site generation IS a re-identification: this bench is now this
+		# business. "Only write when empty" kept the FIRST site's brand forever
+		# — measured on a bench that had generated three sites in a row, the
+		# chrome still said "FC Colombier" while the pages were a glassblower's
+		# and the contact card named a wine estate. Three identities, one site.
 		if logo_text:
 			config.logo_text = logo_text
-		elif not config.logo_text:
+		elif site_name:
 			config.logo_text = site_name
+		if hasattr(config, "footer_logo_text") and (logo_text or site_name):
+			config.footer_logo_text = logo_text or site_name
 
 		# Apply colors if provided
 		if primary_color and hasattr(config, "primary_color"):
