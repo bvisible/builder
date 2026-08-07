@@ -3676,30 +3676,53 @@ def _split_padding(styles: dict) -> tuple:
 
 
 def _retune_container_widths(blocks, depth: int = 0) -> int:
-	"""Put any hard-coded content width back on the site's token.
+	"""Put content containers back on the site's width AND its inset.
 
-	The normalisation below only acts when a section has NO container. A
-	container that exists with the WRONG width slips through — measured on a
-	generated page whose sections sat on 1200px while the chrome sat on 1280:
-	sixteen pixels of staircase, invisible in the markup and obvious to the eye.
+	Two failures, one function, because they always travel together:
+
+	- a hard-coded width. The normalisation below only acts when a section has
+	  NO container; one that exists with the WRONG width slips through. Measured
+	  on a generated page: sections on 1200px while the chrome sat on 1280 —
+	  sixteen pixels of staircase.
+	- a missing inset. A container with the right width but no horizontal
+	  padding puts the copy flush against the column edge, 24px LEFT of the
+	  logo above it. Measured right after fixing the width: 224 against 248.
+
+	The chrome's own container is `max-width: 1280px; margin: 0 auto;
+	padding: 0 24px`. A content container that says the same thing lands on the
+	same x, which is the entire point.
 	"""
 	import re
 
 	changed = 0
 	if not isinstance(blocks, list):
 		return 0
+
 	for block in blocks:
 		if not isinstance(block, dict):
 			continue
 		styles = block.get("baseStyles") or {}
 		width = str(styles.get("maxWidth") or "")
+
 		# a bare pixel width in the 1000-1400 range is a content container
-		match = re.fullmatch(r"(1[0-4]\d{2})px", width.strip())
-		if match:
+		if re.fullmatch(r"1[0-4]\d{2}px", width.strip()):
 			styles["maxWidth"] = "var(--container-width, 1280px)"
-			block["baseStyles"] = styles
+			width = styles["maxWidth"]
 			changed += 1
+
+		if "var(--container-width" in width:
+			has_inset = any(
+				str(styles.get(k) or "").strip() not in ("", "0", "0px")
+				for k in ("paddingLeft", "paddingRight", "padding")
+			)
+			if not has_inset:
+				styles["paddingLeft"] = "24px"
+				styles["paddingRight"] = "24px"
+				changed += 1
+			block["baseStyles"] = styles
+
 		changed += _retune_container_widths(block.get("children") or [], depth + 1)
+
 	return changed
 
 
