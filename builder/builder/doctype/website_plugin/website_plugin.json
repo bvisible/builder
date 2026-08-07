@@ -102,7 +102,7 @@
    "fieldname": "source",
    "fieldtype": "Select",
    "label": "Source",
-   "options": "Built-in\nHub\nManual"
+   "options": "Built-in\nApp\nHub\nManual"
   },
   {
    "default": "0",

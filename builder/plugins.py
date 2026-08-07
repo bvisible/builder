@@ -167,6 +167,52 @@ def _installed_apps() -> set:
 	return set(frappe.get_installed_apps())
 
 
+def _declared_plugins() -> list:
+	"""Manifests contributed by installed apps through the `unpress_plugins` hook.
+
+	This is how a third party ships a plugin without us shipping anything: the
+	host app declares itself, and we never import it at build time. An app that
+	is installed on a bench without Unpress simply has its hook read by nobody.
+
+	A manifest that raises, or that omits `plugin_name`, is skipped with a
+	warning rather than taking the whole registry down with it — one bad app
+	must not stop the others from appearing.
+	"""
+	out = []
+	seen = {spec["plugin_name"] for spec in BUILT_INS}
+
+	for method in frappe.get_hooks("unpress_plugins") or []:
+		try:
+			spec = frappe.get_attr(method)()
+		except Exception as exc:
+			frappe.log_error("Plugin manifest refused", f"{method}\n{exc}")
+			continue
+
+		if not isinstance(spec, dict) or not spec.get("plugin_name"):
+			frappe.log_error("Plugin manifest incomplete", f"{method} returned {spec!r}")
+			continue
+
+		name = spec["plugin_name"]
+		if name in seen:
+			# A built-in wins: an app cannot rename or re-describe the blog.
+			frappe.log_error("Plugin name already taken", f"{method} claims {name!r}")
+			continue
+
+		seen.add(name)
+		out.append({
+			"plugin_name": name,
+			"title": spec.get("title") or name,
+			"description": spec.get("description") or "",
+			"app_name": spec.get("app_name") or "",
+			"icon": spec.get("icon") or "lucide-puzzle",
+			"route_prefix": spec.get("route_prefix") or "",
+			"is_core": 0,
+			"witness_doctype": spec.get("witness_doctype"),
+		})
+
+	return out
+
+
 def sync_plugins(app_name: str | None = None):
 	"""Seed and refresh the registry.
 
@@ -183,7 +229,7 @@ def sync_plugins(app_name: str | None = None):
 
 	installed = _installed_apps()
 
-	for spec in BUILT_INS:
+	for spec in list(BUILT_INS) + _declared_plugins():
 		available = 1 if spec["app_name"] in installed else 0
 		witness = spec.get("witness_doctype")
 		if not available and witness and frappe.db.exists("DocType", witness):
@@ -204,8 +250,8 @@ def sync_plugins(app_name: str | None = None):
 			continue
 
 		doc = frappe.new_doc(REGISTRY_DOCTYPE)
-		doc.update(spec)
-		doc.source = "Built-in"
+		doc.update({k: v for k, v in spec.items() if k != "witness_doctype"})
+		doc.source = "Built-in" if spec in BUILT_INS else "App"
 		doc.is_available = available
 		# A plugin that ships with the product starts on. The owner turns it
 		# off; they should not have to turn it on to get what they installed.
