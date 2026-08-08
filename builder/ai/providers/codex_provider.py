@@ -18,6 +18,13 @@ invocation therefore:
   * is killed on a hard timeout.
 Never add `--dangerously-bypass-approvals-and-sandbox` here.
 
+Images are the one exception, and a narrow one: drawing needs a writable
+directory, so they run `--sandbox workspace-write` — and, where that sandbox
+cannot start at all, `danger-full-access`. That only happens inside a
+container, whose own boundary is stricter than the one we gave up. It is still
+a widening: the working directory is a throwaway that holds nothing but the
+generated file, and it is deleted when the call returns.
+
 SCOPE — a ChatGPT plan is nominative. This provider is meant for a self-hosted
 Studio driven by its own owner (or our own dogfooding), not as a shared backend
 serving third parties.
@@ -27,12 +34,45 @@ import json
 import os
 import shutil
 import subprocess
+import sys
 import tempfile
 from typing import Optional
 
 import frappe
 
 from .base import BaseProvider
+
+# Probed once per process: the answer cannot change while we run.
+_SANDBOX_HELPER_WORKS = None
+
+
+def _sandbox_helper_works() -> bool:
+	"""Can Codex's filesystem sandbox actually run on this machine?
+
+	On Linux it is enforced by a helper that needs an unprivileged user
+	namespace. Docker's default seccomp profile blocks that syscall, so the
+	helper dies while copying the finished image out — and Codex answers with
+	the file name it *meant* to write, leaving the workspace empty. A caller
+	sees a plausible success and no picture.
+
+	macOS uses Seatbelt, which has no such requirement.
+	"""
+	global _SANDBOX_HELPER_WORKS
+	if _SANDBOX_HELPER_WORKS is not None:
+		return _SANDBOX_HELPER_WORKS
+	if sys.platform != "linux":
+		_SANDBOX_HELPER_WORKS = True
+		return True
+	try:
+		probe = subprocess.run(
+			[sys.executable, "-c", "import os; os.unshare(os.CLONE_NEWUSER)"],
+			capture_output=True,
+			timeout=15,
+		)
+		_SANDBOX_HELPER_WORKS = probe.returncode == 0
+	except Exception:
+		_SANDBOX_HELPER_WORKS = False
+	return _SANDBOX_HELPER_WORKS
 
 
 class CodexProvider(BaseProvider):
@@ -358,13 +398,21 @@ class CodexProvider(BaseProvider):
 	# ------------------------------------------------------------------
 
 	def generate_image_file(
-		self, prompt: str, width: int = 1024, height: int = 1024, timeout: int = None, model: str = None
+		self, prompt: str, width: int = 1024, height: int = 1024, timeout: int = None
 	) -> bytes:
 		"""Generate one image and return its bytes.
 
 		Images need a writable workspace, so the sandbox is widened to
 		`workspace-write` — scoped to a throwaway directory that holds nothing
-		but the generated file.
+		but the generated file. Where that sandbox cannot run at all (see
+		`_sandbox_helper_works`) we widen further rather than fail: a container
+		is already the boundary the sandbox would have drawn.
+
+		There is no image-model argument on purpose. Codex's `-m` picks the
+		agent that *drives* the drawing tool, not the model that draws, and a
+		ChatGPT plan rejects an image model there outright:
+		"'gpt-image-1' is not supported when using Codex with a ChatGPT
+		account". The drawing model is the plugin's business.
 		"""
 		from builder.ai.logging import ai_log
 
@@ -386,11 +434,12 @@ class CodexProvider(BaseProvider):
 			# NOT --ignore-user-config here: the image tool is exposed through
 			# the skills/plugins declared in CODEX_HOME/config.toml, and
 			# ignoring that config leaves the agent with no way to draw.
+			sandbox = "workspace-write" if _sandbox_helper_works() else "danger-full-access"
 			argv = [
 				binary,
 				"exec",
 				"--sandbox",
-				"workspace-write",
+				sandbox,
 				"--ephemeral",
 				"--skip-git-repo-check",
 				"--color",
@@ -398,11 +447,8 @@ class CodexProvider(BaseProvider):
 				"-C",
 				workdir,
 			]
-			# The image model is its own choice: drawing and writing are not the
-			# same job, and a plan may expose different models for each.
-			image_model = model or self.model
-			if image_model:
-				argv += ["-m", image_model]
+			if self.model:
+				argv += ["-m", self.model]
 			if self.reasoning_effort:
 				argv += ["-c", f'model_reasoning_effort="{self.reasoning_effort}"']
 			argv.append("-")
@@ -412,7 +458,8 @@ class CodexProvider(BaseProvider):
 				"codex image",
 				w=width,
 				h=height,
-				model=image_model,
+				model=self.model,
+				sandbox=sandbox,
 				prompt=(prompt or "")[:60],
 			)
 			try:
