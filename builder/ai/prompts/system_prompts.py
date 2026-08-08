@@ -701,10 +701,11 @@ TECHNICAL CONSTRAINT: Shortcodes must be in a full-width container, not inside g
 def _drop_unavailable_shortcodes(text: str) -> str:
     """Remove shortcode lines whose app is not on this bench.
 
-    The webshop carousels exist on Neoffice and not on Unpress. Offering one to
-    the model there produces a page that renders as a 500 — the sanitiser
-    catches it afterwards, but a model told about a tool it cannot use spends
-    its attention on it and writes a worse section around the hole.
+    The webshop carousels exist on benches that carry the webshop app and
+    nowhere else. Offering one to the model elsewhere produces a page that
+    renders as a 500 — the sanitiser catches it afterwards, but a model told
+    about a tool it cannot use spends its attention on it and writes a worse
+    section around the hole.
     """
     import frappe
     import re as _re

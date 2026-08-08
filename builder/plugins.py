@@ -42,7 +42,7 @@ BUILT_INS = (
 		"app_name": "blog",
 		# The capability exists wherever this doctype does — and on Frappe v15
 		# it comes from the CORE, not from an app. Testing only for the app
-		# hid the Articles screen on every Neoffice site, on sites that had a
+		# hid the Articles screen on every v15 site, including sites that had a
 		# working blog with published posts. What matters is whether the
 		# feature is usable, not where it came from.
 		"witness_doctype": "Blog Post",

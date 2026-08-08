@@ -898,7 +898,8 @@ class PageGenerator:
     def _available_includes(self) -> set:
         """VALID_INCLUDES minus the ones whose app is not on this bench.
 
-        The webshop carousels are real on Neoffice and absent on Unpress.
+        The webshop carousels are real wherever the webshop app is installed
+        and absent everywhere else.
         Keeping one in a page turns the whole page into a 500 at render time —
         the worst way to find out, because the generation reports success.
         """
