@@ -13,7 +13,7 @@
 			<div v-for="plugin in plugins" :key="plugin.name" class="flex items-start gap-3 py-3">
 				<span
 					class="mt-0.5 size-4 shrink-0 text-ink-gray-7"
-					:class="plugin.icon || 'lucide-puzzle'"
+					:class="plugin.icon"
 					aria-hidden="true" />
 				<div class="min-w-0 flex-1">
 					<div class="flex items-center gap-2">
@@ -127,7 +127,7 @@ const listResource = createResource({
 	url: `${API}.list_plugins`,
 	auto: true,
 	onSuccess(data: Plugin[]) {
-		plugins.value = data || [];
+		plugins.value = (data || []).map((p) => ({ ...p, icon: drawableIcon(p.icon) }));
 		loading.value = false;
 	},
 	onError() {
@@ -151,6 +151,34 @@ const jobFailed = ref(false);
 const jobNeedsRestart = ref(false);
 const confirmRemove = ref(false);
 const removeTarget = ref<Plugin | null>(null);
+
+const FALLBACK_ICON = "lucide-puzzle";
+const iconCache = new Map<string, string>();
+
+// Icon classes are compiled by scanning source files, and a plugin's icon name
+// arrives from a database row — so a name no source file mentions gets a class
+// with no rule behind it, and the entry shows an empty square. `icon ||
+// 'puzzle'` does not catch it: the name is there, it just cannot draw. Ask the
+// browser, once per name. Built-ins look right today only because their names
+// happen to appear elsewhere in the frontend, which is luck, not design.
+function drawableIcon(name?: string): string {
+	if (!name) return FALLBACK_ICON;
+	const cached = iconCache.get(name);
+	if (cached) return cached;
+
+	const probe = document.createElement("span");
+	probe.className = name;
+	probe.style.position = "fixed";
+	probe.style.visibility = "hidden";
+	document.body.appendChild(probe);
+	const style = getComputedStyle(probe);
+	const drawable = style.maskImage !== "none" || style.backgroundImage !== "none";
+	probe.remove();
+
+	const resolved = drawable ? name : FALLBACK_ICON;
+	iconCache.set(name, resolved);
+	return resolved;
+}
 
 const removeMessage = computed(() =>
 	removeTarget.value
