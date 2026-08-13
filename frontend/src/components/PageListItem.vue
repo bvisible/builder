@@ -43,7 +43,7 @@
 			</div>
 			<div class="flex gap-2">
 				<Badge theme="green" v-if="page.published" class="dark:bg-green-900 dark:text-green-400">
-					Published
+					{{ __("Published") }}
 				</Badge>
 				<Avatar
 					:shape="'circle'"

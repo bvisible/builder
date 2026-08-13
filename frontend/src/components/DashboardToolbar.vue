@@ -7,7 +7,7 @@
 				iconLeft="lucide-plus"
 				class="bg-surface-gray-10 !text-ink-base hover:bg-surface-gray-9"
 				@click="showTemplatesDialog = true">
-				New
+				{{ __("New") }}
 			</Button>
 		</div>
 	</div>

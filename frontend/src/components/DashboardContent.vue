@@ -46,7 +46,7 @@
 				v-if="webPages.data?.length && webPages.hasNextPage && displayType !== 'tree'"
 				variant="subtle"
 				size="sm">
-				Load More
+				{{ __("Load More") }}
 			</Button>
 		</section>
 	</div>
