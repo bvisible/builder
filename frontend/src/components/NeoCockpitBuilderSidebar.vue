@@ -27,6 +27,7 @@ import NeoCockpitBridge from "@/components/NeoCockpitBridge.vue";
 
 import builderProjectFolder from "@/data/builderProjectFolder";
 import useBuilderStore from "@/stores/builderStore";
+import { useChatDeepLink } from "@/composables/useChatDeepLink";
 import { useDashboardState } from "@/composables/useDashboardState";
 import { useRouter } from "vue-router";
 import { computed, defineAsyncComponent, ref } from "vue";
@@ -43,7 +44,8 @@ const router = useRouter();
 const builderStore = useBuilderStore();
 const { showSettingsDialog, settingsTab } = useDashboardState();
 const failed = ref(false);
-const showAIChat = ref(false);
+// a desk workspace shortcut lands here with ?chat=1 — the chat has no route
+const showAIChat = useChatDeepLink();
 const showMedia = ref(false);
 const showTheme = ref(false);
 

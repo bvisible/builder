@@ -194,6 +194,8 @@
 import EditableSpan from "@/components/EditableSpan.vue";
 import FilesIcon from "@/components/Icons/Files.vue";
 import SettingsIcon from "@/components/Icons/SettingsGear.vue";
+//// Neoffice — a desk workspace shortcut has no way to reach the chat modal.
+import { useChatDeepLink } from "@/composables/useChatDeepLink";
 import { useDashboardState } from "@/composables/useDashboardState";
 import { promptCreateFolder } from "@/utils/dialogs";
 import builderProjectFolder from "@/data/builderProjectFolder";
@@ -221,7 +223,7 @@ const toggleDark = useToggle(isDark);
 const builderStore = useBuilderStore();
 const { showTemplatesDialog, showSettingsDialog } = useDashboardState();
 const renamingFolder = ref("");
-const showAIChat = ref(false);
+const showAIChat = useChatDeepLink(); //// Neoffice — opens on /builder?chat=1
 const showMedia = ref(false);
 const showBlog = ref(false);
 
