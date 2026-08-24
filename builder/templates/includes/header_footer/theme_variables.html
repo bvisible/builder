@@ -38,6 +38,16 @@
 	--body-font: '{{ theme.body_font if theme else 'Inter' }}', sans-serif;
 	--font-family: '{{ theme.body_font if theme else 'Inter' }}', sans-serif;
 
+	/* Frappe/WebShop button variables.
+	   `website.bundle.css` peint le bouton primaire avec `.btn.btn-primary`,
+	   soit DEUX classes : plus spécifique que toute règle `.btn-primary` qu'on
+	   écrirait ensuite, quel que soit son ordre. Le tunnel d'achat gardait donc
+	   son noir d'usine pendant que le reste du site portait la couleur de la
+	   maison. On alimente la variable qu'il lit, plutôt que de lutter avec des
+	   sélecteurs. */
+	--btn-primary: {{ theme.primary_color if theme else '#6c5ce7' }};
+	--btn-primary-hover: {{ theme.primary_color if theme else '#6c5ce7' }}dd;
+
 	/* Derived colors for WebShop compatibility */
 	--primary-hover: {{ theme.primary_color if theme else '#6c5ce7' }}dd;
 	--primary-light: {{ theme.primary_color if theme else '#6c5ce7' }}20;
