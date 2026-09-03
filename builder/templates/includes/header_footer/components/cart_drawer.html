@@ -854,13 +854,15 @@
 	function renderCartOffers() {
 		if (!(window.webshop && webshop.cross_sell)) {
 			// This script sits in the header and draws the cart before webshop's
-			// bundle (end of body) has defined webshop.cross_sell: try again a
-			// few times while the page finishes loading, then give up quietly.
-			renderCartOffers.attempts = (renderCartOffers.attempts || 0) + 1;
-			if (renderCartOffers.attempts <= 20) setTimeout(renderCartOffers, 250);
+			// bundle (end of body) has defined webshop.cross_sell. Wait for the
+			// window's load event, after which every blocking script has run;
+			// past that point (a bundle that is not on the page), give up quietly.
+			if (document.readyState !== 'complete' && !renderCartOffers.waiting) {
+				renderCartOffers.waiting = true;
+				window.addEventListener('load', () => { renderCartOffers.waiting = false; renderCartOffers(); }, { once: true });
+			}
 			return;
 		}
-		renderCartOffers.attempts = 0;
 		let box = document.getElementById('builder-cart-offers');
 		if (!box) {
 			box = document.createElement('div');
