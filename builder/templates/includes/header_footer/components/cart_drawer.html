@@ -852,7 +852,15 @@
 	//// Neoffice — see renderCart(). Accepting an offer adds the item through
 	//// webshop's accept_offer, then the drawer is drawn again.
 	function renderCartOffers() {
-		if (!(window.webshop && webshop.cross_sell)) return;
+		if (!(window.webshop && webshop.cross_sell)) {
+			// This script sits in the header and draws the cart before webshop's
+			// bundle (end of body) has defined webshop.cross_sell: try again a
+			// few times while the page finishes loading, then give up quietly.
+			renderCartOffers.attempts = (renderCartOffers.attempts || 0) + 1;
+			if (renderCartOffers.attempts <= 20) setTimeout(renderCartOffers, 250);
+			return;
+		}
+		renderCartOffers.attempts = 0;
 		let box = document.getElementById('builder-cart-offers');
 		if (!box) {
 			box = document.createElement('div');
