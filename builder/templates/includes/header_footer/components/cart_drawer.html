@@ -696,6 +696,12 @@
 
 		cartItems.innerHTML = html;
 
+		//// Neoffice — cross-sell offers (webshop's Cross Sell Offer, "show in
+		//// cart") between the lines and the "frequently bought together" block.
+		//// The drawer is Builder's, the offers are webshop's: only when the
+		//// webshop bundle is on the page, and never before the lines are drawn.
+		renderCartOffers();
+
 		// Update totals
 		if (cartSubtotalEl) cartSubtotalEl.textContent = formatPrice(cartState.subtotal);
 		if (cartTotalEl) cartTotalEl.textContent = formatPrice(cartState.total);
@@ -843,6 +849,28 @@
 	}
 
 	// ---- Frequently bought together (server API, based on cart content) ----
+	//// Neoffice — see renderCart(). Accepting an offer adds the item through
+	//// webshop's accept_offer, then the drawer is drawn again.
+	function renderCartOffers() {
+		if (!(window.webshop && webshop.cross_sell)) return;
+		let box = document.getElementById('builder-cart-offers');
+		if (!box) {
+			box = document.createElement('div');
+			box.id = 'builder-cart-offers';
+			box.className = 'cross-sell-offers cross-sell-offers--drawer';
+			box.dataset.placement = 'cart';
+			const anchor = document.getElementById('builder-cart-fbt') || document.getElementById('builder-cart-footer');
+			if (!anchor) return;
+			anchor.parentNode.insertBefore(box, anchor);
+		}
+		if (!cartState.items || !cartState.items.length) {
+			box.innerHTML = '';
+			box.classList.remove('has-offers');
+			return;
+		}
+		webshop.cross_sell.load(box, { placement: 'cart', after: () => refreshCart() });
+	}
+
 	function renderCartRecos() {
 		const wrap = document.getElementById('builder-cart-fbt');
 		const list = document.getElementById('builder-cart-fbt-items');
