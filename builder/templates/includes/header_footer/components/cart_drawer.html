@@ -583,7 +583,18 @@
 				const doc = data.message.doc;
 				cartState.items = doc.items || [];
 				cartState.total = doc.grand_total || 0;
-				cartState.subtotal = doc.net_total || doc.total || 0;
+				//// Neoffice — the subtotal is the amount BEFORE a coupon on the grand
+				//// total: ERPNext folds that discount into net_total, so the drawer
+				//// showed a subtotal below what the lines cost, next to the tax
+				//// computed before the discount, and no trace of the coupon — the
+				//// figures did not add up. Same rule as webshop's cart, checkout and
+				//// thank-you summaries; the coupon gets its own line below the taxes.
+				const includedTax = (doc.taxes || [])
+					.filter(t => t.included_in_print_rate)
+					.reduce((sum, t) => sum + (parseFloat(t.tax_amount) || 0), 0);
+				cartState.subtotal = (typeof doc.total === 'number' ? doc.total : (doc.net_total || 0)) - includedTax;
+				cartState.discount = (doc.coupon_code || doc.gift_card_coupon) ? (doc.discount_amount || 0) : 0;
+				cartState.coupon = doc.coupon_code || doc.gift_card_coupon || '';
 				cartState.itemsCount = doc.total_qty || 0;
 
 				// Extract taxes with customer-friendly labels: drop account codes
@@ -691,15 +702,16 @@
 
 		// Update taxes
 		if (cartTaxesEl) {
-			if (cartState.taxes.length > 0) {
-				let taxHtml = '';
-				cartState.taxes.forEach(tax => {
-					taxHtml += `<div class="builder-cart-drawer__tax-item"><span>${tax.description}</span><span>${formatPrice(tax.amount)}</span></div>`;
-				});
-				cartTaxesEl.innerHTML = taxHtml;
-			} else {
-				cartTaxesEl.innerHTML = '';
+			let taxHtml = '';
+			cartState.taxes.forEach(tax => {
+				taxHtml += `<div class="builder-cart-drawer__tax-item"><span>${tax.description}</span><span>${formatPrice(tax.amount)}</span></div>`;
+			});
+			//// Neoffice — the coupon line (see cartState.discount above).
+			if (cartState.discount) {
+				const couponLabel = {{ _("Coupon Discount") | json }};
+				taxHtml += `<div class="builder-cart-drawer__tax-item builder-cart-drawer__discount"><span>${couponLabel} (${cartState.coupon})</span><span>-${formatPrice(cartState.discount)}</span></div>`;
 			}
+			cartTaxesEl.innerHTML = taxHtml;
 		}
 
 		// Add event listeners
