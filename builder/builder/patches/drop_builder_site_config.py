@@ -1,3 +1,6 @@
+#//// Neoffice — added file (no upstream equivalent): drops Builder Site Config; the brief now lives on
+#//// Builder Chat Session. Neoffice migration, listed in patches.txt; frappe/builder has no equivalent.
+#//// First commit 0bf5f370 2026-08-04.
 # Builder Site Config held the AI's site plan — site type, colours, provider,
 # and a design_brief_json — back when the generator wrote its state into its own
 # doctype. That job moved to Builder Chat Session (`saved_brief`), which is what

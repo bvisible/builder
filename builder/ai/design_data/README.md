@@ -1,3 +1,7 @@
+<!-- //// Neoffice — added file (no upstream equivalent): what we vendored from ui-ux-pro-max, what we left
+     //// out, how to refresh it. builder/ai/design_data/** is VENDORED verbatim from
+     //// nextlevelbuilder/ui-ux-pro-max-skill (MIT, upstream f8ac5e12) — re-copy it from there, never
+     //// hand-edit. First commit 5502544c 2026-07-18. -->
 # Vendored: UI/UX Pro Max design intelligence
 
 Source: https://github.com/nextlevelbuilder/ui-ux-pro-max-skill

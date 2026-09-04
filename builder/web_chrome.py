@@ -1,3 +1,6 @@
+#//// Neoffice — added file (no upstream equivalent): installs the header/footer Web Templates that
+#//// frappe's base.html renders. builder/templates/includes/header_footer/** = the Neoffice site chrome
+#//// (Website Header Footer Config). First commit 45e67b23 2026-08-04.
 """The header and footer Web Templates frappe's base.html renders.
 
 Kept out of install.py so it syncs from unpress_core unchanged: the chrome is

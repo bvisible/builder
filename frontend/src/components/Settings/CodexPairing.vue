@@ -1,3 +1,5 @@
+<!-- //// Neoffice — added file (no upstream equivalent): Settings > AI: pairing the Studio with a local
+     //// Codex CLI. Neoffice-only settings tab. First commit 2f8cb2c4 2026-08-03. -->
 <template>
 	<div class="flex flex-col gap-3 rounded-lg border border-outline-gray-1 p-3">
 		<div class="flex items-center justify-between gap-3">

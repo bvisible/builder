@@ -1,3 +1,6 @@
+#//// Neoffice — added file (no upstream equivalent): abstract provider interface plus the shared error
+#//// types. builder/ai/** = the Neoffice AI site generator; frappe/builder ships no such module. First
+#//// commit 563d9875 2026-02-01.
 """
 Base Provider Interface
 Abstract base class for all AI providers.

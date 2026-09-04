@@ -1,3 +1,6 @@
+#//// Neoffice — added file (no upstream equivalent): pydantic shape of a FrappeBlock — the contract the
+#//// LLM must fill. builder/ai/** = the Neoffice AI site generator; frappe/builder ships no such
+#//// module. First commit 563d9875 2026-02-01.
 """
 Frappe Builder Block Schema
 The core schema for AI-generated blocks - simple and focused.

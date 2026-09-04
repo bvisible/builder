@@ -1,3 +1,6 @@
+#//// Neoffice — added file (no upstream equivalent): per-Website-Profile chrome (Neoffice multi-site);
+#//// subclasses the Single. Neoffice DocType, no upstream counterpart. First commit d9429d0e
+#//// 2026-07-08.
 # Copyright (c) 2026, bVisible and contributors
 # For license information, please see license.txt
 

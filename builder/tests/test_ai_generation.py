@@ -1,3 +1,6 @@
+#//// Neoffice — added file (no upstream equivalent): tests of the page generator's layout sanitiser.
+#//// builder/ai/** = the Neoffice AI site generator; frappe/builder ships no such module. First commit
+#//// 2c44cd3e 2026-02-01.
 """
 Tests for AI Site Generation
 Tests for builder.ai.generators.page_generator

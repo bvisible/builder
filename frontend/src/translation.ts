@@ -1,3 +1,6 @@
+//// Neoffice — added file (no upstream equivalent): SPA i18n: __() looks a string up in the catalog
+//// builder/i18n.py sends at boot. Neoffice-only: upstream's SPA is English-only. First commit 0ab11671
+//// 2026-07-31.
 // Builder i18n. Mirrors the standard Frappe frontend pattern (lms, insights,
 // mail): `__("...")` looks the string up in the catalog the server sends for
 // the logged-in user's language, and falls back to the source string.

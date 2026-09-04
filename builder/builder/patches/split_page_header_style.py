@@ -1,3 +1,6 @@
+#//// Neoffice — added file (no upstream equivalent): splits page_header_style into a preset and a fill,
+#//// carrying each site's choice over. Neoffice migration, listed in patches.txt; frappe/builder has no
+#//// equivalent. First commit d6ed4130 2026-08-05.
 # The band's single enum becomes a preset and a fill.
 #
 # `page_header_style` mixed a composition with a background: "Centered" is an

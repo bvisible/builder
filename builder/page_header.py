@@ -1,3 +1,6 @@
+#//// Neoffice — added file (no upstream equivalent): the shared band at the top of pages the editor
+#//// does not build (blog index, 404, listings). builder/templates/includes/header_footer/** = the
+#//// Neoffice site chrome (Website Header Footer Config). First commit b7271612 2026-08-04.
 """The band at the top of pages the editor does not build.
 
 A generated page opens on a hero the AI composed for it. Every other page —

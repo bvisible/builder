@@ -1,3 +1,5 @@
+#//// Neoffice — added file (no upstream equivalent): row of the plugin registry — an app installed but
+#//// switched off. Neoffice DocType, no upstream counterpart. First commit 45e67b23 2026-08-04.
 import frappe
 from frappe.model.document import Document
 

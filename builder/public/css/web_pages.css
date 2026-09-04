@@ -1,3 +1,6 @@
+/* //// Neoffice — added file (no upstream equivalent): the site's design tokens dressing the markup other
+   //// apps' web views emit (blog cards, article page). Neoffice-only; scoped to selectors builder does
+   //// not own. First commit 45e67b23 2026-08-04. */
 /* Pages frappe renders, wearing the site's design system.
  *
  * The blog app (and any other app with web views) ships Bootstrap-shaped

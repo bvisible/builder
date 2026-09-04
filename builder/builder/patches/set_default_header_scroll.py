@@ -1,3 +1,6 @@
+#//// Neoffice — added file (no upstream equivalent): writes the header scroll behaviour down on configs
+#//// that predate the field. Neoffice migration, listed in patches.txt; frappe/builder has no
+#//// equivalent. First commit 426fcfd3 2026-08-04.
 # Give existing sites the scroll behaviour the field defaults to.
 #
 # The renderer already falls back to "Hide going down"; this only writes it

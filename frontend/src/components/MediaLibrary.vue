@@ -1,3 +1,5 @@
+<!-- //// Neoffice — added file (no upstream equivalent): the Media screen: images and where each one is
+     //// used. Neoffice-only screen. First commit 798e7817 2026-08-03. -->
 <template>
 	<Dialog v-model="show" :options="{ size: '5xl' }">
 		<template #body>

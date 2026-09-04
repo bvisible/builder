@@ -1,3 +1,5 @@
+//// Neoffice — added file (no upstream equivalent): desk form script of the site chrome Single.
+//// Neoffice DocType, no upstream counterpart. First commit 5233329b 2026-02-02.
 // Copyright (c) 2025, Frappe Technologies Pvt Ltd and contributors
 // For license information, please see license.txt
 

@@ -1,3 +1,6 @@
+#//// Neoffice — added file (no upstream equivalent): one piece of client material dropped in the chat,
+#//// plus what the vision pass understood of it. Neoffice DocType, no upstream counterpart. First
+#//// commit 861f6b8c 2026-06-23.
 # Copyright (c) 2026, Neoffice and contributors
 # For license information, please see license.txt
 

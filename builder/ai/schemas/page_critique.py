@@ -1,3 +1,6 @@
+#//// Neoffice — added file (no upstream equivalent): pydantic shape of the visual critique a vision
+#//// model returns. builder/ai/** = the Neoffice AI site generator; frappe/builder ships no such
+#//// module. First commit 631deed3 2026-06-23.
 """
 Schema for the visual verification loop.
 

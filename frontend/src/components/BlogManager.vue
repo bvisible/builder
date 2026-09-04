@@ -1,3 +1,5 @@
+<!-- //// Neoffice — added file (no upstream equivalent): the Articles screen (the blog app's own admin is
+     //// the desk, which the Studio hides). Neoffice-only screen. First commit 45e67b23 2026-08-04. -->
 <template>
 	<!-- The blog app administers itself through the Frappe desk, which the Studio
 	     hides. Without this screen, enabling the blog gives an owner a site

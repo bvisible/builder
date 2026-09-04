@@ -1,3 +1,6 @@
+#//// Neoffice — added file (no upstream equivalent): lifts palette, fonts, radius and copy from the
+#//// client's CURRENT site. builder/ai/** = the Neoffice AI site generator; frappe/builder ships no
+#//// such module. First commit 31c3e3c8 2026-06-23.
 """
 Existing-site extractor — seed the brief from a client's CURRENT website.
 

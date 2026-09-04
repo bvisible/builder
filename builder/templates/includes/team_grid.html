@@ -1,3 +1,5 @@
+{# //// Neoffice — added file (no upstream equivalent): Jinja block: team members from About Us Settings.
+   //// Reusable block the generator may include; Neoffice-only. First commit 747f0f91 2026-02-03. #}
 {# Team Grid Template - Displays team members from About Us Settings #}
 {% set about_us = frappe.get_doc("About Us Settings") if frappe.db.exists("About Us Settings", "About Us Settings") else None %}
 

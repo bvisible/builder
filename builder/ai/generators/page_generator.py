@@ -1,3 +1,6 @@
+#//// Neoffice — added file (no upstream equivalent): the page generator itself: prompt, LLM call, block
+#//// repair, save. builder/ai/** = the Neoffice AI site generator; frappe/builder ships no such module.
+#//// First commit 563d9875 2026-02-01.
 """
 Page Generator - Creative AI Page Generation
 Direct LLM generation with full creative freedom.

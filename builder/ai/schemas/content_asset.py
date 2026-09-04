@@ -1,3 +1,6 @@
+#//// Neoffice — added file (no upstream equivalent): pydantic shapes for understood client uploads
+#//// (image, document). builder/ai/** = the Neoffice AI site generator; frappe/builder ships no such
+#//// module. First commit 861f6b8c 2026-06-23.
 """
 Schemas for client content understanding.
 

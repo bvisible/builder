@@ -1,3 +1,5 @@
+#//// Neoffice — added file (no upstream equivalent): schema package exports. builder/ai/** = the
+#//// Neoffice AI site generator; frappe/builder ships no such module. First commit 563d9875 2026-02-01.
 # AI Schemas Module
 # Pydantic schemas for Frappe Builder blocks
 

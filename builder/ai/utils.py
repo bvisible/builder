@@ -1,3 +1,6 @@
+#//// Neoffice — added file (no upstream equivalent): shared helpers of the AI module (block ids,
+#//// kebab/camel, sanitising). builder/ai/** = the Neoffice AI site generator; frappe/builder ships no
+#//// such module. First commit 9e4a19d5 2026-02-01.
 """
 AI Module Utilities
 Shared utilities and constants for the AI generation module.

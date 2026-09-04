@@ -1,3 +1,6 @@
+#//// Neoffice — added file (no upstream equivalent): the thin blog API behind the Studio's Articles
+#//// screen (the desk is hidden from site owners). Neoffice-only; frappe/builder has no blog
+#//// integration. First commit 45e67b23 2026-08-04.
 """Blog management for the Studio.
 
 The blog app's own admin interface is the Frappe desk, which the Studio hides

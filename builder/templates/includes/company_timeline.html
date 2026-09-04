@@ -1,3 +1,6 @@
+{# //// Neoffice — added file (no upstream equivalent): Jinja block: company milestones from About Us
+   //// Settings. Reusable block the generator may include; Neoffice-only. First commit 747f0f91
+   //// 2026-02-03. #}
 {# Company Timeline Template - Displays company milestones from About Us Settings #}
 {% set about_us = frappe.get_doc("About Us Settings") if frappe.db.exists("About Us Settings", "About Us Settings") else None %}
 

@@ -1,3 +1,7 @@
+#//// Neoffice — added file (no upstream equivalent): MIT licence of the vendored UI/UX Pro Max dataset,
+#//// kept verbatim. builder/ai/design_data/** is VENDORED verbatim from
+#//// nextlevelbuilder/ui-ux-pro-max-skill (MIT, upstream f8ac5e12) — re-copy it from there, never
+#//// hand-edit. First commit 5502544c 2026-07-18.
 MIT License
 
 Copyright (c) 2024 Next Level Builder

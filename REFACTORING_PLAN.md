@@ -1,3 +1,6 @@
+<!-- //// Neoffice — added file (no upstream equivalent): design note for the creative-AI rewrite of the
+     //// generator. builder/ai/** = the Neoffice AI site generator; frappe/builder ships no such module.
+     //// First commit 95d9df5f 2026-02-03. -->
 # Plan de Refactoring : AI Créative pour Frappe Builder
 
 ## Vision

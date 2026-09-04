@@ -1,3 +1,6 @@
+#//// Neoffice — added file (no upstream equivalent): renders the site header and footer; THE seat of
+#//// the chrome for every consumer. builder/templates/includes/header_footer/** = the Neoffice site
+#//// chrome (Website Header Footer Config). First commit 5233329b 2026-02-02.
 # Copyright (c) 2025, Frappe Technologies Pvt Ltd and contributors
 # For license information, please see license.txt
 

@@ -1,3 +1,6 @@
+#//// Neoffice — added file (no upstream equivalent): level-2 plugins: putting a new Frappe app on the
+#//// bench and taking it off again. Neoffice-only; frappe/builder has no plugin notion. First commit
+#//// 84a84588 2026-08-04.
 """Installing and removing plugins that are Frappe apps.
 
 Level 1 — a plugin the bench already carries — is a row and a switch

@@ -1,3 +1,6 @@
+#//// Neoffice — added file (no upstream equivalent): replaces generated placeholder images with the
+#//// client's own photos. builder/ai/** = the Neoffice AI site generator; frappe/builder ships no such
+#//// module. First commit cef6462a 2026-06-23.
 """
 Match real client photos to generated page image slots.
 

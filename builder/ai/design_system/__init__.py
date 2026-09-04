@@ -1,3 +1,6 @@
+#//// Neoffice — added file (no upstream equivalent): design-system package: tokens, base styles,
+#//// themes. builder/ai/** = the Neoffice AI site generator; frappe/builder ships no such module. First
+#//// commit 563d9875 2026-02-01.
 # Design System Module
 # Design tokens, styles, and themes for consistent UI generation
 

@@ -1,3 +1,5 @@
+<!-- //// Neoffice — added file (no upstream equivalent): the Studio's own sidebar rendered inside the
+     //// cockpit, with DashboardSidebar as fallback. Neoffice-only chrome. First commit 575f427e 2026-06-13. -->
 <template>
 	<DashboardSidebar v-if="failed" />
 	<template v-else>

@@ -1,3 +1,6 @@
+#//// Neoffice — added file (no upstream equivalent): inspiration package: capture a site or an image
+#//// and feed the brief. builder/ai/** = the Neoffice AI site generator; frappe/builder ships no such
+#//// module. First commit 5c48fc99 2026-02-04.
 """
 Inspiration Module for Builder AI
 

@@ -1,3 +1,6 @@
+<!-- //// Neoffice — added file (no upstream equivalent): Settings > Theme: colours, fonts, header, menu and
+     //// footer of the site chrome. builder/templates/includes/header_footer/** = the Neoffice site chrome
+     //// (Website Header Footer Config). First commit 050b8aa3 2026-07-30. -->
 <template>
 	<div v-if="!loaded" class="text-base text-ink-gray-5">{{ __("Loading...") }}</div>
 	<div v-else class="flex flex-col gap-4">

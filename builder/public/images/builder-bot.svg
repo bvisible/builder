@@ -1,3 +1,5 @@
+<!-- //// Neoffice — added file (no upstream equivalent): the avatar of the AI assistant in the Studio chat.
+     //// Neoffice-only asset. First commit 0d32dfb5 2026-02-06. -->
 <svg xmlns="http://www.w3.org/2000/svg" width="48" height="48" viewBox="0 0 48 48" fill="none">
   <rect width="48" height="48" rx="24" fill="url(#grad)"/>
   <rect x="10" y="10" width="12" height="12" rx="3" fill="white" fill-opacity="0.9"/>

@@ -1,3 +1,6 @@
+#//// Neoffice — added file (no upstream equivalent): theme registry the brief picks from. builder/ai/**
+#//// = the Neoffice AI site generator; frappe/builder ships no such module. First commit 563d9875
+#//// 2026-02-01.
 """
 Design Themes
 Creative visual themes for AI-generated pages.

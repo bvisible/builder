@@ -1,3 +1,5 @@
+#//// Neoffice — added file (no upstream equivalent): one visual theme (creative). builder/ai/** = the
+#//// Neoffice AI site generator; frappe/builder ships no such module. First commit 563d9875 2026-02-01.
 """
 Creative Theme
 Bold, expressive design for creative agencies and portfolios.

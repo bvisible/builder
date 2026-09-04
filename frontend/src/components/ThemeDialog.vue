@@ -1,3 +1,6 @@
+<!-- //// Neoffice — added file (no upstream equivalent): the Theme screen as its own dialog — it is what a
+     //// site owner touches most. builder/templates/includes/header_footer/** = the Neoffice site chrome
+     //// (Website Header Footer Config). First commit 426fcfd3 2026-08-04. -->
 <template>
 	<!-- The theme is not a setting. It is the thing a site owner touches most,
 	     and it was three clicks deep under Settings — same reasoning as Media. -->

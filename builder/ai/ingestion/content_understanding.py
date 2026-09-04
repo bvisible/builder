@@ -1,3 +1,6 @@
+#//// Neoffice — added file (no upstream equivalent): classifies the material a client drops in the chat
+#//// into Builder Content Asset. builder/ai/** = the Neoffice AI site generator; frappe/builder ships
+#//// no such module. First commit 861f6b8c 2026-06-23.
 """
 Client content ingestion — understand uploaded assets via vision/LLM.
 

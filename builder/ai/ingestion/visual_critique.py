@@ -1,3 +1,6 @@
+#//// Neoffice — added file (no upstream equivalent): a vision model reviews a screenshot of a generated
+#//// page and lists visible defects. builder/ai/** = the Neoffice AI site generator; frappe/builder
+#//// ships no such module. First commit 631deed3 2026-06-23.
 """
 Visual verification loop — a vision model reviews a SCREENSHOT of a generated
 page and reports concrete visible problems, so the generator can fix them

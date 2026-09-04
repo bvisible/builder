@@ -1,5 +1,8 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
+#//// Neoffice — added file (no upstream equivalent): data-integrity guardrail for the CSVs (vendored).
+#//// builder/ai/design_data/** is VENDORED verbatim from nextlevelbuilder/ui-ux-pro-max-skill (MIT,
+#//// upstream f8ac5e12) — re-copy it from there, never hand-edit. First commit 5502544c 2026-07-18.
 """
 Data integrity guardrail for ui-ux-pro-max. Stdlib-only, no pytest dependency,
 so it can run as a standalone pre-publish/CI check:

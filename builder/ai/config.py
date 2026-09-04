@@ -1,3 +1,6 @@
+#//// Neoffice — added file (no upstream equivalent): resolves the AI settings — site_config first
+#//// (operator layer), then Builder Settings. builder/ai/** = the Neoffice AI site generator;
+#//// frappe/builder ships no such module. First commit 563d9875 2026-02-01.
 """
 AI Configuration Module
 

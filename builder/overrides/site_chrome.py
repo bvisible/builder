@@ -1,3 +1,6 @@
+#//// Neoffice — added file (no upstream equivalent): legacy chrome injection for migrated client sites
+#//// (WordPress imports) on non-Builder pages. Neoffice-only; no-op unless site_config sets
+#//// builder_legacy_site_chrome. First commit cf86269e 2026-07-06.
 """Legacy site chrome injection for migrated client sites.
 
 Some client sites (e.g. WordPress migrations like blowbackshop.ch) embed a Builder

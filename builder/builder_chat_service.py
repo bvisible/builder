@@ -1,3 +1,6 @@
+#//// Neoffice — added file (no upstream equivalent): the conversational service behind the AI chat:
+#//// collects the brief, drives generation. builder/ai/** = the Neoffice AI site generator;
+#//// frappe/builder ships no such module. First commit 0d32dfb5 2026-02-06.
 # Copyright (c) 2025, Frappe Technologies Pvt Ltd and contributors
 # For license information, please see license.txt
 

@@ -1,3 +1,6 @@
+#//// Neoffice — added file (no upstream equivalent): writes the header style down on configs that
+#//// predate the field. Neoffice migration, listed in patches.txt; frappe/builder has no equivalent.
+#//// First commit 07101da2 2026-08-03.
 # Give existing sites a header style.
 #
 # The field arrived after these configs were created, so they carry no value

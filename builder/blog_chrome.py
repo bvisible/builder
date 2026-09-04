@@ -1,3 +1,6 @@
+#//// Neoffice — added file (no upstream equivalent): makes the blog wear the site's design by swapping
+#//// context.template in update_website_context. Neoffice-only; frappe/builder has no blog integration.
+#//// First commit 5e84ac4e 2026-08-04.
 """The blog, wearing the site's design.
 
 Frappe lets a page choose its own template: `base_template_page` reads

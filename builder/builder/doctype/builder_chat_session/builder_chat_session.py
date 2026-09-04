@@ -1,3 +1,5 @@
+#//// Neoffice — added file (no upstream equivalent): the AI chat session: the brief it saved, the pages
+#//// it produced. Neoffice DocType, no upstream counterpart. First commit 0d32dfb5 2026-02-06.
 # Copyright (c) 2025, Frappe Technologies Pvt Ltd and contributors
 # For license information, please see license.txt
 

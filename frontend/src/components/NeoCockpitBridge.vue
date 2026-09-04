@@ -1,3 +1,6 @@
+<!-- //// Neoffice — added file (no upstream equivalent): mounts window.NeoCockpit (frappe-sidebar-react)
+     //// around the Studio dashboard. Neoffice-only chrome; the native DashboardSidebar stays as the
+     //// fallback. First commit 575f427e 2026-06-13. -->
 <template>
   <div
     ref="host"

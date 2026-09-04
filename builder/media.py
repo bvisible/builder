@@ -1,3 +1,6 @@
+#//// Neoffice — added file (no upstream equivalent): the media screen: every uploaded image and the
+#//// pages whose blocks JSON actually references it. Neoffice-only screen of the Studio. First commit
+#//// 798e7817 2026-08-03.
 # The site's media, and where each item is actually used.
 #
 # Every image a client uploads ends up in the File doctype, and its URL is

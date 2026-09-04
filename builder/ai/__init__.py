@@ -1,3 +1,6 @@
+#//// Neoffice — added file (no upstream equivalent): package root of the AI generator; lazy re-exports
+#//// so importing builder.ai stays cheap. builder/ai/** = the Neoffice AI site generator;
+#//// frappe/builder ships no such module. First commit 563d9875 2026-02-01.
 # Builder AI Module
 # Provides AI-powered creative generation for Frappe Builder pages
 #

@@ -1,3 +1,6 @@
+#//// Neoffice — added file (no upstream equivalent): the see - critique - fix - re-check loop around
+#//// visual_critique. builder/ai/** = the Neoffice AI site generator; frappe/builder ships no such
+#//// module. First commit 66e09422 2026-06-23.
 """
 Visual verification loop — the second half: see → critique → FIX → re-check.
 

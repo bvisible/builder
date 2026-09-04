@@ -1,3 +1,6 @@
+#//// Neoffice — added file (no upstream equivalent): registry of reusable Jinja components the
+#//// generator may include. Neoffice DocType, no upstream counterpart. First commit 057ddaaa
+#//// 2026-02-02.
 # Copyright (c) 2025, Frappe Technologies Pvt Ltd and contributors
 # For license information, please see license.txt
 

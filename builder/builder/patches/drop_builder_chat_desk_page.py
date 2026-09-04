@@ -1,3 +1,6 @@
+#//// Neoffice — added file (no upstream equivalent): removes the old builder-chat desk Page now that
+#//// the chat lives in the SPA. Neoffice migration, listed in patches.txt; frappe/builder has no
+#//// equivalent. First commit 6e7b3c81 2026-07-31.
 import frappe
 
 

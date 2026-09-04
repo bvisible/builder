@@ -1,3 +1,6 @@
+<!-- //// Neoffice — added file (no upstream equivalent): how builder/ai is laid out and how a page gets
+     //// generated. builder/ai/** = the Neoffice AI site generator; frappe/builder ships no such module.
+     //// First commit 9e4a19d5 2026-02-01. -->
 # Builder AI Module
 
 AI-powered page generation for Frappe Builder using a multi-pass pipeline architecture.

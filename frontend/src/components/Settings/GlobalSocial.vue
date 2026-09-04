@@ -1,3 +1,5 @@
+<!-- //// Neoffice — added file (no upstream equivalent): Settings > Social: the footer's social links.
+     //// Neoffice-only settings tab. First commit 3a033121 2026-08-04. -->
 <template>
 	<div v-if="!loaded" class="text-base text-ink-gray-5">{{ __("Loading...") }}</div>
 	<div v-else class="flex flex-col gap-4">

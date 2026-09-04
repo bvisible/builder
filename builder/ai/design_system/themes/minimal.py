@@ -1,3 +1,5 @@
+#//// Neoffice — added file (no upstream equivalent): one visual theme (minimal). builder/ai/** = the
+#//// Neoffice AI site generator; frappe/builder ships no such module. First commit 563d9875 2026-02-01.
 """
 Minimal Theme
 Ultra-clean design with maximum whitespace and typography focus.

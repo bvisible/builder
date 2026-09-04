@@ -1,3 +1,6 @@
+#//// Neoffice — added file (no upstream equivalent): pydantic shape of a generated article.
+#//// builder/ai/** = the Neoffice AI site generator; frappe/builder ships no such module. First commit
+#//// d2e07f6d 2026-08-04.
 """The shape of a generated article.
 
 Kept deliberately small. A blog post is mostly prose, and the fields the model

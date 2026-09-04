@@ -1,3 +1,6 @@
+#//// Neoffice — added file (no upstream equivalent): renames the Unpress-branded plugin doctype to
+#//// Website Plugin. Neoffice migration, listed in patches.txt; frappe/builder has no equivalent. First
+#//// commit 45e67b23 2026-08-04.
 # The plugin registry and the chrome Web Templates were briefly named after the
 # Unpress edition before they shipped.
 #

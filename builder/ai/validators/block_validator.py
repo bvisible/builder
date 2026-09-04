@@ -1,3 +1,6 @@
+#//// Neoffice — added file (no upstream equivalent): validates and REPAIRS LLM block output instead of
+#//// rejecting the generation. builder/ai/** = the Neoffice AI site generator; frappe/builder ships no
+#//// such module. First commit 563d9875 2026-02-01.
 """
 Block Validator - Validation + auto-repair for FrappeBlock structures.
 Fixes common LLM output issues instead of rejecting the entire generation.

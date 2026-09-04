@@ -1,3 +1,5 @@
+<!-- //// Neoffice — added file (no upstream equivalent): the Create-with-AI conversation, moved out of a
+     //// desk page into the Studio SPA. Neoffice-only screen. First commit 0ab11671 2026-07-31. -->
 <template>
 				<div class="flex h-full flex-1 flex-col gap-4 overflow-hidden p-6">
 				<div class="flex items-center justify-between">

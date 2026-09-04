@@ -1,3 +1,5 @@
+{# //// Neoffice — added file (no upstream equivalent): Jinja block: contact details from Website Settings.
+   //// Reusable block the generator may include; Neoffice-only. First commit 747f0f91 2026-02-03. #}
 {# Contact Info Template - Displays company contact information from Website Settings #}
 {% set ws = frappe.get_doc("Website Settings") %}
 {% set company = frappe.db.get_single_value("Global Defaults", "default_company") %}

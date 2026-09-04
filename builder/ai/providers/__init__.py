@@ -1,3 +1,6 @@
+#//// Neoffice — added file (no upstream equivalent): provider registry (OpenAI, Ollama, Codex CLI).
+#//// builder/ai/** = the Neoffice AI site generator; frappe/builder ships no such module. First commit
+#//// 563d9875 2026-02-01.
 # AI Providers Module
 # Supports multiple AI providers: OpenAI, Ollama, Anthropic
 

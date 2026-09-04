@@ -1,3 +1,5 @@
+<!-- //// Neoffice — added file (no upstream equivalent): Settings > Plugins: the registry switch and level-2
+     //// install. Neoffice-only settings tab. First commit 45e67b23 2026-08-04. -->
 <template>
 	<div v-if="loading" class="text-base text-ink-gray-5">{{ __("Loading...") }}</div>
 	<div v-else class="flex flex-col gap-4">

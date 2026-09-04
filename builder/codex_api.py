@@ -1,3 +1,6 @@
+#//// Neoffice — added file (no upstream equivalent): pairs the Studio with a local Codex CLI from
+#//// Settings > AI; no credential ever reaches the browser. Neoffice/Unpress-only surface;
+#//// frappe/builder has no AI settings. First commit 2f8cb2c4 2026-08-03.
 # Pair the Studio with a local Codex CLI (ChatGPT plan) from Settings > AI.
 #
 # Two ways in, both server-side only — no credential ever reaches the browser:

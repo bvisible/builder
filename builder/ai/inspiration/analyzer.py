@@ -1,3 +1,6 @@
+#//// Neoffice — added file (no upstream equivalent): extracts colours and layout signals from an
+#//// inspiration image. builder/ai/** = the Neoffice AI site generator; frappe/builder ships no such
+#//// module. First commit 5c48fc99 2026-02-04.
 """
 Design Analyzer for Inspiration Module
 

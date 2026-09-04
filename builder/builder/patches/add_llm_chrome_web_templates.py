@@ -1,3 +1,6 @@
+#//// Neoffice — added file (no upstream equivalent): installs the navbar/footer Web Templates frappe's
+#//// base.html renders. Neoffice migration, listed in patches.txt; frappe/builder has no equivalent.
+#//// First commit cf86269e 2026-07-06.
 import frappe
 
 # The .llm-navbar wrapper scopes CSS fixes (e.g. hover underline) on non-Builder pages.
