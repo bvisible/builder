@@ -197,11 +197,16 @@ class TestBuilderPage(FrappeTestCase):
 
 		try:
 			content = get_response_content("/client-script-test")
+			#//// Neoffice — whole_document: a page's client scripts are <script>
+			#//// and <link> tags on the document, not blocks, so they sit outside
+			#//// div.builder-page-content that get_html_for now scopes to.
 			self.assertTrue(
-				client_script_js.public_url in get_html_for(content, "attribute", "src", list_all=True)
+				client_script_js.public_url
+				in get_html_for(content, "attribute", "src", list_all=True, whole_document=True)
 			)
 			self.assertTrue(
-				client_script_css.public_url in get_html_for(content, "attribute", "href", list_all=True)
+				client_script_css.public_url
+				in get_html_for(content, "attribute", "href", list_all=True, whole_document=True)
 			)
 		finally:
 			client_script_js_row.delete()
@@ -1604,10 +1609,39 @@ component.update({
 		cls.page_with_dynamic_route.delete()
 
 
-def get_html_for(html, type, value, index=None, only_content=False, list_all=False):
+#//// Neoffice — added. Our fork renders a page's blocks INSIDE a full site
+#//// document: the cart drawer, the site header, the shared opening band that
+#//// prints the page title (1a203079 "Une seule bande d'ouverture sur les pages
+#//// générées", b7271612 "The page header, ported from Unpress") and the site
+#//// footer all sit before or after the content. Upstream rendered the blocks
+#//// bare, so every assertion below reads the FIRST <h1>/<a>/<img>/<span> of the
+#//// document — which is now the cart drawer's "Start Shopping" link, the site
+#//// logo, or the band's title, never the block under test.
+#////
+#//// The anchor is the fork's own: 36cbdc0b wraps the page's blocks in
+#//// div.builder-page-content (it rewrites their <body> into a <div>, precisely
+#//// because the page stopped being the document). Scoping to it is what these
+#//// tests always meant by "the page", and it survives new chrome — a negative
+#//// list of chrome selectors would not have covered the cart drawer.
+#//// Falls back to the whole document when the wrapper is absent, so component
+#//// and preview renders still work. That the chrome renders at all is asserted
+#//// on its own in TestBuilderPageSiteChrome, so scoping here loses no coverage;
+#//// pass whole_document=True to look at the entire page.
+PAGE_CONTENT_SELECTOR = "div.builder-page-content"
+
+
+def page_content_soup(html, whole_document=False):
+	"""The page's own blocks, without the site chrome rendered around them."""
 	from bs4 import BeautifulSoup
 
 	soup = BeautifulSoup(html, "html.parser")
+	if whole_document:
+		return soup
+	return soup.select_one(PAGE_CONTENT_SELECTOR) or soup
+
+
+def get_html_for(html, type, value, index=None, only_content=False, list_all=False, whole_document=False):
+	soup = page_content_soup(html, whole_document=whole_document)
 	if type == "tag":
 		results = soup.find_all(value)
 		if list_all:
@@ -1626,3 +1660,59 @@ def get_html_for(html, type, value, index=None, only_content=False, list_all=Fal
 			results[index] if index is not None and index < len(results) else results[0] if results else None
 		)
 		return result.get(value) if result and result.get(value) else ""
+
+
+#//// Neoffice — added class (no upstream equivalent). get_html_for() now looks
+#//// only inside div.builder-page-content; without this, the site chrome could
+#//// vanish from the product and every test in this file would still pass.
+class TestBuilderPageSiteChrome(FrappeTestCase):
+	"""The site chrome our fork renders around every published page."""
+
+	# Built once, not per test: frappe caches the route -> docname resolution, so
+	# deleting the page and recreating it at the same route between tests leaves
+	# the resolver pointing at the deleted name and every later render is a 404
+	# ("Builder Page page-xxxxxxxx not found"), which passes alone and fails in
+	# the suite.
+	@classmethod
+	def setUpClass(cls):
+		super().setUpClass()
+		body = Block(element="div", originalElement="body")
+		body.attach_children(Block(element="h1", innerHTML="The Page Own Heading"))
+		cls.page = frappe.get_doc(
+			{
+				"doctype": "Builder Page",
+				"page_title": "Site Chrome Test",
+				"published": 1,
+				"route": "/site-chrome-test",
+				"blocks": body.as_json(wrap_in_array=True),
+			}
+		).insert()
+		cls.content = get_response_content("/site-chrome-test")
+		cls.addClassCleanup(cls.page.delete)
+
+	def test_page_blocks_are_wrapped_in_builder_page_content(self):
+		"""The anchor get_html_for relies on (36cbdc0b)."""
+		self.assertIsNotNone(page_content_soup(self.content).select_one("h1"))
+		self.assertIn(PAGE_CONTENT_SELECTOR.split(".")[-1], self.content)
+
+	def test_site_header_is_rendered(self):
+		soup = page_content_soup(self.content, whole_document=True)
+		self.assertIsNotNone(soup.select_one("header.site-header"))
+
+	def test_opening_band_prints_the_page_title(self):
+		soup = page_content_soup(self.content, whole_document=True)
+		band = soup.select_one("section.site-page-header")
+		self.assertIsNotNone(band)
+		self.assertIn("Site Chrome Test", band.get_text())
+
+	def test_scoping_is_load_bearing(self):
+		"""Un-scoped, the first h1 is the band's title, not the page's own."""
+		# This is the failure the whole change is about: without the scope the
+		# assertions in this file read the chrome instead of the blocks.
+		self.assertEqual(
+			"The Page Own Heading", get_html_for(self.content, "tag", "h1", only_content=True)
+		)
+		self.assertEqual(
+			"Site Chrome Test",
+			get_html_for(self.content, "tag", "h1", only_content=True, whole_document=True),
+		)
