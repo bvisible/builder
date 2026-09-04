@@ -105,35 +105,36 @@ const selectedItemDoc = computed(() => {
 });
 
 const pageSettings = {
-	//// Neoffice i18n — upstream hardcodes these labels in English (b80393e4).
+	//// Neoffice i18n — every label and title in these two objects is wrapped in __(); upstream
+	//// hardcodes them in English (b80393e4). The markers below are the per-line record.
 	title: __("Current Page"),
 	items: [
 		{
-			//// Neoffice i18n — upstream hardcodes these labels in English (b80393e4).
+			//// Neoffice i18n (b80393e4)
 			label: __("General"),
 			value: "page_general",
 			component: PageGeneral,
-			//// Neoffice i18n — upstream hardcodes these labels in English (b80393e4).
+			//// Neoffice i18n (b80393e4)
 			title: __("General"),
 			icon: "lucide-settings",
 		},
-		//// Neoffice i18n — upstream hardcodes these labels in English (b80393e4).
+		//// Neoffice i18n (b80393e4)
 		{ label: __("Code"), value: "page_code", component: PageCode, title: __("Page Code"), icon: "lucide-code" },
 		{
-			//// Neoffice i18n — upstream hardcodes these labels in English (b80393e4).
+			//// Neoffice i18n (b80393e4)
 			label: __("Meta"),
 			value: "page_meta",
 			component: PageMeta,
-			//// Neoffice i18n — upstream hardcodes these labels in English (b80393e4).
+			//// Neoffice i18n (b80393e4)
 			title: __("Meta"),
 			icon: "lucide-square-dashed-bottom-code",
 		},
 		{
-			//// Neoffice i18n — upstream hardcodes these labels in English (b80393e4).
+			//// Neoffice i18n (b80393e4)
 			label: __("Analytics"),
 			value: "page_analytics",
 			component: PageAnalytics,
-			//// Neoffice i18n — upstream hardcodes these labels in English (b80393e4).
+			//// Neoffice i18n (b80393e4)
 			title: __("Page Analytics"),
 			icon: "lucide-chart-bar",
 		},
@@ -141,76 +142,76 @@ const pageSettings = {
 };
 
 const globalSettings = {
-	//// Neoffice i18n — upstream hardcodes these labels in English (b80393e4).
+	//// Neoffice i18n (b80393e4)
 	title: __("Global"),
 	items: [
 		{
-			//// Neoffice i18n — upstream hardcodes these labels in English (b80393e4).
+			//// Neoffice i18n (b80393e4)
 			label: __("General"),
 			value: "global_general",
 			component: GlobalGeneral,
-			//// Neoffice i18n — upstream hardcodes these labels in English (b80393e4).
+			//// Neoffice i18n (b80393e4)
 			title: __("General"),
 			icon: "lucide-settings",
 			disabled: false,
 		},
-		//// Neoffice i18n — upstream hardcodes these labels in English (b80393e4).
+		//// Neoffice i18n (b80393e4)
 		{ label: __("Code"), value: "global_code", component: GlobalCode, title: __("Global Code"), icon: "lucide-code" },
 		{
-			//// Neoffice i18n — upstream hardcodes these labels in English (b80393e4).
+			//// Neoffice i18n (b80393e4)
 			label: __("Redirects"),
 			value: "global_redirects",
 			component: GlobalRedirects,
-			//// Neoffice i18n — upstream hardcodes these labels in English (b80393e4).
+			//// Neoffice i18n (b80393e4)
 			title: __("Redirects"),
 			icon: "lucide-shuffle",
 		},
 		{
-			//// Neoffice i18n — upstream hardcodes these labels in English (b80393e4).
+			//// Neoffice i18n (b80393e4)
 			label: __("Robots"),
 			value: "global_robots",
 			component: PageRobots,
-			//// Neoffice i18n — upstream hardcodes these labels in English (b80393e4).
+			//// Neoffice i18n (b80393e4)
 			title: __("Robots.txt"),
 			icon: "lucide-bot",
 		},
 		...(window.is_fc_site || window.is_developer_mode
 			? [
 					{
-						//// Neoffice i18n — upstream hardcodes these labels in English (b80393e4).
+						//// Neoffice i18n (b80393e4)
 						label: __("Domains"),
 						value: "global_domains",
 						component: GlobalDomains,
-						//// Neoffice i18n — upstream hardcodes these labels in English (b80393e4).
+						//// Neoffice i18n (b80393e4)
 						title: __("Custom Domains"),
 						icon: "lucide-globe",
 					},
 				]
 			: []),
 		{
-			//// Neoffice i18n — upstream hardcodes these labels in English (b80393e4).
+			//// Neoffice i18n (b80393e4)
 			label: __("Analytics"),
 			value: "global_analytics",
 			component: GlobalAnalytics,
-			//// Neoffice i18n — upstream hardcodes these labels in English (b80393e4).
+			//// Neoffice i18n (b80393e4)
 			title: __("Site Analytics"),
 			icon: "lucide-chart-bar",
 		},
 		{
-			//// Neoffice i18n — upstream hardcodes these labels in English (b80393e4).
+			//// Neoffice i18n (b80393e4)
 			label: __("Developer"),
 			value: "global_developer",
 			component: GlobalDeveloper,
-			//// Neoffice i18n — upstream hardcodes these labels in English (b80393e4).
+			//// Neoffice i18n (b80393e4)
 			title: __("Developer Settings"),
 			icon: "lucide-terminal",
 		},
 		{
-			//// Neoffice i18n — upstream hardcodes these labels in English (b80393e4).
+			//// Neoffice i18n (b80393e4)
 			label: __("AI"),
 			value: "global_ai",
 			component: GlobalAI,
-			//// Neoffice i18n — upstream hardcodes these labels in English (b80393e4).
+			//// Neoffice i18n (b80393e4)
 			title: __("AI Settings"),
 			icon: "lucide-sparkles",
 		},
