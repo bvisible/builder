@@ -550,10 +550,13 @@ class DesignBrief(BaseModel):
         """Convert to a suggestive prompt section for the AI - guidelines not mandates."""
         bg_sequence = " → ".join(self.section_backgrounds)
         typo = self.typography
-        heights = self.section_heights
         paddings = self.section_paddings
 
-        # Heights section - recommend minHeight for heroes
+        # Heights: a recommended range, not this brief's own hero_min_height.
+        # ec1758f0 moved the brief's value out of the prompt and into code
+        # (page_generator._fix_block_styles applies it to hero blocks), so
+        # self.section_heights is deliberately not read here - the local that
+        # bound it was left behind unused and read as a regression.
         heights_section = """
 ### Section Heights
 - Hero sections: use minHeight "70vh" to "90vh" for visual impact

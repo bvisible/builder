@@ -1,3 +1,6 @@
+#//// Neoffice - added file (no upstream equivalent). Covers builder/ai/**, the
+#//// Neoffice AI site-generation subsystem (first commit 71e8284d, 2026-02-03);
+#//// frappe/builder upstream ships neither the module nor these tests.
 """
 Tests for AI Schemas Module
 Tests for builder.ai.schemas
@@ -61,16 +64,28 @@ class TestFrappeBlock(unittest.TestCase):
         self.assertIsNotNone(block.blockId)
 
     def test_block_with_styles(self):
-        """Test block with styles"""
+        """A block carries its styles as plain camelCase dicts."""
+        # Changed: baseStyles / mobileStyles were typed FrappeStyles until 95d9df5f
+        # ("creative AI generation with full freedom"), which retyped them to
+        # Optional[dict] so the model can never reject a CSS property the AI
+        # invents. FrappeStyles survives as the documented vocabulary (see
+        # TestFrappeStyles), not as a gate on what a block may carry.
         block = FrappeBlock(
             blockId="test-block",
             element="section",
-            baseStyles=FrappeStyles(padding="20px"),
-            mobileStyles=FrappeStyles(padding="10px"),
+            baseStyles={"padding": "20px"},
+            mobileStyles={"padding": "10px"},
         )
         self.assertEqual(block.blockId, "test-block")
-        self.assertEqual(block.baseStyles.padding, "20px")
-        self.assertEqual(block.mobileStyles.padding, "10px")
+        self.assertEqual(block.baseStyles["padding"], "20px")
+        self.assertEqual(block.mobileStyles["padding"], "10px")
+
+    def test_block_styles_reject_a_model(self):
+        """A FrappeStyles instance is not a style dict and is refused."""
+        # Pins the dict contract above: the failure mode this replaces was a
+        # FrappeStyles passed where a dict is expected, which pydantic rejects.
+        with self.assertRaises(ValidationError):
+            FrappeBlock(element="section", baseStyles=FrappeStyles(padding="20px"))
 
     def test_block_with_children(self):
         """Test block with nested children"""
@@ -89,7 +104,7 @@ class TestFrappeBlock(unittest.TestCase):
             blockId="test",
             element="div",
             innerHTML="Hello",
-            baseStyles=FrappeStyles(color="red"),
+            baseStyles={"color": "red"},  # dict, not FrappeStyles - see test_block_with_styles
         )
         result = block.to_dict()
         self.assertEqual(result["blockId"], "test")
@@ -132,9 +147,15 @@ class TestSectionHeights(unittest.TestCase):
 
     def test_default_values(self):
         """Test default section height values"""
+        # Changed: hero heights defaulted to "90vh" / "70vh" until ec1758f0
+        # ("enable hero minHeight"), which made them Optional and None -
+        # "Suggested section heights - AI has freedom to adapt". Unset now means
+        # "no opinion", which is what lets the AI size its own hero; a brief that
+        # does carry a height still wins (see TestHeroHeightFromBrief in
+        # test_ai_generation).
         heights = SectionHeights()
-        self.assertEqual(heights.hero_min_height, "90vh")
-        self.assertEqual(heights.hero_min_height_mobile, "70vh")
+        self.assertIsNone(heights.hero_min_height)
+        self.assertIsNone(heights.hero_min_height_mobile)
         self.assertEqual(heights.standard_min_height, "auto")
 
     def test_custom_values(self):
@@ -204,25 +225,44 @@ class TestDesignBrief(unittest.TestCase):
         prompt = brief.to_prompt_section()
         self.assertIn("52px", prompt)
         self.assertIn("Poppins", prompt)
-        self.assertIn("TYPOGRAPHY", prompt)
-        self.assertIn("FONTS", prompt)
+        # Changed: the headings read "### TYPOGRAPHY (MANDATORY - USE THESE EXACT
+        # VALUES)" and "### FONTS (MANDATORY ...)" until ec1758f0 turned the brief
+        # from a set of mandates into guidelines. Sizes became suggestions; the
+        # font pair stayed binding, because two pages set in different typefaces
+        # do not read as one site.
+        self.assertIn("### Typography suggestions", prompt)
+        self.assertIn("### Fonts (CONTRACT", prompt)
 
-    def test_to_prompt_section_contains_heights(self):
-        """Test that to_prompt_section includes section heights"""
+    def test_to_prompt_section_suggests_a_hero_height_range_not_the_brief_value(self):
+        """The prompt recommends a hero height range; the brief's own value is not asked of the AI."""
+        # Changed: the prompt used to interpolate the brief under "### SECTION
+        # HEIGHTS (MANDATORY)". ec1758f0 ("enable hero minHeight") replaced that
+        # table with a fixed 70vh-90vh recommendation and, per its own message,
+        # removed "contradictory instructions about minHeight" - the LLM was being
+        # ordered to use an exact height that the code then overwrote anyway.
+        # The brief's value did not stop mattering, it moved out of the prompt and
+        # into code: page_generator._fix_block_styles writes
+        # brief.section_heights.hero_min_height onto any hero block that came back
+        # without one. assertNotIn pins that split so a re-interpolation is caught.
         brief = DesignBrief(
             section_heights=SectionHeights(hero_min_height="95vh"),
         )
         prompt = brief.to_prompt_section()
-        self.assertIn("95vh", prompt)
-        self.assertIn("SECTION HEIGHTS", prompt)
+        self.assertIn("### Section Heights", prompt)
+        self.assertIn('use minHeight "70vh" to "90vh"', prompt)
+        self.assertNotIn("95vh", prompt)
 
     def test_to_prompt_section_contains_paddings(self):
-        """Test that to_prompt_section includes section paddings"""
-        brief = DesignBrief()
+        """The brief's own paddings reach the prompt."""
+        # Changed: the heading read "### SECTION PADDINGS BY TYPE" until ec1758f0
+        # retitled it "### Section Paddings (suggestions)" and dropped the compact
+        # and cta rows (the AI paces its own sections now). Asserting the values
+        # rather than the bare words "Hero" / "Standard", which matched anywhere.
+        brief = DesignBrief(section_paddings={"hero": "120px 24px", "standard": "90px 24px"})
         prompt = brief.to_prompt_section()
-        self.assertIn("SECTION PADDINGS", prompt)
-        self.assertIn("Hero", prompt)
-        self.assertIn("Standard", prompt)
+        self.assertIn("### Section Paddings", prompt)
+        self.assertIn("| Hero | ~120px 24px |", prompt)
+        self.assertIn("| Standard | ~90px 24px |", prompt)
 
     def test_get_border_radius(self):
         """Test border radius getter"""
@@ -242,10 +282,6 @@ class TestDesignBrief(unittest.TestCase):
         self.assertEqual(result["heading_font"], "Montserrat")
         self.assertIn("typography", result)
         self.assertIn("section_heights", result)
-
-
-if __name__ == "__main__":
-    unittest.main()
 
 
 if __name__ == "__main__":
