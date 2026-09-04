@@ -6,6 +6,8 @@ const selectionMode = ref(false);
 const selectedPages = ref(new Set<string>());
 const treeExpanded = ref(true);
 const showTemplatesDialog = ref(false);
+//// Neoffice — the Settings dialog moved out of DashboardSidebar (which the cockpit replaces)
+//// onto the dashboard, so its open state and its tab have to be shared (575f427e, 8f116e8a).
 // shared so the cockpit sidebar wrapper can open Settings too (the dialog
 // itself is rendered on the dashboard, not inside the native sidebar)
 const showSettingsDialog = ref(false);
@@ -32,6 +34,7 @@ export function useDashboardState() {
 		selectedPages,
 		treeExpanded,
 		showTemplatesDialog,
+		//// Neoffice — see above (575f427e, 8f116e8a).
 		showSettingsDialog,
 		settingsTab,
 		lastTemplateGroup,

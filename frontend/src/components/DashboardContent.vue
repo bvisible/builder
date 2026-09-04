@@ -46,6 +46,7 @@
 				v-if="webPages.data?.length && webPages.hasNextPage && displayType !== 'tree'"
 				variant="subtle"
 				size="sm">
+				<!-- //// Neoffice i18n — hardcoded English: the dashboard stayed English on a French bench (bd5dc7f1). -->
 				{{ __("Load More") }}
 			</Button>
 		</section>

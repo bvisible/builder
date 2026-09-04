@@ -1,5 +1,7 @@
 <template>
 	<div class="flex h-screen">
+		<!-- //// Neoffice — the NeoCockpit chrome replaces upstream's DashboardSidebar here; the native
+		     //// sidebar stays as the fallback inside NeoCockpitBuilderSidebar (575f427e). -->
 		<NeoCockpitBuilderSidebar></NeoCockpitBuilderSidebar>
 		<div class="flex w-full flex-1 flex-col overflow-hidden pb-10">
 			<DashboardToolbar class="sticky top-0" />
@@ -9,6 +11,9 @@
 	</div>
 	<BuilderCommandPalette />
 	<TemplatesDialog />
+	<!-- //// Neoffice — the Settings dialog, moved out of DashboardSidebar so it survives the cockpit
+	     //// replacing that sidebar; initialTab lets a cockpit entry open straight on Theme (575f427e,
+	     //// 8f116e8a). -->
 	<Dialog v-model="showSettingsDialog" :dismissable="false" size="5xl" bare>
 		<template #default>
 			<DialogTitle class="sr-only">Global Builder Settings</DialogTitle>
@@ -26,16 +31,23 @@
 <script setup lang="ts">
 import BuilderCommandPalette from "@/components/BuilderCommandPalette.vue";
 import DashboardContent from "@/components/DashboardContent.vue";
+//// Neoffice — upstream imported DashboardSidebar here; it is now pulled in by
+//// NeoCockpitBuilderSidebar instead (575f427e).
 import DashboardHead from "@/components/DashboardHead.vue";
 import DashboardToolbar from "@/components/DashboardToolbar.vue";
+//// Neoffice — see the template above (575f427e).
 import NeoCockpitBuilderSidebar from "@/components/NeoCockpitBuilderSidebar.vue";
 import TemplatesDialog from "@/components/Templates/TemplatesDialog.vue";
+//// Neoffice — the shared dialog state (575f427e, 8f116e8a).
 import { useDashboardState } from "@/composables/useDashboardState";
 import { builderSettings } from "@/data/builderSettings";
 import router, { sessionUser } from "@/router";
 import { prefetchBuilderSettings } from "@/utils/prefetch";
+//// Neoffice — for the Settings dialog above (575f427e).
 import { Dialog } from "frappe-ui";
 import { useTelemetry } from "frappe-ui/frappe";
+//// Neoffice — moved here with the dialog, together with defineAsyncComponent for BuilderSettings
+//// (575f427e).
 import { DialogDescription, DialogTitle } from "reka-ui";
 import { defineAsyncComponent, onMounted, watch } from "vue";
 

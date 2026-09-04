@@ -13,6 +13,10 @@ const useBlockTemplateStore = defineStore("blockTemplateStore", {
 	state: () => ({
 		blockTemplateMap: <Map<string, BlockTemplate>>new Map(),
 		blockTemplateCategoryOptions: [
+			//// Neoffice — the category list the AI generator picks from: upstream's Basic/Structure/
+			//// Typography/Basic Forms/Form parts describe markup, ours describe page sections, which is
+			//// what a template has to be chosen by (9abf5edc). Note the two upstream form categories are
+			//// dropped here.
 			"Shop",
 			"Hero",
 			"Navbar",
@@ -21,6 +25,7 @@ const useBlockTemplateStore = defineStore("blockTemplateStore", {
 			"Form",
 			"Card",
 			"Structure",
+			//// Neoffice — see the category list above (9abf5edc).
 			"Basic",
 			"Typography",
 			"Media",
@@ -77,6 +82,7 @@ const useBlockTemplateStore = defineStore("blockTemplateStore", {
 			templateName: string,
 			category: BlockTemplate["category"] = "Basic",
 			previewImage: string = "",
+			//// Neoffice — a template carries a description so the generator can choose it (83b20f91).
 			description: string = "",
 		) {
 			const blockString = getBlockString(block);
@@ -91,12 +97,14 @@ const useBlockTemplateStore = defineStore("blockTemplateStore", {
 			} else {
 				args["category"] = category;
 				args["preview"] = previewImage;
+				//// Neoffice — see the description parameter above (83b20f91).
 				args["description"] = description;
 				await builderBlockTemplate.insert.submit(args);
 			}
 			this.blockTemplateMap.delete(templateName);
 			await builderBlockTemplate.reload();
 
+			//// Neoffice — reload() alone left the new template invisible until a page reload (83b20f91).
 			// FIX: Refresh cache to show new template immediately
 			await builderBlockTemplate.fetch();
 

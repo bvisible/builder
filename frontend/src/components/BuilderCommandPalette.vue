@@ -317,6 +317,7 @@ const allSettingsCommands: SettingsCommand[] = [
 		section: "global",
 		action: () => openSettings("global_ai"),
 	},
+	//// Neoffice — the Theme screen in the command palette (050b8aa3).
 	{
 		name: "global_theme",
 		title: "Theme",

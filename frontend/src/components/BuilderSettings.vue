@@ -1,6 +1,7 @@
 <template>
 	<div class="flex h-[88vh] max-h-[800px] overflow-hidden">
 		<div class="flex w-48 shrink-0 flex-col gap-5 bg-surface-gray-1 p-4 px-2">
+			<!-- //// Neoffice i18n — upstream hardcodes these labels in English (b80393e4). -->
 			<span class="text-lg-semibold px-2 text-ink-gray-9">{{ __("Settings") }}</span>
 			<div class="flex flex-col gap-0.5" v-for="(item, index) in settingsSidebarItems" :key="index">
 				<span class="text-base-medium mb-2 px-2 text-ink-gray-5">
@@ -20,6 +21,8 @@
 				</Button>
 			</div>
 		</div>
+		<!-- //// Neoffice — the pane scrolls: the AI tab with Advanced open is taller than the dialog and
+		     //// upstream simply clipped it (a2aaae20). -->
 		<!-- overflow-y-auto, not hidden: a tab taller than the pane (the AI tab with
 	     Advanced expanded) was simply clipped, with no way to reach the rest -->
 		<div class="flex flex-1 flex-col gap-5 overflow-y-auto overflow-x-hidden bg-surface-base p-14 px-16 pb-0">
@@ -54,6 +57,8 @@ import GlobalCode from "./Settings/GlobalCode.vue";
 import GlobalDeveloper from "./Settings/GlobalDeveloper.vue";
 import GlobalDomains from "./Settings/GlobalDomains.vue";
 import GlobalGeneral from "./Settings/GlobalGeneral.vue";
+//// Neoffice — the three tabs upstream does not have: Plugins (45e67b23), Social (3a033121) and
+//// Theme (050b8aa3).
 import GlobalPlugins from "./Settings/GlobalPlugins.vue";
 import GlobalSocial from "./Settings/GlobalSocial.vue";
 import GlobalTheme from "./Settings/GlobalTheme.vue";
@@ -100,27 +105,35 @@ const selectedItemDoc = computed(() => {
 });
 
 const pageSettings = {
+	//// Neoffice i18n — upstream hardcodes these labels in English (b80393e4).
 	title: __("Current Page"),
 	items: [
 		{
+			//// Neoffice i18n — upstream hardcodes these labels in English (b80393e4).
 			label: __("General"),
 			value: "page_general",
 			component: PageGeneral,
+			//// Neoffice i18n — upstream hardcodes these labels in English (b80393e4).
 			title: __("General"),
 			icon: "lucide-settings",
 		},
+		//// Neoffice i18n — upstream hardcodes these labels in English (b80393e4).
 		{ label: __("Code"), value: "page_code", component: PageCode, title: __("Page Code"), icon: "lucide-code" },
 		{
+			//// Neoffice i18n — upstream hardcodes these labels in English (b80393e4).
 			label: __("Meta"),
 			value: "page_meta",
 			component: PageMeta,
+			//// Neoffice i18n — upstream hardcodes these labels in English (b80393e4).
 			title: __("Meta"),
 			icon: "lucide-square-dashed-bottom-code",
 		},
 		{
+			//// Neoffice i18n — upstream hardcodes these labels in English (b80393e4).
 			label: __("Analytics"),
 			value: "page_analytics",
 			component: PageAnalytics,
+			//// Neoffice i18n — upstream hardcodes these labels in English (b80393e4).
 			title: __("Page Analytics"),
 			icon: "lucide-chart-bar",
 		},
@@ -128,63 +141,80 @@ const pageSettings = {
 };
 
 const globalSettings = {
+	//// Neoffice i18n — upstream hardcodes these labels in English (b80393e4).
 	title: __("Global"),
 	items: [
 		{
+			//// Neoffice i18n — upstream hardcodes these labels in English (b80393e4).
 			label: __("General"),
 			value: "global_general",
 			component: GlobalGeneral,
+			//// Neoffice i18n — upstream hardcodes these labels in English (b80393e4).
 			title: __("General"),
 			icon: "lucide-settings",
 			disabled: false,
 		},
+		//// Neoffice i18n — upstream hardcodes these labels in English (b80393e4).
 		{ label: __("Code"), value: "global_code", component: GlobalCode, title: __("Global Code"), icon: "lucide-code" },
 		{
+			//// Neoffice i18n — upstream hardcodes these labels in English (b80393e4).
 			label: __("Redirects"),
 			value: "global_redirects",
 			component: GlobalRedirects,
+			//// Neoffice i18n — upstream hardcodes these labels in English (b80393e4).
 			title: __("Redirects"),
 			icon: "lucide-shuffle",
 		},
 		{
+			//// Neoffice i18n — upstream hardcodes these labels in English (b80393e4).
 			label: __("Robots"),
 			value: "global_robots",
 			component: PageRobots,
+			//// Neoffice i18n — upstream hardcodes these labels in English (b80393e4).
 			title: __("Robots.txt"),
 			icon: "lucide-bot",
 		},
 		...(window.is_fc_site || window.is_developer_mode
 			? [
 					{
+						//// Neoffice i18n — upstream hardcodes these labels in English (b80393e4).
 						label: __("Domains"),
 						value: "global_domains",
 						component: GlobalDomains,
+						//// Neoffice i18n — upstream hardcodes these labels in English (b80393e4).
 						title: __("Custom Domains"),
 						icon: "lucide-globe",
 					},
 				]
 			: []),
 		{
+			//// Neoffice i18n — upstream hardcodes these labels in English (b80393e4).
 			label: __("Analytics"),
 			value: "global_analytics",
 			component: GlobalAnalytics,
+			//// Neoffice i18n — upstream hardcodes these labels in English (b80393e4).
 			title: __("Site Analytics"),
 			icon: "lucide-chart-bar",
 		},
 		{
+			//// Neoffice i18n — upstream hardcodes these labels in English (b80393e4).
 			label: __("Developer"),
 			value: "global_developer",
 			component: GlobalDeveloper,
+			//// Neoffice i18n — upstream hardcodes these labels in English (b80393e4).
 			title: __("Developer Settings"),
 			icon: "lucide-terminal",
 		},
 		{
+			//// Neoffice i18n — upstream hardcodes these labels in English (b80393e4).
 			label: __("AI"),
 			value: "global_ai",
 			component: GlobalAI,
+			//// Neoffice i18n — upstream hardcodes these labels in English (b80393e4).
 			title: __("AI Settings"),
 			icon: "lucide-sparkles",
 		},
+		//// Neoffice — the Theme (050b8aa3), Social (3a033121) and Plugins (45e67b23) tabs.
 		{
 			label: __("Theme"),
 			value: "global_theme",

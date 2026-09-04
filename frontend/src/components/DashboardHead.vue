@@ -4,15 +4,20 @@
 	     `__` is installed globally by the translation plugin (src/translation.ts). -->
 	<div class="m-auto flex w-3/4 max-w-6xl items-center justify-between bg-surface-base px-3.5 py-5 pt-8">
 		<h1 class="text-2xl-semibold text-ink-gray-9">
+			<!-- //// Neoffice i18n — see the note at the top of this template (bd5dc7f1). -->
 			{{ builderStore.activeFolder || __("All Pages") }}
 		</h1>
 		<div class="flex gap-2">
 			<div>
 				<Button variant="solid" v-if="selectionMode && selectedPages.size" @click="promptSelectFolder()">
+					<!-- //// Neoffice i18n — see the note at the top of this template (bd5dc7f1). -->
 					{{ __("Move To Folder") }}
 				</Button>
 			</div>
 			<div class="relative flex" v-show="!selectionMode">
+				<!-- //// Neoffice i18n — the :placeholder three lines down is wrapped in __() (bd5dc7f1). The marker
+				     //// cannot sit on the attribute itself: it is inside a multi-line opening tag. See
+				     //// NEOFFICE_FORK_MARKERS.md, unreachable hunks. -->
 				<BuilderInput
 					class="w-48"
 					type="text"
@@ -32,6 +37,7 @@
 				<Select
 					v-model="typeFilter"
 					:options="[
+						//// Neoffice i18n — see the note at the top of this template (bd5dc7f1).
 						{ label: __('Type'), value: '', disabled: true },
 						{ label: __('All'), value: 'all' },
 						{ label: __('Draft'), value: 'draft' },
@@ -49,6 +55,7 @@
 							? (collapseTreeFn?.(), (treeExpanded = false))
 							: (expandTreeFn?.(), (treeExpanded = true))
 					">
+					<!-- //// Neoffice i18n — see the note at the top of this template (bd5dc7f1). -->
 					{{ treeExpanded ? __("Collapse") : __("Expand") }}
 				</Button>
 			</div>
@@ -56,14 +63,17 @@
 				<Select
 					v-model="orderBy"
 					:options="[
+						//// Neoffice i18n — see the note at the top of this template (bd5dc7f1).
 						{ label: __('Sort'), value: '', disabled: true },
 						{ label: __('Last Created'), value: 'creation' },
 						{ label: __('Last Modified'), value: 'modified' },
 						{
+							//// Neoffice i18n — see the note at the top of this template (bd5dc7f1).
 							label: __('Alphabetically (A-Z)'),
 							value: 'alphabetically_a_z',
 						},
 						{
+							//// Neoffice i18n — see the note at the top of this template (bd5dc7f1).
 							label: __('Alphabetically (Z-A)'),
 							value: 'alphabetically_z_a',
 						},
@@ -74,18 +84,21 @@
 					class="[&>div]:min-w-0"
 					:options="[
 						{
+							//// Neoffice i18n — see the note at the top of this template (bd5dc7f1).
 							label: __('Grid'),
 							value: 'grid',
 							icon: 'lucide-grid-2x2',
 							hideLabel: true,
 						},
 						{
+							//// Neoffice i18n — see the note at the top of this template (bd5dc7f1).
 							label: __('List'),
 							value: 'list',
 							icon: 'lucide-list',
 							hideLabel: true,
 						},
 						{
+							//// Neoffice i18n — see the note at the top of this template (bd5dc7f1).
 							label: __('Route Tree'),
 							value: 'tree',
 							icon: ListTreeIcon,

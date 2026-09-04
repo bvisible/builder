@@ -6,6 +6,8 @@
 			{
 				label: 'Save',
 				variant: 'solid',
+				//// Neoffice — the dialog's fields are read into locals before the await: the reactive object is
+				//// reset while the save is in flight (83b20f91, re-applied at merge 721cf013).
 				onClick: async (close: () => void) => {
 					// Copy values before async operation
 					const name = blockTemplateProperties.templateName;
@@ -33,6 +35,7 @@
 					label="Category"
 					:options="blockTemplateStore.blockTemplateCategoryOptions"
 					:hideClearButton="true" />
+				<!-- //// Neoffice — a description field: it is what the AI generator picks a template by (83b20f91). -->
 				<BuilderInput
 					type="textarea"
 					v-model="blockTemplateProperties.description"
@@ -80,6 +83,7 @@ const blockTemplateProperties = ref({
 	templateName: "",
 	category: "" as (typeof blockTemplateStore.blockTemplateCategoryOptions)[number],
 	previewImage: "",
+	//// Neoffice — see the description field above (83b20f91).
 	description: "",
 });
 </script>

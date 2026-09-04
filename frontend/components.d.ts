@@ -11,6 +11,7 @@ export {}
 /* prettier-ignore */
 declare module 'vue' {
   export interface GlobalComponents {
+    //// Neoffice — AIChatModal (0ab11671). GENERATED file (unplugin-vue-components): regenerate at the merge, do not resolve by hand.
     AIChatModal: typeof import('./src/components/AIChatModal.vue')['default']
     AIPageGeneratorModal: typeof import('./src/components/AIPageGeneratorModal.vue')['default']
     AnalyticsEmptyState: typeof import('./src/components/Settings/AnalyticsEmptyState.vue')['default']
@@ -33,6 +34,7 @@ declare module 'vue' {
     BlockPositionHandler: typeof import('./src/components/BlockPositionHandler.vue')['default']
     BlockProperties: typeof import('./src/components/BlockProperties.vue')['default']
     BlockSnapGuides: typeof import('./src/components/BlockSnapGuides.vue')['default']
+    //// Neoffice — BlogManager (45e67b23). GENERATED file (unplugin-vue-components): regenerate at the merge, do not resolve by hand.
     BlogManager: typeof import('./src/components/BlogManager.vue')['default']
     BooleanOptions: typeof import('./src/components/PropsOptions/BooleanOptions.vue')['default']
     BorderRadiusHandler: typeof import('./src/components/BorderRadiusHandler.vue')['default']
@@ -48,6 +50,7 @@ declare module 'vue' {
     BuilderToolbar: typeof import('./src/components/BuilderToolbar.vue')['default']
     CodeEditor: typeof import('./src/components/Controls/CodeEditor.vue')['default']
     CodeMirrorEditor: typeof import('./src/components/Controls/CodeMirror/CodeMirrorEditor.vue')['default']
+    //// Neoffice — CodexPairing (2f8cb2c4). GENERATED file (unplugin-vue-components): regenerate at the merge, do not resolve by hand.
     CodexPairing: typeof import('./src/components/Settings/CodexPairing.vue')['default']
     CollapsibleSection: typeof import('./src/components/CollapsibleSection.vue')['default']
     ColorInput: typeof import('./src/components/Controls/ColorInput.vue')['default']
@@ -81,8 +84,10 @@ declare module 'vue' {
     GlobalDeveloper: typeof import('./src/components/Settings/GlobalDeveloper.vue')['default']
     GlobalDomains: typeof import('./src/components/Settings/GlobalDomains.vue')['default']
     GlobalGeneral: typeof import('./src/components/Settings/GlobalGeneral.vue')['default']
+    //// Neoffice — GlobalPlugins (45e67b23). GENERATED file (unplugin-vue-components): regenerate at the merge, do not resolve by hand.
     GlobalPlugins: typeof import('./src/components/Settings/GlobalPlugins.vue')['default']
     GlobalRedirects: typeof import('./src/components/Settings/GlobalRedirects.vue')['default']
+    //// Neoffice — GlobalSocial (3a033121) and GlobalTheme (050b8aa3). GENERATED file (unplugin-vue-components): regenerate at the merge, do not resolve by hand.
     GlobalSocial: typeof import('./src/components/Settings/GlobalSocial.vue')['default']
     GlobalTheme: typeof import('./src/components/Settings/GlobalTheme.vue')['default']
     GradientEditor: typeof import('./src/components/Controls/GradientEditor.vue')['default']
@@ -97,8 +102,10 @@ declare module 'vue' {
     Loading: typeof import('./src/components/Icons/Loading.vue')['default']
     MainMenu: typeof import('./src/components/MainMenu.vue')['default']
     MarginHandler: typeof import('./src/components/MarginHandler.vue')['default']
+    //// Neoffice — MediaLibrary (798e7817). GENERATED file (unplugin-vue-components): regenerate at the merge, do not resolve by hand.
     MediaLibrary: typeof import('./src/components/MediaLibrary.vue')['default']
     MiddleTruncate: typeof import('./src/components/MiddleTruncate.vue')['default']
+    //// Neoffice — NeoCockpitBridge / NeoCockpitBuilderSidebar (575f427e). GENERATED file (unplugin-vue-components): regenerate at the merge, do not resolve by hand.
     NeoCockpitBridge: typeof import('./src/components/NeoCockpitBridge.vue')['default']
     NeoCockpitBuilderSidebar: typeof import('./src/components/NeoCockpitBuilderSidebar.vue')['default']
     NewBlockTemplate: typeof import('./src/components/Modals/NewBlockTemplate.vue')['default']
@@ -149,6 +156,7 @@ declare module 'vue' {
     TemplatesDialog: typeof import('./src/components/Templates/TemplatesDialog.vue')['default']
     TextBlock: typeof import('./src/components/TextBlock.vue')['default']
     TextBlockBubbleMenu: typeof import('./src/components/TextBlockBubbleMenu.vue')['default']
+    //// Neoffice — ThemeDialog (426fcfd3). GENERATED file (unplugin-vue-components): regenerate at the merge, do not resolve by hand.
     ThemeDialog: typeof import('./src/components/ThemeDialog.vue')['default']
     TopClicksList: typeof import('./src/components/Settings/TopClicksList.vue')['default']
     TopReferrersList: typeof import('./src/components/Settings/TopReferrersList.vue')['default']
@@ -158,6 +166,7 @@ declare module 'vue' {
     VersionHistory: typeof import('./src/components/VersionHistory.vue')['default']
     VisibilityInput: typeof import('./src/components/VisibilityInput.vue')['default']
     WebPagePresetPicker: typeof import('./src/components/WebPagePresetPicker.vue')['default']
+    //// Neoffice — WebsiteOnlineToggle (b4400516). GENERATED file (unplugin-vue-components): regenerate at the merge, do not resolve by hand.
     WebsiteOnlineToggle: typeof import('./src/components/WebsiteOnlineToggle.vue')['default']
   }
 }

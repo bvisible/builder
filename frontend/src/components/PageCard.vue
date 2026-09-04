@@ -19,6 +19,7 @@
 						</p>
 					</div>
 					<UseTimeAgo v-slot="{ timeAgo }" :time="page.modified">
+						<!-- //// Neoffice i18n — hardcoded English: the dashboard stayed English on a French bench (bd5dc7f1). -->
 						<p class="mt-1 block text-sm text-ink-gray-5 group-hover:text-ink-gray-6">
 							{{ __("Edited {0}").format(timeAgo) }}
 						</p>

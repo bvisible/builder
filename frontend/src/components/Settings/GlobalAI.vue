@@ -1,5 +1,9 @@
 <template>
 	<div class="flex flex-col gap-5">
+		<!-- //// Neoffice — REWRITTEN. Upstream's AI tab is one OpenRouter API key. Ours asks the server what
+		     //// this install allows (builder.ai.config.describe_resolution): a managed host shows nothing to
+		     //// configure, a self-hosted one gets the provider selector, the models, the reasoning effort
+		     //// and the image backend (c58af069, 2f8cb2c4, ec3531d4, 44bb1059). -->
 		<!-- Managed install: the host runs the models for its customers, so there
 		     is nothing to choose. No endpoint, no model name — which
 		     infrastructure a host runs is its business, not a line to publish in
@@ -24,28 +28,41 @@
 		<div v-if="usesApiKey" class="flex flex-col gap-2">
 			<label class="text-sm text-ink-gray-9">{{ __("API Key") }}</label>
 			<div class="flex items-center gap-2">
+				<!-- //// Neoffice — the :placeholder four lines down depends on the chosen provider (c58af069). The
+				     //// marker cannot sit on the attribute itself: it is inside a multi-line opening tag. See
+				     //// NEOFFICE_FORK_MARKERS.md, unreachable hunks. -->
 				<FormControl
 					type="password"
 					:modelValue="apiKey"
 					@update:modelValue="updateApiKey"
 					:placeholder="preset === 'ollama' ? __('optional') : __('sk-…')"
 					class="flex-1" />
+				<!-- //// Neoffice — tests the CONNECTION, not just a key: a subscription provider has no key to test
+				     //// (2f8cb2c4). -->
 				<Button variant="subtle" @click="testConnection" :disabled="testing">
 					{{ testing ? __("Testing...") : __("Test connection") }}
 				</Button>
 			</div>
+			<!-- //// Neoffice — the hint and its link come from KEY_HINTS, per provider; upstream hardcoded the
+			     //// OpenRouter sentence (c58af069). The removed line was its tail, --- supports Claude, Gemini,
+			     //// GPT and more under one key. -->
 			<p class="text-xs text-ink-gray-6">
 				{{ keyHint }}
+				<!-- //// Neoffice — the link is optional now: a provider may have no key page (c58af069). -->
 				<a
 					v-if="keyLink"
 					:href="keyLink"
 					target="_blank"
 					rel="noopener noreferrer"
 					class="text-ink-blue-8 underline">
+					<!-- //// Neoffice — see the KEY_HINTS note above (c58af069). -->
 					{{ keyLinkLabel }}
 				</a>
 			</p>
 		</div>
+<!-- //// Neoffice — added: base URL for custom/ollama, the site_config pin notice (a host can pin the
+     //// provider, and a tab that hid it would show a provider that is not the one in use), and the
+     //// status line (c58af069, 2f8cb2c4). -->
 
 		<FormControl
 			v-if="preset === 'custom' || preset === 'ollama'"
@@ -72,6 +89,9 @@
 		<div v-if="statusMessage" class="rounded-lg p-3 text-sm" :class="statusClass">
 			{{ statusMessage }}
 		</div>
+<!-- //// Neoffice — added: Codex pairing (only when the ChatGPT subscription is the chosen provider),
+     //// the image backend, and the Advanced block with the models, the reasoning effort and the
+     //// content language (2f8cb2c4, c58af069, ec3531d4). -->
 
 		<!-- only when the ChatGPT subscription is the chosen provider: pairing a
 		     personal plan has nothing to do with a Moonshot or OpenRouter key -->
@@ -151,9 +171,12 @@
 	</div>
 </template>
 <script setup lang="ts">
+//// Neoffice — see the Codex block in the template (2f8cb2c4).
 import CodexPairing from "@/components/Settings/CodexPairing.vue";
 import { builderSettings } from "@/data/builderSettings";
 import useBuilderStore from "@/stores/builderStore";
+//// Neoffice — watchDebounced, Switch and computed: upstream saved on every keystroke and had no
+//// toggles here (c58af069, 2f8cb2c4).
 import { watchDebounced } from "@vueuse/core";
 import { createResource, FormControl, Switch } from "frappe-ui";
 import { computed, onMounted, ref } from "vue";
@@ -163,6 +186,9 @@ const __ = window.__!;
 
 const builderStore = useBuilderStore();
 
+//// Neoffice — added: the provider presets, their labels, the per-provider model defaults and key
+//// hints. WHICH providers are offered comes from the server, so a fork adds one server-side
+//// instead of patching this file (2f8cb2c4, c58af069).
 // Presets are UI sugar over two stored fields (unpress_ai_provider +
 // unpress_ai_base_url); empty stored values mean "engine defaults" (Moonshot).
 const PRESETS: Record<string, { provider: string; base_url: string }> = {
@@ -239,6 +265,9 @@ const KEY_HINTS: Record<string, { hint: string; link?: string; linkLabel?: strin
 const testing = ref(false);
 const statusMessage = ref("");
 const statusClass = ref("");
+//// Neoffice — added: what the server says this install allows (managed, and the NAMES of the
+//// fields site_config pins — never their values, which can name private infrastructure)
+//// (c58af069, 2f8cb2c4, a2aaae20).
 
 // what the server says this install allows
 const managed = ref(false);
@@ -264,6 +293,8 @@ const loadResolution = () => {
 
 const preset = ref("moonshot");
 const apiKey = ref("");
+//// Neoffice — added: the fields the Advanced block edits, the reasoning options, and the preset
+//// read/write helpers (c58af069, ec3531d4, 2f8cb2c4).
 const baseUrl = ref("");
 const briefModel = ref("");
 const pageModel = ref("");
@@ -320,9 +351,12 @@ const setPreset = (value: string) => {
 };
 
 const updateApiKey = (value: string) => {
+	//// Neoffice — upstream wrote the key to the server on every keystroke from right here; the
+	//// debounced watcher below replaces it (2f8cb2c4).
 	apiKey.value = value;
 };
 
+//// Neoffice — see the note below (2f8cb2c4).
 // Debounced: the upstream pattern saved on every keystroke, which fired a
 // frappe.client.set_value per character typed.
 watchDebounced(
@@ -335,28 +369,36 @@ watchDebounced(
 	{ debounce: 600 },
 );
 
+//// Neoffice — renamed from testApiKey: it tests the connection, whatever the provider (2f8cb2c4).
 const testConnection = async () => {
 	testing.value = true;
 	statusMessage.value = "";
 	try {
 		const result = (await createResource({
+			//// Neoffice — upstream called builder.ai_page_generator.test_api_key, which our AI module
+			//// replaced (2f8cb2c4).
 			url: "builder.api.test_ai_connection",
 		}).submit()) as { success: boolean; message?: string };
+		//// Neoffice — the server's own message when it has one, and it is translatable (2f8cb2c4).
 		statusMessage.value = result.message || (result.success ? __("Connected!") : __("Connection failed"));
 		statusClass.value = result.success
 			? "text-ink-green-6 bg-surface-green-1"
 			: "text-ink-red-6 bg-surface-red-1";
 	} catch (error: unknown) {
+		//// Neoffice — translatable (2f8cb2c4).
 		statusMessage.value = error instanceof Error ? error.message : __("Failed to test connection");
 		statusClass.value = "text-ink-red-6 bg-surface-red-1";
 	} finally {
 		testing.value = false;
 		setTimeout(() => {
 			statusMessage.value = "";
+		//// Neoffice — 8 s, not 5: a provider error message is long enough to need reading (2f8cb2c4).
 		}, 8000);
 	}
 };
 
+//// Neoffice — added: debounced auto-save for every field, and the image switches (2f8cb2c4,
+//// ec3531d4).
 // Text inputs auto-save debounced, like the rest of the Settings dialog.
 // Skip when the value already matches the doc (hydration on mount, preset
 // writes) so opening the tab never fires spurious saves.
@@ -392,6 +434,8 @@ const setImageProvider = (value: string) => {
 };
 
 onMounted(() => {
+	//// Neoffice — hydrate every field from the doc and derive the preset; upstream only read the API
+	//// key (c58af069, ec3531d4, 2f8cb2c4).
 	loadResolution();
 	const doc = builderSettings.doc as any;
 	if (!doc) return;

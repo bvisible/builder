@@ -54,6 +54,8 @@
 						aria-hidden="true" />
 				</div>
 			</div>
+			<!-- //// Neoffice — flex-col on the canvas: the editor now stacks the site header preview, the page,
+			     //// and the footer preview (9b804199). Upstream's canvas holds the page alone. -->
 			<div
 				class="canvas relative flex flex-col h-full bg-surface-base shadow-xl contain-layout dark:selection:!bg-gray-200"
 				:data-breakpoint="breakpoint.device"
@@ -75,6 +77,9 @@
 					@click="activeBreakpoint = breakpoint.device">
 					{{ breakpoint.displayName }}
 				</div>
+				<!-- //// Neoffice — added. The published page wears the site chrome (Website Header Footer Config),
+				     //// so the editor shows it too, greyed and inert — otherwise what you design is not what ships
+				     //// (9b804199, 5233329b). -->
 				<!-- Editor Header Preview -->
 				<div
 					v-if="configuredHeaderHtml?.configured && showBlocks"
@@ -87,6 +92,8 @@
 					</div>
 				</div>
 				<!-- Main Content -->
+				<!-- //// Neoffice — min-h-[inherit] flex-1: the page is now one flex child between the two chrome
+				     //// previews (9b804199). -->
 				<BuilderBlock
 					class="h-full min-h-[inherit] flex-1"
 					:block="block"
@@ -96,6 +103,7 @@
 					v-if="showBlocks"
 					:breakpoint="breakpoint.device"
 					:data="pageStore.pageData" />
+				<!-- //// Neoffice — added, mirror of the header preview above (9b804199, 5233329b). -->
 				<!-- Editor Footer Preview -->
 				<div
 					v-if="configuredFooterHtml?.configured && showBlocks"
@@ -161,6 +169,7 @@ import { useCanvasDropZone } from "@/utils/useCanvasDropZone";
 import { useCanvasEvents } from "@/utils/useCanvasEvents";
 import { useCanvasMarqueeSelection } from "@/utils/useCanvasMarqueeSelection";
 import { useCanvasUtils } from "@/utils/useCanvasUtils";
+//// Neoffice — `call` is for the two chrome endpoints below (9b804199).
 import { call, Tooltip } from "frappe-ui";
 import { Ref, computed, onMounted, onUnmounted, provide, reactive, ref, useId, watch } from "vue";
 import setPanAndZoom from "../utils/panAndZoom";
@@ -172,6 +181,9 @@ const builderStore = useBuilderStore();
 const pageStore = usePageStore();
 const canvasId = `builder-canvas-${useId()}`;
 
+//// Neoffice — added: fetch the configured header/footer HTML+CSS to preview them in the
+//// editor. Fails soft (configured:false) so a site with no chrome renders as upstream does
+//// (5233329b, 9b804199).
 // Header/footer HTML from Website Header Footer Config
 const configuredHeaderHtml = ref<{ html: string; css: string; configured: boolean } | null>(null);
 const configuredFooterHtml = ref<{ html: string; css: string; configured: boolean } | null>(null);

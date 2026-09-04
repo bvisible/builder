@@ -4,6 +4,8 @@ import OptionToggle from "@/components/Controls/OptionToggle.vue";
 import blockController from "@/utils/blockController";
 import StylePropertyControl from "../Controls/StylePropertyControl.vue";
 
+//// Neoffice — added. Upstream keeps grid-only props in the block JSON after the user switches
+//// to flex (and the reverse): they end up in the published CSS and break the layout. 6bd72e8d.
 // Props that only make sense with display: grid. When the user switches
 // away from grid, these are stripped from ALL breakpoints of the block —
 // otherwise they stay in the stored JSON, get serialised into the page
@@ -76,6 +78,7 @@ const layoutSectionProperties = [
 		events: {
 			"update:modelValue": (val: StyleValue) => {
 				blockController.setStyle("display", val);
+				//// Neoffice — see cleanupIncompatibleDisplayProps above (6bd72e8d).
 				// Strip props from the old display mode across all breakpoints.
 				// Keeps block JSON clean and prevents "stuck grid-template-columns
 				// after switching to flex" which breaks the rendered layout.

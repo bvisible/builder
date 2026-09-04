@@ -43,6 +43,7 @@
 			</div>
 			<div class="flex gap-2">
 				<Badge theme="green" v-if="page.published" class="dark:bg-green-900 dark:text-green-400">
+					<!-- //// Neoffice i18n — hardcoded English: the dashboard stayed English on a French bench (bd5dc7f1). -->
 					{{ __("Published") }}
 				</Badge>
 				<Avatar

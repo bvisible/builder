@@ -90,6 +90,8 @@
 				<FilesIcon class="size-4"></FilesIcon>
 				<span>All Pages</span>
 			</span>
+			<!-- //// Neoffice — added entries: Create with AI (0ab11671), Media (798e7817) and Articles
+			     //// (45e67b23, hidden when the blog plugin is off). Upstream's sidebar lists pages only. -->
 			<span
 				class="flex cursor-pointer gap-2 rounded p-2 text-base text-ink-gray-6"
 				@click="showAIChat = true">
@@ -185,6 +187,9 @@
 		<p class="mt-2 p-2 text-center text-sm text-ink-gray-4">Version: {{ builderVersion }}</p>
 		<TrialBanner v-if="builderStore.isFCSite"></TrialBanner>
 	</section>
+	<!-- //// Neoffice — the modals those entries open. The Settings dialog upstream rendered HERE moved
+	     //// to PageBuilderDashboard, because the cockpit replaces this sidebar and the dialog must stay
+	     //// reachable (575f427e). -->
 	<AIChatModal v-model="showAIChat" />
 	<MediaLibrary v-model="showMedia" />
 	<BlogManager v-model="showBlog" />
@@ -203,10 +208,14 @@ import useBuilderStore from "@/stores/builderStore";
 import { BuilderProjectFolder } from "@/types/doctypes";
 import { confirm } from "@/utils/helpers";
 import { useDark, useToggle } from "@vueuse/core";
+//// Neoffice — Dialog is no longer imported here: the Settings dialog moved to the dashboard
+//// (575f427e). The reka-ui DialogDescription/DialogTitle import went with it.
 import { createResource, Dropdown } from "frappe-ui";
 import { TrialBanner } from "frappe-ui/frappe";
 import { computed, defineAsyncComponent, h, ref } from "vue";
 
+//// Neoffice — the four screens above, lazily. BuilderSettings is no longer imported here
+//// (575f427e, 0ab11671, 798e7817, 45e67b23).
 // loaded on demand: the chat pulls in its own chunk and most visits never open it
 const AIChatModal = defineAsyncComponent(() => import("@/components/AIChatModal.vue"));
 const MediaLibrary = defineAsyncComponent(() => import("@/components/MediaLibrary.vue"));
@@ -221,6 +230,8 @@ const isDark = useDark({
 });
 const toggleDark = useToggle(isDark);
 const builderStore = useBuilderStore();
+//// Neoffice — showSettingsDialog moved into the shared dashboard state; the local ref that
+//// upstream declared at the bottom of this file is gone (575f427e).
 const { showTemplatesDialog, showSettingsDialog } = useDashboardState();
 const renamingFolder = ref("");
 const showAIChat = useChatDeepLink(); //// Neoffice — opens on /builder?chat=1
@@ -303,6 +314,8 @@ const deleteFolder = async (folderName: string) => {
 		(folder: BuilderProjectFolder) => folder.folder_name !== folderName,
 	);
 	setFolderActive("");
+//// Neoffice — upstream declared `const showSettingsDialog = ref(false)` right here; it now
+//// lives in useDashboardState (575f427e).
 };
 const builderVersion = (window as any).builder_version;
 </script>
