@@ -6,6 +6,8 @@ Block Validator - Validation + auto-repair for FrappeBlock structures.
 Fixes common LLM output issues instead of rejecting the entire generation.
 """
 
+#//// Neoffice — re for the sanitiser below (URL schemes, dangerous CSS).
+import re
 import uuid
 from typing import Optional
 import frappe
@@ -41,8 +43,146 @@ class BlockValidator:
         "clipPath", "use", "symbol", "text", "tspan",
     }
 
+    #//// Neoffice — the sanitiser below (constants + three methods) is entirely ours.
+    #//// VALID_ELEMENTS above filters the block's `element` and NOTHING else, so three
+    #//// model-controlled fields reached the rendered page untouched:
+    #////   • innerHTML — parsed by BeautifulSoup in builder_page.add_inner_html_content and
+    #////     appended to the tag verbatim, so a <script> in it is a <script> on the site;
+    #////   • attributes / customAttributes — copied wholesale (`tag.attrs = attributes`),
+    #////     so onclick=… or href="javascript:…" shipped as written;
+    #////   • clientScript — emitted as a real <script> block by attach_client_script.
+    #//// That mattered the day the prompt stopped being ours alone: scraped brochures and
+    #//// chat messages now reach the model, and its output is published HTML. Fencing the
+    #//// input (builder/ai/utils.as_untrusted_source) asks the model to behave; this is the
+    #//// half that does not depend on it behaving.
+    #//// Deliberately NOT applied in add_inner_html_content: that path also renders pages a
+    #//// human authored in the editor, where an embed or a widget script is the feature.
+    #//// This class only ever sees LLM output.
+
+    # Dropped outright — an AI page has no business shipping any of these, and each is a
+    # script vector (<link>/<meta> for CSP-bypassing redirects, <base> for hijacking every
+    # relative URL on the page).
+    FORBIDDEN_INNER_TAGS = {
+        "script", "base", "link", "meta", "object", "embed", "applet", "frame", "frameset",
+    }
+
+    # Attributes carrying a URL, checked against the scheme rules below.
+    URL_ATTRIBUTES = {
+        "href", "src", "srcset", "action", "formaction", "poster", "data",
+        "background", "xlink:href", "ping", "cite",
+    }
+
+    # `data:` is allowed only for raster images: data:image/svg+xml carries script.
+    _SAFE_DATA_URL = re.compile(r"^data:image/(png|jpe?g|gif|webp|avif|bmp);base64,", re.I)
+    _DANGEROUS_SCHEME = re.compile(r"^\s*(javascript|vbscript|data|blob|file)\s*:", re.I)
+    # url(javascript:…), expression(…), -moz-binding, behavior: — the CSS script vectors.
+    _DANGEROUS_CSS = re.compile(
+        r"(expression\s*\(|-moz-binding|behaviou?r\s*:|url\s*\(\s*['\"]?\s*(javascript|vbscript|data)\s*:)",
+        re.I,
+    )
+
     def __init__(self):
         self._repairs = 0
+
+    @classmethod
+    def _clean_attribute(cls, name: str, value) -> Optional[str]:
+        """The value to keep for `name`, or None when the attribute must go."""
+        lname = (name or "").strip().lower()
+
+        # Every event handler, whatever the tag: onclick, onerror, onmouseover…
+        if lname.startswith("on"):
+            return None
+        # srcdoc is a whole document inline — the iframe equivalent of innerHTML.
+        if lname == "srcdoc":
+            return None
+
+        if isinstance(value, (list, tuple)):
+            value = " ".join(str(v) for v in value)
+        if value is None:
+            return None
+        value = str(value)
+
+        if lname == "style":
+            return None if cls._DANGEROUS_CSS.search(value) else value
+
+        if lname in cls.URL_ATTRIBUTES:
+            if cls._SAFE_DATA_URL.match(value.strip()):
+                return value
+            # `&#106;avascript:` and friends: strip what a browser ignores before
+            # deciding, or the check reads a scheme the browser will not.
+            probe = re.sub(r"[\s\x00-\x20]+", "", value)
+            if cls._DANGEROUS_SCHEME.match(probe):
+                return None
+        return value
+
+    def _sanitise_attributes(self, holder: dict, key: str) -> None:
+        attrs = holder.get(key)
+        if not isinstance(attrs, dict) or not attrs:
+            return
+        cleaned = {}
+        for name, value in attrs.items():
+            kept = self._clean_attribute(name, value)
+            if kept is None:
+                ai_log("warning", "Dropped unsafe attribute from generated block",
+                       attribute=name, blockId=holder.get("blockId"))
+                self._repairs += 1
+                continue
+            cleaned[name] = kept
+        if cleaned != attrs:
+            holder[key] = cleaned
+
+    def _sanitise_inner_html(self, block: dict) -> None:
+        inner = block.get("innerHTML")
+        if not inner or not isinstance(inner, str):
+            return
+        # Cheap pre-check: most generated innerHTML is a sentence with a <strong> in it,
+        # and parsing every one of them would cost far more than it protects.
+        if "<" not in inner:
+            return
+
+        from bs4 import BeautifulSoup
+
+        soup = BeautifulSoup(inner, "html.parser")
+        changed = False
+        for tag in soup.find_all(True):
+            if tag.name and tag.name.lower() in self.FORBIDDEN_INNER_TAGS:
+                ai_log("warning", "Dropped forbidden tag from generated innerHTML",
+                       tag=tag.name, blockId=block.get("blockId"))
+                tag.decompose()
+                changed = True
+                continue
+            for name in list(tag.attrs):
+                kept = self._clean_attribute(name, tag.attrs[name])
+                if kept is None:
+                    del tag.attrs[name]
+                    changed = True
+                elif kept != tag.attrs[name]:
+                    tag.attrs[name] = kept
+                    changed = True
+        if changed:
+            block["innerHTML"] = str(soup)
+            self._repairs += 1
+
+    def _sanitise_block(self, block: dict) -> None:
+        """Strip from ONE block everything an LLM should never be able to publish."""
+        self._sanitise_attributes(block, "attributes")
+        self._sanitise_attributes(block, "customAttributes")
+        self._sanitise_inner_html(block)
+
+        # A generated page never needs its own JS: nothing in the prompts asks for it, and
+        # attach_client_script turns whatever is here into a <script> tag on the live site.
+        if block.get("clientScript"):
+            script = block.get("clientScript")
+            if isinstance(script, dict) and script.get("js"):
+                ai_log("warning", "Dropped clientScript from generated block",
+                       blockId=block.get("blockId"))
+                script.pop("js", None)
+                self._repairs += 1
+        if block.get("blockClientScript"):
+            ai_log("warning", "Dropped blockClientScript from generated block",
+                   blockId=block.get("blockId"))
+            block.pop("blockClientScript", None)
+            self._repairs += 1
 
     def repair_block(self, block: dict, _depth: int = 0) -> Optional[dict]:
         """
@@ -70,6 +210,10 @@ class BlockValidator:
                    invalid_element=element, blockId=block.get("blockId"))
             block["element"] = "div"
             self._repairs += 1
+
+        #//// Neoffice — sanitise what the model wrote before it becomes a published page.
+        #//// See _sanitise_block for why the element allowlist above was not enough.
+        self._sanitise_block(block)
 
         # Recursively repair children
         children = block.get("children")

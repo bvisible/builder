@@ -17,6 +17,9 @@ from builder.ai.design_system import get_theme
 from builder.ai.prompts.system_prompts import get_creative_system_prompt, get_page_generation_prompt
 from builder.ai.validators import BlockValidator
 from builder.ai.logging import ai_log
+#//// Neoffice — as_untrusted_source: scraped client text is fenced as DATA before it
+#//// reaches the model. See builder/ai/utils.py for why.
+from builder.ai.utils import as_untrusted_source
 from builder.ai.schemas.design_brief import DesignBrief
 
 
@@ -131,13 +134,10 @@ class PageGenerator:
 
         # Inject the client's REAL content (ingested documents) so the page uses
         # actual copy/facts instead of invented filler. No-op when absent.
+        #//// Neoffice — fenced as DATA instead of pasted under an "authoritative"
+        #//// heading (see builder/ai/utils.py: as_untrusted_source).
         if real_content:
-            user_prompt += (
-                "\n\n## REAL CLIENT CONTENT (authoritative)\n"
-                "Use these EXACT facts, names, services and wording for this page. "
-                "Do NOT invent business details or generic filler — base the copy on this:\n"
-                f"{real_content}\n"
-            )
+            user_prompt += as_untrusted_source(real_content)
 
         # Generate blocks via LLM
         ai_log("info", "PageGenerator.generate_page() calling LLM",
@@ -288,12 +288,9 @@ class PageGenerator:
             "changing them, same colors and fonts. Do not drop content. Return ONLY the "
             "corrected FrappeBlock JSON array — no prose, no markdown fences."
         )
-        content_block = ""
-        if real_content:
-            content_block = (
-                "\n\nREAL CLIENT CONTENT (use these EXACT facts/wording when a fix needs "
-                "copy — never invent generic filler):\n" + real_content + "\n"
-            )
+        #//// Neoffice — same fencing as generate_page: this prompt carries the same
+        #//// scraped text, so it carried the same injection.
+        content_block = as_untrusted_source(real_content) if real_content else ""
         user_prompt = (
             f"PAGE: {page_title}\n\n"
             f"CURRENT BLOCKS (FrappeBlock JSON):\n{json.dumps(blocks, ensure_ascii=False)}\n\n"
