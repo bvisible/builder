@@ -288,5 +288,6 @@ __all__ = [
     "convert_styles_to_camel",
     "validate_element",
     "deep_merge",
+    #//// Neoffice — as_untrusted_source (defined above).
     "as_untrusted_source",
 ]

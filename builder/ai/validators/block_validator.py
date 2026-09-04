@@ -84,6 +84,7 @@ class BlockValidator:
     def __init__(self):
         self._repairs = 0
 
+    #//// Neoffice — sanitiser method (see the block comment above the constants).
     @classmethod
     def _clean_attribute(cls, name: str, value) -> Optional[str]:
         """The value to keep for `name`, or None when the attribute must go."""

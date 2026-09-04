@@ -14,6 +14,8 @@ Reuses Playwright (already used by WebsiteScreenshotter). Server-side only.
 """
 
 import colorsys
+#//// Neoffice — ipaddress/socket/urlparse and require_builder_role: the address
+#//// guard and the role gate added below (this endpoint fetches a URL server-side).
 import ipaddress
 import re
 import socket
@@ -25,6 +27,8 @@ from frappe import _
 from builder.ai.logging import ai_log
 from builder.utils import require_builder_role
 
+#//// Neoffice — everything from here to assert_public_http_url() is ours: upstream
+#//// has no site importer, so it has no address guard either.
 # The server fetches this URL itself, so "http(s) and a public address" is not a
 # nicety: without it the endpoint is a proxy into the private network — the
 # metadata service (169.254.169.254), the bench's own redis/mysql, a neighbour
@@ -189,8 +193,8 @@ def extract_site(url: str, timeout: int = 30000) -> dict:
     except ImportError:
         raise ImportError("Playwright required: pip install playwright && playwright install chromium")
 
-    # The URL handed in is checked here too, not only at the whitelisted entry:
-    # extract_site is called from bench and from the chat's URL handler as well.
+    #//// Neoffice — the URL is checked here too, not only at the whitelisted entry:
+    #//// extract_site is called from bench and from the chat's URL handler as well.
     assert_public_http_url(url)
 
     with sync_playwright() as p:
@@ -255,6 +259,7 @@ def import_existing_site(url: str, session_id: str = None) -> dict:
     """Whitelisted: extract a client's existing site and seed the session brief
     (palette + fonts) + store its content as a Builder Content Asset + the
     screenshot as design inspiration. The 'we already have a site' path."""
+    #//// Neoffice — the role gate (see the marker above the decorator).
     require_builder_role()
 
     if not url:

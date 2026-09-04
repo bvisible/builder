@@ -814,6 +814,8 @@ class BuilderChatService:
 			if not files:
 				return {"success": False, "message": _("No file was received.")}
 
+			#//// Neoffice — the session lookup that stood here moved above the try, and
+			#//// is now owner-scoped (see get_owned_chat_session).
 			step = session.current_step
 
 			logo_url = None

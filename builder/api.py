@@ -2641,7 +2641,8 @@ def make_click_log(
 	click = frappe.new_doc("Builder Page Click")
 	click.path = path
 	click.element = element
-	click.text = text  # capped above; deferred_insert skips controller validation
+	#//// Neoffice — capped above, before the uniqueness probe (see the marker there).
+	click.text = text
 	click.is_unique = is_unique
 	click.visitor_id = visitor_id
 
@@ -2986,8 +2987,9 @@ def subscribe_to_newsletter(email: str, email_group: str = None):
 
 	Args:
 		email: Email address to subscribe
-		email_group: IGNORED — kept only because the footer form still posts it back.
-			The group is read from the site configuration (see below).
+		email_group: IGNORED (//// Neoffice — the group comes from the site config, never
+			from the request; the footer form posts back the value we rendered into
+			data-email-group, so the parameter stays for compatibility and is discarded).
 
 	Returns:
 		dict with success status and message

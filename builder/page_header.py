@@ -18,10 +18,13 @@ carries the title and the category — a page header there would be a title abov
 a title.
 """
 
+#//// Neoffice — re: the colour allowlist added below (_COLOUR_RE).
 import re
 
 import frappe
 from frappe import _
+#//// Neoffice — escape_html: frappe's Jinja has no autoescape and this band is
+#//// rendered through `| safe`, so the title and subtitle printed raw markup.
 from frappe.utils import escape_html
 
 # The band is a preset plus a fill — the same shape as the header and the
@@ -197,6 +200,7 @@ def render(context) -> str:
 			"background": background,
 			"fill": _fill(background, config),
 			"on_dark": background in _DARK_BACKGROUNDS,
+			#//// Neoffice — escaped (see the marker above `crumbs`).
 			"title": escape_html(title),
 			"subtitle": escape_html(context.get("page_header_subtitle") or ""),
 			"breadcrumbs": [
@@ -234,6 +238,8 @@ def _fill(background: str, config: dict) -> str:
 	Written here rather than in the template so the image URL is quoted once, in
 	Python, instead of being interpolated into a style attribute by hand.
 	"""
+	#//// Neoffice — was `(config.get(...) or "").strip()`, pasted raw into a style
+	#//// attribute. _colour() is the allowlist (see the marker above _COLOUR_RE).
 	colour = _colour(config.get("page_header_bg_color"))
 
 	if background == "Solid":
