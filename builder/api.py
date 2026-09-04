@@ -21,6 +21,9 @@ from frappe.apps import get_apps as get_permitted_apps
 from frappe.core.doctype.file.file import get_local_image
 from frappe.core.doctype.file.utils import delete_file
 from frappe.model.document import Document
+#//// Neoffice — rate_limit: the two allow_guest endpoints we added below (newsletter
+#//// subscription, click autocapture) had no ceiling at all.
+from frappe.rate_limiter import rate_limit
 from frappe.utils.caching import redis_cache
 from frappe.utils.safe_exec import NamespaceDict, get_safe_globals
 from PIL import Image
@@ -29,7 +32,9 @@ from werkzeug.wrappers import Response
 from builder import builder_analytics
 from builder.builder.doctype.builder_page.builder_page import BuilderPageRenderer
 from builder.builder.doctype.builder_snapshot import builder_snapshot
-from builder.utils import compact_json, has_page_read, has_page_write
+#//// Neoffice — builder_role_required: the guard the AI/chat/site-chrome endpoints below
+#//// carry. Upstream needs none — it ships no endpoint that an untrusted caller can reach.
+from builder.utils import builder_role_required, compact_json, has_page_read, has_page_write
 
 
 @frappe.whitelist()
@@ -227,6 +232,9 @@ OPTIONAL_PAGES_BY_SITE_TYPE = {
 # =============================================================================
 
 @frappe.whitelist()
+#//// Neoffice — builder role required: this was a bare @frappe.whitelist(), so ANY
+#//// authenticated user (a portal customer included) could call it. See require_builder_role.
+@builder_role_required()
 def generate_page_blocks(
 	prompt: str,
 	theme: str = "modern",
@@ -271,6 +279,9 @@ def generate_page_blocks(
 
 
 @frappe.whitelist()
+#//// Neoffice — builder role required: this was a bare @frappe.whitelist(), so ANY
+#//// authenticated user (a portal customer included) could call it. See require_builder_role.
+@builder_role_required()
 def get_ai_themes():
 	"""
 	Get available AI generation themes.
@@ -291,6 +302,9 @@ def get_ai_themes():
 
 
 @frappe.whitelist()
+#//// Neoffice — builder role required: this was a bare @frappe.whitelist(), so ANY
+#//// authenticated user (a portal customer included) could call it. See require_builder_role.
+@builder_role_required()
 def check_ai_provider_status():
 	"""
 	Check the status of configured AI providers.
@@ -352,6 +366,9 @@ def check_ai_provider_status():
 
 
 @frappe.whitelist()
+#//// Neoffice — builder role required: this was a bare @frappe.whitelist(), so ANY
+#//// authenticated user (a portal customer included) could call it. See require_builder_role.
+@builder_role_required()
 def generate_complete_site(
 	prompt: str,
 	site_name: str,
@@ -1689,6 +1706,9 @@ def _generate_complete_site_worker(
 
 
 @frappe.whitelist()
+#//// Neoffice — builder role required: this was a bare @frappe.whitelist(), so ANY
+#//// authenticated user (a portal customer included) could call it. See require_builder_role.
+@builder_role_required()
 def continue_generation(
 	session_id: str,
 	provider: str = None,
@@ -1698,13 +1718,11 @@ def continue_generation(
 	Continue site generation after progressive homepage review.
 	Generates remaining pages using the saved brief from the session.
 	"""
-	session_name = frappe.db.get_value(
-		"Builder Chat Session", {"session_id": session_id}, "name"
-	)
-	if not session_name:
-		frappe.throw(_("Session not found"))
+	#//// Neoffice — owner-scoped: the lookup was by session_id alone, so any caller
+	#//// holding a session id drove somebody else's brief. See get_owned_chat_session.
+	from builder.builder_chat_service import get_owned_chat_session
 
-	session = frappe.get_doc("Builder Chat Session", session_name)
+	session = get_owned_chat_session(session_id)
 
 	# Restore brief
 	if not session.saved_brief:
@@ -1771,6 +1789,9 @@ def continue_generation(
 
 
 @frappe.whitelist()
+#//// Neoffice — builder role required: this was a bare @frappe.whitelist(), so ANY
+#//// authenticated user (a portal customer included) could call it. See require_builder_role.
+@builder_role_required()
 def regenerate_homepage(
 	session_id: str,
 	feedback: str = "",
@@ -1780,13 +1801,11 @@ def regenerate_homepage(
 	"""
 	Regenerate the homepage with user feedback integrated into the brief.
 	"""
-	session_name = frappe.db.get_value(
-		"Builder Chat Session", {"session_id": session_id}, "name"
-	)
-	if not session_name:
-		frappe.throw(_("Session not found"))
+	#//// Neoffice — owner-scoped: the lookup was by session_id alone, so any caller
+	#//// holding a session id drove somebody else's brief. See get_owned_chat_session.
+	from builder.builder_chat_service import get_owned_chat_session
 
-	session = frappe.get_doc("Builder Chat Session", session_name)
+	session = get_owned_chat_session(session_id)
 
 	# Check iteration limit
 	iterations = (session.homepage_iterations or 0) + 1
@@ -1871,6 +1890,9 @@ def regenerate_homepage(
 
 
 @frappe.whitelist()
+#//// Neoffice — builder role required: this was a bare @frappe.whitelist(), so ANY
+#//// authenticated user (a portal customer included) could call it. See require_builder_role.
+@builder_role_required()
 def get_site_generation_status(job_id: str):
 	"""
 	Get the status of a site generation job.
@@ -2578,6 +2600,11 @@ def get_page_ctr(
 
 
 @frappe.whitelist(allow_guest=True, methods=["POST"])
+#//// Neoffice — rate-limited. Guest POST with no ceiling: one visitor could fill
+#//// `tabBuilder Page Click` (and the deferred-insert queue behind it) as fast as the
+#//// network allowed. 120/min/IP is far above real autocapture — a busy page fires a
+#//// handful of clicks a minute — and far below a flood.
+@rate_limit(limit=120, seconds=60)
 def make_click_log(
 	element: str | None = None,
 	text: str | None = None,
@@ -2600,6 +2627,13 @@ def make_click_log(
 	if path.startswith(("api/", "app/", "assets/", "private/files/")):
 		return
 
+	#//// Neoffice — capped BEFORE the uniqueness probe, not just before the insert: the
+	#//// probe below queries on `element`, so an uncapped value would look up a row that
+	#//// can never exist and mark every click unique. All three are Data(140).
+	element = element[:140] if element else element
+	text = text[:140] if text else text
+	visitor_id = visitor_id[:140] if visitor_id else visitor_id
+
 	is_unique = bool(visitor_id) and not frappe.db.exists(
 		"Builder Page Click", {"visitor_id": visitor_id, "path": path, "element": element or ""}
 	)
@@ -2607,7 +2641,7 @@ def make_click_log(
 	click = frappe.new_doc("Builder Page Click")
 	click.path = path
 	click.element = element
-	click.text = text[:140] if text else text  # cap server-side; deferred_insert skips controller validation
+	click.text = text  # capped above; deferred_insert skips controller validation
 	click.is_unique = is_unique
 	click.visitor_id = visitor_id
 
@@ -2720,6 +2754,9 @@ def render_site_footer():
 
 
 @frappe.whitelist()
+#//// Neoffice — builder role required: this was a bare @frappe.whitelist(), so ANY
+#//// authenticated user (a portal customer included) could call it. See require_builder_role.
+@builder_role_required()
 def get_header_layout_info():
 	"""
 	Get information about header layouts.
@@ -2747,6 +2784,9 @@ def get_header_layout_info():
 
 
 @frappe.whitelist()
+#//// Neoffice — builder role required: this was a bare @frappe.whitelist(), so ANY
+#//// authenticated user (a portal customer included) could call it. See require_builder_role.
+@builder_role_required()
 def get_search_type_info():
 	"""
 	Get information about search types.
@@ -2771,6 +2811,9 @@ def get_search_type_info():
 
 
 @frappe.whitelist()
+#//// Neoffice — builder role required: this was a bare @frappe.whitelist(), so ANY
+#//// authenticated user (a portal customer included) could call it. See require_builder_role.
+@builder_role_required()
 def add_page_to_menu(page_name: str, label: str = None, url: str = None):
 	"""
 	Add a Builder Page to the Website Header Footer Config menu.
@@ -2807,6 +2850,9 @@ def add_page_to_menu(page_name: str, label: str = None, url: str = None):
 
 
 @frappe.whitelist()
+#//// Neoffice — builder role required: this was a bare @frappe.whitelist(), so ANY
+#//// authenticated user (a portal customer included) could call it. See require_builder_role.
+@builder_role_required()
 def auto_populate_menu_from_pages():
 	"""
 	Auto-populate the menu with all published Builder Pages.
@@ -2848,6 +2894,9 @@ def auto_populate_menu_from_pages():
 
 
 @frappe.whitelist()
+#//// Neoffice — builder role required: this was a bare @frappe.whitelist(), so ANY
+#//// authenticated user (a portal customer included) could call it. See require_builder_role.
+@builder_role_required()
 def apply_site_type_defaults(site_type: str):
 	"""
 	Apply default header/footer settings based on site type.
@@ -2927,13 +2976,18 @@ def apply_site_type_defaults(site_type: str):
 # =============================================================================
 
 @frappe.whitelist(allow_guest=True)
+#//// Neoffice — rate-limited. Guest endpoint that inserts a row with
+#//// ignore_permissions and sends a welcome mail: unthrottled it was a free mailer and a
+#//// free way to grow tabEmail Group Member. 5/min/IP is a form nobody fills faster.
+@rate_limit(limit=5, seconds=60)
 def subscribe_to_newsletter(email: str, email_group: str = None):
 	"""
 	Subscribe an email address to an Email Group (newsletter).
 
 	Args:
 		email: Email address to subscribe
-		email_group: Name of the Email Group (optional, uses config default if not provided)
+		email_group: IGNORED — kept only because the footer form still posts it back.
+			The group is read from the site configuration (see below).
 
 	Returns:
 		dict with success status and message
@@ -2948,10 +3002,17 @@ def subscribe_to_newsletter(email: str, email_group: str = None):
 	if not validate_email_address(email, throw=False):
 		frappe.throw(_("Invalid email address"))
 
-	# Get email group from config if not provided
-	if not email_group:
-		config = frappe.get_single("Website Header Footer Config")
-		email_group = getattr(config, "newsletter_email_group", None)
+	#//// Neoffice — the group comes from the SITE, never from the request. A guest used
+	#//// to name any Email Group in the payload and be inserted into it — subscribing
+	#//// strangers to lists nobody published, and firing that list's welcome template at
+	#//// them. The footer form posts `email_group` back (it reads it from
+	#//// data-email-group, which we rendered), so the parameter stays for compatibility
+	#//// and is discarded. get_header_footer_config() rather than get_single(): with a
+	#//// Website Profile the chrome — and its newsletter group — is per-site.
+	from builder.hf_utils.header_footer import get_header_footer_config
+
+	config = get_header_footer_config()
+	email_group = (config.get("newsletter_email_group") if config else None) or None
 
 	if not email_group:
 		frappe.throw(_("No Email Group configured for newsletter"))
@@ -3012,6 +3073,9 @@ def subscribe_to_newsletter(email: str, email_group: str = None):
 # =============================================================================
 
 @frappe.whitelist()
+#//// Neoffice — builder role required: this was a bare @frappe.whitelist(), so ANY
+#//// authenticated user (a portal customer included) could call it. See require_builder_role.
+@builder_role_required()
 def get_available_shortcodes():
 	"""
 	Get all enabled shortcodes for use in Builder pages.
@@ -3039,6 +3103,9 @@ def get_available_shortcodes():
 
 
 @frappe.whitelist()
+#//// Neoffice — builder role required: this was a bare @frappe.whitelist(), so ANY
+#//// authenticated user (a portal customer included) could call it. See require_builder_role.
+@builder_role_required()
 def generate_image(
 	prompt: str,
 	size: str = None,
@@ -3103,6 +3170,9 @@ def generate_image(
 # =============================================================================
 
 @frappe.whitelist()
+#//// Neoffice — builder role required: this was a bare @frappe.whitelist(), so ANY
+#//// authenticated user (a portal customer included) could call it. See require_builder_role.
+@builder_role_required()
 def capture_inspiration(
 	url: str = None,
 	image: str = None,
@@ -3128,6 +3198,9 @@ def capture_inspiration(
 
 
 @frappe.whitelist()
+#//// Neoffice — builder role required: this was a bare @frappe.whitelist(), so ANY
+#//// authenticated user (a portal customer included) could call it. See require_builder_role.
+@builder_role_required()
 def get_inspirations(limit: int = 20, sentiment: str = None):
 	"""
 	Get list of captured inspirations.
@@ -3146,6 +3219,9 @@ def get_inspirations(limit: int = 20, sentiment: str = None):
 
 
 @frappe.whitelist()
+#//// Neoffice — builder role required: this was a bare @frappe.whitelist(), so ANY
+#//// authenticated user (a portal customer included) could call it. See require_builder_role.
+@builder_role_required()
 def analyze_inspirations_for_generation(inspiration_names: str = None):
 	"""
 	Analyze inspirations and return aggregated data for AI generation.
@@ -3163,6 +3239,9 @@ def analyze_inspirations_for_generation(inspiration_names: str = None):
 
 
 @frappe.whitelist()
+#//// Neoffice — builder role required: this was a bare @frappe.whitelist(), so ANY
+#//// authenticated user (a portal customer included) could call it. See require_builder_role.
+@builder_role_required()
 def get_shortcodes_for_ai():
 	"""
 	Get shortcodes formatted for AI prompt context.
@@ -3205,6 +3284,9 @@ def get_shortcodes_for_ai():
 # =========================================================================
 
 @frappe.whitelist()
+#//// Neoffice — builder role required: this was a bare @frappe.whitelist(), so ANY
+#//// authenticated user (a portal customer included) could call it. See require_builder_role.
+@builder_role_required()
 def chat_start_session():
 	"""Start a new builder chat session or resume an existing active session."""
 	from builder.builder_chat_service import BuilderChatService
@@ -3213,6 +3295,9 @@ def chat_start_session():
 
 
 @frappe.whitelist()
+#//// Neoffice — builder role required: this was a bare @frappe.whitelist(), so ANY
+#//// authenticated user (a portal customer included) could call it. See require_builder_role.
+@builder_role_required()
 def chat_clear_session(session_id: str):
 	"""Abandon the current session to force a fresh start on next load."""
 	if not session_id:
@@ -3228,6 +3313,9 @@ def chat_clear_session(session_id: str):
 
 
 @frappe.whitelist()
+#//// Neoffice — builder role required: this was a bare @frappe.whitelist(), so ANY
+#//// authenticated user (a portal customer included) could call it. See require_builder_role.
+@builder_role_required()
 def chat_send_message(session_id: str, message: str):
 	"""Send a message to the builder chat and get a response."""
 	from builder.builder_chat_service import BuilderChatService
@@ -3240,6 +3328,9 @@ def chat_send_message(session_id: str, message: str):
 
 
 @frappe.whitelist()
+#//// Neoffice — builder role required: this was a bare @frappe.whitelist(), so ANY
+#//// authenticated user (a portal customer included) could call it. See require_builder_role.
+@builder_role_required()
 def chat_upload_logo(session_id: str, file_url: str):
 	"""Handle logo upload for a chat session."""
 	from builder.builder_chat_service import BuilderChatService
@@ -3252,6 +3343,9 @@ def chat_upload_logo(session_id: str, file_url: str):
 
 
 @frappe.whitelist()
+#//// Neoffice — builder role required: this was a bare @frappe.whitelist(), so ANY
+#//// authenticated user (a portal customer included) could call it. See require_builder_role.
+@builder_role_required()
 def chat_upload_inspiration(session_id: str, file_url: str):
 	"""Upload an inspiration image for a chat session."""
 	from builder.builder_chat_service import BuilderChatService
@@ -3264,6 +3358,9 @@ def chat_upload_inspiration(session_id: str, file_url: str):
 
 
 @frappe.whitelist()
+#//// Neoffice — builder role required: this was a bare @frappe.whitelist(), so ANY
+#//// authenticated user (a portal customer included) could call it. See require_builder_role.
+@builder_role_required()
 def chat_attach_files(session_id: str, files):
 	"""Attach any files to a chat session — the service decides what they are."""
 	from builder.builder_chat_service import BuilderChatService
@@ -3276,6 +3373,9 @@ def chat_attach_files(session_id: str, files):
 
 
 @frappe.whitelist()
+#//// Neoffice — builder role required: this was a bare @frappe.whitelist(), so ANY
+#//// authenticated user (a portal customer included) could call it. See require_builder_role.
+@builder_role_required()
 def chat_trigger_generation(session_id: str):
 	"""Trigger site generation with collected parameters."""
 	from builder.builder_chat_service import BuilderChatService
@@ -3286,12 +3386,19 @@ def chat_trigger_generation(session_id: str):
 
 
 @frappe.whitelist()
+#//// Neoffice — builder role required: this was a bare @frappe.whitelist(), so ANY
+#//// authenticated user (a portal customer included) could call it. See require_builder_role.
+@builder_role_required()
 def chat_get_generation_status(session_id: str):
 	"""Get the current generation status for polling."""
 	if not session_id:
 		return {"success": False, "message": _("Session ID is required")}
 	try:
-		session = frappe.get_doc("Builder Chat Session", {"session_id": session_id})
+		#//// Neoffice — owner-scoped (see get_owned_chat_session): reading another
+		#//// user's generation state only needed their session id.
+		from builder.builder_chat_service import get_owned_chat_session
+
+		session = get_owned_chat_session(session_id, for_update=False)
 		if not session.job_id:
 			return {"success": False, "message": _("No generation job found")}
 		status = get_site_generation_status(session.job_id)
@@ -3326,13 +3433,20 @@ def chat_get_generation_status(session_id: str):
 
 
 @frappe.whitelist()
+#//// Neoffice — builder role required: this was a bare @frappe.whitelist(), so ANY
+#//// authenticated user (a portal customer included) could call it. See require_builder_role.
+@builder_role_required()
 def chat_generate_images(session_id: str):
 	"""Trigger AI image generation for all placeholder images in generated pages."""
 	if not session_id:
 		return {"success": False, "message": _("Session ID is required")}
 
 	try:
-		session = frappe.get_doc("Builder Chat Session", {"session_id": session_id})
+		#//// Neoffice — owner-scoped (see get_owned_chat_session): this spends image
+		#//// credit and rewrites the pages of whatever session it is handed.
+		from builder.builder_chat_service import get_owned_chat_session
+
+		session = get_owned_chat_session(session_id)
 
 		# Get generated pages
 		generated_pages = json.loads(session.generated_pages) if session.generated_pages else []
@@ -3382,17 +3496,16 @@ def chat_generate_images(session_id: str):
 
 
 @frappe.whitelist()
+#//// Neoffice — builder role required: this was a bare @frappe.whitelist(), so ANY
+#//// authenticated user (a portal customer included) could call it. See require_builder_role.
+@builder_role_required()
 def chat_get_image_generation_status(job_id: str = None, session_id: str = None):
 	"""Get the status of an image generation job."""
 	if not job_id and session_id:
-		# Look up job_id from session
-		session_name = frappe.db.get_value(
-			"Builder Chat Session", {"session_id": session_id}, "name"
-		)
-		if session_name:
-			job_id = frappe.db.get_value(
-				"Builder Chat Session", session_name, "image_job_id"
-			)
+		#//// Neoffice — owner-scoped (see get_owned_chat_session).
+		from builder.builder_chat_service import get_owned_chat_session
+
+		job_id = get_owned_chat_session(session_id, for_update=False).image_job_id
 	if not job_id:
 		return {"success": False, "message": _("Job ID is required")}
 	return _get_generation_status(job_id)
@@ -4038,6 +4151,9 @@ def _replace_block_src(blocks, block_id: str, new_src: str, img_type: str = "img
 
 
 @frappe.whitelist()
+#//// Neoffice — builder role required: this was a bare @frappe.whitelist(), so ANY
+#//// authenticated user (a portal customer included) could call it. See require_builder_role.
+@builder_role_required()
 def chat_get_session(session_id: str):
 	"""Get full session data including conversation history."""
 	from builder.builder_chat_service import BuilderChatService
