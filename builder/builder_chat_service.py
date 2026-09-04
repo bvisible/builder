@@ -119,6 +119,39 @@ def _looks_like_logo(filename: str, file_url: str) -> bool:
 		return False
 
 
+#//// Neoffice — added helper (no upstream equivalent, our chat has none upstream). Every
+#//// lookup below used to be frappe.get_doc("Builder Chat Session", {"session_id": id})
+#//// with no owner filter, then save(ignore_permissions=True): knowing a session id was
+#//// enough to read someone else's brief, push messages into it and fire a generation as
+#//// them. Ids were 8 hex chars (uuid4()[:8]), so guessing was cheap too. One resolver, so
+#//// no future caller can forget the filter.
+def get_owned_chat_session(session_id: str, for_update: bool = True):
+	"""The caller's own chat session, or a refusal.
+
+	System Manager is exempt: it administers the site and the desk list view of
+	Builder Chat Session already shows every row, so filtering it here would only
+	break support without hiding anything.
+
+	`for_update` is informational — the filter is identical either way; it exists
+	so a call site reads as "I am about to write this".
+	"""
+	if not session_id:
+		frappe.throw(_("Chat session not found"), frappe.DoesNotExistError)
+
+	filters = {"session_id": session_id}
+	if "System Manager" not in frappe.get_roles():
+		filters["user"] = frappe.session.user
+
+	name = frappe.db.get_value("Builder Chat Session", filters, "name")
+	if not name:
+		# Deliberately the same message whether the session does not exist or
+		# belongs to somebody else: the difference is what turns a guessed id
+		# into an enumeration oracle.
+		frappe.throw(_("Chat session not found"), frappe.DoesNotExistError)
+
+	return frappe.get_doc("Builder Chat Session", name)
+
+
 class BuilderChatService:
 	"""Service for managing AI-guided builder chat conversations."""
 
@@ -373,8 +406,11 @@ class BuilderChatService:
 
 	def process_message(self, session_id: str, user_message: str) -> Dict:
 		"""Process a user message and generate AI response."""
+		#//// Neoffice — owner-scoped, and resolved OUTSIDE the try: the blanket
+		#//// `except Exception` below turns everything into {"success": False} with
+		#//// HTTP 200, which would hide the refusal instead of returning it.
+		session = get_owned_chat_session(session_id)
 		try:
-			session = frappe.get_doc("Builder Chat Session", {"session_id": session_id})
 
 			# Handle special commands
 			if user_message.startswith("__"):
@@ -657,8 +693,9 @@ class BuilderChatService:
 
 	def upload_logo(self, session_id: str, file_url: str) -> Dict:
 		"""Handle logo upload."""
+		#//// Neoffice — owner-scoped, outside the try (see process_message).
+		session = get_owned_chat_session(session_id)
 		try:
-			session = frappe.get_doc("Builder Chat Session", {"session_id": session_id})
 			session.add_message(role="user", content=_("(Logo uploaded)"))
 
 			logo_msg = self._accept_logo(session, file_url)
@@ -724,8 +761,9 @@ class BuilderChatService:
 
 	def upload_inspiration(self, session_id: str, file_url: str) -> Dict:
 		"""Handle inspiration image upload."""
+		#//// Neoffice — owner-scoped, outside the try (see process_message).
+		session = get_owned_chat_session(session_id)
 		try:
-			session = frappe.get_doc("Builder Chat Session", {"session_id": session_id})
 			session.add_message(role="user", content=_("(Reference image uploaded)"))
 
 			inspo_msg = self._accept_inspiration(session, file_url)
@@ -767,6 +805,8 @@ class BuilderChatService:
 		the filename and the pixels answer for the logo, and the question
 		currently on screen answers for the rest.
 		"""
+		#//// Neoffice — owner-scoped, outside the try (see process_message).
+		session = get_owned_chat_session(session_id)
 		try:
 			if isinstance(files, str):
 				files = frappe.parse_json(files)
@@ -774,7 +814,6 @@ class BuilderChatService:
 			if not files:
 				return {"success": False, "message": _("No file was received.")}
 
-			session = frappe.get_doc("Builder Chat Session", {"session_id": session_id})
 			step = session.current_step
 
 			logo_url = None
@@ -851,9 +890,10 @@ class BuilderChatService:
 
 		force_replace=True confirms replacing pages a user designed/edited
 		(asked via the replace-confirmation buttons in process_message)."""
+		#//// Neoffice — owner-scoped, outside the try (see process_message). This is the
+		#//// call that deletes and rewrites every Builder Page of the site.
+		session = get_owned_chat_session(session_id)
 		try:
-			session = frappe.get_doc("Builder Chat Session", {"session_id": session_id})
-
 			# Validate readiness
 			is_ready, missing = session.is_ready_for_generation()
 			if not is_ready:
@@ -976,8 +1016,10 @@ class BuilderChatService:
 
 	def get_session(self, session_id: str) -> Dict:
 		"""Get full session data."""
+		#//// Neoffice — owner-scoped, outside the try (see process_message). This one
+		#//// returned another user's whole brief and conversation to any caller.
+		session = get_owned_chat_session(session_id, for_update=False)
 		try:
-			session = frappe.get_doc("Builder Chat Session", {"session_id": session_id})
 			return {
 				"success": True,
 				"session_id": session.session_id,

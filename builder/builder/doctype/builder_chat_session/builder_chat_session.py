@@ -18,8 +18,14 @@ class BuilderChatSession(Document):
 
 	def before_insert(self):
 		"""Generate unique session ID before insert."""
+		#//// Neoffice — full uuid4 instead of uuid4()[:8]. The id was the ONLY thing
+		#//// standing between a caller and someone else's session (the endpoints did not
+		#//// filter on the owner), and 8 hex chars is 32 bits — guessable. The owner filter
+		#//// in get_owned_chat_session() is now the real guard; this just stops the id from
+		#//// being a shortcut. Sessions created before this keep their 8-char id: nothing
+		#//// reads a fixed length, and the owner filter covers them all the same.
 		if not self.session_id:
-			self.session_id = str(uuid.uuid4())[:8]
+			self.session_id = str(uuid.uuid4())
 
 		if not self.user:
 			self.user = frappe.session.user

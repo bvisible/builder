@@ -19,6 +19,9 @@ from typing import Literal, Optional
 
 import frappe
 
+#//// Neoffice — the guard carried by the whitelisted endpoints of this module.
+from builder.utils import builder_role_required
+
 
 ProviderType = Literal["openai", "ollama"]
 ThemeType = Literal["modern", "neobrutalist", "glassmorphism", "minimal", "corporate", "creative"]
@@ -307,6 +310,9 @@ def _available_providers() -> list[dict]:
 
 
 @frappe.whitelist()
+#//// Neoffice — builder role required: bare @frappe.whitelist(), so any authenticated
+#//// user (portal customers included) reached it. See builder.utils.require_builder_role.
+@builder_role_required()
 def describe_resolution() -> dict:
     """What this install lets a user configure, and what is already decided.
 

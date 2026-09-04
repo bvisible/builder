@@ -68,6 +68,54 @@ def has_page_read(message: str | None = None):
 	return has_page_permission(ptype="read", message=message)
 
 
+#//// Neoffice — added helper (no upstream equivalent). Upstream builder is an HTML editor for
+#//// trusted authors, so a bare @frappe.whitelist() was enough: every caller already held a
+#//// desk role. Our fork bolts an AI generator onto it (builder/ai/**, the chat, the site
+#//// importer) whose endpoints delete and rewrite every Builder Page, spend LLM credit and
+#//// make the server fetch arbitrary URLs — reachable by ANY authenticated user, portal
+#//// customers included, until this guard. Single gate for all of them, so the answer to
+#//// "who may generate?" lives in one place.
+def require_builder_role(message: str | None = None) -> None:
+	"""Refuse anyone who may not author Builder pages.
+
+	The roles are NOT listed here on purpose: they are read off the Builder Page
+	doctype (System Manager, Website Manager — see builder_page.json), the same
+	source `has_page_write` uses. Adding a role to the doctype therefore grants
+	the AI surface too, and no code has to be kept in sync with the JSON.
+
+	Raises frappe.PermissionError (HTTP 403) rather than the plain ValidationError
+	`has_page_permission` throws, so a refusal is machine-readable and a test can
+	tell "forbidden" from "the endpoint blew up".
+	"""
+	if frappe.session.user == "Guest" or not frappe.has_permission("Builder Page", ptype="write"):
+		frappe.throw(
+			message or frappe._("You do not have permission to use the site builder"),
+			frappe.PermissionError,
+		)
+
+
+def builder_role_required(message: str | None = None):
+	"""Decorator form of `require_builder_role`, for whitelisted endpoints.
+
+	Stacks UNDER `@frappe.whitelist()` — same order as `has_page_write` above,
+	and for the same reason: frappe registers the object the decorators return,
+	so the whitelist must be applied last.
+	"""
+
+	def decorator(fn):
+		@wraps(fn)
+		def wrapper(*args, **kwargs):
+			require_builder_role(message)
+			return fn(*args, **kwargs)
+
+		# A flag the audit test reads: it asserts every endpoint that must be gated still
+		# is, without having to call each one with plausible arguments.
+		wrapper.builder_role_required = True
+		return wrapper
+
+	return decorator
+
+
 @dataclass
 class BlockDataKey:
 	key: str

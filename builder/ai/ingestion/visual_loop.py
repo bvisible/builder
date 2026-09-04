@@ -16,6 +16,9 @@ Website Header Footer Config, not in the page blocks.
 import json
 
 import frappe
+
+#//// Neoffice — the guard carried by the whitelisted endpoints of this module.
+from builder.utils import builder_role_required
 from frappe import _
 
 from builder.ai.config import get_ai_settings
@@ -130,8 +133,17 @@ def refine_page(page_name: str, max_iterations: int = 2, critique_with: str = "n
 
 
 @frappe.whitelist()
+#//// Neoffice — builder role required: bare @frappe.whitelist(), so any authenticated
+#//// user (portal customers included) reached it. See builder.utils.require_builder_role.
+@builder_role_required()
 def chat_refine_page(page_name: str, max_iterations: int = 2, session_id: str = None) -> dict:
     """Whitelisted entry: run the visual refinement loop on one page."""
     if not page_name:
         frappe.throw(_("page_name is required"))
+    if session_id:
+        #//// Neoffice — owner-scoped: `session_id` decides which client documents feed the
+        #//// revision prompt, so it must be a session the caller owns.
+        from builder.builder_chat_service import get_owned_chat_session
+
+        get_owned_chat_session(session_id, for_update=False)
     return refine_page(page_name, int(max_iterations), session_id=session_id)
