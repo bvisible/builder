@@ -10,9 +10,14 @@ handful of hunks a comment cannot legally sit next to.
 Checked with `fork_markers.py` from `bvisible/neoffice-ci`:
 
 ```bash
-python3 fork_markers.py check --base <BASE> --head HEAD     # unmarked hunks
-python3 fork_markers.py verify --base <sha>                  # our pass is comments only
+curl -fsSL https://raw.githubusercontent.com/bvisible/neoffice-ci/main/scripts/fork_markers.py -o /tmp/fm.py
+python3 /tmp/fm.py check --base 518e9e7d --head origin/version-15   # → 3, all three explained below
+python3 /tmp/fm.py verify --base <the commit before your edits>     # a marking pass is comments only
 ```
+
+Every line of a multi-line marker carries `////`, so the whole reason survives a
+`grep`. A marker written on only its first line is a bug: the map keeps the
+headline and loses the argument.
 
 ## builder
 
@@ -35,9 +40,9 @@ sync merged. `git merge-base --all origin/version-15 upstream/develop` returns a
 single commit, so there is no ambiguity.
 
 **Attribution.** `git rev-list origin/version-15 ^BASE ^upstream/develop ^upstream/master`
-= **425 commits** (408 non-merge + 17 merges), authored by Jérémy Christillin
-(377), `github-actions[bot]` (39, the built-asset commits), Claude (6), Jeremy (3).
-`git cherry upstream/develop origin/version-15 BASE` marks all 408 non-merge
+= **433 commits** (416 non-merge + 17 merges), authored by Jérémy Christillin
+(385), `github-actions[bot]` (40, the built-asset commits), Claude (6), Jeremy (2).
+`git cherry upstream/develop origin/version-15 BASE` marks all 416 non-merge
 commits `+` — not one of them exists upstream in any form. There is **no
 `(cherry picked from commit …)` line** anywhere in the range: this fork carries no
 backport. Blamed (without `-w`) on a random sample of 60 of the 308 code hunks the
@@ -46,7 +51,23 @@ ours**; the two exceptions are upstream lines our merges kept and are both marke
 in place (`builder/api.py:11`, `frontend/src/components/BuilderCanvas.vue:175`).
 
 Upstream moved **1084 commits** on `develop` since BASE. The diff BASE→HEAD is
-**297 files, +57 263 / −4 007** (258 added, 38 modified, 1 removed, 0 renamed).
+**299 files, +58 194 / −4 007** (260 added, 38 modified, 1 removed; `git` reports
+one of them as a rename, `builder/www/__pycache__/__init__.py` →
+`builder/ai/ingestion/__init__.py`, only because both files are empty).
+
+### What the marking pass changed
+
+| | hunks the checker reports unmarked |
+|---|---|
+| before the pass | **345** (215 added, 93 modified, 30 non-commentable, 7 removed-only) |
+| after | **3**, all three unreachable by construction — see *Hunks a comment cannot reach* |
+
+The pass is **comments only**: `fork_markers.py verify` reports no added
+non-comment line at any step; where it reports a *removed* line (it refuses every
+removal by design) the removal is a comment being rewritten, and the rewrite is
+proven inert — `@vue/compiler-sfc` emits byte-identical code for the `.vue` files
+before and after, `jinja2.Environment.compile` byte-identical Python for the
+templates, `py_compile` and `node --check` pass on everything else.
 
 **No file of ours is byte-identical to upstream's.** The three paths we and
 upstream both added independently (`builder/locale/fr.po`, `builder/locale/main.pot`,
@@ -138,8 +159,15 @@ markers.** At a merge, rebuild rather than resolve.
 - `builder/public/frontend/**` — 63 files (vite chunks, CSS, fonts, logos).
   Skipped by the checker.
 - `builder/www/_builder.html` — the SPA shell vite writes from
-  `frontend/index.html`. It carries a marker today, but the **next `yarn build`
-  drops it**: that is expected, and this entry is the durable record.
+  `frontend/index.html` (`frappe-ui`'s vite plugin, `indexHtmlPath` in
+  `frontend/vite.config.mjs`). A marker was put in it on 2026-09-04 and the very
+  next build took it back out: `4d66cb31` *[skip-build] frontend artifacts for
+  705d2a7b* removed all five lines, three hours later. **This file cannot hold a
+  marker** — it is regenerated from a source that has none, and marking that
+  source is wrong too, because `frontend/index.html` is byte-identical to
+  upstream's and would only manufacture a merge conflict. This entry is the
+  durable record; the checker reports the file and always will (see *Hunks a
+  comment cannot reach*).
 - `frontend/components.d.ts` — written by `unplugin-vue-components`. Its
   divergence is nothing but the list of the `.vue` components we added; each of
   the 9 lines carries a one-line marker, but a local `vite` run rewrites them.
@@ -159,14 +187,53 @@ markers.** At a merge, rebuild rather than resolve.
 
 ### Hunks a comment cannot reach
 
-Two changed lines sit **inside a multi-line opening tag, between attributes**,
-where neither an HTML comment nor a JS comment is legal. The enclosing element
-carries the marker instead, and the checker still reports these two:
+`fork_markers.py check --base <BASE> --head origin/version-15` reports **three**
+hunks and will keep reporting them. None is unmarked by neglect; each is
+somewhere a marker cannot legally or durably sit. The reason for each lives here.
 
-| File | Line | What changed | Marker |
+| File | What changed | Why no marker | Where the reason is |
 |---|---|---|---|
-| `frontend/src/components/DashboardHead.vue` | `:placeholder="__('Filter by title or route')"` inside `<BuilderInput …>` | i18n pass `bd5dc7f1` | on `<BuilderInput`, plus the note at the top of the template |
-| `frontend/src/components/Settings/GlobalAI.vue` | `:placeholder="preset === 'ollama' ? … "` inside `<FormControl …>` | provider-aware placeholder, `c58af069` | on `<FormControl` |
+| `frontend/src/components/DashboardHead.vue` | `:placeholder="__('Filter by title or route')"`, i18n pass `bd5dc7f1` | the line is **inside a multi-line opening tag** (`<BuilderInput …>`), between two attributes: neither `<!-- -->` nor `//` is legal there | on `<BuilderInput` and at the top of the `<template>` — but the checker only looks 3 lines up, and `class` + `type` sit in between |
+| `frontend/src/components/Settings/GlobalAI.vue` | `:placeholder="preset === 'ollama' ? … "`, provider-aware, `c58af069` | same: inside `<FormControl …>` | on `<FormControl`, four lines above |
+| `builder/www/_builder.html` | the whole file (generated SPA shell) | **build output**: `yarn build` rewrites it from `frontend/index.html` and any marker is gone, proven by `4d66cb31` | *Generated artifacts* above, `.gitignore`, `frontend/vite.config.mjs` |
+
+The two Vue hunks are one line each and change nothing but a translated string;
+the third is not source at all. Raising `LOOKBACK` in the checker would silence
+the first two, and adding `www/_builder.html` to its `_BUILT_ASSET` pattern would
+silence the third — both are changes to `bvisible/neoffice-ci`, not to this fork.
+
+### Files we added and deliberately left unmarked
+
+Every commentable file we added carries a
+`//// Neoffice — added file (no upstream equivalent): …` header — **147 of them**.
+Fourteen do not, on purpose:
+
+| File | Content |
+|---|---|
+| `builder/ai/ingestion/__init__.py` | empty |
+| `builder/builder/doctype/builder_chat_message/__init__.py` | empty |
+| `builder/builder/doctype/builder_chat_session/__init__.py` | empty |
+| `builder/builder/doctype/builder_content_asset/__init__.py` | empty |
+| `builder/builder/doctype/website_header_footer_variant/__init__.py` | empty |
+| `builder/builder/doctype/website_plugin/__init__.py` | empty |
+| `builder/overrides/__init__.py` | empty |
+| `builder/builder/doctype/builder_shortcode/__init__.py` | the two-line copyright header `bench new-doctype` writes |
+| `builder/builder/doctype/builder_site_inspiration/__init__.py` | idem |
+| `builder/builder/doctype/website_footer_link/__init__.py` | idem |
+| `builder/builder/doctype/website_header_footer_config/__init__.py` | idem |
+| `builder/builder/doctype/website_menu_item/__init__.py` | idem |
+| `builder/hf_utils/__init__.py` | idem |
+| `builder/tests/__init__.py` | one line, `# Builder Tests Module` |
+
+**Why.** These carry no intent to record. A package marker file exists because
+Python needs it and `bench new-doctype` writes it; its content is either nothing
+at all or a boilerplate line generated verbatim, identical to the one in every
+upstream doctype folder. A `//// Neoffice` header on an empty file says only
+"this directory is ours", which the marked `.py` next to it already says with the
+reason. The checker never flags them either — a file whose every line is a
+comment, or which has no line at all, produces no code hunk. **The one that does
+carry intent, `builder/ai/__init__.py`, is marked**: it is not empty, it explains
+the lazy `__getattr__` that replaced eager imports.
 
 ### Whitespace-only divergence
 
