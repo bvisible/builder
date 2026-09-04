@@ -23,6 +23,12 @@ jobs:
     with:
       app: builder
       skip_build: true   # SPA commit-the-build: assets committed, never built on instances
+      # …but the page tests render frappe web templates (test_publish_unpublish
+      # asserts the 404 of an unpublished page), and the CI bench is initialised
+      # with --skip-assets: no sites/assets/assets.json, so bundled_asset() dies
+      # on "'NoneType' object has no attribute 'get'". Build frappe's assets, the
+      # way every instance has them.
+      build_frappe_assets: true
       test_args: ${{ inputs.test_args || '' }}
     # inherit: CI_REPORT_SECRET (deps are public forks: no read token needed)
     secrets: inherit
