@@ -19,6 +19,7 @@
 	<link rel="canonical" href="{{ canonical_url }}" />
 	{% endif %}
 	<title>{{title}}</title>
+	{# //// Neoffice — the favicon falls back to the Neoffice SVG, not to frappe_black/white.png. #}
 	{#-
 		Favicon priority (first non-empty wins):
 		1. `favicon_light` / `favicon_dark` — per-mode, set on Builder Page or Website Settings
@@ -86,6 +87,12 @@
 	</style>
 </head>
 {% block page_content %}
+	{# //// Neoffice — REWRITTEN. Upstream's page_content block is just `{ { __content } }`: the
+	   //// page IS the document. Ours owns the document instead — it opens the body, renders the
+	   //// site header (Website Header Footer Config, webshop navbar as fallback), the shared
+	   //// opening band, the page, then the footer and the page scripts. Template pages
+	   //// (is_template) are skipped because they ship their own navigation. This is why
+	   //// builder_page.py rewrites a page's own <body> into div.builder-page-content. #}
 <body {{ body_attrs or "" }}>
 	{# Include header/footer from Website Header Footer Config if configured.
 	   Template pages (is_template) are self-contained designs that ship their

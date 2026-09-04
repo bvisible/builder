@@ -4,6 +4,8 @@
 *.swp
 tags
 node_modules
+#//// Neoffice — commit-the-build: upstream ignores builder/public/frontend, we track it
+#//// so an instance pulls the built SPA instead of running vite on a 4 GB server.
 # 2026-05-07 (NORA #28) — frontend build outputs are committed on this branch.
 # See docs/COMMIT-BUILD-PATTERN.md in neoffice-devops.
 # (page_scripts and page_styles are generated at runtime when users publish
@@ -11,6 +13,7 @@ node_modules
 # builder/public/frontend
 builder/public/page_scripts
 builder/public/page_styles
+#//// Neoffice — same reason: the generated SPA shell is tracked here.
 # Upstream ignores **/www/_builder.html; we commit it (commit-the-build).
 # builder/www/_builder.html
 builder/public/dist

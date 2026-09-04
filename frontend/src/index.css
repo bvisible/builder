@@ -90,6 +90,9 @@ div:has(> [role='switch']) label[data-slot='label'] {
 	@apply font-medium text-ink-gray-8;
 }
 
+/* //// Neoffice — added block: the frappe-ui blue accent is recoloured to the Neoffice
+   //// clay #D68A59. Overriding the semantic tokens (rather than every component) is what
+   //// keeps this mergeable. */
 /* === Neoffice Design System — recolor the frappe-ui blue accent to clay
    #D68A59. Override the semantic --*-blue-* tokens so links/active/focus/
    accent surfaces become warm clay instead of frappe blue (light + dark).

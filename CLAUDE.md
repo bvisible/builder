@@ -1,3 +1,8 @@
+<!-- //// Neoffice — REPLACED. Upstream's CLAUDE.md is a single line, `@AGENTS.md`. Ours
+     //// documents the fork's own rules: where the branch lives, how the commit-the-build
+     //// pipeline works, and the two working rules for the AI generator. Written in French
+     //// on purpose — it addresses the operator, not the code (see the report: it is the
+     //// only French left in a file that is not a UI string). At the merge, keep ours. -->
 # RÈGLES DE TRAVAIL — Génération de sites clients (PRIORITAIRES)
 
 Ces deux règles s'appliquent à TOUT travail sur le Builder AI (chat, génération, ingestion) :

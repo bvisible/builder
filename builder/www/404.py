@@ -1,3 +1,8 @@
+#//// Neoffice — REWRITTEN. Upstream's 404.py rendered a published Builder Page whose route
+#//// is "404" and otherwise fell through to frappe's bare not-found page. Ours keeps the
+#//// site chrome and tells apart a wrong address from a route the site deliberately
+#//// carries for a section that is not built yet (RESERVED). At the merge: read upstream's
+#//// find_page_with_path seam again before taking either side wholesale.
 """The page a visitor lands on when the address is wrong — or not built yet.
 
 Frappe's own 404 blocks the navbar and the footer, so it arrives as a bare
@@ -12,6 +17,7 @@ sentence and no apology.
 """
 
 import frappe
+#//// Neoffice — see the module header.
 from frappe import _
 
 no_cache = 1
@@ -27,6 +33,7 @@ RESERVED = {
 }
 
 
+#//// Neoffice — see the module header.
 def _translatable_labels():
 	"""Extraction markers — never called. Keep in sync with RESERVED."""
 	_("Shop")
@@ -37,6 +44,7 @@ def _translatable_labels():
 
 
 def get_context(context):
+	#//// Neoffice — see the module header.
 	path = (frappe.request.path if frappe.request else "").strip("/")
 	root = path.split("/", 1)[0] if path else ""
 

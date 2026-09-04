@@ -1,8 +1,14 @@
 {% extends "templates/web.html" %}
+{# //// Neoffice — REWRITTEN with 404.py. Upstream blanked the navbar and the footer and
+   //// printed a bare sentence on a grey field, so the visitor lost the site exactly when
+   //// they needed a way back into it. Ours keeps the chrome, says "coming soon" for a
+   //// reserved route, and offers the menu. The upstream comment block that stood above
+   //// `extends` (it explained the NotFoundPage seam) went with the rewrite. #}
 
 {%- block title -%}{{ title }}{%- endblock -%}
 
 {% block page_content %}
+{# //// Neoffice — see the header comment. #}
 <section class="u-404">
 	<div class="u-404__inner">
 		{%- if is_reserved -%}
@@ -19,10 +25,12 @@
 		</p>
 		{%- endif -%}
 
+		{# //// Neoffice — see the header comment. #}
 		<div class="u-404__actions">
 			<a class="u-btn u-btn--primary" href="/">{{ _("Back to the homepage") }}</a>
 		</div>
 
+		{# //// Neoffice — the menu, so the visitor has somewhere to go. #}
 		{%- if menu_items -%}
 		<nav class="u-404__menu">
 			{%- for item in menu_items -%}
@@ -31,5 +39,6 @@
 		</nav>
 		{%- endif -%}
 	</div>
+{# //// Neoffice — see the header comment. #}
 </section>
 {% endblock %}

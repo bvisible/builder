@@ -30,6 +30,8 @@ require_type_annotated_api_methods = True
 # page_js = {"page" : "public/js/file.js"}
 
 # include js in doctype views
+#//// Neoffice — upstream leaves doctype_js commented out. Ours points Website Settings at
+#//// the hint that the menu and theme live in Website Header Footer Config.
 doctype_js = {"Website Settings": "public/js/website_settings.js"}
 # doctype_list_js = {"doctype" : "public/js/doctype_list.js"}
 # doctype_tree_js = {"doctype" : "public/js/doctype_tree.js"}
@@ -55,6 +57,8 @@ website_generators = ["Builder Page"]
 # add methods and filters to jinja environment
 jinja = {
 	"methods": [
+		#//// Neoffice — the site-chrome and page-header renderers, exposed to Jinja so any web
+		#//// template (ours, the blog's, webshop's) can draw the same header/footer.
 		"builder.hf_utils.header_footer.render_header",
 		"builder.hf_utils.header_footer.render_footer",
 		"builder.hf_utils.header_footer.get_header_footer_config",
@@ -79,6 +83,9 @@ after_install = "builder.install.after_install"
 after_migrate = "builder.install.after_migrate"
 after_app_install = "builder.install.after_app_install"
 
+#//// Neoffice — added block: update_website_context (legacy chrome + the blog wearing the
+#//// site design), before_request (a disabled plugin serves no route), the content-hashed
+#//// web_include_css, and the Builder Shortcode fixtures. None of it exists upstream.
 # Website
 # -------
 
@@ -156,6 +163,8 @@ fixtures = [
 # ---------------
 # Hook on document methods and events
 
+#//// Neoffice — upstream ships doc_events commented out. Ours keeps the site menu in sync
+#//// when Website Settings change (builder.hf_utils.menu_integration).
 doc_events = {
 	"Website Settings": {
 		"on_update": "builder.hf_utils.menu_integration.sync_from_website_settings"
@@ -169,6 +178,7 @@ scheduler_events = {
 	"cron": {
 		"*/10 * * * *": [
 			"builder.builder_analytics.ingest_web_page_views_to_duckdb",
+			#//// Neoffice — an AI generation that dies mid-flight must not stay "in progress" forever.
 			"builder.api.check_stuck_generations",
 			"builder.builder_analytics.ingest_clicks_to_duckdb",
 		],
@@ -235,6 +245,9 @@ scheduler_events = {
 # "builder.auth.validate"
 # ]
 
+#//// Neoffice — hooks.py is imported outside a request/site context too (CI collection,
+#//// `bench` subcommands): frappe.conf raises there, and upstream's bare attribute access
+#//// takes the whole app down. Default to "builder" instead.
 try:
 	builder_path = frappe.conf.builder_path or "builder"
 except Exception:
@@ -258,6 +271,7 @@ get_website_user_home_page = (
 add_to_apps_screen = [
 	{
 		"name": "builder",
+		#//// Neoffice — the apps screen shows the Neoffice Website icon, not the Frappe Builder logo.
 		"logo": "/assets/builder/icon-builder-website.jpg",
 		"title": "Builder",
 		"route": f"/{builder_path}",

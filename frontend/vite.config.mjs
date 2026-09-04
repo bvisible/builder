@@ -11,6 +11,8 @@ export default defineConfig({
 	plugins: [
 		frappeui({
 			frontendRoute: "/_builder",
+			//// Neoffice — commit-the-build: the SPA is built on a Mac and in GitHub Actions, outside
+			//// a bench, where frappe-ui's plugin cannot infer these paths from an apps/ layout.
 			buildConfig: {
 				// Standalone builds (local Mac / GitHub Actions) run outside a bench,
 				// where the plugin cannot infer these from an apps/ folder layout.
@@ -44,6 +46,7 @@ export default defineConfig({
 	build: {
 		chunkSizeWarningLimit: 1500,
 		target: "es2015",
+		//// Neoffice — same standalone build: these bench-relative imports do not resolve there.
 		rollupOptions: {
 			// Ignore Frappe bench-specific imports that don't exist in standalone builds
 			external: [

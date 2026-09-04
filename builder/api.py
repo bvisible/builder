@@ -1,4 +1,6 @@
 import ipaddress
+#//// Neoffice — needed by the generation/chat/chrome code added below; upstream's api.py
+#//// has no json import (7deba177: NameError on every site-generation path).
 import json
 import os
 import socket
@@ -8,6 +10,10 @@ from typing import Any
 from urllib.parse import unquote, urlparse
 
 import frappe
+#//// Neoffice — frappe._ is used by our endpoints below (4661ae05). `import frappe.utils`
+#//// on the next line blames to upstream 8b96f0c9 but is ABSENT at the merge base: upstream
+#//// dropped it and our merge kept it — our code calls frappe.utils.now() 13 times, so it
+#//// stays, but treat it as ours from now on.
 from frappe import _
 import frappe.utils
 import requests
@@ -2132,6 +2138,9 @@ def get_template_groups() -> list[dict]:
 		return []
 
 
+#//// Neoffice — added. A hub template ships its own navbar/footer blocks, but a Neoffice
+#//// site renders the centrally-managed header/footer (Website Header Footer Config)
+#//// around every page: importing verbatim stacked two of each (e545a8b3).
 def _strip_template_navigation(blocks: list, components: list) -> list:
 	"""bvisible: drop a template's own top-level navigation/footer blocks.
 
@@ -2183,6 +2192,7 @@ def create_page_from_bundle(bundle: dict, project_folder: str | None = None) -> 
 	page = bundle.get("page")
 	assert isinstance(page, dict)
 	preview = page.get("preview")
+	#//// Neoffice — see _strip_template_navigation above (e545a8b3).
 	# bvisible: hub templates ship their own navbar/footer components, but on
 	# Neoffice instances navigation is provided site-wide by Website Header
 	# Footer Config — keeping both stacks two headers/footers on every page.
@@ -2194,6 +2204,7 @@ def create_page_from_bundle(bundle: dict, project_folder: str | None = None) -> 
 			"doctype": "Builder Page",
 			"page_title": page.get("page_title") or "My Page",
 			"preview": preview or None,
+			#//// Neoffice — the stripped blocks, not the bundle's raw ones (e545a8b3).
 			"draft_blocks": compact_json(page_blocks),
 			"page_data_script": page.get("page_data_script"),
 			"head_html": page.get("head_html"),
@@ -2270,6 +2281,8 @@ def import_template_group(template_group: str, project_folder: str | None = None
 	if not created:
 		frappe.throw(frappe._("Could not import any pages from this template group."))
 
+	#//// Neoffice — added (4c3a4979): a template group's manifest can carry a header/footer
+	#//// design, applied to the site-wide config so navigation matches the template.
 	# bvisible: adopting a template group = adopting its design. The group's
 	# manifest can carry a header/footer design (colors, height, CTA shape...)
 	# that we apply to the centrally-managed Website Header Footer Config, so
@@ -2673,6 +2686,11 @@ def get_component_data(
 	return _get_component_data(component_name, props, script)
 
 
+#//// Neoffice — added block (no upstream equivalent), ~1350 lines to the end of the file:
+#//// the site chrome API (Website Header Footer Config), the newsletter subscription, the
+#//// shortcode and inspiration endpoints, and the whole AI chat / image-generation surface
+#//// (5233329b and the AI-chat commits). frappe/builder has none of it — at the merge, keep
+#//// everything from here down and re-apply only upstream's changes ABOVE this line.
 # =============================================================================
 # WEBSITE HEADER FOOTER CONFIG API
 # =============================================================================

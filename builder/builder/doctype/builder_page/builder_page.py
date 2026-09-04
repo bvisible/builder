@@ -37,16 +37,22 @@ from builder.export_import_standard_page import export_page_as_standard
 from builder.hooks import builder_path
 from builder.html_preview_image import generate_preview
 from builder.template_sync import delete_template_page_fixture, export_template_group
+#//// Neoffice — upstream's save_as_template path uses Block, export_to_files and
+#//// copy_img_to_asset_folder without importing them, so it NameErrors at runtime.
+#//// We add the three imports (here and in the builder.utils list below) — 7cb4eca3.
+#//// Upstreamable: drop these three if upstream ever adds them.
 # bvisible: Block, copy_img_to_asset_folder and export_to_files are missing
 # upstream too — their save_as_template path NameErrors at runtime without them.
 from frappe.modules.export_file import export_to_files
 
 from builder.utils import (
+	#//// Neoffice — see the import note above (7cb4eca3).
 	Block,
 	ColonRule,
 	camel_case_to_kebab_case,
 	clean_data,
 	compact_json,
+	#//// Neoffice — see the import note above (7cb4eca3).
 	copy_img_to_asset_folder,
 	escape_single_quotes,
 	execute_script,
@@ -73,6 +79,8 @@ class BuilderPageRenderer(DocumentPage):
 			self.validate_access()
 			return True
 
+		#//// Neoffice multi-site: dynamic routes resolved against the request's Website
+		#//// Profile — a page tagged for another profile must not answer here (c3f2a043).
 		for d in get_web_pages_with_dynamic_routes(_current_site_profile()):
 			try:
 				if evaluate_dynamic_routes([ColonRule(f"/{d.route}", endpoint=d.name)], self.path):
@@ -216,6 +224,9 @@ class BuilderPage(WebsiteGenerator):
 				frappe.PermissionError,
 			)
 
+	#//// Neoffice — added. Upstream enqueues a preview only from publish(), so a page born
+	#//// anywhere else (the AI chat, a WordPress import, the REST API) kept the blank
+	#//// fallback forever and the dashboard was a wall of white rectangles (c84c6bf8).
 	FALLBACK_PREVIEW = "/assets/builder/images/fallback.png"
 
 	def ensure_preview(self):
@@ -244,6 +255,7 @@ class BuilderPage(WebsiteGenerator):
 		)
 
 	def on_update(self):
+		#//// Neoffice — on_update is the one hook every creation path goes through (c84c6bf8).
 		self.ensure_preview()
 
 		if self.has_value_changed("route"):
@@ -421,6 +433,8 @@ class BuilderPage(WebsiteGenerator):
 			)
 
 		page_data = self._get_page_data(for_render=True)
+		#//// Neoffice — upstream sets context.title only when page_data carries a title, so a
+		#//// page without one fell back to the route name in <title>, e.g. "Homepage" (6fef27d8).
 		# page_data may override the title; otherwise the page's own title is the
 		# <title> (it previously fell back to the route name, e.g. "Homepage").
 		context.title = page_data.get("title") or self.page_title
@@ -464,6 +478,10 @@ class BuilderPage(WebsiteGenerator):
 		self.set_favicon(context)
 		self.set_language(context)
 		context.page_data = clean_data(context.page_data)
+		#//// Neoffice — our templates/generators/webpage.html owns the document <body> (it wraps
+		#//// the page in the site chrome), so a page's own <body> would nest one inside another.
+		#//// Rewrite it into div.builder-page-content — which is also the anchor the tests scope
+		#//// to (36cbdc0b, re-applied while resolving merge 721cf013).
 		rendered_content = render_template(context.__content, context)
 		# Replace <body> tags with <div> to avoid nested body elements
 		# when the template already provides a body tag
@@ -489,6 +507,8 @@ class BuilderPage(WebsiteGenerator):
 			context.favicon = self.favicon
 		if not context.get("favicon"):
 			context.favicon = frappe.get_cached_value("Builder Settings", "Builder Settings", "favicon")
+		#//// Neoffice — our webpage.html defaults the favicon to neoffice_theme's SVG; on a
+		#//// standalone bench that asset does not exist (3acfd7d6).
 		if not context.get("favicon") and "neoffice_theme" not in frappe.get_installed_apps():
 			# Standalone bench (no neoffice_theme): the template's Neoffice
 			# default SVG does not exist -- fall back to a builder-shipped asset.
@@ -499,6 +519,8 @@ class BuilderPage(WebsiteGenerator):
 		context.language = self.language
 		if not context.language:
 			context.default_language = (
+				#//// Neoffice — fall back to the request language before "en": a French bench served
+				#//// lang="en" on every page with no explicit language (6fef27d8).
 				frappe.get_cached_value("Builder Settings", "Builder Settings", "default_language")
 				or frappe.local.lang
 				or "en"
@@ -1355,6 +1377,10 @@ def wrap_with_media_query(style_string, device):
 	return style_string
 
 
+#//// Neoffice — added. Upstream strips quotes and escapes spaces on the WHOLE
+#//// font-family string, which leaves the inner quote of a stack like 'X', sans-serif
+#//// and yields a family no font matches: the browser silently fell back to serif (the
+#//// cross-page font drift). Split per family instead (981c6c2a).
 _GENERIC_FONT_KEYWORDS = {
 	"serif", "sans-serif", "monospace", "cursive", "fantasy", "system-ui",
 	"ui-serif", "ui-sans-serif", "ui-monospace", "ui-rounded", "math",
@@ -1390,6 +1416,7 @@ def normalize_font_family(value):
 def get_style(style_obj):
 	def _css_value(key, value):
 		if key == "fontFamily" and isinstance(value, str):
+			#//// Neoffice — route fontFamily through normalize_font_family (981c6c2a).
 			value = normalize_font_family(value)
 		return sanitize_style_value(value)
 
@@ -1471,6 +1498,8 @@ def set_fonts(styles, font_map, inherited_font=None):
 		if font:
 			# Use the first family from a fallback list, e.g. "Inter, sans-serif" -> "Inter"
 			font = get_font_family(font)
+			#//// Neoffice — an AI-written stack can reduce to an empty family; upstream then puts a
+			#//// "" key in the font map and asks Google Fonts for it (0674efd2).
 			# AI-written stacks can reduce to an empty string (e.g. "', sans-serif'")
 			if not font:
 				continue
@@ -1522,6 +1551,8 @@ def set_fonts_from_html(soup, font_map):
 		styles = tag.attrs.get("style").split(";")
 		for style in styles:
 			if "font-family" in style:
+				#//// Neoffice — split on the FIRST colon only: upstream's split(":")[1] truncates a
+				#//// declaration whose value itself contains a colon (0674efd2).
 				font = get_font_family(style.split(":", 1)[1])
 				if font:
 					font_map[font] = {"weights": [400]}
@@ -1661,10 +1692,14 @@ def get_web_pages_with_dynamic_routes(website_profile=None) -> list[dict]:
 		fields.append("neo_website_profile")
 	pages = frappe.get_all(
 		"Builder Page",
+		#//// Neoffice multi-site: the field list is built above so the profile column is asked
+		#//// for only on instances that have it (c3f2a043).
 		fields=fields,
 		filters=dict(published=1, dynamic_route=1),
 		update={"doctype": "Builder Page"},
 	)
+	#//// Neoffice multi-site: drop rows tagged for another profile; untagged serve
+	#//// everywhere (c3f2a043).
 	if website_profile and has_site_field:
 		pages = [
 			p for p in pages if not p.get("neo_website_profile") or p["neo_website_profile"] == website_profile
@@ -1674,9 +1709,11 @@ def get_web_pages_with_dynamic_routes(website_profile=None) -> list[dict]:
 
 def resolve_path(path):
 	try:
+		#//// Neoffice multi-site: resolve against the request's profile (c3f2a043).
 		if find_page_with_path(path, _current_site_profile()):
 			return path
 		elif evaluate_dynamic_routes(
+			#//// Neoffice multi-site: same scoping for the dynamic routes (c3f2a043).
 			[
 				ColonRule(f"/{d.route}", endpoint=d.name)
 				for d in get_web_pages_with_dynamic_routes(_current_site_profile())

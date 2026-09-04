@@ -205,6 +205,7 @@ class TestBuilderPage(FrappeTestCase):
 				in get_html_for(content, "attribute", "src", list_all=True, whole_document=True)
 			)
 			self.assertTrue(
+				#//// Neoffice — see the whole_document note on the assertion above.
 				client_script_css.public_url
 				in get_html_for(content, "attribute", "href", list_all=True, whole_document=True)
 			)
@@ -1635,6 +1636,7 @@ def page_content_soup(html, whole_document=False):
 	from bs4 import BeautifulSoup
 
 	soup = BeautifulSoup(html, "html.parser")
+	#//// Neoffice — see the PAGE_CONTENT_SELECTOR note above.
 	if whole_document:
 		return soup
 	return soup.select_one(PAGE_CONTENT_SELECTOR) or soup
