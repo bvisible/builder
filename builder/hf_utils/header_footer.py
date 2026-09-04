@@ -15,8 +15,15 @@ import frappe
 from frappe import _
 from frappe.utils import cstr
 
+#//// Neoffice — the guard the two editor endpoints below carry.
+from builder.utils import builder_role_required
 
-@frappe.whitelist(allow_guest=True)
+
+#//// Neoffice — whitelist REMOVED (was @frappe.whitelist(allow_guest=True)). This is a
+#//// Jinja method (hooks.py) / in-process helper: the templates call it directly, so the
+#//// decorator only opened an HTTP door. Worse, `config` is a parameter: over HTTP a
+#//// caller passed a string where a Document was expected and got a 500 out of the
+#//// public site. No caller anywhere in the fork reaches these over HTTP.
 def get_header_footer_config():
 	"""Get the header/footer configuration for the current website.
 
@@ -59,7 +66,11 @@ def get_header_footer_config():
 		return None
 
 
-@frappe.whitelist(allow_guest=True)
+#//// Neoffice — whitelist REMOVED (was @frappe.whitelist(allow_guest=True)). This is a
+#//// Jinja method (hooks.py) / in-process helper: the templates call it directly, so the
+#//// decorator only opened an HTTP door. Worse, `config` is a parameter: over HTTP a
+#//// caller passed a string where a Document was expected and got a 500 out of the
+#//// public site. No caller anywhere in the fork reaches these over HTTP.
 def render_header(config=None) -> str:
 	"""
 	Render the header HTML from configuration.
@@ -106,7 +117,11 @@ def render_header(config=None) -> str:
 	return theme_css + header_html
 
 
-@frappe.whitelist(allow_guest=True)
+#//// Neoffice — whitelist REMOVED (was @frappe.whitelist(allow_guest=True)). This is a
+#//// Jinja method (hooks.py) / in-process helper: the templates call it directly, so the
+#//// decorator only opened an HTTP door. Worse, `config` is a parameter: over HTTP a
+#//// caller passed a string where a Document was expected and got a 500 out of the
+#//// public site. No caller anywhere in the fork reaches these over HTTP.
 def render_footer(config=None) -> str:
 	"""
 	Render the footer HTML from configuration.
@@ -215,7 +230,11 @@ def get_theme_css(config=None) -> str:
 	)
 
 
-@frappe.whitelist(allow_guest=True)
+#//// Neoffice — whitelist REMOVED (was @frappe.whitelist(allow_guest=True)). This is a
+#//// Jinja method (hooks.py) / in-process helper: the templates call it directly, so the
+#//// decorator only opened an HTTP door. Worse, `config` is a parameter: over HTTP a
+#//// caller passed a string where a Document was expected and got a 500 out of the
+#//// public site. No caller anywhere in the fork reaches these over HTTP.
 def render_theme_variables(config=None) -> str:
 	"""Render theme CSS variables for injection into pages.
 
@@ -259,7 +278,10 @@ def get_icon(name: str) -> str:
 	return ICONS.get(name, "")
 
 
-@frappe.whitelist(allow_guest=True)
+@frappe.whitelist()
+#//// Neoffice — allow_guest dropped + builder role required. BuilderCanvas.vue calls
+#//// this from the editor, so the door stays; nobody outside the editor needs it.
+@builder_role_required()
 def get_editor_header_html():
 	"""Get header HTML with styles for the Builder editor preview.
 
@@ -282,7 +304,9 @@ def get_editor_header_html():
 	}
 
 
-@frappe.whitelist(allow_guest=True)
+@frappe.whitelist()
+#//// Neoffice — allow_guest dropped + builder role required (see above).
+@builder_role_required()
 def get_editor_footer_html():
 	"""Get footer HTML with styles for the Builder editor preview.
 

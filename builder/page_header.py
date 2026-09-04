@@ -18,8 +18,11 @@ carries the title and the category — a page header there would be a title abov
 a title.
 """
 
+import re
+
 import frappe
 from frappe import _
+from frappe.utils import escape_html
 
 # The band is a preset plus a fill — the same shape as the header and the
 # footer, and for the same reason.
@@ -180,6 +183,13 @@ def render(context) -> str:
 		return ""
 
 	background = config.get("page_header_background") or "None"
+	#//// Neoffice — escaped here, at the seam, rather than in the template. frappe's Jinja
+	#//// environment has NO autoescape, and webpage.html renders this band through `| safe`
+	#//// — so `{{ title }}` printed raw markup. The title is a page title (a Blog Post's, a
+	#//// Builder Page's) and the subtitle its meta description: both are plain text that
+	#//// authors, and on generated sites the LLM, supply. Escaping is done in Python so the
+	#//// template stays one composition and cannot forget a field.
+	crumbs = _breadcrumbs(context, path, title) if config.get("show_breadcrumbs") else []
 	return _CSS + frappe.render_template(
 		"builder/templates/includes/header_footer/page_header.html",
 		{
@@ -187,11 +197,35 @@ def render(context) -> str:
 			"background": background,
 			"fill": _fill(background, config),
 			"on_dark": background in _DARK_BACKGROUNDS,
-			"title": title,
-			"subtitle": context.get("page_header_subtitle") or "",
-			"breadcrumbs": _breadcrumbs(context, path, title) if config.get("show_breadcrumbs") else [],
+			"title": escape_html(title),
+			"subtitle": escape_html(context.get("page_header_subtitle") or ""),
+			"breadcrumbs": [
+				{"label": escape_html(c["label"]), "url": escape_html(c["url"])} for c in crumbs
+			],
 		},
 	)
+
+
+#//// Neoffice — colour allowlist. `page_header_bg_color` was interpolated straight into a
+#//// style attribute while the Image branch two lines below carefully escaped its URL — so
+#//// the one field an editor types by hand (and that a generation writes) was the one that
+#//// could close the declaration and open another. A colour is a small, closed language:
+#//// state it, and anything else is simply not a colour.
+_COLOUR_RE = re.compile(
+	r"""^(
+		\#[0-9a-fA-F]{3,8}                      # #rgb #rgba #rrggbb #rrggbbaa
+		| (rgb|rgba|hsl|hsla)\(\s*[0-9a-zA-Z.,%\s/+-]{1,60}\)   # functional notation
+		| var\(--[a-zA-Z0-9_-]{1,60}(\s*,\s*\#[0-9a-fA-F]{3,8})?\)  # token, optional hex fallback
+		| [a-zA-Z]{3,20}                        # named colour (currentColor, transparent, …)
+	)$""",
+	re.VERBOSE,
+)
+
+
+def _colour(value: str) -> str:
+	"""`value` if it is a CSS colour we recognise, otherwise an empty string."""
+	value = (value or "").strip()
+	return value if value and _COLOUR_RE.match(value) else ""
 
 
 def _fill(background: str, config: dict) -> str:
@@ -200,7 +234,7 @@ def _fill(background: str, config: dict) -> str:
 	Written here rather than in the template so the image URL is quoted once, in
 	Python, instead of being interpolated into a style attribute by hand.
 	"""
-	colour = (config.get("page_header_bg_color") or "").strip()
+	colour = _colour(config.get("page_header_bg_color"))
 
 	if background == "Solid":
 		return f"background-color:{colour};" if colour else ""
@@ -224,7 +258,10 @@ def _fill(background: str, config: dict) -> str:
 	return ""
 
 
-@frappe.whitelist(allow_guest=True)
+#//// Neoffice — whitelist REMOVED (was @frappe.whitelist(allow_guest=True)). hooks.py
+#//// exposes this as a Jinja method, and a Jinja method needs no whitelist: the templates
+#//// call it in-process. The decorator only added an HTTP door onto a renderer that emits
+#//// raw markup, for no caller that exists.
 def render_page_header() -> str:
 	"""Jinja entry point — the Web Template calls this with the page context.
 
@@ -238,7 +275,9 @@ def render_page_header() -> str:
 	return render(context)
 
 
-@frappe.whitelist(allow_guest=True)
+#//// Neoffice — whitelist REMOVED (was @frappe.whitelist(allow_guest=True)). Same reason as
+#//// render_page_header above, plus one of its own: `doc` came from the caller, so over HTTP
+#//// this rendered a band out of whatever dict was posted.
 def render_builder_page_header(doc=None) -> str:
 	"""The same band, for a page the editor built.
 
