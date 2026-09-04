@@ -1,7 +1,10 @@
-<!-- //// Neoffice website switch: the big on/off button for the whole site.
-     Reads/writes Website Profile.website_online through neoffice_theme; the
-     server-side validate() guard (>=1 published page + resolvable home) has
-     authority. Hidden entirely on benches without neoffice_theme. //// -->
+<!-- //// Neoffice — added file (no upstream equivalent): the on/off switch for the whole
+     //// site. Upstream publishes pages one by one and has no notion of a site being offline;
+     //// a Neoffice client needs one control that takes everything down at once.
+     //// Reads and writes Website Profile.website_online through neoffice_theme; the
+     //// server-side validate() guard (at least one published page + a resolvable home page)
+     //// holds the authority — this is only the control. Hidden entirely on a bench without
+     //// neoffice_theme. -->
 <template>
 	<div class="flex items-center" v-if="onlineState.data">
 		<Dropdown

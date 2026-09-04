@@ -1,7 +1,7 @@
 <template>
 	<!-- //// Neoffice — every label here was hardcoded English: the dashboard head
-	     stayed English on a French bench while the rest of the Studio translated.
-	     `__` is installed globally by the translation plugin (src/translation.ts). -->
+	     //// stayed English on a French bench while the rest of the Studio translated.
+	     //// `__` is installed globally by the translation plugin (src/translation.ts). -->
 	<div class="m-auto flex w-3/4 max-w-6xl items-center justify-between bg-surface-base px-3.5 py-5 pt-8">
 		<h1 class="text-2xl-semibold text-ink-gray-9">
 			<!-- //// Neoffice i18n (bd5dc7f1) -->

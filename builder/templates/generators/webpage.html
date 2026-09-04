@@ -57,15 +57,15 @@
 	{{ _head_html|safe }}
 	{%-endif -%}
 	<style>
-		{#-//// Neoffice — remplace le CDN daisyUI qui vivait dans head_html.
-		    Mesure du 2026-08-25 sur /about-e3ba, styles calcules avec et sans la
-		    feuille daisyUI : sur 278 elements, 11 changent, et tout l ecart tient
-		    dans les marges de h1/h2/h3/p. Aucune classe daisyUI n est utilisee
-		    nulle part (0 dans builder, 0 dans neoffice_theme, 0 dans les 24 pages
-		    publiees) — on chargeait 2,8 Mo depuis un CDN tiers pour annuler
-		    `website.bundle.css` de frappe, qui repose h2{margin:2rem} par-dessus
-		    notre reset.css. La regle doit rester ICI, apres _head_html : c est le
-		    seul endroit qui passe apres website.bundle.css. -#}
+		{#-//// Neoffice — replaces the third-party daisyUI CDN that used to live in
+		    //// head_html. Measured 2026-08-25 on /about-e3ba, computed styles with and
+		    //// without the daisyUI sheet: of 278 elements 11 change, and the whole
+		    //// difference is the margins of h1/h2/h3/p. No daisyUI class is used anywhere
+		    //// (0 in builder, 0 in neoffice_theme, 0 across the 24 published pages) — we
+		    //// were pulling 2.8 MB from someone else's CDN only to cancel frappe's
+		    //// `website.bundle.css`, which lays a 2rem heading margin over our reset.css.
+		    //// The rule must stay HERE, after _head_html: it is the only place that runs
+		    //// after website.bundle.css. -#}
 		blockquote, dd, dl, figure, h1, h2, h3, h4, h5, h6, hr, p, pre { margin: 0; }
 		/* Ensure proper page layout with header/footer */
 		html, body {
