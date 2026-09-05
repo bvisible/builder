@@ -1,6 +1,6 @@
-#//// Neoffice — added file (no upstream equivalent): the see - critique - fix - re-check loop around
-#//// visual_critique. builder/ai/** = the Neoffice AI site generator; frappe/builder ships no such
-#//// module. First commit 66e09422 2026-06-23.
+# //// Neoffice — added file (no upstream equivalent): the see - critique - fix - re-check loop around
+# //// visual_critique. builder/ai/** = the Neoffice AI site generator; frappe/builder ships no such
+# //// module. First commit 66e09422 2026-06-23.
 """
 Visual verification loop — the second half: see → critique → FIX → re-check.
 
@@ -17,7 +17,7 @@ import json
 
 import frappe
 
-#//// Neoffice — the guard carried by the whitelisted endpoints of this module.
+# //// Neoffice — the guard carried by the whitelisted endpoints of this module.
 from builder.utils import builder_role_required
 from frappe import _
 
@@ -133,16 +133,16 @@ def refine_page(page_name: str, max_iterations: int = 2, critique_with: str = "n
 
 
 @frappe.whitelist()
-#//// Neoffice — builder role required: bare @frappe.whitelist(), so any authenticated
-#//// user (portal customers included) reached it. See builder.utils.require_builder_role.
+# //// Neoffice — builder role required: bare @frappe.whitelist(), so any authenticated
+# //// user (portal customers included) reached it. See builder.utils.require_builder_role.
 @builder_role_required()
 def chat_refine_page(page_name: str, max_iterations: int = 2, session_id: str = None) -> dict:
     """Whitelisted entry: run the visual refinement loop on one page."""
     if not page_name:
         frappe.throw(_("page_name is required"))
     if session_id:
-        #//// Neoffice — owner-scoped: `session_id` decides which client documents feed the
-        #//// revision prompt, so it must be a session the caller owns.
+        # //// Neoffice — owner-scoped: `session_id` decides which client documents feed the
+        # //// revision prompt, so it must be a session the caller owns.
         from builder.builder_chat_service import get_owned_chat_session
 
         get_owned_chat_session(session_id, for_update=False)

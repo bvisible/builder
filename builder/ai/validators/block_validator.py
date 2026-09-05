@@ -1,12 +1,12 @@
-#//// Neoffice — added file (no upstream equivalent): validates and REPAIRS LLM block output instead of
-#//// rejecting the generation. builder/ai/** = the Neoffice AI site generator; frappe/builder ships no
-#//// such module. First commit 563d9875 2026-02-01.
+# //// Neoffice — added file (no upstream equivalent): validates and REPAIRS LLM block output instead of
+# //// rejecting the generation. builder/ai/** = the Neoffice AI site generator; frappe/builder ships no
+# //// such module. First commit 563d9875 2026-02-01.
 """
 Block Validator - Validation + auto-repair for FrappeBlock structures.
 Fixes common LLM output issues instead of rejecting the entire generation.
 """
 
-#//// Neoffice — re for the sanitiser below (URL schemes, dangerous CSS).
+# //// Neoffice — re for the sanitiser below (URL schemes, dangerous CSS).
 import re
 import uuid
 from typing import Optional
@@ -43,21 +43,21 @@ class BlockValidator:
         "clipPath", "use", "symbol", "text", "tspan",
     }
 
-    #//// Neoffice — the sanitiser below (constants + three methods) is entirely ours.
-    #//// VALID_ELEMENTS above filters the block's `element` and NOTHING else, so three
-    #//// model-controlled fields reached the rendered page untouched:
-    #////   • innerHTML — parsed by BeautifulSoup in builder_page.add_inner_html_content and
-    #////     appended to the tag verbatim, so a <script> in it is a <script> on the site;
-    #////   • attributes / customAttributes — copied wholesale (`tag.attrs = attributes`),
-    #////     so onclick=… or href="javascript:…" shipped as written;
-    #////   • clientScript — emitted as a real <script> block by attach_client_script.
-    #//// That mattered the day the prompt stopped being ours alone: scraped brochures and
-    #//// chat messages now reach the model, and its output is published HTML. Fencing the
-    #//// input (builder/ai/utils.as_untrusted_source) asks the model to behave; this is the
-    #//// half that does not depend on it behaving.
-    #//// Deliberately NOT applied in add_inner_html_content: that path also renders pages a
-    #//// human authored in the editor, where an embed or a widget script is the feature.
-    #//// This class only ever sees LLM output.
+    # //// Neoffice — the sanitiser below (constants + three methods) is entirely ours.
+    # //// VALID_ELEMENTS above filters the block's `element` and NOTHING else, so three
+    # //// model-controlled fields reached the rendered page untouched:
+    # ////   • innerHTML — parsed by BeautifulSoup in builder_page.add_inner_html_content and
+    # ////     appended to the tag verbatim, so a <script> in it is a <script> on the site;
+    # ////   • attributes / customAttributes — copied wholesale (`tag.attrs = attributes`),
+    # ////     so onclick=… or href="javascript:…" shipped as written;
+    # ////   • clientScript — emitted as a real <script> block by attach_client_script.
+    # //// That mattered the day the prompt stopped being ours alone: scraped brochures and
+    # //// chat messages now reach the model, and its output is published HTML. Fencing the
+    # //// input (builder/ai/utils.as_untrusted_source) asks the model to behave; this is the
+    # //// half that does not depend on it behaving.
+    # //// Deliberately NOT applied in add_inner_html_content: that path also renders pages a
+    # //// human authored in the editor, where an embed or a widget script is the feature.
+    # //// This class only ever sees LLM output.
 
     # Dropped outright — an AI page has no business shipping any of these, and each is a
     # script vector (<link>/<meta> for CSP-bypassing redirects, <base> for hijacking every
@@ -84,7 +84,7 @@ class BlockValidator:
     def __init__(self):
         self._repairs = 0
 
-    #//// Neoffice — sanitiser method (see the block comment above the constants).
+    # //// Neoffice — sanitiser method (see the block comment above the constants).
     @classmethod
     def _clean_attribute(cls, name: str, value) -> Optional[str]:
         """The value to keep for `name`, or None when the attribute must go."""
@@ -212,8 +212,8 @@ class BlockValidator:
             block["element"] = "div"
             self._repairs += 1
 
-        #//// Neoffice — sanitise what the model wrote before it becomes a published page.
-        #//// See _sanitise_block for why the element allowlist above was not enough.
+        # //// Neoffice — sanitise what the model wrote before it becomes a published page.
+        # //// See _sanitise_block for why the element allowlist above was not enough.
         self._sanitise_block(block)
 
         # Recursively repair children

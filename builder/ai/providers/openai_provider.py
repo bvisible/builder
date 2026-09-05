@@ -1,6 +1,6 @@
-#//// Neoffice — added file (no upstream equivalent): generation through OpenAI and OpenAI-compatible
-#//// endpoints. builder/ai/** = the Neoffice AI site generator; frappe/builder ships no such module.
-#//// First commit 563d9875 2026-02-01.
+# //// Neoffice — added file (no upstream equivalent): generation through OpenAI and OpenAI-compatible
+# //// endpoints. builder/ai/** = the Neoffice AI site generator; frappe/builder ships no such module.
+# //// First commit 563d9875 2026-02-01.
 """
 OpenAI Provider
 Implements AI generation using OpenAI's API with structured output support.

@@ -1,6 +1,6 @@
-#//// Neoffice — added file (no upstream equivalent): classifies the material a client drops in the chat
-#//// into Builder Content Asset. builder/ai/** = the Neoffice AI site generator; frappe/builder ships
-#//// no such module. First commit 861f6b8c 2026-06-23.
+# //// Neoffice — added file (no upstream equivalent): classifies the material a client drops in the chat
+# //// into Builder Content Asset. builder/ai/** = the Neoffice AI site generator; frappe/builder ships
+# //// no such module. First commit 861f6b8c 2026-06-23.
 """
 Client content ingestion — understand uploaded assets via vision/LLM.
 
@@ -29,7 +29,7 @@ from builder.ai.providers import get_provider
 from builder.ai.schemas.content_asset import ImageUnderstanding, DocumentUnderstanding
 from builder.ai.logging import ai_log
 
-#//// Neoffice — the guard carried by the whitelisted endpoints of this module.
+# //// Neoffice — the guard carried by the whitelisted endpoints of this module.
 from builder.utils import builder_role_required
 
 
@@ -315,8 +315,8 @@ def _section_of(hint: str) -> str:
 
 
 @frappe.whitelist()
-#//// Neoffice — builder role required: bare @frappe.whitelist(), so any authenticated
-#//// user (portal customers included) reached it. See builder.utils.require_builder_role.
+# //// Neoffice — builder role required: bare @frappe.whitelist(), so any authenticated
+# //// user (portal customers included) reached it. See builder.utils.require_builder_role.
 @builder_role_required()
 def get_content_context(session_id: str, page_hint: str = "", max_chars: int = 5000) -> str:
     """Real client text (from understood Document assets) for a page, prompt-ready.
@@ -359,15 +359,15 @@ def get_content_context(session_id: str, page_hint: str = "", max_chars: int = 5
 
 
 @frappe.whitelist()
-#//// Neoffice — builder role required: bare @frappe.whitelist(), so any authenticated
-#//// user (portal customers included) reached it. See builder.utils.require_builder_role.
+# //// Neoffice — builder role required: bare @frappe.whitelist(), so any authenticated
+# //// user (portal customers included) reached it. See builder.utils.require_builder_role.
 @builder_role_required()
 def understand_session_pending(session_id: str) -> dict:
     """Understand every still-pending (or previously failed) asset of a session,
     sequentially. Reusable entry for bench execute and re-runs."""
-    #//// Neoffice — owner-scoped: this spends vision-model calls on whatever session it is
-    #//// handed. (get_content_context above stays role-only on purpose: the generation
-    #//// worker calls it, and a worker's session user is the owner already.)
+    # //// Neoffice — owner-scoped: this spends vision-model calls on whatever session it is
+    # //// handed. (get_content_context above stays role-only on purpose: the generation
+    # //// worker calls it, and a worker's session user is the owner already.)
     from builder.builder_chat_service import get_owned_chat_session
 
     get_owned_chat_session(session_id)
@@ -381,8 +381,8 @@ def understand_session_pending(session_id: str) -> dict:
 
 
 @frappe.whitelist()
-#//// Neoffice — builder role required: bare @frappe.whitelist(), so any authenticated
-#//// user (portal customers included) reached it. See builder.utils.require_builder_role.
+# //// Neoffice — builder role required: bare @frappe.whitelist(), so any authenticated
+# //// user (portal customers included) reached it. See builder.utils.require_builder_role.
 @builder_role_required()
 def ingest_content_assets(session_id: str, files, company: str = None) -> dict:
     """Create Builder Content Asset rows for a batch of uploaded files and queue
@@ -391,8 +391,8 @@ def ingest_content_assets(session_id: str, files, company: str = None) -> dict:
     `files` is a JSON list of either bare file URLs or {file_url, filename}.
     This is the entry point the chat's batch upload calls.
     """
-    #//// Neoffice — owner-scoped: attaching documents to someone else's brief put text of
-    #//// our choosing into their generation prompt.
+    # //// Neoffice — owner-scoped: attaching documents to someone else's brief put text of
+    # //// our choosing into their generation prompt.
     from builder.builder_chat_service import get_owned_chat_session
 
     get_owned_chat_session(session_id)

@@ -1,9 +1,9 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
-#//// Neoffice — added file (no upstream equivalent): design-system generator over the search results
-#//// (vendored). builder/ai/design_data/** is VENDORED verbatim from
-#//// nextlevelbuilder/ui-ux-pro-max-skill (MIT, upstream f8ac5e12) — re-copy it from there, never
-#//// hand-edit. First commit 5502544c 2026-07-18.
+# //// Neoffice — added file (no upstream equivalent): design-system generator over the search results
+# //// (vendored). builder/ai/design_data/** is VENDORED verbatim from
+# //// nextlevelbuilder/ui-ux-pro-max-skill (MIT, upstream f8ac5e12) — re-copy it from there, never
+# //// hand-edit. First commit 5502544c 2026-07-18.
 """
 Design System Generator - Aggregates search results and applies reasoning
 to generate comprehensive design system recommendations.

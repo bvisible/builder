@@ -1,6 +1,6 @@
-#//// Neoffice — added file (no upstream equivalent): self-hosted image generation/editing through
-#//// ComfyUI (Olares One), server-side only. builder/ai/** = the Neoffice AI site generator;
-#//// frappe/builder ships no such module. First commit 1cf6a524 2026-06-23.
+# //// Neoffice — added file (no upstream equivalent): self-hosted image generation/editing through
+# //// ComfyUI (Olares One), server-side only. builder/ai/** = the Neoffice AI site generator;
+# //// frappe/builder ships no such module. First commit 1cf6a524 2026-06-23.
 """
 ComfyUI image client — self-hosted image generation + editing (Olares One).
 

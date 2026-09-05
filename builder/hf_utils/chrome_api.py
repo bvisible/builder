@@ -1,7 +1,7 @@
-#//// Neoffice — added file (no upstream equivalent): the chrome API behind Settings > Theme; ported
-#//// from unpress_core so both editions stay interchangeable.
-#//// builder/templates/includes/header_footer/** = the Neoffice site chrome (Website Header Footer
-#//// Config). First commit 050b8aa3 2026-07-30.
+# //// Neoffice — added file (no upstream equivalent): the chrome API behind Settings > Theme; ported
+# //// from unpress_core so both editions stay interchangeable.
+# //// builder/templates/includes/header_footer/** = the Neoffice site chrome (Website Header Footer
+# //// Config). First commit 050b8aa3 2026-07-30.
 # Chrome (header/footer/theme) API for the builder Settings > Theme tab.
 #
 # Ported from Unpress (unpress_core/hf_utils/chrome_api.py) — same public

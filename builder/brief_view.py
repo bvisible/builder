@@ -1,6 +1,6 @@
-#//// Neoffice — added file (no upstream equivalent): renders the generator's design brief readably
-#//// instead of leaving it a JSON blob. Neoffice-only, part of the AI generator surface. First commit
-#//// 0bf5f370 2026-08-04.
+# //// Neoffice — added file (no upstream equivalent): renders the generator's design brief readably
+# //// instead of leaving it a JSON blob. Neoffice-only, part of the AI generator surface. First commit
+# //// 0bf5f370 2026-08-04.
 """The design brief, readable.
 
 The generator writes its brief to `Builder Chat Session.saved_brief` and reads

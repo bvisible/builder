@@ -1,6 +1,6 @@
-#//// Neoffice — added file (no upstream equivalent): the design tokens every generated page is built
-#//// from. builder/ai/** = the Neoffice AI site generator; frappe/builder ships no such module. First
-#//// commit 563d9875 2026-02-01.
+# //// Neoffice — added file (no upstream equivalent): the design tokens every generated page is built
+# //// from. builder/ai/** = the Neoffice AI site generator; frappe/builder ships no such module. First
+# //// commit 563d9875 2026-02-01.
 """
 Design Tokens
 Centralized design values for consistent AI-generated UI.

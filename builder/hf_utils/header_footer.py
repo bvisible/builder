@@ -1,6 +1,6 @@
-#//// Neoffice — added file (no upstream equivalent): renders the site header and footer; THE seat of
-#//// the chrome for every consumer. builder/templates/includes/header_footer/** = the Neoffice site
-#//// chrome (Website Header Footer Config). First commit 5233329b 2026-02-02.
+# //// Neoffice — added file (no upstream equivalent): renders the site header and footer; THE seat of
+# //// the chrome for every consumer. builder/templates/includes/header_footer/** = the Neoffice site
+# //// chrome (Website Header Footer Config). First commit 5233329b 2026-02-02.
 # Copyright (c) 2025, Frappe Technologies Pvt Ltd and contributors
 # For license information, please see license.txt
 
@@ -15,15 +15,15 @@ import frappe
 from frappe import _
 from frappe.utils import cstr
 
-#//// Neoffice — the guard the two editor endpoints below carry.
+# //// Neoffice — the guard the two editor endpoints below carry.
 from builder.utils import builder_role_required
 
 
-#//// Neoffice — whitelist REMOVED (was @frappe.whitelist(allow_guest=True)). This is a
-#//// Jinja method (hooks.py) / in-process helper: the templates call it directly, so the
-#//// decorator only opened an HTTP door. Worse, `config` is a parameter: over HTTP a
-#//// caller passed a string where a Document was expected and got a 500 out of the
-#//// public site. No caller anywhere in the fork reaches these over HTTP.
+# //// Neoffice — whitelist REMOVED (was @frappe.whitelist(allow_guest=True)). This is a
+# //// Jinja method (hooks.py) / in-process helper: the templates call it directly, so the
+# //// decorator only opened an HTTP door. Worse, `config` is a parameter: over HTTP a
+# //// caller passed a string where a Document was expected and got a 500 out of the
+# //// public site. No caller anywhere in the fork reaches these over HTTP.
 def get_header_footer_config():
 	"""Get the header/footer configuration for the current website.
 
@@ -31,14 +31,14 @@ def get_header_footer_config():
 	allowing graceful fallback to default header/footer.
 	"""
 	try:
-		#//// Neoffice website switch: an offline site (website_online=0, the fleet
-		#//// default) has NO chrome for visitors — the login and every web page
-		#//// render bare ("no website = just a login page", directive 2026-07-10).
-		#//// This is THE seat of the chrome: the webshop navbar/footer overrides,
-		#//// builder's webpage generator and the legacy injector all resolve their
-		#//// config here. Staff (System/Website Manager) keeps the chrome so the
-		#//// offline-site preview stays faithful. Keyed on the key existing in the
-		#//// resolved profile dict, like every other gate.
+		# //// Neoffice website switch: an offline site (website_online=0, the fleet
+		# //// default) has NO chrome for visitors — the login and every web page
+		# //// render bare ("no website = just a login page", directive 2026-07-10).
+		# //// This is THE seat of the chrome: the webshop navbar/footer overrides,
+		# //// builder's webpage generator and the legacy injector all resolve their
+		# //// config here. Staff (System/Website Manager) keeps the chrome so the
+		# //// offline-site preview stays faithful. Keyed on the key existing in the
+		# //// resolved profile dict, like every other gate.
 		profile_doc = getattr(frappe.local, "website_profile_doc", None)
 		if (
 			profile_doc is not None
@@ -49,9 +49,9 @@ def get_header_footer_config():
 			if "System Manager" not in roles and "Website Manager" not in roles:
 				return None
 
-		#//// Neoffice multi-site: a resolved Website Profile with its own
-		#//// variant gets it; everything else (default site, fleet instances
-		#//// without profiles) falls back to the global Single.
+		# //// Neoffice multi-site: a resolved Website Profile with its own
+		# //// variant gets it; everything else (default site, fleet instances
+		# //// without profiles) falls back to the global Single.
 		profile = getattr(frappe.local, "website_profile", None)
 		if profile and frappe.db.exists("DocType", "Website Header Footer Variant"):
 			if frappe.db.exists("Website Header Footer Variant", profile):
@@ -66,11 +66,11 @@ def get_header_footer_config():
 		return None
 
 
-#//// Neoffice — whitelist REMOVED (was @frappe.whitelist(allow_guest=True)). This is a
-#//// Jinja method (hooks.py) / in-process helper: the templates call it directly, so the
-#//// decorator only opened an HTTP door. Worse, `config` is a parameter: over HTTP a
-#//// caller passed a string where a Document was expected and got a 500 out of the
-#//// public site. No caller anywhere in the fork reaches these over HTTP.
+# //// Neoffice — whitelist REMOVED (was @frappe.whitelist(allow_guest=True)). This is a
+# //// Jinja method (hooks.py) / in-process helper: the templates call it directly, so the
+# //// decorator only opened an HTTP door. Worse, `config` is a parameter: over HTTP a
+# //// caller passed a string where a Document was expected and got a 500 out of the
+# //// public site. No caller anywhere in the fork reaches these over HTTP.
 def render_header(config=None) -> str:
 	"""
 	Render the header HTML from configuration.
@@ -117,11 +117,11 @@ def render_header(config=None) -> str:
 	return theme_css + header_html
 
 
-#//// Neoffice — whitelist REMOVED (was @frappe.whitelist(allow_guest=True)). This is a
-#//// Jinja method (hooks.py) / in-process helper: the templates call it directly, so the
-#//// decorator only opened an HTTP door. Worse, `config` is a parameter: over HTTP a
-#//// caller passed a string where a Document was expected and got a 500 out of the
-#//// public site. No caller anywhere in the fork reaches these over HTTP.
+# //// Neoffice — whitelist REMOVED (was @frappe.whitelist(allow_guest=True)). This is a
+# //// Jinja method (hooks.py) / in-process helper: the templates call it directly, so the
+# //// decorator only opened an HTTP door. Worse, `config` is a parameter: over HTTP a
+# //// caller passed a string where a Document was expected and got a 500 out of the
+# //// public site. No caller anywhere in the fork reaches these over HTTP.
 def render_footer(config=None) -> str:
 	"""
 	Render the footer HTML from configuration.
@@ -230,11 +230,11 @@ def get_theme_css(config=None) -> str:
 	)
 
 
-#//// Neoffice — whitelist REMOVED (was @frappe.whitelist(allow_guest=True)). This is a
-#//// Jinja method (hooks.py) / in-process helper: the templates call it directly, so the
-#//// decorator only opened an HTTP door. Worse, `config` is a parameter: over HTTP a
-#//// caller passed a string where a Document was expected and got a 500 out of the
-#//// public site. No caller anywhere in the fork reaches these over HTTP.
+# //// Neoffice — whitelist REMOVED (was @frappe.whitelist(allow_guest=True)). This is a
+# //// Jinja method (hooks.py) / in-process helper: the templates call it directly, so the
+# //// decorator only opened an HTTP door. Worse, `config` is a parameter: over HTTP a
+# //// caller passed a string where a Document was expected and got a 500 out of the
+# //// public site. No caller anywhere in the fork reaches these over HTTP.
 def render_theme_variables(config=None) -> str:
 	"""Render theme CSS variables for injection into pages.
 
@@ -279,8 +279,8 @@ def get_icon(name: str) -> str:
 
 
 @frappe.whitelist()
-#//// Neoffice — allow_guest dropped + builder role required. BuilderCanvas.vue calls
-#//// this from the editor, so the door stays; nobody outside the editor needs it.
+# //// Neoffice — allow_guest dropped + builder role required. BuilderCanvas.vue calls
+# //// this from the editor, so the door stays; nobody outside the editor needs it.
 @builder_role_required()
 def get_editor_header_html():
 	"""Get header HTML with styles for the Builder editor preview.
@@ -305,7 +305,7 @@ def get_editor_header_html():
 
 
 @frappe.whitelist()
-#//// Neoffice — allow_guest dropped + builder role required (see above).
+# //// Neoffice — allow_guest dropped + builder role required (see above).
 @builder_role_required()
 def get_editor_footer_html():
 	"""Get footer HTML with styles for the Builder editor preview.

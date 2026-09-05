@@ -1,5 +1,5 @@
-#//// Neoffice — added file (no upstream equivalent): validator package exports. builder/ai/** = the
-#//// Neoffice AI site generator; frappe/builder ships no such module. First commit 563d9875 2026-02-01.
+# //// Neoffice — added file (no upstream equivalent): validator package exports. builder/ai/** = the
+# //// Neoffice AI site generator; frappe/builder ships no such module. First commit 563d9875 2026-02-01.
 # AI Validators Module
 # Block and brief validation
 

@@ -1,6 +1,6 @@
-#//// Neoffice — added file (no upstream equivalent). Covers the guards added on 2026-09-04
-#//// to the Neoffice AI surface of this fork (builder/ai/**, the chat, the site chrome):
-#//// upstream frappe/builder ships none of that code and none of these entry points.
+# //// Neoffice — added file (no upstream equivalent). Covers the guards added on 2026-09-04
+# //// to the Neoffice AI surface of this fork (builder/ai/**, the chat, the site chrome):
+# //// upstream frappe/builder ships none of that code and none of these entry points.
 """Tests for the security guards on the AI / chat / site-chrome surface.
 
 Upstream builder is an HTML editor for trusted authors, so a bare

@@ -1,6 +1,6 @@
-#//// Neoffice — added file (no upstream equivalent): keeps the site menu in sync when pages are created
-#//// or Website Settings change. builder/templates/includes/header_footer/** = the Neoffice site chrome
-#//// (Website Header Footer Config). First commit 5233329b 2026-02-02.
+# //// Neoffice — added file (no upstream equivalent): keeps the site menu in sync when pages are created
+# //// or Website Settings change. builder/templates/includes/header_footer/** = the Neoffice site chrome
+# //// (Website Header Footer Config). First commit 5233329b 2026-02-02.
 # Copyright (c) 2025, Frappe Technologies Pvt Ltd and contributors
 # For license information, please see license.txt
 

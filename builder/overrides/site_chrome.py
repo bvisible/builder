@@ -1,6 +1,6 @@
-#//// Neoffice — added file (no upstream equivalent): legacy chrome injection for migrated client sites
-#//// (WordPress imports) on non-Builder pages. Neoffice-only; no-op unless site_config sets
-#//// builder_legacy_site_chrome. First commit cf86269e 2026-07-06.
+# //// Neoffice — added file (no upstream equivalent): legacy chrome injection for migrated client sites
+# //// (WordPress imports) on non-Builder pages. Neoffice-only; no-op unless site_config sets
+# //// builder_legacy_site_chrome. First commit cf86269e 2026-07-06.
 """Legacy site chrome injection for migrated client sites.
 
 Some client sites (e.g. WordPress migrations like blowbackshop.ch) embed a Builder
@@ -179,11 +179,11 @@ def inject_site_chrome(context):
 	if not frappe.conf.get("builder_legacy_site_chrome"):
 		return _inject_config_chrome(context)
 
-	#//// Neoffice website switch: an offline site (website_online=0, the fleet
-	#//// default) leaks nothing — the login page and every remaining web page
-	#//// render bare, no site header/footer ("no website = just a login page",
-	#//// directive 2026-07-10, seen live on lo-alabouche's login). Staff keeps
-	#//// the chrome (faithful preview), same contract as get_header_footer_config.
+	# //// Neoffice website switch: an offline site (website_online=0, the fleet
+	# //// default) leaks nothing — the login page and every remaining web page
+	# //// render bare, no site header/footer ("no website = just a login page",
+	# //// directive 2026-07-10, seen live on lo-alabouche's login). Staff keeps
+	# //// the chrome (faithful preview), same contract as get_header_footer_config.
 	profile = getattr(frappe.local, "website_profile_doc", None)
 	if profile is not None and "website_online" in profile and not profile.get("website_online"):
 		roles = frappe.get_roles()
@@ -211,27 +211,27 @@ def inject_site_chrome(context):
 	builder_css_tags = ""
 	head_html = str(context.get("_head_html", ""))
 
-	#//// Neoffice — les deux CDN tiers (daisyUI + cdn.tailwindcss.com) sont
-	#//// remplaces par la seule regle qu ils apportaient reellement.
-	#////
-	#//// Mesure du 2026-08-25 sur osiris, page Builder /about-e3ba, en desactivant
-	#//// la feuille daisyUI et en comparant les STYLES CALCULES : sur 278 elements,
-	#//// 11 changent, et l ecart tient en six declarations — margin-top/bottom de
-	#//// h1, h2, h3 et margin-bottom de p. Aucune classe de composant daisyUI n est
-	#//// utilisee nulle part : zero occurrence dans builder, dans neoffice_theme, et
-	#//// dans les 24 pages publiees d osiris et de blowbackshop. Zero classe
-	#//// utilitaire Tailwind non plus — le generateur ecrit des styles en ligne.
-	#////
-	#//// Ce que daisyUI faisait ici, c est annuler `website.bundle.css` de frappe,
-	#//// qui repose `h2{margin:2rem}` par-dessus notre reset.css. On chargeait donc
-	#//// 2,8 Mo depuis un CDN tiers pour remettre des marges a zero.
-	#////
-	#//// La regle ci-dessous, injectee A LA MEME POSITION, reproduit l etat
-	#//// exactement : 21 elements compares, zero ecart.
-	#////
-	#//// Pourquoi ca comptait : l IP de chaque visiteur d un site client partait
-	#//// chez jsdelivr sans consentement, et cdn.tailwindcss.com est le compilateur
-	#//// JIT navigateur, que Tailwind deconseille lui-meme en production.
+	# //// Neoffice — les deux CDN tiers (daisyUI + cdn.tailwindcss.com) sont
+	# //// remplaces par la seule regle qu ils apportaient reellement.
+	# ////
+	# //// Mesure du 2026-08-25 sur osiris, page Builder /about-e3ba, en desactivant
+	# //// la feuille daisyUI et en comparant les STYLES CALCULES : sur 278 elements,
+	# //// 11 changent, et l ecart tient en six declarations — margin-top/bottom de
+	# //// h1, h2, h3 et margin-bottom de p. Aucune classe de composant daisyUI n est
+	# //// utilisee nulle part : zero occurrence dans builder, dans neoffice_theme, et
+	# //// dans les 24 pages publiees d osiris et de blowbackshop. Zero classe
+	# //// utilitaire Tailwind non plus — le generateur ecrit des styles en ligne.
+	# ////
+	# //// Ce que daisyUI faisait ici, c est annuler `website.bundle.css` de frappe,
+	# //// qui repose `h2{margin:2rem}` par-dessus notre reset.css. On chargeait donc
+	# //// 2,8 Mo depuis un CDN tiers pour remettre des marges a zero.
+	# ////
+	# //// La regle ci-dessous, injectee A LA MEME POSITION, reproduit l etat
+	# //// exactement : 21 elements compares, zero ecart.
+	# ////
+	# //// Pourquoi ca comptait : l IP de chaque visiteur d un site client partait
+	# //// chez jsdelivr sans consentement, et cdn.tailwindcss.com est le compilateur
+	# //// JIT navigateur, que Tailwind deconseille lui-meme en production.
 	if "daisyui" not in head_html:
 		builder_css_tags += (
 			"<style>blockquote,dd,dl,figure,h1,h2,h3,h4,h5,h6,hr,p,pre{margin:0}</style>"

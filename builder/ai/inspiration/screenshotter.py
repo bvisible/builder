@@ -1,6 +1,6 @@
-#//// Neoffice — added file (no upstream equivalent): full-page screenshots through Playwright (also
-#//// used by the visual loop). builder/ai/** = the Neoffice AI site generator; frappe/builder ships no
-#//// such module. First commit 5c48fc99 2026-02-04.
+# //// Neoffice — added file (no upstream equivalent): full-page screenshots through Playwright (also
+# //// used by the visual loop). builder/ai/** = the Neoffice AI site generator; frappe/builder ships no
+# //// such module. First commit 5c48fc99 2026-02-04.
 """
 Website Screenshotter for Inspiration Module
 

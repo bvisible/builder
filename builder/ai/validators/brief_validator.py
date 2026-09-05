@@ -1,6 +1,6 @@
-#//// Neoffice — added file (no upstream equivalent): checks the brief is complete before any page is
-#//// generated. builder/ai/** = the Neoffice AI site generator; frappe/builder ships no such module.
-#//// First commit 0d32dfb5 2026-02-06.
+# //// Neoffice — added file (no upstream equivalent): checks the brief is complete before any page is
+# //// generated. builder/ai/** = the Neoffice AI site generator; frappe/builder ships no such module.
+# //// First commit 0d32dfb5 2026-02-06.
 """
 Brief Validator - Validates design brief completeness and correctness.
 Ensures all critical fields are filled before page generation.

@@ -12,13 +12,13 @@ dependencies = [
     "csscompressor>=0.9.5",
     "pandas (>=2.3.2,<3.0.0)",
     "duckdb==1.4.3",
-    #//// Neoffice — runtime dependencies of builder/ai/**: the Ollama client and the JSON
-    #//// repairer the generators need to survive imperfect LLM output.
+    # //// Neoffice — runtime dependencies of builder/ai/**: the Ollama client and the JSON
+    # //// repairer the generators need to survive imperfect LLM output.
     "ollama>=0.4.0",
     "json-repair>=0.30.0",
     "litellm==1.83.7",
-    #//// Neoffice — the ingestion and visual-verification dependencies, plus the
-    #//// scikit-learn extra below. None of this exists upstream.
+    # //// Neoffice — the ingestion and visual-verification dependencies, plus the
+    # //// scikit-learn extra below. None of this exists upstream.
     # Client content ingestion + visual verification loop (now core features,
     # so they must install on EVERY instance — not optional):
     "pillow>=10.0.0",      # image downscale before vision calls

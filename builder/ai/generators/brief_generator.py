@@ -1,6 +1,6 @@
-#//// Neoffice — added file (no upstream equivalent): the design brief, generated once per site and
-#//// reused by every page. builder/ai/** = the Neoffice AI site generator; frappe/builder ships no such
-#//// module. First commit 71e8284d 2026-02-03.
+# //// Neoffice — added file (no upstream equivalent): the design brief, generated once per site and
+# //// reused by every page. builder/ai/** = the Neoffice AI site generator; frappe/builder ships no such
+# //// module. First commit 71e8284d 2026-02-03.
 """
 Brief Generator - Design Brief Generation for Site Consistency
 Generates a design brief ONCE at the start, then used for ALL pages.

@@ -1,5 +1,5 @@
-#//// Neoffice — added file (no upstream equivalent): child row of the AI shortcode registry. Neoffice
-#//// DocType, no upstream counterpart. First commit d419dced 2026-02-01.
+# //// Neoffice — added file (no upstream equivalent): child row of the AI shortcode registry. Neoffice
+# //// DocType, no upstream counterpart. First commit d419dced 2026-02-01.
 # Copyright (c) 2025, Frappe Technologies and contributors
 # For license information, please see license.txt
 

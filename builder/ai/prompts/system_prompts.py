@@ -1,6 +1,6 @@
-#//// Neoffice — added file (no upstream equivalent): the system prompts; English on purpose, the output
-#//// language is a parameter. builder/ai/** = the Neoffice AI site generator; frappe/builder ships no
-#//// such module. First commit 563d9875 2026-02-01.
+# //// Neoffice — added file (no upstream equivalent): the system prompts; English on purpose, the output
+# //// language is a parameter. builder/ai/** = the Neoffice AI site generator; frappe/builder ships no
+# //// such module. First commit 563d9875 2026-02-01.
 """
 System Prompts for Creative AI Generation
 These prompts give the AI full creative freedom while ensuring valid FrappeBlock output.

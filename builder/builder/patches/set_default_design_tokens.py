@@ -1,6 +1,6 @@
-#//// Neoffice — added file (no upstream equivalent): writes the design-token defaults down on configs
-#//// that predate the fields. Neoffice migration, listed in patches.txt; frappe/builder has no
-#//// equivalent. First commit 3084b026 2026-08-03.
+# //// Neoffice — added file (no upstream equivalent): writes the design-token defaults down on configs
+# //// that predate the fields. Neoffice migration, listed in patches.txt; frappe/builder has no
+# //// equivalent. First commit 3084b026 2026-08-03.
 # Give existing sites the design tokens they already look like.
 #
 # Corners, elevation, hover and motion arrived after these configs were

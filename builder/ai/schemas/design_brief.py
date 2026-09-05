@@ -1,6 +1,6 @@
-#//// Neoffice — added file (no upstream equivalent): pydantic shape of the design brief that keeps a
-#//// site visually consistent. builder/ai/** = the Neoffice AI site generator; frappe/builder ships no
-#//// such module. First commit 71e8284d 2026-02-03.
+# //// Neoffice — added file (no upstream equivalent): pydantic shape of the design brief that keeps a
+# //// site visually consistent. builder/ai/** = the Neoffice AI site generator; frappe/builder ships no
+# //// such module. First commit 71e8284d 2026-02-03.
 """
 Design Brief Schema for AI Site Generation
 Ensures visual consistency across all generated pages.

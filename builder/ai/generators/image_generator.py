@@ -1,6 +1,6 @@
-#//// Neoffice — added file (no upstream equivalent): image generation through Ollama's
-#//// OpenAI-compatible API (Flux models). builder/ai/** = the Neoffice AI site generator;
-#//// frappe/builder ships no such module. First commit d26b6fb8 2026-02-03.
+# //// Neoffice — added file (no upstream equivalent): image generation through Ollama's
+# //// OpenAI-compatible API (Flux models). builder/ai/** = the Neoffice AI site generator;
+# //// frappe/builder ships no such module. First commit d26b6fb8 2026-02-03.
 """
 Image Generator
 Generates images using Ollama's OpenAI-compatible API with Flux models.

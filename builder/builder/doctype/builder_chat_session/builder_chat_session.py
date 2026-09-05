@@ -1,5 +1,5 @@
-#//// Neoffice — added file (no upstream equivalent): the AI chat session: the brief it saved, the pages
-#//// it produced. Neoffice DocType, no upstream counterpart. First commit 0d32dfb5 2026-02-06.
+# //// Neoffice — added file (no upstream equivalent): the AI chat session: the brief it saved, the pages
+# //// it produced. Neoffice DocType, no upstream counterpart. First commit 0d32dfb5 2026-02-06.
 # Copyright (c) 2025, Frappe Technologies Pvt Ltd and contributors
 # For license information, please see license.txt
 
@@ -18,12 +18,12 @@ class BuilderChatSession(Document):
 
 	def before_insert(self):
 		"""Generate unique session ID before insert."""
-		#//// Neoffice — full uuid4 instead of uuid4()[:8]. The id was the ONLY thing
-		#//// standing between a caller and someone else's session (the endpoints did not
-		#//// filter on the owner), and 8 hex chars is 32 bits — guessable. The owner filter
-		#//// in get_owned_chat_session() is now the real guard; this just stops the id from
-		#//// being a shortcut. Sessions created before this keep their 8-char id: nothing
-		#//// reads a fixed length, and the owner filter covers them all the same.
+		# //// Neoffice — full uuid4 instead of uuid4()[:8]. The id was the ONLY thing
+		# //// standing between a caller and someone else's session (the endpoints did not
+		# //// filter on the owner), and 8 hex chars is 32 bits — guessable. The owner filter
+		# //// in get_owned_chat_session() is now the real guard; this just stops the id from
+		# //// being a shortcut. Sessions created before this keep their 8-char id: nothing
+		# //// reads a fixed length, and the owner filter covers them all the same.
 		if not self.session_id:
 			self.session_id = str(uuid.uuid4())
 

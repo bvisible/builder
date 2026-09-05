@@ -1,6 +1,6 @@
-#//// Neoffice — added file (no upstream equivalent): writes the footer menu source down on configs that
-#//// predate the field. Neoffice migration, listed in patches.txt; frappe/builder has no equivalent.
-#//// First commit 3a033121 2026-08-04.
+# //// Neoffice — added file (no upstream equivalent): writes the footer menu source down on configs that
+# //// predate the field. Neoffice migration, listed in patches.txt; frappe/builder has no equivalent.
+# //// First commit 3a033121 2026-08-04.
 # Give existing sites the footer menu source the field defaults to.
 #
 # The renderer already falls back to "Custom links" — which is what every site

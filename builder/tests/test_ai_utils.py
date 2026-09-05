@@ -1,5 +1,5 @@
-#//// Neoffice — added file (no upstream equivalent): tests of builder.ai.utils. builder/ai/** = the
-#//// Neoffice AI site generator; frappe/builder ships no such module. First commit 9e4a19d5 2026-02-01.
+# //// Neoffice — added file (no upstream equivalent): tests of builder.ai.utils. builder/ai/** = the
+# //// Neoffice AI site generator; frappe/builder ships no such module. First commit 9e4a19d5 2026-02-01.
 """
 Tests for AI Utils Module
 Tests for builder.ai.utils

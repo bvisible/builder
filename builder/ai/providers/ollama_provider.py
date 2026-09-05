@@ -1,6 +1,6 @@
-#//// Neoffice — added file (no upstream equivalent): generation through Ollama, with structured output.
-#//// builder/ai/** = the Neoffice AI site generator; frappe/builder ships no such module. First commit
-#//// 563d9875 2026-02-01.
+# //// Neoffice — added file (no upstream equivalent): generation through Ollama, with structured output.
+# //// builder/ai/** = the Neoffice AI site generator; frappe/builder ships no such module. First commit
+# //// 563d9875 2026-02-01.
 """
 Ollama Provider
 Implements AI generation using Ollama's API with structured output support.

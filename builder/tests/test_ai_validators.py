@@ -1,6 +1,6 @@
-#//// Neoffice - added file (no upstream equivalent). Covers builder/ai/**, the
-#//// Neoffice AI site-generation subsystem (first commit 71e8284d, 2026-02-03);
-#//// frappe/builder upstream ships neither the module nor these tests.
+# //// Neoffice - added file (no upstream equivalent). Covers builder/ai/**, the
+# //// Neoffice AI site-generation subsystem (first commit 71e8284d, 2026-02-03);
+# //// frappe/builder upstream ships neither the module nor these tests.
 """
 Tests for AI Validators Module
 Tests for builder.ai.validators.BlockValidator

@@ -1,6 +1,6 @@
-#//// Neoffice — added file (no upstream equivalent): file logger that survives a worker being killed,
-#//// where frappe's own logging does not. builder/ai/** = the Neoffice AI site generator;
-#//// frappe/builder ships no such module. First commit ee8cc910 2026-02-03.
+# //// Neoffice — added file (no upstream equivalent): file logger that survives a worker being killed,
+# //// where frappe's own logging does not. builder/ai/** = the Neoffice AI site generator;
+# //// frappe/builder ships no such module. First commit ee8cc910 2026-02-03.
 """
 Dedicated logging for Builder AI - writes to file directly.
 

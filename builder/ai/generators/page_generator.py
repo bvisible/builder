@@ -1,6 +1,6 @@
-#//// Neoffice — added file (no upstream equivalent): the page generator itself: prompt, LLM call, block
-#//// repair, save. builder/ai/** = the Neoffice AI site generator; frappe/builder ships no such module.
-#//// First commit 563d9875 2026-02-01.
+# //// Neoffice — added file (no upstream equivalent): the page generator itself: prompt, LLM call, block
+# //// repair, save. builder/ai/** = the Neoffice AI site generator; frappe/builder ships no such module.
+# //// First commit 563d9875 2026-02-01.
 """
 Page Generator - Creative AI Page Generation
 Direct LLM generation with full creative freedom.
@@ -17,8 +17,8 @@ from builder.ai.design_system import get_theme
 from builder.ai.prompts.system_prompts import get_creative_system_prompt, get_page_generation_prompt
 from builder.ai.validators import BlockValidator
 from builder.ai.logging import ai_log
-#//// Neoffice — as_untrusted_source: scraped client text is fenced as DATA before it
-#//// reaches the model. See builder/ai/utils.py for why.
+# //// Neoffice — as_untrusted_source: scraped client text is fenced as DATA before it
+# //// reaches the model. See builder/ai/utils.py for why.
 from builder.ai.utils import as_untrusted_source
 from builder.ai.schemas.design_brief import DesignBrief
 
@@ -134,8 +134,8 @@ class PageGenerator:
 
         # Inject the client's REAL content (ingested documents) so the page uses
         # actual copy/facts instead of invented filler. No-op when absent.
-        #//// Neoffice — fenced as DATA instead of pasted under an "authoritative"
-        #//// heading (see builder/ai/utils.py: as_untrusted_source).
+        # //// Neoffice — fenced as DATA instead of pasted under an "authoritative"
+        # //// heading (see builder/ai/utils.py: as_untrusted_source).
         if real_content:
             user_prompt += as_untrusted_source(real_content)
 
@@ -288,8 +288,8 @@ class PageGenerator:
             "changing them, same colors and fonts. Do not drop content. Return ONLY the "
             "corrected FrappeBlock JSON array — no prose, no markdown fences."
         )
-        #//// Neoffice — same fencing as generate_page: this prompt carries the same
-        #//// scraped text, so it carried the same injection.
+        # //// Neoffice — same fencing as generate_page: this prompt carries the same
+        # //// scraped text, so it carried the same injection.
         content_block = as_untrusted_source(real_content) if real_content else ""
         user_prompt = (
             f"PAGE: {page_title}\n\n"

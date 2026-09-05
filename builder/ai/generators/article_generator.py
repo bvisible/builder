@@ -1,6 +1,6 @@
-#//// Neoffice — added file (no upstream equivalent): writes a blog article for THIS site — same
-#//// business, same tone as the brief. builder/ai/** = the Neoffice AI site generator; frappe/builder
-#//// ships no such module. First commit d2e07f6d 2026-08-04.
+# //// Neoffice — added file (no upstream equivalent): writes a blog article for THIS site — same
+# //// business, same tone as the brief. builder/ai/** = the Neoffice AI site generator; frappe/builder
+# //// ships no such module. First commit d2e07f6d 2026-08-04.
 """Writing blog articles for a site the generator already knows.
 
 The point is not "an LLM can write a blog post" — anything can. It is that this

@@ -1,6 +1,6 @@
-#//// Neoffice — added file (no upstream equivalent): queries the vendored design database and returns a
-#//// prompt-ready CANDIDATES block for the brief. builder/ai/** = the Neoffice AI site generator;
-#//// frappe/builder ships no such module. First commit 5502544c 2026-07-18.
+# //// Neoffice — added file (no upstream equivalent): queries the vendored design database and returns a
+# //// prompt-ready CANDIDATES block for the brief. builder/ai/** = the Neoffice AI site generator;
+# //// frappe/builder ships no such module. First commit 5502544c 2026-07-18.
 """Design intelligence: professional candidates for the design brief.
 
 Queries the vendored UI/UX Pro Max database (see design_data/README.md) with

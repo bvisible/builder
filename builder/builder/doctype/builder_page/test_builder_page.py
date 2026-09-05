@@ -197,15 +197,15 @@ class TestBuilderPage(FrappeTestCase):
 
 		try:
 			content = get_response_content("/client-script-test")
-			#//// Neoffice — whole_document: a page's client scripts are <script>
-			#//// and <link> tags on the document, not blocks, so they sit outside
-			#//// div.builder-page-content that get_html_for now scopes to.
+			# //// Neoffice — whole_document: a page's client scripts are <script>
+			# //// and <link> tags on the document, not blocks, so they sit outside
+			# //// div.builder-page-content that get_html_for now scopes to.
 			self.assertTrue(
 				client_script_js.public_url
 				in get_html_for(content, "attribute", "src", list_all=True, whole_document=True)
 			)
 			self.assertTrue(
-				#//// Neoffice — see the whole_document note on the assertion above.
+				# //// Neoffice — see the whole_document note on the assertion above.
 				client_script_css.public_url
 				in get_html_for(content, "attribute", "href", list_all=True, whole_document=True)
 			)
@@ -1610,24 +1610,24 @@ component.update({
 		cls.page_with_dynamic_route.delete()
 
 
-#//// Neoffice — added. Our fork renders a page's blocks INSIDE a full site
-#//// document: the cart drawer, the site header, the shared opening band that
-#//// prints the page title (1a203079 "Une seule bande d'ouverture sur les pages
-#//// générées", b7271612 "The page header, ported from Unpress") and the site
-#//// footer all sit before or after the content. Upstream rendered the blocks
-#//// bare, so every assertion below reads the FIRST <h1>/<a>/<img>/<span> of the
-#//// document — which is now the cart drawer's "Start Shopping" link, the site
-#//// logo, or the band's title, never the block under test.
-#////
-#//// The anchor is the fork's own: 36cbdc0b wraps the page's blocks in
-#//// div.builder-page-content (it rewrites their <body> into a <div>, precisely
-#//// because the page stopped being the document). Scoping to it is what these
-#//// tests always meant by "the page", and it survives new chrome — a negative
-#//// list of chrome selectors would not have covered the cart drawer.
-#//// Falls back to the whole document when the wrapper is absent, so component
-#//// and preview renders still work. That the chrome renders at all is asserted
-#//// on its own in TestBuilderPageSiteChrome, so scoping here loses no coverage;
-#//// pass whole_document=True to look at the entire page.
+# //// Neoffice — added. Our fork renders a page's blocks INSIDE a full site
+# //// document: the cart drawer, the site header, the shared opening band that
+# //// prints the page title (1a203079 "Une seule bande d'ouverture sur les pages
+# //// générées", b7271612 "The page header, ported from Unpress") and the site
+# //// footer all sit before or after the content. Upstream rendered the blocks
+# //// bare, so every assertion below reads the FIRST <h1>/<a>/<img>/<span> of the
+# //// document — which is now the cart drawer's "Start Shopping" link, the site
+# //// logo, or the band's title, never the block under test.
+# ////
+# //// The anchor is the fork's own: 36cbdc0b wraps the page's blocks in
+# //// div.builder-page-content (it rewrites their <body> into a <div>, precisely
+# //// because the page stopped being the document). Scoping to it is what these
+# //// tests always meant by "the page", and it survives new chrome — a negative
+# //// list of chrome selectors would not have covered the cart drawer.
+# //// Falls back to the whole document when the wrapper is absent, so component
+# //// and preview renders still work. That the chrome renders at all is asserted
+# //// on its own in TestBuilderPageSiteChrome, so scoping here loses no coverage;
+# //// pass whole_document=True to look at the entire page.
 PAGE_CONTENT_SELECTOR = "div.builder-page-content"
 
 
@@ -1636,7 +1636,7 @@ def page_content_soup(html, whole_document=False):
 	from bs4 import BeautifulSoup
 
 	soup = BeautifulSoup(html, "html.parser")
-	#//// Neoffice — see the PAGE_CONTENT_SELECTOR note above.
+	# //// Neoffice — see the PAGE_CONTENT_SELECTOR note above.
 	if whole_document:
 		return soup
 	return soup.select_one(PAGE_CONTENT_SELECTOR) or soup
@@ -1664,9 +1664,9 @@ def get_html_for(html, type, value, index=None, only_content=False, list_all=Fal
 		return result.get(value) if result and result.get(value) else ""
 
 
-#//// Neoffice — added class (no upstream equivalent). get_html_for() now looks
-#//// only inside div.builder-page-content; without this, the site chrome could
-#//// vanish from the product and every test in this file would still pass.
+# //// Neoffice — added class (no upstream equivalent). get_html_for() now looks
+# //// only inside div.builder-page-content; without this, the site chrome could
+# //// vanish from the product and every test in this file would still pass.
 class TestBuilderPageSiteChrome(FrappeTestCase):
 	"""The site chrome our fork renders around every published page."""
 

@@ -1,6 +1,6 @@
-#//// Neoffice — added file (no upstream equivalent): pushes local pages to the central Neoservice
-#//// Builder Hub as a template candidate. Neoffice-only; the hub is ours. First commit d20acdac
-#//// 2026-06-11.
+# //// Neoffice — added file (no upstream equivalent): pushes local pages to the central Neoservice
+# //// Builder Hub as a template candidate. Neoffice-only; the hub is ours. First commit d20acdac
+# //// 2026-06-11.
 """Publish local Builder pages to the central Neoservice Builder Hub.
 
 bvisible extension — counterpart of builder_hub.publish on the hub side.

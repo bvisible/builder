@@ -1,6 +1,6 @@
-#//// Neoffice — added file (no upstream equivalent): generation through a local `codex exec` (ChatGPT
-#//// plan instead of metered tokens). builder/ai/** = the Neoffice AI site generator; frappe/builder
-#//// ships no such module. First commit 2f8cb2c4 2026-08-03.
+# //// Neoffice — added file (no upstream equivalent): generation through a local `codex exec` (ChatGPT
+# //// plan instead of metered tokens). builder/ai/** = the Neoffice AI site generator; frappe/builder
+# //// ships no such module. First commit 2f8cb2c4 2026-08-03.
 """
 Codex CLI provider — text and structured generation through a ChatGPT plan.
 

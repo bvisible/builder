@@ -1,6 +1,6 @@
-#//// Neoffice — added file (no upstream equivalent): resolves the AI settings — site_config first
-#//// (operator layer), then Builder Settings. builder/ai/** = the Neoffice AI site generator;
-#//// frappe/builder ships no such module. First commit 563d9875 2026-02-01.
+# //// Neoffice — added file (no upstream equivalent): resolves the AI settings — site_config first
+# //// (operator layer), then Builder Settings. builder/ai/** = the Neoffice AI site generator;
+# //// frappe/builder ships no such module. First commit 563d9875 2026-02-01.
 """
 AI Configuration Module
 
@@ -19,7 +19,7 @@ from typing import Literal, Optional
 
 import frappe
 
-#//// Neoffice — the guard carried by the whitelisted endpoints of this module.
+# //// Neoffice — the guard carried by the whitelisted endpoints of this module.
 from builder.utils import builder_role_required
 
 
@@ -310,8 +310,8 @@ def _available_providers() -> list[dict]:
 
 
 @frappe.whitelist()
-#//// Neoffice — builder role required: bare @frappe.whitelist(), so any authenticated
-#//// user (portal customers included) reached it. See builder.utils.require_builder_role.
+# //// Neoffice — builder role required: bare @frappe.whitelist(), so any authenticated
+# //// user (portal customers included) reached it. See builder.utils.require_builder_role.
 @builder_role_required()
 def describe_resolution() -> dict:
     """What this install lets a user configure, and what is already decided.

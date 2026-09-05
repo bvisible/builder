@@ -1,6 +1,6 @@
-#//// Neoffice — added file (no upstream equivalent): writes the page-header defaults down (a Check
-#//// cannot fall back in code). Neoffice migration, listed in patches.txt; frappe/builder has no
-#//// equivalent. First commit b7271612 2026-08-04.
+# //// Neoffice — added file (no upstream equivalent): writes the page-header defaults down (a Check
+# //// cannot fall back in code). Neoffice migration, listed in patches.txt; frappe/builder has no
+# //// equivalent. First commit b7271612 2026-08-04.
 # Write the page-header defaults down on sites that predate the fields.
 #
 # A Select with no value falls back in code, but a Check does not: Frappe hands

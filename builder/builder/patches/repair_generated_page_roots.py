@@ -1,6 +1,6 @@
-#//// Neoffice — added file (no upstream equivalent): repairs root blocks the generator wrote without
-#//// originalElement. Neoffice migration, listed in patches.txt; frappe/builder has no equivalent.
-#//// First commit dfb3c900 2026-08-03.
+# //// Neoffice — added file (no upstream equivalent): repairs root blocks the generator wrote without
+# //// originalElement. Neoffice migration, listed in patches.txt; frappe/builder has no equivalent.
+# //// First commit dfb3c900 2026-08-03.
 # Repair the root block of pages generated before the editor could recognise it.
 #
 # The generator wrote the root as {"element": "body"} without `originalElement`,

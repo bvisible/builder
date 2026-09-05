@@ -1,6 +1,6 @@
-#//// Neoffice — added file (no upstream equivalent): the site logo in one place, so the Theme tab and
-#//// the AI chat write to the same spot. Neoffice-only; frappe/builder has no site-chrome subsystem.
-#//// First commit e4d8ef41 2026-08-03.
+# //// Neoffice — added file (no upstream equivalent): the site logo in one place, so the Theme tab and
+# //// the AI chat write to the same spot. Neoffice-only; frappe/builder has no site-chrome subsystem.
+# //// First commit e4d8ef41 2026-08-03.
 # The site logo, in one place.
 #
 # A logo can arrive from two doors — the Theme tab, or dropped into the AI chat

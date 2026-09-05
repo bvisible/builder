@@ -1,6 +1,6 @@
-#//// Neoffice — added file (no upstream equivalent): one visual theme (glassmorphism). builder/ai/** =
-#//// the Neoffice AI site generator; frappe/builder ships no such module. First commit 563d9875
-#//// 2026-02-01.
+# //// Neoffice — added file (no upstream equivalent): one visual theme (glassmorphism). builder/ai/** =
+# //// the Neoffice AI site generator; frappe/builder ships no such module. First commit 563d9875
+# //// 2026-02-01.
 """
 Glassmorphism Theme
 Frosted glass effect with blur, transparency, and subtle borders.

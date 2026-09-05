@@ -1,6 +1,6 @@
-#//// Neoffice — added file (no upstream equivalent): the plugin registry: Frappe has no 'installed but
-#//// off', this adds one without dropping tables. Neoffice-only; frappe/builder has no plugin notion.
-#//// First commit 45e67b23 2026-08-04.
+# //// Neoffice — added file (no upstream equivalent): the plugin registry: Frappe has no 'installed but
+# //// off', this adds one without dropping tables. Neoffice-only; frappe/builder has no plugin notion.
+# //// First commit 45e67b23 2026-08-04.
 """The plugin registry.
 
 Frappe has no notion of "installed but off". `frappe.get_hooks()` is

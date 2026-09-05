@@ -1,6 +1,6 @@
-#//// Neoffice — added file (no upstream equivalent): the conversational service behind the AI chat:
-#//// collects the brief, drives generation. builder/ai/** = the Neoffice AI site generator;
-#//// frappe/builder ships no such module. First commit 0d32dfb5 2026-02-06.
+# //// Neoffice — added file (no upstream equivalent): the conversational service behind the AI chat:
+# //// collects the brief, drives generation. builder/ai/** = the Neoffice AI site generator;
+# //// frappe/builder ships no such module. First commit 0d32dfb5 2026-02-06.
 # Copyright (c) 2025, Frappe Technologies Pvt Ltd and contributors
 # For license information, please see license.txt
 
@@ -119,12 +119,12 @@ def _looks_like_logo(filename: str, file_url: str) -> bool:
 		return False
 
 
-#//// Neoffice — added helper (no upstream equivalent, our chat has none upstream). Every
-#//// lookup below used to be frappe.get_doc("Builder Chat Session", {"session_id": id})
-#//// with no owner filter, then save(ignore_permissions=True): knowing a session id was
-#//// enough to read someone else's brief, push messages into it and fire a generation as
-#//// them. Ids were 8 hex chars (uuid4()[:8]), so guessing was cheap too. One resolver, so
-#//// no future caller can forget the filter.
+# //// Neoffice — added helper (no upstream equivalent, our chat has none upstream). Every
+# //// lookup below used to be frappe.get_doc("Builder Chat Session", {"session_id": id})
+# //// with no owner filter, then save(ignore_permissions=True): knowing a session id was
+# //// enough to read someone else's brief, push messages into it and fire a generation as
+# //// them. Ids were 8 hex chars (uuid4()[:8]), so guessing was cheap too. One resolver, so
+# //// no future caller can forget the filter.
 def get_owned_chat_session(session_id: str, for_update: bool = True):
 	"""The caller's own chat session, or a refusal.
 
@@ -406,9 +406,9 @@ class BuilderChatService:
 
 	def process_message(self, session_id: str, user_message: str) -> Dict:
 		"""Process a user message and generate AI response."""
-		#//// Neoffice — owner-scoped, and resolved OUTSIDE the try: the blanket
-		#//// `except Exception` below turns everything into {"success": False} with
-		#//// HTTP 200, which would hide the refusal instead of returning it.
+		# //// Neoffice — owner-scoped, and resolved OUTSIDE the try: the blanket
+		# //// `except Exception` below turns everything into {"success": False} with
+		# //// HTTP 200, which would hide the refusal instead of returning it.
 		session = get_owned_chat_session(session_id)
 		try:
 
@@ -693,7 +693,7 @@ class BuilderChatService:
 
 	def upload_logo(self, session_id: str, file_url: str) -> Dict:
 		"""Handle logo upload."""
-		#//// Neoffice — owner-scoped, outside the try (see process_message).
+		# //// Neoffice — owner-scoped, outside the try (see process_message).
 		session = get_owned_chat_session(session_id)
 		try:
 			session.add_message(role="user", content=_("(Logo uploaded)"))
@@ -761,7 +761,7 @@ class BuilderChatService:
 
 	def upload_inspiration(self, session_id: str, file_url: str) -> Dict:
 		"""Handle inspiration image upload."""
-		#//// Neoffice — owner-scoped, outside the try (see process_message).
+		# //// Neoffice — owner-scoped, outside the try (see process_message).
 		session = get_owned_chat_session(session_id)
 		try:
 			session.add_message(role="user", content=_("(Reference image uploaded)"))
@@ -805,7 +805,7 @@ class BuilderChatService:
 		the filename and the pixels answer for the logo, and the question
 		currently on screen answers for the rest.
 		"""
-		#//// Neoffice — owner-scoped, outside the try (see process_message).
+		# //// Neoffice — owner-scoped, outside the try (see process_message).
 		session = get_owned_chat_session(session_id)
 		try:
 			if isinstance(files, str):
@@ -814,8 +814,8 @@ class BuilderChatService:
 			if not files:
 				return {"success": False, "message": _("No file was received.")}
 
-			#//// Neoffice — the session lookup that stood here moved above the try, and
-			#//// is now owner-scoped (see get_owned_chat_session).
+			# //// Neoffice — the session lookup that stood here moved above the try, and
+			# //// is now owner-scoped (see get_owned_chat_session).
 			step = session.current_step
 
 			logo_url = None
@@ -892,8 +892,8 @@ class BuilderChatService:
 
 		force_replace=True confirms replacing pages a user designed/edited
 		(asked via the replace-confirmation buttons in process_message)."""
-		#//// Neoffice — owner-scoped, outside the try (see process_message). This is the
-		#//// call that deletes and rewrites every Builder Page of the site.
+		# //// Neoffice — owner-scoped, outside the try (see process_message). This is the
+		# //// call that deletes and rewrites every Builder Page of the site.
 		session = get_owned_chat_session(session_id)
 		try:
 			# Validate readiness
@@ -941,7 +941,7 @@ class BuilderChatService:
 			if session.social_links:
 				social_links_str = session.social_links if isinstance(session.social_links, str) else json.dumps(session.social_links)
 
-			#//// Neoffice multi-site: carry the session's target site into generation
+			# //// Neoffice multi-site: carry the session's target site into generation
 			website_profile = getattr(session, "website_profile", None)
 
 			result = generate_complete_site(
@@ -962,7 +962,7 @@ class BuilderChatService:
 				pages_config=session.pages_config if session.pages_config else None,
 				generation_mode=session.generation_mode or "full",
 				replace_existing="force" if force_replace else "auto",
-				website_profile=website_profile,  #//// Neoffice multi-site
+				website_profile=website_profile,  # //// Neoffice multi-site
 			)
 
 			# Existing pages were designed/edited by hand: ask before wiping
@@ -1018,8 +1018,8 @@ class BuilderChatService:
 
 	def get_session(self, session_id: str) -> Dict:
 		"""Get full session data."""
-		#//// Neoffice — owner-scoped, outside the try (see process_message). This one
-		#//// returned another user's whole brief and conversation to any caller.
+		# //// Neoffice — owner-scoped, outside the try (see process_message). This one
+		# //// returned another user's whole brief and conversation to any caller.
 		session = get_owned_chat_session(session_id, for_update=False)
 		try:
 			return {

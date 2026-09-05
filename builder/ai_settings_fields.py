@@ -1,6 +1,6 @@
-#//// Neoffice — added file (no upstream equivalent): the custom fields behind Settings > AI; mirror of
-#//// unpress_core/setup.py so both editions stay identical. Neoffice/Unpress-only surface;
-#//// frappe/builder has no AI settings. First commit c58af069 2026-08-02.
+# //// Neoffice — added file (no upstream equivalent): the custom fields behind Settings > AI; mirror of
+# //// unpress_core/setup.py so both editions stay identical. Neoffice/Unpress-only surface;
+# //// frappe/builder has no AI settings. First commit c58af069 2026-08-02.
 # AI settings editable from the builder's Settings > AI tab.
 #
 # Mirror of unpress_core/setup.py: the Studio is the source of truth for the AI

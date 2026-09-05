@@ -1,6 +1,6 @@
-#//// Neoffice — added file (no upstream equivalent): replaces generated placeholder images with the
-#//// client's own photos. builder/ai/** = the Neoffice AI site generator; frappe/builder ships no such
-#//// module. First commit cef6462a 2026-06-23.
+# //// Neoffice — added file (no upstream equivalent): replaces generated placeholder images with the
+# //// client's own photos. builder/ai/** = the Neoffice AI site generator; frappe/builder ships no such
+# //// module. First commit cef6462a 2026-06-23.
 """
 Match real client photos to generated page image slots.
 
@@ -19,7 +19,7 @@ import re
 
 import frappe
 
-#//// Neoffice — the guard carried by the whitelisted endpoints of this module.
+# //// Neoffice — the guard carried by the whitelisted endpoints of this module.
 from builder.utils import builder_role_required
 from frappe import _
 
@@ -205,15 +205,15 @@ def match_and_apply(session_id: str, page_names: list = None, min_score: float =
 
 
 @frappe.whitelist()
-#//// Neoffice — builder role required: bare @frappe.whitelist(), so any authenticated
-#//// user (portal customers included) reached it. See builder.utils.require_builder_role.
+# //// Neoffice — builder role required: bare @frappe.whitelist(), so any authenticated
+# //// user (portal customers included) reached it. See builder.utils.require_builder_role.
 @builder_role_required()
 def chat_apply_client_images(session_id: str) -> dict:
     """Whitelisted entry: place the client's real photos into the generated
     pages. Synchronous and fast; not gated by the Flux image flag."""
     if not session_id:
         frappe.throw(_("Session ID is required"))
-    #//// Neoffice — owner-scoped: this rewrites the pages of whatever session it is handed.
+    # //// Neoffice — owner-scoped: this rewrites the pages of whatever session it is handed.
     from builder.builder_chat_service import get_owned_chat_session
 
     get_owned_chat_session(session_id)

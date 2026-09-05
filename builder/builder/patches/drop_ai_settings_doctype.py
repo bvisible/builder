@@ -1,6 +1,6 @@
-#//// Neoffice — added file (no upstream equivalent): drops the legacy AI Settings DocType after moving
-#//// its values into site_config. Neoffice migration, listed in patches.txt; frappe/builder has no
-#//// equivalent. First commit 6f2af1d6 2026-04-18.
+# //// Neoffice — added file (no upstream equivalent): drops the legacy AI Settings DocType after moving
+# //// its values into site_config. Neoffice migration, listed in patches.txt; frappe/builder has no
+# //// equivalent. First commit 6f2af1d6 2026-04-18.
 """
 Drop the legacy "AI Settings" (and "Builder AI Settings") DocType.
 
