@@ -127,6 +127,27 @@ def best_text(bg: Color, palette: dict[str, str], minimum: float = MIN_RATIO) ->
     return max(literals, key=lambda c: contrast(c[1], bg))
 
 
+def _mix(color: Color, target: Color, share: float) -> Color:
+    return (
+        color[0] * (1 - share) + target[0] * share,
+        color[1] * (1 - share) + target[1] * share,
+        color[2] * (1 - share) + target[2] * share,
+        1.0,
+    )
+
+
+def accent_shade(handle: str, fg: Color, bg: Color, minimum: float = MIN_RATIO) -> tuple[str, Color] | None:
+    """A deeper (or lighter) shade of an accent that still points at its token:
+    color-mix() keeps the retheme live, the kicker keeps the brand hue. Tried in
+    10% steps up to 70%; None when even that does not read."""
+    towards, name = (NAMED["black"], "black") if luminance(bg) > 0.18 else (NAMED["white"], "white")
+    for pct in range(10, 71, 10):
+        mixed = _mix(fg, towards, pct / 100)
+        if contrast(mixed, bg) >= minimum:
+            return f"color-mix(in srgb, {handle} {100 - pct}%, {name})", mixed
+    return None
+
+
 def repair_contrast(blocks: list[dict], palette: dict[str, str], minimum: float = MIN_RATIO) -> list[str]:
     """Rewrite, in place, every text colour that falls under the ratio on its
     resolved background. Returns one line per fix. `palette` maps token ids
@@ -160,6 +181,13 @@ def _walk(block: dict, bg: Color | None, fg: Color | None, palette: dict[str, st
         ratio = contrast(seen, bg)
         if ratio < minimum:
             replacement, value = best_text(bg, palette, minimum)
+            raw_fg = (styles.get("color") or "").strip()
+            m = VAR.match(raw_fg)
+            if m and ratio >= 2.0 and m.group(1) in palette and m.group(1).endswith(("-primary", "-secondary")):
+                # a brand accent on a kicker or a label: deepen it, do not flatten it
+                shade = accent_shade(raw_fg, fg, bg, minimum)
+                if shade:
+                    replacement, value = shade
             styles["color"] = replacement
             block["baseStyles"] = styles
             fg = value

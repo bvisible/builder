@@ -11,7 +11,7 @@ import frappe
 
 from builder.site_ai.capabilities import MANAGED_DISABLED_TOOLS, disabled_tools
 from builder.site_ai.nora.cards import parse_card
-from builder.site_ai.nora.contrast import NAMED, contrast, palette_roles, parse_color, repair_contrast
+from builder.site_ai.nora.contrast import NAMED, accent_shade, contrast, palette_roles, parse_color, repair_contrast
 from builder.site_ai.nora.site_builder import (
 	_color,
 	choose_layout_system,
@@ -206,3 +206,20 @@ class TestContrast(unittest.TestCase):
 		self.assertIn("var(--nt2-text) = #1a1a1a (DARK", roles)
 		self.assertIn("var(--nt2-primary) = #C68E3F (MID", roles)
 		self.assertLess(contrast(parse_color("#C68E3F", PALETTE), NAMED["white"]), 3.0)
+
+	def test_an_accent_kicker_is_deepened_not_flattened(self):
+		kicker = {"element": "span", "blockName": "kicker", "baseStyles": {"color": "var(--nt2-primary)"}, "innerHTML": "BOULANGERIE ARTISANALE"}
+		band = {"baseStyles": {"backgroundColor": "var(--nt2-background)"}, "children": [kicker]}
+		fixes = repair_contrast([band], PALETTE)
+		self.assertEqual(len(fixes), 1)
+		self.assertTrue(kicker["baseStyles"]["color"].startswith("color-mix(in srgb, var(--nt2-primary) "), kicker["baseStyles"]["color"])
+		self.assertIn("black)", kicker["baseStyles"]["color"])
+		shade = accent_shade("var(--nt2-primary)", parse_color("#C68E3F", PALETTE), parse_color("#F7F0E3", PALETTE))
+		self.assertIsNotNone(shade)
+		self.assertGreaterEqual(contrast(shade[1], parse_color("#F7F0E3", PALETTE)), 3.0)
+
+	def test_white_on_cream_is_not_an_accent_case(self):
+		h2 = {"element": "h2", "baseStyles": {"color": "#ffffff"}, "innerHTML": "Titre"}
+		band = {"baseStyles": {"backgroundColor": "var(--nt2-secondary)"}, "children": [h2]}
+		repair_contrast([band], PALETTE)
+		self.assertEqual(h2["baseStyles"]["color"], "var(--nt2-text)")
