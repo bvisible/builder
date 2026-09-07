@@ -339,10 +339,13 @@ def _write_page(page: dict, blocks: list, data_script: str, profile: str | None,
         occupant_filters["neo_website_profile"] = profile if profile else ("is", "not set")
     if frappe.db.get_value("Builder Page", occupant_filters, "name"):
         route = f"{route}-{frappe.generate_hash(length=4)}"
+    # the fingerprint must match what the row holds: the doctype re-serialises blocks on
+    # save, and the draft is what classify_existing_pages hashes first
+    stored_draft, stored_blocks = frappe.db.get_value("Builder Page", name, ["draft_blocks", "blocks"])
     frappe.db.set_value(
         "Builder Page",
         name,
-        {"route": route, "ai_generated_at": now(), "ai_blocks_hash": _blocks_fingerprint(payload)},
+        {"route": route, "ai_generated_at": now(), "ai_blocks_hash": _blocks_fingerprint(stored_draft or stored_blocks)},
         update_modified=False,
     )
     frappe.db.commit()
