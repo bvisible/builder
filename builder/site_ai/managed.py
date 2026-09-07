@@ -62,10 +62,10 @@ def sync_nora_vision_provider() -> str | None:
     name = f"{NORA_ROUTE_PREFIX}/{model_id}"
     if not frappe.db.exists("Builder AI Model", name):
         frappe.get_doc(
-            {"doctype": "Builder AI Model", "provider": NORA_PROVIDER_NAME, "enabled": 1, "model_id": model_id, "label": "Nora vision", "vision": 1}
+            {"doctype": "Builder AI Model", "provider": NORA_PROVIDER_NAME, "enabled": 1, "model_id": model_id, "label": "Nora vision", "supports_vision": 1}
         ).insert(ignore_permissions=True)
     else:
-        frappe.db.set_value("Builder AI Model", name, {"enabled": 1, "vision": 1})
+        frappe.db.set_value("Builder AI Model", name, {"enabled": 1, "supports_vision": 1})
     for other in frappe.get_all("Builder AI Model", filters={"provider": NORA_PROVIDER_NAME, "name": ("!=", name)}, pluck="name"):
         frappe.db.set_value("Builder AI Model", other, "enabled", 0)
     frappe.db.commit()
