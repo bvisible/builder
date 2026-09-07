@@ -296,7 +296,8 @@ class DesignBrief(BaseModel):
                 return choice
         low = wanted.lower()
         for choice in choices:
-            if low.startswith(choice.lower()) or choice.lower() in low:
+            c = choice.lower()
+            if low.startswith(c) or c in low or (len(low) >= 4 and low in c):
                 return choice
         return field.default
 
