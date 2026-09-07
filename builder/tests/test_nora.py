@@ -235,3 +235,17 @@ class TestContrast(unittest.TestCase):
 		]}
 		self.assertEqual(repair_contrast([section], PALETTE), [])
 		self.assertEqual(numbers["baseStyles"]["color"], "#ffffff")
+
+
+class TestBriefHeroColours(unittest.TestCase):
+	def test_missing_hero_colours_follow_the_palette(self):
+		from builder.site_ai.schemas.design_brief import DesignBrief
+
+		dark = DesignBrief(primary_color="#1a1a1a", secondary_color="#B08548")
+		self.assertEqual(dark.hero_background, "#1a1a1a")
+		self.assertEqual(dark.hero_text_color, "#ffffff")
+		light = DesignBrief(primary_color="#F7F0E3", secondary_color="#C68E3F", body_color="#222222")
+		self.assertEqual(light.hero_background, "#F7F0E3")
+		self.assertEqual(light.hero_text_color, "#222222")
+		kept = DesignBrief(primary_color="#1a1a1a", hero_background="#ffffff", hero_text_color="#333333")
+		self.assertEqual((kept.hero_background, kept.hero_text_color), ("#ffffff", "#333333"))
