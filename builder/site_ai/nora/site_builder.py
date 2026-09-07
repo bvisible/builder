@@ -66,6 +66,13 @@ SECTION_PLANS = {
     "generic": ["an intro", "the page's content in two or three sections", "a CTA"],
 }
 
+CLASS_CONTRACT = (
+    "set `classes` on the matching elements: buttons ['u-btn', 'u-btn--primary'] (or --secondary / --outline / --ghost), "
+    "cards ['u-card'] (add 'u-card--raised' or 'u-card--flat'), photos and media frames ['u-media'], form fields ['u-input'], "
+    "a wrapper that puts text over a photo ['u-over-image'] (add --bottom, --diagonal or --soft). These classes carry the site's "
+    "corners, elevation, hover and motion, so do not hand-write borderRadius, boxShadow or hover rules on those elements."
+)
+
 LAYOUT_BY_TONE = {
     "professional": "editorial-grid",
     "elegant": "split-screen",
@@ -239,6 +246,7 @@ def page_brief_text(site: dict, brief, page: dict, handles: dict, contact_prompt
             "PHOTOS AVAILABLE (placeholders that the site replaces with real photos after the build; use each at most once, "
             f"copy the URL exactly, give it a descriptive alt in {language}):\n{photo_lines}"
         ),
+        "CLASS CONTRACT: " + CLASS_CONTRACT,
         (
             "RULES: no header, navigation or footer sections (the site chrome is rendered around the page); no lorem; "
             f"business data verbatim; spell the brand name exactly '{site['site_name']}'; every text in {language}; "

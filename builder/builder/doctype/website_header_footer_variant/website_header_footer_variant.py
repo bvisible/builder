@@ -21,5 +21,7 @@ class WebsiteHeaderFooterVariant(WebsiteHeaderFooterConfig):
 	def on_update(self):
 		# Unlike the Single, a variant never syncs menu_items into Website
 		# Settings top_bar_items (that belongs to the default site) — it only
-		# invalidates the rendered-page caches so its site refreshes.
+		# invalidates the rendered-page caches so its site refreshes, and keeps
+		# its site's tokens in step with the theme fields.
+		self.sync_tokens()
 		self.clear_website_cache()

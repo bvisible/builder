@@ -65,6 +65,7 @@ class WebsiteHeaderFooterConfig(Document):
 		"""Clear website cache when header/footer config changes."""
 		if not getattr(self, "_syncing", False):
 			self._sync_menu_to_website_settings()
+		self.sync_tokens()
 		self.clear_website_cache()
 
 	def _sync_menu_to_website_settings(self):
@@ -276,6 +277,39 @@ class WebsiteHeaderFooterConfig(Document):
 			),
 		)
 
+
+	# theme field -> token key: the six values the AI site build mints as Builder Tokens
+	TOKEN_FIELDS = {
+		"primary_color": "primary",
+		"secondary_color": "secondary",
+		"background_color": "background",
+		"text_color": "text",
+		"heading_font": "font-heading",
+		"body_font": "font-body",
+	}
+
+	def sync_tokens(self) -> int:
+		"""Push the theme's colours and fonts into the site's Builder Tokens when the
+		site has them (token_prefix set by the AI build). The chrome and the pages
+		read the tokens (theme_variables.html aliases them), so the Theme pane keeps
+		being the place a site owner edits colours while the tokens stay the source
+		at render time. Returns the number of tokens updated."""
+		prefix = getattr(self, "token_prefix", None)
+		if not prefix or not frappe.db.exists("DocType", "Builder Token"):
+			return 0
+		updated = 0
+		for field, key in self.TOKEN_FIELDS.items():
+			value = (getattr(self, field, None) or "").strip()
+			name = f"{prefix}-{key}"
+			if not value or value.startswith("var(") or not frappe.db.exists("Builder Token", name):
+				continue
+			if frappe.db.get_value("Builder Token", name, "value") == value:
+				continue
+			token = frappe.get_doc("Builder Token", name)
+			token.value = value
+			token.save(ignore_permissions=True)  # a full save so the rendered-CSS cache is busted
+			updated += 1
+		return updated
 
 	def get_theme_data(self) -> dict:
 		"""Get theme configuration for CSS variables injection.
