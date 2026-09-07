@@ -10062,3 +10062,7 @@ msgstr ""
 #: builder/site_ai/nora/site_builder.py
 msgid "Writing the design brief"
 msgstr ""
+
+#: frontend/src/components/Settings/GlobalTheme.vue
+msgid "Site: {0}"
+msgstr ""
