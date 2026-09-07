@@ -10187,3 +10187,27 @@ msgstr ""
 
 #~ msgid "Not Found"
 #~ msgstr "Non Trouvé"
+
+#: builder/site_ai/nora/site_builder.py
+msgid "Contact us"
+msgstr "Contactez-nous"
+
+#: builder/site_ai/nora/site_builder.py
+msgid "Menu, footer and home page"
+msgstr "Menu, pied de page et page d'accueil"
+
+#: builder/site_ai/nora/site_builder.py
+msgid "Preparing the site"
+msgstr "Préparation du site"
+
+#: builder/utils.py
+msgid "This conversation belongs to another user"
+msgstr "Cette conversation appartient à un autre utilisateur"
+
+#: builder/site_ai/nora/site_builder.py
+msgid "Writing page {0} of {1}: {2}"
+msgstr "Rédaction de la page {0} sur {1} : {2}"
+
+#: builder/site_ai/nora/site_builder.py
+msgid "Writing the design brief"
+msgstr "Rédaction du brief de design"

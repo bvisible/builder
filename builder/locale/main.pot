@@ -10039,3 +10039,26 @@ msgid ""
 "Generating the new site will REPLACE all current pages. Do you want to continue?"
 msgstr ""
 
+#: builder/site_ai/nora/site_builder.py
+msgid "Contact us"
+msgstr ""
+
+#: builder/site_ai/nora/site_builder.py
+msgid "Menu, footer and home page"
+msgstr ""
+
+#: builder/site_ai/nora/site_builder.py
+msgid "Preparing the site"
+msgstr ""
+
+#: builder/utils.py
+msgid "This conversation belongs to another user"
+msgstr ""
+
+#: builder/site_ai/nora/site_builder.py
+msgid "Writing page {0} of {1}: {2}"
+msgstr ""
+
+#: builder/site_ai/nora/site_builder.py
+msgid "Writing the design brief"
+msgstr ""
