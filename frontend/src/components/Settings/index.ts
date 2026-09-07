@@ -1,6 +1,8 @@
 import { createRegistry, type RegistryItem } from "@/utils/createRegistry";
 import { defineAsyncComponent, type Component } from "vue";
 import { __ } from "@/translation";
+//// Neoffice — our three Global panes, declared in ./neoffice.ts (see the header there).
+import { neofficePanes } from "./neoffice";
 
 export type SettingsGroup = "Current Page" | "Global";
 
@@ -150,6 +152,8 @@ const panes: SettingsPane[] = [
 ];
 
 panes.forEach((pane) => settingsItems.register({ ...pane, component: defineAsyncComponent(pane.load) }));
+//// Neoffice — registered after upstream's so the `after` anchors in ./neoffice.ts resolve.
+neofficePanes.forEach((pane) => settingsItems.register({ ...pane, component: defineAsyncComponent(pane.load) }));
 
 // warmed on idle by prefetchBuilderSettings, so the first open never waits on a chunk
 export const preloadSettingsPanes = () =>

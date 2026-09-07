@@ -13,6 +13,18 @@
 				<SidebarItem :label="__('Settings')" @click="showSettingsDialog = true">
 					<template #prefix><SettingsIcon class="size-4" /></template>
 				</SidebarItem>
+				<!-- //// Neoffice — added entries: Create with AI (0ab11671), Theme (050b8aa3), Media (798e7817)
+				     //// and Articles (45e67b23, hidden when the blog plugin is off). Upstream's sidebar lists
+				     //// pages only. This native sidebar is the fallback of NeoCockpitBuilderSidebar, which
+				     //// offers the same entries inside the cockpit. -->
+				<SidebarItem :label="__('Create with AI')" icon="lucide-sparkles" @click="showAIChat = true" />
+				<SidebarItem :label="__('Theme')" icon="lucide-palette" @click="showTheme = true" />
+				<SidebarItem :label="__('Media')" icon="lucide-image" @click="showMedia = true" />
+				<SidebarItem
+					v-if="capabilities.blog !== false"
+					:label="__('Articles')"
+					icon="lucide-newspaper"
+					@click="showBlog = true" />
 			</nav>
 
 			<div class="mt-5 flex h-7 items-center justify-between">
@@ -91,15 +103,13 @@
 			<TrialBanner v-if="builderStore.isFCSite" />
 		</div>
 	</Sidebar>
-	<Dialog v-model="showSettingsDialog" :dismissable="false" size="5xl" bare>
-		<template #default>
-			<DialogTitle class="sr-only">{{ __("Global Builder Settings") }}</DialogTitle>
-			<DialogDescription class="sr-only">
-				{{ __("Configure global settings for this builder project.") }}
-			</DialogDescription>
-			<BuilderSettings @close="showSettingsDialog = false" :onlyGlobal="true" bare />
-		</template>
-	</Dialog>
+	<!-- //// Neoffice — the Settings dialog upstream rendered HERE lives in PageBuilderDashboard, because
+	     //// the cockpit replaces this sidebar and the dialog must stay reachable (575f427e); its open
+	     //// state is the shared one in useDashboardState. Below, the modals our entries open. -->
+	<AIChatModal v-model="showAIChat" />
+	<MediaLibrary v-model="showMedia" />
+	<BlogManager v-model="showBlog" />
+	<ThemeDialog v-model="showTheme" />
 </template>
 <script lang="ts" setup>
 import { __ } from "@/translation";
@@ -107,6 +117,8 @@ import builderLogo from "/builder_logo.png";
 import EditableSpan from "@/components/EditableSpan.vue";
 import FilesIcon from "@/components/Icons/Files.vue";
 import SettingsIcon from "@/components/Icons/SettingsGear.vue";
+//// Neoffice — a desk workspace shortcut lands on /builder?chat=1; the chat has no route of its own.
+import { useChatDeepLink } from "@/composables/useChatDeepLink";
 import { useDashboardState } from "@/composables/useDashboardState";
 import builderProjectFolder from "@/data/builderProjectFolder";
 import useBuilderStore from "@/stores/builderStore";
@@ -114,9 +126,10 @@ import { BuilderProjectFolder } from "@/types/doctypes";
 import { promptCreateFolder } from "@/utils/dialogs";
 import { confirm } from "@/utils/helpers";
 import { useDark, useToggle } from "@vueuse/core";
+//// Neoffice — Dialog is no longer imported here: the Settings dialog moved to the dashboard
+//// (575f427e). The reka-ui DialogDescription/DialogTitle import went with it.
 import {
 	createResource,
-	Dialog,
 	Dropdown,
 	ScrollArea,
 	Sidebar,
@@ -126,17 +139,44 @@ import {
 	SidebarLabel,
 } from "frappe-ui";
 import { TrialBanner } from "frappe-ui/frappe";
-import { DialogDescription, DialogTitle } from "reka-ui";
 import { computed, defineAsyncComponent, h, ref } from "vue";
 
-const BuilderSettings = defineAsyncComponent(() => import("@/components/BuilderSettings.vue"));
+//// Neoffice — the four screens our entries open, lazily: each pulls in its own chunk and most
+//// visits never open them. BuilderSettings is no longer imported here (575f427e).
+const AIChatModal = defineAsyncComponent(() => import("@/components/AIChatModal.vue"));
+const MediaLibrary = defineAsyncComponent(() => import("@/components/MediaLibrary.vue"));
+const BlogManager = defineAsyncComponent(() => import("@/components/BlogManager.vue"));
+const ThemeDialog = defineAsyncComponent(() => import("@/components/ThemeDialog.vue"));
 const isDark = useDark({
 	attribute: "data-theme",
 });
 const toggleDark = useToggle(isDark);
 const builderStore = useBuilderStore();
-const { showTemplatesDialog } = useDashboardState();
+//// Neoffice — showSettingsDialog is the shared dashboard state, not the local ref upstream declared
+//// at the bottom of this file (575f427e).
+const { showTemplatesDialog, showSettingsDialog } = useDashboardState();
 const renamingFolder = ref("");
+//// Neoffice — state of our entries (see the template).
+const showAIChat = useChatDeepLink();
+const showMedia = ref(false);
+const showBlog = ref(false);
+const showTheme = ref(false);
+
+// What this bench is allowed to show. A plugin the owner turned off must not
+// leave a dead button behind — and `!== false` is deliberate: an unknown
+// plugin, or a bench whose registry has not synced yet, stays visible.
+const capabilities = ref<Record<string, boolean>>({});
+const capabilitiesResource = createResource({
+	url: "builder.plugins.get_capabilities",
+	auto: true,
+	onSuccess(data: Record<string, boolean>) {
+		capabilities.value = data || {};
+	},
+	onError() {
+		capabilities.value = {};
+	},
+});
+window.addEventListener("unpress:capabilities-changed", () => capabilitiesResource.reload());
 
 const apps = createResource({
 	url: "builder.api.get_apps",
@@ -251,6 +291,7 @@ const deleteFolder = async (folderName: string) => {
 	);
 	setFolderActive("");
 };
-const showSettingsDialog = ref(false);
+//// Neoffice — upstream declared `const showSettingsDialog = ref(false)` right here; it is the shared
+//// dashboard state now (575f427e).
 const builderVersion = (window as any).builder_version;
 </script>

@@ -244,8 +244,8 @@ def inject_site_chrome(context):
 		builder_css_tags += '<link rel="stylesheet" href="/assets/builder/reset.css?v=1">'
 
 	# Builder variables CSS - CSS custom properties used by components
-	if "builder_assets/variables.css" not in head_html:
-		builder_css_tags += '<link rel="stylesheet" href="/builder_assets/variables.css">'
+	if "builder_assets/tokens.css" not in head_html:
+		builder_css_tags += '<link rel="stylesheet" href="/builder_assets/tokens.css">'
 
 	# CSS fixes (search bar, avatar...) for Builder pages; non-Builder pages get
 	# them via navbar_html above.

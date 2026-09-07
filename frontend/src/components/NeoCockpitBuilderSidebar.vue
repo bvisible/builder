@@ -17,6 +17,7 @@
 </template>
 
 <script setup lang="ts">
+import { __ } from "@/translation";
 /**
  * Builder flavor of the shared Neoffice chrome (NeoCockpit). Maps the
  * dashboard sidebar nav (All Pages / Settings / Folders) into contextNav;
@@ -38,9 +39,6 @@ import { computed, defineAsyncComponent, ref } from "vue";
 const AIChatModal = defineAsyncComponent(() => import("@/components/AIChatModal.vue"));
 const MediaLibrary = defineAsyncComponent(() => import("@/components/MediaLibrary.vue"));
 const ThemeDialog = defineAsyncComponent(() => import("@/components/ThemeDialog.vue"));
-
-// `__` is installed globally by the translation plugin (see src/translation.ts).
-const __ = window.__!;
 
 const router = useRouter();
 const builderStore = useBuilderStore();

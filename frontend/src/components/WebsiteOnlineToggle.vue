@@ -11,7 +11,7 @@
 			v-if="onlineState.data.website_online"
 			:options="[
 				{
-					label: 'Take website offline',
+					label: __('Take website offline'),
 					onClick: goOffline,
 					icon: 'lucide-cloud-off',
 				},
@@ -23,7 +23,7 @@
 					<template #prefix>
 						<span class="inline-block h-2 w-2 rounded-full bg-green-600" aria-hidden="true" />
 					</template>
-					Live
+					{{ __("Live") }}
 				</Button>
 			</template>
 		</Dropdown>
@@ -37,12 +37,13 @@
 				<template #prefix>
 					<span class="lucide-globe h-4 w-4" aria-hidden="true" />
 				</template>
-				Go Live
+				{{ __("Go Live") }}
 			</Button>
 		</Tooltip>
 	</div>
 </template>
 <script lang="ts" setup>
+import { __ } from "@/translation";
 import useBuilderStore from "@/stores/builderStore";
 import { Dropdown, Tooltip, createResource, toast } from "frappe-ui";
 import { computed, ref } from "vue";
@@ -70,9 +71,9 @@ const goLiveTooltip = computed(() => {
 	const state = onlineState.data as OnlineState | null;
 	if (!state) return "";
 	if (!state.can_go_online) {
-		return state.reason || "Publish at least one page and set a home page first";
+		return state.reason || __("Publish at least one page and set a home page first");
 	}
-	return `Put ${state.primary_domain} online`;
+	return __("Put {0} online", [state.primary_domain]);
 });
 
 const setOnline = (online: number) => {
@@ -81,10 +82,10 @@ const setOnline = (online: number) => {
 		.submit({ online, profile: (onlineState.data as OnlineState)?.profile })
 		.then((data: OnlineState) => {
 			onlineState.data = data;
-			toast.success(online ? "Website is now live" : "Website taken offline");
+			toast.success(online ? __("Website is now live") : __("Website taken offline"));
 		})
 		.catch((e: { messages?: string[] }) => {
-			toast.error(e?.messages?.[0] || "Could not update the website state");
+			toast.error(e?.messages?.[0] || __("Could not update the website state"));
 			onlineState.reload();
 		})
 		.finally(() => (toggling.value = false));

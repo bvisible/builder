@@ -84,10 +84,10 @@
 	</div>
 </template>
 <script setup lang="ts">
+import { __ } from "@/translation";
 import { createResource } from "frappe-ui";
 import { onBeforeUnmount, onMounted, reactive, ref } from "vue";
 
-const __ = window.__!;
 const API = "builder.codex_api";
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any

@@ -110,11 +110,9 @@
 	</div>
 </template>
 <script setup lang="ts">
+import { __ } from "@/translation";
 import { Button, Dialog, FormControl, Switch, createResource, toast } from "frappe-ui";
 import { computed, ref } from "vue";
-
-// `__` is installed globally by the translation plugin (see src/translation.ts).
-const __ = window.__!;
 
 const API = "builder.plugins";
 

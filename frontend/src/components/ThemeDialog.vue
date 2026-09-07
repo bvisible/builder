@@ -21,11 +21,9 @@
 	</Dialog>
 </template>
 <script setup lang="ts">
+import { __ } from "@/translation";
 import { Dialog } from "frappe-ui";
 import { defineAsyncComponent } from "vue";
-
-// `__` is installed globally by the translation plugin (see src/translation.ts).
-const __ = window.__!;
 
 // only loaded when the dialog is opened
 const GlobalTheme = defineAsyncComponent(() => import("./Settings/GlobalTheme.vue"));

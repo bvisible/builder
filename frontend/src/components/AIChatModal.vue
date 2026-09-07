@@ -58,7 +58,7 @@
 					<span class="size-4 animate-spin rounded-full border-2 border-outline-gray-3 border-t-ink-gray-8" />
 					<div class="flex flex-1 flex-col gap-1">
 						<span class="text-base text-ink-gray-9">
-							{{ __("Generating images ({0}/{1})").format(imagesDone, imagesTotal) }}
+							{{ __("Generating images ({0}/{1})", [imagesDone, imagesTotal]) }}
 						</span>
 						<div class="h-1.5 w-full overflow-hidden rounded-full bg-surface-gray-2">
 							<div
@@ -179,6 +179,7 @@
 			</div>
 </template>
 <script setup lang="ts">
+import { __ } from "@/translation";
 import { allWebPages } from "@/data/allWebPages";
 import router from "@/router";
 import useBuilderStore from "@/stores/builderStore";
@@ -188,9 +189,6 @@ import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from "vue"
 
 const builderStore = useBuilderStore();
 
-// `__` is installed globally by the translation plugin (see src/translation.ts).
-// The cast keeps the `{0}` placeholder contract (`__("..").format(x)`) visible to TS.
-const __ = window.__ as (message: string) => string & { format: (...args: unknown[]) => string };
 
 type ChatMessage = { role: string; content: string };
 type ChatButton = { label: string; value: string };
@@ -274,8 +272,8 @@ const autoGrow = () => {
 const attachmentSummary = computed(() => {
 	const bits: string[] = [];
 	if (logoName.value) bits.push(__("logo"));
-	if (inspirationCount.value) bits.push(__("{0} reference(s)").format(inspirationCount.value));
-	if (contentCount.value) bits.push(__("{0} file(s)").format(contentCount.value));
+	if (inspirationCount.value) bits.push(__("{0} reference(s)", [inspirationCount.value]));
+	if (contentCount.value) bits.push(__("{0} file(s)", [contentCount.value]));
 	return bits.join(" · ");
 });
 // image generation runs after the pages exist, so it has its own progress
@@ -511,10 +509,7 @@ const onContentUnderstood = (data: any) => {
 		.join(", ");
 	pushMessage(
 		"bot",
-		__("Content analysed — {0} item(s) ({1}). I will reuse it on the site.").format(
-			results.length,
-			detail,
-		),
+		__("Content analysed — {0} item(s) ({1}). I will reuse it on the site.", [results.length, detail]),
 	);
 };
 

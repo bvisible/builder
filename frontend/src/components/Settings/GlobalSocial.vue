@@ -39,12 +39,10 @@
 	</div>
 </template>
 <script setup lang="ts">
+import { __ } from "@/translation";
 import { watchDebounced } from "@vueuse/core";
 import { createResource, FormControl, toast } from "frappe-ui";
 import { reactive, ref, watch } from "vue";
-
-// `__` is installed globally by the translation plugin (see src/translation.ts).
-const __ = window.__!;
 
 const API = "builder.hf_utils.chrome_api";
 

@@ -173,11 +173,9 @@
 			</div>
 </template>
 <script setup lang="ts">
+import { __ } from "@/translation";
 import { Button, createResource, FormControl, Switch, toast } from "frappe-ui";
 import { computed, onMounted, reactive, ref, watch } from "vue";
-
-// `__` is installed globally by the translation plugin (see src/translation.ts).
-const __ = window.__!;
 
 const API = "builder.blog_api";
 

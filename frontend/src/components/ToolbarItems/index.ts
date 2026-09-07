@@ -5,6 +5,8 @@ import PageTitlePopover from "@/components/ToolbarItems/PageTitlePopover.vue";
 import ReadOnlyBadge from "@/components/ToolbarItems/ReadOnlyBadge.vue";
 import ToolbarActions from "@/components/ToolbarItems/ToolbarActions.vue";
 import ViewerAvatars from "@/components/ToolbarItems/ViewerAvatars.vue";
+//// Neoffice — see the registration at the bottom of this file.
+import WebsiteOnlineToggle from "@/components/WebsiteOnlineToggle.vue";
 import useBuilderStore from "@/stores/builderStore";
 import usePageStore from "@/stores/pageStore";
 import { createRegistry, type RegistryItem } from "@/utils/createRegistry";
@@ -51,4 +53,14 @@ toolbarItems.register({
 	component: PublishButton,
 	props: () => ({ disabled: builderStore.readOnlyMode }),
 	condition: () => !(builderStore.readOnlyMode && pageStore.activePage?.is_template),
+});
+
+//// Neoffice — the whole-site on/off switch (b4400516), left of Publish. Upstream publishes page by
+//// page and has no notion of a site being offline; the component hides itself on a bench without
+//// neoffice_theme. Registered last so the `before` anchor resolves.
+toolbarItems.register({
+	name: "website-online",
+	region: "right",
+	component: WebsiteOnlineToggle,
+	before: "publish",
 });

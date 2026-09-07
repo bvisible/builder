@@ -229,12 +229,10 @@
 	</Dialog>
 </template>
 <script setup lang="ts">
+import { __ } from "@/translation";
 import { watchDebounced } from "@vueuse/core";
 import { Button, createResource, Dialog, FormControl, Switch, toast } from "frappe-ui";
 import { computed, ref, watch } from "vue";
-
-// `__` is installed globally by the translation plugin (see src/translation.ts).
-const __ = window.__!;
 
 const API = "builder.media";
 
