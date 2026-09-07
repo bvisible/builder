@@ -239,6 +239,13 @@ export class AIChatController {
 			{ immediate: true },
 		);
 
+		//// Neoffice — a turn whose closing event never arrives (the socket hiccupped while
+		//// the server emitted complete/clarify/error) left the panel on "Working" until a
+		//// manual reload: seen on the second card of a site creation. While a turn runs,
+		//// the session's is_running flag is polled; when the server says the turn is
+		//// over and no event came, the transcript is reloaded from the server.
+		watch(this.isSubmitting, (running) => (running ? this.startTurnWatchdog() : this.stopTurnWatchdog()));
+
 		watch(this.pageId, async (newPageId, oldPageId) => {
 			if (oldPageId) detachAIChatListeners(this.builderStore.realtime, oldPageId, this.handlers);
 			if (!newPageId) return;
@@ -281,6 +288,40 @@ export class AIChatController {
 			onStep: this.onStep,
 			onRefetch: this.onRefetch,
 		};
+	}
+
+	//// Neoffice — see the isSubmitting watch in the constructor.
+	private turnWatchdog: number | null = null;
+	private turnWatchdogMisses = 0;
+
+	private startTurnWatchdog() {
+		this.stopTurnWatchdog();
+		this.turnWatchdogMisses = 0;
+		this.turnWatchdog = window.setInterval(() => this.checkTurnStillRunning(), 8000);
+	}
+
+	private stopTurnWatchdog() {
+		if (this.turnWatchdog !== null) window.clearInterval(this.turnWatchdog);
+		this.turnWatchdog = null;
+		this.turnWatchdogMisses = 0;
+	}
+
+	private async checkTurnStillRunning() {
+		const sid = this.sessionId.value;
+		if (!sid || !this.isSubmitting.value || this.isCancelling.value) return;
+		const row: any = await createResource({ url: "frappe.client.get_value" })
+			.submit({ doctype: "Builder AI Session", filters: sid, fieldname: "is_running" })
+			.catch(() => null);
+		if (!row || this.sessionId.value !== sid || !this.isSubmitting.value) return;
+		if (Number(row.is_running)) {
+			this.turnWatchdogMisses = 0;
+			return;
+		}
+		// two consecutive polls (16 s): the flag drops just before the closing event is
+		// emitted, one miss is still a turn that is finishing normally
+		if (++this.turnWatchdogMisses < 2) return;
+		this.resetTransientState();
+		await this.loadSession(sid);
 	}
 
 	resetTransientState() {

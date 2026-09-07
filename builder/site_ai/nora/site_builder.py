@@ -655,7 +655,10 @@ def build_site(ctx, spec: dict) -> str:
         ai_log("info", "Page written", page=page["title"], name=name, route=route, model=page_model)
         if use_host:
             try:
-                ctx.emit("refetch", resources=["page", "page_data", "canvas"], after_commit=True)
+                # _write_page has committed: an after_commit emit would wait for the
+                # NEXT commit, i.e. the next page four minutes later (seen on the third
+                # complete run, canvas blank until then)
+                ctx.emit("refetch", resources=["page", "page_data", "canvas"], after_commit=False)
             except Exception:
                 pass
 
