@@ -10,6 +10,7 @@ app_license = "MIT"
 # Includes in <head>
 # ------------------
 # include js, css files in header of desk.html
+# app_include_css = "/assets/builder/css/builder.css"
 app_include_js = "/assets/builder/js/builder.js"
 
 export_python_type_annotations = True
@@ -41,7 +42,7 @@ doctype_js = {"Website Settings": "public/js/website_settings.js"}
 # ----------
 
 # application home page (will override Website Settings)
-# home_page managed via Website Settings — set to "home" (Builder Page) or "index" (under construction)
+# home_page = "/p/home"
 
 # website user home page (by Role)
 

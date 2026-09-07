@@ -1697,10 +1697,10 @@ def set_fonts(styles, font_map, inherited_font=None):
 			if not font or font.lower() in system_fonts:
 				continue
 
-			# Normalize fontWeight: accept named values ("bold") via weight_map
-			# then coerce to int for consistent comparison and sorting.
 			weight = str(style.get("fontWeight") or "400").lower()
 			weight = weight_map.get(weight, weight)
+
+			# Ensure weight is a valid integer
 			try:
 				weight = int(weight)
 			except (ValueError, TypeError):
@@ -1786,7 +1786,6 @@ def extend_block(block, overridden_block):
 	block.setdefault("tabletStyles", {}).update(overridden_block.get("tabletStyles") or {})
 	block.setdefault("attributes", {}).update(overridden_block.get("attributes") or {})
 
-	# Merge dynamicValues avoiding duplicates (handle None values defensively).
 	dynamicValues = overridden_block.get("dynamicValues") or []
 	dynamicValuesProperties = [dv.get("property") for dv in dynamicValues]
 	for dv in block.get("dynamicValues", []) or []:
@@ -1794,6 +1793,7 @@ def extend_block(block, overridden_block):
 			continue
 		dynamicValues.append(dv)
 	block["dynamicValues"] = dynamicValues
+
 	if overridden_block.get("element"):
 		block["element"] = overridden_block["element"]
 
