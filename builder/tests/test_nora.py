@@ -223,3 +223,15 @@ class TestContrast(unittest.TestCase):
 		band = {"baseStyles": {"backgroundColor": "var(--nt2-secondary)"}, "children": [h2]}
 		repair_contrast([band], PALETTE)
 		self.assertEqual(h2["baseStyles"]["color"], "var(--nt2-text)")
+
+	def test_copy_over_a_positioned_photo_is_left_alone(self):
+		"""The proof section of Boulangerie Solstice: an absolute cover image, a gradient
+		overlay, then white numbers. The section itself inherits the cream page."""
+		numbers = {"element": "h3", "baseStyles": {"color": "#ffffff"}, "innerHTML": "12h"}
+		section = {"blockName": "proof-section", "baseStyles": {"position": "relative"}, "children": [
+			{"element": "img", "classes": ["u-media"], "baseStyles": {"position": "absolute", "inset": "0", "objectFit": "cover"}},
+			{"element": "div", "baseStyles": {"position": "absolute", "inset": "0", "backgroundImage": "linear-gradient(180deg, rgba(15,15,15,0.45), rgba(15,15,15,0.65))"}},
+			{"element": "div", "baseStyles": {"position": "relative"}, "children": [numbers]},
+		]}
+		self.assertEqual(repair_contrast([section], PALETTE), [])
+		self.assertEqual(numbers["baseStyles"]["color"], "#ffffff")
