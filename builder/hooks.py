@@ -180,7 +180,13 @@ doc_events = {
 	},
 	"Website Settings": {
 		"on_update": "builder.hf_utils.menu_integration.sync_from_website_settings"
-	}
+	},
+	# //// Neoffice — a token edited in the Design Tokens writes back to the theme fields of the
+	# //// site chrome, so the Theme pane and the chrome's fallback never drift from the tokens
+	# //// (builder.hf_utils.tokens; the other direction is WebsiteHeaderFooterConfig.sync_tokens).
+	"Builder Token": {
+		"on_update": "builder.hf_utils.tokens.sync_token_to_chrome",
+	},
 }
 
 # Scheduled Tasks
