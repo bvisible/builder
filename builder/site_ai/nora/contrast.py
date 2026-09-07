@@ -106,6 +106,19 @@ def _has_text(block: dict) -> bool:
     return any(_has_text(c) for c in block.get("children") or [])
 
 
+def _covers_parent(block: dict) -> bool:
+    """A photo or an overlay laid over its parent: an absolutely positioned image,
+    a gradient, an image background. What sits next to it is read on that
+    photo, not on the parent's colour."""
+    styles = block.get("baseStyles") or {}
+    if styles.get("position") != "absolute":
+        return False
+    if block.get("element") == "img" or styles.get("objectFit"):
+        return True
+    raw = styles.get("backgroundImage") or styles.get("background") or ""
+    return bool(raw) and parse_color(raw, {}) is None
+
+
 def _classes(block: dict) -> list[str]:
     classes = block.get("classes") or []
     return classes if isinstance(classes, list) else str(classes).split()
@@ -174,6 +187,12 @@ def _walk(block: dict, bg: Color | None, fg: Color | None, palette: dict[str, st
             bg = parsed
         else:
             bg = composite(parsed, bg) if bg is not None else None
+    if styles.get("backgroundImage"):
+        bg = None
+    children = block.get("children") or []
+    if any(_covers_parent(child) for child in children):
+        # a section built as photo + overlay + copy: the copy reads on the photo
+        bg = None
     if "color" in styles:
         fg = parse_color(styles.get("color"), palette)
     if bg is not None and fg is not None and _has_text(block):
@@ -192,5 +211,5 @@ def _walk(block: dict, bg: Color | None, fg: Color | None, palette: dict[str, st
             block["baseStyles"] = styles
             fg = value
             fixes.append(f"{block.get('blockName') or block.get('element') or 'block'}: {ratio:.1f}:1 -> {replacement}")
-    for child in block.get("children") or []:
+    for child in children:
         _walk(child, bg, fg, palette, minimum, fixes)
