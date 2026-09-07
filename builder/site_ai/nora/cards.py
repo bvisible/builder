@@ -111,7 +111,8 @@ def parse_card(text: str) -> dict | None:
         elif kind in ("buttons", "actions"):
             labels = []
             for line in lines:
-                labels += [part.strip() for part in line.lstrip("-•* ").split(",") if part.strip()]
+                # "Build the site, Change something" or "Créer le site / Modifier un élément"
+                labels += [part.strip() for part in re.split(r",|\s/\s", line.lstrip("-•* ")) if part.strip()]
             buttons = [{"label": lbl[:40]} for lbl in labels[:4]]
             if buttons:
                 if len(buttons) > 1:
