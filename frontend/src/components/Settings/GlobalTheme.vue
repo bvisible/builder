@@ -4,6 +4,8 @@
 <template>
 	<div v-if="!loaded" class="text-base text-ink-gray-5">{{ __("Loading...") }}</div>
 	<div v-else class="flex flex-col gap-4">
+		<!-- //// Neoffice — which site this pane edits (a profile page edits its profile's chrome) -->
+		<div v-if="siteProfileName" class="text-sm text-ink-gray-5">{{ __("Site: {0}", [siteProfileName]) }}</div>
 		<!-- Theme -->
 		<div class="flex flex-col gap-3">
 			<button
@@ -567,8 +569,17 @@ import { __ } from "@/translation";
 import { watchDebounced } from "@vueuse/core";
 import { Button, createResource, FileUploadHandler, FormControl, Switch, toast } from "frappe-ui";
 import { computed, reactive, ref, watch } from "vue";
+import usePageStore from "@/stores/pageStore";
 
 const API = "builder.hf_utils.chrome_api";
+
+//// Neoffice — the pane edits the chrome of the OPEN PAGE's site: a page of a Website
+//// Profile reads and writes that profile's Variant. Without it the pane showed the main
+//// site's colours under a profile page (seen on the third complete run: sage-green site,
+//// pane on the host's navy), and a save would have gone to the wrong document.
+const pageStore = usePageStore();
+const siteProfile = (): string | undefined => (pageStore.activePage as any)?.neo_website_profile || undefined;
+const siteProfileName = computed(() => siteProfile() || "");
 
 const themeColors = [
 	{ field: "primary_color", label: __("Primary") },
@@ -709,6 +720,7 @@ const payload = () => {
 
 createResource({
 	url: `${BRANDING_API}.get_logo`,
+	params: { profile: siteProfile() },
 	auto: true,
 	onSuccess(data: { url?: string }) {
 		logoPreview.value = data?.url || "";
@@ -730,6 +742,7 @@ const onLogoPicked = async (event: Event) => {
 		});
 		if (!doc?.file_url) throw new Error(__("The file could not be uploaded."));
 		const r = await createResource({ url: `${BRANDING_API}.set_logo` }).submit({
+			profile: siteProfile(),
 			file_url: doc.file_url,
 		});
 		logoPreview.value = r?.url || "";
@@ -747,6 +760,7 @@ const onLogoPicked = async (event: Event) => {
 
 createResource({
 	url: `${API}.get_chrome_settings`,
+	params: { profile: siteProfile() },
 	auto: true,
 	onSuccess(data: Record<string, unknown>) {
 		Object.assign(state, data);
@@ -783,7 +797,10 @@ watchDebounced(
 		if (serialized === snapshot) return;
 		saving.value = true;
 		try {
-			await createResource({ url: `${API}.update_chrome_settings` }).submit({ settings: current });
+			await createResource({ url: `${API}.update_chrome_settings` }).submit({
+				settings: current,
+				profile: siteProfile(),
+			});
 			snapshot = serialized;
 			savedAt.value = Date.now();
 		} catch (error) {

@@ -10211,3 +10211,7 @@ msgstr "Rédaction de la page {0} sur {1} : {2}"
 #: builder/site_ai/nora/site_builder.py
 msgid "Writing the design brief"
 msgstr "Rédaction du brief de design"
+
+#: frontend/src/components/Settings/GlobalTheme.vue
+msgid "Site: {0}"
+msgstr "Site : {0}"
