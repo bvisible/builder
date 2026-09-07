@@ -12,6 +12,8 @@ calling `sync_managed_ai_provider()` directly.
 
 from __future__ import annotations
 
+import json
+
 import frappe
 
 from builder.site_ai.capabilities import is_managed
@@ -30,7 +32,16 @@ def managed_models() -> list[dict]:
     settings = get_ai_settings()
     extra = frappe.conf.get("nora_extra_models") or []
     if isinstance(extra, str):
-        extra = [m.strip() for m in extra.split(",")]
+        # `bench set-config` without --parse stores the JSON list as a string
+        stripped = extra.strip()
+        if stripped.startswith("["):
+            try:
+                extra = json.loads(stripped)
+            except ValueError:
+                extra = []
+        else:
+            extra = [m.strip() for m in stripped.split(",")]
+    extra = [m for m in extra if isinstance(m, str) and m.strip()]
     seen: list[str] = []
     for model_id in [settings.model, settings.page_model, *extra]:
         if model_id and model_id not in seen:
