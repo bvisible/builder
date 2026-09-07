@@ -25,7 +25,7 @@ import frappe
 from frappe import _
 
 from builder.site_ai.logging import ai_log
-from builder.utils import require_builder_role
+from builder.utils import require_builder_role, require_session_owner
 
 # //// Neoffice — everything from here to assert_public_http_url() is ours: upstream
 # //// has no site importer, so it has no address guard either.
@@ -295,10 +295,10 @@ def import_existing_site(url: str, session_id: str = None) -> dict:
     if session_id and data.get("text"):
         # //// Neoffice — the session must be the caller's own: without this, a builder user
         # //// seeded somebody else's brief with a site of their choosing (and with text that
-        # //// then reaches the generation prompt).
-        from builder.utils import require_builder_role
-
-        require_builder_role()
+        # //// then reaches the generation prompt). (A local re-import of the role gate
+        # //// used to live here and shadowed the module-level name for the whole
+        # //// function: UnboundLocalError before the first check ran.)
+        require_session_owner(session_id)
         asset = frappe.new_doc("Builder Content Asset")
         asset.session_id = session_id
         asset.asset_type = "Document"
@@ -322,11 +322,9 @@ def import_existing_site(url: str, session_id: str = None) -> dict:
     # 3) Seed brief palette/fonts on the session (set-if-absent — don't clobber
     #    explicit user choices made earlier in the chat)
     if session_id:
-        # //// Neoffice — gated by the builder role, like the asset above; the chat session
-        # //// doctype only survives until the uploads move onto Builder AI Session.
-        from builder.utils import require_builder_role
-
-        require_builder_role()
+        # //// Neoffice — the caller's own session only, like the asset above; the chat
+        # //// session doctype only survives until the uploads move onto Builder AI Session.
+        require_session_owner(session_id)
         sess = frappe.get_doc("Builder Chat Session", session_id)
         palette = data.get("palette") or []
         if palette and not sess.primary_color:
