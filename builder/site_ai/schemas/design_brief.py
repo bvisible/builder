@@ -9,7 +9,7 @@ Ensures visual consistency across all generated pages.
 from __future__ import annotations
 import json
 from typing import ClassVar, Literal, Optional, get_args
-from pydantic import BaseModel, Field, PrivateAttr, field_validator
+from pydantic import BaseModel, Field, PrivateAttr, field_validator, model_validator
 
 
 class TypographyScale(BaseModel):
@@ -279,6 +279,22 @@ class DesignBrief(BaseModel):
     #: a prefix or substring ("split-screen" → "split", "Playfair" → "Playfair
     #: Display"), then the field's default — logged nowhere because the brief
     #: prompt already lists the choices; the page never sees the raw answer.
+    #: The hero colours are the two fields the model leaves out most often, and the
+    #: validator counted them as missing: a retry of 45 s for values that follow
+    #: from the palette. Derived here when empty, so a brief is judged on what
+    #: matters (concept, signature, fonts).
+    @model_validator(mode="after")
+    def _hero_colours(self):
+        if not (self.hero_background or "").strip():
+            self.hero_background = (self.primary_color or "").strip() or (self.section_backgrounds or ["#1a1a1a"])[0] or "#1a1a1a"
+        if not (self.hero_text_color or "").strip():
+            from builder.site_ai.nora.contrast import NAMED, contrast, parse_color
+
+            background = parse_color(self.hero_background, {})
+            light_copy = background is None or contrast(background, NAMED["white"]) >= 3.0
+            self.hero_text_color = "#ffffff" if light_copy else ((self.body_color or "").strip() or "#1a1a1a")
+        return self
+
     @field_validator(
         "hero_style", "heading_font", "body_font", "border_radius_style", "button_hover",
         "motion_style", "header_height", "header_border", "header_style", "cta_style",
