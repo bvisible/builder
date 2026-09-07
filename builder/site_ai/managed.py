@@ -70,5 +70,13 @@ def sync_managed_ai_provider() -> str | None:
         model_id = name[len(ROUTE_PREFIX) + 1 :]
         if model_id not in wanted:
             frappe.db.set_value("Builder AI Model", name, "enabled", 0)
+    # upstream's seed patch ships an OpenRouter shortlist; without a key those models
+    # would sit in the picker and fail on first use. A disabled provider takes its
+    # models with it (builder.ai.models.load_models); an operator can re-enable one.
+    for other in frappe.get_all("Builder AI Provider", filters={"name": ("!=", PROVIDER_NAME), "enabled": 1}, pluck="name"):
+        frappe.db.set_value("Builder AI Provider", other, "enabled", 0)
     frappe.db.commit()
+    from builder.ai.models import ModelRegistry
+
+    ModelRegistry.clear_cache()
     return PROVIDER_NAME
