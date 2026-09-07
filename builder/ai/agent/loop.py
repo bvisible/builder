@@ -1212,6 +1212,14 @@ class AgentRunner:
 				self.record_round(round_index, tool_operations, summary_text)
 
 				if not tool_operations:
+					# //// Neoffice — the Kimi models call present_ui for the first question, then write the
+					# //// following cards as bracketed prose ([choices: …] [buttons: …]) whatever the prompt
+					# //// says. A text that is really a card is emitted as the card it meant to be, through
+					# //// present_ui's own handler (builder/site_ai/nora/cards.py), so the user can tap it.
+					from builder.site_ai.nora.cards import materialise_text_card
+
+					if summary_text and materialise_text_card(self, summary_text):
+						return
 					self.stop_reason = "model_finished"
 					break
 
