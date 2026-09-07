@@ -563,6 +563,12 @@ export class AIChatController {
 		if (resources.includes("variables")) {
 			builderTokens.reload();
 		}
+		//// Neoffice — "canvas": a server tool rewrote the open page's blocks (generate_site turned
+		//// the blank host page into the home page), so the editor reloads the page itself.
+		if (resources.includes("canvas") && this.pageId.value) {
+			await this.pageStore.setPage(this.pageId.value, true);
+			return;
+		}
 		if (resources.includes("page_data") || resources.includes("page")) {
 			const page = await this.pageStore.fetchActivePage(this.pageId.value).catch(() => null);
 			if (page) {

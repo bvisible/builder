@@ -563,7 +563,7 @@ def build_site(ctx, spec: dict) -> str:
         ai_log("info", "Page written", page=page["title"], name=name, route=route, model=page_model)
         if use_host:
             try:
-                ctx.emit("refetch", resources=["page", "page_data"], after_commit=True)
+                ctx.emit("refetch", resources=["page", "page_data", "canvas"], after_commit=True)
             except Exception:
                 pass
 
