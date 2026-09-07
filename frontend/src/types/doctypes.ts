@@ -117,6 +117,10 @@ export interface BuilderClientScript extends DocType {
 export interface BuilderPage extends DocType {
   /** Page Name: Data */
   page_name?: string;
+  //// Neoffice — added: the multi-site custom field (neoffice_theme) that the page
+  //// document carries; the canvas hands it to the chrome preview endpoints (#284).
+  /** Website Profile: Link (Website Profile) */
+  neo_website_profile?: string;
   /** Route: Data */
   route?: string;
   /** Published: Check */

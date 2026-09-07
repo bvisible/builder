@@ -208,10 +208,14 @@ const configuredFooterHtml = ref<{ html: string; css: string; configured: boolea
 
 // Load header/footer HTML from Website Header Footer Config
 async function loadConfiguredHeaderFooter() {
+	//// Neoffice — the page's Website Profile decides which chrome the editor previews
+	//// (the profile's Variant). Without it the server resolved the chrome from the
+	//// editor's host: every profile page previewed the main site's header (#284).
+	const website_profile = pageStore.activePage?.neo_website_profile || null;
 	try {
 		const [headerRes, footerRes] = await Promise.all([
-			call("builder.hf_utils.header_footer.get_editor_header_html"),
-			call("builder.hf_utils.header_footer.get_editor_footer_html"),
+			call("builder.hf_utils.header_footer.get_editor_header_html", { website_profile }),
+			call("builder.hf_utils.header_footer.get_editor_footer_html", { website_profile }),
 		]);
 		configuredHeaderHtml.value = headerRes;
 		configuredFooterHtml.value = footerRes;
@@ -221,8 +225,8 @@ async function loadConfiguredHeaderFooter() {
 	}
 }
 
-// Load header/footer on mount
-loadConfiguredHeaderFooter();
+// Load header/footer on mount, and again when the open page belongs to another profile
+watch(() => pageStore.activePage?.neo_website_profile, loadConfiguredHeaderFooter, { immediate: true });
 
 const { cssVariables, darkCssVariables, fontTokens } = useBuilderToken();
 

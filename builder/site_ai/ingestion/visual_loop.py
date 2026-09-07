@@ -140,9 +140,11 @@ def chat_refine_page(page_name: str, max_iterations: int = 2, session_id: str = 
     """Whitelisted entry: run the visual refinement loop on one page."""
     if not page_name:
         frappe.throw(_("page_name is required"))
-    from builder.utils import require_builder_role
+    from builder.utils import require_builder_role, require_session_owner
 
-    # the session only selects which client documents feed the revision prompt; the
-    # builder role (the same gate as every generation endpoint) is what protects it
+    # the session selects which client documents feed the revision prompt; the
+    # builder role (the same gate as every generation endpoint) protects the page,
+    # and the session must be the caller's own
     require_builder_role()
+    require_session_owner(session_id)
     return refine_page(page_name, int(max_iterations), session_id=session_id)

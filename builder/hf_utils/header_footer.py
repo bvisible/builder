@@ -278,11 +278,23 @@ def get_icon(name: str) -> str:
 	return ICONS.get(name, "")
 
 
+# //// Neoffice — the chrome a page previews in the editor. The canvas passes the
+# //// page's Website Profile: a multi-site page previews ITS chrome (the profile's
+# //// Variant), not the one resolved from the editor's host, which is the main
+# //// site's for every profile page (neoffice-maintenance #284). No profile, or a
+# //// profile without a Variant, keeps the host resolution.
+def _editor_chrome_config(website_profile=None):
+	if website_profile and frappe.db.exists("DocType", "Website Header Footer Variant"):
+		if frappe.db.exists("Website Header Footer Variant", website_profile):
+			return frappe.get_cached_doc("Website Header Footer Variant", website_profile)
+	return get_header_footer_config()
+
+
 @frappe.whitelist()
 # //// Neoffice — allow_guest dropped + builder role required. BuilderCanvas.vue calls
 # //// this from the editor, so the door stays; nobody outside the editor needs it.
 @builder_role_required()
-def get_editor_header_html():
+def get_editor_header_html(website_profile=None):
 	"""Get header HTML with styles for the Builder editor preview.
 
 	Returns a dict with:
@@ -290,7 +302,7 @@ def get_editor_header_html():
 	- css: The header CSS styles
 	- configured: Whether the config is set up
 	"""
-	config = get_header_footer_config()
+	config = _editor_chrome_config(website_profile)
 	if not config or not config.header_layout:
 		return {"configured": False, "html": "", "css": ""}
 
@@ -307,7 +319,7 @@ def get_editor_header_html():
 @frappe.whitelist()
 # //// Neoffice — allow_guest dropped + builder role required (see above).
 @builder_role_required()
-def get_editor_footer_html():
+def get_editor_footer_html(website_profile=None):
 	"""Get footer HTML with styles for the Builder editor preview.
 
 	Returns a dict with:
@@ -315,7 +327,7 @@ def get_editor_footer_html():
 	- css: The footer CSS styles
 	- configured: Whether the config is set up
 	"""
-	config = get_header_footer_config()
+	config = _editor_chrome_config(website_profile)
 	if not config or not config.footer_template:
 		return {"configured": False, "html": "", "css": ""}
 

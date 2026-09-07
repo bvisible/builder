@@ -239,13 +239,16 @@ class BriefValidator:
                     f"Invalid color format: '{value}' (expected: #hex, rgb(), var(--name))"
                 )
 
-        # Layout guard: the site grid must be a concrete px width — pages of
-        # different widths read as different websites.
+        # Layout guard: the site has ONE grid. The schema pins the field to the
+        # container token (DesignBrief._one_grid), so that is the valid form; a
+        # concrete px width is tolerated for briefs stored before the token.
+        # (Requiring '1200px' here while the schema forced the token made every
+        # brief fail three times and land on the defaults, 2026-09-07.)
         cmw = (brief.content_max_width or "").strip()
-        if not re.match(r"^\d{3,4}px$", cmw):
+        if not re.match(r"^(var\(--container-width(,\s*\d{3,4}px)?\)|\d{3,4}px)$", cmw):
             result.add_invalid(
                 "content_max_width",
-                f"'{cmw}' is not a concrete grid width (expected e.g. '1200px')"
+                f"'{cmw}' is not the site grid (expected 'var(--container-width, 1280px)')"
             )
 
         # WCAG guard: primary buttons carry white text — the chosen primary must

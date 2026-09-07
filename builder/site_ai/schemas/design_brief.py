@@ -8,7 +8,7 @@ Ensures visual consistency across all generated pages.
 
 from __future__ import annotations
 import json
-from typing import ClassVar, Literal, Optional
+from typing import ClassVar, Literal, Optional, get_args
 from pydantic import BaseModel, Field, PrivateAttr, field_validator
 
 
@@ -272,6 +272,33 @@ class DesignBrief(BaseModel):
         # a model that answers "1200px" is not wrong enough to lose the whole brief:
         # the site has one grid, and it is this token whatever the model proposed
         return "var(--container-width, 1280px)"
+
+    #: A closed choice the model misses must not cost the brief either: the vision
+    #: brief of a bakery site died on one hero_style outside the list, and the
+    #: text-only retry came back without fonts. Case-insensitive match first, then
+    #: a prefix or substring ("split-screen" → "split", "Playfair" → "Playfair
+    #: Display"), then the field's default — logged nowhere because the brief
+    #: prompt already lists the choices; the page never sees the raw answer.
+    @field_validator(
+        "hero_style", "heading_font", "body_font", "border_radius_style", "button_hover",
+        "motion_style", "header_height", "header_border", "header_style", "cta_style",
+        mode="before",
+    )
+    @classmethod
+    def _closest_choice(cls, value, info):
+        field = cls.model_fields[info.field_name]
+        choices = [c for c in get_args(field.annotation) if isinstance(c, str)]
+        if not isinstance(value, str) or not choices:
+            return value
+        wanted = value.strip()
+        for choice in choices:
+            if choice.lower() == wanted.lower():
+                return choice
+        low = wanted.lower()
+        for choice in choices:
+            if low.startswith(choice.lower()) or choice.lower() in low:
+                return choice
+        return field.default
 
     # NEW: Typography Scale (prescriptive sizes)
     typography: TypographyScale = Field(

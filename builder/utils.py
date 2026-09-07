@@ -144,6 +144,31 @@ def require_builder_role(message: str | None = None) -> None:
 		)
 
 
+def require_session_owner(session_id: str | None) -> None:
+	"""Refuse a caller who writes into an AI session that is not their own.
+
+	The upload and ingestion endpoints take a `session_id` and attach assets or
+	seed the brief of that session: without this gate any builder user could
+	seed somebody else's conversation with content of their choosing, which then
+	reaches the generation prompt. Administrator passes; an unknown session is a
+	refusal too (no probing of ids).
+	"""
+	if not session_id:
+		return
+	user = frappe.session.user
+	if user == "Administrator":
+		return
+	owner = None
+	if frappe.db.exists("Builder AI Session", session_id):
+		owner = frappe.db.get_value("Builder AI Session", session_id, "session_user") or frappe.db.get_value(
+			"Builder AI Session", session_id, "owner"
+		)
+	elif frappe.db.exists("DocType", "Builder Chat Session") and frappe.db.exists("Builder Chat Session", session_id):
+		owner = frappe.db.get_value("Builder Chat Session", session_id, "owner")
+	if owner != user:
+		frappe.throw(frappe._("This conversation belongs to another user"), frappe.PermissionError)
+
+
 def builder_role_required(message: str | None = None):
 	"""Decorator form of `require_builder_role`, for whitelisted endpoints.
 
