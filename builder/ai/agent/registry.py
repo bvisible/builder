@@ -122,7 +122,10 @@ def build_default_registry() -> ToolRegistry:
 	# //// a model write ERP schema from the site editor. The list is a server capability
 	# //// (builder/site_ai/capabilities.py), empty on a self-hosted bench.
 	from builder.site_ai.capabilities import disabled_tools
+	from builder.site_ai.nora import tools as nora_tools
 
 	for name in disabled_tools():
 		registry._tools.pop(name, None)
+	# //// Neoffice — the whole-site tool (builder/site_ai/nora): our pipeline on this page engine.
+	registry.extend(nora_tools.TOOLS)
 	return registry

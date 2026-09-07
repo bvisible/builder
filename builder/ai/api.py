@@ -128,7 +128,9 @@ def run(
 	frappe.enqueue(
 		run_agent_job,
 		queue="default",
-		timeout=600,
+		# //// Neoffice — a whole-site build (generate_site) runs inside the turn and needs far more
+		# //// than upstream's 600 s; the ceiling is configurable per site.
+		timeout=frappe.utils.cint(frappe.conf.get("builder_agent_job_timeout")) or 3600,
 		prompt=prompt,
 		model=resolved_model,
 		api_key=api_key,

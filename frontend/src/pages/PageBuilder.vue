@@ -131,6 +131,8 @@ import { breakpointsTailwind, useBreakpoints, useDebounceFn, useEventListener } 
 import { createResource, KeyboardShortcutsModal, useShortcut } from "frappe-ui";
 import { computed, onActivated, onDeactivated, onMounted, provide, ref, watch, watchEffect } from "vue";
 import { useRoute, useRouter } from "vue-router";
+//// Neoffice — see onMounted below.
+import { isSiteCreationRoute } from "@/composables/useSiteCreation";
 import CodeEditor from "../components/Controls/CodeEditor.vue";
 import { prefetchBuilderSettings } from "@/utils/prefetch";
 
@@ -312,6 +314,12 @@ onDeactivated(() => {
 onMounted(() => {
 	builderStore.blockContextMenu = blockContextMenu.value;
 	prefetchBuilderSettings();
+	// //// Neoffice — arriving with ?nora=site (Create with AI on the dashboard) opens the agent's
+	// //// tab; the panel seeds the site conversation from the same query (useSiteCreation).
+	if (isSiteCreationRoute(route)) {
+		builderStore.showLeftPanel = true;
+		builderStore.leftPanelActiveTab = "Chat";
+	}
 });
 
 watchEffect(() => {

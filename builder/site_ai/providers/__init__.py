@@ -6,10 +6,14 @@
 
 from builder.site_ai.providers.base import BaseProvider
 from builder.site_ai.providers.codex_provider import CodexProvider
+from builder.site_ai.providers.litellm_provider import LiteLLMProvider
 from builder.site_ai.providers.openai_provider import OpenAIProvider
 from builder.site_ai.providers.ollama_provider import OllamaProvider
 
 PROVIDERS = {
+    # upstream's litellm route (Builder AI Provider rows): the site engine's default since
+    # the v1.33 merge; the direct providers below stay until their last caller is gone
+    "litellm": LiteLLMProvider,
     "openai": OpenAIProvider,
     "ollama": OllamaProvider,
     # local Codex CLI driven by a ChatGPT plan (self-host / dogfooding)

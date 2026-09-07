@@ -403,8 +403,10 @@
 </template>
 
 <script setup lang="ts">
-//// Neoffice — see the panel title above.
+//// Neoffice — see the panel title above, and the site-creation seed below.
 import { assistantName } from "@/utils/neofficeBoot";
+import { isSiteCreationRoute, siteCreationSeed, SITE_CREATION_QUERY } from "@/composables/useSiteCreation";
+import { useRoute, useRouter } from "vue-router";
 import AIAffectedItems from "@/components/AIAffectedItems.vue";
 import AITurnTimeline from "@/components/ai/AITurnTimeline.vue";
 import AIUISpec from "@/components/ai/AIUISpec.vue";
@@ -756,6 +758,22 @@ onMounted(() => {
 	// is actually usable rather than inferring it from Builder Settings alone.
 	builderStore.refreshAIState();
 });
+
+//// Neoffice — a dashboard "Create with AI" lands here with ?nora=site: once the session is
+//// loaded, send the site playbook's opening line as the user's first message (only on a chat
+//// with no messages yet), then drop the query so a reload does not send it again.
+const siteRoute = useRoute();
+const siteRouter = useRouter();
+const seedSiteConversation = () => {
+	if (!isSiteCreationRoute(siteRoute) || !chat.sessionId.value || !chat.canSubmit.value) return;
+	const query = { ...siteRoute.query };
+	delete query[SITE_CREATION_QUERY];
+	siteRouter.replace({ query });
+	if (chat.messages.value.length) return;
+	chat.prompt.value = siteCreationSeed();
+	chat.submitPrompt();
+};
+watch(() => [chat.sessionId.value, chat.canSubmit.value], seedSiteConversation, { immediate: true });
 
 // the chat usually loads behind the closed tab, where the scroll can't land
 watch(

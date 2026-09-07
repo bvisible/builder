@@ -352,6 +352,12 @@ class AgentRunner:
 		from builder.site_ai.config import get_assistant_name
 
 		self.system_prompt = self.system_prompt.replace("{ASSISTANT_NAME}", get_assistant_name())
+		# //// Neoffice — the whole-site playbook and the site rules (chrome outside the pages, one
+		# //// profile per page) ride the same system prompt; see builder/site_ai/nora/prompts.py.
+		if not system_prompt:
+			from builder.site_ai.nora.prompts import site_playbook
+
+			self.system_prompt += site_playbook(page_id)
 		# The authoritative working tree — loaded from the DB by load_page in run().
 		self.tree: WorkingTree | None = None
 		# Page locks acquired this turn ((key, token) pairs, token-fenced);

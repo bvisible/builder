@@ -10,7 +10,6 @@
 			@failed="failed = true"
 		/>
 		<!-- the fallback DashboardSidebar mounts its own, so only here -->
-		<AIChatModal v-model="showAIChat" />
 		<MediaLibrary v-model="showMedia" />
 		<ThemeDialog v-model="showTheme" />
 	</template>
@@ -30,13 +29,12 @@ import NeoCockpitBridge from "@/components/NeoCockpitBridge.vue";
 
 import builderProjectFolder from "@/data/builderProjectFolder";
 import useBuilderStore from "@/stores/builderStore";
-import { useChatDeepLink } from "@/composables/useChatDeepLink";
+import { startSiteCreation } from "@/composables/useSiteCreation";
 import { useDashboardState } from "@/composables/useDashboardState";
 import { useRouter } from "vue-router";
 import { computed, defineAsyncComponent, ref } from "vue";
 
-// loaded on demand: the chat pulls in its own chunk and most visits never open it
-const AIChatModal = defineAsyncComponent(() => import("@/components/AIChatModal.vue"));
+// loaded on demand: most visits never open them
 const MediaLibrary = defineAsyncComponent(() => import("@/components/MediaLibrary.vue"));
 const ThemeDialog = defineAsyncComponent(() => import("@/components/ThemeDialog.vue"));
 
@@ -44,8 +42,6 @@ const router = useRouter();
 const builderStore = useBuilderStore();
 const { showSettingsDialog, settingsTab } = useDashboardState();
 const failed = ref(false);
-// a desk workspace shortcut lands here with ?chat=1 — the chat has no route
-const showAIChat = useChatDeepLink();
 const showMedia = ref(false);
 const showTheme = ref(false);
 
@@ -86,8 +82,10 @@ const contextNav = computed(() => {
 				{
 					label: __("Create with AI"),
 					icon: "lucide-sparkles",
+					// the editor agent builds whole sites from its panel; this opens it on the
+					// site's home page (or a blank draft) with the site playbook seeded
 					onClick: () => {
-						showAIChat.value = true;
+						startSiteCreation();
 					},
 				},
 				{

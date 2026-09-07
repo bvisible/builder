@@ -17,7 +17,7 @@
 				     //// and Articles (45e67b23, hidden when the blog plugin is off). Upstream's sidebar lists
 				     //// pages only. This native sidebar is the fallback of NeoCockpitBuilderSidebar, which
 				     //// offers the same entries inside the cockpit. -->
-				<SidebarItem :label="__('Create with AI')" icon="lucide-sparkles" @click="showAIChat = true" />
+				<SidebarItem :label="__('Create with AI')" icon="lucide-sparkles" @click="startSiteCreation()" />
 				<SidebarItem :label="__('Theme')" icon="lucide-palette" @click="showTheme = true" />
 				<SidebarItem :label="__('Media')" icon="lucide-image" @click="showMedia = true" />
 				<SidebarItem
@@ -106,7 +106,6 @@
 	<!-- //// Neoffice — the Settings dialog upstream rendered HERE lives in PageBuilderDashboard, because
 	     //// the cockpit replaces this sidebar and the dialog must stay reachable (575f427e); its open
 	     //// state is the shared one in useDashboardState. Below, the modals our entries open. -->
-	<AIChatModal v-model="showAIChat" />
 	<MediaLibrary v-model="showMedia" />
 	<BlogManager v-model="showBlog" />
 	<ThemeDialog v-model="showTheme" />
@@ -117,8 +116,8 @@ import builderLogo from "/builder_logo.png";
 import EditableSpan from "@/components/EditableSpan.vue";
 import FilesIcon from "@/components/Icons/Files.vue";
 import SettingsIcon from "@/components/Icons/SettingsGear.vue";
-//// Neoffice — a desk workspace shortcut lands on /builder?chat=1; the chat has no route of its own.
-import { useChatDeepLink } from "@/composables/useChatDeepLink";
+//// Neoffice — "Create with AI" opens the editor agent on the site's home page (useSiteCreation).
+import { startSiteCreation } from "@/composables/useSiteCreation";
 import { useDashboardState } from "@/composables/useDashboardState";
 import builderProjectFolder from "@/data/builderProjectFolder";
 import useBuilderStore from "@/stores/builderStore";
@@ -141,9 +140,8 @@ import {
 import { TrialBanner } from "frappe-ui/frappe";
 import { computed, defineAsyncComponent, h, ref } from "vue";
 
-//// Neoffice — the four screens our entries open, lazily: each pulls in its own chunk and most
+//// Neoffice — the three screens our entries open, lazily: each pulls in its own chunk and most
 //// visits never open them. BuilderSettings is no longer imported here (575f427e).
-const AIChatModal = defineAsyncComponent(() => import("@/components/AIChatModal.vue"));
 const MediaLibrary = defineAsyncComponent(() => import("@/components/MediaLibrary.vue"));
 const BlogManager = defineAsyncComponent(() => import("@/components/BlogManager.vue"));
 const ThemeDialog = defineAsyncComponent(() => import("@/components/ThemeDialog.vue"));
@@ -157,7 +155,6 @@ const builderStore = useBuilderStore();
 const { showTemplatesDialog, showSettingsDialog } = useDashboardState();
 const renamingFolder = ref("");
 //// Neoffice — state of our entries (see the template).
-const showAIChat = useChatDeepLink();
 const showMedia = ref(false);
 const showBlog = ref(false);
 const showTheme = ref(false);

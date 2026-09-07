@@ -40,6 +40,10 @@ import NeoCockpitBuilderSidebar from "@/components/NeoCockpitBuilderSidebar.vue"
 import TemplatesDialog from "@/components/Templates/TemplatesDialog.vue";
 //// Neoffice — the shared dialog state (575f427e, 8f116e8a).
 import { useDashboardState } from "@/composables/useDashboardState";
+//// Neoffice — the desk workspace shortcut still lands on /builder?chat=1: it now starts the
+//// site conversation in the editor agent (the modal it used to open is gone).
+import { startSiteCreation } from "@/composables/useSiteCreation";
+import { useRoute } from "vue-router";
 import { builderSettings } from "@/data/builderSettings";
 import router, { sessionUser } from "@/router";
 import { prefetchBuilderSettings } from "@/utils/prefetch";
@@ -55,8 +59,13 @@ const BuilderSettings = defineAsyncComponent(() => import("@/components/BuilderS
 const { showSettingsDialog, settingsTab } = useDashboardState();
 
 const telemetry = useTelemetry();
+const route = useRoute();
 
 onMounted(prefetchBuilderSettings);
+//// Neoffice — see the import above.
+onMounted(() => {
+	if (route.query.chat) startSiteCreation();
+});
 // Dev benches have telemetry (and thus the survey) off; ?persona_survey=test forces the redirect.
 const devForceShow = new URLSearchParams(window.location.search).get("persona_survey") === "test";
 
