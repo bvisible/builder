@@ -97,7 +97,10 @@ def has_page_permission(ptype: str = "write", message: str | None = None):
 					if ptype == "write"
 					else frappe._("You do not have permission to read pages")
 				)
-				frappe.throw(message or default_message)
+				# //// Neoffice — PermissionError (HTTP 403), not the bare ValidationError (417) upstream
+				# //// throws: a refusal must be machine-readable so the three-identity audit can tell
+				# //// "forbidden" from "the endpoint blew up" (same contract as require_builder_role).
+				frappe.throw(message or default_message, frappe.PermissionError)
 			return fn(*args, **kwargs)
 
 		return wrapper
