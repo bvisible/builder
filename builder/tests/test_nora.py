@@ -249,3 +249,13 @@ class TestBriefHeroColours(unittest.TestCase):
 		self.assertEqual(light.hero_text_color, "#222222")
 		kept = DesignBrief(primary_color="#1a1a1a", hero_background="#ffffff", hero_text_color="#333333")
 		self.assertEqual((kept.hero_background, kept.hero_text_color), ("#ffffff", "#333333"))
+
+	def test_fonts_named_in_the_concept_replace_a_default(self):
+		from builder.site_ai.schemas.design_brief import DesignBrief
+
+		b = DesignBrief(design_concept="Cormorant Garamond supplies the headline voice, while Manrope keeps the body crisp.")
+		self.assertEqual((b.heading_font, b.body_font), ("Cormorant Garamond", "Manrope"))
+		chosen = DesignBrief(design_concept="Cormorant Garamond for headlines", heading_font="Playfair Display", body_font="Lora")
+		self.assertEqual((chosen.heading_font, chosen.body_font), ("Playfair Display", "Lora"))
+		plain = DesignBrief(design_concept="A warm, quiet workshop.")
+		self.assertEqual((plain.heading_font, plain.body_font), ("Inter", "Inter"))

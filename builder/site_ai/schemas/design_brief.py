@@ -283,6 +283,24 @@ class DesignBrief(BaseModel):
     #: validator counted them as missing: a retry of 45 s for values that follow
     #: from the palette. Derived here when empty, so a brief is judged on what
     #: matters (concept, signature, fonts).
+    #: The model writes the typography into design_concept ("Cormorant Garamond
+    #: supplies the headline voice, Manrope keeps the body crisp") and leaves the
+    #: two font fields on their default: seen on the third complete run. When the
+    #: concept names fonts from the list and a field still carries the default,
+    #: the named fonts are the decision.
+    @model_validator(mode="after")
+    def _fonts_named_in_the_concept(self):
+        choices = [c for c in get_args(self.model_fields["heading_font"].annotation) if isinstance(c, str)]
+        prose = f"{self.design_concept or ''} {self.signature_element or ''}".lower()
+        named = [c for c in sorted(choices, key=len, reverse=True) if c.lower() != "inter" and c.lower() in prose]
+        # keep the order of appearance in the prose
+        named.sort(key=lambda c: prose.index(c.lower()))
+        if named and self.heading_font == "Inter":
+            self.heading_font = named[0]
+        if len(named) > 1 and self.body_font == "Inter":
+            self.body_font = named[1]
+        return self
+
     @model_validator(mode="after")
     def _hero_colours(self):
         if not (self.hero_background or "").strip():

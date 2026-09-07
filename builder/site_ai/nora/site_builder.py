@@ -522,9 +522,17 @@ def build_site(ctx, spec: dict) -> str:
     for key, value in SITE_TYPE_HEADER_FOOTER_DEFAULTS.get(site_type, SITE_TYPE_HEADER_FOOTER_DEFAULTS["vitrine"]).items():
         if hasattr(config, key):
             setattr(config, key, value)
-    config.logo_type = "Image" if (logo_image or config.get("logo_image")) else "Text"
     if logo_image:
+        config.logo_type = "Image"
         config.logo_image = logo_image
+    elif profile:
+        # a profile's Variant is bootstrapped from the main site's Single, logo
+        # included: without an upload the new site shows its own name, not the
+        # host's logo (on the Single, logo-default.png IS the client's logo)
+        config.logo_type = "Text"
+        config.logo_image = None
+    else:
+        config.logo_type = "Image" if config.get("logo_image") else "Text"
     config.logo_text = site_name
     if hasattr(config, "footer_logo_text"):
         config.footer_logo_text = site_name
@@ -590,8 +598,11 @@ def build_site(ctx, spec: dict) -> str:
                 config.ai_brief = brief.model_dump_json() if hasattr(brief, "model_dump_json") else json.dumps(brief.__dict__, default=str)
             except Exception:
                 pass
-        for field in ("primary_color", "secondary_color", "background_color", "text_color"):
-            value = {"primary_color": primary, "secondary_color": secondary, "background_color": (brief.section_backgrounds or [None])[0] if getattr(brief, "section_backgrounds", None) else None, "text_color": getattr(brief, "body_color", None)}.get(field)
+        # the four colour fields carry the token VALUES (a literal each): the brief's
+        # own body_color is a CSS variable on a default brief, which left the Variant
+        # with `text_color = var(--muted-color)` on the third complete run
+        for field, key in (("primary_color", "primary"), ("secondary_color", "secondary"), ("background_color", "background"), ("text_color", "text")):
+            value = palette.get(f"{prefix}-{key}")
             if value and hasattr(config, field):
                 config.set(field, value)
         config.save(ignore_permissions=True)
