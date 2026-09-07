@@ -765,7 +765,10 @@ onMounted(() => {
 const siteRoute = useRoute();
 const siteRouter = useRouter();
 const seedSiteConversation = () => {
-	if (!isSiteCreationRoute(siteRoute) || !chat.sessionId.value || !chat.canSubmit.value) return;
+	// canSubmit needs a non-empty prompt, so it is the seed that makes it true: wait for the
+	// session and a model, then set the prompt and submit (submitPrompt re-checks canSubmit)
+	if (!isSiteCreationRoute(siteRoute) || !chat.sessionId.value || !chat.selectedModel.value) return;
+	if (chat.isSubmitting.value) return;
 	const query = { ...siteRoute.query };
 	delete query[SITE_CREATION_QUERY];
 	siteRouter.replace({ query });
@@ -773,7 +776,11 @@ const seedSiteConversation = () => {
 	chat.prompt.value = siteCreationSeed();
 	chat.submitPrompt();
 };
-watch(() => [chat.sessionId.value, chat.canSubmit.value], seedSiteConversation, { immediate: true });
+watch(
+	() => [chat.sessionId.value, chat.selectedModel.value, chat.isSubmitting.value],
+	seedSiteConversation,
+	{ immediate: true },
+);
 
 // the chat usually loads behind the closed tab, where the scroll can't land
 watch(
