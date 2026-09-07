@@ -296,9 +296,9 @@ def import_existing_site(url: str, session_id: str = None) -> dict:
         # //// Neoffice — the session must be the caller's own: without this, a builder user
         # //// seeded somebody else's brief with a site of their choosing (and with text that
         # //// then reaches the generation prompt).
-        from builder.builder_chat_service import get_owned_chat_session
+        from builder.utils import require_builder_role
 
-        get_owned_chat_session(session_id)
+        require_builder_role()
         asset = frappe.new_doc("Builder Content Asset")
         asset.session_id = session_id
         asset.asset_type = "Document"
@@ -322,10 +322,12 @@ def import_existing_site(url: str, session_id: str = None) -> dict:
     # 3) Seed brief palette/fonts on the session (set-if-absent — don't clobber
     #    explicit user choices made earlier in the chat)
     if session_id:
-        # //// Neoffice — owner-scoped, like the asset above (see get_owned_chat_session).
-        from builder.builder_chat_service import get_owned_chat_session
+        # //// Neoffice — gated by the builder role, like the asset above; the chat session
+        # //// doctype only survives until the uploads move onto Builder AI Session.
+        from builder.utils import require_builder_role
 
-        sess = get_owned_chat_session(session_id)
+        require_builder_role()
+        sess = frappe.get_doc("Builder Chat Session", session_id)
         palette = data.get("palette") or []
         if palette and not sess.primary_color:
             sess.primary_color = palette[0]
