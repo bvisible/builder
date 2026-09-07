@@ -3,7 +3,7 @@
 # //// 0bf5f370 2026-08-04.
 """The design brief, readable.
 
-The generator writes its brief to `Builder Chat Session.saved_brief` and reads
+The site pipeline writes its brief to the site chrome (`Website Header Footer Config.ai_brief`, or the profile's Variant) and reads
 it back to generate the remaining pages and to run the visual loop. Until now
 nobody could *see* it: a client asked "why is my site like this?" and the
 answer sat in a JSON blob in a doctype the Studio hides.
@@ -200,41 +200,20 @@ def _grouped(raw) -> dict:
 
 
 @frappe.whitelist()
-def get_brief(session_id: str) -> dict:
-	"""The brief behind one generated site."""
+def get_latest_brief(website_profile: str | None = None) -> dict:
+	"""The brief behind the site as it stands: the last generation is what produced
+	the current site, and the Theme is where its decisions ended up, so that is
+	where the reasoning belongs. Per site profile when the instance serves several."""
 	frappe.only_for(ROLES)
 
-	name = frappe.db.get_value("Builder Chat Session", {"session_id": session_id}, "name")
-	if not name and frappe.db.exists("Builder Chat Session", session_id):
-		name = session_id
-	if not name:
+	raw, generated_on = None, None
+	if website_profile and frappe.db.exists("Website Header Footer Variant", website_profile):
+		raw, generated_on = frappe.db.get_value("Website Header Footer Variant", website_profile, ["ai_brief", "modified"])
+	else:
+		raw = frappe.db.get_single_value("Website Header Footer Config", "ai_brief")
+		generated_on = frappe.db.get_single_value("Website Header Footer Config", "modified")
+	if not raw:
 		return {"exists": False}
-
-	return _grouped(frappe.db.get_value("Builder Chat Session", name, "saved_brief"))
-
-
-@frappe.whitelist()
-def get_latest_brief() -> dict:
-	"""The brief behind the site as it stands.
-
-	The chat opens a fresh session every time, so a panel living only there is
-	unreachable the day after. The Theme is where these decisions ended up, so
-	that is where the reasoning behind them belongs — and "latest" is the right
-	one, because the last generation is what produced the current site.
-	"""
-	frappe.only_for(ROLES)
-
-	rows = frappe.get_all(
-		"Builder Chat Session",
-		filters={"saved_brief": ["is", "set"]},
-		fields=["name", "session_id", "site_name", "modified"],
-		order_by="modified desc",
-		limit_page_length=1,
-	)
-	if not rows:
-		return {"exists": False}
-
-	data = _grouped(frappe.db.get_value("Builder Chat Session", rows[0].name, "saved_brief"))
-	data["site_name"] = rows[0].site_name
-	data["generated_on"] = rows[0].modified
+	data = _grouped(raw)
+	data["generated_on"] = generated_on
 	return data

@@ -492,6 +492,12 @@ def build_site(ctx, spec: dict) -> str:
         if getattr(brief, "heading_font", None):
             config.heading_font = brief.heading_font
             config.body_font = brief.body_font or "Inter"
+        # the brief behind the site, shown under Settings > Theme ("what the AI decided")
+        if hasattr(config, "ai_brief"):
+            try:
+                config.ai_brief = brief.model_dump_json() if hasattr(brief, "model_dump_json") else json.dumps(brief.__dict__, default=str)
+            except Exception:
+                pass
         for field in ("primary_color", "secondary_color", "background_color", "text_color"):
             value = {"primary_color": primary, "secondary_color": secondary, "background_color": (brief.section_backgrounds or [None])[0] if getattr(brief, "section_backgrounds", None) else None, "text_color": getattr(brief, "body_color", None)}.get(field)
             if value and hasattr(config, field):

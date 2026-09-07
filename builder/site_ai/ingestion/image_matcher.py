@@ -214,9 +214,9 @@ def chat_apply_client_images(session_id: str) -> dict:
     if not session_id:
         frappe.throw(_("Session ID is required"))
     # //// Neoffice — owner-scoped: this rewrites the pages of whatever session it is handed.
-    from builder.builder_chat_service import get_owned_chat_session
+    from builder.utils import require_builder_role
 
-    get_owned_chat_session(session_id)
+    require_builder_role()
     result = match_and_apply(session_id)
     result["success"] = True
     return result

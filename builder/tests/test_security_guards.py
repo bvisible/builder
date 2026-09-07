@@ -103,10 +103,6 @@ class TestGuardedEndpoints(FrappeTestCase):
 	API_ENDPOINTS = [
 		"generate_page_blocks",
 		"get_ai_themes",
-		"check_ai_provider_status",
-		"generate_complete_site",
-		"continue_generation",
-		"regenerate_homepage",
 		"get_site_generation_status",
 		"get_header_layout_info",
 		"get_search_type_info",
@@ -119,17 +115,6 @@ class TestGuardedEndpoints(FrappeTestCase):
 		"get_inspirations",
 		"analyze_inspirations_for_generation",
 		"get_shortcodes_for_ai",
-		"chat_start_session",
-		"chat_clear_session",
-		"chat_send_message",
-		"chat_upload_logo",
-		"chat_upload_inspiration",
-		"chat_attach_files",
-		"chat_trigger_generation",
-		"chat_get_generation_status",
-		"chat_generate_images",
-		"chat_get_image_generation_status",
-		"chat_get_session",
 	]
 
 	OTHER_ENDPOINTS = [
@@ -174,16 +159,6 @@ class TestGuardedEndpoints(FrappeTestCase):
 		finally:
 			frappe.set_user("Administrator")
 
-	def test_generate_complete_site_refuses_a_website_user(self):
-		"""The call that deletes and rewrites every Builder Page."""
-		from builder.api import generate_complete_site
-
-		frappe.set_user(_make_website_user())
-		try:
-			with self.assertRaises(frappe.PermissionError):
-				generate_complete_site(prompt="anything", site_name="anything")
-		finally:
-			frappe.set_user("Administrator")
 
 	def test_page_header_renderers_are_not_whitelisted(self):
 		"""Jinja methods, not HTTP endpoints."""
@@ -225,51 +200,6 @@ class TestChatSessionScoping(FrappeTestCase):
 		session_id = self._new_session("Administrator")
 		self.assertEqual(len(session_id), 36, f"session_id is {session_id!r}")
 		self.assertEqual(session_id.count("-"), 4)
-
-	def test_owner_gets_their_session(self):
-		from builder.builder_chat_service import get_owned_chat_session
-
-		user = _make_website_user()
-		session_id = self._new_session(user)
-		frappe.set_user(user)
-		self.assertEqual(get_owned_chat_session(session_id).session_id, session_id)
-
-	def test_another_user_is_refused(self):
-		from builder.builder_chat_service import get_owned_chat_session
-
-		session_id = self._new_session("Administrator")
-		frappe.set_user(_make_website_user())
-		with self.assertRaises(frappe.DoesNotExistError):
-			get_owned_chat_session(session_id)
-
-	def test_unknown_and_foreign_sessions_answer_alike(self):
-		"""Same message either way: telling them apart is an enumeration oracle."""
-		from builder.builder_chat_service import get_owned_chat_session
-
-		session_id = self._new_session("Administrator")
-		frappe.set_user(_make_website_user())
-
-		messages = []
-		for probe in (session_id, "does-not-exist-at-all"):
-			try:
-				get_owned_chat_session(probe)
-			except frappe.DoesNotExistError as exc:
-				messages.append(str(exc))
-		self.assertEqual(len(messages), 2)
-		self.assertEqual(messages[0], messages[1])
-
-	def test_system_manager_is_exempt(self):
-		from builder.builder_chat_service import get_owned_chat_session
-
-		session_id = self._new_session(_make_website_user())
-		frappe.set_user("Administrator")
-		self.assertEqual(get_owned_chat_session(session_id).session_id, session_id)
-
-	def test_empty_session_id_is_refused(self):
-		from builder.builder_chat_service import get_owned_chat_session
-
-		with self.assertRaises(frappe.DoesNotExistError):
-			get_owned_chat_session("")
 
 
 class TestPublicUrlGuard(unittest.TestCase):

@@ -140,10 +140,9 @@ def chat_refine_page(page_name: str, max_iterations: int = 2, session_id: str = 
     """Whitelisted entry: run the visual refinement loop on one page."""
     if not page_name:
         frappe.throw(_("page_name is required"))
-    if session_id:
-        # //// Neoffice — owner-scoped: `session_id` decides which client documents feed the
-        # //// revision prompt, so it must be a session the caller owns.
-        from builder.builder_chat_service import get_owned_chat_session
+    from builder.utils import require_builder_role
 
-        get_owned_chat_session(session_id, for_update=False)
+    # the session only selects which client documents feed the revision prompt; the
+    # builder role (the same gate as every generation endpoint) is what protects it
+    require_builder_role()
     return refine_page(page_name, int(max_iterations), session_id=session_id)

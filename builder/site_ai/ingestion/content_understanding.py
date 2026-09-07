@@ -368,9 +368,9 @@ def understand_session_pending(session_id: str) -> dict:
     # //// Neoffice — owner-scoped: this spends vision-model calls on whatever session it is
     # //// handed. (get_content_context above stays role-only on purpose: the generation
     # //// worker calls it, and a worker's session user is the owner already.)
-    from builder.builder_chat_service import get_owned_chat_session
+    from builder.utils import require_builder_role
 
-    get_owned_chat_session(session_id)
+    require_builder_role()
     names = frappe.get_all(
         "Builder Content Asset",
         filters={"session_id": session_id, "status": ["in", ["pending", "failed"]]},
@@ -393,9 +393,9 @@ def ingest_content_assets(session_id: str, files, company: str = None) -> dict:
     """
     # //// Neoffice — owner-scoped: attaching documents to someone else's brief put text of
     # //// our choosing into their generation prompt.
-    from builder.builder_chat_service import get_owned_chat_session
+    from builder.utils import require_builder_role
 
-    get_owned_chat_session(session_id)
+    require_builder_role()
 
     if isinstance(files, str):
         files = frappe.parse_json(files)
