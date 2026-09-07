@@ -1,4 +1,3 @@
-{#- //// Neoffice — committed build entry point (upstream ignores it): the fleet serves the SPA from the checked-in artifacts, never rebuilding on instances. -#}
 <!DOCTYPE html>
 <html lang="en" class="overscroll-none">
 	<head>
@@ -7,8 +6,43 @@
 		<meta name="viewport" content="width=device-width, initial-scale=1.0" />
 		<!-- <script src="https://cdn.tailwindcss.com"></script> -->
 		<title>Frappe Builder</title>
-		<script type="module" crossorigin src="/assets/builder/frontend/assets/index-C6EuaTaP.js"></script>
-		<link rel="stylesheet" crossorigin href="/assets/builder/frontend/assets/index-DNogCpjo.css">
+		<script type="module" crossorigin src="/assets/builder/frontend/assets/index-DBpp5kQq.js"></script>
+		<link rel="modulepreload" crossorigin href="/assets/builder/frontend/assets/objectSpread2-DNemnrtx.js">
+		<link rel="modulepreload" crossorigin href="/assets/builder/frontend/assets/objectWithoutProperties-D85A6BTr.js">
+		<link rel="modulepreload" crossorigin href="/assets/builder/frontend/assets/debounce-DLy3dzZi.js">
+		<link rel="modulepreload" crossorigin href="/assets/builder/frontend/assets/resources-Dy-6EF6D.js">
+		<link rel="modulepreload" crossorigin href="/assets/builder/frontend/assets/listResource-BIHv4PrA.js">
+		<link rel="modulepreload" crossorigin href="/assets/builder/frontend/assets/documentResource-CyKva3i7.js">
+		<link rel="modulepreload" crossorigin href="/assets/builder/frontend/assets/warnDeprecated-C5TXpH7L.js">
+		<link rel="modulepreload" crossorigin href="/assets/builder/frontend/assets/toast-xV1wYJxO.js">
+		<link rel="modulepreload" crossorigin href="/assets/builder/frontend/assets/shared-DEVdvHHO.js">
+		<link rel="modulepreload" crossorigin href="/assets/builder/frontend/assets/preload-helper-atNmuSo6.js">
+		<link rel="modulepreload" crossorigin href="/assets/builder/frontend/assets/translation-CjDO50Wf.js">
+		<link rel="modulepreload" crossorigin href="/assets/builder/frontend/assets/builderStore-BvE1j-tX.js">
+		<link rel="modulepreload" crossorigin href="/assets/builder/frontend/assets/_plugin-vue_export-helper-B-4-0YmJ.js">
+		<link rel="modulepreload" crossorigin href="/assets/builder/frontend/assets/PopoverPanel-BCHRT2At.js">
+		<link rel="modulepreload" crossorigin href="/assets/builder/frontend/assets/iconString-DNVbDKA3.js">
+		<link rel="modulepreload" crossorigin href="/assets/builder/frontend/assets/LabelingWrapper-CCn-zua-.js">
+		<link rel="modulepreload" crossorigin href="/assets/builder/frontend/assets/Select-_a7j7D4A.js">
+		<link rel="modulepreload" crossorigin href="/assets/builder/frontend/assets/TooltipBubble-BwvQBv2q.js">
+		<link rel="modulepreload" crossorigin href="/assets/builder/frontend/assets/Popover-DTz2Afr6.js">
+		<link rel="modulepreload" crossorigin href="/assets/builder/frontend/assets/vue-router-uAz7-nZZ.js">
+		<link rel="modulepreload" crossorigin href="/assets/builder/frontend/assets/Button-C6_-Y733.js">
+		<link rel="modulepreload" crossorigin href="/assets/builder/frontend/assets/Textarea-CDwIDIwS.js">
+		<link rel="modulepreload" crossorigin href="/assets/builder/frontend/assets/FormControl-Crmg2e5y.js">
+		<link rel="modulepreload" crossorigin href="/assets/builder/frontend/assets/Dialog-mg-gmgFi.js">
+		<link rel="modulepreload" crossorigin href="/assets/builder/frontend/assets/ErrorMessage-nvCNj31A.js">
+		<link rel="modulepreload" crossorigin href="/assets/builder/frontend/assets/fileUploadHandler-DPyM00le.js">
+		<link rel="modulepreload" crossorigin href="/assets/builder/frontend/assets/router-BYn1rcEM.js">
+		<link rel="modulepreload" crossorigin href="/assets/builder/frontend/assets/pageStore-CcxNnTFo.js">
+		<link rel="modulepreload" crossorigin href="/assets/builder/frontend/assets/useNumberInput-D8UWKing.js">
+		<link rel="stylesheet" crossorigin href="/assets/builder/frontend/assets/PopoverPanel-C4FuCaXQ.css">
+		<link rel="stylesheet" crossorigin href="/assets/builder/frontend/assets/Select-C6Zg6wuF.css">
+		<link rel="stylesheet" crossorigin href="/assets/builder/frontend/assets/Button-CpLm9V6x.css">
+		<link rel="stylesheet" crossorigin href="/assets/builder/frontend/assets/FormControl-DF6_pBWi.css">
+		<link rel="stylesheet" crossorigin href="/assets/builder/frontend/assets/Dialog-30kIIOXK.css">
+		<link rel="stylesheet" crossorigin href="/assets/builder/frontend/assets/useNumberInput-S_semGHD.css">
+		<link rel="stylesheet" crossorigin href="/assets/builder/frontend/assets/index-Bf58AlDI.css">
 	</head>
 	<body class="overscroll-none bg-surface-base no-scrollbar selection:bg-gray-500/30" style="scrollbar-width: auto;">
 		<div id="app"></div>
@@ -21,6 +55,7 @@
 			window.builder_version = "{{ builder_version }}";
 			window.is_fc_site = "{{ is_fc_site }}";
 			window.is_developer_mode = "{{ is_developer_mode }}";
+			window.is_read_only_mode = "{{ is_read_only_mode }}";
 		</script>
 	
           <script>
