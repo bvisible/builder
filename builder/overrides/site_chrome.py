@@ -211,27 +211,29 @@ def inject_site_chrome(context):
 	builder_css_tags = ""
 	head_html = str(context.get("_head_html", ""))
 
-	# //// Neoffice — les deux CDN tiers (daisyUI + cdn.tailwindcss.com) sont
-	# //// remplaces par la seule regle qu ils apportaient reellement.
+	# //// Neoffice — the two third-party CDNs (daisyUI + cdn.tailwindcss.com) are
+	# //// replaced by the single rule they actually contributed.
 	# ////
-	# //// Mesure du 2026-08-25 sur osiris, page Builder /about-e3ba, en desactivant
-	# //// la feuille daisyUI et en comparant les STYLES CALCULES : sur 278 elements,
-	# //// 11 changent, et l ecart tient en six declarations — margin-top/bottom de
-	# //// h1, h2, h3 et margin-bottom de p. Aucune classe de composant daisyUI n est
-	# //// utilisee nulle part : zero occurrence dans builder, dans neoffice_theme, et
-	# //// dans les 24 pages publiees d osiris et de blowbackshop. Zero classe
-	# //// utilitaire Tailwind non plus — le generateur ecrit des styles en ligne.
+	# //// Measured 2026-08-25 on osiris, Builder page /about-e3ba, by disabling the
+	# //// daisyUI sheet and comparing COMPUTED styles: of 278 elements, 11 change,
+	# //// and the whole difference is six declarations — margin-top/bottom of h1,
+	# //// h2, h3 and margin-bottom of p. No daisyUI component class is used
+	# //// anywhere: zero occurrences in builder, in neoffice_theme and across the
+	# //// 24 published pages of osiris and blowbackshop. No Tailwind utility class
+	# //// either — the generator writes inline styles.
 	# ////
-	# //// Ce que daisyUI faisait ici, c est annuler `website.bundle.css` de frappe,
-	# //// qui repose `h2{margin:2rem}` par-dessus notre reset.css. On chargeait donc
-	# //// 2,8 Mo depuis un CDN tiers pour remettre des marges a zero.
+	# //// What daisyUI did here was cancel frappe's `website.bundle.css`, which
+	# //// lays `h2{margin:2rem}` over our reset.css. We were loading 2.8 MB from a
+	# //// third-party CDN to put margins back to zero.
 	# ////
-	# //// La regle ci-dessous, injectee A LA MEME POSITION, reproduit l etat
-	# //// exactement : 21 elements compares, zero ecart.
+	# //// The rule below, injected AT THE SAME POSITION, reproduces that state
+	# //// exactly: 21 elements compared, zero divergence. Builder pages themselves
+	# //// are rendered by templates/generators/webpage.html, which carries the same
+	# //// rule after _head_html; this path only serves the legacy (non-Builder) chrome.
 	# ////
-	# //// Pourquoi ca comptait : l IP de chaque visiteur d un site client partait
-	# //// chez jsdelivr sans consentement, et cdn.tailwindcss.com est le compilateur
-	# //// JIT navigateur, que Tailwind deconseille lui-meme en production.
+	# //// Why it mattered: every visitor IP on a client site went to jsdelivr
+	# //// without consent, and cdn.tailwindcss.com is the in-browser JIT compiler,
+	# //// which Tailwind itself advises against in production.
 	if "daisyui" not in head_html:
 		builder_css_tags += (
 			"<style>blockquote,dd,dl,figure,h1,h2,h3,h4,h5,h6,hr,p,pre{margin:0}</style>"
