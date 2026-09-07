@@ -22,12 +22,17 @@ ROUTE_PREFIX = "managed"
 
 
 def managed_models() -> list[dict]:
-    """The models the host exposes: the chat model first (the picker starts on
-    it), the heavy page model when it differs. Labels are the model ids: the
-    host decides what its customers see, the ids are not secret."""
+    """The models the host exposes, in picker order: the chat model first (the
+    picker starts on it), the heavy page model when it differs, then any extra
+    model listed in site_config `nora_extra_models` (a list, or comma-separated).
+    Labels are the model ids: the host decides what its customers see, the ids
+    are not secret."""
     settings = get_ai_settings()
+    extra = frappe.conf.get("nora_extra_models") or []
+    if isinstance(extra, str):
+        extra = [m.strip() for m in extra.split(",")]
     seen: list[str] = []
-    for model_id in (settings.model, settings.page_model):
+    for model_id in [settings.model, settings.page_model, *extra]:
         if model_id and model_id not in seen:
             seen.append(model_id)
     return [{"model_id": model_id, "label": model_id, "supports_vision": 0} for model_id in seen]
@@ -57,6 +62,16 @@ def sync_managed_ai_provider() -> str | None:
     doc.save()
 
     wanted = {spec["model_id"]: spec for spec in managed_models()}
+    # the picker lists models in creation order, so the rows are recreated whenever the
+    # wanted order changed (a session keeps its selected_model as plain text, so a
+    # recreated row loses nothing)
+    existing = [
+        name[len(ROUTE_PREFIX) + 1 :]
+        for name in frappe.get_all("Builder AI Model", filters={"provider": PROVIDER_NAME}, pluck="name", order_by="creation asc")
+    ]
+    if [m for m in existing if m in wanted] != [m for m in wanted if m in existing]:
+        for model_id in existing:
+            frappe.delete_doc("Builder AI Model", f"{ROUTE_PREFIX}/{model_id}", ignore_permissions=True, force=True)
     for spec in wanted.values():
         name = f"{ROUTE_PREFIX}/{spec['model_id']}"
         if frappe.db.exists("Builder AI Model", name):
