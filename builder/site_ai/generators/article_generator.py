@@ -62,26 +62,20 @@ def _site_context() -> dict:
 
 
 def _brief_context() -> dict:
-	"""The tone and stance the site settled on, if a brief was saved."""
+	"""The tone and stance the site settled on, if a brief was saved: the site
+	build writes it to the site chrome (`ai_brief` on Website Header Footer
+	Config), which is where Settings > Theme shows it."""
 	import json
 
-	row = frappe.get_all(
-		"Builder Chat Session",
-		filters={"saved_brief": ["is", "set"]},
-		fields=["name", "site_description", "site_name"],
-		order_by="modified desc",
-		limit_page_length=1,
-	)
-	if not row:
-		return {}
-
-	out = {"site_description": row[0].site_description or "", "site_name": row[0].site_name or ""}
-	raw = frappe.db.get_value("Builder Chat Session", row[0].name, "saved_brief")
+	try:
+		raw = frappe.db.get_single_value("Website Header Footer Config", "ai_brief")
+	except Exception:
+		raw = None
 	try:
 		brief = json.loads(raw) if raw else {}
 	except (TypeError, ValueError):
 		brief = {}
-
+	out = {}
 	for key in ("site_tone", "design_concept"):
 		if brief.get(key):
 			out[key] = brief[key]

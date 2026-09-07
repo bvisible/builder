@@ -190,8 +190,6 @@ scheduler_events = {
 	"cron": {
 		"*/10 * * * *": [
 			"builder.builder_analytics.ingest_web_page_views_to_duckdb",
-			# //// Neoffice — an AI generation that dies mid-flight must not stay "in progress" forever.
-			"builder.api.check_stuck_generations",
 			"builder.builder_analytics.ingest_clicks_to_duckdb",
 		],
 	}

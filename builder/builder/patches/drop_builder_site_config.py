@@ -3,9 +3,9 @@
 # //// First commit 0bf5f370 2026-08-04.
 # Builder Site Config held the AI's site plan — site type, colours, provider,
 # and a design_brief_json — back when the generator wrote its state into its own
-# doctype. That job moved to Builder Chat Session (`saved_brief`), which is what
-# the generator writes today and what the "generate the remaining pages" flow
-# and the visual loop read back.
+# doctype. That job moved to Builder Chat Session (`saved_brief`), and from
+# there (2026-09-07, patch drop_builder_chat_session) to the site chrome:
+# `ai_brief` on Website Header Footer Config, per profile on its Variant.
 #
 # Nothing has referenced Builder Site Config since: no python, no vue, no
 # fixture, no hook. It is the doctype and its child table sitting on rows

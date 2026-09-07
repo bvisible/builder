@@ -21,6 +21,55 @@ from builder.site_ai.config import get_ai_settings
 
 PROVIDER_NAME = "Managed"
 ROUTE_PREFIX = "managed"
+#: The host's own vision endpoint (Olares "nora": fast, multimodal, structured
+#: output), used by the document understanding and the visual critique. Seeded
+#: from site_config `nora_base_url` / `nora_api_key` so that those callers go
+#: through the same litellm route as everything else.
+NORA_PROVIDER_NAME = "Nora Vision"
+NORA_ROUTE_PREFIX = "nora"
+
+
+def nora_vision_model() -> str | None:
+    """The Builder AI Model name of the host's vision endpoint, when seeded."""
+    if not frappe.db.exists("DocType", "Builder AI Model"):
+        return None
+    rows = frappe.get_all(
+        "Builder AI Model", filters={"provider": NORA_PROVIDER_NAME, "enabled": 1}, pluck="name", order_by="creation asc", limit=1
+    )
+    return rows[0] if rows else None
+
+
+def sync_nora_vision_provider() -> str | None:
+    """Create or refresh the host's vision provider row from site_config. No-op
+    without `nora_base_url` and `nora_api_key`."""
+    conf = frappe.conf
+    base_url, api_key = conf.get("nora_base_url"), conf.get("nora_api_key")
+    if not base_url or not api_key or not frappe.db.exists("DocType", "Builder AI Provider"):
+        return None
+    if frappe.db.exists("Builder AI Provider", NORA_PROVIDER_NAME):
+        doc = frappe.get_doc("Builder AI Provider", NORA_PROVIDER_NAME)
+    else:
+        doc = frappe.new_doc("Builder AI Provider")
+        doc.provider_name = NORA_PROVIDER_NAME
+    doc.enabled = 1
+    doc.route_prefix = NORA_ROUTE_PREFIX
+    doc.litellm_provider = "openai"
+    doc.api_base = base_url
+    doc.api_key = api_key
+    doc.flags.ignore_permissions = True
+    doc.save()
+    model_id = conf.get("nora_ocr_model") or conf.get("nora_model") or "nora"
+    name = f"{NORA_ROUTE_PREFIX}/{model_id}"
+    if not frappe.db.exists("Builder AI Model", name):
+        frappe.get_doc(
+            {"doctype": "Builder AI Model", "provider": NORA_PROVIDER_NAME, "enabled": 1, "model_id": model_id, "label": "Nora vision", "vision": 1}
+        ).insert(ignore_permissions=True)
+    else:
+        frappe.db.set_value("Builder AI Model", name, {"enabled": 1, "vision": 1})
+    for other in frappe.get_all("Builder AI Model", filters={"provider": NORA_PROVIDER_NAME, "name": ("!=", name)}, pluck="name"):
+        frappe.db.set_value("Builder AI Model", other, "enabled", 0)
+    frappe.db.commit()
+    return NORA_PROVIDER_NAME
 
 
 def managed_models() -> list[dict]:
@@ -99,9 +148,12 @@ def sync_managed_ai_provider() -> str | None:
     # upstream's seed patch ships an OpenRouter shortlist; without a key those models
     # would sit in the picker and fail on first use. A disabled provider takes its
     # models with it (builder.ai.models.load_models); an operator can re-enable one.
-    for other in frappe.get_all("Builder AI Provider", filters={"name": ("!=", PROVIDER_NAME), "enabled": 1}, pluck="name"):
+    for other in frappe.get_all(
+        "Builder AI Provider", filters={"name": ("not in", (PROVIDER_NAME, NORA_PROVIDER_NAME)), "enabled": 1}, pluck="name"
+    ):
         frappe.db.set_value("Builder AI Provider", other, "enabled", 0)
     frappe.db.commit()
+    sync_nora_vision_provider()
     from builder.ai.models import ModelRegistry
 
     ModelRegistry.clear_cache()

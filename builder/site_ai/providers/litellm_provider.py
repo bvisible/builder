@@ -26,17 +26,39 @@ logger.setLevel(logging.INFO)
 
 class LiteLLMProvider(BaseProvider):
     """`model` is a Builder AI Model name (e.g. managed/kimi-k3); routing, key and
-    base URL come from its provider row."""
+    base URL come from its provider row. A bare model id (kimi-k3, the form the
+    site_config keys and Builder Settings carry) is resolved against the enabled
+    rows on first use."""
 
     @property
     def provider_name(self) -> str:
         return "litellm"
 
+    def _resolve_model(self) -> str:
+        from builder.ai.models import ModelRegistry, load_models
+
+        wanted = (self.model or "").strip()
+        if wanted and ModelRegistry.find(wanted):
+            return wanted
+        rows = load_models()
+        if wanted:
+            # the managed prefix first, then any row whose model_id is this bare id
+            for row in rows:
+                name = row.get("name") or ""
+                if name == f"managed/{wanted}" or row.get("model_id") == wanted or name.endswith(f"/{wanted}"):
+                    self.model = name
+                    return name
+        if rows:
+            self.model = rows[0]["name"]
+            return self.model
+        raise GenerationError("No enabled AI model: configure a Builder AI Provider")
+
     def is_available(self) -> bool:
         """A registered, enabled Builder AI Model behind an enabled provider."""
-        from builder.ai.models import ModelRegistry
-
-        return bool(self.model and ModelRegistry.find(self.model))
+        try:
+            return bool(self._resolve_model())
+        except GenerationError:
+            return False
 
     def list_models(self) -> list[str]:
         from builder.ai.models import load_models
@@ -49,7 +71,7 @@ class LiteLLMProvider(BaseProvider):
         messages = []
         if system_prompt:
             messages.append({"role": "system", "content": system_prompt})
-        if images and ModelRegistry.supports_vision(self.model):
+        if images and ModelRegistry.supports_vision(self._resolve_model()):
             content = [{"type": "text", "text": prompt}]
             for url in images:
                 data_url = self._image_to_data_url(url)
@@ -73,7 +95,7 @@ class LiteLLMProvider(BaseProvider):
         from builder.ai import llm
 
         return llm.complete(
-            self.model,
+            self._resolve_model(),
             self._format_messages(prompt, system_prompt, images),
             self._params(temperature, max_tokens),
             stream=False,
@@ -96,7 +118,7 @@ class LiteLLMProvider(BaseProvider):
         )
         enhanced_system = f"{system_prompt}{instruction}" if system_prompt else instruction.strip()
         raw = llm.complete(
-            self.model,
+            self._resolve_model(),
             self._format_messages(prompt, enhanced_system, images),
             self._params(temperature, None, json_mode=True),
             stream=False,

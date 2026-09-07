@@ -1,67 +1,33 @@
-# //// Neoffice — added file (no upstream equivalent): provider registry (OpenAI, Ollama, Codex CLI).
-# //// builder/site_ai/** = the Neoffice AI site generator; frappe/builder ships no such module. First commit
-# //// 563d9875 2026-02-01.
-# AI Providers Module
-# Supports multiple AI providers: OpenAI, Ollama, Anthropic
+# //// Neoffice — added file (no upstream equivalent): the site engine's LLM access.
+"""One route for every model call of the site engine: upstream's litellm layer
+(`builder.ai.llm`), configured by the Builder AI Provider rows.
 
-from builder.site_ai.providers.base import BaseProvider
-from builder.site_ai.providers.codex_provider import CodexProvider
+The direct providers (OpenAI-compatible, Ollama, Codex CLI) lived here until
+2026-09-07; a managed instance, an OpenRouter key or a self-hosted gateway now
+configure ONE thing, the provider rows, and the editor agent and the site
+engine read the same configuration. `get_provider()` keeps its signature for
+the generators: a legacy provider name maps to the litellm route and the
+`api_key` / `base_url` keyword arguments are ignored (the provider row holds
+them)."""
+
+from builder.site_ai.providers.base import BaseProvider, GenerationError
 from builder.site_ai.providers.litellm_provider import LiteLLMProvider
-from builder.site_ai.providers.openai_provider import OpenAIProvider
-from builder.site_ai.providers.ollama_provider import OllamaProvider
 
-PROVIDERS = {
-    # upstream's litellm route (Builder AI Provider rows): the site engine's default since
-    # the v1.33 merge; the direct providers below stay until their last caller is gone
-    "litellm": LiteLLMProvider,
-    "openai": OpenAIProvider,
-    "ollama": OllamaProvider,
-    # local Codex CLI driven by a ChatGPT plan (self-host / dogfooding)
-    "codex": CodexProvider,
-}
+PROVIDERS = {"litellm": LiteLLMProvider}
+LEGACY_NAMES = ("openai", "ollama", "codex", "moonshot", "openrouter", "custom")
 
 
-def get_provider(provider_name: str, model: str = None, **kwargs) -> BaseProvider:
-    """
-    Factory function to get the appropriate AI provider
+def get_provider(provider_name: str | None = None, model: str = None, **kwargs) -> BaseProvider:
+    """A provider on the litellm route.
 
-    Args:
-        provider_name: Name of the provider ("openai", "ollama")
-        model: Optional model name override
-        **kwargs: Additional provider-specific configuration
-
-    Returns:
-        BaseProvider: Configured provider instance
-
-    Raises:
-        ValueError: If provider_name is not supported
-    """
-    if provider_name not in PROVIDERS:
-        raise ValueError(
-            f"Unknown provider: {provider_name}. "
-            f"Supported providers: {list(PROVIDERS.keys())}"
-        )
-
-    provider_class = PROVIDERS[provider_name]
-
-    # The reasoning effort is a site-wide setting, and every call site would
-    # otherwise have to remember to thread it through. Read it here once; a
-    # caller that passes its own still wins.
-    if provider_name == "codex" and "reasoning_effort" not in kwargs:
-        try:
-            from builder.site_ai.config import get_ai_settings
-
-            kwargs["reasoning_effort"] = get_ai_settings().reasoning_effort
-        except Exception:
-            pass
-
-    return provider_class(model=model, **kwargs)
+    `provider_name` is accepted for the callers written against the direct
+    providers (a site_config `ai_provider` of "openai" or "ollama" still
+    resolves); `model` is a Builder AI Model name (managed/kimi-k3) or a bare
+    model id, which the provider resolves against the enabled rows."""
+    kwargs.pop("api_key", None)
+    kwargs.pop("base_url", None)
+    kwargs.pop("reasoning_effort", None)
+    return LiteLLMProvider(model=model, **kwargs)
 
 
-__all__ = [
-    "BaseProvider",
-    "OpenAIProvider",
-    "OllamaProvider",
-    "get_provider",
-    "PROVIDERS",
-]
+__all__ = ["BaseProvider", "GenerationError", "LiteLLMProvider", "PROVIDERS", "LEGACY_NAMES", "get_provider"]

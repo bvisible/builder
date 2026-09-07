@@ -38,7 +38,7 @@
    "label": "Source"
   },
   {
-   "description": "Builder Chat Session this asset was uploaded for.",
+   "description": "The AI session (Builder AI Session name) this asset was uploaded in",
    "fieldname": "session_id",
    "fieldtype": "Data",
    "in_standard_filter": 1,

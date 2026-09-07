@@ -13,8 +13,6 @@ Kimi K2.6 instead — better-calibrated judgement, kept as the fallback / for th
 critique step if nora proves too weak at design critique.
 """
 
-import frappe
-from frappe import _
 
 from builder.site_ai.config import get_ai_settings
 from builder.site_ai.providers import get_provider
@@ -39,23 +37,15 @@ _CRITIQUE_SYSTEM = (
 def _critique_provider(which: str = "auto"):
     """Return (provider, label). 'nora' = Olares vision (fast/free); 'kimi' =
     Kimi K2.6 (general/brief model); 'auto' = nora when configured else kimi."""
+    from builder.site_ai.managed import nora_vision_model
+
     cfg = get_ai_settings()
-    conf = frappe.conf
-    use_nora = which in ("nora", "auto") and conf.get("nora_base_url") and conf.get("nora_api_key")
-    if use_nora:
-        return get_provider(
-            "openai",
-            model=conf.get("nora_ocr_model") or conf.get("nora_model") or "nora",
-            api_key=conf.get("nora_api_key"),
-            base_url=conf.get("nora_base_url"),
-            temperature=0.2,
-            timeout=CRITIQUE_TIMEOUT,
-        ), "nora"
+    vision = nora_vision_model() if which in ("nora", "auto") else None
+    if vision:
+        return get_provider("litellm", model=vision, temperature=0.2, timeout=CRITIQUE_TIMEOUT), "nora"
     return get_provider(
-        cfg.provider,
+        "litellm",
         model=cfg.model,
-        api_key=cfg.api_key,
-        base_url=cfg.base_url,
         temperature=0.3,
         timeout=CRITIQUE_TIMEOUT,
     ), cfg.model
