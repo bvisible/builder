@@ -138,15 +138,29 @@ def choose_layout_system(style_direction: str, brief) -> str:
     return LAYOUT_BY_TONE.get(getattr(brief, "site_tone", "") or "", "editorial-grid")
 
 
+COLOR_LITERAL = re.compile(r"^(#[0-9a-fA-F]{3,8}|rgba?\(|hsla?\()")
+
+
+def _color(*candidates: str, fallback: str) -> str:
+    """The first candidate that is a literal colour. A default brief carries CSS
+    variable references (var(--muted-color)) that would leave a token pointing at
+    nothing on the published page."""
+    for value in candidates:
+        value = (value or "").strip()
+        if value and COLOR_LITERAL.match(value):
+            return value
+    return fallback
+
+
 def mint_tokens(prefix: str, group: str, brief, primary: str, secondary: str) -> dict:
     """Six Builder Tokens with stable ids: the site's design system, referenced by
     the pages as var(--<prefix>-<key>) and by the chrome through its aliases."""
-    background = (getattr(brief, "section_backgrounds", None) or ["#ffffff"])[0] or "#ffffff"
+    backgrounds = getattr(brief, "section_backgrounds", None) or []
     spec = [
-        ("primary", "Color", primary or getattr(brief, "primary_color", "") or "#1a1a1a"),
-        ("secondary", "Color", secondary or getattr(brief, "secondary_color", "") or "#444444"),
-        ("background", "Color", background),
-        ("text", "Color", getattr(brief, "body_color", "") or getattr(brief, "heading_color", "") or "#1a1a1a"),
+        ("primary", "Color", _color(primary, getattr(brief, "primary_color", ""), fallback="#1a1a1a")),
+        ("secondary", "Color", _color(secondary, getattr(brief, "secondary_color", ""), fallback="#444444")),
+        ("background", "Color", _color(backgrounds[0] if backgrounds else "", fallback="#ffffff")),
+        ("text", "Color", _color(getattr(brief, "body_color", ""), getattr(brief, "heading_color", ""), fallback="#1a1a1a")),
         ("font-heading", "Font", getattr(brief, "heading_font", "") or "Inter"),
         ("font-body", "Font", getattr(brief, "body_font", "") or "Inter"),
     ]
@@ -315,8 +329,9 @@ def _describe(blocks: list) -> str:
         return ""
 
 
-def apply_navigation(config, created: list[dict], site_type: str, description: str, profile: str | None) -> None:
-    """Menu, footer and home page from the pages just built (the worker's step 5)."""
+def apply_navigation(config, created: list[dict], site_type: str, description: str, profile: str | None, lang: str = "fr") -> None:
+    """Menu, footer and home page from the pages just built (the worker's step 5).
+    Labels are translated into the site's language, not the operator's session."""
     config.menu_items = []
     seen = set()
     for page in created:
@@ -325,9 +340,9 @@ def apply_navigation(config, created: list[dict], site_type: str, description: s
             continue
         seen.add(route)
         home = route in ("/", "/home", "/index")
-        config.append("menu_items", {"label": _("Home") if home else page["title"], "url": "/" if home else route, "is_external": False, "open_in_new_tab": False})
+        config.append("menu_items", {"label": _("Home", lang=lang) if home else page["title"], "url": "/" if home else route, "is_external": False, "open_in_new_tab": False})
         if site_type in ("ecommerce", "ecommerce_search") and home:
-            config.append("menu_items", {"label": _("Shop"), "url": "/all-products", "is_external": False, "open_in_new_tab": False})
+            config.append("menu_items", {"label": _("Shop", lang=lang), "url": "/all-products", "is_external": False, "open_in_new_tab": False})
     for field, value in (("footer_logo_type", config.get("logo_type")), ("footer_logo_text", config.get("logo_text")), ("footer_logo_image", config.get("logo_image")), ("show_footer_logo", True), ("footer_menu_source", "Custom links")):
         if hasattr(config, field):
             config.set(field, value)
@@ -339,7 +354,7 @@ def apply_navigation(config, created: list[dict], site_type: str, description: s
         config.footer_links = []
         for page in created:
             home = page["route"] in ("/", "/home", "/index")
-            config.append("footer_links", {"column_name": _("Navigation"), "label": _("Home") if home else page["title"], "url": "/" if home else page["route"]})
+            config.append("footer_links", {"column_name": _("Navigation", lang=lang), "label": _("Home", lang=lang) if home else page["title"], "url": "/" if home else page["route"]})
     config.save(ignore_permissions=True)
     home_name = next((p["name"] for p in created if p["route"] in ("/", "/home", "/index")), None)
     if profile and frappe.db.exists("DocType", "Website Profile"):
@@ -387,8 +402,9 @@ def build_site(ctx, spec: dict) -> str:
     if profile and not frappe.db.exists("Website Profile", profile):
         return f"FAILED: unknown website_profile '{profile}'."
     replace_existing = spec.get("replace_existing") or "auto"
-    language = (spec.get("language") or frappe.db.get_single_value("Builder Settings", "default_language") or "fr").strip()
-    language = {"fr": "French", "en": "English", "de": "German", "it": "Italian"}.get(language.lower(), language)
+    lang_code = (spec.get("language") or frappe.db.get_single_value("Builder Settings", "default_language") or "fr").strip().lower()
+    language = {"fr": "French", "en": "English", "de": "German", "it": "Italian"}.get(lang_code[:2], lang_code)
+    lang_code = lang_code[:2] if lang_code[:2] in ("fr", "en", "de", "it") else "fr"
     primary = (spec.get("primary_color") or "").strip() or None
     secondary = (spec.get("secondary_color") or "").strip() or None
     logo_image = (spec.get("logo_image") or "").strip() or None
@@ -445,7 +461,7 @@ def build_site(ctx, spec: dict) -> str:
     if secondary and hasattr(config, "secondary_color"):
         config.secondary_color = secondary
     contact_page = next((p for p in pages if p["type"] == "contact"), None)
-    cta = (_("Contact us"), f"/{contact_page['route']}" if contact_page else "/")
+    cta = (_("Contact us", lang=lang_code), f"/{contact_page['route']}" if contact_page else "/")
     config.cta_text, config.cta_url = cta
     if primary and hasattr(config, "cta_button_color"):
         config.cta_button_color = primary
@@ -557,7 +573,7 @@ def build_site(ctx, spec: dict) -> str:
 
     # 6. menu, footer, home
     _progress(ctx, job_id, _("Menu, footer and home page"), 92, {"pages_created": created})
-    apply_navigation(_get_site_chrome_config(profile), created, site_type, activity, profile)
+    apply_navigation(_get_site_chrome_config(profile), created, site_type, activity, profile, lang_code)
 
     # 7. the images, in the background
     pending, image_job = 0, None
