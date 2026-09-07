@@ -1,0 +1,2 @@
+import{s as e}from"./objectSpread2-DNemnrtx.js";import{t}from"./listResource-C6HrMTSY.js";var n=e({default:()=>r}),r=t({method:`GET`,doctype:`User Font`,fields:[`font_name`,`font_file`],cache:`userFonts`,start:0,pageLength:50,auto:!0});export{n,r as t};
+//# sourceMappingURL=userFonts-CsU8GsUT.js.map

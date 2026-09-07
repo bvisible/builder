@@ -1,0 +1,2 @@
+import"./asyncToGenerator-CnJHVCwq.js";function e(e,t,n){return Array.isArray(e)?(e.length=Math.max(e.length,t),e.splice(t,1,n),n):(e[t]=n,n)}function t(e,t,n){}export{e as n,t};
+//# sourceMappingURL=warnDeprecated-BZXAIzUo.js.map

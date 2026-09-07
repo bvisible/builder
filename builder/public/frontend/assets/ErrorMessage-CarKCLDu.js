@@ -1,0 +1,2 @@
+import{D as e,K as t,M as n,_ as r,b as i,x as a}from"./asyncToGenerator-CnJHVCwq.js";n();var o=[`innerHTML`],s=e({__name:`ErrorMessage`,props:{message:{}},setup(e){let n=e,s=r(()=>n.message?n.message instanceof Error?n.message.messages||n.message.message:n.message:``);return(e,n)=>e.message?(t(),a(`div`,{key:0,class:`whitespace-pre-line text-sm text-ink-red-8`,role:`alert`,innerHTML:s.value},null,8,o)):i(``,!0)}});export{s as t};
+//# sourceMappingURL=ErrorMessage-CarKCLDu.js.map

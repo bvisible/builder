@@ -1,2 +1,0 @@
-import{t as e}from"./listResource-BIHv4PrA.js";var t=e({method:`GET`,doctype:`Builder Page`,fields:[`name`,`route`],filters:{is_template:0,published:1,authenticated_access:0,dynamic_route:0},cache:`all_pages`,pageLength:100,auto:!0});export{t};
-//# sourceMappingURL=allWebPages-Cwf5_baD.js.map

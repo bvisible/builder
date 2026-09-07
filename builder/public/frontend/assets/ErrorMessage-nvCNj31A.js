@@ -1,2 +1,0 @@
-import{N as e,O as t,S as n,q as r,v as i,x as a}from"./objectWithoutProperties-D85A6BTr.js";e();var o=[`innerHTML`],s=t({__name:`ErrorMessage`,props:{message:{}},setup(e){let t=e,s=i(()=>t.message?t.message instanceof Error?t.message.messages||t.message.message:t.message:``);return(e,t)=>e.message?(r(),n(`div`,{key:0,class:`whitespace-pre-line text-sm text-ink-red-8`,role:`alert`,innerHTML:s.value},null,8,o)):a(``,!0)}});export{s as t};
-//# sourceMappingURL=ErrorMessage-nvCNj31A.js.map
