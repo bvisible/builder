@@ -2,10 +2,26 @@
 
 from __future__ import annotations
 
+import json
+
 import frappe
 from frappe import _
 
 from builder.utils import builder_role_required
+
+
+def blank_root_blocks() -> str:
+    """The same root the Studio writes for a new page (frontend getBlockTemplate("body"))."""
+    return json.dumps([
+        {
+            "blockId": "root",
+            "element": "div",
+            "originalElement": "body",
+            "attributes": {},
+            "baseStyles": {"display": "flex", "flexWrap": "wrap", "flexShrink": 0, "flexDirection": "column", "alignItems": "center"},
+            "children": [],
+        }
+    ])
 
 
 @frappe.whitelist()
@@ -32,6 +48,8 @@ def site_creation_page(website_profile: str | None = None) -> dict:
     page = frappe.new_doc("Builder Page")
     page.page_title = _("Home")
     page.published = 0
+    # the editor's own blank page (getRootBlockTemplate): a page with no root block hangs the canvas
+    page.blocks = page.draft_blocks = blank_root_blocks()
     if scoped and website_profile:
         page.neo_website_profile = website_profile
     page.insert(ignore_permissions=True)
