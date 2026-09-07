@@ -19,6 +19,8 @@ import frappe
 from frappe import _
 from frappe.utils import now
 
+from builder.site_ai.nora.contrast import palette_roles
+
 PLACEHOLDER = "https://placehold.co/{w}x{h}/e5e7eb/9ca3af/png?text={text}"
 
 # title (lower, accents stripped) -> (route, page type)
@@ -159,6 +161,18 @@ def _color(*candidates: str, fallback: str) -> str:
     return fallback
 
 
+def palette_values(prefix: str) -> dict[str, str]:
+    """The colour tokens of the site by id (nt2-primary -> #C68E3F): what the
+    contrast repair resolves var(--id) against, and what the brief's light/dark
+    line is computed from."""
+    values = {}
+    for key in ("primary", "secondary", "background", "text"):
+        value = frappe.db.get_value("Builder Token", f"{prefix}-{key}", "value")
+        if value:
+            values[f"{prefix}-{key}"] = value
+    return values
+
+
 def mint_tokens(prefix: str, group: str, brief, primary: str, secondary: str) -> dict:
     """Six Builder Tokens with stable ids: the site's design system, referenced by
     the pages as var(--<prefix>-<key>) and by the chrome through its aliases."""
@@ -208,7 +222,7 @@ def placeholder_photos(page: dict, activity: str) -> list[str]:
     return urls
 
 
-def page_brief_text(site: dict, brief, page: dict, handles: dict, contact_prompt: str, layout_system: str, language: str, photos: list[str], cta: tuple[str, str]) -> str:
+def page_brief_text(site: dict, brief, page: dict, handles: dict, contact_prompt: str, layout_system: str, language: str, photos: list[str], cta: tuple[str, str], palette: dict | None = None) -> str:
     is_home = page["route"] == "home"
     plan = SECTION_PLANS.get(page["type"], SECTION_PLANS["generic"])
     sections = "\n".join(f"{i}. {s}" for i, s in enumerate(plan, 1))
@@ -230,6 +244,13 @@ def page_brief_text(site: dict, brief, page: dict, handles: dict, contact_prompt
         (
             f"PALETTE (token handles, use them for every brand colour): primary {handles['primary']}, secondary {handles['secondary']}, "
             f"background {handles['background']}, text {handles['text']}. Literal hex only for derived shades (rgba() tints)."
+        ),
+        (
+            # the model knows the handles by role, not by luminance: a cream secondary
+            # under white copy was the invisible CTA band of neoffice-maintenance #281
+            f"CONTRAST: {palette_roles(palette)}. A dark band uses {handles['text']} as background with {handles['background']} "
+            f"as text colour; a light band keeps {handles['text']} as text colour. Never white text on a LIGHT or MID handle."
+            if palette else ""
         ),
         (
             f"FONTS: headings '{getattr(brief, 'heading_font', 'Inter')}' as fontFamily {handles['font-heading']}, "
@@ -423,6 +444,7 @@ def build_site(ctx, spec: dict) -> str:
     from builder.ai import llm
     from builder.ai.block_codec import BlockCodec
     from builder.ai.page_writer import expand_page_yaml
+    from builder.site_ai.nora.contrast import repair_contrast
     from builder.ai.prompts import Prompts
     from builder.api import (
         SITE_TYPE_HEADER_FOOTER_DEFAULTS,
@@ -552,6 +574,7 @@ def build_site(ctx, spec: dict) -> str:
     # 4. the design system as tokens, and the chrome from the brief
     prefix = token_prefix(profile or site_name)
     handles = mint_tokens(prefix, profile or site_name, brief, primary, secondary)
+    palette = palette_values(prefix)
     try:
         apply_brief_site_chrome(brief, website_profile=profile)
         config = _get_site_chrome_config(profile)
@@ -590,7 +613,7 @@ def build_site(ctx, spec: dict) -> str:
             cancelled = True
             break
         _progress(ctx, job_id, _("Writing page {0} of {1}: {2}").format(idx + 1, total, page["title"]), 10 + int(80 * idx / max(total, 1)), {"current_page": page["title"], "pages_created": created})
-        brief_text = page_brief_text(site, brief, page, handles, contact_prompt, layout_system, language, placeholder_photos(page, activity), cta)
+        brief_text = page_brief_text(site, brief, page, handles, contact_prompt, layout_system, language, placeholder_photos(page, activity), cta, palette=palette)
         messages = [
             {"role": "system", "content": Prompts.GENERATION_YAML},
             {"role": "user", "content": f"Build this page now:\n{brief_text}"},
@@ -600,6 +623,11 @@ def build_site(ctx, spec: dict) -> str:
             try:
                 raw = _stream_text(ctx, page_model, messages, llm.TASK_PARAMS["complex"])
                 blocks, data_script = expand_page_yaml(BlockCodec.strip_fences(raw))
+                if blocks:
+                    # legibility is not left to the model: see contrast.py (#281)
+                    fixes = repair_contrast(blocks, palette)
+                    if fixes:
+                        ai_log("info", "Contrast repaired", page=page["title"], fixes=len(fixes), first=fixes[0][:80])
                 if blocks:
                     break
                 error = "the model returned no usable blocks"
