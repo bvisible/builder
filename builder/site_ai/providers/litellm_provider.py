@@ -80,17 +80,24 @@ class LiteLLMProvider(BaseProvider):
         )
 
     def generate_structured(self, prompt, schema: type[T], system_prompt=None, temperature=None, images=None, **kwargs) -> T:
-        """JSON mode plus pydantic validation; a lightly broken document is repaired
-        once before the call counts as failed (the generators retry on failure)."""
+        """JSON mode with the full schema in the system prompt (the recipe the direct
+        OpenAI-compatible provider used, which Moonshot answers reliably), pydantic
+        validation, and one repair pass before the call counts as failed (the
+        generators retry on failure)."""
         from builder.ai import llm
 
-        hint = (
-            "\n\nReturn ONLY a JSON object matching this schema (no prose, no fences):\n"
-            + json.dumps(schema.model_json_schema(), ensure_ascii=False)[:6000]
+        schema_json = json.dumps(schema.model_json_schema(), indent=2, ensure_ascii=False)
+        instruction = (
+            "\n\nYou MUST respond with valid JSON that matches this exact schema:\n\n```json\n"
+            + schema_json
+            + "\n```\n\nIMPORTANT:\n- Respond ONLY with valid JSON, no explanations or markdown\n"
+            "- All required fields must be present\n- Follow the exact structure and types specified: a field typed "
+            "string never receives an object or a list\n- Use camelCase for all style properties (e.g., backgroundColor, not background-color)\n"
         )
+        enhanced_system = f"{system_prompt}{instruction}" if system_prompt else instruction.strip()
         raw = llm.complete(
             self.model,
-            self._format_messages(prompt + hint, system_prompt, images),
+            self._format_messages(prompt, enhanced_system, images),
             self._params(temperature, None, json_mode=True),
             stream=False,
         )
@@ -103,7 +110,7 @@ class LiteLLMProvider(BaseProvider):
 
                 return schema.model_validate(json_repair.loads(text))
             except Exception as second:
-                logger.warning("structured generation failed: %s / %s", str(first)[:200], str(second)[:200])
+                logger.warning("structured generation failed: %s / %s", str(first)[:400], str(second)[:200])
                 raise GenerationError(f"Structured generation failed: {str(first)[:300]}") from second
 
 
