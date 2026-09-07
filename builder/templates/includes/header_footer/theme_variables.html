@@ -12,6 +12,19 @@
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family={{ font | replace(' ', '+') }}:wght@400;500;600;700&display=swap">
 {%- endfor -%}
 
+{#- The site's design system as Builder Tokens: when the AI build minted them, the six
+    theme variables alias the token handles (the hex stays as the fallback), so editing a
+    token in the Studio rethemes the chrome and the pages together. The token stylesheet is
+    linked here because the chrome also dresses pages frappe renders (blog, shop), which do
+    not inline it the way a Builder page does. -#}
+{%- set tp = theme.token_prefix if theme and theme.token_prefix else '' -%}
+{%- set primary_hex = theme.primary_color if theme else '#6c5ce7' -%}
+{%- set secondary_hex = theme.secondary_color if theme else '#00b894' -%}
+{%- set background_hex = theme.background_color if theme else '#ffffff' -%}
+{%- set text_hex = theme.text_color if theme else '#1a1a1a' -%}
+{%- set heading_family = theme.heading_font if theme else 'Inter' -%}
+{%- set body_family = theme.body_font if theme else 'Inter' -%}
+{%- if tp %}<link rel="stylesheet" href="/builder_assets/tokens.css">{% endif %}
 <style>
 /* ==========================================================================
    Theme Variables - Injected from Website Header Footer Config
@@ -20,26 +33,26 @@
 
 :root {
 	/* Primary colors - WebShop compatibility */
-	--primary: {{ theme.primary_color if theme else '#6c5ce7' }};
-	--primary-color: {{ theme.primary_color if theme else '#6c5ce7' }};
-	--primary-dark: {{ theme.primary_color if theme else '#6c5ce7' }};
+	--primary: {% if tp %}var(--{{ tp }}-primary, {{ primary_hex }}){% else %}{{ primary_hex }}{% endif %};
+	--primary-color: {% if tp %}var(--{{ tp }}-primary, {{ primary_hex }}){% else %}{{ primary_hex }}{% endif %};
+	--primary-dark: {{ primary_hex }};
 
 	/* Secondary color */
-	--secondary-color: {{ theme.secondary_color if theme else '#00b894' }};
+	--secondary-color: {% if tp %}var(--{{ tp }}-secondary, {{ secondary_hex }}){% else %}{{ secondary_hex }}{% endif %};
 
 	/* Background colors */
-	--background-color: {{ theme.background_color if theme else '#ffffff' }};
-	--bg-color: {{ theme.background_color if theme else '#ffffff' }};
+	--background-color: {% if tp %}var(--{{ tp }}-background, {{ background_hex }}){% else %}{{ background_hex }}{% endif %};
+	--bg-color: {% if tp %}var(--{{ tp }}-background, {{ background_hex }}){% else %}{{ background_hex }}{% endif %};
 
 	/* Text colors */
-	--text-color: {{ theme.text_color if theme else '#1a1a1a' }};
+	--text-color: {% if tp %}var(--{{ tp }}-text, {{ text_hex }}){% else %}{{ text_hex }}{% endif %};
 	--text-muted: {{ theme.text_color if theme else '#1a1a1a' }}99;
 	--text-light: {{ theme.text_color if theme else '#1a1a1a' }}66;
 
 	/* Typography */
-	--heading-font: '{{ theme.heading_font if theme else 'Inter' }}', sans-serif;
-	--body-font: '{{ theme.body_font if theme else 'Inter' }}', sans-serif;
-	--font-family: '{{ theme.body_font if theme else 'Inter' }}', sans-serif;
+	--heading-font: {% if tp %}var(--{{ tp }}-font-heading, '{{ heading_family }}'){% else %}'{{ heading_family }}'{% endif %}, sans-serif;
+	--body-font: {% if tp %}var(--{{ tp }}-font-body, '{{ body_family }}'){% else %}'{{ body_family }}'{% endif %}, sans-serif;
+	--font-family: {% if tp %}var(--{{ tp }}-font-body, '{{ body_family }}'){% else %}'{{ body_family }}'{% endif %}, sans-serif;
 
 	/* Frappe/WebShop button variables.
 	   `website.bundle.css` peint le bouton primaire avec `.btn.btn-primary`,

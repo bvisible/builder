@@ -540,6 +540,9 @@ def build_site(ctx, spec: dict) -> str:
         if getattr(brief, "heading_font", None):
             config.heading_font = brief.heading_font
             config.body_font = brief.body_font or "Inter"
+        # the chrome's variables alias the tokens from now on (theme_variables.html)
+        if hasattr(config, "token_prefix"):
+            config.token_prefix = prefix
         # the brief behind the site, shown under Settings > Theme ("what the AI decided")
         if hasattr(config, "ai_brief"):
             try:

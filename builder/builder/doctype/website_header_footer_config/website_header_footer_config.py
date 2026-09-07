@@ -295,6 +295,10 @@ class WebsiteHeaderFooterConfig(Document):
 			"shadow_style": getattr(self, "shadow_style", None) or "Soft",
 			"button_hover": getattr(self, "button_hover", None) or "Darken",
 			"motion_style": getattr(self, "motion_style", None) or "Calm",
+			# when the AI site build minted Builder Tokens for this site, the chrome's
+			# variables alias them (var(--<prefix>-primary, <hex>)) so editing a token
+			# rethemes the chrome too; the hex stays as the fallback
+			"token_prefix": getattr(self, "token_prefix", None) or "",
 		}
 
 

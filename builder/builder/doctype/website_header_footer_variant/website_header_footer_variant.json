@@ -130,7 +130,8 @@
   "column_break_body",
   "body_line_height",
   "body_size_mobile",
-  "ai_brief"
+  "ai_brief",
+  "token_prefix"
  ],
  "fields": [
   {
@@ -894,6 +895,14 @@
    "hidden": 1,
    "read_only": 1,
    "description": "The design brief behind the last AI site generation (Settings > Theme shows it)."
+  },
+  {
+   "fieldname": "token_prefix",
+   "fieldtype": "Data",
+   "label": "Token Prefix",
+   "hidden": 1,
+   "read_only": 1,
+   "description": "Prefix of the site's Builder Tokens (<prefix>-primary, <prefix>-font-heading...). Set by the AI site build; the chrome then follows the tokens."
   }
  ],
  "index_web_pages_for_search": 1,
