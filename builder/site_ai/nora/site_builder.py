@@ -258,6 +258,35 @@ def _progress(ctx, job_id: str, message: str, progress: int, extra: dict | None 
     _update_generation_status(job_id, {"status": "running", "progress": progress, "current_step": message, **(extra or {})})
 
 
+def _stream_text(ctx, model: str, messages: list, params: dict) -> str:
+    """A page of YAML takes minutes to write: stream it, as upstream's artifact
+    generator does, so the provider's read timeout counts between chunks instead
+    of over the whole completion. Stops early when the user cancels the turn."""
+    from builder.ai import llm
+
+    stream = llm.complete(model, messages, params, stream=True)
+    parts: list[str] = []
+    try:
+        for chunk in stream:
+            if ctx.is_cancelled():
+                break
+            try:
+                ctx.record_usage(chunk, model=model)
+            except Exception:
+                pass
+            if not getattr(chunk, "choices", None):
+                continue
+            delta = chunk.choices[0].delta.content
+            if delta:
+                parts.append(delta)
+    finally:
+        try:
+            stream.close()
+        except Exception:
+            pass
+    return "".join(parts)
+
+
 def _page_model(ctx) -> str:
     """The heavy model for page YAML: the managed page model when the instance is
     managed and it is registered, else the chat's model."""
@@ -545,7 +574,7 @@ def build_site(ctx, spec: dict) -> str:
         blocks, data_script, error = [], "", None
         for attempt in range(2):
             try:
-                raw = llm.complete(page_model, messages, llm.TASK_PARAMS["complex"], stream=False)
+                raw = _stream_text(ctx, page_model, messages, llm.TASK_PARAMS["complex"])
                 blocks, data_script = expand_page_yaml(BlockCodec.strip_fences(raw))
                 if blocks:
                     break
