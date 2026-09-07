@@ -14,13 +14,16 @@ from builder.utils import (
 	copy_img_to_asset_folder,
 	escape_single_quotes,
 	execute_script,
+	export_dir_name,
 	extract_components_from_blocks,
 	get_builder_page_preview_file_paths,
 	get_template_assets_folder_path,
 	is_component_used,
 	make_safe_get_request,
+	normalize_legacy_raw_styles,
 	process_block_assets,
 	remove_unsafe_fields,
+	safe_segment,
 	sanitize_style_value,
 	split_styles,
 )
@@ -55,6 +58,30 @@ class TestBuilderUtils(FrappeTestCase):
 
 		for input_str, expected in test_cases.items():
 			self.assertEqual(escape_single_quotes(input_str), expected)
+
+	def test_export_dir_name(self):
+		test_cases = {
+			"Home Page": "home_page",
+			"Nav-Bar": "nav_bar",
+			"about/us": "about_us",
+			"../../etc/passwd": ".._.._etc_passwd",
+			"..\\..\\secrets": ".._.._secrets",
+		}
+
+		for input_str, expected in test_cases.items():
+			self.assertEqual(export_dir_name(input_str), expected)
+
+	def test_export_dir_name_rejects_traversal_segments(self):
+		for name in ("", ".", ".."):
+			with self.assertRaises(frappe.ValidationError):
+				export_dir_name(name)
+
+	def test_safe_segment_keeps_the_name_within_one_directory(self):
+		self.assertEqual(safe_segment("a/b\\c"), "a_b_c")
+
+		for name in ("", ".", ".."):
+			with self.assertRaises(frappe.ValidationError):
+				safe_segment(name)
 
 	def test_preview_file_paths(self):
 		test_page = frappe.get_doc(
@@ -203,6 +230,23 @@ class TestBuilderUtils(FrappeTestCase):
 
 		self.assertEqual(result["regular"], {"color": "red", "margin": "10px"})
 		self.assertEqual(result["state"], {"hover:color": "blue", "focus:border": "1px solid black"})
+
+	def test_normalize_legacy_raw_styles_merges_into_base_styles(self):
+		blocks = [
+			{
+				"baseStyles": {"color": "red", "hover:color": "green"},
+				"rawStyles": {"color": "blue", "hover:background-color": "black", "flex-shrink": "0"},
+				"children": [{"rawStyles": {"text-overflow": "ellipsis"}}],
+			}
+		]
+
+		normalize_legacy_raw_styles(blocks)
+
+		self.assertEqual(blocks[0]["baseStyles"]["color"], "blue")
+		self.assertEqual(blocks[0]["baseStyles"]["hover:backgroundColor"], "black")
+		self.assertEqual(blocks[0]["baseStyles"]["flexShrink"], "0")
+		self.assertEqual(blocks[0]["children"][0]["baseStyles"]["textOverflow"], "ellipsis")
+		self.assertNotIn("rawStyles", blocks[0])
 
 	def test_copy_assets_from_blocks(self):
 		# Create a temporary directory for testing

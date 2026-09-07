@@ -18,6 +18,9 @@ const settingsTab = ref<string | undefined>(undefined);
 // remembers the template group the picker was last drilled into ("" = gallery)
 const lastTemplateGroup = useStorage("lastTemplateGroup", "") as Ref<string>;
 
+// active category filter in the template gallery ("" = All)
+const templateCategoryFilter = useStorage("templateCategoryFilter", "") as Ref<string>;
+
 const displayType = useStorage("displayType", "grid") as Ref<"grid" | "list" | "tree">;
 const typeFilter = useStorage("typeFilter", "") as Ref<"" | "draft" | "published" | "unpublished" | "all">;
 const orderBy = useStorage("orderBy", "creation") as Ref<
@@ -38,6 +41,7 @@ export function useDashboardState() {
 		showSettingsDialog,
 		settingsTab,
 		lastTemplateGroup,
+		templateCategoryFilter,
 		displayType,
 		typeFilter,
 		orderBy,

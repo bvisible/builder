@@ -1,31 +1,27 @@
 <template>
 	<div class="flex h-[88vh] max-h-[800px] overflow-hidden">
 		<div class="flex w-48 shrink-0 flex-col gap-5 bg-surface-gray-1 p-4 px-2">
-			<!-- //// Neoffice i18n — upstream hardcodes these labels in English (b80393e4). -->
 			<span class="text-lg-semibold px-2 text-ink-gray-9">{{ __("Settings") }}</span>
-			<div class="flex flex-col gap-0.5" v-for="(item, index) in settingsSidebarItems" :key="index">
+			<div class="flex flex-col gap-0.5" v-for="group in visibleGroups" :key="group.title">
 				<span class="text-base-medium mb-2 px-2 text-ink-gray-5">
-					{{ item.title }}
+					{{ group.title }}
 				</span>
 				<Button
-					v-for="link in item.items"
-					:variant="selectedItem === link.value ? 'subtle' : 'ghost'"
+					v-for="link in group.items"
+					:key="link.name"
+					:variant="selectedItem === link.name ? 'subtle' : 'ghost'"
 					:disabled="link.disabled"
 					:icon-left="link.icon"
-					@click="!link.disabled && selectItem(link.value)"
+					@click="!link.disabled && selectItem(link.name)"
 					:class="{
-						'!bg-surface-gray-3': selectedItem === link.value,
+						'!bg-surface-gray-3': selectedItem === link.name,
 					}"
 					class="!justify-start">
 					{{ link.label }}
 				</Button>
 			</div>
 		</div>
-		<!-- //// Neoffice — the pane scrolls: the AI tab with Advanced open is taller than the dialog and
-		     //// upstream simply clipped it (a2aaae20). -->
-		<!-- overflow-y-auto, not hidden: a tab taller than the pane (the AI tab with
-	     Advanced expanded) was simply clipped, with no way to reach the rest -->
-		<div class="flex flex-1 flex-col gap-5 overflow-y-auto overflow-x-hidden bg-surface-base p-14 px-16 pb-0">
+		<div class="flex flex-1 flex-col gap-5 overflow-hidden bg-surface-base p-14 px-16 pb-0">
 			<h2 class="text-2xl-semibold leading-none text-ink-gray-9">{{ selectedItemDoc?.title }}</h2>
 			<Button
 				icon="lucide-x"
@@ -36,35 +32,20 @@
 				<component :is="selectedItemDoc?.component" class="pb-16" />
 			</KeepAlive>
 			<div v-else class="flex items-center justify-center">
-				<span class="text-ink-gray-5">Loading...</span>
+				<span class="text-ink-gray-5">{{ __("Loading...") }}</span>
 			</div>
 		</div>
 	</div>
 </template>
 <script setup lang="ts">
-import GlobalRedirects from "@/components/Settings/GlobalRedirects.vue";
-import PageCode from "@/components/Settings/PageCode.vue";
-import PageRobots from "@/components/Settings/PageRobots.vue";
+import { settingsGroupLabels, settingsGroups, settingsItems } from "@/components/Settings";
 import builderProjectFolder from "@/data/builderProjectFolder";
 import { builderSettings } from "@/data/builderSettings";
 import useBuilderStore from "@/stores/builderStore";
 import usePageStore from "@/stores/pageStore";
+import { __ } from "@/translation";
 import { computed, onActivated, onMounted, provide, ref, watch } from "vue";
 import { useRoute } from "vue-router";
-import GlobalAI from "./Settings/GlobalAI.vue";
-import GlobalAnalytics from "./Settings/GlobalAnalytics.vue";
-import GlobalCode from "./Settings/GlobalCode.vue";
-import GlobalDeveloper from "./Settings/GlobalDeveloper.vue";
-import GlobalDomains from "./Settings/GlobalDomains.vue";
-import GlobalGeneral from "./Settings/GlobalGeneral.vue";
-//// Neoffice — the three tabs upstream does not have: Plugins (45e67b23), Social (3a033121) and
-//// Theme (050b8aa3).
-import GlobalPlugins from "./Settings/GlobalPlugins.vue";
-import GlobalSocial from "./Settings/GlobalSocial.vue";
-import GlobalTheme from "./Settings/GlobalTheme.vue";
-import PageAnalytics from "./Settings/PageAnalytics.vue";
-import PageGeneral from "./Settings/PageGeneral.vue";
-import PageMeta from "./Settings/PageMeta.vue";
 
 const props = defineProps<{
 	onlyGlobal?: boolean;
@@ -94,154 +75,19 @@ onMounted(async () => {
 	settingsLoaded.value = true;
 });
 
-const selectedItemDoc = computed(() => {
-	for (const item of settingsSidebarItems) {
-		for (const link of item.items) {
-			if (link.value === selectedItem.value) {
-				return link;
-			}
-		}
-	}
-});
+const visibleGroups = computed(() =>
+	settingsGroups
+		.filter((group) => !(props.onlyGlobal && group === "Current Page"))
+		.map((group) => ({
+			title: settingsGroupLabels[group],
+			items: settingsItems.visible.value.filter((item) => item.group === group),
+		}))
+		.filter((group) => group.items.length),
+);
 
-const pageSettings = {
-	//// Neoffice i18n — every label and title in these two objects is wrapped in __(); upstream
-	//// hardcodes them in English (b80393e4). The markers below are the per-line record.
-	title: __("Current Page"),
-	items: [
-		{
-			//// Neoffice i18n (b80393e4)
-			label: __("General"),
-			value: "page_general",
-			component: PageGeneral,
-			//// Neoffice i18n (b80393e4)
-			title: __("General"),
-			icon: "lucide-settings",
-		},
-		//// Neoffice i18n (b80393e4)
-		{ label: __("Code"), value: "page_code", component: PageCode, title: __("Page Code"), icon: "lucide-code" },
-		{
-			//// Neoffice i18n (b80393e4)
-			label: __("Meta"),
-			value: "page_meta",
-			component: PageMeta,
-			//// Neoffice i18n (b80393e4)
-			title: __("Meta"),
-			icon: "lucide-square-dashed-bottom-code",
-		},
-		{
-			//// Neoffice i18n (b80393e4)
-			label: __("Analytics"),
-			value: "page_analytics",
-			component: PageAnalytics,
-			//// Neoffice i18n (b80393e4)
-			title: __("Page Analytics"),
-			icon: "lucide-chart-bar",
-		},
-	],
-};
-
-const globalSettings = {
-	//// Neoffice i18n (b80393e4)
-	title: __("Global"),
-	items: [
-		{
-			//// Neoffice i18n (b80393e4)
-			label: __("General"),
-			value: "global_general",
-			component: GlobalGeneral,
-			//// Neoffice i18n (b80393e4)
-			title: __("General"),
-			icon: "lucide-settings",
-			disabled: false,
-		},
-		//// Neoffice i18n (b80393e4)
-		{ label: __("Code"), value: "global_code", component: GlobalCode, title: __("Global Code"), icon: "lucide-code" },
-		{
-			//// Neoffice i18n (b80393e4)
-			label: __("Redirects"),
-			value: "global_redirects",
-			component: GlobalRedirects,
-			//// Neoffice i18n (b80393e4)
-			title: __("Redirects"),
-			icon: "lucide-shuffle",
-		},
-		{
-			//// Neoffice i18n (b80393e4)
-			label: __("Robots"),
-			value: "global_robots",
-			component: PageRobots,
-			//// Neoffice i18n (b80393e4)
-			title: __("Robots.txt"),
-			icon: "lucide-bot",
-		},
-		...(window.is_fc_site || window.is_developer_mode
-			? [
-					{
-						//// Neoffice i18n (b80393e4)
-						label: __("Domains"),
-						value: "global_domains",
-						component: GlobalDomains,
-						//// Neoffice i18n (b80393e4)
-						title: __("Custom Domains"),
-						icon: "lucide-globe",
-					},
-				]
-			: []),
-		{
-			//// Neoffice i18n (b80393e4)
-			label: __("Analytics"),
-			value: "global_analytics",
-			component: GlobalAnalytics,
-			//// Neoffice i18n (b80393e4)
-			title: __("Site Analytics"),
-			icon: "lucide-chart-bar",
-		},
-		{
-			//// Neoffice i18n (b80393e4)
-			label: __("Developer"),
-			value: "global_developer",
-			component: GlobalDeveloper,
-			//// Neoffice i18n (b80393e4)
-			title: __("Developer Settings"),
-			icon: "lucide-terminal",
-		},
-		{
-			//// Neoffice i18n (b80393e4)
-			label: __("AI"),
-			value: "global_ai",
-			component: GlobalAI,
-			//// Neoffice i18n (b80393e4)
-			title: __("AI Settings"),
-			icon: "lucide-sparkles",
-		},
-		//// Neoffice — the Theme (050b8aa3), Social (3a033121) and Plugins (45e67b23) tabs.
-		{
-			label: __("Theme"),
-			value: "global_theme",
-			component: GlobalTheme,
-			title: __("Theme, Header & Footer"),
-			icon: "lucide-palette",
-		},
-		{
-			label: __("Social"),
-			value: "global_social",
-			component: GlobalSocial,
-			title: __("Social Accounts"),
-			icon: "lucide-at-sign",
-		},
-		{
-			label: __("Plugins"),
-			value: "global_plugins",
-			component: GlobalPlugins,
-			title: __("Plugins"),
-			icon: "lucide-puzzle",
-		},
-	],
-};
-
-const settingsSidebarItems = [globalSettings];
-if (!props.onlyGlobal) settingsSidebarItems.unshift(pageSettings);
+const selectedItemDoc = computed(() =>
+	visibleGroups.value.flatMap((group) => group.items).find((item) => item.name === selectedItem.value),
+);
 
 const selectItem = (value: string) => {
 	selectedItem.value = value;

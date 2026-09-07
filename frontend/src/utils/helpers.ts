@@ -1,5 +1,6 @@
 import Block from "@/block";
 import useCanvasStore from "@/stores/canvasStore";
+import { __ } from "@/translation";
 import { BuilderPage } from "@/types/doctypes";
 import getBlockTemplate from "@/utils/blockTemplate";
 import { dialog, FileUploadHandler, toast } from "frappe-ui";
@@ -8,19 +9,20 @@ import { getRGB, HexToHSV, HSVToHex } from "./colors";
 import {
 	addPxToNumber,
 	extractNumberAndUnit,
-	getBoxSpacing,
 	getNumberFromPx,
+	getSpacing,
 	normalizeValueWithUnits,
 	parseAndSetBackground,
-	setBoxSpacing,
+	removeDefaultUnit,
+	setSpacing,
 	shortenNumber,
 } from "./cssUtils";
 
 function toTitleCase(str: string): string {
-	return str.replace(/_/g, " ").replace(/\b\w/g, (l) => l.toUpperCase());
+	return str.replace(/[_-]/g, " ").replace(/\b\w/g, (l) => l.toUpperCase());
 }
 
-async function confirm(message: string, title: string = "Confirm"): Promise<boolean> {
+async function confirm(message: string, title: string = __("Confirm")): Promise<boolean> {
 	return new Promise((resolve) => {
 		showDialog({
 			title,
@@ -31,12 +33,12 @@ async function confirm(message: string, title: string = "Confirm"): Promise<bool
 			},
 			actions: [
 				{
-					label: "Cancel",
+					label: __("Cancel"),
 					variant: "subtle",
 					onClick: () => resolve(false),
 				},
 				{
-					label: "Confirm",
+					label: __("Confirm"),
 					theme: "red",
 					onClick: () => resolve(true),
 				},
@@ -45,11 +47,11 @@ async function confirm(message: string, title: string = "Confirm"): Promise<bool
 	});
 }
 
-async function alert(message: string, title: string = "Alert"): Promise<boolean> {
+async function alert(message: string, title: string = __("Alert")): Promise<boolean> {
 	await showDialog({
 		title,
 		message,
-		actions: [{ label: "Ok", variant: "solid", onClick: () => {} }],
+		actions: [{ label: __("Ok"), variant: "solid", onClick: () => {} }],
 	});
 	return true;
 }
@@ -116,6 +118,42 @@ function toKebabCase(str: string) {
 		.replace(/([A-Z])([A-Z][a-z])/g, "$1-$2")
 		.toLowerCase()
 		.replace(/\s+/g, "-");
+}
+
+function normalizeCSSPropertyName(property: string | null | undefined) {
+	return (property || "").trim().toLowerCase();
+}
+
+const INTERACTIVE_CONTROL_SELECTOR =
+	"input, textarea, select, button, a, [role='button'], [contenteditable='true'], .form-input, [class~='group/autocomplete']";
+
+// used to let control widgets keep their own click/contextmenu behaviour
+function isInteractiveControl(target: EventTarget | null) {
+	if (!(target instanceof HTMLElement)) return false;
+	return Boolean(target.closest(INTERACTIVE_CONTROL_SELECTOR));
+}
+
+// splits an optional state prefix (hover:color) from the property name
+function splitStylePrefix(style: string) {
+	const separatorIndex = style.indexOf(":");
+	if (separatorIndex === -1) return { prefix: "", property: style };
+	return { prefix: style.slice(0, separatorIndex + 1), property: style.slice(separatorIndex + 1) };
+}
+
+// hover:border-color -> hover:borderColor
+function toStyleProperty(cssProperty: string) {
+	const { prefix, property } = splitStylePrefix(cssProperty);
+	return `${prefix}${kebabToCamelCase(property)}` as styleProperty;
+}
+
+// hover:borderColor -> hover:border-color
+function toCSSProperty(style: string) {
+	const { prefix, property } = splitStylePrefix(style);
+	return `${prefix}${toKebabCase(property)}`;
+}
+
+function stripStatePrefix(style: string) {
+	return splitStylePrefix(style).property;
 }
 
 function isJSONString(str: string) {
@@ -210,9 +248,6 @@ const detachBlockFromComponent = (block: Block, componentId: null | string) => {
 	blockCopy.customAttributes = component?.customAttributes
 		? { ...component.customAttributes, ...block.customAttributes }
 		: block.customAttributes;
-	blockCopy.rawStyles = component?.rawStyles
-		? { ...component.rawStyles, ...block.rawStyles }
-		: block.rawStyles;
 	blockCopy.isRepeaterBlock = component?.isRepeaterBlock || block.isRepeaterBlock;
 	blockCopy.visibilityCondition = component?.visibilityCondition || block.visibilityCondition;
 	blockCopy.innerHTML = block.innerHTML || component?.innerHTML;
@@ -331,14 +366,14 @@ async function uploadBuilderAsset(file: File, silent = false) {
 			return;
 		}
 		toast.promise(upload, {
-			loading: "Uploading...",
+			loading: __("Uploading..."),
 			success: (data: { file_name: string; file_url: string }) => {
 				fileDoc.file_name = data.file_name;
 				fileDoc.file_url = data.file_url;
 				resolve(fileDoc);
-				return "Uploaded";
+				return __("Uploaded");
 			},
-			error: () => "Failed to upload",
+			error: () => __("Failed to upload"),
 			duration: 500,
 		});
 	});
@@ -347,6 +382,55 @@ async function uploadBuilderAsset(file: File, silent = false) {
 		fileURL: fileDoc.file_url,
 		fileName: fileDoc.file_name,
 	};
+}
+
+const MAX_INLINE_SVG_SIZE = 20 * 1024;
+
+// a token-painted SVG has to stay inline: an <img> cannot read CSS variables
+function isOversizedSVG(svg: string) {
+	return svg.length > MAX_INLINE_SVG_SIZE && !svg.includes("var(--") && !svg.includes("currentColor");
+}
+
+async function uploadSVGAsFile(svg: string) {
+	const file = new File([svg], `${generateId()}.svg`, { type: "image/svg+xml" });
+	return uploadBuilderAsset(file);
+}
+
+async function convertSVGBlockToImage(block: Block) {
+	const svg = block.getInnerHTML() || "";
+	const { fileURL } = await uploadSVGAsFile(svg);
+	if (!fileURL) return;
+
+	const source = new DOMParser().parseFromString(svg, "text/html").body.querySelector("svg");
+	const width = source?.getAttribute("width");
+	const height = source?.getAttribute("height");
+	if (width && !block.baseStyles?.width) block.setStyle("width", addPxToNumber(parseInt(width)));
+	if (height && !block.baseStyles?.height) block.setStyle("height", addPxToNumber(parseInt(height)));
+	// an inline <svg> letterboxes in its box, an <img> stretches
+	if (!block.baseStyles?.objectFit) block.setStyle("objectFit", "contain");
+
+	block.element = "img";
+	if (block.originalElement === "__raw_html__") block.originalElement = undefined;
+	block.setInnerHTML("");
+	block.setAttribute("src", fileURL);
+}
+
+// Naming every data URL image.png makes the server read an SVG or a GIF as a PNG,
+// which fails on upload. The MIME type in the data URL already tells us what it is.
+const DATA_URL_EXTENSIONS: Record<string, string> = {
+	"image/svg+xml": "svg",
+	"image/jpeg": "jpg",
+	"image/jpg": "jpg",
+	"image/webp": "webp",
+	"image/gif": "gif",
+	"image/avif": "avif",
+	"image/png": "png",
+};
+
+function dataURLFileName(dataURL: string, baseName: string) {
+	const mime = dataURL.match(/^data:(.*?)(;|,)/)?.[1] || "";
+	const extension = DATA_URL_EXTENSIONS[mime.toLowerCase()] || "png";
+	return `${baseName.replace(/\.[a-z0-9]+$/i, "")}.${extension}`;
 }
 
 function dataURLtoFile(dataurl: string, filename: string) {
@@ -382,10 +466,10 @@ function dataURLtoFile(dataurl: string, filename: string) {
 	}
 }
 
-function handleBase64Attribute(block: Block, attrName: string, fileName: string) {
+function handleBase64Attribute(block: Block, attrName: string, baseName: string) {
 	const attrValue = block.getAttribute(attrName) as string;
 	if (attrValue?.startsWith("data:image")) {
-		const file = dataURLtoFile(attrValue, fileName);
+		const file = dataURLtoFile(attrValue, dataURLFileName(attrValue, baseName));
 		if (file) {
 			block.setAttribute(attrName, "");
 			uploadBuilderAsset(file, true).then((obj) => {
@@ -425,7 +509,10 @@ async function getFontNameFromFile(file: File): Promise<string> {
 	const arrayBuffer = await file.arrayBuffer();
 	const buffer = await decompressFontIfWoff2(arrayBuffer, file.name.endsWith(".woff2"));
 	const opentype = await import("opentype.js");
-	return opentype.parse(buffer).names.fullName.en;
+	// opentype 2 splits the name table per platform, so there is no flat names.fullName
+	const names = opentype.parse(buffer).names as Record<string, any>;
+	const table = names.windows || names.macintosh || names;
+	return table.fullName?.en || table.fontFamily?.en || file.name.replace(/\.[^.]+$/, "");
 }
 
 type UploadUserFontOptions = {
@@ -450,13 +537,16 @@ async function uploadUserFont(
 	const existingFont = userFont.data?.find((f: { font_name: string }) => f.font_name === fontName);
 
 	if (existingFont) {
-		toast.info(`Font "${fontName}" already exists in the project`);
+		toast.info(__('Font "{0}" already exists in the project', [fontName]));
 		return { uploaded: false, fontName, alreadyExists: true };
 	}
 
 	// Confirm before uploading if requested
 	if (options.confirmBeforeUpload) {
-		const confirmed = await confirm(`Do you want to upload the font "${fontName}"?`, "Upload Font");
+		const confirmed = await confirm(
+			__('Do you want to upload the font "{0}"?', [fontName]),
+			__("Upload Font"),
+		);
 		if (!confirmed) {
 			return null;
 		}
@@ -491,9 +581,9 @@ async function uploadUserFont(
 	})();
 
 	toast.promise(uploadPromise, {
-		loading: "Uploading font...",
-		success: `Font "${fontName}" uploaded successfully`,
-		error: "Failed to upload font",
+		loading: __("Uploading font..."),
+		success: __('Font "{0}" uploaded successfully', [fontName]),
+		error: __("Failed to upload font"),
 	});
 
 	return uploadPromise;
@@ -854,6 +944,13 @@ function isDialogOpen() {
 	return !!document.querySelector("[role='dialog']");
 }
 
+function getPageUsageMessage(count: number) {
+	if (!count) {
+		return __("not used in any pages");
+	}
+	return count === 1 ? __("used in 1 page") : __("used in {0} pages", [count]);
+}
+
 function parseJSONWithFallback<T>(value: T | string | undefined, fallback: T): T {
 	if (value === undefined || value === null || value === "") {
 		return fallback;
@@ -873,9 +970,14 @@ export {
 	alert,
 	confirm,
 	copyToClipboard,
+	convertSVGBlockToImage,
 	cssUrl,
+	dataURLFileName,
 	dataURLtoFile,
+	deepEqual,
 	detachBlockFromComponent,
+	diffArray,
+	extractComponentId,
 	extractNumberAndUnit,
 	findNearestSiblingIndex,
 	generateId,
@@ -885,21 +987,21 @@ export {
 	getBlockInstance,
 	getBlockObjectCopy as getBlockObject,
 	getBlockString,
-	getBoxSpacing,
 	getCopyWithoutParent,
 	getDataArray,
 	getDataForKey,
 	getDefaultPropsList,
 	getImageBlock,
 	getNumberFromPx,
+	getPageUsageMessage,
 	getParentProps,
 	getPropValue,
 	getRepeaterScopedData,
 	getRGB,
 	getRootBlockTemplate,
 	getRouteVariables,
+	getSpacing,
 	getStandardPropValue,
-	extractComponentId,
 	getTextContent,
 	getVideoBlock,
 	handleBase64Attribute,
@@ -909,23 +1011,29 @@ export {
 	isCtrlOrCmd,
 	isDialogOpen,
 	isHTMLString,
+	isInteractiveControl,
 	isJSONString,
+	isOversizedSVG,
 	isTargetEditable,
 	kebabToCamelCase,
 	mapToObject,
+	normalizeCSSPropertyName,
 	normalizeValueWithUnits,
 	openInDesk,
 	parseAndSetBackground,
+	parseJSONWithFallback,
+	removeDefaultUnit,
 	replaceMapKey,
-	setBoxSpacing,
+	setSpacing,
 	shortenNumber,
 	showDialog,
+	stripStatePrefix,
+	toCSSProperty,
 	toKebabCase,
+	toStyleProperty,
 	toTitleCase,
 	triggerCopyEvent,
 	uploadBuilderAsset,
+	uploadSVGAsFile,
 	uploadUserFont,
-	parseJSONWithFallback,
-	deepEqual,
-	diffArray,
 };

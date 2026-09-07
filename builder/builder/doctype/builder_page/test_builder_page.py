@@ -126,6 +126,24 @@ class TestBuilderPage(FrappeTestCase):
 		getdoc("Builder Page", self.page.name)
 		self.assertEqual(frappe.response.docs[0].get("__onload").get("builder_path"), "builder")
 
+	def test_blocks_can_be_saved_as_a_list(self):
+		"""Callers that hand over a block tree (paste, AI writes, the API) pass a list.
+		Only insert used to compact it, so updating a page threw "cannot be a list"."""
+		page = frappe.get_doc(
+			{
+				"doctype": "Builder Page",
+				"page_title": "List Blocks",
+				"blocks": [{"element": "div", "originalElement": "body", "blockId": "root"}],
+			}
+		).insert()
+		self.assertIsInstance(page.blocks, str)
+
+		page.blocks = [{"element": "section", "blockId": "updated"}]
+		page.save()
+		self.assertIsInstance(page.reload().blocks, str)
+		self.assertIn("section", page.blocks)
+		page.delete()
+
 	def test_dynamic_route(self):
 		from frappe.utils import get_html_for_route
 
@@ -291,6 +309,66 @@ class TestBuilderPage(FrappeTestCase):
 			self.assertTrue("Item 2" in get_html_for(content, "tag", "h2", index=1))
 			self.assertTrue("$20" in get_html_for(content, "tag", "span", index=1))
 
+		finally:
+			page.delete()
+
+	def test_repeater_with_malformed_data_key_renders_empty(self):
+		# A corrupt dataKey.key (e.g. an array stringified to "[object Object],...") must
+		# not crash the page render with an invalid-Jinja error — the repeater should just
+		# render no rows.
+		body = Block(element="div", originalElement="body")
+		repeater_block = Block(element="div", isRepeaterBlock=True)
+		item_name = Block(element="h2")
+
+		repeater_block.attach_data_key("[object Object],[object Object]", "innerHTML")
+		item_name.set_dynamic_value("name", "key", "innerHTML")
+
+		repeater_block.attach_children(item_name)
+		body.attach_children(repeater_block)
+
+		page = frappe.get_doc(
+			{
+				"doctype": "Builder Page",
+				"page_title": "Malformed Repeater Test",
+				"published": 1,
+				"route": "/malformed-repeater-test",
+				"blocks": body.as_json(wrap_in_array=True),
+			}
+		).insert()
+
+		try:
+			content = get_response_content("/malformed-repeater-test")
+			self.assertIn("Malformed Repeater Test", content)  # page rendered, no 500
+			self.assertNotIn("[object Object]", content)
+			self.assertNotIn("key_invalid", content)
+		finally:
+			page.delete()
+
+	def test_repeater_block_with_empty_data_key(self):
+		"""A repeater with an empty data key must render as a plain container.
+		An empty key compiles to `{% for key_ in ( or {}) %}`, a Jinja syntax
+		error that 417s the whole page."""
+		body = Block(element="div", originalElement="body")
+		repeater_block = Block(element="div", isRepeaterBlock=True)
+		heading = Block(element="h2", innerHTML="Static child")
+
+		repeater_block.attach_data_key("", "dataKey")
+		repeater_block.attach_children(heading)
+		body.attach_children(repeater_block)
+
+		page = frappe.get_doc(
+			{
+				"doctype": "Builder Page",
+				"page_title": "Empty Repeater Test",
+				"published": 1,
+				"route": "/empty-repeater-test",
+				"blocks": body.as_json(wrap_in_array=True),
+			}
+		).insert()
+
+		try:
+			content = get_response_content("/empty-repeater-test")
+			self.assertTrue("Static child" in get_html_for(content, "tag", "h2"))
 		finally:
 			page.delete()
 
@@ -1226,6 +1304,8 @@ component.update({
 				'src="/files/another-dark-mode-image.png"'
 				in get_html_for(content, "tag", "img", index=1, only_content=False)
 			)
+			self.assertTrue("--builder-image-dim: brightness(0.85) contrast(1.05)" in content)
+			self.assertTrue("img { filter: var(--builder-image-dim, none) }" in content)
 		finally:
 			page.delete()
 
@@ -1328,6 +1408,82 @@ component.update({
 				"https://fonts.googleapis.com/css2?family=Foo+%26+Bar:wght@400&display=swap",
 			],
 		)
+
+	def test_get_google_font_urls_with_italics(self):
+		"""Fonts used in italic get the ital axis in the same single request,
+		with 400 italic always included as a fallback instance."""
+		from builder.builder.doctype.builder_page.builder_page import get_google_font_urls
+
+		font_map = {
+			"Roboto": {"weights": [400, 700], "italics": [400]},
+			"Lora": {"weights": [400], "italics": [600]},
+			# untouched fonts keep the exact legacy URL shape
+			"Open Sans": {"weights": [400]},
+		}
+		urls = get_google_font_urls(font_map)
+		self.assertEqual(
+			urls,
+			[
+				"https://fonts.googleapis.com/css2?family=Roboto:ital,wght@0,400;0,700;1,400&display=swap",
+				"https://fonts.googleapis.com/css2?family=Lora:ital,wght@0,400;1,400;1,600&display=swap",
+				"https://fonts.googleapis.com/css2?family=Open+Sans:wght@400&display=swap",
+			],
+		)
+
+	def test_italics_cascade_like_font_family(self):
+		"""Italic usage is resolved on the rendered block tree with CSS cascade
+		semantics, not per style dict."""
+		from builder.builder.doctype.builder_page.builder_page import get_block_html
+
+		def block(styles, children=None, element="div"):
+			return {"element": element, "baseStyles": styles, "children": children or []}
+
+		# child sets fontStyle without a family: italics land on the ancestor font
+		_, _, font_map, _ = get_block_html(
+			[block({"fontFamily": "Fraunces"}, [block({"fontStyle": "italic", "fontWeight": "600"})])]
+		)
+		self.assertEqual(font_map["Fraunces"]["italics"], [600])
+
+		# italic parent, child only switches family: font-style inherits, so the
+		# child family needs its italic faces too
+		_, _, font_map, _ = get_block_html(
+			[block({"fontFamily": "Fraunces", "fontStyle": "italic"}, [block({"fontFamily": "Lora"})])]
+		)
+		self.assertEqual(font_map["Fraunces"]["italics"], [400])
+		self.assertEqual(font_map["Lora"]["italics"], [400])
+
+		# a child resetting fontStyle: normal breaks the cascade again
+		_, _, font_map, _ = get_block_html(
+			[
+				block(
+					{"fontFamily": "Fraunces", "fontStyle": "italic"},
+					[block({"fontFamily": "Lora", "fontStyle": "normal"})],
+				)
+			]
+		)
+		self.assertNotIn("italics", font_map["Lora"])
+
+	def test_set_italics_from_html(self):
+		"""<i>/<em> and inline font-style inside innerHTML register italic usage
+		for the block's resolved font."""
+		import bs4 as bs
+
+		from builder.builder.doctype.builder_page.builder_page import set_italics_from_html
+
+		font_map = {"Fraunces": {"weights": [400]}, "Lora": {"weights": [400]}}
+		soup = bs.BeautifulSoup(
+			"Fire is the <i>only</i> recipe and "
+			'<span style="font-family: Lora; font-style: italic">this too</span>',
+			"html.parser",
+		)
+		set_italics_from_html(soup, font_map, ancestor_font="Fraunces")
+		self.assertEqual(font_map["Fraunces"].get("italics"), [400])
+		self.assertEqual(font_map["Lora"].get("italics"), [400])
+
+		# fonts that never made it into the map (e.g. system fonts) are ignored
+		font_map_2 = {}
+		set_italics_from_html(bs.BeautifulSoup("<i>hi</i>", "html.parser"), font_map_2, "Arial")
+		self.assertEqual(font_map_2, {})
 
 	def test_set_fonts_inherits_font_family_from_ancestor(self):
 		"""set_fonts should use inherited_font when a style has fontWeight but no fontFamily."""
@@ -1487,6 +1643,65 @@ component.update({
 		self.assertIn("color: red", css_unset)
 		self.assertNotIn("display:", css_unset)
 		self.assertNotIn("None", css_unset)
+
+	def test_renders_legacy_raw_styles_from_base_styles(self):
+		from builder.builder.doctype.builder_page.builder_page import get_block_html
+
+		blocks = [
+			{
+				"blockId": "legacy",
+				"element": "button",
+				"baseStyles": {"background": "red"},
+				"rawStyles": {"background": "blue", "hover:background-color": "black"},
+				"children": [],
+			}
+		]
+
+		_, css, _, _ = get_block_html(blocks)
+
+		self.assertIn("background: blue", css)
+		self.assertIn(":hover", css)
+		self.assertIn("background-color: black", css)
+		self.assertNotIn("background: red", css)
+
+	def test_renders_legacy_raw_styles_from_component(self):
+		from builder.builder.doctype.builder_page.builder_page import get_block_html
+
+		component_root = {
+			"blockId": "comp-root",
+			"element": "div",
+			"rawStyles": {"text-overflow": "ellipsis"},
+			"children": [{"blockId": "comp-child", "element": "span", "rawStyles": {"flex-shrink": "0"}}],
+		}
+		component = frappe.get_doc(
+			{"doctype": "Builder Component", "block": frappe.as_json(component_root)}
+		).insert()
+
+		blocks = [
+			{
+				"blockId": "instance",
+				"extendedFromComponent": component.name,
+				"children": [{"blockId": "comp-child", "isChildOfComponent": component.name}],
+			}
+		]
+
+		try:
+			_, css, _, _ = get_block_html(blocks)
+			self.assertIn("text-overflow: ellipsis", css)
+			self.assertIn("flex-shrink: 0", css)
+		finally:
+			component.delete()
+
+	def test_renders_blocks_with_only_responsive_styles(self):
+		from builder.builder.doctype.builder_page.builder_page import get_block_html
+
+		blocks = [{"blockId": "mobile-only", "element": "div", "mobileStyles": {"textOverflow": "ellipsis"}}]
+
+		html, css, _, _ = get_block_html(blocks)
+
+		self.assertIn("fb-", html)
+		self.assertIn("@media only screen and (max-width: 576px)", css)
+		self.assertIn("text-overflow: ellipsis", css)
 
 	def test_conflicting_routes_picks_last_published(self):
 		"""Pages sharing a route should resolve to the most recently published one."""

@@ -9,8 +9,12 @@
 				class="aspect-video w-full rounded-md bg-surface-gray-1 object-cover object-top" />
 			<div
 				class="absolute inset-0 flex flex-col items-center justify-center gap-2 bg-black/40 opacity-0 transition-opacity duration-150 group-hover:opacity-100">
-				<Button size="sm" variant="solid" @click.stop="$emit('select', group)">Select Template</Button>
-				<Button v-if="previewPage" size="sm" variant="subtle" @click.stop="openPreview">Preview</Button>
+				<Button size="sm" variant="solid" @click.stop="$emit('select', group)">
+					{{ __("Select Template") }}
+				</Button>
+				<Button v-if="previewPage" size="sm" variant="subtle" @click.stop="$emit('preview', previewPage)">
+					{{ __("Preview") }}
+				</Button>
 			</div>
 		</div>
 		<div class="flex items-center justify-between gap-2 px-[2px]">
@@ -18,13 +22,13 @@
 				{{ group.title }}
 			</p>
 			<span class="shrink-0 text-xs text-ink-gray-4">
-				{{ group.pages.length }} {{ group.pages.length === 1 ? "page" : "pages" }}
+				{{ group.pages.length === 1 ? __("{0} page", [group.pages.length]) : __("{0} pages", [group.pages.length]) }}
 			</span>
 		</div>
 	</div>
 </template>
 <script setup lang="ts">
-import router from "@/router";
+import { __ } from "@/translation";
 import { TemplateGroup } from "@/types/template";
 import { computed } from "vue";
 
@@ -32,19 +36,10 @@ const props = defineProps<{
 	group: TemplateGroup;
 }>();
 
-defineEmits(["select"]);
+defineEmits(["select", "preview"]);
 
 const fallbackImage = "/assets/builder/images/fallback.png";
 
 // preview the group's first page (its card image represents this page)
 const previewPage = computed(() => props.group.pages[0] || null);
-
-const openPreview = () => {
-	const page = previewPage.value;
-	if (!page) return;
-	// remote hub templates carry an absolute live_url; local templates use the
-	// in-app preview route (the hub page id has no local page to preview)
-	const href = page.live_url || router.resolve({ name: "preview", params: { pageId: page.name } }).href;
-	window.open(href, "_blank");
-};
 </script>

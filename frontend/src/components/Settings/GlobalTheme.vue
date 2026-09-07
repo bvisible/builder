@@ -165,7 +165,7 @@
 									:label="logoPreview ? __('Replace the logo') : __('Upload a logo')"
 									@click="logoInput?.click()" />
 								<span class="text-xs text-ink-gray-5">
-									{{ __("The address stays {0} — a new file replaces the old one.").format(LOGO_PATH) }}
+									{{ __("The address stays {0} — a new file replaces the old one.", [LOGO_PATH]) }}
 								</span>
 							</div>
 						</div>

@@ -57,7 +57,10 @@ from builder.utils import (
 	escape_single_quotes,
 	execute_script,
 	get_builder_page_preview_file_paths,
+	is_bulk_import,
 	is_component_used,
+	merge_raw_styles_into_base_styles,
+	normalize_legacy_raw_styles,
 	sanitize_style_value,
 	split_styles,
 )
@@ -97,7 +100,7 @@ class BuilderPageRenderer(DocumentPage):
 		if self.docname:
 			self.doc = frappe.get_cached_doc(self.doctype, self.docname)
 			if self.doc.authenticated_access and frappe.session.user == "Guest":
-				raise frappe.PermissionError("Please log in to view this page.")
+				raise frappe.PermissionError(frappe._("Please log in to view this page."))
 
 	def set_canonical_url(self):
 		if not self.doc:
@@ -187,6 +190,12 @@ class BuilderPage(WebsiteGenerator):
 		self.set_preview()
 		self.set_default_values()
 		capture("builder_page_created", "builder")
+
+	# every write path, not just insert: callers that hand over a block tree
+	# (paste, AI writes, the API) would otherwise fail on update with
+	# "Value for Blocks cannot be a list"
+	def before_save(self):
+		self.process_blocks()
 
 	def process_blocks(self):
 		for block_type in ["blocks", "draft_blocks"]:
@@ -291,15 +300,70 @@ class BuilderPage(WebsiteGenerator):
 				self.template_group, target_app=frappe.conf.get("template_target_app") or "builder"
 			)
 
-		if frappe.conf.developer_mode and self.is_standard and self.app:
-			export_page_as_standard(self.name, target_app=self.app)
+		self.export_standard_files()
+
+		previous_app = doc_before.app if (doc_before := self.get_doc_before_save()) else None
+		if previous_app and (not self.is_standard or previous_app != self.app):
+			self.cleanup_standard_page_exports(previous_app)
 
 	def clear_route_cache(self):
 		get_web_pages_with_dynamic_routes.clear_cache()
 		find_page_with_path.clear_cache()
 		clear_cache(self.route)
 
+	def cleanup_standard_page_exports(self, app: str) -> None:
+		"""Delete this page's exported files, and its orphaned dependencies, from the given app."""
+		if not app or not frappe.conf.developer_mode:
+			return
+		doc_before = self.get_doc_before_save()
+
+		from builder.export_import_standard_page import (
+			delete_standard_client_script_files,
+			delete_standard_component_files,
+			delete_standard_font_files,
+			delete_standard_page_files,
+			delete_standard_variable_files,
+			extract_components_from_blocks,
+			extract_fonts_from_blocks,
+			extract_variables_from_blocks,
+		)
+
+		def delete_standard_dependency_if_unreferenced(doctype, identifier, app, delete_files) -> None:
+			"""Delete a dependency's exported files unless another standard page in the app still references it."""
+			# blocks name fonts and tokens with no record; the export skips those too
+			if not frappe.db.exists(doctype, identifier):
+				return
+			referencing_pages = frappe.get_doc(doctype, identifier).get_referencing_pages(
+				filters={"is_standard": 1}, fields=["name", "app"]
+			)
+			referencing_apps = [page.app for page in referencing_pages if page.name != self.name]
+			if app not in referencing_apps:
+				delete_files(identifier, app)
+
+		delete_standard_page_files(self.page_name, app)
+
+		client_scripts = doc_before.client_scripts if doc_before else self.client_scripts
+		blocks = frappe.parse_json(self.draft_blocks or self.blocks)
+
+		dependencies = [
+			(
+				"Builder Client Script",
+				[row.builder_script for row in client_scripts],
+				delete_standard_client_script_files,
+			),
+			("Builder Component", extract_components_from_blocks(blocks), delete_standard_component_files),
+			("Builder Token", extract_variables_from_blocks(blocks), delete_standard_variable_files),
+			("User Font", extract_fonts_from_blocks(blocks), delete_standard_font_files),
+		]
+
+		for doctype, identifiers, delete_files in dependencies:
+			for identifier in identifiers:
+				delete_standard_dependency_if_unreferenced(doctype, identifier, app, delete_files)
+
 	def on_trash(self):
+		for session in frappe.get_all("Builder AI Session", filters={"page": self.name}, pluck="name"):
+			frappe.delete_doc("Builder AI Session", session, ignore_missing=True)
+
 		if self.is_template and self.template_group:
 			if frappe.conf.developer_mode:
 				delete_template_page_fixture(self, app=frappe.conf.get("template_target_app") or "builder")
@@ -312,6 +376,23 @@ class BuilderPage(WebsiteGenerator):
 		frappe.db.delete(
 			"Builder Snapshot", {"reference_doctype": "Builder Page", "reference_name": self.name}
 		)
+
+		if self.is_standard and self.app and frappe.conf.developer_mode:
+			self.cleanup_standard_page_exports(self.app)
+
+	def after_rename(self, old: str, new: str, merge: bool = False) -> None:
+		if not (self.is_standard and self.app and frappe.conf.developer_mode):
+			return
+		from builder.export_import_standard_page import delete_standard_page_files
+
+		# rename_doc skips on_update, and the exported JSON holds the old name
+		delete_standard_page_files(old, self.app)
+		self.export_standard_files()
+
+	def export_standard_files(self) -> None:
+		if not (frappe.conf.developer_mode and self.is_standard and self.app) or is_bulk_import():
+			return
+		export_page_as_standard(self.name, target_app=self.app)
 
 	def add_comment(self, comment_type="Comment", text=None, comment_email=None, comment_by=None):
 		if comment_type in ["Attachment Removed", "Attachment"]:
@@ -389,7 +470,26 @@ class BuilderPage(WebsiteGenerator):
 		self.draft_blocks = blocks
 		if "page_data_script" in data:
 			self.page_data_script = data.get("page_data_script")
+		# AI snapshots also capture client scripts (publish/manual ones don't), so a single
+		# revert restores them: re-set the page's links to the pre-turn set (this unlinks any
+		# scripts the turn created) and restore each captured script's content (this reverts
+		# scripts the turn edited).
+		if "client_scripts" in data:
+			self.set(
+				"client_scripts",
+				[{"builder_script": s.get("builder_script")} for s in (data.get("client_scripts") or [])],
+			)
 		self.save()
+		for name, content in (data.get("_ai_scripts") or {}).items():
+			if not frappe.db.exists("Builder Client Script", name):
+				continue
+			# Save through the doc (NOT db.set_value): on_update regenerates the public JS/CSS
+			# file the published page actually loads (via public_url). A bare db write reverts
+			# the field but leaves the stale file, so publish would keep serving the old script.
+			script_doc = frappe.get_doc("Builder Client Script", name)
+			script_doc.script = content.get("script")
+			script_doc.script_type = content.get("script_type")
+			script_doc.save(ignore_permissions=True)
 		return {"draft_blocks": blocks, "warnings": collect_restore_warnings(blocks)}
 
 	@frappe.whitelist()
@@ -417,11 +517,11 @@ class BuilderPage(WebsiteGenerator):
 
 		if context.preview:
 			context.disable_auto_dark_mode = 0
-			# /builder_assets/variables.css is a rendered route, not a real file, so
+			# /builder_assets/tokens.css is a rendered route, not a real file, so
 			# the preview/PDF generator can't fetch it. Inline the variables instead.
-			from builder.builder.doctype.builder_variable.builder_variable import get_variables_css
+			from builder.builder.doctype.builder_token.builder_token import get_variables_css
 
-			context.inline_variables_css = get_variables_css()
+			context.inline_tokens_css = get_variables_css()
 			# Honour the dark/light mode the editor previews in (canvasDarkMode), so the
 			# initial server render matches it instead of falling back to the OS scheme.
 			scheme = frappe.form_dict.get("prefers_color_scheme")
@@ -445,6 +545,12 @@ class BuilderPage(WebsiteGenerator):
 			blocks = self.draft_blocks
 
 		content, style, fonts, has_dual_mode_image = get_block_html(blocks)
+
+		# Propagate the root block's background to html/body. Otherwise a full-bleed
+		# (e.g. all-black) page paints only its root <div>, and everything the div
+		# doesn't cover — the preview screenshot's canvas, a short page's tail,
+		# overscroll — falls through to the browser's default white.
+		context.page_background = get_root_background(blocks)
 
 		if self.dynamic_route or page_data or self.page_data_script:
 			context.no_cache = 1
@@ -693,6 +799,19 @@ def get_block_data(
 	return block_data
 
 
+def get_root_background(blocks: str | list) -> str | None:
+	"""The page's root (body) block background, to paint html/body so a full-bleed
+	page has no white gaps. Returns a CSS value (color, var(--token), or gradient)
+	or None when the root sets no background. `background`/`backgroundImage` (a
+	gradient) win over a plain `backgroundColor`."""
+	data = blocks if isinstance(blocks, list) else frappe.parse_json(blocks or "[]")
+	root = (data[0] if data else None) if isinstance(data, list) else data
+	if not isinstance(root, dict):
+		return None
+	styles = root.get("baseStyles") or {}
+	return styles.get("background") or styles.get("backgroundImage") or styles.get("backgroundColor") or None
+
+
 def get_block_html(blocks: str | list) -> tuple[str, str, dict, bool]:
 	"""
 	Main entry point for converting blocks to HTML.
@@ -706,6 +825,7 @@ def get_block_html(blocks: str | list) -> tuple[str, str, dict, bool]:
 	blocks = frappe.parse_json(blocks)
 	if not isinstance(blocks, list):
 		blocks = [blocks]
+	normalize_legacy_raw_styles(blocks)
 
 	soup = bs.BeautifulSoup("", "html.parser")
 	style_tag = soup.new_tag("style")
@@ -748,7 +868,11 @@ def get_block_html(blocks: str | list) -> tuple[str, str, dict, bool]:
 
 
 def build_tag(
-	block: dict, state: dict, data_key: dict | None = None, ancestor_font: str | None = None
+	block: dict,
+	state: dict,
+	data_key: dict | None = None,
+	ancestor_font: str | None = None,
+	ancestor_italic: bool = False,
 ) -> bs.Tag:
 	"""
 	Transforms a single block to an HTML tag.
@@ -763,7 +887,6 @@ def build_tag(
 		block.get("baseStyles") or {},
 		block.get("mobileStyles") or {},
 		block.get("tabletStyles") or {},
-		block.get("rawStyles") or {},
 	]
 	resolved_font = (
 		next(
@@ -772,13 +895,27 @@ def build_tag(
 		)
 		or ancestor_font
 	)
+	# font-style cascades exactly like font-family: the block's own value wins,
+	# otherwise italic (or not) is inherited from the ancestor
+	resolved_italic = next(
+		(str(s["fontStyle"]).lower() in ("italic", "oblique") for s in all_styles if s.get("fontStyle")),
+		ancestor_italic,
+	)
 
 	tag = create_html_tag(block, state, ancestor_font=resolved_font)
 
+	if resolved_italic and resolved_font:
+		weight = next((s.get("fontWeight") for s in all_styles if s.get("fontWeight")), 400)
+		register_italic_font(state["font_map"], get_font_family(resolved_font), weight)
+
 	if is_repeater_block(block):
-		render_repeater_children(tag, block, data_key, state, ancestor_font=resolved_font)
+		render_repeater_children(
+			tag, block, data_key, state, ancestor_font=resolved_font, ancestor_italic=resolved_italic
+		)
 	else:
-		render_children(tag, block, data_key, state, ancestor_font=resolved_font)
+		render_children(
+			tag, block, data_key, state, ancestor_font=resolved_font, ancestor_italic=resolved_italic
+		)
 
 	attach_client_script(tag, block, state)
 
@@ -936,7 +1073,7 @@ def create_html_tag(block: dict, state: dict, ancestor_font: str | None = None) 
 	classes = build_tag_classes(block, state, ancestor_font=ancestor_font)
 	tag.attrs["class"] = " ".join(classes)
 
-	add_inner_html_content(tag, block, state)
+	add_inner_html_content(tag, block, state, ancestor_font=ancestor_font)
 
 	if picture_tag is not None:
 		picture_tag.append(tag)
@@ -958,7 +1095,7 @@ def build_tag_classes(block: dict, state: dict, ancestor_font: str | None = None
 	if element in text_elements:
 		classes.insert(0, "__text_block__")
 
-	if block.get("baseStyles"):
+	if block.get("baseStyles") or block.get("tabletStyles") or block.get("mobileStyles"):
 		style_class = generate_and_apply_styles(block, state, ancestor_font=ancestor_font)
 		classes.insert(0, style_class)
 
@@ -975,22 +1112,18 @@ def generate_and_apply_styles(block: dict, state: dict, ancestor_font: str | Non
 		"base": split_styles(block.get("baseStyles", {})),
 		"mobile": split_styles(block.get("mobileStyles", {})),
 		"tablet": split_styles(block.get("tabletStyles", {})),
-		"raw": split_styles(block.get("rawStyles", {})),
 	}
 
 	style_list = [
 		styles["base"]["regular"],
 		styles["mobile"]["regular"],
 		styles["tablet"]["regular"],
-		styles["raw"]["regular"],
 	]
 	set_fonts(style_list, font_map, inherited_font=ancestor_font)
 
 	# Append styles for different states and devices
-	# Base and raw
+	# Base
 	append_style(styles["base"]["regular"], style_tag, style_class)
-	append_style(styles["raw"]["regular"], style_tag, style_class)
-	append_state_style(styles["raw"]["state"], style_tag, style_class)
 	append_state_style(styles["base"]["state"], style_tag, style_class)
 
 	# Tablet
@@ -1004,7 +1137,7 @@ def generate_and_apply_styles(block: dict, state: dict, ancestor_font: str | Non
 	return style_class
 
 
-def add_inner_html_content(tag: bs.Tag, block: dict, state: dict):
+def add_inner_html_content(tag: bs.Tag, block: dict, state: dict, ancestor_font: str | None = None):
 	"""Add inner HTML content to the tag."""
 	inner_content = block.get("innerHTML")
 	if inner_content:
@@ -1013,17 +1146,42 @@ def add_inner_html_content(tag: bs.Tag, block: dict, state: dict):
 			inner_content = str(inner_content)
 		inner_soup = bs.BeautifulSoup(inner_content, "html.parser")
 		set_fonts_from_html(inner_soup, state["font_map"])
+		set_italics_from_html(inner_soup, state["font_map"], ancestor_font)
 		if inner_soup.contents:
 			tag.append(inner_soup)
 
 
+def set_italics_from_html(soup, font_map, ancestor_font: str | None = None):
+	"""Register italics used inside a block's inner HTML: <i>/<em> tags or
+	inline font-style spans, which inherit the block's resolved font."""
+	fallback = get_font_family(ancestor_font) if ancestor_font else None
+	if soup.find(["i", "em"]):
+		register_italic_font(font_map, fallback)
+	for tag in soup.find_all(style=True):
+		style = tag.attrs.get("style", "")
+		if not re.search(r"font-style\s*:\s*(italic|oblique)", style):
+			continue
+		family = None
+		for declaration in style.split(";"):
+			if "font-family" in declaration:
+				family = get_font_family(declaration.split(":", 1)[1])
+		register_italic_font(font_map, family or fallback)
+
+
 def is_repeater_block(block: dict) -> bool:
 	"""Check if block is a repeater (loop) block."""
-	return bool(block.get("isRepeaterBlock") and block.get("children") and block.get("dataKey"))
+	return bool(
+		block.get("isRepeaterBlock") and block.get("children") and (block.get("dataKey") or {}).get("key")
+	)
 
 
 def render_children(
-	tag: bs.Tag, block: dict, data_key: dict | None, state: dict, ancestor_font: str | None = None
+	tag: bs.Tag,
+	block: dict,
+	data_key: dict | None,
+	state: dict,
+	ancestor_font: str | None = None,
+	ancestor_italic: bool = False,
 ):
 	"""Render (non-repeater) children."""
 	for child in block.get("children", []) or []:
@@ -1032,14 +1190,21 @@ def render_children(
 		child_context = get_block_context(child, child_props, component_id)
 		child_context["visibility_key"] = get_visibility_condition_key(child, data_key)
 
-		child_tag = build_tag(child, state, data_key, ancestor_font=ancestor_font)
+		child_tag = build_tag(
+			child, state, data_key, ancestor_font=ancestor_font, ancestor_italic=ancestor_italic
+		)
 
 		append_child_with_context(tag, child_tag, child_context)
 		cleanup_props_stack(child_props, state["standard_props_stack"])
 
 
 def render_repeater_children(
-	tag: bs.Tag, block: dict, data_key: dict | None, state: dict, ancestor_font: str | None = None
+	tag: bs.Tag,
+	block: dict,
+	data_key: dict | None,
+	state: dict,
+	ancestor_font: str | None = None,
+	ancestor_italic: bool = False,
 ):
 	"""Render children for repeater blocks (with for loops)."""
 	loop_info = get_loop_info(block, data_key, state["standard_props_stack"])
@@ -1056,7 +1221,9 @@ def render_repeater_children(
 		data_key_key = block.get("dataKey").get("key")
 		child_context["default_props"] = extract_loop_variables(data_key_key, state["standard_props_stack"])
 
-	child_tag = build_tag(child, state, loop_info["data_key"], ancestor_font=ancestor_font)
+	child_tag = build_tag(
+		child, state, loop_info["data_key"], ancestor_font=ancestor_font, ancestor_italic=ancestor_italic
+	)
 
 	append_child_with_context(tag, child_tag, child_context)
 	cleanup_props_stack(child_props, state["standard_props_stack"])
@@ -1069,7 +1236,7 @@ def get_loop_info(block: dict, data_key: dict | None, props_stack: dict) -> dict
 	Get loop information (variable name, iterator, data_key).
 
 	Returns:
-	    Dict with keys: loop_var, iterator_key, data_key
+		Dict with keys: loop_var, iterator_key, data_key
 	"""
 	data_key_config = block.get("dataKey", {})
 	iterator_key = data_key_config.get("key")
@@ -1098,6 +1265,14 @@ def get_loop_info(block: dict, data_key: dict | None, props_stack: dict) -> dict
 			full_key = f"{extract_data_key(data_key)}.{iterator_key}"
 		else:
 			full_key = iterator_key
+
+		if not is_safe_data_key(full_key):
+			loop_var = f"key_invalid_{block.get('blockId', 'x')}"
+			return {
+				"loop_var": loop_var,
+				"iterator_key": "[]",
+				"data_key": {"key": loop_var, "comesFrom": "dataScript"},
+			}
 
 		loop_var = f"key_{full_key.replace('.', '__')}"
 
@@ -1333,7 +1508,7 @@ def wrap_html_with_context(html: str, context: dict) -> str:
 	Wrap HTML with Jinja context variables.
 
 	#### Returns:
-	    HTML string
+		HTML string
 	"""
 	all_props_literal = to_jinja_literal(context["all_props"])
 	passed_down_literal = to_jinja_literal(context["passed_down_props"])
@@ -1449,8 +1624,22 @@ def append_state_style(style_obj, style_tag, style_class, device="desktop"):
 
 
 def get_font_family(font: str) -> str:
-	"""Return the first family from a CSS font stack (e.g. 'Inter, sans-serif' -> 'Inter')."""
+	"""Return the first family from a CSS font stack (e.g. 'Inter, sans-serif' -> 'Inter').
+	A Font design token (var(--id)) resolves to its family so the Google Fonts
+	links include tokenized families."""
+	font = resolve_font_token(font)
 	return font.split(",")[0].strip().strip("'\"")
+
+
+def resolve_font_token(font: str) -> str:
+	match = re.match(r"\s*var\(\s*(--[^),\s]+)", font or "")
+	if not match:
+		return font
+	from builder.builder.doctype.builder_token.builder_token import get_css_variables
+
+	# the cached token map, so a page full of tokenized fonts is not a query each
+	css_variables, _ = get_css_variables()
+	return css_variables.get(match.group(1), "")
 
 
 def set_fonts(styles, font_map, inherited_font=None):
@@ -1504,8 +1693,8 @@ def set_fonts(styles, font_map, inherited_font=None):
 			if not font:
 				continue
 
-			# Skip if it is a system font
-			if font.lower() in system_fonts:
+			# Skip system fonts and unresolvable font tokens
+			if not font or font.lower() in system_fonts:
 				continue
 
 			# Normalize fontWeight: accept named values ("bold") via weight_map
@@ -1534,14 +1723,41 @@ def normalize_font_weights(font_map: dict) -> None:
 		options["weights"] = sorted(weights)
 
 
+def register_italic_font(font_map: dict, font: str | None, weight=400) -> None:
+	"""Record that a collected font is used in italic at `weight`. Fonts that
+	set_fonts skipped (system fonts, CSS stacks) are ignored here too."""
+	options = font_map.get(font) if font else None
+	if options is None:
+		return
+	try:
+		weight = int(str(weight))
+	except (TypeError, ValueError):
+		weight = 400
+	italics = options.setdefault("italics", [])
+	if weight not in italics:
+		italics.append(weight)
+		italics.sort()
+
+
 def get_google_font_urls(font_map: dict) -> list[str]:
-	"""Build one combined Google Fonts stylesheet URL per font family."""
+	"""Build one combined Google Fonts stylesheet URL per font family.
+
+	Families used in italic get the `ital` axis with 400 always included as a
+	fallback instance. css2 silently drops tuples a family doesn't ship, so
+	no font catalog is needed."""
 	normalize_font_weights(font_map)
 	urls = []
 	for font, options in font_map.items():
 		family = quote_plus(font)
-		weights = ";".join(str(weight) for weight in options["weights"])
-		urls.append(f"https://fonts.googleapis.com/css2?family={family}:wght@{weights}&display=swap")
+		italics = sorted({400, *(int(weight) for weight in options.get("italics", []))})
+		if options.get("italics"):
+			tuples = [f"0,{weight}" for weight in options["weights"]]
+			tuples += [f"1,{weight}" for weight in italics]
+			axis = ";".join(tuples)
+			urls.append(f"https://fonts.googleapis.com/css2?family={family}:ital,wght@{axis}&display=swap")
+		else:
+			weights = ";".join(str(weight) for weight in options["weights"])
+			urls.append(f"https://fonts.googleapis.com/css2?family={family}:wght@{weights}&display=swap")
 	return urls
 
 
@@ -1559,6 +1775,12 @@ def set_fonts_from_html(soup, font_map):
 
 
 def extend_block(block, overridden_block):
+	# children are normalized by the recursive extend_block call below
+	merge_raw_styles_into_base_styles(block)
+	merge_raw_styles_into_base_styles(overridden_block)
+	normalize_legacy_block_client_script(block)
+	normalize_legacy_block_client_script(overridden_block)
+
 	block.setdefault("baseStyles", {}).update(overridden_block.get("baseStyles") or {})
 	block.setdefault("mobileStyles", {}).update(overridden_block.get("mobileStyles") or {})
 	block.setdefault("tabletStyles", {}).update(overridden_block.get("tabletStyles") or {})
@@ -1582,15 +1804,14 @@ def extend_block(block, overridden_block):
 		block["customAttributes"] = {}
 	block["customAttributes"].update(overridden_block.get("customAttributes", {}))
 
-	if not block.get("rawStyles"):
-		block["rawStyles"] = {}
-	block["rawStyles"].update(overridden_block.get("rawStyles", {}))
-
 	block.setdefault("classes", []).extend(overridden_block.get("classes") or [])
 
 	if not block.get("props"):
 		block["props"] = {}
 	block["props"].update(overridden_block.get("props", {}))
+
+	if block.get("clientScript") or overridden_block.get("clientScript"):
+		block.setdefault("clientScript", {}).update(overridden_block.get("clientScript", {}))
 
 	dataKey = overridden_block.get("dataKey", {})
 	if not block.get("dataKey"):
@@ -1730,7 +1951,7 @@ def resolve_path(path):
 def reset_with_component(block, extended_with_component, component_children):
 	reset_block(block)
 	block["children"] = []
-	for component_child in component_children:
+	for component_child in component_children or []:
 		component_child_id = component_child.get("blockId")
 		child_block = reset_block(component_child)
 		child_block["isChildOfComponent"] = extended_with_component
@@ -1756,7 +1977,6 @@ def reset_block(block):
 	block["innerHTML"] = None
 	block["element"] = None
 	block["baseStyles"] = {}
-	block["rawStyles"] = {}
 	block["mobileStyles"] = {}
 	block["tabletStyles"] = {}
 	block["attributes"] = {}
@@ -1765,7 +1985,14 @@ def reset_block(block):
 	block["dataKey"] = {}
 	block["props"] = {}
 	block["dynamicValues"] = []
+	block["clientScript"] = {}
+	block.pop("blockClientScript", None)
 	return block
+
+
+def normalize_legacy_block_client_script(block):
+	if not block.get("clientScript") and block.get("blockClientScript"):
+		block["clientScript"] = {"js": block.get("blockClientScript")}
 
 
 def extract_data_key(data_key):
@@ -1776,9 +2003,22 @@ def extract_data_key(data_key):
 	return None
 
 
+# A data key is a dotted path of Jinja-safe identifiers (e.g. "features" or "props.items").
+# Anything else (spaces, commas, brackets — e.g. an array stringified to "[object Object],...")
+# would generate invalid Jinja and crash the page render.
+SAFE_DATA_KEY = re.compile(r"^\w[\w.]*$")
+
+
+def is_safe_data_key(key) -> bool:
+	return isinstance(key, str) and bool(SAFE_DATA_KEY.match(key))
+
+
 def jinja_safe_key(key):
 	# convert a.b to (a or {}).get('b', {})
 	# to avoid undefined error in jinja
+	if not is_safe_data_key(key):
+		# render nothing rather than emitting a broken Jinja expression
+		return "{}"
 	keys = (key or "").split(".")
 	key = f"({keys[0]} or {{}})"
 	for k in keys[1:]:

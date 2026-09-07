@@ -156,7 +156,7 @@ const startPairing = async () => {
 				stopPolling();
 				Object.assign(pending, { url: null, code: null });
 				await refresh();
-				say(__("Paired — {0}").format(state.message), true);
+				say(__("Paired — {0}", [state.message]), true);
 			}
 		}, 4000);
 	} catch (error) {
@@ -172,7 +172,7 @@ const pairWithToken = async () => {
 		token.value = "";
 		showToken.value = false;
 		await refresh();
-		say(__("Paired — {0}").format(data.message), true);
+		say(__("Paired — {0}", [data.message]), true);
 	} catch (error) {
 		say(error instanceof Error ? error.message : String(error), false);
 	}

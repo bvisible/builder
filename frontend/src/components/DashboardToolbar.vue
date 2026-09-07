@@ -7,7 +7,6 @@
 				iconLeft="lucide-plus"
 				class="bg-surface-gray-10 !text-ink-base hover:bg-surface-gray-9"
 				@click="showTemplatesDialog = true">
-				<!-- //// Neoffice i18n — hardcoded English: the dashboard stayed English on a French bench (bd5dc7f1). -->
 				{{ __("New") }}
 			</Button>
 		</div>
@@ -15,6 +14,7 @@
 </template>
 
 <script setup lang="ts">
+import { __ } from "@/translation";
 import { useDashboardState } from "@/composables/useDashboardState";
 
 const { showTemplatesDialog } = useDashboardState();

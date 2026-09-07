@@ -1,3 +1,4 @@
+import { __ } from "@/translation";
 import type Block from "@/block";
 import builderBlockTemplate from "@/data/builderBlockTemplate";
 import { BlockTemplate } from "@/types/doctypes";
@@ -50,7 +51,7 @@ const useBlockTemplateStore = defineStore("blockTemplateStore", {
 				(block: Block) => {
 					this.saveBlockTemplate(block, blockTemplateName);
 				},
-				"Save Template",
+				__("Save Template"),
 				blockTemplate.template_name,
 			);
 			builderStore.leftPanelActiveTab = "Layers";
@@ -105,10 +106,9 @@ const useBlockTemplateStore = defineStore("blockTemplateStore", {
 			await builderBlockTemplate.reload();
 
 			//// Neoffice — reload() alone left the new template invisible until a page reload (83b20f91).
-			// FIX: Refresh cache to show new template immediately
 			await builderBlockTemplate.fetch();
 
-			toast.success("Block template saved!");
+			toast.success(__("Block template saved!"));
 		},
 	},
 });

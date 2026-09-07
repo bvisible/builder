@@ -5,7 +5,7 @@ app_title = "Frappe Builder"
 app_publisher = "Frappe Technologies Pvt Ltd"
 app_description = "An easier way to build web pages for your needs!"
 app_email = "suraj@frappe.io"
-app_license = "GNU Affero General Public License v3.0"
+app_license = "MIT"
 
 # Includes in <head>
 # ------------------
@@ -151,6 +151,14 @@ fixtures = [
 # "Event": "frappe.desk.doctype.event.event.has_permission",
 # }
 
+user_invitation = {
+	"allowed_roles": {
+		"System Manager": ["Website Manager"],
+		"Website Manager": ["Website Manager"],
+	},
+	"after_accept": ["builder.user_invitation.after_accept"],
+}
+
 # DocType Class
 # ---------------
 # Override standard doctype classes
@@ -163,9 +171,12 @@ fixtures = [
 # ---------------
 # Hook on document methods and events
 
-# //// Neoffice — upstream ships doc_events commented out. Ours keeps the site menu in sync
-# //// when Website Settings change (builder.hf_utils.menu_integration).
+# //// Neoffice — upstream's doc_events only covers User Invitation. Ours also keeps the site menu in
+# //// sync when Website Settings change (builder.hf_utils.menu_integration).
 doc_events = {
+	"User Invitation": {
+		"after_insert": "builder.user_invitation.capture_user_invited",
+	},
 	"Website Settings": {
 		"on_update": "builder.hf_utils.menu_integration.sync_from_website_settings"
 	}
@@ -245,12 +256,11 @@ scheduler_events = {
 # "builder.auth.validate"
 # ]
 
-# //// Neoffice — hooks.py is imported outside a request/site context too (CI collection,
-# //// `bench` subcommands): frappe.conf raises there, and upstream's bare attribute access
-# //// takes the whole app down. Default to "builder" instead.
 try:
 	builder_path = frappe.conf.builder_path or "builder"
-except Exception:
+except RuntimeError:
+	# frappe.conf is unbound when hooks are imported without a site,
+	# as done by `bench generate-pot-file --app builder`.
 	builder_path = "builder"
 website_route_rules = [
 	{"from_route": f"/{builder_path}/<path:app_path>", "to_route": "_builder"},

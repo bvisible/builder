@@ -42,15 +42,15 @@
 							@update:modelValue="(v: boolean) => (unusedOnly = v)" />
 						<span v-if="media.data" class="text-sm text-ink-gray-5">
 							{{
-								__("{0} image(s), {1} unused").format(
+								__("{0} image(s), {1} unused", [
 									media.data.total,
 									media.data.unused,
-								)
+								])
 							}}
 						</span>
 						<span v-if="media.data?.external?.length" class="text-sm text-ink-gray-5">
 							·
-							{{ __("{0} remote image(s) on pages").format(media.data.external.length) }}
+							{{ __("{0} remote image(s) on pages", [media.data.external.length]) }}
 						</span>
 					</div>
 
@@ -168,10 +168,10 @@
 					<template v-else-if="links.data">
 						<div class="flex gap-3 text-sm">
 							<span class="rounded bg-surface-gray-2 px-2.5 py-1 text-ink-gray-7">
-								{{ __("{0} internal").format(links.data.counts.internal) }}
+								{{ __("{0} internal", [links.data.counts.internal]) }}
 							</span>
 							<span class="rounded bg-surface-gray-2 px-2.5 py-1 text-ink-gray-7">
-								{{ __("{0} external").format(links.data.counts.external) }}
+								{{ __("{0} external", [links.data.counts.external]) }}
 							</span>
 							<span
 								class="rounded px-2.5 py-1"
@@ -180,7 +180,7 @@
 										? 'bg-surface-red-1 text-ink-red-4'
 										: 'bg-surface-green-1 text-ink-green-3'
 								">
-								{{ __("{0} leading nowhere").format(links.data.counts.broken) }}
+								{{ __("{0} leading nowhere", [links.data.counts.broken]) }}
 							</span>
 						</div>
 
@@ -280,7 +280,7 @@ const usageLabel = (item: MediaItem) => {
 	const count = item.used_in?.length || 0;
 	if (!count) return __("Not used");
 	if (count === 1) return item.used_in[0].title;
-	return __("{0} pages").format(count);
+	return __("{0} pages", [count]);
 };
 
 const usageClass = (item: MediaItem) => {

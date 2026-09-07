@@ -10,8 +10,10 @@
 				class="aspect-video w-full rounded-md bg-surface-gray-1 object-cover object-top" />
 			<div
 				class="absolute inset-0 flex flex-col items-center justify-center gap-2 bg-black/40 opacity-0 transition-opacity duration-150 group-hover:opacity-100">
-				<Button size="sm" variant="solid" @click.stop="$emit('select', page)">Use template</Button>
-				<Button size="sm" variant="subtle" @click.stop="openPreview">Preview</Button>
+				<Button size="sm" variant="solid" @click.stop="$emit('select', page)">
+					{{ __("Use template") }}
+				</Button>
+				<Button size="sm" variant="subtle" @click.stop="$emit('preview', page)">{{ __("Preview") }}</Button>
 			</div>
 		</div>
 		<div class="flex items-center justify-between gap-2 px-[2px]">
@@ -23,30 +25,21 @@
 				size="sm"
 				variant="ghost"
 				icon="lucide-pencil"
-				title="Edit template"
+				:title="__('Edit template')"
 				class="shrink-0 !text-ink-gray-5 hover:!text-ink-gray-9"
 				@click.stop="$emit('edit', page)"></Button>
 		</div>
 	</div>
 </template>
 <script setup lang="ts">
-import router from "@/router";
 import { TemplatePageSummary } from "@/types/template";
 
-const props = defineProps<{
+defineProps<{
 	page: TemplatePageSummary;
 }>();
 
-defineEmits(["select", "edit"]);
+defineEmits(["select", "edit", "preview"]);
 
 const fallbackImage = "/assets/builder/images/fallback.png";
 const isDeveloperMode = Boolean(window.is_developer_mode);
-
-const openPreview = () => {
-	// remote hub templates carry an absolute live_url; local "My Templates" use
-	// the in-app preview route (the hub page id has no local page to preview)
-	const href =
-		props.page.live_url || router.resolve({ name: "preview", params: { pageId: props.page.name } }).href;
-	window.open(href, "_blank");
-};
 </script>

@@ -26,7 +26,7 @@
 				colorScheme: builderStore.canvasDarkMode ? 'dark' : 'light',
 			}">
 			<div class="absolute right-0 top-[-60px] flex rounded-md bg-surface-base px-3">
-				<Tooltip text="Toggle Canvas Dark Mode" :hoverDelay="0.6">
+				<Tooltip :text="__('Toggle Canvas Dark Mode (⌘⇧D)')" :hoverDelay="0.6">
 					<div
 						v-show="!canvasProps.scaling && !canvasProps.panning"
 						class="w-auto cursor-pointer p-2"
@@ -118,19 +118,20 @@
 			</div>
 		</div>
 		<div
-			class="text-sm-semibold fixed bottom-12 left-[50%] flex translate-x-[-50%] cursor-default items-center justify-center gap-2 rounded-lg bg-surface-base px-3 py-2 text-center text-ink-gray-7 shadow-md"
-			v-show="!canvasProps.panning">
-			{{ Math.round(canvasProps.scale * 100) + "%" }}
-			<div class="ml-2 cursor-pointer" @click="setScaleAndTranslate">
-				<FitScreenIcon />
-			</div>
-		</div>
-		<div
 			class="overlay absolute"
 			:class="{ 'pointer-events-none': isOverDropZone }"
 			id="overlay"
 			ref="overlay" />
 		<div v-show="marquee.visible" class="pointer-events-none fixed z-[200]" :style="marqueeStyle" />
+		<DropIndicator />
+		<div
+			class="text-sm-semibold fixed bottom-12 left-[50%] flex translate-x-[-50%] cursor-default items-center justify-center gap-2 rounded-lg bg-surface-base px-3 py-2 text-center text-ink-gray-7 shadow-md"
+			v-show="!canvasProps.panning && !canvasStore.isDragging">
+			{{ Math.round(canvasProps.scale * 100) + "%" }}
+			<div class="ml-2 cursor-pointer" @click="setScaleAndTranslate">
+				<FitScreenIcon />
+			</div>
+		</div>
 		<div class="absolute top-0 order-1 w-full">
 			<slot name="header"></slot>
 		</div>
@@ -140,7 +141,7 @@
 			placement="top-right"
 			:placementOffset="20"
 			v-if="builderStore.showSearchBlock">
-			<template #header>Search Block</template>
+			<template #header>{{ __("Search Block") }}</template>
 			<template #content>
 				<SearchBlock></SearchBlock>
 			</template>
@@ -154,7 +155,9 @@ import SearchBlock from "@/components/Controls/SearchBlock.vue";
 import LoadingIcon from "@/components/Icons/Loading.vue";
 import { builderSettings } from "@/data/builderSettings";
 import useBuilderStore from "@/stores/builderStore";
+import useCanvasStore from "@/stores/canvasStore";
 import usePageStore from "@/stores/pageStore";
+import { __ } from "@/translation";
 import { BreakpointConfig, CanvasHistory } from "@/types/Builder/BuilderCanvas";
 import { getBlockObject, isCtrlOrCmd } from "@/utils/helpers";
 import {
@@ -164,20 +167,35 @@ import {
 } from "@/utils/scriptSandbox";
 import { useBlockEventHandlers } from "@/utils/useBlockEventHandlers";
 import { useBlockSelection } from "@/utils/useBlockSelection";
-import { useBuilderVariable } from "@/utils/useBuilderVariable";
+import { useBuildFollow } from "@/utils/useBuildFollow";
+import { setFont } from "@/utils/fontManager";
+import { useBuilderToken } from "@/utils/useBuilderToken";
 import { useCanvasDropZone } from "@/utils/useCanvasDropZone";
 import { useCanvasEvents } from "@/utils/useCanvasEvents";
 import { useCanvasMarqueeSelection } from "@/utils/useCanvasMarqueeSelection";
 import { useCanvasUtils } from "@/utils/useCanvasUtils";
 //// Neoffice — `call` is for the two chrome endpoints below (9b804199).
 import { call, Tooltip } from "frappe-ui";
-import { Ref, computed, onMounted, onUnmounted, provide, reactive, ref, useId, watch } from "vue";
+import {
+	Ref,
+	computed,
+	onMounted,
+	onUnmounted,
+	provide,
+	reactive,
+	ref,
+	useId,
+	watch,
+	watchEffect,
+} from "vue";
 import setPanAndZoom from "../utils/panAndZoom";
 import BlockSnapGuides from "./BlockSnapGuides.vue";
 import BuilderBlock from "./BuilderBlock.vue";
+import DropIndicator from "./DropIndicator.vue";
 import FitScreenIcon from "./Icons/FitScreen.vue";
 
 const builderStore = useBuilderStore();
+const canvasStore = useCanvasStore();
 const pageStore = usePageStore();
 const canvasId = `builder-canvas-${useId()}`;
 
@@ -206,7 +224,13 @@ async function loadConfiguredHeaderFooter() {
 // Load header/footer on mount
 loadConfiguredHeaderFooter();
 
-const { cssVariables, darkCssVariables } = useBuilderVariable();
+const { cssVariables, darkCssVariables, fontTokens } = useBuilderToken();
+
+// Font tokens' families must be loaded for the canvas to render them — blocks
+// reference var(--id), which resolves via CSS but never hits a font loader.
+watchEffect(() => {
+	fontTokens.value.forEach((t: any) => setFont(t.value));
+});
 
 const variables = computed(() => {
 	return {
@@ -263,7 +287,7 @@ const canvasProps = reactive({
 		{
 			icon: "lucide-monitor",
 			device: "desktop",
-			displayName: "Desktop",
+			displayName: __("Desktop"),
 			width: 1400,
 			visible: true,
 			renderedOnce: true,
@@ -271,14 +295,14 @@ const canvasProps = reactive({
 		{
 			icon: "lucide-tablet",
 			device: "tablet",
-			displayName: "Tablet",
+			displayName: __("Tablet"),
 			width: 800,
 			visible: false,
 		},
 		{
 			icon: "lucide-smartphone",
 			device: "mobile",
-			displayName: "Mobile",
+			displayName: __("Mobile"),
 			width: 420,
 			visible: false,
 		},
@@ -303,6 +327,8 @@ const {
 	findBlock,
 	isDirty,
 } = useCanvasUtils(canvasProps, canvasContainer, canvas, block, selectedBlockIds, history);
+
+const { followBuildEdge, followBlock } = useBuildFollow(canvasProps, canvasContainer, canvas);
 
 const { marquee, marqueeStyle, suppressNextClick, handleMarqueeStart, cleanupMarqueeListeners } =
 	useCanvasMarqueeSelection({
@@ -458,6 +484,8 @@ defineExpose({
 	isDirty,
 	toggleDirty,
 	scrollBlockIntoView,
+	followBuildEdge,
+	followBlock,
 	removeBlock,
 	selectBlockRange,
 	resizingBlock,
@@ -566,5 +594,10 @@ const renderedBreakpoints = computed(() => canvasProps.breakpoints.filter((bp) =
 	p:not(:where(.prose, .ProseMirror) *) {
 		line-height: revert;
 	}
+}
+
+/* mirrors the published-page default in webpage_scripts.html */
+.scheme-dark img:not([data-dark-src]) {
+	filter: brightness(0.85) contrast(1.05);
 }
 </style>

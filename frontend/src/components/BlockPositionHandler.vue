@@ -8,28 +8,28 @@
 			defaultValue="static"
 			:enableStates="false"
 			:options="[
-				{ label: 'Auto', value: 'static' },
-				{ label: 'Free', value: 'absolute' },
-				{ label: 'Relative', value: 'relative' },
+				{ label: __('Auto'), value: 'static' },
+				{ label: __('Free'), value: 'absolute' },
+				{ label: __('Relative'), value: 'relative' },
 				{
-					label: 'Fixed',
+					label: __('Fixed'),
 					value: 'fixed',
 				},
-				{ label: 'Sticky', value: 'sticky' },
+				{ label: __('Sticky'), value: 'sticky' },
 			]"></StylePropertyControl>
 		<div class="grid-rows grid grid-cols-3 gap-4" v-if="showHandler">
 			<div class="col-span-1 col-start-2 w-16 self-center">
 				<InlineInput
-					placeholder="Top"
-					:unitOptions="['px', '%']"
+					:placeholder="__('Top')"
+					:unitOptions="POSITION_UNIT_OPTIONS"
 					:hideClearButton="true"
 					:modelValue="blockController.getStyle('top') as string"
 					@update:modelValue="(value: string) => blockController.setStyle('top', value)" />
 			</div>
 			<div class="col-span-1 col-start-1 w-16 self-center">
 				<InlineInput
-					placeholder="Left"
-					:unitOptions="['px', '%']"
+					:placeholder="__('Left')"
+					:unitOptions="POSITION_UNIT_OPTIONS"
 					:hideClearButton="true"
 					:modelValue="blockController.getStyle('left') as string"
 					@update:modelValue="(value: string) => blockController.setStyle('left', value)" />
@@ -49,8 +49,8 @@
 			<div class="col-span-1 col-start-3 w-16 self-center">
 				<!-- prettier-ignore -->
 				<InlineInput
-					placeholder="Right"
-					:unitOptions="['px', '%']"
+					:placeholder="__('Right')"
+					:unitOptions="POSITION_UNIT_OPTIONS"
 					:hideClearButton="true"
 					:modelValue="(blockController.getStyle('right') as string)"
 					@update:modelValue="(value: string) => blockController.setStyle('right', value)" />
@@ -58,8 +58,8 @@
 			<div class="col-span-1 col-start-2 w-16 self-center">
 				<!-- prettier-ignore -->
 				<InlineInput
-					placeholder="Bottom"
-					:unitOptions="['px', '%']"
+					:placeholder="__('Bottom')"
+					:unitOptions="POSITION_UNIT_OPTIONS"
 					:hideClearButton="true"
 					:modelValue="(blockController.getStyle('bottom') as string)"
 					@update:modelValue="(value: string) => blockController.setStyle('bottom', value)" />
@@ -68,9 +68,11 @@
 	</div>
 </template>
 <script setup lang="ts">
+import { __ } from "@/translation";
 import InlineInput from "@/components/Controls/InlineInput.vue";
 import StylePropertyControl from "@/components/Controls/StylePropertyControl.vue";
 import blockController from "@/utils/blockController";
+import { POSITION_UNIT_OPTIONS } from "@/utils/unitOptions";
 import { computed, watch } from "vue";
 
 const position = computed({

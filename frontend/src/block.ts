@@ -1,26 +1,30 @@
 import useCanvasStore from "@/stores/canvasStore";
 import useComponentStore from "@/stores/componentStore";
-import { findBlockInTree, resetBlock } from "@/utils/block/tree";
 import {
 	extendWithComponent,
 	rebuildWithComponent,
 	resetWithComponent,
 	syncBlockWithComponent,
 } from "@/utils/block/componentInstance";
+import { findBlockInTree, resetBlock } from "@/utils/block/tree";
+import type { SpacingType } from "@/utils/cssUtils";
 import {
 	addPxToNumber,
 	cssUrl,
+	dataURLFileName,
 	dataURLtoFile,
 	generateId,
 	getBlockCopy,
 	getBlockInstance,
-	getBoxSpacing,
 	getNumberFromPx,
+	getSpacing,
 	getTextContent,
 	handleBase64Attribute,
+	isHTMLString,
 	kebabToCamelCase,
 	parseAndSetBackground,
-	setBoxSpacing,
+	setSpacing,
+	toStyleProperty,
 	uploadBuilderAsset,
 } from "@/utils/helpers";
 import { Editor } from "@tiptap/vue-3";
@@ -45,17 +49,33 @@ const TEXT_ELEMENTS = new Set([
 	"em",
 	"i",
 	"blockquote",
+	"summary",
 ]);
 
 const CONTAINER_ELEMENTS = new Set(["section", "div"]);
 
 const HEADER_ELEMENTS = new Set(["h1", "h2", "h3", "h4", "h5", "h6"]);
 
+// editor of the currently editable text block; kept off Block instances to
+// avoid Vue reactivity and serialization. Owner tracked by blockId since
+// undo/redo swaps instances but keeps ids.
+let activeEditor: Editor | null = null;
+let activeEditorBlockId: string | null = null;
+
+// rawStyles were dropped in favour of baseStyles; older blocks still carry them
+const mergeLegacyRawStyles = (baseStyles: BlockStyleMap, rawStyles?: BlockStyleMap) => {
+	if (!rawStyles) return baseStyles;
+	Object.entries(rawStyles).forEach(([style, value]) => {
+		if (value === null || value === "" || value === undefined) return;
+		baseStyles[toStyleProperty(style)] = value;
+	});
+	return baseStyles;
+};
+
 class Block implements BlockOptions {
 	blockId: string;
 	children: Array<Block>;
 	baseStyles: BlockStyleMap;
-	rawStyles: BlockStyleMap;
 	mobileStyles: BlockStyleMap;
 	tabletStyles: BlockStyleMap;
 	attributes: BlockAttributeMap;
@@ -129,7 +149,7 @@ class Block implements BlockOptions {
 					// falling back to the live component
 					const componentBlock = this.componentVersion
 						? componentStore.getComponentVersionBlock(this.componentVersion as string) ||
-							componentStore.getComponentBlock(this.isChildOfComponent as string)
+						  componentStore.getComponentBlock(this.isChildOfComponent as string)
 						: componentStore.getComponentBlock(this.isChildOfComponent as string);
 					return findBlockInTree(this.referenceBlockId as string, [componentBlock]);
 				}
@@ -165,8 +185,9 @@ class Block implements BlockOptions {
 			return getBlockInstance(child);
 		});
 
-		this.baseStyles = reactive(options.styles || options.baseStyles || {});
-		this.rawStyles = reactive(options.rawStyles || {});
+		this.baseStyles = reactive(
+			mergeLegacyRawStyles({ ...(options.styles || options.baseStyles || {}) }, options.rawStyles),
+		);
 		this.customAttributes = reactive(options.customAttributes || {});
 		this.mobileStyles = reactive(options.mobileStyles || {});
 		this.tabletStyles = reactive(options.tabletStyles || {});
@@ -193,8 +214,8 @@ class Block implements BlockOptions {
 		parseAndSetBackground(this.tabletStyles);
 
 		if (this.isImage()) {
-			handleBase64Attribute(this, "src", "image.png");
-			handleBase64Attribute(this, "darkSrc", "image-dark.png");
+			handleBase64Attribute(this, "src", "image");
+			handleBase64Attribute(this, "darkSrc", "image-dark");
 		}
 
 		const bgImage = this.getStyle("backgroundImage") as string;
@@ -202,7 +223,7 @@ class Block implements BlockOptions {
 			let bgImage = this.getStyle("backgroundImage") as string;
 			const dataURL = bgImage.match(/url\(['"]?(.*?)['"]?\)/)?.[1];
 
-			const file = dataURLtoFile(dataURL as string, "image.png");
+			const file = dataURLtoFile(dataURL as string, dataURLFileName(dataURL as string, "background"));
 
 			if (file) {
 				this.setStyle("backgroundImage", "");
@@ -224,7 +245,6 @@ class Block implements BlockOptions {
 				styleObj = { ...styleObj, ...this.mobileStyles };
 			}
 		}
-		styleObj = { ...styleObj, ...this.rawStyles };
 		// replace variables with values
 		// Object.keys(styleObj).forEach((style) => {
 		// 	const value = styleObj[style];
@@ -302,14 +322,6 @@ class Block implements BlockOptions {
 		customAttributes = { ...customAttributes, ...this.customAttributes };
 		return customAttributes;
 	}
-	getRawStyles() {
-		let rawStyles = {};
-		if (this.isExtendedFromComponent()) {
-			rawStyles = this.referenceComponent?.rawStyles || {};
-		}
-		rawStyles = { ...rawStyles, ...this.rawStyles };
-		return rawStyles;
-	}
 	getVisibilityCondition() {
 		let visibilityCondition = this.visibilityCondition;
 		if (this.isExtendedFromComponent() && this.referenceComponent?.visibilityCondition) {
@@ -360,6 +372,9 @@ class Block implements BlockOptions {
 	}
 	isSVG() {
 		return this.getElement() === "svg" || this.getInnerHTML()?.startsWith("<svg");
+	}
+	isInlineSVG() {
+		return this.isSVG() && Boolean(this.getInnerHTML());
 	}
 	isText() {
 		return TEXT_ELEMENTS.has(this.getElement() as string);
@@ -721,8 +736,11 @@ class Block implements BlockOptions {
 		}
 	}
 	getEditor(): null | Editor {
-		// @ts-ignore
-		return this.__proto__.editor || null;
+		return this.blockId === activeEditorBlockId ? activeEditor : null;
+	}
+	setEditor(editor: Editor | null) {
+		activeEditor = editor;
+		activeEditorBlockId = editor ? this.blockId : null;
 	}
 	setTextColor(color: string) {
 		const editor = this.getEditor();
@@ -738,7 +756,7 @@ class Block implements BlockOptions {
 		}
 	}
 	isHTML() {
-		return this.originalElement === "__raw_html__";
+		return this.originalElement === "__raw_html__" || (isHTMLString(this.getInnerHTML()) && !this.isText());
 	}
 	isIframe() {
 		return this.innerHTML?.startsWith("<iframe");
@@ -938,7 +956,7 @@ class Block implements BlockOptions {
 			}
 		};
 
-		const styleObjects = [this.baseStyles, this.mobileStyles, this.tabletStyles, this.rawStyles];
+		const styleObjects = [this.baseStyles, this.mobileStyles, this.tabletStyles];
 		styleObjects.forEach((styleObj) => {
 			if (styleObj) {
 				Object.values(styleObj).forEach(extractVarsFromValue);
@@ -997,17 +1015,11 @@ class Block implements BlockOptions {
 			}
 		});
 	}
-	setPadding(padding: string) {
-		setBoxSpacing(this, "padding", padding);
+	setSpacing(type: SpacingType, value: string) {
+		setSpacing(this, type, value);
 	}
-	getPadding(opts?: { nativeOnly?: boolean; cascading?: boolean }) {
-		return getBoxSpacing(this, "padding", opts);
-	}
-	setMargin(margin: string) {
-		setBoxSpacing(this, "margin", margin);
-	}
-	getMargin(opts?: { nativeOnly?: boolean; cascading?: boolean }) {
-		return getBoxSpacing(this, "margin", opts);
+	getSpacing(type: SpacingType, opts?: { nativeOnly?: boolean; cascading?: boolean }) {
+		return getSpacing(this, type, opts);
 	}
 	getDynamicValues() {
 		const dynamicValues = [...this.dynamicValues];
