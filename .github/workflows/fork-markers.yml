@@ -5,7 +5,7 @@ name: Fork markers
 # stays unmarked turns the run red. Mechanics: bvisible/neoffice-ci fork-markers.yml.
 on:
   push:
-    branches: [version-15, version-15-amont-1.33]
+    branches: [version-15]  # the chantier branch is checked at its integration (Amont-1.33 phase 6), not per commit
   workflow_dispatch:
     inputs:
       base:

@@ -276,6 +276,7 @@ const managed = ref(false);
 const pinnedFields = ref<string[]>([]);
 
 const loadResolution = () => {
+	//// Neoffice — our engine lives in builder.site_ai since 2026-09-07 (builder.ai is upstream's Bob agent).
 	createResource({ url: "builder.site_ai.config.describe_resolution" })
 		.submit()
 		.then((r: any) => {
