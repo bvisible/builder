@@ -54,28 +54,15 @@ def _provider(cfg):
     Prefers the Olares "nora" vision model when configured: it is our own
     infra (free), multimodal, returns valid structured output, and is ~15-30x
     faster than Kimi K2.6 (~3s vs ~57s per image — measured on Osiris). Falls
-    back to the builder's general model (Kimi K2.6) when Nora isn't set.
+    back to the builder's general model when Nora isn't set. Both go through
+    upstream's litellm route (Builder AI Provider rows, see managed.py).
     """
-    conf = frappe.conf
-    nora_base = conf.get("nora_base_url")
-    nora_key = conf.get("nora_api_key")
-    if nora_base and nora_key:
-        return get_provider(
-            "openai",
-            model=conf.get("nora_ocr_model") or conf.get("nora_model") or "nora",
-            api_key=nora_key,
-            base_url=nora_base,
-            temperature=0.2,
-            timeout=UNDERSTANDING_TIMEOUT,
-        )
-    return get_provider(
-        cfg.provider,
-        model=cfg.model,
-        api_key=cfg.api_key,
-        base_url=cfg.base_url,
-        temperature=0.3,
-        timeout=UNDERSTANDING_TIMEOUT,
-    )
+    from builder.site_ai.managed import nora_vision_model
+
+    vision = nora_vision_model()
+    if vision:
+        return get_provider("litellm", model=vision, temperature=0.2, timeout=UNDERSTANDING_TIMEOUT)
+    return get_provider("litellm", model=cfg.model, temperature=0.3, timeout=UNDERSTANDING_TIMEOUT)
 
 
 # ---------------------------------------------------------------------------

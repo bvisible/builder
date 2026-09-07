@@ -319,29 +319,9 @@ def import_existing_site(url: str, session_id: str = None) -> dict:
             asset.file = screenshot_url
         asset.insert(ignore_permissions=True)
 
-    # 3) Seed brief palette/fonts on the session (set-if-absent — don't clobber
-    #    explicit user choices made earlier in the chat)
-    if session_id:
-        # //// Neoffice — the caller's own session only, like the asset above; the chat
-        # //// session doctype only survives until the uploads move onto Builder AI Session.
-        require_session_owner(session_id)
-        sess = frappe.get_doc("Builder Chat Session", session_id)
-        palette = data.get("palette") or []
-        if palette and not sess.primary_color:
-            sess.primary_color = palette[0]
-        if len(palette) >= 2 and not sess.secondary_color:
-            sess.secondary_color = palette[1]
-        if data.get("heading_font") and not sess.heading_font:
-            sess.heading_font = data["heading_font"]
-        if data.get("body_font") and not sess.body_font:
-            sess.body_font = data["body_font"]
-        if screenshot_url:
-            existing = frappe.parse_json(sess.inspiration_urls) if sess.inspiration_urls else []
-            existing.append({"url": screenshot_url, "name": data.get("title") or url, "type": "existing_site"})
-            sess.inspiration_urls = frappe.as_json(existing)
-        sess.save(ignore_permissions=True)
-        frappe.db.commit()
-
+    # 3) The palette and fonts read off the client's site travel in the answer:
+    #    the agent (or the site build) decides what to do with them. They used
+    #    to be seeded on the legacy chat session, gone with the 1.33 merge.
     return {
         "success": True,
         "title": data.get("title"),

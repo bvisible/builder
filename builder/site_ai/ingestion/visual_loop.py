@@ -63,20 +63,19 @@ def refine_page(page_name: str, max_iterations: int = 2, critique_with: str = "n
     cfg = get_ai_settings()
     gen = PageGenerator(config=cfg)
 
-    # Load brief + palette from the session so revisions stay on-brand.
-    if session_id and not design_brief:
-        sess = frappe.db.get_value(
-            "Builder Chat Session", {"session_id": session_id},
-            ["saved_brief", "primary_color", "secondary_color"], as_dict=True)
-        if sess:
-            primary = primary or sess.primary_color
-            secondary = secondary or sess.secondary_color
-            if sess.saved_brief:
-                try:
-                    from builder.site_ai.schemas.design_brief import DesignBrief
-                    design_brief = DesignBrief(**json.loads(sess.saved_brief))
-                except Exception:
-                    pass
+    # Load brief + palette from the site chrome so revisions stay on-brand
+    # (the site build writes both there; the chat session that used to carry
+    # them is gone).
+    if not design_brief:
+        try:
+            chrome = frappe.get_single("Website Header Footer Config")
+            primary = primary or chrome.get("primary_color")
+            secondary = secondary or chrome.get("secondary_color")
+            if chrome.get("ai_brief"):
+                from builder.site_ai.schemas.design_brief import DesignBrief
+                design_brief = DesignBrief(**json.loads(chrome.ai_brief))
+        except Exception:
+            pass
 
     url = _page_url(page_name)
     report = {"page": page_name, "url": url, "iterations": [], "fixed": 0}

@@ -163,8 +163,6 @@ def require_session_owner(session_id: str | None) -> None:
 		owner = frappe.db.get_value("Builder AI Session", session_id, "session_user") or frappe.db.get_value(
 			"Builder AI Session", session_id, "owner"
 		)
-	elif frappe.db.exists("DocType", "Builder Chat Session") and frappe.db.exists("Builder Chat Session", session_id):
-		owner = frappe.db.get_value("Builder Chat Session", session_id, "owner")
 	if owner != user:
 		frappe.throw(frappe._("This conversation belongs to another user"), frappe.PermissionError)
 

@@ -101,7 +101,6 @@ class TestGuardedEndpoints(FrappeTestCase):
 	"""
 
 	API_ENDPOINTS = [
-		"generate_page_blocks",
 		"get_ai_themes",
 		"get_site_generation_status",
 		"get_header_layout_info",
@@ -123,7 +122,6 @@ class TestGuardedEndpoints(FrappeTestCase):
 		("builder.site_ai.ingestion.content_understanding", "ingest_content_assets"),
 		("builder.site_ai.ingestion.visual_loop", "chat_refine_page"),
 		("builder.site_ai.ingestion.image_matcher", "chat_apply_client_images"),
-		("builder.site_ai.config", "describe_resolution"),
 		("builder.hf_utils.header_footer", "get_editor_header_html"),
 		("builder.hf_utils.header_footer", "get_editor_footer_html"),
 	]
@@ -176,30 +174,6 @@ class TestGuardedEndpoints(FrappeTestCase):
 			self.assertNotIn(
 				fn, frappe.whitelisted, f"{fn.__name__} is reachable over HTTP again"
 			)
-
-
-class TestChatSessionScoping(FrappeTestCase):
-	"""A session belongs to the user who opened it."""
-
-	def _new_session(self, user: str) -> str:
-		session = frappe.get_doc(
-			{
-				"doctype": "Builder Chat Session",
-				"user": user,
-				"status": "Active",
-				"current_step": "description",
-			}
-		).insert(ignore_permissions=True)
-		return session.session_id
-
-	def tearDown(self):
-		frappe.set_user("Administrator")
-
-	def test_session_id_is_a_full_uuid(self):
-		"""8 hex chars was 32 bits of secret in front of somebody's brief."""
-		session_id = self._new_session("Administrator")
-		self.assertEqual(len(session_id), 36, f"session_id is {session_id!r}")
-		self.assertEqual(session_id.count("-"), 4)
 
 
 class TestPublicUrlGuard(unittest.TestCase):

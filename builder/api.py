@@ -236,49 +236,6 @@ OPTIONAL_PAGES_BY_SITE_TYPE = {
 # //// Neoffice — builder role required: this was a bare @frappe.whitelist(), so ANY
 # //// authenticated user (a portal customer included) could call it. See require_builder_role.
 @builder_role_required()
-def generate_page_blocks(
-	prompt: str,
-	theme: str = "modern",
-	primary_color: str = None,
-	secondary_color: str = None,
-	provider: str = None,
-	model: str = None,
-):
-	"""
-	Generate page blocks using creative AI generation.
-
-	The AI has full creative freedom to design unique pages.
-	Header and footer are managed via Website Header Footer Config.
-
-	Args:
-		prompt: Description of the desired page
-		theme: Visual theme (modern, neobrutalist, glassmorphism, minimal, corporate, creative)
-		primary_color: Custom primary color (e.g., "#6c5ce7")
-		secondary_color: Custom secondary color (e.g., "#00b894")
-		provider: AI provider override (ollama, openai)
-		model: Model name override
-
-	Returns:
-		list[dict]: Generated Frappe Builder blocks
-	"""
-	from builder.site_ai.generators.page_generator import PageGenerator
-
-	generator = PageGenerator(provider=provider, model=model)
-
-	blocks = generator.generate_page(
-		prompt=prompt,
-		theme=theme,
-		primary_color=primary_color,
-		secondary_color=secondary_color,
-	)
-
-	return blocks
-
-
-@frappe.whitelist()
-# //// Neoffice — builder role required: this was a bare @frappe.whitelist(), so ANY
-# //// authenticated user (a portal customer included) could call it. See require_builder_role.
-@builder_role_required()
 def get_ai_themes():
 	"""
 	Get available AI generation themes.
@@ -344,15 +301,6 @@ def generate_one_image(prompt: str, width: int = 1024, height: int = 576) -> str
 
 	settings = get_image_settings()
 
-	if settings.get("provider") == "codex":
-		from builder.site_ai.providers.codex_provider import CodexProvider
-
-		ok, why = CodexProvider.login_status()
-		if ok:
-			content = CodexProvider().generate_image_file(prompt, width=width, height=height)
-			return _save_generated_png(content, prefix="codex")
-		ai_log("warning", "Codex unavailable for image, falling back", reason=why)
-
 	if comfyui_client.is_configured():
 		healthy, why = comfyui_client.health()
 		if healthy:
@@ -375,7 +323,7 @@ def _image_backend_available() -> bool:
 	return bool(comfyui_client.is_configured() or frappe.conf.get("image_generation_enabled"))
 
 
-def _enqueue_image_generation(placeholder_images: list, session_id: str = None) -> str:
+def _enqueue_image_generation(placeholder_images: list) -> str:
 	"""Queue the image worker and return its job id.
 
 	Shared by the automatic post-generation path and the chat's explicit
@@ -393,14 +341,6 @@ def _enqueue_image_generation(placeholder_images: list, session_id: str = None) 
 		"error": None,
 	})
 
-	if session_id:
-		try:
-			name = frappe.db.get_value("Builder Chat Session", {"session_id": session_id})
-			if name:
-				frappe.db.set_value("Builder Chat Session", name, "image_job_id", img_job_id)
-		except Exception:
-			pass
-
 	frappe.enqueue(
 		"builder.api._generate_images_worker",
 		queue="default",
@@ -410,69 +350,6 @@ def _enqueue_image_generation(placeholder_images: list, session_id: str = None) 
 		placeholder_images=placeholder_images,
 	)
 	return img_job_id
-
-
-# Max minutes we allow a generation to be "running" without a cache update
-# before the watchdog declares it dead. Workers can get OOM-killed, hit
-# supervisorctl restart, lose their Moonshot HTTP connection — in all cases
-# the RQ job stops updating the cache but the session stays "Generating"
-# forever. The watchdog flips those to "Failed" so the UI can recover.
-STUCK_GENERATION_TIMEOUT_MIN = 20
-
-
-def check_stuck_generations():
-	"""Find sessions stuck in 'Generating' and mark them Failed.
-
-	Run every 10 minutes by the scheduler (see hooks.scheduler_events). A
-	session is considered stuck when its cached status hasn't been updated
-	for STUCK_GENERATION_TIMEOUT_MIN minutes — that's the telltale sign the
-	RQ worker died mid-job.
-	"""
-	from datetime import timedelta
-	from frappe.utils import get_datetime, now_datetime
-
-	cutoff = now_datetime() - timedelta(minutes=STUCK_GENERATION_TIMEOUT_MIN)
-	stuck_sessions = frappe.get_all(
-		"Builder Chat Session",
-		filters={"status": "Generating"},
-		fields=["name", "session_id", "job_id", "modified"],
-	)
-
-	marked = 0
-	for row in stuck_sessions:
-		snapshot = _get_generation_status(row.job_id) if row.job_id else {}
-		last_update_str = snapshot.get("last_update")
-
-		# If the cache is fresh, the worker is still alive — leave it alone.
-		if last_update_str:
-			try:
-				if get_datetime(last_update_str) > cutoff:
-					continue
-			except Exception:
-				pass  # Bad timestamp → treat as stuck.
-
-		# Also bail out if the session itself was modified recently (defensive).
-		if row.modified and row.modified > cutoff:
-			continue
-
-		try:
-			session = frappe.get_doc("Builder Chat Session", row.name)
-			session.status = "Failed"
-			session.generation_status = "failed"
-			session.save(ignore_permissions=True)
-			marked += 1
-			if row.job_id:
-				_update_generation_status(row.job_id, {
-					**snapshot,
-					"status": "failed",
-					"error": f"Worker died — no update for >{STUCK_GENERATION_TIMEOUT_MIN} min",
-				})
-		except Exception as e:
-			frappe.log_error("check_stuck_generations: session update failed", str(e))
-
-	if marked:
-		frappe.db.commit()
-		print(f"[SITE_GEN] Watchdog marked {marked} stuck session(s) as Failed")
 
 
 @frappe.whitelist()
@@ -2087,40 +1964,6 @@ def _scan_placeholder_images(page_names: list, subject: str = "") -> list:
 			frappe.log_error("Scan placeholder images error", f"Page {page_name}: {str(e)}")
 
 	return results
-
-
-def _image_subject(session_id: str = None, site_name: str = None, site_description: str = None) -> str:
-	"""One short phrase describing the business, for image slots with no text.
-
-	A hero background rarely carries a description; without this the model is
-	asked for a stock photo and answers with one.
-	"""
-	description = (site_description or "").strip()
-	name = (site_name or "").strip()
-	if not description and session_id:
-		try:
-			row = frappe.db.get_value(
-				"Builder Chat Session",
-				{"session_id": session_id},
-				["site_name", "site_description"],
-				as_dict=True,
-			)
-			if row:
-				description = (row.site_description or "").strip()
-				name = name or (row.site_name or "").strip()
-		except Exception:
-			pass
-	subject = description or name
-	if len(subject) <= 180:
-		return subject.rstrip(" .,;")
-	# the model reads a sentence better than a paragraph — and a phrase cut
-	# mid-word reads as noise, so stop on the last clean break
-	head = subject[:180]
-	for stop in (". ", " ; ", ", "):
-		cut = head.rfind(stop)
-		if cut > 60:
-			return head[:cut].rstrip(" .,;")
-	return head[: head.rfind(" ")].rstrip(" .,;")
 
 
 QUALITY_SUFFIX = "photorealistic, high resolution, no text, no words, no logos, no letters"

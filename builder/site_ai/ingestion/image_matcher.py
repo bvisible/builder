@@ -14,7 +14,6 @@ fallback for slots no real photo fits. The matcher is fast (DB + block edits,
 no LLM/Flux call) and is NOT gated by the Flux `image_generation_enabled` flag.
 """
 
-import json
 import re
 
 import frappe
@@ -140,9 +139,11 @@ def match_and_apply(session_id: str, page_names: list = None, min_score: float =
         return {"matched": 0, "slots": 0, "assets": 0, "message": "no client images"}
 
     if not page_names:
-        session = frappe.get_doc("Builder Chat Session", {"session_id": session_id})
-        pages = json.loads(session.generated_pages) if session.generated_pages else []
-        page_names = [p["name"] for p in pages if p.get("name")]
+        # the published pages of the site (the legacy chat session used to list
+        # the pages it had generated; the AI session is page-scoped instead)
+        page_names = frappe.get_all(
+            "Builder Page", filters={"published": 1, "is_template": 0}, pluck="name", order_by="modified desc", limit=40
+        )
     if not page_names:
         return {"matched": 0, "slots": 0, "assets": len(assets), "message": "no pages"}
 
