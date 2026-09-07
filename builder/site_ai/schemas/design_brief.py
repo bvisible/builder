@@ -9,7 +9,7 @@ Ensures visual consistency across all generated pages.
 from __future__ import annotations
 import json
 from typing import ClassVar, Literal, Optional
-from pydantic import BaseModel, Field, PrivateAttr
+from pydantic import BaseModel, Field, PrivateAttr, field_validator
 
 
 class TypographyScale(BaseModel):
@@ -258,13 +258,20 @@ class DesignBrief(BaseModel):
     #: widths right below it named 1200px. Two instructions fighting: measured
     #: on a generated page, the header sat at x=248 and the body copy at x=264.
     #: Sixteen pixels of staircase, from a contradiction we wrote ourselves.
-    content_max_width: Literal["var(--container-width, 1280px)"] = Field(
+    content_max_width: str = Field(
         default="var(--container-width, 1280px)",
         description=(
             "The site's content width. Always this token — never a number, so "
             "the page and the chrome cannot drift apart."
         )
     )
+
+    @field_validator("content_max_width", mode="before")
+    @classmethod
+    def _one_grid(cls, value):
+        # a model that answers "1200px" is not wrong enough to lose the whole brief:
+        # the site has one grid, and it is this token whatever the model proposed
+        return "var(--container-width, 1280px)"
 
     # NEW: Typography Scale (prescriptive sizes)
     typography: TypographyScale = Field(

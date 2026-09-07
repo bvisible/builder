@@ -266,18 +266,27 @@ def _progress(ctx, job_id: str, message: str, progress: int, extra: dict | None 
     _update_generation_status(job_id, {"status": "running", "progress": progress, "current_step": message, **(extra or {})})
 
 
+PAGE_STREAM_MAX_CHARS = 80_000  # a page of YAML is 10 to 20 k characters; beyond this the model is looping
+PAGE_STREAM_MAX_SECONDS = 480
+
+
 def _stream_text(ctx, model: str, messages: list, params: dict) -> str:
     """A page of YAML takes minutes to write: stream it, as upstream's artifact
     generator does, so the provider's read timeout counts between chunks instead
-    of over the whole completion. Stops early when the user cancels the turn."""
+    of over the whole completion. Stops early when the user cancels the turn, and
+    gives up on a runaway generation (size or wall clock) so the page is retried
+    instead of holding the whole build."""
     from builder.ai import llm
 
     stream = llm.complete(model, messages, params, stream=True)
     parts: list[str] = []
+    size, started = 0, time.time()
     try:
         for chunk in stream:
             if ctx.is_cancelled():
                 break
+            if size > PAGE_STREAM_MAX_CHARS or time.time() - started > PAGE_STREAM_MAX_SECONDS:
+                raise TimeoutError(f"page generation runaway after {size} chars / {int(time.time() - started)} s")
             try:
                 ctx.record_usage(chunk, model=model)
             except Exception:
@@ -287,6 +296,7 @@ def _stream_text(ctx, model: str, messages: list, params: dict) -> str:
             delta = chunk.choices[0].delta.content
             if delta:
                 parts.append(delta)
+                size += len(delta)
     finally:
         try:
             stream.close()
