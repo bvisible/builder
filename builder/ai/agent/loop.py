@@ -348,6 +348,10 @@ class AgentRunner:
 		self.system_prompt = (system_prompt or Prompts.AGENT_SYSTEM).replace(
 			"{BUILDER_PATH}", frappe.conf.builder_path or "builder"
 		)
+		# //// Neoffice — the prompts name the assistant through {ASSISTANT_NAME} (see Prompts.VOICE).
+		from builder.site_ai.config import get_assistant_name
+
+		self.system_prompt = self.system_prompt.replace("{ASSISTANT_NAME}", get_assistant_name())
 		# The authoritative working tree — loaded from the DB by load_page in run().
 		self.tree: WorkingTree | None = None
 		# Page locks acquired this turn ((key, token) pairs, token-fenced);

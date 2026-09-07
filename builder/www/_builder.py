@@ -30,4 +30,14 @@ def get_boot() -> dict:
 	lang = frappe.local.lang
 	messages = get_translations_from_apps(lang, ["builder"])
 	messages.update(get_user_translations(lang) or {})
-	return {"translated_messages": messages}
+	# //// Neoffice — the assistant's name and what this instance allows (managed models, tools
+	# //// kept off, Users tab) ride the boot so a registry condition can read them at module load,
+	# //// before any request. See builder/site_ai/capabilities.py and builder/plugins.py.
+	from builder.plugins import get_capabilities
+	from builder.site_ai.capabilities import ai_capabilities
+
+	return {
+		"translated_messages": messages,
+		"assistant_name": ai_capabilities()["assistant_name"],
+		"capabilities": {**get_capabilities(), "ai": ai_capabilities()},
+	}

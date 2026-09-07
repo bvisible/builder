@@ -2,7 +2,8 @@
 	<div class="flex h-full min-h-full flex-col bg-surface-base">
 		<div class="flex items-center justify-between border-b border-outline-gray-1 px-3 py-2.5">
 			<div class="flex min-w-0 flex-col gap-1">
-				<div class="mt-1 text-sm font-semibold text-ink-gray-9">Bob AI</div>
+				<!-- //// Neoffice — the assistant is named by the instance (boot). -->
+				<div class="mt-1 text-sm font-semibold text-ink-gray-9">{{ assistantLabel }}</div>
 				<!-- min-h holds the row while the title is still blank -->
 				<div class="min-h-4 truncate text-p-xs leading-4 text-ink-gray-5">
 					{{ isSubmitting ? currentActivity : currentSessionTitle }}
@@ -402,6 +403,8 @@
 </template>
 
 <script setup lang="ts">
+//// Neoffice — see the panel title above.
+import { assistantName } from "@/utils/neofficeBoot";
 import AIAffectedItems from "@/components/AIAffectedItems.vue";
 import AITurnTimeline from "@/components/ai/AITurnTimeline.vue";
 import AIUISpec from "@/components/ai/AIUISpec.vue";
@@ -417,6 +420,9 @@ import useBuilderStore from "@/stores/builderStore";
 import useCanvasStore from "@/stores/canvasStore";
 import { Button, Dropdown, Popover, Tooltip } from "frappe-ui";
 import { computed, nextTick, onMounted, onUnmounted, ref, watch } from "vue";
+
+//// Neoffice — the panel title, see the template.
+const assistantLabel = assistantName("Bob AI");
 
 const chat = new AIChatController();
 

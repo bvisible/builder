@@ -4,6 +4,7 @@ from frappe.core.api.file import create_new_folder
 # //// fields, the plugin registry and the chrome Web Templates.
 from builder.ai_settings_fields import ensure_ai_custom_fields
 from builder.plugins import sync_plugins
+from builder.site_ai.managed import sync_managed_ai_provider
 from builder.web_chrome import ensure_web_chrome_templates
 from builder.export_import_standard_page import sync_standard_builder_pages
 from builder.utils import (
@@ -37,6 +38,9 @@ def after_migrate():
 	ensure_ai_custom_fields()
 	ensure_web_chrome_templates()
 	sync_plugins()
+	# //// Neoffice — a managed instance runs the upstream agent on the host's models: the provider
+	# //// row follows site_config on every migrate (key rotation included), see site_ai/managed.py.
+	sync_managed_ai_provider()
 
 
 def after_app_install(app_name=None):

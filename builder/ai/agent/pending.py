@@ -258,7 +258,11 @@ def build_form_script(selector: str, web_form: str, fieldnames: list) -> str:
 	sel = json.dumps(selector or "")
 	wf = json.dumps(web_form)
 	fields = json.dumps(fieldnames)
-	return f"""// Auto-wired by Bob: saves this form to the '{web_form}' Web Form.
+	# //// Neoffice — the assistant is named by the instance, not "Bob".
+	from builder.site_ai.config import get_assistant_name
+
+	assistant = get_assistant_name()
+	return f"""// Auto-wired by {assistant}: saves this form to the '{web_form}' Web Form.
 (function () {{
   // The script loads in <head>, before the form is parsed — wait for the DOM.
   if (document.readyState === 'loading') {{ document.addEventListener('DOMContentLoaded', init); }}

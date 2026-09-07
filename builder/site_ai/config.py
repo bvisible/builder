@@ -350,13 +350,23 @@ ASSISTANT_NAME = "Unpress AI"
 
 
 def get_assistant_name() -> str:
-    """How the assistant introduces itself.
+    """The name the assistant speaks under, everywhere it is named.
 
-    Overridable per site (`unpress_ai_name` in site_config) so a fork or a host
-    application can put its own product name in front of the user without
-    patching the prompts.
+    Resolution order: `assistant_name` in site_config (per site), the legacy
+    `unpress_ai_name` key, an app hook `builder_assistant_name` (an edition or a
+    host app declares its product name once, in its own hooks.py), then the
+    default. The Studio boot, the agent prompts and the chat all read this one
+    function, so the name cannot drift between surfaces.
     """
-    return frappe.conf.get("unpress_ai_name") or ASSISTANT_NAME
+    conf = getattr(frappe.local, "conf", None) or {}
+    name = conf.get("assistant_name") or conf.get("unpress_ai_name")
+    if not name:
+        try:
+            hooked = frappe.get_hooks("builder_assistant_name") or []
+        except Exception:
+            hooked = []
+        name = hooked[-1] if hooked else None
+    return name or ASSISTANT_NAME
 
 
 def get_image_settings() -> dict:

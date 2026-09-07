@@ -8,6 +8,8 @@ import useBuilderStore from "@/stores/builderStore";
 import { createRegistry, type RegistryItem } from "@/utils/createRegistry";
 import type { Component } from "vue";
 import { __ } from "@/translation";
+//// Neoffice — see the Chat tab below.
+import { assistantName } from "@/utils/neofficeBoot";
 
 export type LeftPanelTab = RegistryItem & {
 	label: string;
@@ -83,7 +85,8 @@ leftPanelTabs.register({
 
 leftPanelTabs.register({
 	name: "Chat",
-	label: __("Bob AI"),
+	//// Neoffice — the assistant is named by the instance (boot), upstream's label is the fallback.
+	label: assistantName(__("Bob AI")),
 	icon: "lucide-sparkle",
 	component: BuilderAIChatPanel,
 	shortcut: { key: "o", ctrl: true, shift: true },

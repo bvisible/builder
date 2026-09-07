@@ -117,4 +117,12 @@ def build_default_registry() -> ToolRegistry:
 	registry.extend(web.TOOLS)
 	registry.extend(preview.TOOLS)
 	registry.extend(components.TOOLS)
+	# //// Neoffice — a managed instance keeps run_python, create_doctype and seed_sample_data out of
+	# //// the model's reach: the confirm card is not a gate against a customer administrator having
+	# //// a model write ERP schema from the site editor. The list is a server capability
+	# //// (builder/site_ai/capabilities.py), empty on a self-hosted bench.
+	from builder.site_ai.capabilities import disabled_tools
+
+	for name in disabled_tools():
+		registry._tools.pop(name, None)
 	return registry
