@@ -280,21 +280,28 @@
 	color: var(--header-text);
 }
 
+/* //// Neoffice — the count badge sat flush against the cart strokes with no
+   //// separation, so its digit read as smudged onto the icon (reported 2026-09-07).
+   //// A ring in the header background detaches it, and flex centring replaces the
+   //// brittle line-height. Tighter to the corner so it hugs the glyph. */
 .header-icon__badge,
 .cart-badge {
 	position: absolute;
-	top: 4px;
-	right: 4px;
+	top: 1px;
+	right: 1px;
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	box-sizing: border-box;
 	min-width: 18px;
 	height: 18px;
-	padding: 0 5px;
-	font-size: 11px;
-	font-weight: 600;
-	line-height: 18px;
-	text-align: center;
+	padding: 0 4px;
+	font-size: 10px;
+	font-weight: 700;
 	color: var(--header-bg);
 	background: var(--header-text);
-	border-radius: 9px;
+	border: 2px solid var(--header-bg);
+	border-radius: 999px;
 }
 
 /* CTA Button — discreet by default; the per-site theme drives its colors */
