@@ -11,6 +11,7 @@ import frappe
 
 from builder.site_ai.capabilities import MANAGED_DISABLED_TOOLS, disabled_tools
 from builder.site_ai.nora.cards import parse_card
+from builder.site_ai.nora.contrast import NAMED, contrast, palette_roles, parse_color, repair_contrast
 from builder.site_ai.nora.site_builder import (
 	_color,
 	choose_layout_system,
@@ -86,8 +87,12 @@ class TestPageBrief(unittest.TestCase):
 		handles = {k: f"var(--al-{k})" for k in ("primary", "secondary", "background", "text", "font-heading", "font-body")}
 		page = {"title": "Contact", "route": "contact", "type": "contact"}
 		photos = placeholder_photos(page, "Menuiserie sur mesure")
-		text = page_brief_text(site, FakeBrief(), page, handles, "", "editorial-grid", "French", photos, ("Contactez-nous", "/contact"))
+		palette = {"al-primary": "#3B2B20", "al-secondary": "#B08548", "al-background": "#FBF7F2", "al-text": "#1a1a1a"}
+		text = page_brief_text(site, FakeBrief(), page, handles, "", "editorial-grid", "French", photos, ("Contactez-nous", "/contact"), palette=palette)
 		self.assertIn("var(--al-primary)", text)
+		self.assertIn("CONTRAST:", text)
+		self.assertIn("var(--al-background) = #FBF7F2 (LIGHT", text)
+		self.assertIn("var(--al-primary) = #3B2B20 (DARK", text)
 		self.assertIn("INTERIOR page", text)
 		self.assertIn("placehold.co", text)
 		self.assertIn("no header, navigation or footer", text)
@@ -147,3 +152,57 @@ class TestCapabilities(unittest.TestCase):
 			self.assertEqual(disabled_tools(), ["run_python", "seed_sample_data"])
 		with patch.dict(frappe.local.conf, {"ai_managed": 1, "nora_disabled_tools": []}):
 			self.assertEqual(disabled_tools(), [])
+
+
+PALETTE = {"nt2-primary": "#C68E3F", "nt2-secondary": "#F7F0E3", "nt2-background": "#F7F0E3", "nt2-text": "#1a1a1a"}
+
+
+class TestContrast(unittest.TestCase):
+	def test_colours_parse_including_handles_and_alpha(self):
+		self.assertEqual(parse_color("var(--nt2-text)", PALETTE), (26.0, 26.0, 26.0, 1.0))
+		self.assertEqual(parse_color("#fff", PALETTE), (255.0, 255.0, 255.0, 1.0))
+		self.assertEqual(parse_color("rgba(255,255,255,0.82)", PALETTE)[3], 0.82)
+		self.assertEqual(parse_color("var(--unknown, #000)", PALETTE), (0.0, 0.0, 0.0, 1.0))
+		self.assertIsNone(parse_color("linear-gradient(#000, #fff)", PALETTE))
+		self.assertIsNone(parse_color("url(/files/x.png)", PALETTE))
+
+	def test_the_cream_band_with_white_copy_gets_the_text_handle(self):
+		"""The CTA band of neoffice-maintenance #281, as the model wrote it on osiris."""
+		band = {"blockName": "cta-section", "baseStyles": {"backgroundColor": "var(--nt2-secondary)"}, "children": [
+			{"element": "div", "baseStyles": {"color": "var(--nt2-primary)"}, "innerHTML": "<svg viewBox='0 0 1 1'></svg>"},
+			{"element": "h2", "baseStyles": {"color": "#ffffff"}, "innerHTML": "Prêt à goûter le levain ?"},
+			{"element": "p", "baseStyles": {"color": "rgba(255,255,255,0.82)"}, "innerHTML": "Passez commande"},
+			{"element": "a", "classes": ["u-btn", "u-btn--primary"], "innerHTML": "Contactez-nous"},
+		]}
+		fixes = repair_contrast([band], PALETTE)
+		self.assertEqual(len(fixes), 2)
+		self.assertEqual(band["children"][1]["baseStyles"]["color"], "var(--nt2-text)")
+		self.assertEqual(band["children"][2]["baseStyles"]["color"], "var(--nt2-text)")
+		# the icon keeps its accent colour: no text under it
+		self.assertEqual(band["children"][0]["baseStyles"]["color"], "var(--nt2-primary)")
+		# the button's colours come from its class, nothing was written on it
+		self.assertNotIn("baseStyles", band["children"][3])
+
+	def test_a_dark_band_with_inherited_dark_text_gets_the_light_handle(self):
+		dark = {"blockName": "dark-band", "baseStyles": {"backgroundColor": "#1a1a1a"}, "children": [{"element": "h2", "innerHTML": "Titre"}]}
+		fixes = repair_contrast([dark], PALETTE)
+		self.assertEqual(len(fixes), 1)
+		self.assertEqual(dark["baseStyles"]["color"], "var(--nt2-background)")
+
+	def test_photos_and_gradients_are_left_alone(self):
+		over = {"classes": ["u-over-image"], "children": [{"element": "h2", "baseStyles": {"color": "#fff"}, "innerHTML": "Sur photo"}]}
+		grad = {"baseStyles": {"background": "linear-gradient(#000, #fff)"}, "children": [{"element": "p", "baseStyles": {"color": "#fff"}, "innerHTML": "x"}]}
+		img = {"baseStyles": {"background": "url(/files/hero.png) center/cover"}, "children": [{"element": "p", "baseStyles": {"color": "#fff"}, "innerHTML": "x"}]}
+		self.assertEqual(repair_contrast([over, grad, img], PALETTE), [])
+		self.assertEqual(over["children"][0]["baseStyles"]["color"], "#fff")
+
+	def test_readable_text_is_untouched(self):
+		ok = {"baseStyles": {"backgroundColor": "var(--nt2-primary)"}, "children": [{"element": "h2", "baseStyles": {"color": "var(--nt2-text)"}, "innerHTML": "Titre"}]}
+		self.assertEqual(repair_contrast([ok], PALETTE), [])
+
+	def test_palette_roles_read_the_luminance(self):
+		roles = palette_roles(PALETTE)
+		self.assertIn("var(--nt2-secondary) = #F7F0E3 (LIGHT", roles)
+		self.assertIn("var(--nt2-text) = #1a1a1a (DARK", roles)
+		self.assertIn("var(--nt2-primary) = #C68E3F (MID", roles)
+		self.assertLess(contrast(parse_color("#C68E3F", PALETTE), NAMED["white"]), 3.0)
