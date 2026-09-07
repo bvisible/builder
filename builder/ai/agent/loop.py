@@ -447,7 +447,16 @@ class AgentRunner:
 		# use_local_cache=False is critical: the cancel is set by a DIFFERENT
 		# web worker, and Frappe's per-request local cache would otherwise
 		# pin the first (miss) result and never re-read Redis.
-		return bool(frappe.cache.get_value(key, use_local_cache=False)) if key else False
+		# //// Neoffice — frappe v15 has no use_local_cache kwarg (a v16 API): get_value() would pin the
+		# //// first (empty) answer in frappe.local.cache for the rest of the turn and the cancel set by
+		# //// another process would never be seen. Read redis directly instead. Drop this shim once the
+		# //// fleet is on Frappe v16.
+		if not key:
+			return False
+		try:
+			return frappe.cache.get(frappe.cache.make_key(key)) is not None
+		except Exception:
+			return False
 
 	def clear_cancel_flag(self) -> None:
 		if key := self.cancel_key():
