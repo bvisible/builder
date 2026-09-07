@@ -1,7 +1,7 @@
 <template>
 	<div class="flex flex-col gap-5">
 		<!-- //// Neoffice — REWRITTEN. Upstream's AI tab is one OpenRouter API key. Ours asks the server what
-		     //// this install allows (builder.ai.config.describe_resolution): a managed host shows nothing to
+		     //// this install allows (builder.site_ai.config.describe_resolution): a managed host shows nothing to
 		     //// configure, a self-hosted one gets the provider selector, the models, the reasoning effort
 		     //// and the image backend (c58af069, 2f8cb2c4, ec3531d4, 44bb1059). -->
 		<!-- Managed install: the host runs the models for its customers, so there
@@ -276,7 +276,7 @@ const managed = ref(false);
 const pinnedFields = ref<string[]>([]);
 
 const loadResolution = () => {
-	createResource({ url: "builder.ai.config.describe_resolution" })
+	createResource({ url: "builder.site_ai.config.describe_resolution" })
 		.submit()
 		.then((r: any) => {
 			managed.value = !!r?.managed;

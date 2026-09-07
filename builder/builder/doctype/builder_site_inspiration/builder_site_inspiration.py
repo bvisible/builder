@@ -43,7 +43,7 @@ class BuilderSiteInspiration(Document):
     def analyze_image(self):
         """Analyze the uploaded image to extract colors."""
         try:
-            from builder.ai.inspiration.analyzer import DesignAnalyzer
+            from builder.site_ai.inspiration.analyzer import DesignAnalyzer
 
             analyzer = DesignAnalyzer()
 
@@ -74,7 +74,7 @@ class BuilderSiteInspiration(Document):
             return
 
         try:
-            from builder.ai.inspiration.screenshotter import WebsiteScreenshotter
+            from builder.site_ai.inspiration.screenshotter import WebsiteScreenshotter
 
             screenshotter = WebsiteScreenshotter()
             result = screenshotter.capture_and_save(self.url)
@@ -238,7 +238,7 @@ class BuilderSiteInspiration(Document):
         if len(content) > 5 * 1024 * 1024:
             return None
 
-        from builder.ai.inspiration.analyzer import DesignAnalyzer
+        from builder.site_ai.inspiration.analyzer import DesignAnalyzer
         analyzer = DesignAnalyzer()
         return analyzer.extract_dominant_colors(content, n_colors=5)
 

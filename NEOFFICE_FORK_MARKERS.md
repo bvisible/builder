@@ -53,7 +53,7 @@ in place (`builder/api.py:11`, `frontend/src/components/BuilderCanvas.vue:175`).
 Upstream moved **1084 commits** on `develop` since BASE. The diff BASE→HEAD is
 **299 files, +58 194 / −4 007** (260 added, 38 modified, 1 removed; `git` reports
 one of them as a rename, `builder/www/__pycache__/__init__.py` →
-`builder/ai/ingestion/__init__.py`, only because both files are empty).
+`builder/site_ai/ingestion/__init__.py`, only because both files are empty).
 
 ### What the marking pass changed
 
@@ -110,26 +110,26 @@ marker that says what the doctype is for.
 - `builder/builder/doctype/website_menu_item/website_menu_item.json`
 - `builder/builder/doctype/website_plugin/website_plugin.json`
 
-#### Vendored data — `builder/ai/design_data/data/*.csv`
+#### Vendored data — `builder/site_ai/design_data/data/*.csv`
 
 Copied verbatim from `nextlevelbuilder/ui-ux-pro-max-skill` (MIT, upstream
 `f8ac5e1266dba8354ea96e19994d9f4345e7ec31`) on 2026-07-18 by `5502544c`. **Never
 hand-edit**: refresh by re-copying from that project and re-running
-`scripts/validate_data.py` — see `builder/ai/design_data/README.md`.
+`scripts/validate_data.py` — see `builder/site_ai/design_data/README.md`.
 
-`builder/ai/design_data/data/app-interface.csv` ·
-`builder/ai/design_data/data/charts.csv` ·
-`builder/ai/design_data/data/colors.csv` ·
-`builder/ai/design_data/data/google-fonts.csv` ·
-`builder/ai/design_data/data/icons.csv` ·
-`builder/ai/design_data/data/landing.csv` ·
-`builder/ai/design_data/data/motion.csv` ·
-`builder/ai/design_data/data/products.csv` ·
-`builder/ai/design_data/data/react-performance.csv` ·
-`builder/ai/design_data/data/styles.csv` ·
-`builder/ai/design_data/data/typography.csv` ·
-`builder/ai/design_data/data/ui-reasoning.csv` ·
-`builder/ai/design_data/data/ux-guidelines.csv`
+`builder/site_ai/design_data/data/app-interface.csv` ·
+`builder/site_ai/design_data/data/charts.csv` ·
+`builder/site_ai/design_data/data/colors.csv` ·
+`builder/site_ai/design_data/data/google-fonts.csv` ·
+`builder/site_ai/design_data/data/icons.csv` ·
+`builder/site_ai/design_data/data/landing.csv` ·
+`builder/site_ai/design_data/data/motion.csv` ·
+`builder/site_ai/design_data/data/products.csv` ·
+`builder/site_ai/design_data/data/react-performance.csv` ·
+`builder/site_ai/design_data/data/styles.csv` ·
+`builder/site_ai/design_data/data/typography.csv` ·
+`builder/site_ai/design_data/data/ui-reasoning.csv` ·
+`builder/site_ai/design_data/data/ux-guidelines.csv`
 
 #### package manifests
 
@@ -210,7 +210,7 @@ Fourteen do not, on purpose:
 
 | File | Content |
 |---|---|
-| `builder/ai/ingestion/__init__.py` | empty |
+| `builder/site_ai/ingestion/__init__.py` | empty |
 | `builder/builder/doctype/builder_chat_message/__init__.py` | empty |
 | `builder/builder/doctype/builder_chat_session/__init__.py` | empty |
 | `builder/builder/doctype/builder_content_asset/__init__.py` | empty |
@@ -232,7 +232,7 @@ upstream doctype folder. A `//// Neoffice` header on an empty file says only
 "this directory is ours", which the marked `.py` next to it already says with the
 reason. The checker never flags them either — a file whose every line is a
 comment, or which has no line at all, produces no code hunk. **The one that does
-carry intent, `builder/ai/__init__.py`, is marked**: it is not empty, it explains
+carry intent, `builder/site_ai/__init__.py`, is marked**: it is not empty, it explains
 the lazy `__getattr__` that replaced eager imports.
 
 ### Whitespace-only divergence
@@ -270,14 +270,14 @@ of those is touched by upstream):
 
 The four things that will hurt:
 
-1. **Upstream now has its own `builder/ai/`.** 55 files (`agent/`, `api.py`,
+1. **Upstream now has its own `builder/site_ai/`.** 55 files (`agent/`, `api.py`,
    `llm.py`, `codex.py`, `page_writer.py`, `prompts.py`, `session.py`, 20 `test_*.py`…),
-   with **no `builder/ai/__init__.py`** — an implicit namespace package. No path
+   with **no `builder/site_ai/__init__.py`** — an implicit namespace package. No path
    collides with our 68 files **except one that git will not report**: upstream's
-   module `builder/ai/prompts.py` against our package `builder/ai/prompts/`.
+   module `builder/site_ai/prompts.py` against our package `builder/site_ai/prompts/`.
    Python resolves the package first, so after a naive merge upstream's
-   `builder.ai.prompts` is shadowed and their imports break. Our
-   `builder/ai/__init__.py` also turns their namespace package into a regular one.
+   `builder.site_ai.prompts` is shadowed and their imports break. Our
+   `builder/site_ai/__init__.py` also turns their namespace package into a regular one.
    Decide the layout before merging, not during.
 2. **Upstream implemented i18n independently** (Aug 2026): `frontend/src/translation.ts`
    (`window.translated_messages`, `frappe.translate.get_boot_translations`),

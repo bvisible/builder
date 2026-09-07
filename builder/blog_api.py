@@ -276,7 +276,7 @@ def write_article(topic: str, publish=False) -> dict:
 	if not topic:
 		frappe.throw(_("Tell me what the article should be about."))
 
-	from builder.ai.generators.article_generator import generate_article
+	from builder.site_ai.generators.article_generator import generate_article
 
 	article = generate_article(topic)
 
@@ -300,7 +300,7 @@ def write_article(topic: str, publish=False) -> dict:
 	# The cover comes later and on its own: a blog card without an image is a
 	# gradient with the title on it, which is fine, and waiting two minutes for
 	# a picture before showing the text is not.
-	from builder.ai.generators.article_generator import request_cover
+	from builder.site_ai.generators.article_generator import request_cover
 
 	cover_job = request_cover(article, doc.name)
 
@@ -396,7 +396,7 @@ def generate_missing_covers() -> dict:
 	"""
 	_check()
 
-	from builder.ai.generators.article_generator import cover_prompt, request_cover
+	from builder.site_ai.generators.article_generator import cover_prompt, request_cover
 
 	queued = []
 	for name in frappe.get_all("Blog Post", filters={"meta_image": ["in", (None, "")]}, pluck="name"):

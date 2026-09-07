@@ -1,9 +1,9 @@
 # //// Neoffice — added file (no upstream equivalent): tests of the page generator's layout sanitiser.
-# //// builder/ai/** = the Neoffice AI site generator; frappe/builder ships no such module. First commit
+# //// builder/site_ai/** = the Neoffice AI site generator; frappe/builder ships no such module. First commit
 # //// 2c44cd3e 2026-02-01.
 """
 Tests for AI Site Generation
-Tests for builder.ai.generators.page_generator
+Tests for builder.site_ai.generators.page_generator
 
 The webshop header/footer template tests, the header-schema defaults and the
 HeaderGenerator navigation tests were removed: 95d9df5f ("creative AI
@@ -25,7 +25,7 @@ class TestLayoutSanitizer(unittest.TestCase):
     def _run(self, blocks):
         # Instantiate the generator without __init__ to avoid provider /
         # database setup — we only need the method under test.
-        from builder.ai.generators.page_generator import PageGenerator
+        from builder.site_ai.generators.page_generator import PageGenerator
         gen = PageGenerator.__new__(PageGenerator)
         return gen._sanitize_layout_styles(blocks)
 
@@ -120,14 +120,14 @@ class TestHeroHeightFromBrief(unittest.TestCase):
     def _fix(self, block, brief):
         # Instantiate the generator without __init__ to avoid provider /
         # database setup - we only need the method under test.
-        from builder.ai.generators.page_generator import PageGenerator
+        from builder.site_ai.generators.page_generator import PageGenerator
 
         gen = PageGenerator.__new__(PageGenerator)
         gen._fix_block_styles(block, brief)
         return block
 
     def _brief(self):
-        from builder.ai.schemas.design_brief import DesignBrief, SectionHeights
+        from builder.site_ai.schemas.design_brief import DesignBrief, SectionHeights
 
         return DesignBrief(
             section_heights=SectionHeights(

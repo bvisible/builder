@@ -1,5 +1,5 @@
 # //// Neoffice — added file (no upstream equivalent). Covers the guards added on 2026-09-04
-# //// to the Neoffice AI surface of this fork (builder/ai/**, the chat, the site chrome):
+# //// to the Neoffice AI surface of this fork (builder/site_ai/**, the chat, the site chrome):
 # //// upstream frappe/builder ships none of that code and none of these entry points.
 """Tests for the security guards on the AI / chat / site-chrome surface.
 
@@ -23,8 +23,8 @@ import unittest
 import frappe
 from frappe.tests.utils import FrappeTestCase
 
-from builder.ai.utils import as_untrusted_source
-from builder.ai.validators import BlockValidator
+from builder.site_ai.utils import as_untrusted_source
+from builder.site_ai.validators import BlockValidator
 from builder.utils import require_builder_role
 
 # A portal customer: the identity everybody forgets to test with.
@@ -133,12 +133,12 @@ class TestGuardedEndpoints(FrappeTestCase):
 	]
 
 	OTHER_ENDPOINTS = [
-		("builder.ai.ingestion.content_understanding", "get_content_context"),
-		("builder.ai.ingestion.content_understanding", "understand_session_pending"),
-		("builder.ai.ingestion.content_understanding", "ingest_content_assets"),
-		("builder.ai.ingestion.visual_loop", "chat_refine_page"),
-		("builder.ai.ingestion.image_matcher", "chat_apply_client_images"),
-		("builder.ai.config", "describe_resolution"),
+		("builder.site_ai.ingestion.content_understanding", "get_content_context"),
+		("builder.site_ai.ingestion.content_understanding", "understand_session_pending"),
+		("builder.site_ai.ingestion.content_understanding", "ingest_content_assets"),
+		("builder.site_ai.ingestion.visual_loop", "chat_refine_page"),
+		("builder.site_ai.ingestion.image_matcher", "chat_apply_client_images"),
+		("builder.site_ai.config", "describe_resolution"),
 		("builder.hf_utils.header_footer", "get_editor_header_html"),
 		("builder.hf_utils.header_footer", "get_editor_footer_html"),
 	]
@@ -165,7 +165,7 @@ class TestGuardedEndpoints(FrappeTestCase):
 
 	def test_import_existing_site_refuses_a_website_user(self):
 		"""The SSRF endpoint checks the role before it looks at the URL."""
-		from builder.ai.inspiration.site_extractor import import_existing_site
+		from builder.site_ai.inspiration.site_extractor import import_existing_site
 
 		frappe.set_user(_make_website_user())
 		try:
@@ -276,7 +276,7 @@ class TestPublicUrlGuard(unittest.TestCase):
 	"""The server fetches this URL itself — it must be a public http(s) one."""
 
 	def _assert_refused(self, url):
-		from builder.ai.inspiration.site_extractor import assert_public_http_url
+		from builder.site_ai.inspiration.site_extractor import assert_public_http_url
 
 		with self.assertRaises(frappe.ValidationError, msg=f"{url} was accepted"):
 			assert_public_http_url(url)
@@ -307,7 +307,7 @@ class TestPublicUrlGuard(unittest.TestCase):
 		"""Resolution is stubbed: the test must not depend on DNS or the network."""
 		from unittest.mock import patch
 
-		from builder.ai.inspiration import site_extractor
+		from builder.site_ai.inspiration import site_extractor
 
 		with patch.object(
 			site_extractor.socket,
@@ -323,7 +323,7 @@ class TestPublicUrlGuard(unittest.TestCase):
 		"""A name answering with a public AND a loopback address is still refused."""
 		from unittest.mock import patch
 
-		from builder.ai.inspiration import site_extractor
+		from builder.site_ai.inspiration import site_extractor
 
 		with patch.object(
 			site_extractor.socket,

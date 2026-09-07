@@ -1,5 +1,5 @@
 <!-- //// Neoffice — added file (no upstream equivalent): design note for the creative-AI rewrite of the
-     //// generator. builder/ai/** = the Neoffice AI site generator; frappe/builder ships no such module.
+     //// generator. builder/site_ai/** = the Neoffice AI site generator; frappe/builder ships no such module.
      //// First commit 95d9df5f 2026-02-03. -->
 # Plan de Refactoring : AI Créative pour Frappe Builder
 
@@ -13,22 +13,22 @@ L'AI doit avoir la **liberté créative totale** pour générer des sites web un
 
 | Fichier | Raison |
 |---------|--------|
-| `builder/ai/templates/sections.py` | Templates rigides qui brident la créativité |
-| `builder/ai/schemas/block_schema.py` (partiellement) | Supprimer `HeroContent`, `FeaturesContent`, etc. - ne garder que `FrappeBlock` |
-| `builder/ai/generators/header_generator.py` | Header géré par Website Header Footer Config |
-| `builder/ai/generators/footer_generator.py` | Footer géré par Website Header Footer Config |
-| `builder/ai/templates/headers/*` | Inutile, header via config |
-| `builder/ai/templates/footers.py` | Inutile, footer via config |
-| `builder/ai/templates/webshop_headers.py` | Inutile |
-| `builder/ai/templates/webshop_footers.py` | Inutile |
-| `builder/ai/validators/auto_fixer.py` | Pas de fallback, ça marche ou erreur |
-| `builder/ai/rag/*` | Non utilisé |
+| `builder/site_ai/templates/sections.py` | Templates rigides qui brident la créativité |
+| `builder/site_ai/schemas/block_schema.py` (partiellement) | Supprimer `HeroContent`, `FeaturesContent`, etc. - ne garder que `FrappeBlock` |
+| `builder/site_ai/generators/header_generator.py` | Header géré par Website Header Footer Config |
+| `builder/site_ai/generators/footer_generator.py` | Footer géré par Website Header Footer Config |
+| `builder/site_ai/templates/headers/*` | Inutile, header via config |
+| `builder/site_ai/templates/footers.py` | Inutile, footer via config |
+| `builder/site_ai/templates/webshop_headers.py` | Inutile |
+| `builder/site_ai/templates/webshop_footers.py` | Inutile |
+| `builder/site_ai/validators/auto_fixer.py` | Pas de fallback, ça marche ou erreur |
+| `builder/site_ai/rag/*` | Non utilisé |
 
 ---
 
 ## Fichiers à MODIFIER
 
-### 1. `builder/ai/schemas/block_schema.py` → SIMPLIFIER
+### 1. `builder/site_ai/schemas/block_schema.py` → SIMPLIFIER
 
 **Garder uniquement :**
 - `FrappeBlock` (le schéma de base)
@@ -40,7 +40,7 @@ L'AI doit avoir la **liberté créative totale** pour générer des sites web un
 - `SECTION_CONTENT_SCHEMAS`
 - `SectionInfo`, `PageStructure` (l'AI décide librement)
 
-### 2. `builder/ai/generators/page_generator.py` → RÉÉCRIRE
+### 2. `builder/site_ai/generators/page_generator.py` → RÉÉCRIRE
 
 **Nouvelle logique simple :**
 ```python
@@ -61,13 +61,13 @@ class PageGenerator:
 - `_generate_header()` / `_generate_footer()` (via config)
 - `_get_fallback_header()` / `_get_fallback_footer()` (pas de fallback)
 
-### 3. `builder/ai/generators/section_generator.py` → SUPPRIMER ou SIMPLIFIER
+### 3. `builder/site_ai/generators/section_generator.py` → SUPPRIMER ou SIMPLIFIER
 
 Ce fichier devient **inutile** car `PageGenerator` génère tout d'un coup. L'AI décide de la structure complète.
 
 Option : le garder si on veut régénérer une section individuelle.
 
-### 4. `builder/ai/prompts/system_prompts.py` → AMÉLIORER
+### 4. `builder/site_ai/prompts/system_prompts.py` → AMÉLIORER
 
 **Nouveau prompt principal ultra-complet :**
 
@@ -179,7 +179,7 @@ USER PROMPT
 ## Fichiers Finaux (après nettoyage)
 
 ```
-builder/ai/
+builder/site_ai/
 ├── __init__.py
 ├── config.py                    # Configuration AI
 ├── providers/

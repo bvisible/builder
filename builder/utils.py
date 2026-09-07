@@ -70,7 +70,7 @@ def has_page_read(message: str | None = None):
 
 # //// Neoffice — added helper (no upstream equivalent). Upstream builder is an HTML editor for
 # //// trusted authors, so a bare @frappe.whitelist() was enough: every caller already held a
-# //// desk role. Our fork bolts an AI generator onto it (builder/ai/**, the chat, the site
+# //// desk role. Our fork bolts an AI generator onto it (builder/site_ai/**, the chat, the site
 # //// importer) whose endpoints delete and rewrite every Builder Page, spend LLM credit and
 # //// make the server fetch arbitrary URLs — reachable by ANY authenticated user, portal
 # //// customers included, until this guard. Single gate for all of them, so the answer to

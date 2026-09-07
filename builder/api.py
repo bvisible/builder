@@ -260,7 +260,7 @@ def generate_page_blocks(
 	Returns:
 		list[dict]: Generated Frappe Builder blocks
 	"""
-	from builder.ai.generators.page_generator import PageGenerator
+	from builder.site_ai.generators.page_generator import PageGenerator
 
 	generator = PageGenerator(provider=provider, model=model)
 
@@ -289,7 +289,7 @@ def get_ai_themes():
 	Returns:
 		list[dict]: List of available themes with descriptions
 	"""
-	from builder.ai.design_system.themes import THEMES
+	from builder.site_ai.design_system.themes import THEMES
 
 	return [
 		{
@@ -319,8 +319,8 @@ def check_ai_provider_status():
 
 	# Check Ollama
 	try:
-		from builder.ai.providers.ollama_provider import OllamaProvider
-		from builder.ai.config import get_ai_settings
+		from builder.site_ai.providers.ollama_provider import OllamaProvider
+		from builder.site_ai.config import get_ai_settings
 
 		settings = get_ai_settings()
 		if settings.provider == "ollama" or settings.base_url:
@@ -348,7 +348,7 @@ def check_ai_provider_status():
 	# configured" on every instance that set its key through Builder Settings —
 	# the normal way. ai/config.get_ai_settings is the one resolver.
 	try:
-		from builder.ai.config import get_ai_settings
+		from builder.site_ai.config import get_ai_settings
 
 		settings = get_ai_settings()
 		if settings.provider == "openai" and settings.api_key:
@@ -460,7 +460,7 @@ def generate_complete_site(
 	if replace_existing == "auto":
 		classes = classify_existing_pages(website_profile)  # //// Neoffice multi-site
 		if classes["protected"]:
-			from builder.ai.logging import ai_log
+			from builder.site_ai.logging import ai_log
 
 			ai_log("info", "Generation needs replace confirmation",
 				   protected=len(classes["protected"]))
@@ -555,14 +555,14 @@ def generate_one_image(prompt: str, width: int = 1024, height: int = 576) -> str
 
 	Returns the /files/ URL. Raises if no backend produced one.
 	"""
-	from builder.ai.config import get_image_settings
-	from builder.ai.generators import comfyui_client
-	from builder.ai.logging import ai_log
+	from builder.site_ai.config import get_image_settings
+	from builder.site_ai.generators import comfyui_client
+	from builder.site_ai.logging import ai_log
 
 	settings = get_image_settings()
 
 	if settings.get("provider") == "codex":
-		from builder.ai.providers.codex_provider import CodexProvider
+		from builder.site_ai.providers.codex_provider import CodexProvider
 
 		ok, why = CodexProvider.login_status()
 		if ok:
@@ -576,7 +576,7 @@ def generate_one_image(prompt: str, width: int = 1024, height: int = 576) -> str
 			return comfyui_client.generate_image(prompt, width=width, height=height)
 		ai_log("warning", "ComfyUI unavailable for image, falling back", reason=why)
 
-	from builder.ai.generators.image_generator import ImageGenerator
+	from builder.site_ai.generators.image_generator import ImageGenerator
 
 	return ImageGenerator().generate(prompt=prompt, size=f"{width}x{height}").file_url
 
@@ -587,7 +587,7 @@ def _image_backend_available() -> bool:
 	ComfyUI must be explicitly pointed at a server; otherwise the legacy
 	generator has to be switched on in site_config.
 	"""
-	from builder.ai.generators import comfyui_client
+	from builder.site_ai.generators import comfyui_client
 
 	return bool(comfyui_client.is_configured() or frappe.conf.get("image_generation_enabled"))
 
@@ -768,9 +768,9 @@ def _generate_complete_site_worker(
 	print(f"[SITE_GEN_WORKER] ===== WORKER STARTED =====")
 	print(f"[SITE_GEN_WORKER] job_id={job_id}, site_type={site_type}, site_name={site_name}, mode={generation_mode}")
 
-	from builder.ai.generators.page_generator import PageGenerator
-	from builder.ai.config import get_ai_settings
-	from builder.ai.logging import ai_log
+	from builder.site_ai.generators.page_generator import PageGenerator
+	from builder.site_ai.config import get_ai_settings
+	from builder.site_ai.logging import ai_log
 
 	# Log to dedicated file (survives worker crashes)
 	ai_log("info", "=== SITE GENERATION STARTED ===",
@@ -966,7 +966,7 @@ def _generate_complete_site_worker(
 			"site_name": site_name,
 		})
 
-		from builder.ai.generators.brief_generator import BriefGenerator, get_default_brief
+		from builder.site_ai.generators.brief_generator import BriefGenerator, get_default_brief
 		try:
 			# Parse inspiration URLs to get image URLs
 			inspiration_image_urls = []
@@ -1144,7 +1144,7 @@ def _generate_complete_site_worker(
 			page_real_content = ""
 			if session_id:
 				try:
-					from builder.ai.ingestion.content_understanding import get_content_context
+					from builder.site_ai.ingestion.content_understanding import get_content_context
 					page_real_content = get_content_context(
 						session_id, page_def.get("type", "") or page_title)
 				except Exception as e:
@@ -1367,7 +1367,7 @@ def _generate_complete_site_worker(
 				"site_name": site_name,
 			})
 
-			from builder.ai.generators.page_generator import BriefComplianceChecker
+			from builder.site_ai.generators.page_generator import BriefComplianceChecker
 			checker = BriefComplianceChecker(design_brief, primary_color, secondary_color)
 			total_fixes = 0
 			for page_info in created_pages:
@@ -1604,7 +1604,7 @@ def _generate_complete_site_worker(
 		# Guarded — never let image matching fail the whole generation.
 		if session_id:
 			try:
-				from builder.ai.ingestion.image_matcher import match_and_apply
+				from builder.site_ai.ingestion.image_matcher import match_and_apply
 				page_names = [p["name"] for p in created_pages]
 				match_result = match_and_apply(session_id, page_names)
 				if match_result.get("matched"):
@@ -3132,7 +3132,7 @@ def generate_image(
 	Returns:
 		dict: Generated image info or job ID for async
 	"""
-	from builder.ai.generators.image_generator import ImageGenerator
+	from builder.site_ai.generators.image_generator import ImageGenerator
 
 	generator = ImageGenerator()
 
@@ -3463,7 +3463,7 @@ def chat_generate_images(session_id: str):
 
 		# STEP 1 — place the client's OWN photos first (free, no Flux, always on,
 		# not gated by image_generation_enabled).
-		from builder.ai.ingestion.image_matcher import match_and_apply
+		from builder.site_ai.ingestion.image_matcher import match_and_apply
 		try:
 			match_result = match_and_apply(session_id, page_names)
 		except Exception as e:
@@ -3688,8 +3688,8 @@ def _generate_images_worker(img_job_id: str, placeholder_images: list):
 	ComfyUI server (FLUX.2, our GPU) when configured; falls back to the Ollama
 	ImageGenerator otherwise."""
 	import re as _re
-	from builder.ai.generators.image_generator import ImageGenerator
-	from builder.ai.generators import comfyui_client
+	from builder.site_ai.generators.image_generator import ImageGenerator
+	from builder.site_ai.generators import comfyui_client
 
 	total = len(placeholder_images)
 	completed = 0

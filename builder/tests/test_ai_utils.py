@@ -1,12 +1,12 @@
-# //// Neoffice — added file (no upstream equivalent): tests of builder.ai.utils. builder/ai/** = the
+# //// Neoffice — added file (no upstream equivalent): tests of builder.site_ai.utils. builder/site_ai/** = the
 # //// Neoffice AI site generator; frappe/builder ships no such module. First commit 9e4a19d5 2026-02-01.
 """
 Tests for AI Utils Module
-Tests for builder.ai.utils
+Tests for builder.site_ai.utils
 """
 
 import unittest
-from builder.ai.utils import (
+from builder.site_ai.utils import (
     KEBAB_TO_CAMEL,
     VALID_ELEMENTS,
     kebab_to_camel,

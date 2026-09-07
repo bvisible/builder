@@ -1,5 +1,5 @@
 # //// Neoffice — added file (no upstream equivalent): the conversational service behind the AI chat:
-# //// collects the brief, drives generation. builder/ai/** = the Neoffice AI site generator;
+# //// collects the brief, drives generation. builder/site_ai/** = the Neoffice AI site generator;
 # //// frappe/builder ships no such module. First commit 0d32dfb5 2026-02-06.
 # Copyright (c) 2025, Frappe Technologies Pvt Ltd and contributors
 # For license information, please see license.txt
@@ -7,7 +7,7 @@
 """
 Builder Chat Service
 AI-guided conversational interface for collecting site generation parameters.
-Uses existing builder/ai/providers and builder/api.generate_complete_site().
+Uses existing builder/site_ai/providers and builder/api.generate_complete_site().
 """
 
 import frappe
@@ -161,14 +161,14 @@ class BuilderChatService:
 	def _get_ai_settings(self):
 		"""Get AI settings (cached per request)."""
 		if not self._ai_settings:
-			from builder.ai.config import get_ai_settings
+			from builder.site_ai.config import get_ai_settings
 			self._ai_settings = get_ai_settings()
 		return self._ai_settings
 
 	def _get_provider(self):
 		"""Get configured AI provider."""
 		settings = self._get_ai_settings()
-		from builder.ai.providers import get_provider
+		from builder.site_ai.providers import get_provider
 		return get_provider(
 			settings.provider,
 			model=settings.model,
@@ -290,7 +290,7 @@ class BuilderChatService:
 		first_name = self._get_user_first_name()
 		greeting = _("Hello {name}!").format(name=first_name) if first_name else _("Hello!")
 
-		from builder.ai.config import get_assistant_name
+		from builder.site_ai.config import get_assistant_name
 
 		intro = _("I'm **{name}**, your website creation assistant.").format(
 			name=get_assistant_name()
@@ -631,7 +631,7 @@ class BuilderChatService:
 		"""
 		from frappe.utils.file_manager import get_file_path
 
-		from builder.ai.inspiration.analyzer import DesignAnalyzer
+		from builder.site_ai.inspiration.analyzer import DesignAnalyzer
 
 		path = get_file_path(file_url)
 		colors = DesignAnalyzer().extract_dominant_colors(path, n_colors=5)
@@ -666,7 +666,7 @@ class BuilderChatService:
 			branding.apply_logo(file_url)
 			message += " " + _("It is now your site logo.")
 		except Exception as e:
-			from builder.ai.logging import ai_log
+			from builder.site_ai.logging import ai_log
 
 			ai_log("warning", "logo not applied to site chrome", error=str(e)[:200])
 
@@ -685,7 +685,7 @@ class BuilderChatService:
 				message += " " + _("I read these colours off it: {0}.").format(", ".join(picked))
 		except Exception as e:
 			# a logo we cannot read is not a reason to reject the logo
-			from builder.ai.logging import ai_log
+			from builder.site_ai.logging import ai_log
 
 			ai_log("warning", "logo colour extraction failed", error=str(e)[:200])
 
@@ -754,7 +754,7 @@ class BuilderChatService:
 
 	def _accept_content(self, session, files: List[Dict]) -> int:
 		"""Hand photos and documents to the understanding pass. Returns the count."""
-		from builder.ai.ingestion.content_understanding import ingest_content_assets
+		from builder.site_ai.ingestion.content_understanding import ingest_content_assets
 
 		result = ingest_content_assets(session.session_id, files) or {}
 		return result.get("created", len(files))
@@ -1105,7 +1105,7 @@ INSPIRATION:
 			except Exception as e:
 				frappe.log_error("Builder Chat: company data lookup failed", str(e))
 
-		from builder.ai.config import get_assistant_name
+		from builder.site_ai.config import get_assistant_name
 
 		system_prompt = f"""You are {get_assistant_name()}, an assistant that guides users to create a website.
 Your goal is to collect the required parameters through a natural conversation.

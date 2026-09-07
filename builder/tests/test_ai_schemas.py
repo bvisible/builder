@@ -1,9 +1,9 @@
-# //// Neoffice - added file (no upstream equivalent). Covers builder/ai/**, the
+# //// Neoffice - added file (no upstream equivalent). Covers builder/site_ai/**, the
 # //// Neoffice AI site-generation subsystem (first commit 71e8284d, 2026-02-03);
 # //// frappe/builder upstream ships neither the module nor these tests.
 """
 Tests for AI Schemas Module
-Tests for builder.ai.schemas
+Tests for builder.site_ai.schemas
 
 Only the schemas that still exist are covered: FrappeStyles / FrappeBlock
 (block_schema) and DesignBrief with its TypographyScale / SectionHeights
@@ -14,11 +14,11 @@ with full freedom") and their tests went with them (CI, 2026-09-03).
 
 import unittest
 from pydantic import ValidationError
-from builder.ai.schemas.block_schema import (
+from builder.site_ai.schemas.block_schema import (
     FrappeBlock,
     FrappeStyles,
 )
-from builder.ai.schemas.design_brief import (
+from builder.site_ai.schemas.design_brief import (
     DesignBrief,
     TypographyScale,
     SectionHeights,

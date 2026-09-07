@@ -1,9 +1,9 @@
-# //// Neoffice - added file (no upstream equivalent). Covers builder/ai/**, the
+# //// Neoffice - added file (no upstream equivalent). Covers builder/site_ai/**, the
 # //// Neoffice AI site-generation subsystem (first commit 71e8284d, 2026-02-03);
 # //// frappe/builder upstream ships neither the module nor these tests.
 """
 Tests for AI Validators Module
-Tests for builder.ai.validators.BlockValidator
+Tests for builder.site_ai.validators.BlockValidator
 
 Rewritten 2026-09-04. The previous suite was written against a reject-and-report
 validator: it read validator.errors / .warnings, called get_report(), passed
@@ -21,7 +21,7 @@ mechanical safety-net rules.
 
 import unittest
 
-from builder.ai.validators import BlockValidator
+from builder.site_ai.validators import BlockValidator
 
 
 class TestBlockValidatorLegacyValidate(unittest.TestCase):

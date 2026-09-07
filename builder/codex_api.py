@@ -16,7 +16,7 @@ import subprocess
 import frappe
 from frappe import _
 
-from builder.ai.providers.codex_provider import CodexProvider
+from builder.site_ai.providers.codex_provider import CodexProvider
 
 # progress of a device-code login, shared with the poller
 _LOGIN_CACHE_KEY = "unpress_codex_device_login"
