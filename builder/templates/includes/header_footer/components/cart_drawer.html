@@ -864,6 +864,18 @@
 			}
 		});
 
+		//// Neoffice - webshop add-to-cart lives outside this drawer (the product
+		//// cards on the listing, the product page). It fires webshop:cart-changed so
+		//// this drawer badge follows an add made anywhere, and on a real add
+		//// (detail.open) the drawer opens with its animation (2026-09-07).
+		document.addEventListener('webshop:cart-changed', function(e) {
+			if (e.detail && e.detail.open) {
+				openCart();
+			} else {
+				refreshCart();
+			}
+		});
+
 		// Initialize
 		initCartState();
 
