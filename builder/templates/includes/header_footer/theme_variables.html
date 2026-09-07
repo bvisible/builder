@@ -35,7 +35,7 @@
 	/* Primary colors - WebShop compatibility */
 	--primary: {% if tp %}var(--{{ tp }}-primary, {{ primary_hex }}){% else %}{{ primary_hex }}{% endif %};
 	--primary-color: {% if tp %}var(--{{ tp }}-primary, {{ primary_hex }}){% else %}{{ primary_hex }}{% endif %};
-	--primary-dark: {{ primary_hex }};
+	--primary-dark: {% if tp %}color-mix(in srgb, var(--primary-color) 85%, black){% else %}{{ primary_hex }}{% endif %};
 
 	/* Secondary color */
 	--secondary-color: {% if tp %}var(--{{ tp }}-secondary, {{ secondary_hex }}){% else %}{{ secondary_hex }}{% endif %};
@@ -46,8 +46,8 @@
 
 	/* Text colors */
 	--text-color: {% if tp %}var(--{{ tp }}-text, {{ text_hex }}){% else %}{{ text_hex }}{% endif %};
-	--text-muted: {{ theme.text_color if theme else '#1a1a1a' }}99;
-	--text-light: {{ theme.text_color if theme else '#1a1a1a' }}66;
+	--text-muted: {% if tp %}color-mix(in srgb, var(--text-color) 60%, transparent){% else %}{{ text_hex }}99{% endif %};
+	--text-light: {% if tp %}color-mix(in srgb, var(--text-color) 40%, transparent){% else %}{{ text_hex }}66{% endif %};
 
 	/* Typography */
 	--heading-font: {% if tp %}var(--{{ tp }}-font-heading, '{{ heading_family }}'){% else %}'{{ heading_family }}'{% endif %}, sans-serif;
@@ -61,21 +61,24 @@
 	   son noir d'usine pendant que le reste du site portait la couleur de la
 	   maison. On alimente la variable qu'il lit, plutôt que de lutter avec des
 	   sélecteurs. */
-	--btn-primary: {{ theme.primary_color if theme else '#6c5ce7' }};
-	--btn-primary-hover: {{ theme.primary_color if theme else '#6c5ce7' }}dd;
+	--btn-primary: var(--primary-color);
+	--btn-primary-hover: {% if tp %}color-mix(in srgb, var(--primary-color) 87%, transparent){% else %}{{ primary_hex }}dd{% endif %};
 
-	/* Derived colors for WebShop compatibility */
-	--primary-hover: {{ theme.primary_color if theme else '#6c5ce7' }}dd;
-	--primary-light: {{ theme.primary_color if theme else '#6c5ce7' }}20;
-	--primary-bg: {{ theme.primary_color if theme else '#6c5ce7' }}10;
+	/* Derived colors for WebShop compatibility. With a token prefix the shades are
+	   mixed from the aliased token at render time (color-mix, Baseline 2023), so a
+	   retheme through the Design Tokens reaches them too; without one they stay the
+	   hex + alpha they always were. */
+	--primary-hover: {% if tp %}color-mix(in srgb, var(--primary-color) 87%, transparent){% else %}{{ primary_hex }}dd{% endif %};
+	--primary-light: {% if tp %}color-mix(in srgb, var(--primary-color) 12%, transparent){% else %}{{ primary_hex }}20{% endif %};
+	--primary-bg: {% if tp %}color-mix(in srgb, var(--primary-color) 6%, transparent){% else %}{{ primary_hex }}10{% endif %};
 
 	/* Border colors */
-	--border-color: {{ theme.text_color if theme else '#1a1a1a' }}15;
-	--border-light: {{ theme.text_color if theme else '#1a1a1a' }}10;
+	--border-color: {% if tp %}color-mix(in srgb, var(--text-color) 8%, transparent){% else %}{{ text_hex }}15{% endif %};
+	--border-light: {% if tp %}color-mix(in srgb, var(--text-color) 6%, transparent){% else %}{{ text_hex }}10{% endif %};
 
 	/* Surface colors */
 	--surface-color: {{ theme.background_color if theme else '#ffffff' }};
-	--surface-muted: {{ theme.text_color if theme else '#1a1a1a' }}05;
+	--surface-muted: {% if tp %}color-mix(in srgb, var(--text-color) 2%, transparent){% else %}{{ text_hex }}05{% endif %};
 
 	/* Typography Scale - Desktop */
 	--h1-size: {{ theme.h1_size if theme and theme.h1_size else '48px' }};
