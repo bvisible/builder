@@ -10,6 +10,17 @@ no_cache = 1
 
 
 def get_context(context):
+	# //// Neoffice — the shell is for people who may author pages. Upstream serves it to any
+	# //// signed-in user and lets the router alert() "no permission" and send them to /app:
+	# //// for a portal customer (no desk) that is a modal dead end ending on "Not permitted".
+	# //// Refused here instead, on the same source of truth as require_builder_role (the
+	# //// Builder Page write permission): frappe renders its 403 page. A Guest goes straight
+	# //// to the login page the router would have sent them to, without loading the app.
+	if frappe.session.user == "Guest":
+		frappe.local.flags.redirect_location = f"/login?redirect-to=/{builder_path}"
+		raise frappe.Redirect
+	if not frappe.has_permission("Builder Page", "write"):
+		raise frappe.PermissionError(frappe._("You do not have permission to use the site builder"))
 	csrf_token = frappe.sessions.get_csrf_token()
 	frappe.db.commit()
 	context.csrf_token = csrf_token
