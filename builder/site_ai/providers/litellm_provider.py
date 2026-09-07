@@ -32,6 +32,17 @@ class LiteLLMProvider(BaseProvider):
     def provider_name(self) -> str:
         return "litellm"
 
+    def is_available(self) -> bool:
+        """A registered, enabled Builder AI Model behind an enabled provider."""
+        from builder.ai.models import ModelRegistry
+
+        return bool(self.model and ModelRegistry.find(self.model))
+
+    def list_models(self) -> list[str]:
+        from builder.ai.models import load_models
+
+        return [m["name"] for m in load_models()]
+
     def _format_messages(self, prompt: str, system_prompt: str = None, images: list[str] = None) -> list[dict]:
         from builder.ai.models import ModelRegistry
 
