@@ -65,7 +65,8 @@ class WebsiteHeaderFooterConfig(Document):
 		"""Clear website cache when header/footer config changes."""
 		if not getattr(self, "_syncing", False):
 			self._sync_menu_to_website_settings()
-		self.sync_tokens()
+		if not self.flags.skip_token_sync:
+			self.sync_tokens()
 		self.clear_website_cache()
 
 	def _sync_menu_to_website_settings(self):
@@ -297,11 +298,18 @@ class WebsiteHeaderFooterConfig(Document):
 		prefix = getattr(self, "token_prefix", None)
 		if not prefix or not frappe.db.exists("DocType", "Builder Token"):
 			return 0
+		# only the fields this save changed: a token edited in the Design Tokens must not
+		# be overwritten by a save that touched something else (the hook in
+		# builder.hf_utils.tokens keeps the fields equal to the tokens, but the pane may
+		# hold values read before that edit)
+		before = self.get_doc_before_save() if not self.is_new() else None
 		updated = 0
 		for field, key in self.TOKEN_FIELDS.items():
 			value = (getattr(self, field, None) or "").strip()
 			name = f"{prefix}-{key}"
 			if not value or value.startswith("var(") or not frappe.db.exists("Builder Token", name):
+				continue
+			if before is not None and (before.get(field) or "").strip() == value:
 				continue
 			if frappe.db.get_value("Builder Token", name, "value") == value:
 				continue

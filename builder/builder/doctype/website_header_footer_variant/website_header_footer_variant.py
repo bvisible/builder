@@ -23,5 +23,6 @@ class WebsiteHeaderFooterVariant(WebsiteHeaderFooterConfig):
 		# Settings top_bar_items (that belongs to the default site) — it only
 		# invalidates the rendered-page caches so its site refreshes, and keeps
 		# its site's tokens in step with the theme fields.
-		self.sync_tokens()
+		if not self.flags.skip_token_sync:
+			self.sync_tokens()
 		self.clear_website_cache()
