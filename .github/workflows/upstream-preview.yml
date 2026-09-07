@@ -16,5 +16,10 @@ jobs:
     with:
       app: builder
       skip_build: true
+      # Must mirror tests.yml: without it the bench has no asset manifest, and any
+      # test that RENDERS a page dies on `bundled_assets.get(...)` where
+      # bundled_assets is None. That is our own CI shape, not an upstream break —
+      # it cost builder its only red against upstream v15 (190 tests, 1 error).
+      build_frappe_assets: true
       upstream_preview: true
     secrets: inherit
