@@ -361,13 +361,19 @@
 				</div>
 				<div class="mt-2 flex items-center justify-between gap-2">
 					<div class="flex items-center gap-0.5">
-						<Dropdown :options="modelOptions" side="top" :offset="6">
+						<!-- //// Neoffice — on a managed instance the model is the host's choice: a client
+						     sees the assistant's name, the host's Administrator keeps upstream's picker. -->
+						<Dropdown v-if="modelPicker" :options="modelOptions" side="top" :offset="6">
 							<button
 								class="flex h-7 max-w-[9rem] items-center gap-1.5 rounded px-1.5 text-ink-gray-5 transition-colors hover:bg-surface-gray-2 hover:text-ink-gray-8">
 								<span class="lucide-cpu size-3.5 shrink-0" />
 								<span class="truncate text-xs">{{ modelLabel }}</span>
 							</button>
 						</Dropdown>
+						<span v-else class="flex h-7 items-center gap-1.5 px-1.5 text-xs text-ink-gray-5">
+							<span class="lucide-sparkles size-3.5 shrink-0" />
+							<span class="truncate">{{ assistantLabel }}</span>
+						</span>
 						<Tooltip text="Improve prompt" placement="top">
 							<button
 								class="flex size-7 items-center justify-center rounded text-ink-gray-5 transition-colors hover:bg-surface-gray-2 hover:text-ink-gray-8 disabled:cursor-not-allowed disabled:opacity-40"
@@ -404,7 +410,7 @@
 
 <script setup lang="ts">
 //// Neoffice — see the panel title above, and the site-creation seed below.
-import { assistantName } from "@/utils/neofficeBoot";
+import { assistantName, showModelPicker } from "@/utils/neofficeBoot";
 import { isSiteCreationRoute, siteCreationSeed, SITE_CREATION_QUERY } from "@/composables/useSiteCreation";
 import { useRoute, useRouter } from "vue-router";
 import AIAffectedItems from "@/components/AIAffectedItems.vue";
@@ -425,6 +431,8 @@ import { computed, nextTick, onMounted, onUnmounted, ref, watch } from "vue";
 
 //// Neoffice — the panel title, see the template.
 const assistantLabel = assistantName("Bob AI");
+//// Neoffice — see the model picker in the template.
+const modelPicker = showModelPicker();
 
 const chat = new AIChatController();
 

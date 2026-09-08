@@ -106,7 +106,9 @@ def managed_models() -> list[dict]:
         from builder.site_ai.config import DEFAULTS
 
         coherent = [DEFAULTS["model"]]
-    return [{"model_id": model_id, "label": model_id, "supports_vision": 0} for model_id in coherent]
+    # Kimi K2.7 reads images (verified 2026-09-08 on both servings: a generated photo
+    # described in 6 s): the brief's logo analysis runs on it, no separate vision row needed
+    return [{"model_id": model_id, "label": model_id, "supports_vision": 1 if model_id.lower().startswith("kimi-k2.7") else 0} for model_id in coherent]
 
 
 def _served_by(base_url: str | None, model_id: str) -> bool:
@@ -153,7 +155,7 @@ def sync_managed_ai_provider() -> str | None:
     for spec in wanted.values():
         name = f"{ROUTE_PREFIX}/{spec['model_id']}"
         if frappe.db.exists("Builder AI Model", name):
-            frappe.db.set_value("Builder AI Model", name, {"enabled": 1, "label": spec["label"]})
+            frappe.db.set_value("Builder AI Model", name, {"enabled": 1, "label": spec["label"], "supports_vision": spec.get("supports_vision", 0)})
             continue
         frappe.get_doc(
             {"doctype": "Builder AI Model", "provider": PROVIDER_NAME, "enabled": 1, **spec}

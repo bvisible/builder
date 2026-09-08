@@ -430,7 +430,8 @@ def page_brief_text(site: dict, brief, page: dict, handles: dict, contact_prompt
         (
             "RULES: no header, navigation or footer sections (the site chrome is rendered around the page); no lorem; "
             f"business data verbatim; spell the brand name exactly '{site['site_name']}'; every text in {language}; "
-            "no em dashes; mobile-first m_style on every grid."
+            "no em dashes; mobile-first m_style on every grid; font sizes in rem or clamp(), never a bare vw "
+            "(h1 at most 4.5rem, h2 3.25rem, body text 1.35rem on desktop)."
         ),
     ]
     return "\n".join(line for line in lines if line)
@@ -655,6 +656,7 @@ def build_site(ctx, spec: dict) -> str:
     from builder.site_ai.generators.brief_generator import BriefGenerator, get_default_brief
     from builder.site_ai.logging import ai_log
     from builder.site_ai.nora.accent import dominant_accent, rewrite_hex
+    from builder.site_ai.nora.typography import cap_font_sizes
     from builder.site_ai.nora.prompts import page_profile
 
     started = time.time()
@@ -848,6 +850,10 @@ def build_site(ctx, spec: dict) -> str:
                             ai_log("info", "Accent token minted", page=page["title"], value=foreign)
                         edits = rewrite_hex(blocks, {foreign: handles["accent"]})
                         ai_log("info", "Accent folded into the token", page=page["title"], value=foreign, edits=edits)
+                    # nor the type scale: see typography.py (a 210 px paragraph at 11vw)
+                    capped = cap_font_sizes(blocks)
+                    if capped:
+                        ai_log("info", "Font sizes capped", page=page["title"], edits=capped)
                     # legibility is not left to the model: see contrast.py (#281)
                     fixes = repair_contrast(blocks, palette)
                     if fixes:
