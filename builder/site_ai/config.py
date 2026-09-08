@@ -46,6 +46,13 @@ THINK_LEVEL_MAP = {
 #   candidates; one call per site, so the 5× output pricing is negligible there.
 # - pages on kimi-k2.7-code: ~90% of K3 page quality at ~1/7 the cost and
 #   2.5× the speed (K3 pages: 47 min/91.8k tokens vs k2.7: 19 min/64k).
+# - pages on the "highspeed" serving of the same kimi-k2.7-code (2026-09-08):
+#   Moonshot streams it at 900 to 1100 characters/s against 150 to 190 for the
+#   standard serving. The model reasons for 5 k to 80 k characters before the
+#   first line of a page, so the standard serving took 5 to 10 minutes per page
+#   and lost three pages of five to the thinking budget; highspeed writes the
+#   same page in 30 to 60 s. Same model, same output, higher per-token price
+#   that the page volume (five to six pages per site) does not make felt.
 # Note: an instance whose site_config pins openai_model overrides this
 # default — the operator has to push the new value there too.
 # The provider is always upstream's litellm route (Builder AI Provider rows);
@@ -53,7 +60,7 @@ THINK_LEVEL_MAP = {
 DEFAULTS = {
     "provider": "litellm",
     "model": "kimi-k3",
-    "page_model": "kimi-k2.7-code",
+    "page_model": "kimi-k2.7-code-highspeed",
     "base_url": "https://api.moonshot.ai/v1",
     "api_key": None,
     "temperature": 0.6,
