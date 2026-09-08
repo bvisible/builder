@@ -346,7 +346,9 @@ def _progress(ctx, job_id: str, message: str, progress: int, extra: dict | None 
 
 
 PAGE_STREAM_MAX_CHARS = 80_000  # a page of YAML is 10 to 20 k characters; beyond this the model is looping
-PAGE_STREAM_MAX_SECONDS = 480
+# a page after a long think still needs its 60 to 120 s of YAML: the ceiling sits above
+# the thinking budget plus that, not at the old 480 s that cut streams mid-page
+PAGE_STREAM_MAX_SECONDS = 600
 # a stream that has sent nothing at all after this long is a stalled connection, not
 # a slow page: the Contact page of the B2C regeneration waited the full 480 s twice
 # for nothing before the retry
@@ -354,8 +356,10 @@ PAGE_STREAM_FIRST_CHUNK_SECONDS = 90
 # a thinking model (Kimi K2.7) streams its reasoning before the first line of YAML;
 # on a home page that alone takes over 90 s, and counting only content killed two
 # healthy attempts in a row (B2B regeneration, 2026-09-08). Reasoning proves the
-# stream is alive; it only has to end within this budget.
-PAGE_STREAM_THINKING_SECONDS = 300
+# stream is alive; it only has to end within this budget. 300 s cut two healthy pages
+# of the B2B regeneration at 42 k and 52 k characters of reasoning (they finished on
+# the retry in about six minutes); 420 s covers what was measured.
+PAGE_STREAM_THINKING_SECONDS = 420
 
 
 def _delta_parts(chunk) -> tuple[str, str]:
