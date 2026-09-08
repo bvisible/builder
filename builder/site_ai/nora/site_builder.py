@@ -226,6 +226,54 @@ def placeholder_photos(page: dict, activity: str) -> list[str]:
     return urls
 
 
+# Jinja includes a page may carry, by page type: the site's own components (a
+# working contact form, a map, a team grid) and, where the shop app is installed,
+# its live widgets. The old generator listed them per page in its system prompt
+# (site_ai/prompts/system_prompts.py); the page brief does the same for the
+# upstream page writer. An include is the innerHTML of its own plain block: the
+# Builder renderer runs Jinja on block content, so the widget appears at render.
+PAGE_INCLUDES = {
+    "contact": [
+        ("{% include 'builder/templates/includes/contact_form.html' %}", "a working contact form, sent to the site's inbox"),
+        ("{% include 'builder/templates/includes/google_map.html' %}", "a map of the address"),
+        ("{% include 'webshop/templates/includes/opening_hours.html' %}", "the shop's opening hours, live, holidays included"),
+    ],
+    "about": [
+        ("{% include 'builder/templates/includes/team_grid.html' %}", "the team"),
+        ("{% include 'builder/templates/includes/company_timeline.html' %}", "the company's timeline"),
+        ("{% include 'webshop/templates/includes/opening_hours.html' %}", "the shop's opening hours, live"),
+    ],
+    "accueil": [
+        ("{%- set carousel_title = \"Nos produits\" -%}{%- set carousel_limit = 8 -%}{% include \"webshop/templates/includes/product_carousel.html\" %}", "a carousel of real products (title of your choice)"),
+        ("{%- set carousel_title = \"Nos marques\" -%}{% include \"webshop/templates/includes/brand_carousel.html\" %}", "the brands carried"),
+    ],
+    "shop": [
+        ("{%- set carousel_title = \"Nos produits\" -%}{%- set carousel_limit = 8 -%}{% include \"webshop/templates/includes/product_carousel.html\" %}", "a carousel of real products"),
+        ("{%- set show_discounted_only = true -%}{% include \"webshop/templates/includes/product_carousel.html\" %}", "the products on sale"),
+    ],
+    "one_page": [
+        ("{% include 'builder/templates/includes/contact_form.html' %}", "a working contact form, in the contact section"),
+        ("{% include 'webshop/templates/includes/opening_hours.html' %}", "the shop's opening hours, live"),
+    ],
+}
+
+
+def available_includes(page_type: str) -> list[tuple[str, str]]:
+    """The includes of this page type whose app is installed on the bench: an include
+    of an absent app turns the whole page into a 500 at render time."""
+    try:
+        installed = set(frappe.get_installed_apps())
+    except Exception:
+        installed = {"builder"}
+    out = []
+    for tag, purpose in PAGE_INCLUDES.get(page_type, []):
+        path = re.search(r"include\s+['\"]([^'\"]+)['\"]", tag)
+        app = path.group(1).split("/", 1)[0] if path else ""
+        if app in installed or app == "templates":
+            out.append((tag, purpose))
+    return out
+
+
 def page_brief_text(site: dict, brief, page: dict, handles: dict, contact_prompt: str, layout_system: str, language: str, photos: list[str], cta: tuple[str, str], palette: dict | None = None) -> str:
     is_home = page["route"] == "home"
     plan = SECTION_PLANS.get(page["type"], SECTION_PLANS["generic"])
@@ -235,6 +283,7 @@ def page_brief_text(site: dict, brief, page: dict, handles: dict, contact_prompt
     tone = getattr(brief, "site_tone", "") or ""
     hero = getattr(brief, "hero_style", "") or ""
     photo_lines = "\n".join(f"{i}. {u}" for i, u in enumerate(photos, 1))
+    includes = available_includes(page["type"])
     page_role = (
         "the HOME page: open with the hero" if is_home
         else "an INTERIOR page: the site renders a title band with the page title above the content, so start directly with the first content section, no hero banner and no repeated page title"
@@ -272,6 +321,11 @@ def page_brief_text(site: dict, brief, page: dict, handles: dict, contact_prompt
             f"copy the URL exactly, give it a descriptive alt in {language}):\n{photo_lines}"
         ),
         "CLASS CONTRACT: " + CLASS_CONTRACT,
+        (
+            "INCLUDES (optional, each one as the innerHTML of its own plain div block, copied exactly, never inside a grid or flex row):\n"
+            + "\n".join(f"- {tag} \u2014 {purpose}" for tag, purpose in includes)
+            if includes else ""
+        ),
         (
             "RULES: no header, navigation or footer sections (the site chrome is rendered around the page); no lorem; "
             f"business data verbatim; spell the brand name exactly '{site['site_name']}'; every text in {language}; "

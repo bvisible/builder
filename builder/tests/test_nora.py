@@ -15,6 +15,7 @@ from builder.site_ai.nora.cards import parse_card
 from builder.site_ai.nora.contrast import NAMED, accent_shade, contrast, palette_roles, parse_color, repair_contrast
 from builder.site_ai.nora.site_builder import (
 	_color,
+	available_includes,
 	choose_layout_system,
 	normalise_pages,
 	page_brief_text,
@@ -103,6 +104,16 @@ class TestPageBrief(unittest.TestCase):
 		self.assertIn("no header, navigation or footer", text)
 		self.assertIn("u-btn", text)
 		self.assertIn("'Atelier Lumen'", text)
+
+	def test_the_contact_page_learns_its_includes(self):
+		site = {"site_name": "X", "activity": "Y"}
+		handles = {k: "var(--x)" for k in ("primary", "secondary", "background", "text", "font-heading", "font-body")}
+		text = page_brief_text(site, FakeBrief(), {"title": "Contact", "route": "contact", "type": "contact"}, handles, "", "bento", "French", [], ("CTA", "/"))
+		self.assertIn("INCLUDES", text)
+		self.assertIn("builder/templates/includes/contact_form.html", text)
+		self.assertIn("innerHTML of its own plain div block", text)
+		self.assertTrue(all(tag.startswith("{%") for tag, _ in available_includes("contact")))
+		self.assertEqual(available_includes("generic"), [])
 
 	def test_home_page_opens_with_the_hero(self):
 		site = {"site_name": "X", "activity": "Y"}
