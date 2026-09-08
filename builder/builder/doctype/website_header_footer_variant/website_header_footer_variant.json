@@ -78,6 +78,9 @@
   "newsletter_title",
   "column_break_newsletter_1",
   "newsletter_placeholder",
+  "opening_hours_section",
+  "show_opening_hours",
+  "opening_hours_display",
   "footer_links_section",
   "footer_links",
   "footer_html_section",
@@ -579,6 +582,27 @@
    "fieldname": "newsletter_placeholder",
    "fieldtype": "Data",
    "label": "Newsletter Placeholder"
+  },
+  {
+   "fieldname": "opening_hours_section",
+   "fieldtype": "Section Break",
+   "label": "Opening Hours",
+   "description": "//// Neoffice — shows the shop's opening hours in the footer. The block itself, its styles and its data belong to webshop: the footer only drops the marker, so a site without webshop simply renders nothing."
+  },
+  {
+   "fieldname": "show_opening_hours",
+   "fieldtype": "Check",
+   "label": "Show Opening Hours",
+   "default": "0"
+  },
+  {
+   "fieldname": "opening_hours_display",
+   "fieldtype": "Select",
+   "label": "Opening Hours Display",
+   "options": "Compact\nFull week",
+   "default": "Compact",
+   "depends_on": "eval:doc.show_opening_hours",
+   "description": "//// Neoffice — Compact: the state, today's hours and a link to the full week, which is what a footer column has room for. Full week: the seven days."
   },
   {
    "fieldname": "footer_links_section",

@@ -869,6 +869,11 @@ class PageGenerator:
         # Webshop templates
         "webshop/templates/includes/product_carousel.html",
         "webshop/templates/includes/brand_carousel.html",
+        # //// Neoffice — the shop's opening hours, live: the block reads Webshop
+        # //// Settings and refreshes itself, so a generated contact page states the
+        # //// real hours instead of inventing them (and _available_includes drops it
+        # //// where webshop is not installed).
+        "webshop/templates/includes/opening_hours.html",
         # Frappe templates
         "templates/generators/webpage_scripts.html",
     }

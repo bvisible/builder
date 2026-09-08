@@ -71,6 +71,9 @@ SIMPLE_FIELDS = (
 	"youtube_url",
 	"show_newsletter",
 	"newsletter_title",
+	# //// Neoffice — the footer's opening-hours block (webshop provides the block itself)
+	"show_opening_hours",
+	"opening_hours_display",
 	# design system
 	"radius_style",
 	"shadow_style",

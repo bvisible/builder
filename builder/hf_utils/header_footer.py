@@ -166,6 +166,11 @@ def render_footer(config=None) -> str:
 			"copyright_text": copyright_text,
 			"social_links": social_links,
 			"show_newsletter": config.show_newsletter,
+			# //// Neoffice — the shop's opening hours in the footer. Builder only drops
+			# //// the marker; the block, its styles and its data are webshop's, so a site
+			# //// without webshop renders an empty div and nothing else.
+			"show_opening_hours": config.get("show_opening_hours"),
+			"opening_hours_display": config.get("opening_hours_display") or "Compact",
 			"newsletter_title": config.newsletter_title,
 			"newsletter_placeholder": config.newsletter_placeholder,
 			"footer_columns": footer_columns,
