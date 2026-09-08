@@ -352,3 +352,68 @@ class TestPageStream(unittest.TestCase):
 		self.assertEqual(_delta_parts(content), ("el: div", ""))
 		self.assertEqual(_delta_parts(provider), ("", "hmm"))
 		self.assertEqual(_delta_parts(empty), ("", ""))
+
+
+class TestAccent(unittest.TestCase):
+	"""The page's own accent colour joins the design system (accent.py)."""
+
+	palette = {"nt2-primary": "#1E3A5F", "nt2-secondary": "#C9D2DC", "nt2-background": "#ffffff", "nt2-text": "#1a1a1a"}
+
+	def blocks(self):
+		return [{"element": "section", "baseStyles": {"backgroundColor": "#1E3A5F", "borderTop": "3px solid #F59E0B"}, "children": [
+			{"element": "span", "baseStyles": {"color": "#f59e0b"}, "mobileStyles": {"color": "#F59E0B"}},
+			{"element": "p", "baseStyles": {"color": "#777777", "background": "linear-gradient(#f59e0b, #ffffff)", "boxShadow": "0 0 0 #f59e0b33"}},
+		]}]
+
+	def test_dominant_accent_ignores_the_palette_and_the_neutrals(self):
+		from builder.site_ai.nora.accent import dominant_accent, foreign_colours
+
+		counts = foreign_colours(self.blocks(), self.palette)
+		self.assertEqual(dict(counts), {"#f59e0b": 4})
+		self.assertEqual(dominant_accent(self.blocks(), self.palette), "#f59e0b")
+		self.assertIsNone(dominant_accent([{"baseStyles": {"color": "#f59e0b"}}], self.palette))
+
+	def test_rewrite_hex_folds_every_use_into_the_token_but_the_alpha_form(self):
+		from builder.site_ai.nora.accent import rewrite_hex
+
+		blocks = self.blocks()
+		edits = rewrite_hex(blocks, {"#f59e0b": "var(--nt2-accent)"})
+		self.assertEqual(edits, 4)
+		self.assertEqual(blocks[0]["baseStyles"]["borderTop"], "3px solid var(--nt2-accent)")
+		span, p = blocks[0]["children"]
+		self.assertEqual(span["baseStyles"]["color"], "var(--nt2-accent)")
+		self.assertEqual(span["mobileStyles"]["color"], "var(--nt2-accent)")
+		self.assertEqual(p["baseStyles"]["background"], "linear-gradient(var(--nt2-accent), #ffffff)")
+		self.assertEqual(p["baseStyles"]["boxShadow"], "0 0 0 #f59e0b33")
+		self.assertEqual(blocks[0]["baseStyles"]["backgroundColor"], "#1E3A5F")
+
+	def test_the_brief_hands_the_accent_handle_over_once_minted(self):
+		site = {"site_name": "X", "activity": "Y"}
+		handles = {k: "var(--x)" for k in ("primary", "secondary", "background", "text", "font-heading", "font-body")}
+		page = {"title": "Services", "route": "services", "type": "services"}
+		self.assertNotIn("ACCENT:", page_brief_text(site, FakeBrief(), page, handles, "", "bento", "French", [], ("CTA", "/")))
+		handles["accent"] = "var(--nt2-accent)"
+		self.assertIn("ACCENT: var(--nt2-accent)", page_brief_text(site, FakeBrief(), page, handles, "", "bento", "French", [], ("CTA", "/")))
+
+
+class TestShopIncludes(unittest.TestCase):
+	"""The shop's includes show instance-wide data: never on a secondary profile, and
+	the carousels only on an e-commerce site."""
+
+	def test_secondary_profile_gets_no_shop_include(self):
+		with patch("builder.site_ai.nora.site_builder._secondary_profile", return_value=True):
+			tags = [t for t, _ in available_includes("contact", "ecommerce", "Nora Test 2")]
+		self.assertTrue(any("contact_form" in t for t in tags))
+		self.assertFalse(any("webshop/" in t for t in tags))
+
+	def test_carousels_need_an_ecommerce_site(self):
+		with patch("builder.site_ai.nora.site_builder._secondary_profile", return_value=False), patch(
+			"frappe.get_installed_apps", return_value=["frappe", "builder", "webshop"]
+		):
+			vitrine = [t for t, _ in available_includes("accueil", "vitrine", None)]
+			shop = [t for t, _ in available_includes("accueil", "ecommerce", None)]
+			hours = [t for t, _ in available_includes("contact", "vitrine", None)]
+		self.assertEqual(vitrine, [])
+		self.assertTrue(all("carousel" in t for t in shop) and shop)
+		self.assertTrue(any("opening_hours" in t for t in hours))
+

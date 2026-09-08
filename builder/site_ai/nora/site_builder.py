@@ -172,11 +172,28 @@ def palette_values(prefix: str) -> dict[str, str]:
     contrast repair resolves var(--id) against, and what the brief's light/dark
     line is computed from."""
     values = {}
-    for key in ("primary", "secondary", "background", "text"):
+    for key in ("primary", "secondary", "background", "text", "accent"):
         value = frappe.db.get_value("Builder Token", f"{prefix}-{key}", "value")
         if value:
             values[f"{prefix}-{key}"] = value
     return values
+
+
+def mint_accent_token(prefix: str, group: str, value: str) -> str:
+    """The seventh token, minted from the first page that leans on a colour of its own
+    (see accent.py). Returns the handle."""
+    doc_id = f"{prefix}-accent"
+    label = f"{group} Accent"
+    if frappe.db.exists("Builder Token", doc_id):
+        doc = frappe.get_doc("Builder Token", doc_id)
+        doc.update({"type": "Color", "value": value, "token_name": label, "group": group})
+        doc.save(ignore_permissions=True)
+    else:
+        frappe.get_doc({"doctype": "Builder Token", "token_name": label, "type": "Color", "value": value, "group": group}).insert(
+            ignore_permissions=True, set_name=doc_id
+        )
+    frappe.db.commit()
+    return f"var(--{doc_id})"
 
 
 def mint_tokens(prefix: str, group: str, brief, primary: str, secondary: str) -> dict:
@@ -287,19 +304,37 @@ def includes_block(includes: list[tuple[str, str]]) -> str:
     return "\n".join(lines)
 
 
-def available_includes(page_type: str) -> list[tuple[str, str]]:
-    """The includes of this page type whose app is installed on the bench: an include
-    of an absent app turns the whole page into a 500 at render time."""
+def _secondary_profile(profile: str | None) -> bool:
+    """A profile other than the instance's default site. The shop app's data (products,
+    brands, opening hours) is instance-wide: offered to a secondary profile, the B2B site
+    of the regeneration showed the host bakery's products and opening hours."""
+    if not profile:
+        return False
+    try:
+        return not frappe.db.get_value("Website Profile", profile, "is_default")
+    except Exception:
+        return True
+
+
+def available_includes(page_type: str, site_type: str = "vitrine", profile: str | None = None) -> list[tuple[str, str]]:
+    """The includes of this page type whose app is installed on the bench (an include of
+    an absent app turns the whole page into a 500 at render time), minus the shop's
+    includes where they would show another business's data: never on a secondary
+    profile, and the product and brand carousels only on an e-commerce site."""
     try:
         installed = set(frappe.get_installed_apps())
     except Exception:
         installed = {"builder"}
+    shop_data = not _secondary_profile(profile)
     out = []
     for tag, purpose in PAGE_INCLUDES.get(page_type, []):
         path = re.search(r"include\s+['\"]([^'\"]+)['\"]", tag)
         app = path.group(1).split("/", 1)[0] if path else ""
-        if app in installed or app == "templates":
-            out.append((tag, purpose))
+        if app not in installed and app != "templates":
+            continue
+        if app == "webshop" and (not shop_data or ("carousel" in tag and site_type != "ecommerce")):
+            continue
+        out.append((tag, purpose))
     return out
 
 
@@ -312,7 +347,7 @@ def page_brief_text(site: dict, brief, page: dict, handles: dict, contact_prompt
     tone = getattr(brief, "site_tone", "") or ""
     hero = getattr(brief, "hero_style", "") or ""
     photo_lines = "\n".join(f"{i}. {u}" for i, u in enumerate(photos, 1))
-    includes = available_includes(page["type"])
+    includes = available_includes(page["type"], site.get("site_type") or "vitrine", site.get("profile"))
     page_role = (
         "the HOME page: open with the hero" if is_home
         else "an INTERIOR page: the site renders a title band with the page title above the content, so start directly with the first content section, no hero banner and no repeated page title"
@@ -348,6 +383,11 @@ def page_brief_text(site: dict, brief, page: dict, handles: dict, contact_prompt
         (
             "PHOTOS AVAILABLE (placeholders that the site replaces with real photos after the build; use each at most once, "
             f"copy the URL exactly, give it a descriptive alt in {language}):\n{photo_lines}"
+        ),
+        (
+            f"ACCENT: {handles['accent']} is the site's signature accent (kickers, badges, one highlight per section, "
+            "sparingly); use it instead of inventing another bright colour, and no other raw hex."
+            if handles.get("accent") else ""
         ),
         "CLASS CONTRACT: " + CLASS_CONTRACT,
         includes_block(includes),
@@ -576,6 +616,7 @@ def build_site(ctx, spec: dict) -> str:
     from builder.site_ai.config import get_ai_settings
     from builder.site_ai.generators.brief_generator import BriefGenerator, get_default_brief
     from builder.site_ai.logging import ai_log
+    from builder.site_ai.nora.accent import dominant_accent, rewrite_hex
     from builder.site_ai.nora.prompts import page_profile
 
     started = time.time()
@@ -739,7 +780,7 @@ def build_site(ctx, spec: dict) -> str:
     # 5. the pages, on upstream's page engine
     layout_system = choose_layout_system(spec.get("style_direction"), brief)
     page_model = _page_model(ctx)
-    site = {"site_name": site_name, "activity": activity, "differentiators": spec.get("differentiators")}
+    site = {"site_name": site_name, "activity": activity, "differentiators": spec.get("differentiators"), "site_type": site_type, "profile": profile}
     created, failed, cancelled = [], [], False
     for idx, page in enumerate(pages):
         if ctx.is_cancelled():
@@ -757,6 +798,16 @@ def build_site(ctx, spec: dict) -> str:
                 raw = _stream_text(ctx, page_model, messages, llm.TASK_PARAMS["complex"])
                 blocks, data_script = expand_page_yaml(BlockCodec.strip_fences(raw))
                 if blocks:
+                    # the page's own accent joins the design system (accent.py): minted
+                    # from the first page that has one, every later one is folded into it
+                    foreign = dominant_accent(blocks, palette)
+                    if foreign:
+                        if not handles.get("accent"):
+                            handles["accent"] = mint_accent_token(prefix, profile or site_name, foreign)
+                            palette[f"{prefix}-accent"] = foreign
+                            ai_log("info", "Accent token minted", page=page["title"], value=foreign)
+                        edits = rewrite_hex(blocks, {foreign: handles["accent"]})
+                        ai_log("info", "Accent folded into the token", page=page["title"], value=foreign, edits=edits)
                     # legibility is not left to the model: see contrast.py (#281)
                     fixes = repair_contrast(blocks, palette)
                     if fixes:
