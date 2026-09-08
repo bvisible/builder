@@ -764,8 +764,20 @@ def build_site(ctx, spec: dict) -> str:
 
     # 3. the design brief (K3 with design intelligence), grounded in real business data
     _progress(ctx, job_id, _("Writing the design brief"), 8)
-    contact_data = get_site_contact_context(profile)
-    contact_prompt = _contact_context_prompt(contact_data) or ""
+    # the instance's own company (ERPNext Company, its address, its logo) grounds the
+    # site of THAT business; a site built for another business on a secondary profile
+    # must not inherit its logo, address, phone or e-mail (the B2B test site carried the
+    # host company's logo in its header and its address on every page, 2026-09-08)
+    if _other_business(profile, site_name):
+        contact_data = {}
+        contact_prompt = (
+            " Contact details: none are verified for this business. Use clearly generic placeholders the client "
+            "will replace (a street in its town, a Swiss phone in the +41 format, an e-mail on its own domain) and "
+            "never another company's name, logo, address or e-mail."
+        )
+    else:
+        contact_data = get_site_contact_context(profile)
+        contact_prompt = _contact_context_prompt(contact_data) or ""
     if not logo_image and contact_data.get("logo"):
         logo_image = contact_data["logo"]
     prompt = f"{site_name}: {activity}. {spec.get('differentiators') or ''} Style: {spec.get('style_direction') or ''}{contact_prompt}"
@@ -932,7 +944,11 @@ def build_site(ctx, spec: dict) -> str:
                     break
                 _progress(ctx, job_id, _("Visual check: {0}").format(item["title"]), 96, {"pages_created": created})
                 reviews.append(visual_check.review_page(item, profile, page_model))
-            todo = [r for r in reviews if r["issues"] and r["name"] in by_name][: visual_check.MAX_REVISIONS]
+            # the pages that failed the first glance first, then the ones with most defects
+            todo = sorted(
+                [r for r in reviews if r["issues"] and r["name"] in by_name],
+                key=lambda r: (r["professional"] is not False, -len(r["issues"])),
+            )[: visual_check.MAX_REVISIONS]
             for r in todo:
                 if ctx.is_cancelled():
                     break

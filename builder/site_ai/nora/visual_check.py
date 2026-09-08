@@ -36,7 +36,12 @@ def loopback_page_url(route: str, profile: str | None) -> str:
     resolves to the loopback (bench writes it into /etc/hosts), and the profile is named
     in the query string for the theme's host resolution."""
     port = frappe.conf.get("webserver_port") or 8000
-    url = f"http://{frappe.local.site}:{port}/{(route or '').lstrip('/')}"
+    path = (route or "").strip("/")
+    # the home route redirects to "/" and the redirect drops the query string: the
+    # first run reviewed the default site's home instead of the profile's (2026-09-08)
+    if path in ("home", "index"):
+        path = ""
+    url = f"http://{frappe.local.site}:{port}/{path}"
     if profile:
         from urllib.parse import quote
 
