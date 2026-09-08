@@ -70,3 +70,39 @@ class TestLocks(FrappeTestCase):
 	def test_keys_are_scoped_per_page_task_and_session(self):
 		self.assertNotEqual(locks.page_key("p1"), locks.session_key("p1"))
 		self.assertNotEqual(locks.page_key("p1"), locks.page_key("p2"))
+
+	# //// Neoffice — added tests. frappe.clear_cache() erases every key of the site except the
+	# //// persistent_cache_keys patterns (builder_ai_* in hooks.py), and the heartbeat is what
+	# //// lets a 20-minute site build keep upstream's 11-minute locks.
+	def test_a_lock_survives_a_global_cache_clear(self):
+		token = locks.acquire(self.key, 30)
+		frappe.clear_cache()
+
+		self.assertTrue(locks.held(self.key))
+		locks.release(self.key, token)
+
+	def test_the_heartbeat_renews_a_held_lock(self):
+		import time
+
+		token = locks.acquire(self.key, 30)
+		cache = frappe.cache()
+		cache.expire(cache.make_key(self.key), 3)
+		beat = locks.Heartbeat(every=0.2)
+		beat.watch(self.key, token, 30)
+		time.sleep(0.6)
+		beat.stop()
+
+		self.assertGreater(cache.ttl(cache.make_key(self.key)), 3)
+		locks.release(self.key, token)
+
+	def test_the_heartbeat_never_revives_a_lock_it_no_longer_owns(self):
+		import time
+
+		token = locks.acquire(self.key, 30)
+		beat = locks.Heartbeat(every=0.2)
+		beat.watch(self.key, token, 30)
+		locks.release(self.key, token)
+		time.sleep(0.5)
+		beat.stop()
+
+		self.assertFalse(locks.held(self.key))

@@ -347,10 +347,30 @@ def _progress(ctx, job_id: str, message: str, progress: int, extra: dict | None 
 
 PAGE_STREAM_MAX_CHARS = 80_000  # a page of YAML is 10 to 20 k characters; beyond this the model is looping
 PAGE_STREAM_MAX_SECONDS = 480
-# a stream that has not produced its first character after this long is a stalled
-# connection, not a slow page: the Contact page of the B2C regeneration waited the
-# full 480 s twice for nothing before the retry
+# a stream that has sent nothing at all after this long is a stalled connection, not
+# a slow page: the Contact page of the B2C regeneration waited the full 480 s twice
+# for nothing before the retry
 PAGE_STREAM_FIRST_CHUNK_SECONDS = 90
+# a thinking model (Kimi K2.7) streams its reasoning before the first line of YAML;
+# on a home page that alone takes over 90 s, and counting only content killed two
+# healthy attempts in a row (B2B regeneration, 2026-09-08). Reasoning proves the
+# stream is alive; it only has to end within this budget.
+PAGE_STREAM_THINKING_SECONDS = 300
+
+
+def _delta_parts(chunk) -> tuple[str, str]:
+    """The (content, reasoning) text of one streamed chunk. Thinking models send their
+    reasoning as `reasoning_content` (litellm's Delta attribute, or the provider's own
+    field) with an empty content, for minutes, before the first line of the answer."""
+    choices = getattr(chunk, "choices", None)
+    if not choices:
+        return "", ""
+    delta = choices[0].delta
+    reasoning = getattr(delta, "reasoning_content", None)
+    if not reasoning:
+        extra = getattr(delta, "provider_specific_fields", None)
+        reasoning = extra.get("reasoning_content") if isinstance(extra, dict) else None
+    return (getattr(delta, "content", None) or ""), (reasoning or "")
 
 
 def _stream_text(ctx, model: str, messages: list, params: dict) -> str:
@@ -363,7 +383,7 @@ def _stream_text(ctx, model: str, messages: list, params: dict) -> str:
 
     stream = llm.complete(model, messages, params, stream=True)
     parts: list[str] = []
-    size, started = 0, time.time()
+    size, thought, started = 0, 0, time.time()
     try:
         for chunk in stream:
             if ctx.is_cancelled():
@@ -371,15 +391,16 @@ def _stream_text(ctx, model: str, messages: list, params: dict) -> str:
             elapsed = time.time() - started
             if size > PAGE_STREAM_MAX_CHARS or elapsed > PAGE_STREAM_MAX_SECONDS:
                 raise TimeoutError(f"page generation runaway after {size} chars / {int(elapsed)} s")
-            if not size and elapsed > PAGE_STREAM_FIRST_CHUNK_SECONDS:
+            if not size and not thought and elapsed > PAGE_STREAM_FIRST_CHUNK_SECONDS:
                 raise TimeoutError(f"page generation stalled: no output after {int(elapsed)} s")
+            if not size and elapsed > PAGE_STREAM_THINKING_SECONDS:
+                raise TimeoutError(f"page generation still thinking after {int(elapsed)} s ({thought} chars of reasoning)")
             try:
                 ctx.record_usage(chunk, model=model)
             except Exception:
                 pass
-            if not getattr(chunk, "choices", None):
-                continue
-            delta = chunk.choices[0].delta.content
+            delta, reasoning = _delta_parts(chunk)
+            thought += len(reasoning)
             if delta:
                 parts.append(delta)
                 size += len(delta)
@@ -547,8 +568,6 @@ def build_site(ctx, spec: dict) -> str:
     logo_image = (spec.get("logo_image") or "").strip() or None
     job_id = f"site_gen_{frappe.generate_hash(length=10)}"
     total = len(pages)
-    _update_generation_status(job_id, {"status": "running", "progress": 0, "total_pages": total, "current_step": "Starting", "pages_created": [], "error": None, "site_name": site_name, "started_at": now()})
-    ai_log("info", "=== NORA SITE BUILD STARTED ===", job_id=job_id, site_name=site_name, profile=profile, pages=[p["title"] for p in pages])
 
     # 1. the site's existing pages
     classes = classify_existing_pages(profile)
@@ -563,11 +582,16 @@ def build_site(ctx, spec: dict) -> str:
     protected = [p for p in classes["protected"] if p["name"] != host_page or not host_is_blank]
     if replace_existing == "auto" and protected:
         names = ", ".join(f"'{p['title']}'" for p in protected[:6])
+        ai_log("info", "Site build needs confirmation", site_name=site_name, profile=profile, protected=len(protected))
         return (
             f"CONFIRM_NEEDED: {len(protected)} existing page(s) were designed or edited by hand ({names}). "
             "Ask the user whether to replace them (replace_existing='force'), keep them and add the new pages beside "
             "(replace_existing='none'), then call generate_site again with the same arguments plus their choice."
         )
+    # the build is real from here on: the confirmation round trip above must leave neither
+    # a "running" job behind (get_site_generation_status) nor a START line without an end
+    _update_generation_status(job_id, {"status": "running", "progress": 0, "total_pages": total, "current_step": "Starting", "pages_created": [], "error": None, "site_name": site_name, "started_at": now()})
+    ai_log("info", "=== NORA SITE BUILD STARTED ===", job_id=job_id, site_name=site_name, profile=profile, pages=[p["title"] for p in pages])
     to_delete = [] if replace_existing == "none" else [p["name"] for p in classes["untouched"]]
     if replace_existing == "force":
         to_delete += [p["name"] for p in classes["protected"]]
