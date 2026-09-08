@@ -616,7 +616,8 @@ Create an emotional connection with the visitor through the company's history, v
 
 AVAILABLE SHORTCODES (use if relevant):
 - Team grid: {% include 'builder/templates/includes/team_grid.html' %}
-- Company timeline: {% include 'builder/templates/includes/company_timeline.html' %}""",
+- Company timeline: {% include 'builder/templates/includes/company_timeline.html' %}
+- Opening hours: {% include 'webshop/templates/includes/opening_hours.html' %}""",
 
             "services": """
 SERVICES PAGE:
@@ -635,8 +636,12 @@ AVAILABLE SHORTCODES:
 - Contact form: {% include 'builder/templates/includes/contact_form.html' %}
 - Google map: {% set address = "Full address" %}{% set height = "400px" %}{% include 'builder/templates/includes/google_map.html' %}
 - Contact info block: {% include 'builder/templates/includes/contact_info.html' %}
+- Opening hours: {% include 'webshop/templates/includes/opening_hours.html' %}
 
-NOTE: Create at least 4 sections — a contact page with only a form feels empty.""",
+NOTE: Create at least 4 sections — a contact page with only a form feels empty.
+NOTE: If the business has a shop or an office people walk into, put the opening hours
+on this page. The block is live — it reads the real hours, says whether the place is
+open right now and closes itself on public holidays. Never type hours by hand.""",
 
             "produits": """
 PRODUCTS PAGE:
