@@ -309,11 +309,13 @@ export class AIChatController {
 	private async checkTurnStillRunning() {
 		const sid = this.sessionId.value;
 		if (!sid || !this.isSubmitting.value || this.isCancelling.value) return;
-		const row: any = await createResource({ url: "frappe.client.get_value" })
-			.submit({ doctype: "Builder AI Session", filters: sid, fieldname: "is_running" })
+		// the session lock upstream holds for the whole turn (builder.ai.locks); the
+		// is_running column is a leftover of the old flag and stays 0
+		const state: any = await createResource({ url: "builder.site_ai.nora.api.turn_state" })
+			.submit({ session_id: sid })
 			.catch(() => null);
-		if (!row || this.sessionId.value !== sid || !this.isSubmitting.value) return;
-		if (Number(row.is_running)) {
+		if (!state || this.sessionId.value !== sid || !this.isSubmitting.value) return;
+		if (state.running) {
 			this.turnWatchdogMisses = 0;
 			return;
 		}

@@ -293,6 +293,10 @@ def _progress(ctx, job_id: str, message: str, progress: int, extra: dict | None 
 
 PAGE_STREAM_MAX_CHARS = 80_000  # a page of YAML is 10 to 20 k characters; beyond this the model is looping
 PAGE_STREAM_MAX_SECONDS = 480
+# a stream that has not produced its first character after this long is a stalled
+# connection, not a slow page: the Contact page of the B2C regeneration waited the
+# full 480 s twice for nothing before the retry
+PAGE_STREAM_FIRST_CHUNK_SECONDS = 90
 
 
 def _stream_text(ctx, model: str, messages: list, params: dict) -> str:
@@ -310,8 +314,11 @@ def _stream_text(ctx, model: str, messages: list, params: dict) -> str:
         for chunk in stream:
             if ctx.is_cancelled():
                 break
-            if size > PAGE_STREAM_MAX_CHARS or time.time() - started > PAGE_STREAM_MAX_SECONDS:
-                raise TimeoutError(f"page generation runaway after {size} chars / {int(time.time() - started)} s")
+            elapsed = time.time() - started
+            if size > PAGE_STREAM_MAX_CHARS or elapsed > PAGE_STREAM_MAX_SECONDS:
+                raise TimeoutError(f"page generation runaway after {size} chars / {int(elapsed)} s")
+            if not size and elapsed > PAGE_STREAM_FIRST_CHUNK_SECONDS:
+                raise TimeoutError(f"page generation stalled: no output after {int(elapsed)} s")
             try:
                 ctx.record_usage(chunk, model=model)
             except Exception:

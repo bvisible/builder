@@ -25,6 +25,23 @@ PAGE_LOCK_TTL = 660
 TASK_LOCK_TTL = 840
 SESSION_LOCK_TTL = 660
 
+
+# //// Neoffice — a site build runs INSIDE the chat turn (generate_site, 15 to 25 minutes),
+# //// under the longer job timeout builder.ai.api.run sets from site_config
+# //// (builder_agent_job_timeout, 3600 by default here). The page and session locks must
+# //// outlive that turn, or they expire mid-build and a second turn (or the panel's
+# //// watchdog, which reads the session lock) believes the turn is over.
+def _turn_ttl(default: int) -> int:
+	try:
+		timeout = int(frappe.conf.get("builder_agent_job_timeout") or 0)
+	except (TypeError, ValueError):
+		timeout = 0
+	return max(default, (timeout or 3600) + 60)
+
+
+PAGE_LOCK_TTL = _turn_ttl(PAGE_LOCK_TTL)
+SESSION_LOCK_TTL = _turn_ttl(SESSION_LOCK_TTL)
+
 RELEASE_IF_TOKEN_MATCHES = """
 if redis.call('get', KEYS[1]) == ARGV[1] then return redis.call('del', KEYS[1]) end
 return 0
