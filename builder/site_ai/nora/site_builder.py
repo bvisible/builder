@@ -317,14 +317,20 @@ def includes_block(includes: list[tuple[str, str]]) -> str:
     return "\n".join(lines)
 
 
-def _secondary_profile(profile: str | None) -> bool:
-    """A profile other than the instance's default site. The shop app's data (products,
-    brands, opening hours) is instance-wide: offered to a secondary profile, the B2B site
-    of the regeneration showed the host bakery's products and opening hours."""
+def _other_business(profile: str | None) -> bool:
+    """Whether this profile is another business than the instance's default site. The
+    shop app's data (products, brands, opening hours, the cart) is instance-wide, so a
+    profile of ANOTHER company must not show it (the B2B test site listed the host
+    bakery's products and opening hours), while a second storefront of the SAME company
+    (a B2B space beside the shop) shows exactly the same shop and hours, as it should."""
     if not profile:
         return False
     try:
-        return not frappe.db.get_value("Website Profile", profile, "is_default")
+        if frappe.db.get_value("Website Profile", profile, "is_default"):
+            return False
+        mine = frappe.db.get_value("Website Profile", profile, "company")
+        default = frappe.db.get_value("Website Profile", {"is_default": 1}, "company")
+        return not default or mine != default
     except Exception:
         return True
 
@@ -338,7 +344,7 @@ def available_includes(page_type: str, site_type: str = "vitrine", profile: str 
         installed = set(frappe.get_installed_apps())
     except Exception:
         installed = {"builder"}
-    shop_data = not _secondary_profile(profile)
+    shop_data = not _other_business(profile)
     out = []
     for tag, purpose in PAGE_INCLUDES.get(page_type, []):
         path = re.search(r"include\s+['\"]([^'\"]+)['\"]", tag)
@@ -580,9 +586,9 @@ def apply_navigation(config, created: list[dict], site_type: str, description: s
         seen.add(route)
         home = route in ("/", "/home", "/index")
         config.append("menu_items", {"label": _("Home", lang=lang) if home else page["title"], "url": "/" if home else route, "is_external": False, "open_in_new_tab": False})
-        # /all-products is the instance's catalogue: on a secondary profile it would be
-        # another business's shop in this site's menu (the florist listed the bakery)
-        if site_type in ("ecommerce", "ecommerce_search") and home and not _secondary_profile(profile):
+        # /all-products is the instance's catalogue: on another business's profile it would
+        # be someone else's shop in this site's menu (the florist listed the bakery)
+        if site_type in ("ecommerce", "ecommerce_search") and home and not _other_business(profile):
             config.append("menu_items", {"label": _("Shop", lang=lang), "url": "/all-products", "is_external": False, "open_in_new_tab": False})
     for field, value in (("footer_logo_type", config.get("logo_type")), ("footer_logo_text", config.get("logo_text")), ("footer_logo_image", config.get("logo_image")), ("show_footer_logo", True), ("footer_menu_source", "Custom links")):
         if hasattr(config, field):

@@ -397,11 +397,30 @@ class TestAccent(unittest.TestCase):
 
 
 class TestShopIncludes(unittest.TestCase):
-	"""The shop's includes show instance-wide data: never on a secondary profile, and
-	the carousels only on an e-commerce site."""
+	"""The shop's includes show instance-wide data: never on another business's profile
+	(a second storefront of the same company keeps them), and the carousels only on an
+	e-commerce site."""
 
-	def test_secondary_profile_gets_no_shop_include(self):
-		with patch("builder.site_ai.nora.site_builder._secondary_profile", return_value=True):
+	def test_other_business_is_read_from_the_profile_company(self):
+		from builder.site_ai.nora.site_builder import _other_business
+
+		values = {("Website Profile", "Espace B2B", "is_default"): 0, ("Website Profile", "Espace B2B", "company"): "Guigoz SA",
+			("Website Profile", "Nora Test", "is_default"): 0, ("Website Profile", "Nora Test", "company"): None,
+			("Website Profile", "Main", "is_default"): 1}
+
+		def get_value(doctype, name, field):
+			if isinstance(name, dict):
+				return "Guigoz SA"
+			return values.get((doctype, name, field))
+
+		with patch("builder.site_ai.nora.site_builder.frappe.db.get_value", side_effect=get_value):
+			self.assertFalse(_other_business(None))
+			self.assertFalse(_other_business("Main"))
+			self.assertFalse(_other_business("Espace B2B"))
+			self.assertTrue(_other_business("Nora Test"))
+
+	def test_another_business_gets_no_shop_include(self):
+		with patch("builder.site_ai.nora.site_builder._other_business", return_value=True):
 			tags = [t for t, _ in available_includes("contact", "ecommerce", "Nora Test 2")]
 		self.assertTrue(any("contact_form" in t for t in tags))
 		self.assertFalse(any("webshop/" in t for t in tags))
@@ -416,7 +435,7 @@ class TestShopIncludes(unittest.TestCase):
 		def build(secondary):
 			config = MagicMock()
 			config.get.return_value = None
-			with patch("builder.site_ai.nora.site_builder._secondary_profile", return_value=secondary), patch(
+			with patch("builder.site_ai.nora.site_builder._other_business", return_value=secondary), patch(
 				"builder.site_ai.nora.site_builder.frappe"
 			):
 				apply_navigation(config, created, "ecommerce", "florist", "Nora Test" if secondary else None, "fr")
@@ -426,7 +445,7 @@ class TestShopIncludes(unittest.TestCase):
 		self.assertIn("/all-products", build(secondary=False))
 
 	def test_carousels_need_an_ecommerce_site(self):
-		with patch("builder.site_ai.nora.site_builder._secondary_profile", return_value=False), patch(
+		with patch("builder.site_ai.nora.site_builder._other_business", return_value=False), patch(
 			"frappe.get_installed_apps", return_value=["frappe", "builder", "webshop"]
 		):
 			vitrine = [t for t, _ in available_includes("accueil", "vitrine", None)]
