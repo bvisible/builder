@@ -606,3 +606,23 @@ class TestVisualCheck(unittest.TestCase):
 		text = page_brief_text(site, FakeBrief(), page, handles, "", "bento", "French", [], ("CTA", "/"), revision="REVISION: fix the hero")
 		self.assertTrue(text.rstrip().endswith("REVISION: fix the hero"))
 
+
+class TestLayout(unittest.TestCase):
+	"""An unplaced child of a wide grid spans the row (layout.py)."""
+
+	def test_orphans_of_a_twelve_column_grid_span_the_row(self):
+		from builder.site_ai.nora.layout import place_orphans
+
+		grid = {"element": "div", "baseStyles": {"display": "grid", "gridTemplateColumns": "repeat(12, 1fr)"}, "children": [
+			{"element": "span", "baseStyles": {"gridColumn": "1 / -1"}},
+			{"element": "h2", "baseStyles": {"gridColumn": "1 / -1"}},
+			{"element": "div", "baseStyles": {}, "children": [{"element": "div"}]},
+		]}
+		logos = {"element": "div", "baseStyles": {"display": "grid", "gridTemplateColumns": "repeat(12, 1fr)"}, "children": [{"element": "img", "baseStyles": {}} for _ in range(12)]}
+		narrow = {"element": "div", "baseStyles": {"display": "grid", "gridTemplateColumns": "repeat(3, 1fr)"}, "children": [{"element": "div", "baseStyles": {}} for _ in range(3)]}
+		blocks = [{"element": "section", "children": [grid, logos, narrow]}]
+		self.assertEqual(place_orphans(blocks), 1)
+		self.assertEqual(grid["children"][2]["baseStyles"]["gridColumn"], "1 / -1")
+		self.assertNotIn("gridColumn", logos["children"][0]["baseStyles"])
+		self.assertNotIn("gridColumn", narrow["children"][0]["baseStyles"])
+
