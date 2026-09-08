@@ -541,7 +541,8 @@ class TestChromeTools(unittest.TestCase):
 		self.assertEqual(payload["footer_links"], [{"label": "CGV", "url": "/cgv", "column_name": "Infos"}])
 		self.assertNotIn("secret", payload)
 		self.assertNotIn("_profile", payload)
-		self.assertNotIn("primary_color", payload)
+		# the design-system colours are chrome fields too (the tokens follow through the hooks)
+		self.assertEqual(payload["primary_color"], "#123456")
 		self.assertEqual(chrome_payload({"nope": 1}), {})
 
 
