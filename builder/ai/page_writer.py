@@ -302,7 +302,9 @@ def convert_yaml_block(node, is_root: bool = False) -> dict | None:
 	if isinstance(node.get("classes"), list) and node["classes"]:
 		block["classes"] = node["classes"]
 	if node.get("text"):
-		block["innerHTML"] = node["text"]
+		# //// Neoffice — a bare number in YAML (`text: 2024`, a key figure) arrives as an int and
+		# //// every consumer of innerHTML expects a string (contrast.py stripped it: AttributeError).
+		block["innerHTML"] = node["text"] if isinstance(node["text"], str) else str(node["text"])
 	if node.get("component"):
 		block["extendedFromComponent"] = node["component"]
 	if node.get("child_of"):

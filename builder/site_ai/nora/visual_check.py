@@ -95,16 +95,30 @@ REVIEW_CONTEXT = (
 )
 
 
+def _screenshot(url: str, title: str) -> dict:
+    """Full page first; a long page can exceed Chromium's screenshot deadline (Services,
+    30 s on osiris), and the viewport alone is still a review where a skipped page is none."""
+    from builder.site_ai.inspiration.screenshotter import capture_website_screenshot
+
+    try:
+        shot = capture_website_screenshot(url, full_page=True)
+        if shot.get("success"):
+            return shot
+        raise RuntimeError(str(shot.get("error") or "screenshot failed"))
+    except Exception as e:
+        ai_log("warning", "Full-page screenshot failed, viewport only", page=title, error=str(e)[:120])
+        return capture_website_screenshot(url, full_page=False)
+
+
 def review_page(page: dict, profile: str | None, model: str, site_name: str = "", activity: str = "") -> dict:
     """Screenshot one page and read it. Never raises: a page that cannot be reviewed
     is reported as such."""
     from builder.site_ai.ingestion.visual_critique import critique_screenshot
-    from builder.site_ai.inspiration.screenshotter import capture_website_screenshot
 
     report = {"name": page["name"], "title": page["title"], "route": page["route"], "professional": None, "issues": [], "error": None, "overall": ""}
     url = loopback_page_url(page["route"], profile)
     try:
-        shot = capture_website_screenshot(url, full_page=True)
+        shot = _screenshot(url, page["title"])
         frappe.db.commit()  # the screenshot File must be visible to the model's read
         if not shot.get("success"):
             report["error"] = "screenshot failed"
