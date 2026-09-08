@@ -580,7 +580,9 @@ def apply_navigation(config, created: list[dict], site_type: str, description: s
         seen.add(route)
         home = route in ("/", "/home", "/index")
         config.append("menu_items", {"label": _("Home", lang=lang) if home else page["title"], "url": "/" if home else route, "is_external": False, "open_in_new_tab": False})
-        if site_type in ("ecommerce", "ecommerce_search") and home:
+        # /all-products is the instance's catalogue: on a secondary profile it would be
+        # another business's shop in this site's menu (the florist listed the bakery)
+        if site_type in ("ecommerce", "ecommerce_search") and home and not _secondary_profile(profile):
             config.append("menu_items", {"label": _("Shop", lang=lang), "url": "/all-products", "is_external": False, "open_in_new_tab": False})
     for field, value in (("footer_logo_type", config.get("logo_type")), ("footer_logo_text", config.get("logo_text")), ("footer_logo_image", config.get("logo_image")), ("show_footer_logo", True), ("footer_menu_source", "Custom links")):
         if hasattr(config, field):

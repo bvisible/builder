@@ -406,6 +406,25 @@ class TestShopIncludes(unittest.TestCase):
 		self.assertTrue(any("contact_form" in t for t in tags))
 		self.assertFalse(any("webshop/" in t for t in tags))
 
+	def test_the_shop_menu_entry_stays_on_the_shop(self):
+		from unittest.mock import MagicMock
+
+		from builder.site_ai.nora.site_builder import apply_navigation
+
+		created = [{"name": "p1", "title": "Accueil", "route": "/"}, {"name": "p2", "title": "Bouquets", "route": "/bouquets"}]
+
+		def build(secondary):
+			config = MagicMock()
+			config.get.return_value = None
+			with patch("builder.site_ai.nora.site_builder._secondary_profile", return_value=secondary), patch(
+				"builder.site_ai.nora.site_builder.frappe"
+			):
+				apply_navigation(config, created, "ecommerce", "florist", "Nora Test" if secondary else None, "fr")
+			return [c.args[1]["url"] for c in config.append.call_args_list if c.args[0] == "menu_items"]
+
+		self.assertNotIn("/all-products", build(secondary=True))
+		self.assertIn("/all-products", build(secondary=False))
+
 	def test_carousels_need_an_ecommerce_site(self):
 		with patch("builder.site_ai.nora.site_builder._secondary_profile", return_value=False), patch(
 			"frappe.get_installed_apps", return_value=["frappe", "builder", "webshop"]
@@ -452,4 +471,3 @@ class TestBriefCall(unittest.TestCase):
 		self.assertEqual(answer.x, 1)
 		self.assertGreaterEqual(seen["max_tokens"], STRUCTURED_MAX_TOKENS)
 		self.assertEqual(seen["response_format"], {"type": "json_object"})
-
