@@ -11,17 +11,18 @@ Pure functions over the block tree."""
 import re
 
 STYLE_KEYS = ("baseStyles", "mobileStyles", "tabletStyles", "rawStyles")
-# desktop caps in rem by element; anything else (a display number in a span, a div) gets the generic one
-DESKTOP_CAP = {"h1": 4.5, "h2": 3.25, "h3": 2.25, "h4": 1.75, "h5": 1.5, "h6": 1.25, "p": 1.35, "li": 1.35, "a": 1.35, "small": 1, "generic": 4.5}
-MOBILE_CAP = {"h1": 2.75, "h2": 2.25, "h3": 1.75, "h4": 1.5, "h5": 1.25, "h6": 1.125, "p": 1.125, "li": 1.125, "a": 1.125, "small": 0.875, "generic": 2.75}
-MIN_REM = {"h1": 2, "h2": 1.5, "h3": 1.25, "generic": 1}
+HEADING_CAP = {"h1": 4.5, "h2": 3.25, "h3": 2.25, "h4": 1.75, "h5": 1.5, "h6": 1.25}
+HEADING_CAP_MOBILE = {"h1": 2.75, "h2": 2.25, "h3": 1.75, "h4": 1.5, "h5": 1.25, "h6": 1.125}
+HEADING_MIN = {"h1": 2, "h2": 1.5, "h3": 1.25}
+# a p, span or div is display type when its viewport size is large (the brand name of a
+# hero at 11vw) and running text when it is small (a 3vw paragraph): the cap follows
+DISPLAY_VW = 4
+DISPLAY_CAP, DISPLAY_CAP_MOBILE = 4.5, 2.75
+TEXT_CAP, TEXT_CAP_MOBILE = 1.5, 1.125
+FIXED_CAP, FIXED_CAP_MOBILE = 6, 3.5
 ROOT_PX = 16
 SIZE = re.compile(r"^\s*([\d.]+)\s*(rem|em|px|vw)\s*$", re.I)
-
-
-def _cap(element: str, mobile: bool) -> float:
-    table = MOBILE_CAP if mobile else DESKTOP_CAP
-    return table.get((element or "").lower(), table["generic"])
+OUR_CLAMP = re.compile(r"^clamp\(([\d.]+)rem,\s*([\d.]+)vw,\s*([\d.]+)rem\)$")
 
 
 def _walk(blocks: list):
@@ -35,20 +36,34 @@ def _walk(blocks: list):
 
 
 def capped_font_size(value: str, element: str, mobile: bool = False) -> str | None:
-    """The font size to write instead of `value`, or None when it can stay."""
-    m = SIZE.match(str(value or ""))
+    """The font size to write instead of `value`, or None when it can stay. A clamp this
+    module wrote earlier is re-derived from its vw part, so the rule can be re-applied."""
+    text = str(value or "").strip()
+    again = OUR_CLAMP.match(text)
+    if again:
+        text = f"{again.group(2)}vw"
+    m = SIZE.match(text)
     if not m:
         return None
     number, unit = float(m.group(1)), m.group(2).lower()
-    cap = _cap(element, mobile)
+    tag = (element or "").lower()
+    heading = tag in HEADING_CAP
     if unit == "vw":
-        low = MIN_REM.get((element or "").lower(), MIN_REM["generic"])
-        low = min(low, cap)
-        return f"clamp({low:g}rem, {number:g}vw, {cap:g}rem)"
+        if heading:
+            cap = (HEADING_CAP_MOBILE if mobile else HEADING_CAP)[tag]
+            low = min(HEADING_MIN.get(tag, 1), cap)
+        elif number >= DISPLAY_VW:
+            cap, low = (DISPLAY_CAP_MOBILE if mobile else DISPLAY_CAP), (1.5 if mobile else 2)
+        else:
+            cap, low = (TEXT_CAP_MOBILE if mobile else TEXT_CAP), 1
+        out = f"clamp({low:g}rem, {number:g}vw, {cap:g}rem)"
+        return None if out == str(value or "").strip() else out
     rem = number / ROOT_PX if unit == "px" else number
-    if rem > cap:
-        return f"{cap:g}rem"
-    return None
+    if heading:
+        cap = (HEADING_CAP_MOBILE if mobile else HEADING_CAP)[tag]
+    else:
+        cap = FIXED_CAP_MOBILE if mobile else FIXED_CAP
+    return f"{cap:g}rem" if rem > cap else None
 
 
 def cap_font_sizes(blocks: list) -> int:
