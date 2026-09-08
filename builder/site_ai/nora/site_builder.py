@@ -322,7 +322,7 @@ def page_brief_text(site: dict, brief, page: dict, handles: dict, contact_prompt
         ),
         "CLASS CONTRACT: " + CLASS_CONTRACT,
         (
-            "INCLUDES (optional, each one as the innerHTML of its own plain div block, copied exactly, never inside a grid or flex row):\n"
+            "INCLUDES (optional, each one as the `text` of its own plain div block, copied exactly, never inside a grid or flex row):\n"
             + "\n".join(f"- {tag} \u2014 {purpose}" for tag, purpose in includes)
             if includes else ""
         ),
