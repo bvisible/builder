@@ -670,6 +670,7 @@ def build_site(ctx, spec: dict) -> str:
     from builder.site_ai.logging import ai_log
     from builder.site_ai.nora.accent import dominant_accent, rewrite_hex
     from builder.site_ai.nora import visual_check
+    from builder.site_ai.nora.layout import place_orphans
     from builder.site_ai.nora.typography import cap_font_sizes
     from builder.site_ai.nora.prompts import page_profile
 
@@ -874,6 +875,11 @@ def build_site(ctx, spec: dict) -> str:
                             ai_log("info", "Accent token minted", page=page["title"], value=foreign)
                         edits = rewrite_hex(blocks, {foreign: handles["accent"]})
                         ai_log("info", "Accent folded into the token", page=page["title"], value=foreign, edits=edits)
+                    # nor the placement on the 12-column grid: see layout.py (a cards wrapper
+                    # squeezed into one column)
+                    placed = place_orphans(blocks)
+                    if placed:
+                        ai_log("info", "Grid orphans placed", page=page["title"], edits=placed)
                     # nor the type scale: see typography.py (a 210 px paragraph at 11vw)
                     capped = cap_font_sizes(blocks)
                     if capped:
