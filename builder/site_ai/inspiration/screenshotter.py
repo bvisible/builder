@@ -67,6 +67,25 @@ class WebsiteScreenshotter:
                 # Navigate to URL
                 await page.goto(url, timeout=timeout, wait_until="networkidle")
 
+                # Lazy images only load once scrolled into view: walk the page to the
+                # bottom and back before a full-page capture, or every photo below the
+                # fold is missing from the screenshot (and a reviewer reports it broken).
+                if full_page:
+                    try:
+                        await page.evaluate(
+                            """async () => {
+                                const step = Math.max(400, window.innerHeight);
+                                for (let y = 0; y < document.body.scrollHeight; y += step) {
+                                    window.scrollTo(0, y);
+                                    await new Promise(r => setTimeout(r, 120));
+                                }
+                                window.scrollTo(0, 0);
+                            }"""
+                        )
+                        await page.wait_for_load_state("networkidle", timeout=15000)
+                    except Exception:
+                        pass
+
                 # Wait a bit for any animations to settle
                 await page.wait_for_timeout(1000)
 
