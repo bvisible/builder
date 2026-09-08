@@ -58,6 +58,9 @@ def _option(line: str) -> dict:
     colors = HEX.findall(line)
     line = re.sub(r"\[colors?:[^\]]*\]", "", line).strip()
     label, _, description = line.partition(":")
+    if not description:
+        # "Accueil — la vitrine" / "Accueil – la vitrine": the dash is the separator
+        label, _, description = re.split(r"(\s[—–]\s)", line, maxsplit=1) + ["", ""][: 3 - len(re.split(r"(\s[—–]\s)", line, maxsplit=1))]
     label = label.strip() or line.strip()
     option = {"label": label[:80]}
     if description.strip():
