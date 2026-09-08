@@ -108,6 +108,19 @@ class WebsiteScreenshotter:
                 # Navigate to URL
                 await page.goto(url, timeout=timeout, wait_until="networkidle")
 
+                # The site's pages scroll inside <body> (html and body are 100% high,
+                # overflow-y auto): the document itself is one viewport tall, and a
+                # full-page capture of it was the hero over a blank (2026-09-08). Let the
+                # document grow instead, so the capture scrolls it like a visitor would
+                # and a 100vh hero keeps the height of the viewport, not of the page.
+                if full_page:
+                    try:
+                        await page.add_style_tag(
+                            content="html,body{height:auto!important;max-height:none!important;overflow:visible!important}"
+                        )
+                    except Exception:
+                        pass
+
                 # Lazy images only load once scrolled into view: walk the page to the
                 # bottom and back before a full-page capture, or every photo below the
                 # fold is missing from the screenshot (and a reviewer reports it broken).
@@ -126,18 +139,19 @@ class WebsiteScreenshotter:
                         await page.wait_for_load_state("networkidle", timeout=15000)
                     except Exception:
                         pass
-                    # The site's pages scroll inside <body> (html and body are 100% high,
-                    # overflow-y auto): the document itself is one viewport tall, and a
-                    # full-page capture of it was the hero over a blank (2026-09-08). A
-                    # viewport as tall as the content puts every section, and every lazy
-                    # image, in view before the capture.
+                    # A page that still scrolls inside a box of its own (a layout the
+                    # style above does not reach) gets a viewport as tall as its content
+                    # as a last resort; a page whose document grew keeps the real viewport,
+                    # so its 100vh sections stay one screen tall (the Boutique hero came
+                    # out 4 000 px high with a tall viewport, 2026-09-08).
                     try:
-                        height = await page.evaluate(
-                            "() => Math.max(document.documentElement.scrollHeight, document.body.scrollHeight)"
+                        doc_height, body_height = await page.evaluate(
+                            "() => [document.documentElement.scrollHeight, document.body.scrollHeight]"
                         )
-                        height = min(int(height or 0), MAX_CAPTURE_HEIGHT)
-                        if height > self.viewport_height:
-                            await page.set_viewport_size({"width": self.viewport_width, "height": height})
+                        if int(doc_height or 0) <= self.viewport_height < int(body_height or 0):
+                            await page.set_viewport_size(
+                                {"width": self.viewport_width, "height": min(int(body_height), MAX_CAPTURE_HEIGHT)}
+                            )
                             await page.wait_for_load_state("networkidle", timeout=15000)
                     except Exception:
                         pass
