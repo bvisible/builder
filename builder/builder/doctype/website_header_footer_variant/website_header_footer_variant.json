@@ -537,7 +537,7 @@
    "fieldname": "opening_hours_section",
    "fieldtype": "Section Break",
    "label": "Opening Hours",
-   "description": "//// Neoffice — shows the shop's opening hours in the footer. The block itself, its styles and its data belong to webshop: the footer only drops the marker, so a site without webshop simply renders nothing."
+   "description": "//// Neoffice — shows the shop's opening hours in the footer. The block itself, its styles and its data belong to webshop: the footer only drops the marker, so a site without webshop renders nothing. Note the hours are instance-wide (one Webshop Settings for the whole bench): a secondary Website Profile showing them displays the same hours as the main site, which is right for a second storefront of the same shop and wrong for a different location."
   },
   {
    "fieldname": "show_opening_hours",
