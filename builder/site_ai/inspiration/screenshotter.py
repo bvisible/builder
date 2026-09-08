@@ -127,10 +127,15 @@ class WebsiteScreenshotter:
                 # Wait a bit for any animations to settle
                 await page.wait_for_timeout(1000)
 
-                # Capture screenshot
+                # Capture screenshot. Animations are run to their end first: a section that
+                # fades in as it scrolls into view keeps its `from { opacity: 0 }` outside
+                # the viewport, and the full-page capture of the B2C home showed the hero
+                # over 6000 px of blank (2026-09-08).
                 screenshot_bytes = await page.screenshot(
                     full_page=full_page,
-                    type="png"
+                    type="png",
+                    animations="disabled",
+                    caret="hide",
                 )
 
                 # Get page metadata
