@@ -572,7 +572,6 @@
    "mandatory_depends_on": "show_newsletter"
   },
   {
-   "default": "Subscribe to our newsletter",
    "depends_on": "show_newsletter",
    "fieldname": "newsletter_title",
    "fieldtype": "Data",
@@ -583,7 +582,6 @@
    "fieldtype": "Column Break"
   },
   {
-   "default": "Enter your email",
    "depends_on": "show_newsletter",
    "fieldname": "newsletter_placeholder",
    "fieldtype": "Data",

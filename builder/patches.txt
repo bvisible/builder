@@ -38,3 +38,4 @@ builder.builder.patches.split_page_header_style
 builder.builder.patches.drop_builder_chat_session
 builder.builder.patches.adopt_design_system
 builder.builder.patches.drop_ai_settings_fields
+builder.builder.patches.blank_default_newsletter_strings

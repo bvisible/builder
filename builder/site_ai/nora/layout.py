@@ -10,6 +10,7 @@ forgotten child across the row is what the author meant.
 Pure functions over the block tree."""
 
 import re
+import unicodedata
 
 STYLE_KEYS = ("baseStyles", "tabletStyles")
 WIDE_GRID = re.compile(r"repeat\(\s*(\d+)\s*,")
@@ -54,3 +55,79 @@ def place_orphans(blocks: list) -> int:
             child.setdefault("baseStyles", {})["gridColumn"] = "1 / -1"
             edits += 1
     return edits
+
+
+def _is_grid(block: dict) -> bool:
+    return "u-grid" in (block.get("classes") or []) or (block.get("baseStyles") or {}).get("display") == "grid"
+
+
+def _is_plain_wrapper(block: dict) -> bool:
+    """A div with no class, no style and no text of its own."""
+    if (block.get("element") or "div") != "div" or block.get("classes"):
+        return False
+    text = block.get("innerHTML")
+    if isinstance(text, str) and text.strip():
+        return False
+    for key in ("baseStyles", "mobileStyles", "tabletStyles", "rawStyles"):
+        if any(value != "contents" for value in (block.get(key) or {}).values()):
+            return False
+    return True
+
+
+def unwrap_grid_wrappers(blocks: list) -> int:
+    """Hoist the items of a grid out of a single plain wrapper. The model sometimes
+    writes grid > div > cards: the wrapper is the grid's only item, takes one column,
+    and the cards stack inside it — twice on the Boutique page of the card-driven B2C
+    run (2026-09-08), and the vision model still called the page professional.
+    Returns the edit count."""
+    edits = 0
+    for block in _walk(blocks):
+        if not _is_grid(block):
+            continue
+        children = [c for c in (block.get("children") or []) if isinstance(c, dict)]
+        if len(children) != 1 or not _is_plain_wrapper(children[0]):
+            continue
+        items = [c for c in (children[0].get("children") or []) if isinstance(c, dict)]
+        if len(items) < 2:
+            continue
+        block["children"] = items
+        edits += 1
+    return edits
+
+
+def _plain(text) -> str:
+    """Text reduced for comparison: no markup, no accents, no case, no punctuation."""
+    text = re.sub(r"<[^>]+>", " ", str(text or ""))
+    text = unicodedata.normalize("NFKD", text)
+    text = "".join(ch for ch in text if not unicodedata.combining(ch))
+    return re.sub(r"[^a-z0-9]+", " ", text.lower()).strip()
+
+
+def strip_title_band(blocks: list, title: str) -> int:
+    """Drop the title the model writes at the top of an interior page although the site
+    renders its own band there (page_header.py): "À propos" stood twice on the card-driven
+    B2C run (2026-09-08). A first section that is only the title, with at most a subtitle,
+    goes; a first section with more content keeps everything but the repeated heading.
+    Returns the number of blocks removed."""
+    wanted = _plain(title)
+    root = blocks[0] if blocks and isinstance(blocks[0], dict) else None
+    sections = [c for c in ((root or {}).get("children") or []) if isinstance(c, dict)]
+    if not wanted or not sections:
+        return 0
+    first = sections[0]
+    headings = [b for b in _walk([first]) if b.get("element") in ("h1", "h2") and _plain(b.get("innerHTML")) == wanted]
+    if not headings:
+        return 0
+    texts = [b for b in _walk([first]) if isinstance(b.get("innerHTML"), str) and "<svg" not in b["innerHTML"] and _plain(b["innerHTML"])]
+    images = [b for b in _walk([first]) if b.get("element") == "img" or (b.get("baseStyles") or {}).get("backgroundImage")]
+    if len(texts) <= 2 and not images:
+        root["children"] = [c for c in root["children"] if c is not first]
+        return 1
+    removed = 0
+    for block in _walk([first]):
+        kids = block.get("children") or []
+        kept = [k for k in kids if not any(k is h for h in headings)]
+        if len(kept) != len(kids):
+            block["children"] = kept
+            removed += len(kids) - len(kept)
+    return removed

@@ -235,6 +235,33 @@ def get_assistant_name() -> str:
     return name or ASSISTANT_NAME
 
 
+POWERED_BY = {"label": "Unpress", "url": "https://unpress.cloud"}
+
+
+def get_powered_by() -> dict:
+    """The product credited in the footer of every page ("Powered by …").
+
+    Resolution order, like get_assistant_name(): `powered_by_label` and `powered_by_url`
+    in site_config, then the app hooks `builder_powered_by_label` and
+    `builder_powered_by_url` (an edition names itself once, in its own hooks.py), then
+    the default. Label and link come from the same layer, or a site would credit one
+    product and link another.
+    """
+    conf = getattr(frappe.local, "conf", None) or {}
+    label, url = conf.get("powered_by_label"), conf.get("powered_by_url")
+    if not (label and url):
+        try:
+            labels = frappe.get_hooks("builder_powered_by_label") or []
+            urls = frappe.get_hooks("builder_powered_by_url") or []
+        except Exception:
+            labels, urls = [], []
+        if labels and urls:
+            label, url = labels[-1], urls[-1]
+    if label and url:
+        return {"label": str(label), "url": str(url)}
+    return dict(POWERED_BY)
+
+
 def get_image_settings() -> dict:
     """Image backend for this site: site_config > Builder Settings > defaults.
 

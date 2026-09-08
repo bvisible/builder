@@ -16,7 +16,12 @@ from frappe import _
 from frappe.utils import cstr
 
 # //// Neoffice — the guard the two editor endpoints below carry.
+from builder.site_ai.config import get_powered_by
 from builder.utils import builder_role_required
+
+# the English strings the newsletter fields once shipped as defaults; blank, footer.html
+# translates them in the visitor's language (patch blank_default_newsletter_strings)
+NEWSLETTER_DEFAULTS = {"newsletter_title": "Subscribe to our newsletter", "newsletter_placeholder": "Enter your email"}
 
 
 # //// Neoffice — whitelist REMOVED (was @frappe.whitelist(allow_guest=True)). This is a
@@ -176,6 +181,9 @@ def render_footer(config=None) -> str:
 			"opening_hours": _opening_hours_for_footer(config),
 			"newsletter_title": config.newsletter_title,
 			"newsletter_placeholder": config.newsletter_placeholder,
+			# the product credited under the copyright line: the edition's, never a name
+			# hard-coded in a template (see config.get_powered_by)
+			"powered_by": get_powered_by(),
 			"footer_columns": footer_columns,
 			# an embed the client already has — a newsletter form, a booking
 			# widget. Rendered as-is: it is their code, not ours to sanitise
