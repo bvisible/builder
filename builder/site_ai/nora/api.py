@@ -55,3 +55,17 @@ def site_creation_page(website_profile: str | None = None) -> dict:
     page.insert(ignore_permissions=True)
     frappe.db.commit()
     return {"page_id": page.name, "created": True}
+
+
+@frappe.whitelist()
+@builder_role_required()
+def turn_state(session_id: str) -> dict:
+	"""Whether a turn of this chat session is still running, read from the session
+	lock upstream holds for the whole turn (a site build included). The panel's
+	watchdog polls it when a closing event may have been lost."""
+	from builder.ai import locks
+	from builder.utils import require_session_owner
+
+	require_session_owner(session_id)
+	return {"running": bool(session_id) and locks.held(locks.session_key(session_id))}
+
