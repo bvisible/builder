@@ -111,7 +111,7 @@ class TestPageBrief(unittest.TestCase):
 		text = page_brief_text(site, FakeBrief(), {"title": "Contact", "route": "contact", "type": "contact"}, handles, "", "bento", "French", [], ("CTA", "/"))
 		self.assertIn("INCLUDES", text)
 		self.assertIn("builder/templates/includes/contact_form.html", text)
-		self.assertIn("innerHTML of its own plain div block", text)
+		self.assertIn("`text` of its own plain div block", text)
 		self.assertTrue(all(tag.startswith("{%") for tag, _ in available_includes("contact")))
 		self.assertEqual(available_includes("generic"), [])
 
