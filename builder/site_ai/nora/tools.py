@@ -57,6 +57,8 @@ generate_site = Tool(
             "secondary_color": {"type": "string", "description": "Hex colour, optional."},
             "style_direction": {"type": "string", "description": "The layout direction the user picked, in a few words (e.g. 'editorial grid, calm', 'bold poster')."},
             "logo_image": {"type": "string", "description": "Site file URL of the uploaded logo (/files/...), if any."},
+            "inspiration_urls": {"type": "array", "items": {"type": "string"}, "description": "Public sites the user likes (up to 3 URLs): each is screenshotted and read for its colours, and the brief sees the pictures."},
+            "inspiration_images": {"type": "array", "items": {"type": "string"}, "description": "Pictures the user likes (up to 3 site file URLs: an upload card's /files/..., or the path named in a message with an attached image)."},
             "website_profile": {"type": "string", "description": "The Website Profile (site) to build for; the open page's profile when omitted."},
             "language": {"type": "string", "description": "Language of the site copy (ISO code or name); the site default when omitted."},
             "replace_existing": {
@@ -178,4 +180,43 @@ update_site_chrome = Tool(
     },
 )
 
-TOOLS = [generate_site, get_site_chrome, update_site_chrome]
+def run_inspect_inspiration(ctx, args: dict) -> str:
+    from builder.site_ai.nora.inspiration import clean_list, describe, gather
+    from builder.site_ai.nora.site_builder import _page_model
+
+    urls, images = clean_list((args or {}).get("urls")), clean_list((args or {}).get("images"))
+    if not urls and not images:
+        return "FAILED: give at least one public URL or one site file URL (/files/...)."
+    try:
+        found = gather(urls, images)
+    except Exception as e:
+        frappe.log_error("inspect_inspiration failed", frappe.get_traceback())
+        return f"FAILED: the inspirations could not be read: {str(e)[:200]}"
+    try:
+        model = _page_model(ctx)
+    except Exception:
+        model = None
+    return describe(found, model=model)
+
+
+inspect_inspiration = Tool(
+    name="inspect_inspiration",
+    side="server",
+    handler=run_inspect_inspiration,
+    description=(
+        "Look at the sites and pictures the user likes: each URL is screenshotted, each picture read for its "
+        "dominant colours, and the vision model describes their palette, typography and layout. Call it when the "
+        "user shares a link or an image as something they like (in the playbook or in a free conversation), "
+        "then keep the same URLs and file paths for generate_site (inspiration_urls, inspiration_images)."
+    ),
+    parameters={
+        "type": "object",
+        "properties": {
+            "urls": {"type": "array", "items": {"type": "string"}, "description": "Public http(s) URLs of sites the user likes, up to 3."},
+            "images": {"type": "array", "items": {"type": "string"}, "description": "Site file URLs (/files/... or /private/files/...) of pictures the user likes, up to 3."},
+        },
+    },
+)
+
+
+TOOLS = [generate_site, inspect_inspiration, get_site_chrome, update_site_chrome]
