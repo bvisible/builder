@@ -88,6 +88,14 @@ def parse_card(text: str) -> dict | None:
                 else:
                     label = head.rstrip(":").strip()
                     lines = lines[1:]
+                    # heads the models write instead of the tool arguments:
+                    # "label: Pages; multi: true" and "Palette, single-select"
+                    m = re.match(r"^label:\s*(.+?)\s*;\s*multi:\s*(true|false)$", label, re.IGNORECASE)
+                    if m:
+                        label, multi = m.group(1), multi or m.group(2).lower() == "true"
+                    m = re.match(r"^(.+?)\s*[,(]\s*(multi|single)[- ]select\)?$", label, re.IGNORECASE)
+                    if m:
+                        label, multi = m.group(1).strip(), multi or m.group(2).lower() == "multi"
             if not options:
                 for line in lines:
                     bare = line.lstrip("-•* ").strip().lower()
