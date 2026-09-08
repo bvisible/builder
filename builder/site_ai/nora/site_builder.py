@@ -105,8 +105,12 @@ def normalise_pages(pages: list, site_type: str) -> list[dict]:
         title = (raw.get("title") or "").strip()
         if not title:
             continue
-        route, ptype = KNOWN_PAGES.get(_bare(title), (None, None))
-        route = (raw.get("route") or route or _slug(title)).strip("/") or _slug(title)
+        known_route, ptype = KNOWN_PAGES.get(_bare(title), (None, None))
+        # a known page keeps its canonical route whatever the model proposed: on the
+        # B2C regeneration the model sent route "accueil" for Accueil, so the home
+        # page lost its "home" route and everything keyed on it (the host page, the
+        # profile's home_page, the hero brief)
+        route = (known_route or raw.get("route") or _slug(title)).strip("/") or _slug(title)
         ptype = raw.get("type") or ptype or "generic"
         if site_type == "one_page" and route == "home":
             ptype = "one_page"

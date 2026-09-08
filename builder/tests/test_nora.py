@@ -43,6 +43,10 @@ class TestPages(unittest.TestCase):
 		self.assertEqual(pages[0]["type"], "accueil")
 		self.assertEqual(pages[2]["type"], "services")
 
+	def test_a_known_page_keeps_its_canonical_route_over_the_models(self):
+		pages = normalise_pages([{"title": "Accueil", "route": "accueil"}, {"title": "Contact", "route": "nous-contacter"}, {"title": "Nos ateliers", "route": "ateliers"}], "vitrine")
+		self.assertEqual([p["route"] for p in pages], ["home", "contact", "ateliers"])
+
 	def test_home_comes_first_whatever_the_order(self):
 		pages = normalise_pages(["Contact", "Accueil"], "vitrine")
 		self.assertEqual(pages[0]["route"], "home")
