@@ -24,6 +24,10 @@ logger = frappe.logger("builder.site_ai.litellm")
 logger.setLevel(logging.INFO)
 
 
+# room for a thinking model's reasoning plus the JSON it is asked for (see generate_structured)
+STRUCTURED_MAX_TOKENS = 40000
+
+
 class LiteLLMProvider(BaseProvider):
     """`model` is a Builder AI Model name (e.g. managed/kimi-k3); routing, key and
     base URL come from its provider row. A bare model id (kimi-k3, the form the
@@ -82,6 +86,15 @@ class LiteLLMProvider(BaseProvider):
             messages.append({"role": "user", "content": prompt})
         return messages
 
+    def supports_vision(self) -> bool:
+        """Whether the resolved model accepts images (Builder AI Model.supports_vision)."""
+        from builder.ai.models import ModelRegistry
+
+        try:
+            return ModelRegistry.supports_vision(self._resolve_model())
+        except GenerationError:
+            return False
+
     def _params(self, temperature: float = None, max_tokens: int = None, json_mode: bool = False) -> dict:
         params = {
             "temperature": self.temperature if temperature is None else temperature,
@@ -117,10 +130,13 @@ class LiteLLMProvider(BaseProvider):
             "string never receives an object or a list\n- Use camelCase for all style properties (e.g., backgroundColor, not background-color)\n"
         )
         enhanced_system = f"{system_prompt}{instruction}" if system_prompt else instruction.strip()
+        # a thinking model (Kimi K2.7) spends its reasoning inside max_tokens: at the
+        # default 16k the design brief came back EMPTY ("Invalid JSON: EOF") whenever the
+        # reasoning ran long, about one call in two (neoffice-maintenance #296)
         raw = llm.complete(
             self._resolve_model(),
             self._format_messages(prompt, enhanced_system, images),
-            self._params(temperature, None, json_mode=True),
+            self._params(temperature, max(self.max_tokens or 0, STRUCTURED_MAX_TOKENS), json_mode=True),
             stream=False,
         )
         text = _strip_fences(raw)
