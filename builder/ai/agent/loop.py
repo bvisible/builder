@@ -869,7 +869,8 @@ class AgentRunner:
 		from builder.ai import page_writer
 
 		key = locks.page_key(page_id)
-		token = locks.acquire(key, locks.PAGE_LOCK_TTL)
+		# //// Neoffice — the lock lasts the whole turn, a site build included (locks.turn_ttl).
+		token = locks.acquire(key, locks.turn_ttl(locks.PAGE_LOCK_TTL))
 		if token is None:
 			return (
 				f"FAILED: page {page_id} is being edited by another AI task right now. Try again in a moment."

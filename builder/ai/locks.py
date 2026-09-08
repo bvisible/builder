@@ -30,17 +30,15 @@ SESSION_LOCK_TTL = 660
 # //// under the longer job timeout builder.ai.api.run sets from site_config
 # //// (builder_agent_job_timeout, 3600 by default here). The page and session locks must
 # //// outlive that turn, or they expire mid-build and a second turn (or the panel's
-# //// watchdog, which reads the session lock) believes the turn is over.
-def _turn_ttl(default: int) -> int:
+# //// watchdog, which reads the session lock) believes the turn is over. Evaluated at
+# //// acquire time, never at import: frappe.conf is unbound while an RQ worker
+# //// deserialises a job, and reading it there killed every agent turn (2026-09-08).
+def turn_ttl(default: int) -> int:
 	try:
 		timeout = int(frappe.conf.get("builder_agent_job_timeout") or 0)
-	except (TypeError, ValueError):
+	except (TypeError, ValueError, RuntimeError, AttributeError):
 		timeout = 0
 	return max(default, (timeout or 3600) + 60)
-
-
-PAGE_LOCK_TTL = _turn_ttl(PAGE_LOCK_TTL)
-SESSION_LOCK_TTL = _turn_ttl(SESSION_LOCK_TTL)
 
 RELEASE_IF_TOKEN_MATCHES = """
 if redis.call('get', KEYS[1]) == ARGV[1] then return redis.call('del', KEYS[1]) end

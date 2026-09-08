@@ -338,7 +338,8 @@ class AISession:
 	def start_run(session_id: str) -> str | None:
 		"""Try to claim this session's turn slot. Returns the release token, or None
 		when another turn is still running."""
-		return locks.acquire(locks.session_key(session_id), locks.SESSION_LOCK_TTL)
+		# //// Neoffice — the lock lasts the whole turn, a site build included (locks.turn_ttl).
+		return locks.acquire(locks.session_key(session_id), locks.turn_ttl(locks.SESSION_LOCK_TTL))
 
 	@staticmethod
 	def end_run(session_id: str, token: str | None) -> None:
