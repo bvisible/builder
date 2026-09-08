@@ -339,6 +339,34 @@ a:hover {
 	width: 100%;
 }
 
+/* A set of equal items (cards, stats, steps, logos): the page counts them, the site lays
+   them out on every screen. Written by the generator as classes, never as columns. */
+:where(.u-grid) {
+	display: grid;
+	gap: 24px;
+	grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+:where(.u-grid--3) {
+	grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
+:where(.u-grid--4) {
+	grid-template-columns: repeat(4, minmax(0, 1fr));
+}
+
+@media (max-width: 1024px) {
+	:where(.u-grid--3, .u-grid--4) {
+		grid-template-columns: repeat(2, minmax(0, 1fr));
+	}
+}
+
+@media (max-width: 640px) {
+	:where(.u-grid, .u-grid--3, .u-grid--4) {
+		grid-template-columns: minmax(0, 1fr);
+	}
+}
+
 :where(.u-input) {
 	border-radius: var(--radius);
 	border: 1px solid var(--border-color);

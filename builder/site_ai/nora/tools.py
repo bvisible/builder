@@ -6,7 +6,9 @@ import frappe
 
 from builder.ai.agent.registry import Tool
 
-SITE_TYPES = ["vitrine", "one_page", "blog", "ecommerce", "saas", "portfolio"]
+# vitrine_user: a showcase whose customers sign in (account entry in the header); ecommerce:
+# the online shop (account, cart, search); ecommerce_search: the same with an inline search bar
+SITE_TYPES = ["vitrine", "vitrine_user", "one_page", "blog", "ecommerce", "ecommerce_search", "saas", "portfolio"]
 
 
 def run_generate_site(ctx, args: dict) -> str:
@@ -50,7 +52,7 @@ generate_site = Tool(
                     "required": ["title"],
                 },
             },
-            "site_type": {"type": "string", "enum": SITE_TYPES, "description": "Kind of site; vitrine (showcase) by default."},
+            "site_type": {"type": "string", "enum": SITE_TYPES, "description": "Kind of site: vitrine (showcase, default), vitrine_user (showcase with customer accounts), ecommerce (online shop: account, cart, search), ecommerce_search (shop with an inline search bar), blog, portfolio, saas, one_page. It sets the header and footer (account entry, cart, search, footer template)."},
             "primary_color": {"type": "string", "description": "Hex colour chosen by the user, or the primary of the palette they picked."},
             "secondary_color": {"type": "string", "description": "Hex colour, optional."},
             "style_direction": {"type": "string", "description": "The layout direction the user picked, in a few words (e.g. 'editorial grid, calm', 'bold poster')."},
