@@ -704,6 +704,20 @@ class TestRenderFidelity(unittest.TestCase):
 		self.assertEqual(len(styled["children"]), 1)
 		self.assertEqual(len(single["children"]), 1)
 
+	def test_a_repeater_alone_in_a_grid_becomes_the_grid(self):
+		from builder.site_ai.nora.layout import unwrap_grid_wrappers
+
+		template = {"element": "div", "classes": ["u-card"], "children": [{"element": "h3", "dynamicValues": [{"key": "name", "property": "innerHTML", "type": "key"}]}]}
+		repeater = {"element": "div", "isRepeaterBlock": True, "dataKey": {"key": "featured", "property": "innerHTML", "type": "key"}, "baseStyles": {"display": "flex", "flexDirection": "column"}, "children": [template]}
+		grid = {"element": "div", "classes": ["u-grid", "u-grid--3"], "baseStyles": {"gridColumn": "2 / span 10", "gap": "24px"}, "children": [repeater]}
+		self.assertEqual(unwrap_grid_wrappers([{"element": "section", "children": [grid]}]), 1)
+		self.assertEqual(grid["children"], [repeater])
+		self.assertEqual(grid["classes"], [])
+		self.assertEqual(grid["baseStyles"], {"gridColumn": "2 / span 10"})
+		self.assertEqual(repeater["classes"], ["u-grid", "u-grid--3"])
+		self.assertEqual(repeater["baseStyles"], {"gap": "24px"})
+		self.assertTrue(repeater["isRepeaterBlock"])
+
 	def test_the_title_band_of_an_interior_page_is_dropped(self):
 		from builder.site_ai.nora.layout import strip_title_band
 

@@ -456,7 +456,9 @@ def page_brief_text(site: dict, brief, page: dict, handles: dict, contact_prompt
             "RULES: no header, navigation or footer sections (the site chrome is rendered around the page); no lorem; "
             f"business data verbatim; spell the brand name exactly '{site['site_name']}'; every text in {language}; "
             "no em dashes; mobile-first m_style on every grid; font sizes in rem or clamp(), never a bare vw "
-            "(h1 at most 4.5rem, h2 3.25rem, body text 1.35rem on desktop)."
+            "(h1 at most 4.5rem, h2 3.25rem, body text 1.35rem on desktop). A repeat block carries the grid classes "
+            "itself (u-grid u-grid--3 on the repeat, never on a div around it: the clones would stack in one column). "
+            "In a 12-column grid the spans of a text block and of a media block never overlap: text never runs under an image."
         ),
         revision or "",
     ]

@@ -74,17 +74,45 @@ def _is_plain_wrapper(block: dict) -> bool:
     return True
 
 
+GRID_STYLE_KEYS = ("gridTemplateColumns", "gridTemplateRows", "gridAutoFlow", "gap", "rowGap", "columnGap")
+
+
+def _is_repeater(block: dict) -> bool:
+    return bool(block.get("isRepeaterBlock") or block.get("dataKey"))
+
+
+def _hand_grid_to_repeater(grid: dict, repeater: dict) -> None:
+    """The repeater becomes the grid: its clones are the grid items, not the repeater."""
+    grid_classes = [c for c in (grid.get("classes") or []) if c.startswith("u-grid")]
+    repeater["classes"] = grid_classes + [c for c in (repeater.get("classes") or []) if c not in grid_classes]
+    grid["classes"] = [c for c in (grid.get("classes") or []) if c not in grid_classes]
+    styles = grid.get("baseStyles") or {}
+    target = repeater.setdefault("baseStyles", {})
+    for key in ("display", "flexDirection", "flexWrap"):
+        target.pop(key, None)
+    if styles.get("display") == "grid":
+        target["display"] = styles.pop("display")
+    for key in GRID_STYLE_KEYS:
+        if key in styles:
+            target[key] = styles.pop(key)
+
+
 def unwrap_grid_wrappers(blocks: list) -> int:
-    """Hoist the items of a grid out of a single plain wrapper. The model sometimes
-    writes grid > div > cards: the wrapper is the grid's only item, takes one column,
-    and the cards stack inside it — twice on the Boutique page of the card-driven B2C
-    run (2026-09-08), and the vision model still called the page professional.
-    Returns the edit count."""
+    """A grid whose only item is a wrapper around the cards renders as one column with
+    the cards stacked inside — twice on the Boutique page of the card-driven B2C run
+    (2026-09-08), and the vision model still called the page professional. A plain
+    wrapper is removed and its children become the grid's items; a repeater (one
+    template child, cloned per data row) keeps its role and takes the grid over
+    instead, so its clones are the items. Returns the edit count."""
     edits = 0
     for block in _walk(blocks):
         if not _is_grid(block):
             continue
         children = [c for c in (block.get("children") or []) if isinstance(c, dict)]
+        if len(children) == 1 and _is_repeater(children[0]):
+            _hand_grid_to_repeater(block, children[0])
+            edits += 1
+            continue
         if len(children) != 1 or not _is_plain_wrapper(children[0]):
             continue
         items = [c for c in (children[0].get("children") or []) if isinstance(c, dict)]
