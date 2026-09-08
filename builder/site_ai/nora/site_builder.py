@@ -575,6 +575,10 @@ def build_site(ctx, spec: dict) -> str:
     except Exception as e:
         ai_log("warning", "Design brief failed, using defaults", error=str(e)[:200])
         frappe.log_error("Nora site build: design brief failed", frappe.get_traceback())
+        # said where the user looks (a silent fallback hid a wrong model for weeks,
+        # neoffice-maintenance #274)
+        _update_generation_status(job_id, {"warning": _("The design brief failed; the site uses default styling.")})
+        ctx.emit("progress", message=_("The design brief failed; the site uses default styling."))
         brief = get_default_brief(theme="modern", primary_color=primary, secondary_color=secondary)
     primary = primary or getattr(brief, "primary_color", None)
     secondary = secondary or getattr(brief, "secondary_color", None)

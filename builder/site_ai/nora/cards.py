@@ -95,8 +95,15 @@ def parse_card(text: str) -> dict | None:
                         # a palette line belongs to the option written just above it
                         options[-1].setdefault("colors", HEX.findall(line)[:4])
                         continue
+                    if bare.startswith(("options:", "choices:", "valeurs:")) and "," in line:
+                        # "options: A, B, C" is a list on one line, not one option
+                        options += [{"label": part.strip()} for part in line.split(":", 1)[1].split(",") if part.strip()]
+                        continue
                     options.append(_option(line))
                 options = [o for o in options if o.get("label")]
+                if len(options) == 1 and "," in options[0].get("label", "") and not options[0].get("description"):
+                    # a single "A, B, C" line under a label is the list itself
+                    options = [{"label": part.strip()} for part in options[0]["label"].split(",") if part.strip()]
             if not options:
                 continue
             element = {"kind": "choices", "options": options[:12]}

@@ -377,7 +377,9 @@ def is_site_read_only() -> bool:
 @frappe.whitelist()
 def get_page_preview_html(page: str, **kwargs) -> Response:
 	if not frappe.has_permission("Builder Page", "read", page):
-		frappe.throw(_("No permission to preview this page"))
+		# //// Neoffice — PermissionError (403) rather than the plain ValidationError (417):
+		# //// a refusal must be machine-readable (see builder.utils.require_builder_role).
+		frappe.throw(_("No permission to preview this page"), frappe.PermissionError)
 
 	# to load preview without publishing
 	frappe.form_dict.update(kwargs)

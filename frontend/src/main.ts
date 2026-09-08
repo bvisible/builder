@@ -21,7 +21,10 @@ app.use(pinia);
 ensureTranslations().then(() => {
 	app.use(router);
 	app.use(FrappeUI);
-	app.use(telemetryPlugin, { app_name: "builder" });
+	//// Neoffice — the plugin's boot call (frappe.utils.telemetry.pulse) only exists on frappe
+	//// v16; the boot flag (builder/www/_builder.py) keeps a v15 bench from logging a 417 on
+	//// every load. Drop the guard with the flag once the fleet is on v16.
+	if ((window as any).telemetry_pulse) app.use(telemetryPlugin, { app_name: "builder" });
 	app.use(translationPlugin);
 
 	window.name = "frappe-builder";

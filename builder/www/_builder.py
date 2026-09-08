@@ -47,8 +47,14 @@ def get_boot() -> dict:
 	from builder.plugins import get_capabilities
 	from builder.site_ai.capabilities import ai_capabilities
 
+	import importlib.util
+
 	return {
 		"translated_messages": messages,
 		"assistant_name": ai_capabilities()["assistant_name"],
 		"capabilities": {**get_capabilities(), "ai": ai_capabilities()},
+		# //// Neoffice — the Studio's telemetry plugin calls frappe.utils.telemetry.pulse (v16);
+		# //// on a v15 bench that call fails with a 417 on every load. The flag tells main.ts
+		# //// whether the endpoint exists. Drop with the flag once the fleet is on v16.
+		"telemetry_pulse": importlib.util.find_spec("frappe.utils.telemetry.pulse") is not None,
 	}

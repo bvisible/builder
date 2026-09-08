@@ -1,8 +1,7 @@
 from frappe.core.api.file import create_new_folder
 
-# //// Neoffice — the three subsystems upstream does not have: the AI settings custom
-# //// fields, the plugin registry and the chrome Web Templates.
-from builder.ai_settings_fields import ensure_ai_custom_fields
+# //// Neoffice — the subsystems upstream does not have: the plugin registry, the chrome Web
+# //// Templates and the managed AI provider row.
 from builder.plugins import sync_plugins
 from builder.site_ai.managed import sync_managed_ai_provider
 from builder.web_chrome import ensure_web_chrome_templates
@@ -23,8 +22,7 @@ def after_install():
 	sync_builder_tokens()
 	add_composite_index_to_web_page_view()
 	sync_standard_builder_pages()
-	# //// Neoffice — install the AI fields and the chrome templates on a fresh site.
-	ensure_ai_custom_fields()
+	# //// Neoffice — the chrome templates on a fresh site.
 	ensure_web_chrome_templates()
 
 
@@ -35,7 +33,6 @@ def after_migrate():
 	sync_standard_builder_pages()
 	# //// Neoffice — same on every migrate, plus a plugin-registry resync (an app added or
 	# //// removed on the bench must show up in Settings > Plugins).
-	ensure_ai_custom_fields()
 	ensure_web_chrome_templates()
 	sync_plugins()
 	# //// Neoffice — a managed instance runs the upstream agent on the host's models: the provider
