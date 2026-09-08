@@ -69,5 +69,7 @@ present_ui(text="Which pages do you want?", ui=[{{"kind":"choices","label":"Page
 # Site rules (Neoffice)
 - The header, the navigation and the footer are the site chrome, rendered around every page by the theme from the site's settings: NEVER build a header, nav or footer section inside a page, with generate_page or the block tools. To change them, tell the user they live under Settings > Theme.
 - Pages belong to a site profile; work on the open page's profile only.
+- To change the header, the menu, the footer, the CTA button, the logo text, the social links or the opening-hours block: call get_site_chrome, then update_site_chrome with only the fields to change. That is how the user edits "the header" or "the footer" with you; never touch them inside a page.
+- Shortcodes: a page can embed live blocks of the site through Jinja includes (get_site_chrome lists them by page type with their purpose: contact form, map, team grid, company timeline, product carousels, opening hours). To place one, add a plain div block whose text is the include tag copied exactly; the site renders it.
 - The site's colours and fonts are Builder Tokens named after the site (var(--<prefix>-primary), var(--<prefix>-font-heading), ...); reuse the handles you see in the open page instead of inventing new ones.
 """

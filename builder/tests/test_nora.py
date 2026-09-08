@@ -515,3 +515,91 @@ class TestTypography(unittest.TestCase):
 		self.assertEqual(cap_font_sizes(blocks), 2)
 		self.assertEqual(blocks[0]["children"][0]["baseStyles"]["fontSize"], "clamp(2rem, 10vw, 4.5rem)")
 		self.assertEqual(blocks[0]["children"][1]["baseStyles"]["fontSize"], "3.25rem")
+
+
+class TestChromeTools(unittest.TestCase):
+	"""The assistant reads and changes the site chrome by dialogue (tools.py)."""
+
+	def test_the_registry_carries_the_three_site_tools(self):
+		from builder.site_ai.nora.tools import TOOLS
+
+		self.assertEqual([t.name for t in TOOLS], ["generate_site", "get_site_chrome", "update_site_chrome"])
+		self.assertTrue(all(t.side == "server" and callable(t.handler) for t in TOOLS))
+
+	def test_update_payload_keeps_the_chrome_fields_only(self):
+		from builder.site_ai.nora.tools import chrome_payload
+
+		payload = chrome_payload({
+			"cta_text": "Devis gratuit", "cta_url": "/contact", "show_opening_hours": 1, "primary_color": "#123456",
+			"menu_items": [{"label": "Accueil", "url": "/"}, {"label": "", "url": "/x"}, "junk"],
+			"footer_links": [{"label": "CGV", "url": "/cgv", "column_name": "Infos"}],
+			"secret": "x", "_profile": "Nora Test",
+		})
+		self.assertEqual(payload["cta_text"], "Devis gratuit")
+		self.assertEqual(payload["show_opening_hours"], 1)
+		self.assertEqual(payload["menu_items"], [{"label": "Accueil", "url": "/"}])
+		self.assertEqual(payload["footer_links"], [{"label": "CGV", "url": "/cgv", "column_name": "Infos"}])
+		self.assertNotIn("secret", payload)
+		self.assertNotIn("_profile", payload)
+		self.assertNotIn("primary_color", payload)
+		self.assertEqual(chrome_payload({"nope": 1}), {})
+
+
+class TestVisualCheck(unittest.TestCase):
+	"""The final look at the built pages (visual_check.py)."""
+
+	def test_loopback_url_names_the_profile(self):
+		from builder.site_ai.nora import visual_check
+
+		with patch.object(visual_check.frappe, "local") as local, patch.object(visual_check.frappe, "conf", {"webserver_port": 8000}):
+			local.site = "prod.local"
+			self.assertEqual(visual_check.loopback_page_url("/projects", "Nora Test 2"), "http://prod.local:8000/projects?_website_profile=Nora%20Test%202")
+			self.assertEqual(visual_check.loopback_page_url("/", None), "http://prod.local:8000/")
+
+	def test_only_body_defects_are_actionable_and_become_instructions(self):
+		from types import SimpleNamespace as NS
+
+		from builder.site_ai.nora.visual_check import actionable, revision_instructions
+
+		critique = NS(issues=[
+			NS(area="hero", severity="high", problem="stretched photo", fix="use object-fit cover"),
+			NS(area="footer", severity="high", problem="wrong logo", fix="chrome"),
+			NS(area="services", severity="low", problem="tight spacing", fix="more padding"),
+			NS(area="gallery", severity="medium", problem="empty band", fix="remove the band"),
+		])
+		issues = actionable(critique)
+		self.assertEqual([i["area"] for i in issues], ["hero", "gallery"])
+		text = revision_instructions(issues)
+		self.assertTrue(text.startswith("REVISION"))
+		self.assertIn("[high] hero: stretched photo -> use object-fit cover", text)
+		self.assertIn("keep everything else", text)
+
+	def test_summary_lines_relay_the_verdicts(self):
+		from builder.site_ai.nora.visual_check import summary_lines
+
+		reviews = [
+			{"name": "p1", "title": "Accueil", "route": "/", "professional": True, "issues": [], "error": None},
+			{"name": "p2", "title": "Services", "route": "/services", "professional": False, "issues": [{"area": "grid", "severity": "high", "problem": "empty column", "fix": "fill"}], "error": None},
+			{"name": "p3", "title": "Contact", "route": "/contact", "professional": None, "issues": [], "error": "screenshot failed"},
+		]
+		lines = summary_lines(reviews, {"p2": 1})
+		self.assertEqual(len(lines), 4)
+		self.assertIn("Accueil: looks professional", lines[1])
+		self.assertIn("Services: needs work; 1 point(s) fixed in a revision pass", lines[2])
+		self.assertIn("Contact: not reviewed", lines[3])
+		self.assertEqual(summary_lines([], {}), [])
+
+	def test_created_pages_map_back_to_their_specs(self):
+		from builder.site_ai.nora.site_builder import pages_by_name
+
+		pages = [{"title": "Accueil", "route": "home", "type": "accueil"}, {"title": "Contact", "route": "contact", "type": "contact"}]
+		created = [{"name": "p1", "title": "Accueil", "route": "/home"}, {"name": "p2", "title": "Contact", "route": "/contact"}]
+		self.assertEqual([(p["name"], p["type"]) for p in pages_by_name(pages, created)], [("p1", "accueil"), ("p2", "contact")])
+
+	def test_the_brief_carries_the_revision(self):
+		site = {"site_name": "X", "activity": "Y"}
+		handles = {k: "var(--x)" for k in ("primary", "secondary", "background", "text", "font-heading", "font-body")}
+		page = {"title": "Services", "route": "services", "type": "services"}
+		text = page_brief_text(site, FakeBrief(), page, handles, "", "bento", "French", [], ("CTA", "/"), revision="REVISION: fix the hero")
+		self.assertTrue(text.rstrip().endswith("REVISION: fix the hero"))
+

@@ -90,6 +90,7 @@ SIMPLE_FIELDS = (
 
 # Select fields whose options the UI needs
 OPTION_FIELDS = (
+	"opening_hours_display",
 	"header_scroll",
 	"radius_style",
 	"shadow_style",

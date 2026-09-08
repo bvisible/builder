@@ -110,6 +110,18 @@ def clean_logo(value) -> str | None:
     return text if text.startswith(("/", "http://", "https://", "data:")) else None
 
 
+def pages_by_name(pages: list[dict], created: list[dict]) -> list[dict]:
+    """The page specs (title, route, type) of the pages that were written, keyed later by
+    the Builder Page name they got, so a revision pass can rebuild a page from its brief."""
+    by_route = {p["route"]: p for p in pages}
+    out = []
+    for item in created:
+        spec = by_route.get(item["route"].strip("/")) or by_route.get("home" if item["route"] in ("/", "/home") else item["route"].strip("/"))
+        if spec:
+            out.append({**spec, "name": item["name"]})
+    return out
+
+
 def normalise_pages(pages: list, site_type: str) -> list[dict]:
     """Every page gets a route and a type; the home page comes first."""
     out, seen = [], set()
@@ -374,7 +386,7 @@ def available_includes(page_type: str, site_type: str = "vitrine", profile: str 
     return out
 
 
-def page_brief_text(site: dict, brief, page: dict, handles: dict, contact_prompt: str, layout_system: str, language: str, photos: list[str], cta: tuple[str, str], palette: dict | None = None) -> str:
+def page_brief_text(site: dict, brief, page: dict, handles: dict, contact_prompt: str, layout_system: str, language: str, photos: list[str], cta: tuple[str, str], palette: dict | None = None, revision: str | None = None) -> str:
     is_home = page["route"] == "home"
     plan = SECTION_PLANS.get(page["type"], SECTION_PLANS["generic"])
     sections = "\n".join(f"{i}. {s}" for i, s in enumerate(plan, 1))
@@ -433,6 +445,7 @@ def page_brief_text(site: dict, brief, page: dict, handles: dict, contact_prompt
             "no em dashes; mobile-first m_style on every grid; font sizes in rem or clamp(), never a bare vw "
             "(h1 at most 4.5rem, h2 3.25rem, body text 1.35rem on desktop)."
         ),
+        revision or "",
     ]
     return "\n".join(line for line in lines if line)
 
@@ -656,6 +669,7 @@ def build_site(ctx, spec: dict) -> str:
     from builder.site_ai.generators.brief_generator import BriefGenerator, get_default_brief
     from builder.site_ai.logging import ai_log
     from builder.site_ai.nora.accent import dominant_accent, rewrite_hex
+    from builder.site_ai.nora import visual_check
     from builder.site_ai.nora.typography import cap_font_sizes
     from builder.site_ai.nora.prompts import page_profile
 
@@ -824,12 +838,10 @@ def build_site(ctx, spec: dict) -> str:
     page_model = _page_model(ctx)
     site = {"site_name": site_name, "activity": activity, "differentiators": spec.get("differentiators"), "site_type": site_type, "profile": profile}
     created, failed, cancelled = [], [], False
-    for idx, page in enumerate(pages):
-        if ctx.is_cancelled():
-            cancelled = True
-            break
-        _progress(ctx, job_id, _("Writing page {0} of {1}: {2}").format(idx + 1, total, page["title"]), 10 + int(80 * idx / max(total, 1)), {"current_page": page["title"], "pages_created": created})
-        brief_text = page_brief_text(site, brief, page, handles, contact_prompt, layout_system, language, placeholder_photos(page, activity), cta, palette=palette)
+
+    def write_page(page: dict, photos: list[str], revision: str | None = None) -> tuple[list, str, str | None]:
+        """One page through the writer and the mechanical passes: (blocks, data_script, error)."""
+        brief_text = page_brief_text(site, brief, page, handles, contact_prompt, layout_system, language, photos, cta, palette=palette, revision=revision)
         messages = [
             {"role": "system", "content": Prompts.GENERATION_YAML},
             {"role": "user", "content": f"Build this page now:\n{brief_text}"},
@@ -864,6 +876,14 @@ def build_site(ctx, spec: dict) -> str:
             except Exception as e:
                 error = str(e)[:200]
                 ai_log("warning", "Page generation attempt failed", page=page["title"], attempt=attempt + 1, error=error)
+        return blocks, data_script, error
+
+    for idx, page in enumerate(pages):
+        if ctx.is_cancelled():
+            cancelled = True
+            break
+        _progress(ctx, job_id, _("Writing page {0} of {1}: {2}").format(idx + 1, total, page["title"]), 10 + int(80 * idx / max(total, 1)), {"current_page": page["title"], "pages_created": created})
+        blocks, data_script, error = write_page(page, placeholder_photos(page, activity))
         if not blocks:
             failed.append({"title": page["title"], "error": error})
             frappe.log_error(f"Nora site build: page failed: {page['title']}", error or "no blocks")
@@ -899,6 +919,42 @@ def build_site(ctx, spec: dict) -> str:
     except Exception as e:
         ai_log("warning", "Image generation not started", error=str(e)[:200])
 
+    # 8. the final look: each page rendered, screenshotted and read against the brief by the
+    # vision model; the body defects come back as one revision pass (visual_check.py)
+    reviews, revised = [], {}
+    if created and not cancelled and visual_check.enabled():
+        try:
+            _progress(ctx, job_id, _("Visual check: waiting for the images"), 95, {"pages_created": created})
+            visual_check.wait_for_images(image_job)
+            by_name = {p["name"]: p for p in pages_by_name(pages, created)}
+            for item in created:
+                if ctx.is_cancelled():
+                    break
+                _progress(ctx, job_id, _("Visual check: {0}").format(item["title"]), 96, {"pages_created": created})
+                reviews.append(visual_check.review_page(item, profile, page_model))
+            todo = [r for r in reviews if r["issues"] and r["name"] in by_name][: visual_check.MAX_REVISIONS]
+            for r in todo:
+                if ctx.is_cancelled():
+                    break
+                _progress(ctx, job_id, _("Fixing {0} after the visual check").format(r["title"]), 97, {"pages_created": created})
+                page = by_name[r["name"]]
+                current = frappe.db.get_value("Builder Page", r["name"], "blocks") or ""
+                photos = re.findall(r"/files/gen_[^\"'\s]+", current) or placeholder_photos(page, activity)
+                blocks, data_script, error = write_page(page, photos, revision=visual_check.revision_instructions(r["issues"]))
+                if not blocks:
+                    ai_log("warning", "Revision pass failed", page=r["title"], error=error)
+                    continue
+                _write_page(page, blocks, data_script, profile, r["name"], _describe(blocks))
+                revised[r["name"]] = len(r["issues"])
+                ai_log("info", "Page revised after the visual check", page=r["title"], issues=len(r["issues"]))
+            if revised:
+                slots = _scan_placeholder_images([n for n in revised])
+                if slots:
+                    _enqueue_image_generation(slots)
+                    ai_log("info", "Images re-queued after the revision pass", slots=len(slots))
+        except Exception as e:
+            ai_log("warning", "Visual check skipped", error=str(e)[:200])
+
     duration = int(time.time() - started)
     _update_generation_status(job_id, {
         "status": "completed", "progress": 100, "total_pages": total, "current_step": "Completed", "current_page": None,
@@ -917,4 +973,5 @@ def build_site(ctx, spec: dict) -> str:
     if host_reusable and any(p["name"] == host_page for p in created):
         lines.append("The page open in the editor is now the home page; the canvas has been refreshed.")
     lines.append("The header, the menu and the footer are set from the brief (Settings > Theme).")
+    lines += visual_check.summary_lines(reviews, revised)
     return "\n".join(lines)
