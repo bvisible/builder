@@ -716,10 +716,16 @@ class BuilderPage(WebsiteGenerator):
 		# that clobbers the live request and drops its `after_response`, which
 		# then breaks sync_database. Save and restore the original request.
 		previous_request = getattr(frappe.local, "request", None)
+		# //// Neoffice — the faked request never goes through the theme's before_request hook,
+		# //// so a page of a secondary Website Profile was previewed inside the default site's
+		# //// chrome (the agent's preview_page tool then "fixed" the wrong header, 2026-09-08).
+		# //// Name the page's profile on frappe.local the way the hook would.
+		previous_profile = (getattr(frappe.local, "website_profile", None), getattr(frappe.local, "website_profile_doc", None))
 		try:
 			set_request(method="GET", path=f"/{self.route or ''}")
 			frappe.local.request.for_preview = True
 			frappe.local.no_cache = 1
+			self._name_website_profile()
 			renderer = BuilderPageRenderer(path="")
 			renderer.docname = self.name
 			renderer.doctype = "Builder Page"
@@ -727,6 +733,21 @@ class BuilderPage(WebsiteGenerator):
 			return str(renderer.render().data, "utf-8")
 		finally:
 			frappe.local.request = previous_request
+			frappe.local.website_profile, frappe.local.website_profile_doc = previous_profile
+
+	# //// Neoffice — see get_preview_html.
+	def _name_website_profile(self) -> None:
+		profile = self.get("neo_website_profile") if frappe.db.has_column("Builder Page", "neo_website_profile") else None
+		if not profile:
+			return
+		try:
+			from neoffice_theme.website_profiles import get_profiles_map
+		except ImportError:
+			return
+		doc = next((p for p in (get_profiles_map() or {}).values() if p.get("name") == profile), None)
+		if doc:
+			frappe.local.website_profile = profile
+			frappe.local.website_profile_doc = doc
 
 	def set_custom_font(self, context, font_map):
 		all_user_fonts = get_all_user_fonts()
