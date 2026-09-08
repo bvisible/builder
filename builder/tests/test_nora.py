@@ -488,3 +488,24 @@ class TestBriefCall(unittest.TestCase):
 		self.assertEqual(answer.x, 1)
 		self.assertGreaterEqual(seen["max_tokens"], STRUCTURED_MAX_TOKENS)
 		self.assertEqual(seen["response_format"], {"type": "json_object"})
+
+
+class TestTypography(unittest.TestCase):
+	"""Viewport font sizes get a clamp, oversized fixed ones are lowered (typography.py)."""
+
+	def test_vw_sizes_become_clamps_and_fixed_sizes_are_capped(self):
+		from builder.site_ai.nora.typography import cap_font_sizes, capped_font_size
+
+		self.assertEqual(capped_font_size("11vw", "p"), "clamp(1rem, 11vw, 1.35rem)")
+		self.assertEqual(capped_font_size("7vw", "h1"), "clamp(2rem, 7vw, 4.5rem)")
+		self.assertEqual(capped_font_size("15vw", "h2", mobile=True), "clamp(1.5rem, 15vw, 2.25rem)")
+		self.assertEqual(capped_font_size("96px", "h1"), "4.5rem")
+		self.assertEqual(capped_font_size("72px", "span"), None)
+		self.assertEqual(capped_font_size("2.5rem", "p"), "1.35rem")
+		self.assertIsNone(capped_font_size("1.125rem", "p"))
+		self.assertIsNone(capped_font_size("clamp(1rem, 3vw, 2rem)", "h2"))
+		blocks = [{"element": "section", "children": [{"element": "p", "baseStyles": {"fontSize": "10vw"}, "mobileStyles": {"fontSize": "1rem"}}, {"element": "h2", "baseStyles": {"fontSize": "64px"}}]}]
+		self.assertEqual(cap_font_sizes(blocks), 2)
+		self.assertEqual(blocks[0]["children"][0]["baseStyles"]["fontSize"], "clamp(1rem, 10vw, 1.35rem)")
+		self.assertEqual(blocks[0]["children"][1]["baseStyles"]["fontSize"], "3.25rem")
+

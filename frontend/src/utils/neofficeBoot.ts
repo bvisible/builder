@@ -8,6 +8,7 @@ export type AICapabilities = {
 	managed: boolean;
 	disabled_tools: string[];
 	users_tab: boolean;
+	model_picker?: boolean;
 };
 
 export type Capabilities = Record<string, boolean | AICapabilities | undefined> & { ai?: AICapabilities };
@@ -34,3 +35,7 @@ export const isManagedAI = (): boolean => aiCapabilities().managed === true;
 
 /** invitations create users outside a licence quota; a managed instance hides the tab */
 export const showUsersTab = (): boolean => aiCapabilities().users_tab !== false;
+
+/** the model behind the assistant is the host's choice on a managed instance: a client sees
+ * the assistant's name where the host's Administrator sees the picker */
+export const showModelPicker = (): boolean => aiCapabilities().model_picker !== false;

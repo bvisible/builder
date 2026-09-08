@@ -46,4 +46,8 @@ def ai_capabilities() -> dict:
         "managed": managed,
         "disabled_tools": disabled_tools(),
         "users_tab": not managed,
+        # the model behind the assistant is the host's choice on a managed instance: a
+        # client sees "Nora", not a picker of Kimi ids (Jérémy, 2026-09-08); the host's
+        # Administrator keeps the picker to test
+        "model_picker": (not managed) or frappe.session.user == "Administrator",
     }
