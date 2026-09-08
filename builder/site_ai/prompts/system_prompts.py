@@ -609,6 +609,7 @@ TECHNICAL CONSTRAINTS:
 - NEVER use dark backgrounds (#0a0a0a, #141414) for product sections — products need WHITE or LIGHT backgrounds
 - Full shop link: /all-products""",
 
+            # //// Neoffice — added the opening-hours shortcode line to this prompt string (fc98932f "feat(ai): Nora connaît le bloc des horaires d'ouverture"): so a generated about page can reference the live opening-hours block instead of inventing hours.
             "about": """
 ABOUT PAGE:
 Tell the company's story in an engaging way. Humanize the brand.
@@ -624,6 +625,7 @@ SERVICES PAGE:
 Present the company's services clearly and attractively.
 Help visitors understand what's offered and why it matters to them.""",
 
+            # //// Neoffice — added the opening-hours shortcode line and the NOTE telling the model to use it instead of typed hours (fc98932f "feat(ai): Nora connaît le bloc des horaires d'ouverture"): the block reads real Webshop Settings hours and open/closed state, so hand-typed hours would drift out of sync.
             "contact": """
 CONTACT PAGE:
 Make it easy and inviting for visitors to get in touch. Build trust.
