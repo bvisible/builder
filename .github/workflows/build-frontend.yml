@@ -68,5 +68,5 @@ jobs:
           # //// Neoffice — a push that landed on the branch during the build (a merge, a fix)
           # //// made this push a non-fast-forward twice on 2026-09-08; rebase the artifact
           # //// commit on the current head before pushing.
-          git pull --rebase --no-verify origin "${GITHUB_REF_NAME}" || true
+          git pull --rebase --autostash --no-verify origin "${GITHUB_REF_NAME}" || true
           git push
