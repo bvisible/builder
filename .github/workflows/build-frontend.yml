@@ -37,6 +37,14 @@ jobs:
       - name: Install (workspace)
         run: yarn install --frozen-lockfile
 
+      # //// Neoffice — vue-tsc over frontend/src (frontend/scripts/type-check.mjs ignores
+      # //// frappe-ui's shipped sources). Informational for now: upstream's own files carry
+      # //// ~130 errors (StyleValue vs string in block.ts and the canvas composables) that a
+      # //// merge does not own; the step turns blocking once upstream's count is zero.
+      - name: Type-check (frontend/src, informational)
+        continue-on-error: true
+        run: yarn --cwd frontend type-check
+
       - name: Build
         # FORCE_REBUILD bypasses the root package.json gate: in a CI checkout the
         # committed artifacts always exist, so a plain `yarn build` would skip and

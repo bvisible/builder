@@ -11,6 +11,7 @@
     "preview": "vite preview",
     "lint": "eslint src --ext .js,.ts,.vue",
     "test:unit": "vitest --run",
+    "type-check": "node ./scripts/type-check.mjs",
     "test-local": "cypress open --e2e --browser chrome",
     "test": "npx cypress run --record --key fa50a4df-569e-41bc-8600-850331fd1630"
   },
@@ -72,6 +73,7 @@
     "tslib": "^2.5.0",
     "typescript": "^5.9.3",
     "vite": "^8.2.1",
+    "vue-tsc": "3.3.11",
     "vitest": "^4.1.10",
     "web-features": "3.34.1"
   },
