@@ -401,27 +401,25 @@ class TestShopIncludes(unittest.TestCase):
 	(a second storefront of the same company keeps them), and the carousels only on an
 	e-commerce site."""
 
-	def test_other_business_is_read_from_the_profile_company(self):
-		from builder.site_ai.nora.site_builder import _other_business
+	def test_other_business_compares_the_site_name_with_the_instance_company(self):
+		from builder.site_ai.nora.site_builder import _business_key, _other_business
 
-		values = {("Website Profile", "Espace B2B", "is_default"): 0, ("Website Profile", "Espace B2B", "company"): "Guigoz SA",
-			("Website Profile", "Nora Test", "is_default"): 0, ("Website Profile", "Nora Test", "company"): None,
-			("Website Profile", "Main", "is_default"): 1}
-
-		def get_value(doctype, name, field):
-			if isinstance(name, dict):
-				return "Guigoz SA"
-			return values.get((doctype, name, field))
-
-		with patch("builder.site_ai.nora.site_builder.frappe.db.get_value", side_effect=get_value):
-			self.assertFalse(_other_business(None))
-			self.assertFalse(_other_business("Main"))
-			self.assertFalse(_other_business("Espace B2B"))
-			self.assertTrue(_other_business("Nora Test"))
+		self.assertEqual(_business_key("Guigoz & Filliez SA"), "guigoz filliez")
+		self.assertEqual(_business_key("Boulangerie Solstice Sàrl"), "boulangerie solstice")
+		defaults = {("Website Profile", "Main", "is_default"): 1, ("Website Profile", "Espace B2B", "is_default"): 0, ("Website Profile", "Nora Test", "is_default"): 0}
+		with patch("builder.site_ai.nora.site_builder.frappe.db.get_value", side_effect=lambda d, n, f: defaults.get((d, n, f))), patch(
+			"builder.site_ai.nora.site_builder.frappe.db.get_single_value", return_value="Guigoz & Filliez SA"
+		):
+			self.assertFalse(_other_business(None, "Valrhône Industrie SA"))
+			self.assertFalse(_other_business("Main", "Valrhône Industrie SA"))
+			self.assertFalse(_other_business("Espace B2B", "Guigoz & Filliez SA"))
+			self.assertFalse(_other_business("Espace B2B", "guigoz filliez"))
+			self.assertTrue(_other_business("Nora Test", "Valrhône Industrie SA"))
+			self.assertTrue(_other_business("Nora Test", ""))
 
 	def test_another_business_gets_no_shop_include(self):
 		with patch("builder.site_ai.nora.site_builder._other_business", return_value=True):
-			tags = [t for t, _ in available_includes("contact", "ecommerce", "Nora Test 2")]
+			tags = [t for t, _ in available_includes("contact", "ecommerce", "Nora Test 2", "Valrhône Industrie SA")]
 		self.assertTrue(any("contact_form" in t for t in tags))
 		self.assertFalse(any("webshop/" in t for t in tags))
 

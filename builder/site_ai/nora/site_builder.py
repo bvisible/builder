@@ -12,6 +12,7 @@ from __future__ import annotations
 
 import json
 import re
+import unicodedata
 import time
 from urllib.parse import quote
 
@@ -317,25 +318,41 @@ def includes_block(includes: list[tuple[str, str]]) -> str:
     return "\n".join(lines)
 
 
-def _other_business(profile: str | None) -> bool:
-    """Whether this profile is another business than the instance's default site. The
+def _business_key(name: str) -> str:
+    """A company name reduced to what identifies it: lower-cased, accents and legal
+    forms (SA, Sàrl, AG, GmbH, SARL, Ltd) and punctuation stripped."""
+    text = unicodedata.normalize("NFKD", str(name or "")).encode("ascii", "ignore").decode().lower()
+    words = [w for w in re.findall(r"[a-z0-9]+", text) if w not in LEGAL_FORMS]
+    return " ".join(words)
+
+
+LEGAL_FORMS = {"sa", "sarl", "ag", "gmbh", "ltd", "llc", "inc", "sagl", "snc", "societe", "company", "co"}
+
+
+def _other_business(profile: str | None, site_name: str = "") -> bool:
+    """Whether the site being built is another business than the instance's shop. The
     shop app's data (products, brands, opening hours, the cart) is instance-wide, so a
-    profile of ANOTHER company must not show it (the B2B test site listed the host
-    bakery's products and opening hours), while a second storefront of the SAME company
-    (a B2B space beside the shop) shows exactly the same shop and hours, as it should."""
+    site of ANOTHER business must not show it (the B2B test site listed the host bakery's
+    products and opening hours), while a second storefront of the SAME company (a B2B
+    space beside the shop) shows exactly the same shop and hours, as it should. Website
+    Profile carries no company: a profile is a storefront of the instance's company by
+    design, so the test is the name the user gave the site against the instance's
+    default company, reduced to what identifies them."""
     if not profile:
         return False
     try:
         if frappe.db.get_value("Website Profile", profile, "is_default"):
             return False
-        mine = frappe.db.get_value("Website Profile", profile, "company")
-        default = frappe.db.get_value("Website Profile", {"is_default": 1}, "company")
-        return not default or mine != default
+        company = frappe.db.get_single_value("Global Defaults", "default_company") or ""
     except Exception:
         return True
+    mine, theirs = _business_key(site_name), _business_key(company)
+    if not mine or not theirs:
+        return True
+    return not (mine in theirs or theirs in mine)
 
 
-def available_includes(page_type: str, site_type: str = "vitrine", profile: str | None = None) -> list[tuple[str, str]]:
+def available_includes(page_type: str, site_type: str = "vitrine", profile: str | None = None, site_name: str = "") -> list[tuple[str, str]]:
     """The includes of this page type whose app is installed on the bench (an include of
     an absent app turns the whole page into a 500 at render time), minus the shop's
     includes where they would show another business's data: never on a secondary
@@ -344,7 +361,7 @@ def available_includes(page_type: str, site_type: str = "vitrine", profile: str 
         installed = set(frappe.get_installed_apps())
     except Exception:
         installed = {"builder"}
-    shop_data = not _other_business(profile)
+    shop_data = not _other_business(profile, site_name)
     out = []
     for tag, purpose in PAGE_INCLUDES.get(page_type, []):
         path = re.search(r"include\s+['\"]([^'\"]+)['\"]", tag)
@@ -366,7 +383,7 @@ def page_brief_text(site: dict, brief, page: dict, handles: dict, contact_prompt
     tone = getattr(brief, "site_tone", "") or ""
     hero = getattr(brief, "hero_style", "") or ""
     photo_lines = "\n".join(f"{i}. {u}" for i, u in enumerate(photos, 1))
-    includes = available_includes(page["type"], site.get("site_type") or "vitrine", site.get("profile"))
+    includes = available_includes(page["type"], site.get("site_type") or "vitrine", site.get("profile"), site.get("site_name") or "")
     page_role = (
         "the HOME page: open with the hero" if is_home
         else "an INTERIOR page: the site renders a title band with the page title above the content, so start directly with the first content section, no hero banner and no repeated page title"
@@ -574,7 +591,7 @@ def _describe(blocks: list) -> str:
         return ""
 
 
-def apply_navigation(config, created: list[dict], site_type: str, description: str, profile: str | None, lang: str = "fr") -> None:
+def apply_navigation(config, created: list[dict], site_type: str, description: str, profile: str | None, lang: str = "fr", site_name: str = "") -> None:
     """Menu, footer and home page from the pages just built (the worker's step 5).
     Labels are translated into the site's language, not the operator's session."""
     config.menu_items = []
@@ -588,7 +605,7 @@ def apply_navigation(config, created: list[dict], site_type: str, description: s
         config.append("menu_items", {"label": _("Home", lang=lang) if home else page["title"], "url": "/" if home else route, "is_external": False, "open_in_new_tab": False})
         # /all-products is the instance's catalogue: on another business's profile it would
         # be someone else's shop in this site's menu (the florist listed the bakery)
-        if site_type in ("ecommerce", "ecommerce_search") and home and not _other_business(profile):
+        if site_type in ("ecommerce", "ecommerce_search") and home and not _other_business(profile, site_name):
             config.append("menu_items", {"label": _("Shop", lang=lang), "url": "/all-products", "is_external": False, "open_in_new_tab": False})
     for field, value in (("footer_logo_type", config.get("logo_type")), ("footer_logo_text", config.get("logo_text")), ("footer_logo_image", config.get("logo_image")), ("show_footer_logo", True), ("footer_menu_source", "Custom links")):
         if hasattr(config, field):
@@ -864,7 +881,7 @@ def build_site(ctx, spec: dict) -> str:
 
     # 6. menu, footer, home
     _progress(ctx, job_id, _("Menu, footer and home page"), 92, {"pages_created": created})
-    apply_navigation(_get_site_chrome_config(profile), created, site_type, activity, profile, lang_code)
+    apply_navigation(_get_site_chrome_config(profile), created, site_type, activity, profile, lang_code, site_name=site_name)
 
     # 7. the images, in the background
     pending, image_job = 0, None
