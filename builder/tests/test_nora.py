@@ -114,6 +114,15 @@ class TestPageBrief(unittest.TestCase):
 		self.assertIn("`text` of its own plain div block", text)
 		self.assertTrue(all(tag.startswith("{%") for tag, _ in available_includes("contact")))
 		self.assertEqual(available_includes("generic"), [])
+		# the contact form is an order, not an option: the model wrote its own inert <form>
+		self.assertIn("INCLUDES REQUIRED", text)
+		self.assertIn("do NOT write a <form> of your own", text)
+		about = page_brief_text(site, FakeBrief(), {"title": "À propos", "route": "about", "type": "about"}, handles, "", "bento", "French", [], ("CTA", "/"))
+		self.assertNotIn("INCLUDES REQUIRED", about)
+
+	def test_known_pages_keep_their_canonical_type(self):
+		pages = normalise_pages([{"title": "Contact", "type": "form"}, {"title": "Accueil", "route": "accueil", "type": "landing"}], "vitrine")
+		self.assertEqual([(p["route"], p["type"]) for p in pages], [("home", "accueil"), ("contact", "contact")])
 
 	def test_home_page_opens_with_the_hero(self):
 		site = {"site_name": "X", "activity": "Y"}
