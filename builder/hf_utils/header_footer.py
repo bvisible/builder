@@ -171,6 +171,9 @@ def render_footer(config=None) -> str:
 			# //// without webshop renders an empty div and nothing else.
 			"show_opening_hours": config.get("show_opening_hours"),
 			"opening_hours_display": config.get("opening_hours_display") or "Compact",
+			# //// Neoffice — the hours themselves, so the footer renders without webshop's
+			# //// script (which a Builder page does not load). See _opening_hours_for_footer.
+			"opening_hours": _opening_hours_for_footer(config),
 			"newsletter_title": config.newsletter_title,
 			"newsletter_placeholder": config.newsletter_placeholder,
 			"footer_columns": footer_columns,
@@ -180,6 +183,37 @@ def render_footer(config=None) -> str:
 			"footer_html": config.get("footer_html") if config.get("show_footer_html") else None,
 		}
 	)
+
+
+def _opening_hours_for_footer(config):
+	"""The shop's opening hours, ready to render, or None.
+
+	//// Neoffice — read on the SERVER rather than left to webshop's script. A
+	//// Builder-rendered page does not carry an app's `web_include_js`, so on a
+	//// Builder site `window.webshop` never exists and a marker div alone stayed
+	//// empty for ever — measured on osiris: 19 webshop bundles on /store-hours,
+	//// none on the home page. Rendering here makes the footer work on every page;
+	//// where the script IS present (a webshop page) `data-autoload` still refreshes
+	//// it every minute, so nothing is lost.
+
+	Guarded on purpose: a bench without webshop, or a shop with no hours typed,
+	must render nothing rather than break the footer of every page.
+	"""
+	if not config.get("show_opening_hours"):
+		return None
+	try:
+		if "webshop" not in frappe.get_installed_apps():
+			return None
+		from webshop.webshop.utils.store_hours import opening_hours
+
+		hours = opening_hours()
+		return hours if hours and hours.get("configured") else None
+	except Exception:
+		frappe.log_error(
+			"Footer opening hours unavailable",
+			frappe.get_traceback(),
+		)
+		return None
 
 
 def get_header_css(config=None) -> str:

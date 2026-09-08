@@ -166,9 +166,15 @@
 		   //// Only the marker lives here: webshop's own script fills it (its bundle is
 		   //// on every website page) and its stylesheet hides it while empty, so a site
 		   //// without webshop shows nothing rather than a broken block. #}
-		{%- if show_opening_hours -%}
+		{%- if show_opening_hours and opening_hours -%}
 		<div class="site-footer__hours">
-			<div class="webshop-opening-hours" data-autoload{% if opening_hours_display != "Full week" %} data-display="compact"{% endif %}></div>
+			{# //// Neoffice — webshop's own include, handed the hours read on the server.
+			   //// It writes the block out AND keeps data-autoload, so a page that does load
+			   //// webshop's script refreshes it every minute while a Builder page, which
+			   //// does not, still shows the right hours. #}
+			{%- set hours = opening_hours -%}
+			{%- set display = "full" if opening_hours_display == "Full week" else "compact" -%}
+			{% include "webshop/templates/includes/opening_hours.html" %}
 		</div>
 		{%- endif -%}
 
