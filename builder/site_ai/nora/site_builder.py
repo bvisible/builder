@@ -72,8 +72,10 @@ SECTION_PLANS = {
 CLASS_CONTRACT = (
     "set `classes` on the matching elements: buttons ['u-btn', 'u-btn--primary'] (or --secondary / --outline / --ghost), "
     "cards ['u-card'] (add 'u-card--raised' or 'u-card--flat'), photos and media frames ['u-media'], form fields ['u-input'], "
-    "a wrapper that puts text over a photo ['u-over-image'] (add --bottom, --diagonal or --soft). These classes carry the site's "
-    "corners, elevation, hover and motion, so do not hand-write borderRadius, boxShadow or hover rules on those elements."
+    "a wrapper that puts text over a photo ['u-over-image'] (add --bottom, --diagonal or --soft), a set of 2 to 4 equal items "
+    "(cards, stats, steps, logos) in a container ['u-grid', 'u-grid--3'] (--2, --3 or --4) with NO gridTemplateColumns of its own: "
+    "the site lays it out on every screen. These classes carry the site's corners, elevation, hover, motion and grids, so do not "
+    "hand-write borderRadius, boxShadow, hover rules or the columns of such a set."
 )
 
 LAYOUT_BY_TONE = {
@@ -356,12 +358,18 @@ def _other_business(profile: str | None, site_name: str = "") -> bool:
         if frappe.db.get_value("Website Profile", profile, "is_default"):
             return False
         company = frappe.db.get_single_value("Global Defaults", "default_company") or ""
+        title = frappe.db.get_value("Website Profile", profile, "title") or ""
     except Exception:
         return True
-    mine, theirs = _business_key(site_name), _business_key(company)
-    if not mine or not theirs:
+    mine = _business_key(site_name)
+    if not mine:
         return True
-    return not (mine in theirs or theirs in mine)
+    # the instance's company, or the profile's own name (a second brand of the company
+    # gets a profile named after it: "The 5 Burrows" beside "The League Agency")
+    for theirs in (_business_key(company), _business_key(title)):
+        if theirs and (mine in theirs or theirs in mine):
+            return False
+    return True
 
 
 def available_includes(page_type: str, site_type: str = "vitrine", profile: str | None = None, site_name: str = "") -> list[tuple[str, str]]:
@@ -679,7 +687,7 @@ def build_site(ctx, spec: dict) -> str:
     activity = (spec.get("activity") or "").strip()
     if not site_name or not activity:
         return "FAILED: site_name and activity are required."
-    site_type = spec.get("site_type") if spec.get("site_type") in SECTION_PLANS or spec.get("site_type") in ("vitrine", "ecommerce", "saas", "blog", "portfolio", "one_page") else "vitrine"
+    site_type = spec.get("site_type") if spec.get("site_type") in SECTION_PLANS or spec.get("site_type") in ("vitrine", "vitrine_user", "ecommerce", "ecommerce_search", "saas", "blog", "portfolio", "one_page") else "vitrine"
     pages = normalise_pages(spec.get("pages") or [], site_type)
     profile = (spec.get("website_profile") or "").strip() or page_profile(ctx.page_id)
     if profile and not frappe.db.exists("Website Profile", profile):
@@ -736,6 +744,12 @@ def build_site(ctx, spec: dict) -> str:
     for key, value in SITE_TYPE_HEADER_FOOTER_DEFAULTS.get(site_type, SITE_TYPE_HEADER_FOOTER_DEFAULTS["vitrine"]).items():
         if hasattr(config, key):
             setattr(config, key, value)
+    # a B2B or login-gated profile needs the account entry in its header whatever the
+    # site type: its visitors sign in before they see prices or the catalogue
+    if profile and hasattr(config, "show_user"):
+        kind, gated = frappe.db.get_value("Website Profile", profile, ["site_kind", "b2b_only"]) or (None, 0)
+        if kind == "B2B" or gated:
+            config.show_user = True
     if logo_image:
         config.logo_type = "Image"
         config.logo_image = logo_image

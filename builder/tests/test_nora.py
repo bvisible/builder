@@ -407,6 +407,10 @@ class TestShopIncludes(unittest.TestCase):
 		self.assertEqual(_business_key("Guigoz & Filliez SA"), "guigoz filliez")
 		self.assertEqual(_business_key("Boulangerie Solstice Sàrl"), "boulangerie solstice")
 		defaults = {("Website Profile", "Main", "is_default"): 1, ("Website Profile", "Espace B2B", "is_default"): 0, ("Website Profile", "Nora Test", "is_default"): 0}
+		defaults[("Website Profile", "Espace B2B", "title")] = "Espace B2B"
+		defaults[("Website Profile", "Nora Test", "title")] = "Nora Test"
+		defaults[("Website Profile", "Burrows", "is_default")] = 0
+		defaults[("Website Profile", "Burrows", "title")] = "The 5 Burrows"
 		with patch("builder.site_ai.nora.site_builder.frappe.db.get_value", side_effect=lambda d, n, f: defaults.get((d, n, f))), patch(
 			"builder.site_ai.nora.site_builder.frappe.db.get_single_value", return_value="Guigoz & Filliez SA"
 		):
@@ -414,8 +418,18 @@ class TestShopIncludes(unittest.TestCase):
 			self.assertFalse(_other_business("Main", "Valrhône Industrie SA"))
 			self.assertFalse(_other_business("Espace B2B", "Guigoz & Filliez SA"))
 			self.assertFalse(_other_business("Espace B2B", "guigoz filliez"))
+			# a second brand of the company gets a profile named after it
+			self.assertFalse(_other_business("Burrows", "The 5 Burrows"))
 			self.assertTrue(_other_business("Nora Test", "Valrhône Industrie SA"))
 			self.assertTrue(_other_business("Nora Test", ""))
+
+	def test_the_tool_names_the_site_types_that_set_the_chrome(self):
+		from builder.site_ai.nora.site_builder import CLASS_CONTRACT
+		from builder.site_ai.nora.tools import SITE_TYPES
+
+		for kind in ("vitrine", "vitrine_user", "ecommerce", "ecommerce_search", "one_page"):
+			self.assertIn(kind, SITE_TYPES)
+		self.assertIn("u-grid", CLASS_CONTRACT)
 
 	def test_another_business_gets_no_shop_include(self):
 		with patch("builder.site_ai.nora.site_builder._other_business", return_value=True):
