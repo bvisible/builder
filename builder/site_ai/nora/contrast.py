@@ -100,6 +100,8 @@ def palette_roles(palette: dict[str, str]) -> str:
 
 def _has_text(block: dict) -> bool:
     html = block.get("innerHTML") or ""
+    if not isinstance(html, str):
+        html = str(html)
     if html and not html.lstrip().lower().startswith("<svg"):
         if re.sub(r"<[^>]+>", "", html).strip():
             return True
