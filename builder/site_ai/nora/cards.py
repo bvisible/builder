@@ -19,6 +19,7 @@ OPEN = re.compile(r"\[(" + "|".join(KINDS) + r")(?:\s+(multi))?\s*:", re.IGNOREC
 
 
 def looks_like_card(text: str) -> bool:
+    text = _braces_to_brackets(text or "")
     return bool(text) and OPEN.search(text) is not None and "[buttons:" in text.lower() or "[choices" in (text or "").lower()
 
 
@@ -70,10 +71,46 @@ def _option(line: str) -> dict:
     return option
 
 
+BRACE_GROUP = re.compile(r"\{\s*kind\s*:\s*(" + "|".join(KINDS) + r")\s*,(.*?)\}(?=\s*(?:\{\s*kind|$))", re.IGNORECASE | re.DOTALL)
+BRACE_ITEMS = re.compile(r"\{\s*label\s*:\s*([^,}]+?)\s*(?:,\s*description\s*:\s*([^,}]+?))?\s*(?:,\s*variant\s*:\s*[a-z]+)?\s*\}", re.IGNORECASE)
+QUOTED = re.compile(r"'([^']*)'|\"([^\"]*)\"")
+
+
+def _braces_to_brackets(text: str) -> str:
+    """The pseudo-JSON a model writes when it prints the present_ui arguments instead
+    of calling the tool ("{kind: heading, text: Récapitulatif} {kind: list, items:
+    ['Nom : X', …]} {kind: actions, buttons: [{label: Build}, {label: Change,
+    variant: secondary}]}"), rewritten in the bracket form the parser reads."""
+    if "{kind" not in text.replace(" ", ""):
+        return text
+
+    def one(m):
+        kind, body = m.group(1).lower(), m.group(2)
+        if kind in ("heading", "text"):
+            value = re.search(r"text\s*:\s*(.+)$", body.strip(), re.IGNORECASE | re.DOTALL)
+            return f"[{kind}: {(value.group(1) if value else body).strip().strip(chr(39)).strip(chr(34))}]"
+        if kind == "list":
+            items = [a or b for a, b in QUOTED.findall(body)]
+            return "[list:\n" + "\n".join(f"- {i}" for i in items) + "]" if items else ""
+        if kind in ("actions", "buttons"):
+            labels = [lab.strip().strip(chr(39)).strip(chr(34)) for lab, _ in BRACE_ITEMS.findall(body)]
+            return f"[buttons: {', '.join(labels)}]" if labels else ""
+        if kind == "choices":
+            label = re.search(r"label\s*:\s*([^,]+)", body, re.IGNORECASE)
+            multi = re.search(r"multi\s*:\s*true", body, re.IGNORECASE)
+            options = [(lab.strip().strip(chr(39)).strip(chr(34)), (desc or "").strip().strip(chr(39)).strip(chr(34))) for lab, desc in BRACE_ITEMS.findall(body)]
+            lines = [f"- {lab}: {desc}" if desc else f"- {lab}" for lab, desc in options]
+            head = (label.group(1).strip().strip(chr(39)).strip(chr(34)) if label else "")
+            return f"[choices{' multi' if multi else ''}: {head}\n" + "\n".join(lines) + "]" if lines else ""
+        return ""
+
+    return BRACE_GROUP.sub(one, text)
+
+
 def parse_card(text: str) -> dict | None:
     """The present_ui arguments for a bracket-written card, or None when the text
     carries no card."""
-    lead, groups = _split_groups(text or "")
+    lead, groups = _split_groups(_braces_to_brackets(text or ""))
     if not groups:
         return None
     ui: list[dict] = []

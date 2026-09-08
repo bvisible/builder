@@ -640,3 +640,30 @@ class TestLayout(unittest.TestCase):
 		self.assertNotIn("gridColumn", logos["children"][0]["baseStyles"])
 		self.assertNotIn("gridColumn", narrow["children"][0]["baseStyles"])
 
+
+class TestBraceCards(unittest.TestCase):
+	"""A card printed as the tool's arguments in pseudo-JSON is still a card (cards.py)."""
+
+	def test_the_recap_written_in_braces_becomes_a_card(self):
+		from builder.site_ai.nora.cards import looks_like_card, parse_card
+
+		text = (
+			"Voici le récapitulatif.\n{kind: heading, text: Récapitulatif — Lilas & Co}\n"
+			"{kind: list, items: ['Nom : Lilas & Co', 'Type : Boutique en ligne', 'Logo : aucun']}\n"
+			"{kind: actions, buttons: [{label: Construire le site}, {label: Modifier quelque chose, variant: secondary}]}"
+		)
+		self.assertTrue(looks_like_card(text))
+		card = parse_card(text)
+		self.assertEqual([u["kind"] for u in card["ui"]], ["heading", "list", "actions"])
+		self.assertEqual(len(next(u for u in card["ui"] if u["kind"] == "list")["items"]), 3)
+		self.assertEqual([b["label"] for b in next(u for u in card["ui"] if u["kind"] == "actions")["buttons"]], ["Construire le site", "Modifier quelque chose"])
+
+	def test_choices_written_in_braces_keep_their_options(self):
+		from builder.site_ai.nora.cards import parse_card
+
+		text = "Quel type ?\n{kind: choices, label: Type de site, multi: false, options: [{label: Vitrine, description: sans comptes}, {label: Boutique en ligne}]}\n{kind: actions, buttons: [{label: Continuer}]}"
+		card = parse_card(text)
+		choices = next(u for u in card["ui"] if u["kind"] == "choices")
+		self.assertEqual([o["label"] for o in choices["options"]], ["Vitrine", "Boutique en ligne"])
+		self.assertEqual(choices["options"][0]["description"], "sans comptes")
+
