@@ -1,0 +1,129 @@
+"""The final look at what was built.
+
+Each page is rendered server-side, screenshotted and read by the vision model against
+the brief: what a human sees at first glance (an empty band, a squished image, dummy
+text, a brand name that is not the client's). The defects that belong to the page body
+come back as revision instructions for one regeneration pass; chrome defects (header,
+footer, menu) are reported, not fixed here, since the chrome is not in the page.
+
+The rendering goes through the loopback with the site's own profile named in the query
+string (neoffice_theme honours it from 127.0.0.1 only): no profile host has to resolve
+for the check to see the right chrome."""
+
+import time
+
+import frappe
+
+from builder.site_ai.logging import ai_log
+
+CHROME_AREAS = ("header", "footer", "nav", "logo", "menu")
+IMAGE_WAIT_SECONDS = 360
+IMAGE_POLL_SECONDS = 10
+MAX_REVISIONS = 3
+
+
+def enabled() -> bool:
+    """site_config nora_visual_check, on by default."""
+    try:
+        value = frappe.conf.get("nora_visual_check")
+    except Exception:
+        return True
+    return True if value is None else bool(frappe.utils.cint(value))
+
+
+def loopback_page_url(route: str, profile: str | None) -> str:
+    """The page as the web server sees it from the machine itself: the bench's site name
+    resolves to the loopback (bench writes it into /etc/hosts), and the profile is named
+    in the query string for the theme's host resolution."""
+    port = frappe.conf.get("webserver_port") or 8000
+    url = f"http://{frappe.local.site}:{port}/{(route or '').lstrip('/')}"
+    if profile:
+        from urllib.parse import quote
+
+        url += f"?_website_profile={quote(profile)}"
+    return url
+
+
+def wait_for_images(job_id: str | None, timeout: int = IMAGE_WAIT_SECONDS) -> str:
+    """Block until the image job is done (or the budget is spent): a screenshot with
+    grey placeholders would be reviewed for its placeholders."""
+    if not job_id:
+        return "none"
+    from builder.api import _get_generation_status
+
+    deadline = time.time() + timeout
+    while time.time() < deadline:
+        status = (_get_generation_status(job_id) or {}).get("status") or "not_found"
+        if status in ("completed", "failed", "not_found"):
+            return status
+        time.sleep(IMAGE_POLL_SECONDS)
+    return "timeout"
+
+
+def actionable(critique) -> list[dict]:
+    """The high and medium defects that live in the page body."""
+    out = []
+    for issue in getattr(critique, "issues", None) or []:
+        if issue.severity not in ("high", "medium"):
+            continue
+        if any(word in (issue.area or "").lower() for word in CHROME_AREAS):
+            continue
+        out.append({"area": issue.area, "severity": issue.severity, "problem": issue.problem, "fix": issue.fix})
+    return out
+
+
+def revision_instructions(issues: list[dict]) -> str:
+    """What the page writer gets on the revision pass."""
+    lines = [
+        "REVISION (a designer reviewed a screenshot of the rendered page; fix exactly these points and keep "
+        "everything else, the structure, the copy and the photos included):"
+    ]
+    lines += [f"- [{i['severity']}] {i['area']}: {i['problem']} -> {i['fix']}" for i in issues]
+    return "\n".join(lines)
+
+
+def review_page(page: dict, profile: str | None, model: str) -> dict:
+    """Screenshot one page and read it. Never raises: a page that cannot be reviewed
+    is reported as such."""
+    from builder.site_ai.ingestion.visual_critique import critique_screenshot
+    from builder.site_ai.inspiration.screenshotter import capture_website_screenshot
+
+    report = {"name": page["name"], "title": page["title"], "route": page["route"], "professional": None, "issues": [], "error": None, "overall": ""}
+    url = loopback_page_url(page["route"], profile)
+    try:
+        shot = capture_website_screenshot(url, full_page=True)
+        frappe.db.commit()  # the screenshot File must be visible to the model's read
+        if not shot.get("success"):
+            report["error"] = "screenshot failed"
+            return report
+        critique, label = critique_screenshot(shot["file_url"], model=model)
+        report["professional"] = bool(critique.looks_professional)
+        report["overall"] = (critique.overall or "")[:200]
+        report["issues"] = actionable(critique)
+        report["all_issues"] = len(critique.issues or [])
+        ai_log("info", "Visual check", page=page["title"], professional=report["professional"], issues=report["all_issues"], actionable=len(report["issues"]), model=label)
+    except Exception as e:
+        report["error"] = str(e)[:200]
+        ai_log("warning", "Visual check failed", page=page["title"], error=report["error"])
+    return report
+
+
+def summary_lines(reviews: list[dict], revised: dict[str, int]) -> list[str]:
+    """The lines the tool returns, for the assistant to relay."""
+    if not reviews:
+        return []
+    lines = ["Visual check (each page rendered and reviewed by the vision model):"]
+    for r in reviews:
+        if r.get("error"):
+            lines.append(f"- {r['title']}: not reviewed ({r['error']})")
+            continue
+        verdict = "looks professional" if r["professional"] else "needs work"
+        fixed = revised.get(r["name"])
+        detail = "; ".join(f"{i['area']}: {i['problem'][:70]}" for i in r["issues"][:3])
+        if fixed:
+            lines.append(f"- {r['title']}: {verdict}; {fixed} point(s) fixed in a revision pass ({detail})")
+        elif r["issues"]:
+            lines.append(f"- {r['title']}: {verdict}; left as is ({detail})")
+        else:
+            lines.append(f"- {r['title']}: {verdict}")
+    return lines

@@ -10215,3 +10215,18 @@ msgstr "Rédaction du brief de design"
 #: frontend/src/components/Settings/GlobalTheme.vue
 msgid "Site: {0}"
 msgstr "Site : {0}"
+
+msgid "Opening hours block"
+msgstr "Bloc des horaires"
+
+msgid "Hours display"
+msgstr "Affichage des horaires"
+
+msgid "Visual check: waiting for the images"
+msgstr "Contrôle visuel : attente des images"
+
+msgid "Visual check: {0}"
+msgstr "Contrôle visuel : {0}"
+
+msgid "Fixing {0} after the visual check"
+msgstr "Correction de {0} après le contrôle visuel"

@@ -297,6 +297,25 @@
 					:modelValue="state.footer_description"
 					@update:modelValue="(v: string) => (state.footer_description = v)" />
 
+				<!-- The opening-hours block: the shop app renders the live hours (holidays
+				     included) in the footer when the site asks for them. -->
+				<div class="grid grid-cols-2 items-end gap-3">
+					<FormControl
+						type="checkbox"
+						size="sm"
+						:label="__('Opening hours block')"
+						:modelValue="!!state.show_opening_hours"
+						@update:modelValue="(v: boolean) => (state.show_opening_hours = v ? 1 : 0)" />
+					<FormControl
+						v-if="state.show_opening_hours"
+						type="select"
+						size="sm"
+						:label="__('Hours display')"
+						:options="options.opening_hours_display"
+						:modelValue="state.opening_hours_display"
+						@update:modelValue="(v: string) => (state.opening_hours_display = v)" />
+				</div>
+
 				<!-- The footer menu. "Same as header" is the cheap answer, but a
 				     footer is where a site puts what the header has no room for —
 				     legal pages, a second product line — so it can have its own. -->
