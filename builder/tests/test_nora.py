@@ -10,6 +10,7 @@ from unittest.mock import patch
 import frappe
 
 from builder.site_ai.capabilities import MANAGED_DISABLED_TOOLS, disabled_tools
+from builder.site_ai.nora.adopt import rewrite_blocks
 from builder.site_ai.nora.cards import parse_card
 from builder.site_ai.nora.contrast import NAMED, accent_shade, contrast, palette_roles, parse_color, repair_contrast
 from builder.site_ai.nora.site_builder import (
@@ -129,6 +130,13 @@ class TestTextCards(unittest.TestCase):
 	def test_a_recap_with_heading_and_list(self):
 		spec = parse_card("Récap :\n[heading: Atelier]\n[list:\n- Pages : Accueil\n- Couleurs : #000]\n[buttons: Créer le site, Modifier]")
 		self.assertEqual([el["kind"] for el in spec["ui"]], ["heading", "list", "actions"])
+
+	def test_an_options_line_is_a_list_not_one_option(self):
+		spec = parse_card("Which site?\n[choices: Site\n- options: Site principal, Nora Test, Nora Test 3]\n[buttons: Build the site]")
+		self.assertEqual([o["label"] for o in spec["ui"][0]["options"]], ["Site principal", "Nora Test", "Nora Test 3"])
+		self.assertEqual(spec["ui"][0].get("label"), "Site")
+		spec = parse_card("Pages?\n[choices multi: Pages\nAccueil, Contact, FAQ]")
+		self.assertEqual([o["label"] for o in spec["ui"][0]["options"]], ["Accueil", "Contact", "FAQ"])
 
 	def test_plain_prose_is_not_a_card(self):
 		self.assertIsNone(parse_card("Le site est créé. Il comprend cinq pages."))
@@ -259,3 +267,36 @@ class TestBriefHeroColours(unittest.TestCase):
 		self.assertEqual((chosen.heading_font, chosen.body_font), ("Playfair Display", "Lora"))
 		plain = DesignBrief(design_concept="A warm, quiet workshop.")
 		self.assertEqual((plain.heading_font, plain.body_font), ("Inter", "Inter"))
+
+
+class TestAdoption(unittest.TestCase):
+	PALETTE = {"primary": "#1c3d52", "secondary": "#b0843f", "background": "#ffffff", "text": "#1a1a1a"}
+	FONTS = {"font-heading": "Cormorant Garamond", "font-body": "DM Sans"}
+
+	def test_palette_literals_become_handles_with_their_semantics(self):
+		blocks = [{"baseStyles": {"backgroundColor": "#1C3D52", "color": "#ffffff", "border": "1px solid #b0843f", "--primary-color": "#1c3d52"},
+			"mobileStyles": {"color": "#1a1a1a", "backgroundColor": "#fff"},
+			"children": [{"baseStyles": {"color": "#b0843f80", "backgroundImage": "linear-gradient(#1c3d52, #b0843f)"}}]}]
+		changed = rewrite_blocks(blocks, "gf", self.PALETTE, self.FONTS)
+		self.assertEqual(changed, 7)
+		base = blocks[0]["baseStyles"]
+		self.assertEqual(base["backgroundColor"], "var(--gf-primary)")
+		self.assertEqual(base["color"], "#ffffff")  # white copy on a dark band is not "the background"
+		self.assertEqual(base["border"], "1px solid var(--gf-secondary)")
+		self.assertEqual(base["--primary-color"], "var(--gf-primary)")
+		self.assertEqual(blocks[0]["mobileStyles"], {"color": "var(--gf-text)", "backgroundColor": "var(--gf-background)"})
+		child = blocks[0]["children"][0]["baseStyles"]
+		self.assertEqual(child["color"], "#b0843f80")  # an alpha shade is not the token
+		self.assertEqual(child["backgroundImage"], "linear-gradient(var(--gf-primary), var(--gf-secondary))")
+
+	def test_fonts_become_handles_and_keep_their_fallbacks(self):
+		blocks = [{"baseStyles": {"fontFamily": "'DM Sans', sans-serif"}, "children": [{"baseStyles": {"fontFamily": "Cormorant Garamond"}}, {"baseStyles": {"fontFamily": "Cormorant, serif"}}]}]
+		self.assertEqual(rewrite_blocks(blocks, "gf", self.PALETTE, self.FONTS), 2)
+		self.assertEqual(blocks[0]["baseStyles"]["fontFamily"], "var(--gf-font-body), sans-serif")
+		self.assertEqual(blocks[0]["children"][0]["baseStyles"]["fontFamily"], "var(--gf-font-heading)")
+		self.assertEqual(blocks[0]["children"][1]["baseStyles"]["fontFamily"], "Cormorant, serif")
+
+	def test_a_rewritten_page_is_stable(self):
+		blocks = [{"baseStyles": {"backgroundColor": "#1c3d52", "fontFamily": "DM Sans"}}]
+		rewrite_blocks(blocks, "gf", self.PALETTE, self.FONTS)
+		self.assertEqual(rewrite_blocks(blocks, "gf", self.PALETTE, self.FONTS), 0)

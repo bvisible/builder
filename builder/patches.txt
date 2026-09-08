@@ -36,3 +36,5 @@ builder.builder.patches.drop_builder_site_config
 builder.builder.patches.set_default_page_header
 builder.builder.patches.split_page_header_style
 builder.builder.patches.drop_builder_chat_session
+builder.builder.patches.adopt_design_system
+builder.builder.patches.drop_ai_settings_fields

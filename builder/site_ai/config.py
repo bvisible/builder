@@ -8,10 +8,12 @@ Resolution order (first non-empty wins):
 
 1. site_config.json (frappe.conf) — the operator layer. A managed host
    pins its values here; anything set in site_config always wins.
-2. Builder Settings (the Studio UI) — the self-host layer. The custom
-   fields unpress_ai_* plus the upstream ai_api_key Password field, all
-   editable from the builder Settings > AI tab. No desk, no SSH needed.
-3. Hardcoded DEFAULTS below.
+2. Hardcoded DEFAULTS below.
+
+The models themselves are routed by the Builder AI Provider rows (upstream's
+AI settings); the keys here name the host's models and the endpoint the managed
+sync copies into its provider row. (The Builder Settings custom fields
+unpress_ai_* that used to sit between the two were dropped on 2026-09-08.)
 """
 
 from dataclasses import dataclass
@@ -156,34 +158,17 @@ def get_ai_settings() -> AIConfig:
         ai_default_site_type
         ai_output_language
 
-    Builder Settings fields (Settings > AI in the Studio):
-        unpress_ai_provider, unpress_ai_brief_model, unpress_ai_page_model,
-        unpress_ai_base_url, unpress_ai_output_language, ai_api_key
+    The upstream `ai_api_key` of Builder Settings is read as a last resort for
+    the key (a self-hosted site that typed it there before the provider rows).
     """
     conf = frappe.conf
 
     # one route since 2026-09-07: the legacy `ai_provider` values ("openai",
     # "ollama", "codex") are accepted and mean the same thing
     provider = DEFAULTS["provider"]
-    model = (
-        conf.get("openai_model")
-        or conf.get("ollama_model")
-        or _studio_value("unpress_ai_brief_model")
-        or DEFAULTS["model"]
-    )
-    page_model = (
-        conf.get("openai_page_model")
-        or conf.get("ollama_page_model")
-        or _studio_value("unpress_ai_page_model")
-        or DEFAULTS["page_model"]
-    )
-    base_url = (
-        conf.get("openai_base_url")
-        or conf.get("ollama_base_url")
-        or conf.get("ollama_url")
-        or _studio_value("unpress_ai_base_url")
-        or DEFAULTS["base_url"]
-    )
+    model = conf.get("openai_model") or conf.get("ollama_model") or DEFAULTS["model"]
+    page_model = conf.get("openai_page_model") or conf.get("ollama_page_model") or DEFAULTS["page_model"]
+    base_url = conf.get("openai_base_url") or conf.get("ollama_base_url") or conf.get("ollama_url") or DEFAULTS["base_url"]
     api_key = (
         conf.get("openai_api_key")
         or conf.get("ollama_api_key")
@@ -202,11 +187,7 @@ def get_ai_settings() -> AIConfig:
         request_timeout=int(conf.get("ai_request_timeout") or DEFAULTS["request_timeout"]),
         default_theme=conf.get("ai_default_theme") or DEFAULTS["default_theme"],
         default_site_type=conf.get("ai_default_site_type") or DEFAULTS["default_site_type"],
-        output_language=(
-            conf.get("ai_output_language")
-            or _studio_value("unpress_ai_output_language")
-            or DEFAULTS["output_language"]
-        ),
+        output_language=conf.get("ai_output_language") or DEFAULTS["output_language"],
     )
 
 

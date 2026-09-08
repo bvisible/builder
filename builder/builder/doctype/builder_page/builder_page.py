@@ -308,7 +308,7 @@ class BuilderPage(WebsiteGenerator):
 
 	def clear_route_cache(self):
 		get_web_pages_with_dynamic_routes.clear_cache()
-		find_page_with_path.clear_cache()
+		_find_page_with_path_cached.clear_cache()
 		clear_cache(self.route)
 
 	def cleanup_standard_page_exports(self, app: str) -> None:
@@ -1857,12 +1857,15 @@ def _page_has_site_field():
 		return False
 
 
-@redis_cache(ttl=60 * 60)
 def find_page_with_path(route, website_profile=None):
 	# //// Neoffice website switch: an offline site (Website Profile.website_online=0)
 	# //// hides its pages from visitors — deep links 404 like the site never existed.
 	# //// Editors keep seeing them logged-in: that IS the preview before going live.
 	# //// Keyed on the key existing in the dict (pre-switch caches stay untouched).
+	# //// The gate runs on EVERY call and only the lookup below is cached: with the
+	# //// gate inside the cached body, the first caller's role decided for everyone for
+	# //// an hour (a staff visit exposed an offline page, a visitor's 404 hid it from
+	# //// staff) — neoffice-maintenance #280.
 	profile_doc = getattr(frappe.local, "website_profile_doc", None)
 	if (
 		profile_doc is not None
@@ -1872,7 +1875,11 @@ def find_page_with_path(route, website_profile=None):
 		roles = frappe.get_roles()
 		if "System Manager" not in roles and "Website Manager" not in roles:
 			return None
+	return _find_page_with_path_cached(route, website_profile)
 
+
+@redis_cache(ttl=60 * 60)
+def _find_page_with_path_cached(route, website_profile=None):
 	try:
 		# //// Neoffice multi-site: a page tagged for the current profile wins on
 		# //// that site (allows two home pages sharing a route); untagged pages
@@ -1901,6 +1908,10 @@ def find_page_with_path(route, website_profile=None):
 		)
 	except frappe.DoesNotExistError:
 		pass
+
+
+# //// Neoffice — the cache handle stays where callers and tests look for it (#280).
+find_page_with_path.clear_cache = _find_page_with_path_cached.clear_cache
 
 
 @redis_cache(ttl=60 * 60)

@@ -95,7 +95,25 @@ def managed_models() -> list[dict]:
     for model_id in [settings.model, settings.page_model, *extra]:
         if model_id and model_id not in seen:
             seen.append(model_id)
-    return [{"model_id": model_id, "label": model_id, "supports_vision": 0} for model_id in seen]
+    # an id the endpoint cannot serve is incoherent by construction (a gpt-4o left in
+    # site_config from before Moonshot failed every brief in silence on theleague,
+    # neoffice-maintenance #274): it is dropped here, and the code default takes
+    # its place when nothing is left
+    coherent = [m for m in seen if _served_by(settings.base_url, m)]
+    for dropped in [m for m in seen if m not in coherent]:
+        frappe.logger("builder").warning(f"managed model {dropped!r} is not served by {settings.base_url}: ignored")
+    if not coherent:
+        from builder.site_ai.config import DEFAULTS
+
+        coherent = [DEFAULTS["model"]]
+    return [{"model_id": model_id, "label": model_id, "supports_vision": 0} for model_id in coherent]
+
+
+def _served_by(base_url: str | None, model_id: str) -> bool:
+    """Moonshot serves kimi-* and moonshot-* ids only; any other gateway is trusted."""
+    if "moonshot" not in (base_url or "").lower():
+        return True
+    return model_id.lower().startswith(("kimi", "moonshot"))
 
 
 def sync_managed_ai_provider() -> str | None:
