@@ -111,7 +111,9 @@ def normalise_pages(pages: list, site_type: str) -> list[dict]:
         # page lost its "home" route and everything keyed on it (the host page, the
         # profile's home_page, the hero brief)
         route = (known_route or raw.get("route") or _slug(title)).strip("/") or _slug(title)
-        ptype = raw.get("type") or ptype or "generic"
+        # the canonical type wins as well: with the model's own label ("form", "contact-page")
+        # the Contact page of the B2B regeneration got no includes and no CTA link
+        ptype = ptype or raw.get("type") or "generic"
         if site_type == "one_page" and route == "home":
             ptype = "one_page"
         if route in seen:
@@ -232,6 +234,10 @@ def placeholder_photos(page: dict, activity: str) -> list[str]:
 # (site_ai/prompts/system_prompts.py); the page brief does the same for the
 # upstream page writer. An include is the innerHTML of its own plain block: the
 # Builder renderer runs Jinja on block content, so the widget appears at render.
+# an include listed here is REQUIRED on its page: the model wrote its own <form> on the
+# Contact page of the B2B regeneration, five inputs that post nowhere
+REQUIRED_INCLUDES = {"{% include 'builder/templates/includes/contact_form.html' %}"}
+
 PAGE_INCLUDES = {
     "contact": [
         ("{% include 'builder/templates/includes/contact_form.html' %}", "a working contact form, sent to the site's inbox"),
@@ -256,6 +262,29 @@ PAGE_INCLUDES = {
         ("{% include 'webshop/templates/includes/opening_hours.html' %}", "the shop's opening hours, live"),
     ],
 }
+
+
+def includes_block(includes: list[tuple[str, str]]) -> str:
+    """The brief's INCLUDES block: the required includes as an order (the contact form
+    IS the form, the model must not write its own), then the optional ones."""
+    if not includes:
+        return ""
+    required = [(t, p) for t, p in includes if t in REQUIRED_INCLUDES]
+    optional = [(t, p) for t, p in includes if t not in REQUIRED_INCLUDES]
+    lines = []
+    if required:
+        lines.append(
+            "INCLUDES REQUIRED on this page (each one as the `text` of its own plain div block, copied exactly, "
+            "never inside a grid or flex row; do NOT write a <form> of your own, this include IS the working form):"
+        )
+        lines += [f"- {t} \u2014 {p}" for t, p in required]
+    if optional:
+        lines.append(
+            ("INCLUDES available (optional, same rule: " if required else "INCLUDES (optional, ")
+            + "each one as the `text` of its own plain div block, copied exactly, never inside a grid or flex row):"
+        )
+        lines += [f"- {t} \u2014 {p}" for t, p in optional]
+    return "\n".join(lines)
 
 
 def available_includes(page_type: str) -> list[tuple[str, str]]:
@@ -321,11 +350,7 @@ def page_brief_text(site: dict, brief, page: dict, handles: dict, contact_prompt
             f"copy the URL exactly, give it a descriptive alt in {language}):\n{photo_lines}"
         ),
         "CLASS CONTRACT: " + CLASS_CONTRACT,
-        (
-            "INCLUDES (optional, each one as the `text` of its own plain div block, copied exactly, never inside a grid or flex row):\n"
-            + "\n".join(f"- {tag} \u2014 {purpose}" for tag, purpose in includes)
-            if includes else ""
-        ),
+        includes_block(includes),
         (
             "RULES: no header, navigation or footer sections (the site chrome is rendered around the page); no lorem; "
             f"business data verbatim; spell the brand name exactly '{site['site_name']}'; every text in {language}; "
