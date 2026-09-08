@@ -766,3 +766,52 @@ class TestRenderFidelity(unittest.TestCase):
 			self.assertEqual(get_powered_by(), {"label": "Neoffice", "url": "https://neoffice.ch"})
 		with patch("frappe.get_hooks", return_value=[]):
 			self.assertEqual(get_powered_by(), POWERED_BY)
+
+
+class TestInspirations(unittest.TestCase):
+	"""The sites and pictures a client likes reach the brief again (inspiration.py; the
+	Nora playbook had lost them in the move from the modal, 2026-09-08)."""
+
+	def test_lists_arrive_in_any_shape(self):
+		from builder.site_ai.nora.inspiration import clean_list
+
+		self.assertEqual(clean_list("https://a.ch, <https://b.ch>\nnone"), ["https://a.ch", "https://b.ch"])
+		self.assertEqual(clean_list('["/files/x.png", "/files/x.png"]'), ["/files/x.png"])
+		self.assertEqual(clean_list(None), [])
+		self.assertEqual(clean_list(["skip", " "]), [])
+
+	def test_gather_reads_sites_and_pictures_and_keeps_going(self):
+		from builder.site_ai.nora.inspiration import gather
+
+		def read_url(url):
+			if "bad" in url:
+				raise RuntimeError("timeout")
+			return {"kind": "URL", "source": url, "image": "/files/shot.png", "analysis": {"dominant_colors": [{"hex": "#111111"}, {"hex": "#eeeeee"}], "is_dark_theme": False}, "title": "A"}
+
+		with patch("builder.site_ai.nora.inspiration.read_url", side_effect=read_url), patch(
+			"builder.site_ai.nora.inspiration._analyse", return_value={"dominant_colors": [{"hex": "#abcdef"}], "is_dark_theme": True}
+		):
+			found = gather(["https://a.ch", "https://bad.ch"], ["/files/pic.png", "https://not-a-site-file/x.png"], record=False)
+		self.assertEqual(found["images"], ["/files/shot.png", "/files/pic.png"])
+		self.assertEqual(found["notes"], ["https://a.ch: colours #111111, #eeeeee, light", "picture: colours #abcdef, dark"])
+		self.assertEqual(len(found["failed"]), 2)
+
+	def test_describe_lists_the_findings_without_a_model(self):
+		from builder.site_ai.nora.inspiration import describe
+
+		found = {"sources": [{"kind": "URL", "source": "https://a.ch", "analysis": {"dominant_colors": [{"hex": "#111111"}]}}], "images": ["/files/shot.png"], "failed": ["https://bad.ch (timeout)"]}
+		text = describe(found, model=None)
+		self.assertIn("1. https://a.ch — colours #111111", text)
+		self.assertIn("Could not read https://bad.ch", text)
+		self.assertIn("generate_site", text)
+
+	def test_the_tool_and_the_playbook_carry_the_inspirations(self):
+		from builder.site_ai.nora.prompts import site_playbook
+		from builder.site_ai.nora.tools import TOOLS, generate_site
+
+		self.assertIn("inspiration_urls", generate_site.parameters["properties"])
+		self.assertIn("inspiration_images", generate_site.parameters["properties"])
+		self.assertIn("inspect_inspiration", [t.name for t in TOOLS])
+		text = site_playbook(None)
+		self.assertIn("inspect_inspiration", text)
+		self.assertIn("Sites you like", text)

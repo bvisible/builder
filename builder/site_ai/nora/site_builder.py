@@ -416,6 +416,7 @@ def page_brief_text(site: dict, brief, page: dict, handles: dict, contact_prompt
     lines = [
         f"DESIGN DIRECTION: {concept or 'a distinctive direction that fits the brand'} (tone: {tone or 'professional'}; hero style: {hero or 'free'}).",
         f"LAYOUT SYSTEM: {layout_system}. SIGNATURE MOVE: {signature or 'choose one that fits the system'}. Keep the SAME system and move on every page of this site.",
+        ("INSPIRATION (what the client likes; echo the palette and the mood, never copy): " + " | ".join(site["inspiration"])) if site.get("inspiration") else "",
         f"BRAND: {site['site_name']}. Activity: {site['activity']}",
         f"POSITIONING: {site.get('differentiators') or 'derive it from the activity'}",
         contact_prompt.strip() if contact_prompt else "",
@@ -810,7 +811,21 @@ def build_site(ctx, spec: dict) -> str:
         contact_prompt = _contact_context_prompt(contact_data) or ""
     if not logo_image and contact_data.get("logo"):
         logo_image = contact_data["logo"]
-    prompt = f"{site_name}: {activity}. {spec.get('differentiators') or ''} Style: {spec.get('style_direction') or ''}{contact_prompt}"
+    # the sites and pictures the client likes: read once, shown to the brief's vision
+    # pass, and summarised for every page (inspiration.py)
+    from builder.site_ai.nora.inspiration import clean_list, gather
+
+    inspiration = {"images": [], "notes": [], "failed": []}
+    inspiration_urls, inspiration_images = clean_list(spec.get("inspiration_urls")), clean_list(spec.get("inspiration_images"))
+    if inspiration_urls or inspiration_images:
+        _progress(ctx, job_id, _("Reading the inspirations"), 6)
+        try:
+            inspiration = gather(inspiration_urls, inspiration_images)
+            ai_log("info", "Inspirations read", sites=len(inspiration_urls), pictures=len(inspiration_images), notes=inspiration["notes"], failed=inspiration["failed"])
+        except Exception as e:
+            ai_log("warning", "Inspirations skipped", error=str(e)[:200])
+    inspiration_prompt = (" Inspirations the client likes (echo their palette and mood): " + " | ".join(inspiration["notes"])) if inspiration["notes"] else ""
+    prompt = f"{site_name}: {activity}. {spec.get('differentiators') or ''} Style: {spec.get('style_direction') or ''}{contact_prompt}{inspiration_prompt}"
     settings = get_ai_settings()
     brief = None
     try:
@@ -827,6 +842,7 @@ def build_site(ctx, spec: dict) -> str:
             pages_config=pages,
             max_retries=2,
             logo_image=logo_url,
+            inspiration_images=inspiration["images"] or None,
         )
         ai_log("info", "Design brief ready", tone=brief.site_tone, valid=validation.is_valid)
     except Exception as e:
@@ -878,7 +894,7 @@ def build_site(ctx, spec: dict) -> str:
     # 5. the pages, on upstream's page engine
     layout_system = choose_layout_system(spec.get("style_direction"), brief)
     page_model = _page_model(ctx)
-    site = {"site_name": site_name, "activity": activity, "differentiators": spec.get("differentiators"), "site_type": site_type, "profile": profile}
+    site = {"site_name": site_name, "activity": activity, "differentiators": spec.get("differentiators"), "site_type": site_type, "profile": profile, "inspiration": inspiration["notes"]}
     created, failed, cancelled = [], [], False
 
     def write_page(page: dict, photos: list[str], revision: str | None = None) -> tuple[list, str, str | None]:
