@@ -374,9 +374,12 @@ def _other_business(profile: str | None, site_name: str = "") -> bool:
 
 def available_includes(page_type: str, site_type: str = "vitrine", profile: str | None = None, site_name: str = "") -> list[tuple[str, str]]:
     """The includes of this page type whose app is installed on the bench (an include of
-    an absent app turns the whole page into a 500 at render time), minus the shop's
-    includes where they would show another business's data: never on a secondary
-    profile, and the product and brand carousels only on an e-commerce site."""
+    an absent app turns the whole page into a 500 at render time), minus every include
+    that would show another business's data — the team, the timeline, the map of the
+    address, the hours, the products: only the contact form is left to a site built for
+    a business other than the instance's (the About page of the B2C test site carried
+    the host's employees and milestones, 2026-09-08) — and the product and brand
+    carousels only on an e-commerce site."""
     try:
         installed = set(frappe.get_installed_apps())
     except Exception:
@@ -388,7 +391,9 @@ def available_includes(page_type: str, site_type: str = "vitrine", profile: str 
         app = path.group(1).split("/", 1)[0] if path else ""
         if app not in installed and app != "templates":
             continue
-        if app == "webshop" and (not shop_data or ("carousel" in tag and site_type != "ecommerce")):
+        if not shop_data and "contact_form" not in tag:
+            continue
+        if app == "webshop" and "carousel" in tag and site_type != "ecommerce":
             continue
         out.append((tag, purpose))
     return out
@@ -678,7 +683,9 @@ def build_site(ctx, spec: dict) -> str:
     from builder.site_ai.logging import ai_log
     from builder.site_ai.nora.accent import dominant_accent, rewrite_hex
     from builder.site_ai.nora import visual_check
-    from builder.site_ai.nora.layout import place_orphans
+    from builder.hf_utils.header_footer import NEWSLETTER_DEFAULTS
+    from builder.site_ai.nora.layout import place_orphans, strip_title_band, unwrap_grid_wrappers
+    from builder.site_ai.nora.punctuation import french_spacing
     from builder.site_ai.nora.typography import cap_font_sizes
     from builder.site_ai.nora.prompts import page_profile
 
@@ -764,6 +771,12 @@ def build_site(ctx, spec: dict) -> str:
     config.logo_text = site_name
     if hasattr(config, "footer_logo_text"):
         config.footer_logo_text = site_name
+    # the newsletter strings the Variant still carries as English defaults go blank:
+    # footer.html translates an empty field in the visitor's language ("Subscribe to
+    # our newsletter" sat on the French B2C footer, 2026-09-08)
+    for field, default in NEWSLETTER_DEFAULTS.items():
+        if hasattr(config, field) and (config.get(field) or "").strip() == default:
+            config.set(field, "")
     if primary and hasattr(config, "primary_color"):
         config.primary_color = primary
     if secondary and hasattr(config, "secondary_color"):
@@ -894,6 +907,14 @@ def build_site(ctx, spec: dict) -> str:
                     placed = place_orphans(blocks)
                     if placed:
                         ai_log("info", "Grid orphans placed", page=page["title"], edits=placed)
+                    hoisted = unwrap_grid_wrappers(blocks)
+                    if hoisted:
+                        ai_log("info", "Grid wrappers unwrapped", page=page["title"], edits=hoisted)
+                    # an interior page opens under the site's own title band (page_header.py)
+                    if page["route"] != "home":
+                        stripped = strip_title_band(blocks, page["title"])
+                        if stripped:
+                            ai_log("info", "Repeated title dropped", page=page["title"], edits=stripped)
                     # nor the type scale: see typography.py (a 210 px paragraph at 11vw)
                     capped = cap_font_sizes(blocks)
                     if capped:
@@ -902,6 +923,11 @@ def build_site(ctx, spec: dict) -> str:
                     fixes = repair_contrast(blocks, palette)
                     if fixes:
                         ai_log("info", "Contrast repaired", page=page["title"], fixes=len(fixes), first=fixes[0][:80])
+                    # nor the spacing of French punctuation: see punctuation.py
+                    if lang_code == "fr":
+                        spaced = french_spacing(blocks)
+                        if spaced:
+                            ai_log("info", "French spacing applied", page=page["title"], edits=spaced)
                 if blocks:
                     break
                 error = "the model returned no usable blocks"

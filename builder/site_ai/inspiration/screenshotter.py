@@ -9,9 +9,32 @@ Captures full-page screenshots of websites using Playwright.
 
 import asyncio
 import io
+import os
 from typing import Optional
+from urllib.parse import unquote, urlparse
 
 import frappe
+
+
+def static_file_for(url: str, roots: Optional[dict]) -> Optional[str]:
+    """The file on disk behind a static URL of the site being rendered.
+
+    gunicorn serves neither /assets nor /files — nginx does, in front of it — so a page
+    rendered through the loopback came back without its reset stylesheet and without a
+    single photo, and the vision model reviewed (and "fixed") a page no visitor sees:
+    every capture of 2026-09-08. `roots` maps a URL prefix to a directory. Returns the
+    file path, "" when the prefix matches but nothing is there (a 404, never a fall
+    through to the app), None when the URL is not static."""
+    path = unquote(urlparse(url).path)
+    for prefix, root in sorted((roots or {}).items(), key=lambda item: -len(item[0])):
+        if not path.startswith(prefix):
+            continue
+        base = os.path.normpath(root)
+        candidate = os.path.normpath(os.path.join(base, path[len(prefix):]))
+        if candidate == base or not candidate.startswith(base + os.sep):
+            return ""
+        return candidate if os.path.isfile(candidate) else ""
+    return None
 
 
 class WebsiteScreenshotter:
@@ -37,6 +60,7 @@ class WebsiteScreenshotter:
         url: str,
         full_page: bool = True,
         timeout: int = 30000,
+        static_roots: Optional[dict] = None,
     ) -> dict:
         """
         Capture a screenshot of the given URL asynchronously.
@@ -63,6 +87,20 @@ class WebsiteScreenshotter:
                 page = await browser.new_page(
                     viewport={"width": self.viewport_width, "height": self.viewport_height}
                 )
+
+                # a loopback render finds its stylesheets and photos on disk (static_file_for)
+                if static_roots:
+
+                    async def serve_static(route, request):
+                        target = static_file_for(request.url, static_roots)
+                        if target is None:
+                            await route.continue_()
+                        elif target == "":
+                            await route.fulfill(status=404, body=b"")
+                        else:
+                            await route.fulfill(path=target)
+
+                    await page.route("**/*", serve_static)
 
                 # Navigate to URL
                 await page.goto(url, timeout=timeout, wait_until="networkidle")
@@ -124,6 +162,7 @@ class WebsiteScreenshotter:
         url: str,
         full_page: bool = True,
         timeout: int = 30000,
+        static_roots: Optional[dict] = None,
     ) -> dict:
         """
         Capture a screenshot synchronously (wrapper around async method).
@@ -143,7 +182,7 @@ class WebsiteScreenshotter:
             asyncio.set_event_loop(loop)
 
         return loop.run_until_complete(
-            self.capture_async(url, full_page, timeout)
+            self.capture_async(url, full_page, timeout, static_roots)
         )
 
     def capture_and_save(
@@ -151,6 +190,7 @@ class WebsiteScreenshotter:
         url: str,
         doc_name: Optional[str] = None,
         full_page: bool = True,
+        static_roots: Optional[dict] = None,
     ) -> dict:
         """
         Capture screenshot and save to Frappe File.
@@ -163,7 +203,7 @@ class WebsiteScreenshotter:
         Returns:
             dict with file_url, file_doc, and capture metadata
         """
-        result = self.capture(url, full_page=full_page)
+        result = self.capture(url, full_page=full_page, static_roots=static_roots)
 
         if not result.get("success"):
             return result
@@ -194,7 +234,7 @@ class WebsiteScreenshotter:
         }
 
 
-def capture_website_screenshot(url: str, full_page: bool = True) -> dict:
+def capture_website_screenshot(url: str, full_page: bool = True, static_roots: Optional[dict] = None) -> dict:
     """
     Convenience function to capture a website screenshot.
 
@@ -206,4 +246,4 @@ def capture_website_screenshot(url: str, full_page: bool = True) -> dict:
         dict with capture result
     """
     screenshotter = WebsiteScreenshotter()
-    return screenshotter.capture_and_save(url, full_page=full_page)
+    return screenshotter.capture_and_save(url, full_page=full_page, static_roots=static_roots)

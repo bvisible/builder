@@ -667,3 +667,88 @@ class TestBraceCards(unittest.TestCase):
 		self.assertEqual([o["label"] for o in choices["options"]], ["Vitrine", "Boutique en ligne"])
 		self.assertEqual(choices["options"][0]["description"], "sans comptes")
 
+
+
+class TestRenderFidelity(unittest.TestCase):
+	"""The page the visual check reviews is the page a visitor sees (screenshotter.py,
+	visual_check.py), and the mechanical passes behind the card-driven B2C run of
+	2026-09-08 (layout.py, punctuation.py, the includes gate, the footer credit)."""
+
+	def test_static_urls_resolve_on_disk_and_never_escape_the_root(self):
+		import os
+		import tempfile
+
+		from builder.site_ai.inspiration.screenshotter import static_file_for
+
+		with tempfile.TemporaryDirectory() as root:
+			os.makedirs(os.path.join(root, "builder"))
+			with open(os.path.join(root, "builder", "reset.css"), "w") as f:
+				f.write("*{box-sizing:border-box}")
+			roots = {"/assets/": root}
+			self.assertEqual(static_file_for("http://prod.local:8000/assets/builder/reset.css?v=7", roots), os.path.join(root, "builder", "reset.css"))
+			self.assertEqual(static_file_for("http://prod.local:8000/assets/builder/missing.css", roots), "")
+			self.assertEqual(static_file_for("http://prod.local:8000/assets/../../etc/passwd", roots), "")
+			self.assertIsNone(static_file_for("https://fonts.googleapis.com/css2?family=Inter", roots))
+			self.assertIsNone(static_file_for("http://prod.local:8000/about?_website_profile=X", roots))
+
+	def test_a_single_plain_wrapper_in_a_grid_is_unwrapped(self):
+		from builder.site_ai.nora.layout import unwrap_grid_wrappers
+
+		cards = [{"element": "div", "classes": ["u-card"]} for _ in range(3)]
+		grid = {"element": "div", "classes": ["u-grid", "u-grid--3"], "baseStyles": {"gridColumn": "2 / span 10"}, "children": [{"element": "div", "baseStyles": {}, "children": cards}]}
+		styled = {"element": "div", "classes": ["u-grid"], "children": [{"element": "div", "baseStyles": {"display": "flex", "flexDirection": "column"}, "children": list(cards)}]}
+		single = {"element": "div", "classes": ["u-grid"], "children": [{"element": "div", "children": [cards[0]]}]}
+		blocks = [{"element": "section", "children": [grid, styled, single]}]
+		self.assertEqual(unwrap_grid_wrappers(blocks), 1)
+		self.assertEqual(grid["children"], cards)
+		self.assertEqual(len(styled["children"]), 1)
+		self.assertEqual(len(single["children"]), 1)
+
+	def test_the_title_band_of_an_interior_page_is_dropped(self):
+		from builder.site_ai.nora.layout import strip_title_band
+
+		band = {"element": "section", "blockName": "page-title", "children": [{"element": "div", "children": [{"element": "h1", "innerHTML": "A propos"}, {"element": "p", "innerHTML": "Notre histoire"}]}]}
+		story = {"element": "section", "children": [{"element": "h2", "innerHTML": "Une serre éditoriale"}]}
+		blocks = [{"element": "div", "children": [band, story]}]
+		self.assertEqual(strip_title_band(blocks, "À propos"), 1)
+		self.assertEqual(blocks[0]["children"], [story])
+		# a first section that is more than the title keeps its content, minus the repeated heading
+		hero = {"element": "section", "children": [{"element": "h1", "innerHTML": "Contact"}, {"element": "p", "innerHTML": "Écrivez-nous"}, {"element": "img"}, {"element": "p", "innerHTML": "Adresse"}]}
+		blocks = [{"element": "div", "children": [hero]}]
+		self.assertEqual(strip_title_band(blocks, "Contact"), 1)
+		self.assertEqual([c.get("element") for c in hero["children"]], ["p", "img", "p"])
+		self.assertEqual(strip_title_band([{"element": "div", "children": [story]}], "À propos"), 0)
+
+	def test_french_spacing_before_double_punctuation(self):
+		from builder.site_ai.nora.punctuation import NNBSP, french_spacing
+
+		blocks = [
+			{"element": "h2", "innerHTML": "Envie d'un bouquet qui vous ressemble ?"},
+			{"element": "p", "innerHTML": 'Prix : dès CHF 55 <a href="/x">Voir !</a>'},
+			{"element": "div", "innerHTML": "{% include 'x.html' %} ?"},
+			{"element": "div", "innerHTML": '<svg viewBox="0 0 1 1"> </svg> ?'},
+		]
+		self.assertEqual(french_spacing(blocks), 2)
+		self.assertEqual(blocks[0]["innerHTML"], f"Envie d'un bouquet qui vous ressemble{NNBSP}?")
+		self.assertEqual(blocks[1]["innerHTML"], f'Prix{NNBSP}: dès CHF 55 <a href="/x">Voir{NNBSP}!</a>')
+		self.assertIn(" ?", blocks[2]["innerHTML"])
+		self.assertIn(" ?", blocks[3]["innerHTML"])
+
+	def test_another_business_gets_the_contact_form_only(self):
+		with patch("builder.site_ai.nora.site_builder._other_business", return_value=True), patch(
+			"frappe.get_installed_apps", return_value=["frappe", "builder", "webshop"]
+		):
+			about = [t for t, _ in available_includes("about", "vitrine", "Nora Test", "Lilas & Co")]
+			contact = [t for t, _ in available_includes("contact", "ecommerce", "Nora Test", "Lilas & Co")]
+		self.assertEqual(about, [])
+		self.assertEqual(len(contact), 1)
+		self.assertIn("contact_form", contact[0])
+
+	def test_powered_by_comes_from_the_edition_hook(self):
+		from builder.site_ai.config import POWERED_BY, get_powered_by
+
+		hooks = {"builder_powered_by_label": ["Neoffice"], "builder_powered_by_url": ["https://neoffice.ch"]}
+		with patch("frappe.get_hooks", side_effect=lambda key, *a, **k: hooks.get(key, [])):
+			self.assertEqual(get_powered_by(), {"label": "Neoffice", "url": "https://neoffice.ch"})
+		with patch("frappe.get_hooks", return_value=[]):
+			self.assertEqual(get_powered_by(), POWERED_BY)

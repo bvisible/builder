@@ -10,6 +10,7 @@ The rendering goes through the loopback with the site's own profile named in the
 string (neoffice_theme honours it from 127.0.0.1 only): no profile host has to resolve
 for the check to see the right chrome."""
 
+import os
 import time
 
 import frappe
@@ -29,6 +30,16 @@ def enabled() -> bool:
     except Exception:
         return True
     return True if value is None else bool(frappe.utils.cint(value))
+
+
+def static_roots() -> dict:
+    """What the loopback render must find on disk: the bench's assets and the site's
+    public files (private files stay out, the review is a visitor's view). gunicorn
+    serves neither; see screenshotter.static_file_for."""
+    return {
+        "/assets/": os.path.join(frappe.utils.get_bench_path(), "sites", "assets"),
+        "/files/": os.path.abspath(frappe.get_site_path("public", "files")),
+    }
 
 
 def loopback_page_url(route: str, profile: str | None) -> str:
@@ -100,14 +111,15 @@ def _screenshot(url: str, title: str) -> dict:
     30 s on osiris), and the viewport alone is still a review where a skipped page is none."""
     from builder.site_ai.inspiration.screenshotter import capture_website_screenshot
 
+    roots = static_roots()
     try:
-        shot = capture_website_screenshot(url, full_page=True)
+        shot = capture_website_screenshot(url, full_page=True, static_roots=roots)
         if shot.get("success"):
             return shot
         raise RuntimeError(str(shot.get("error") or "screenshot failed"))
     except Exception as e:
         ai_log("warning", "Full-page screenshot failed, viewport only", page=title, error=str(e)[:120])
-        return capture_website_screenshot(url, full_page=False)
+        return capture_website_screenshot(url, full_page=False, static_roots=roots)
 
 
 def review_page(page: dict, profile: str | None, model: str, site_name: str = "", activity: str = "") -> dict:

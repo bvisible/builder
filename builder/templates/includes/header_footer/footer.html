@@ -193,8 +193,11 @@
 			<div class="site-footer__copyright-row">
 				<p class="site-footer__copyright">{{ copyright_text }}</p>
 				<span class="site-footer__powered-by">
-					{# both halves are ours, so marking the result safe only lets the link through #}
-					{{ _("Powered by {0}").format('<a href="https://unpress.cloud" target="_blank" rel="noopener noreferrer">Unpress</a>') | safe }}
+					{# both halves are ours, so marking the result safe only lets the link through;
+					   the product is the edition's (config.get_powered_by), escaped here because
+					   frappe's Jinja environment has no autoescape #}
+					{%- set credit = powered_by or {"label": "Unpress", "url": "https://unpress.cloud"} -%}
+					{{ _("Powered by {0}").format('<a href="%s" target="_blank" rel="noopener noreferrer">%s</a>' | format(credit.url | e, credit.label | e)) | safe }}
 				</span>
 			</div>
 			{%- if template != "Extended" and social_links and template == "Standard" -%}
