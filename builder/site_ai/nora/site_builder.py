@@ -96,6 +96,19 @@ def _bare(text: str) -> str:
     return re.sub(r"[^a-z0-9 -]+", "", text.lower()).strip()
 
 
+NO_LOGO_WORDS = {"", "none", "null", "no", "non", "aucun", "aucune", "skip", "pas de logo"}
+
+
+def clean_logo(value) -> str | None:
+    """The logo argument as a path or URL, or None: the model answers "none" in words
+    when the user skipped the logo, and a truthy "none" used to reach the brief as an
+    image to analyse (neoffice-maintenance #296)."""
+    text = str(value or "").strip()
+    if text.lower() in NO_LOGO_WORDS:
+        return None
+    return text if text.startswith(("/", "http://", "https://", "data:")) else None
+
+
 def normalise_pages(pages: list, site_type: str) -> list[dict]:
     """Every page gets a route and a type; the home page comes first."""
     out, seen = [], set()
@@ -635,7 +648,7 @@ def build_site(ctx, spec: dict) -> str:
     lang_code = lang_code[:2] if lang_code[:2] in ("fr", "en", "de", "it") else "fr"
     primary = (spec.get("primary_color") or "").strip() or None
     secondary = (spec.get("secondary_color") or "").strip() or None
-    logo_image = (spec.get("logo_image") or "").strip() or None
+    logo_image = clean_logo(spec.get("logo_image"))
     job_id = f"site_gen_{frappe.generate_hash(length=10)}"
     total = len(pages)
 
@@ -719,7 +732,9 @@ def build_site(ctx, spec: dict) -> str:
     brief = None
     try:
         logo_url = (frappe.utils.get_url() + logo_image) if logo_image and logo_image.startswith("/") else logo_image
-        brief, validation = BriefGenerator(provider="litellm", model=ctx.model, config=settings).generate_brief_with_validation(
+        # the page model: the same Kimi as the chat on its highspeed serving, so the brief's
+        # minute of reasoning becomes seconds
+        brief, validation = BriefGenerator(provider="litellm", model=_page_model(ctx), config=settings).generate_brief_with_validation(
             prompt=prompt,
             site_name=site_name,
             site_type=site_type,

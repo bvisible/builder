@@ -623,19 +623,14 @@ IMPORTANT: Apply these revision instructions to the design brief. Adjust colors,
             think_value = self.config.get_think_value(self.config.brief_think_level)
             ai_log("debug", "Calling generate_structured for DesignBrief",
                 think_level=self.config.brief_think_level, think_value=think_value)
-            # Logo/inspiration vision is best-effort: a non-responsive vision
-            # endpoint (observed with Moonshot kimi on image payloads — it
-            # accepts the request but never answers) must not stall the whole
-            # generation. Bound the vision attempt to a short timeout, then fall
-            # back to a text-only brief (fully sufficient — only the visual cue
-            # from the logo/inspiration is lost, the rest of the brief is intact).
-            VISION_TIMEOUT = 90
+            # Logo/inspiration vision is best-effort and only worth a call when the
+            # brief model can see: the provider drops the images otherwise, so the
+            # "vision" attempt was a plain duplicate of the text call, which lost
+            # about 90 s and a warning on every build (neoffice-maintenance #296).
             brief = None
-            if images_for_vision:
-                original_timeout = getattr(self.llm, "timeout", None)
+            can_see = getattr(self.llm, "supports_vision", None)
+            if images_for_vision and callable(can_see) and can_see():
                 try:
-                    if original_timeout:
-                        self.llm.timeout = min(original_timeout, VISION_TIMEOUT)
                     brief = self.llm.generate_structured(
                         prompt=user_prompt,
                         schema=DesignBrief,
@@ -645,10 +640,8 @@ IMPORTANT: Apply these revision instructions to the design brief. Adjust colors,
                     )
                 except Exception as vision_err:
                     ai_log("warning", "Brief vision attempt failed; using text-only brief",
-                           error=str(vision_err)[:120])
+                           error=str(vision_err).replace("\n", " ")[:200])
                     brief = None
-                finally:
-                    self.llm.timeout = original_timeout
             if brief is None:
                 brief = self.llm.generate_structured(
                     prompt=user_prompt,

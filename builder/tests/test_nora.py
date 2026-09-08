@@ -417,3 +417,39 @@ class TestShopIncludes(unittest.TestCase):
 		self.assertTrue(all("carousel" in t for t in shop) and shop)
 		self.assertTrue(any("opening_hours" in t for t in hours))
 
+
+class TestBriefCall(unittest.TestCase):
+	"""What reaches the model for the design brief (neoffice-maintenance #296)."""
+
+	def test_a_logo_answered_in_words_is_no_logo(self):
+		from builder.site_ai.nora.site_builder import clean_logo
+
+		for value in (None, "", "none", "None", "null", "aucun", "pas de logo", "skip"):
+			self.assertIsNone(clean_logo(value), value)
+		self.assertEqual(clean_logo("/files/logo.png"), "/files/logo.png")
+		self.assertEqual(clean_logo("https://x.test/logo.svg"), "https://x.test/logo.svg")
+		self.assertIsNone(clean_logo("logo.png"))
+
+	def test_structured_calls_leave_room_for_the_reasoning(self):
+		from pydantic import BaseModel
+
+		from builder.site_ai.providers.litellm_provider import STRUCTURED_MAX_TOKENS, LiteLLMProvider
+
+		class Answer(BaseModel):
+			x: int
+
+		seen = {}
+
+		def fake_complete(model, messages, params, *, stream, api_key=None):
+			seen.update(params)
+			return '{"x": 1}'
+
+		provider = LiteLLMProvider(model="managed/kimi-k2.7-code-highspeed", max_tokens=16384)
+		with patch("builder.ai.llm.complete", side_effect=fake_complete), patch.object(
+			LiteLLMProvider, "_resolve_model", return_value="managed/kimi-k2.7-code-highspeed"
+		), patch("builder.ai.models.ModelRegistry.supports_vision", return_value=False):
+			answer = provider.generate_structured("give x", Answer, system_prompt="sys")
+		self.assertEqual(answer.x, 1)
+		self.assertGreaterEqual(seen["max_tokens"], STRUCTURED_MAX_TOKENS)
+		self.assertEqual(seen["response_format"], {"type": "json_object"})
+
