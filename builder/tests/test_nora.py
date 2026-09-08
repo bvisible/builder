@@ -534,10 +534,10 @@ class TestTypography(unittest.TestCase):
 class TestChromeTools(unittest.TestCase):
 	"""The assistant reads and changes the site chrome by dialogue (tools.py)."""
 
-	def test_the_registry_carries_the_three_site_tools(self):
+	def test_the_registry_carries_the_four_site_tools(self):
 		from builder.site_ai.nora.tools import TOOLS
 
-		self.assertEqual([t.name for t in TOOLS], ["generate_site", "get_site_chrome", "update_site_chrome"])
+		self.assertEqual([t.name for t in TOOLS], ["generate_site", "inspect_inspiration", "get_site_chrome", "update_site_chrome"])
 		self.assertTrue(all(t.side == "server" and callable(t.handler) for t in TOOLS))
 
 	def test_update_payload_keeps_the_chrome_fields_only(self):
