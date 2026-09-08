@@ -325,3 +325,21 @@ class TestAdoption(unittest.TestCase):
 		blocks = [{"baseStyles": {"backgroundColor": "#1c3d52", "fontFamily": "DM Sans"}}]
 		rewrite_blocks(blocks, "gf", self.PALETTE, self.FONTS)
 		self.assertEqual(rewrite_blocks(blocks, "gf", self.PALETTE, self.FONTS), 0)
+
+
+class TestPageStream(unittest.TestCase):
+	"""Liveness of a streamed page: a thinking model's reasoning counts as output."""
+
+	def test_delta_parts_reads_reasoning_before_content(self):
+		from types import SimpleNamespace as NS
+
+		from builder.site_ai.nora.site_builder import _delta_parts
+
+		thinking = NS(choices=[NS(delta=NS(content=None, reasoning_content="let me think"))])
+		content = NS(choices=[NS(delta=NS(content="el: div", reasoning_content=None))])
+		provider = NS(choices=[NS(delta=NS(content=None, provider_specific_fields={"reasoning_content": "hmm"}))])
+		empty = NS(choices=[])
+		self.assertEqual(_delta_parts(thinking), ("", "let me think"))
+		self.assertEqual(_delta_parts(content), ("el: div", ""))
+		self.assertEqual(_delta_parts(provider), ("", "hmm"))
+		self.assertEqual(_delta_parts(empty), ("", ""))

@@ -363,6 +363,10 @@ class AgentRunner:
 		# Page locks acquired this turn ((key, token) pairs, token-fenced);
 		# released in run()'s finally.
 		self.held_locks: list[tuple[str, str]] = []
+		# //// Neoffice — renews the session and page locks while the turn runs (locks.Heartbeat):
+		# //// a Nora site build outlives their TTLs, and longer TTLs would strand the page for an
+		# //// hour after a killed worker.
+		self.heartbeat = locks.Heartbeat()
 		# Images a server tool wants shown to the model (e.g. a preview_page screenshot).
 		# Drained after each round as a follow-up user message — OpenAI-shape tool
 		# results can't reliably carry image parts through OpenRouter.
@@ -869,13 +873,13 @@ class AgentRunner:
 		from builder.ai import page_writer
 
 		key = locks.page_key(page_id)
-		# //// Neoffice — the lock lasts the whole turn, a site build included (locks.turn_ttl).
-		token = locks.acquire(key, locks.turn_ttl(locks.PAGE_LOCK_TTL))
+		token = locks.acquire(key, locks.PAGE_LOCK_TTL)
 		if token is None:
 			return (
 				f"FAILED: page {page_id} is being edited by another AI task right now. Try again in a moment."
 			)
 		self.held_locks.append((key, token))
+		self.heartbeat.watch(key, token, locks.PAGE_LOCK_TTL)  # //// Neoffice — see __init__
 		self.tree = WorkingTree(page_writer.load_page_root(page_id))
 		self.pending_state = capture_page_state(page_id)
 		return ""
@@ -1171,10 +1175,13 @@ class AgentRunner:
 					"error", message="Another AI request is still processing. Please wait for it to finish."
 				)
 				return
+			# //// Neoffice — see __init__ (heartbeat)
+			self.heartbeat.watch(locks.session_key(self.session_id), self.run_token, locks.SESSION_LOCK_TTL)
 
 		try:
 			self.run_turn(started)
 		finally:
+			self.heartbeat.stop()  # //// Neoffice
 			self.clear_cancel_flag()
 			for key, token in self.held_locks:
 				locks.release(key, token)

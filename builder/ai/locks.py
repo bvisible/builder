@@ -14,6 +14,7 @@ the first consumer.
 """
 
 import secrets
+import threading
 from contextlib import contextmanager
 
 import frappe
@@ -26,19 +27,53 @@ TASK_LOCK_TTL = 840
 SESSION_LOCK_TTL = 660
 
 
-# //// Neoffice — a site build runs INSIDE the chat turn (generate_site, 15 to 25 minutes),
-# //// under the longer job timeout builder.ai.api.run sets from site_config
-# //// (builder_agent_job_timeout, 3600 by default here). The page and session locks must
-# //// outlive that turn, or they expire mid-build and a second turn (or the panel's
-# //// watchdog, which reads the session lock) believes the turn is over. Evaluated at
-# //// acquire time, never at import: frappe.conf is unbound while an RQ worker
-# //// deserialises a job, and reading it there killed every agent turn (2026-09-08).
-def turn_ttl(default: int) -> int:
-	try:
-		timeout = int(frappe.conf.get("builder_agent_job_timeout") or 0)
-	except (TypeError, ValueError, RuntimeError, AttributeError):
-		timeout = 0
-	return max(default, (timeout or 3600) + 60)
+# //// Neoffice — added. A Nora site build runs INSIDE the chat turn (generate_site, 15 to
+# //// 25 minutes) while the TTLs above fit upstream's 10-minute turns. Longer TTLs were the
+# //// first answer and a trap: a lock left behind by a killed worker (bench restart mid-build)
+# //// then blocks the page for an hour. Instead the running turn renews its locks from a
+# //// daemon thread: a live turn keeps them for as long as it runs, a dead one lets them
+# //// expire within the TTL, exactly as upstream intends.
+EXTEND_IF_TOKEN_MATCHES = """
+if redis.call('get', KEYS[1]) == ARGV[1] then return redis.call('expire', KEYS[1], ARGV[2]) end
+return 0
+"""
+
+
+class Heartbeat:
+	"""Renews the locks a turn holds, from a daemon thread, while the turn runs.
+
+	Keys are resolved (`make_key`) on the calling thread: `frappe.local` is thread-local
+	and unbound in the worker thread. The redis client itself is a connection pool and
+	safe to use from there. `stop()` is idempotent; a thread never started is a no-op."""
+
+	def __init__(self, every: float | None = None):
+		self._client = frappe.cache()
+		self._pairs: list[tuple[bytes | str, str, int]] = []
+		self._every = every
+		self._stop = threading.Event()
+		self._thread: threading.Thread | None = None
+
+	def watch(self, key: str, token: str | None, ttl: int) -> None:
+		if not token:
+			return
+		self._pairs.append((self._client.make_key(key), token, ttl))
+		if self._thread is None:
+			self._thread = threading.Thread(target=self._run, name="builder-ai-lock-heartbeat", daemon=True)
+			self._thread.start()
+
+	def stop(self) -> None:
+		self._stop.set()
+		if self._thread is not None:
+			self._thread.join(timeout=2)
+
+	def _run(self) -> None:
+		every = self._every or max(5, min(ttl for _, _, ttl in self._pairs) // 4)
+		while not self._stop.wait(every):
+			for made_key, token, ttl in list(self._pairs):
+				try:
+					self._client.eval(EXTEND_IF_TOKEN_MATCHES, 1, made_key, token, ttl)
+				except Exception:
+					pass
 
 RELEASE_IF_TOKEN_MATCHES = """
 if redis.call('get', KEYS[1]) == ARGV[1] then return redis.call('del', KEYS[1]) end

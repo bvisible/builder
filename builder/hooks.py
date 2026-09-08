@@ -192,6 +192,14 @@ doc_events = {
 # Scheduled Tasks
 # ---------------
 
+# //// Neoffice — added. frappe.clear_cache() (v15.89 here, upstream too) deletes EVERY key of
+# //// the site except these patterns. The Nora site build clears the cache mid-turn (site_builder,
+# //// the chrome config's on_update), which wiped the turn's Redis locks, its cancel flag and the
+# //// live page stream buffer: the panel's watchdog then saw "no turn running" 16 s into a
+# //// 20-minute build and cancel answered "not_running" (2026-09-08). Everything builder.ai keeps
+# //// in Redis starts with builder_ai_ (locks.py, loop.py cancel_key, artifact.py stream_buffer_key).
+persistent_cache_keys = ["builder_ai_*"]
+
 scheduler_events = {
 	"cron": {
 		"*/10 * * * *": [
