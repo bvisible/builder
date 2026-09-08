@@ -505,7 +505,9 @@ class TestTypography(unittest.TestCase):
 		self.assertIsNone(capped_font_size("72px", "span"))
 		self.assertEqual(capped_font_size("120px", "span"), "6rem")
 		self.assertIsNone(capped_font_size("1.125rem", "p"))
-		self.assertIsNone(capped_font_size("clamp(1rem, 3vw, 2rem)", "h2"))
+		# a clamp of our shape, the model's included, is normalised from its vw part
+		self.assertEqual(capped_font_size("clamp(1rem, 3vw, 2rem)", "h2"), "clamp(1.5rem, 3vw, 3.25rem)")
+		self.assertIsNone(capped_font_size("clamp(1rem, 2vw + 0.5rem, 2rem)", "h2"))
 		# a clamp written by an earlier rule is re-derived from its vw part
 		self.assertEqual(capped_font_size("clamp(1rem, 11vw, 1.35rem)", "p"), "clamp(2rem, 11vw, 4.5rem)")
 		self.assertIsNone(capped_font_size("clamp(2rem, 11vw, 4.5rem)", "p"))
