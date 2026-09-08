@@ -943,7 +943,7 @@ def build_site(ctx, spec: dict) -> str:
                 if ctx.is_cancelled():
                     break
                 _progress(ctx, job_id, _("Visual check: {0}").format(item["title"]), 96, {"pages_created": created})
-                reviews.append(visual_check.review_page(item, profile, page_model))
+                reviews.append(visual_check.review_page(item, profile, page_model, site_name=site_name, activity=activity))
             # the pages that failed the first glance first, then the ones with most defects
             todo = sorted(
                 [r for r in reviews if r["issues"] and r["name"] in by_name],
