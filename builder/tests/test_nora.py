@@ -138,6 +138,16 @@ class TestTextCards(unittest.TestCase):
 		spec = parse_card("Pages?\n[choices multi: Pages\nAccueil, Contact, FAQ]")
 		self.assertEqual([o["label"] for o in spec["ui"][0]["options"]], ["Accueil", "Contact", "FAQ"])
 
+	def test_a_head_written_as_tool_arguments_sets_label_and_multi(self):
+		spec = parse_card("Pages ?\n[choices: label: Pages; multi: true\n- Accueil — la vitrine\n- Contact — le formulaire]\n[buttons: Continuer]")
+		group = spec["ui"][0]
+		self.assertEqual(group.get("label"), "Pages")
+		self.assertTrue(group.get("multi"))
+		self.assertEqual([o["label"] for o in group["options"]], ["Accueil", "Contact"])
+		spec = parse_card("Couleurs\n[choices: Palette, single-select\n- Lilas doux: violet #9B7CB6\n- Jardin: rose #E8B4B8]")
+		self.assertEqual(spec["ui"][0].get("label"), "Palette")
+		self.assertFalse(spec["ui"][0].get("multi"))
+
 	def test_plain_prose_is_not_a_card(self):
 		self.assertIsNone(parse_card("Le site est créé. Il comprend cinq pages."))
 		self.assertIsNone(parse_card(""))
