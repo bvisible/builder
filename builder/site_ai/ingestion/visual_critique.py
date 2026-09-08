@@ -51,10 +51,11 @@ def _critique_provider(which: str = "auto"):
     ), cfg.model
 
 
-def critique_screenshot(screenshot_url: str, which: str = "auto", model: str | None = None):
+def critique_screenshot(screenshot_url: str, which: str = "auto", model: str | None = None, context: str = ""):
     """Critique a page screenshot. Returns (PageCritique, model_label). `model` names a
     vision-capable registry model to use instead of the nora/kimi choice (the site build
-    reviews with its page model, Kimi K2.7 reads images since 2026-09-08)."""
+    reviews with its page model, Kimi K2.7 reads images since 2026-09-08); `context` is
+    what the reviewer should know before judging (the brief, what is still being generated)."""
     if model:
         llm, label = get_provider("litellm", model=model, temperature=0.3, timeout=CRITIQUE_TIMEOUT), model
     else:
@@ -64,6 +65,8 @@ def critique_screenshot(screenshot_url: str, which: str = "auto", model: str | N
         "whether it looks professional, and the concrete visible problems "
         "(area, severity, problem, fix), most important first."
     )
+    if context:
+        prompt += "\n\nContext: " + context.strip()
     critique = llm.generate_structured(
         prompt=prompt,
         schema=PageCritique,

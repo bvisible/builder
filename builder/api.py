@@ -257,7 +257,10 @@ def get_ai_themes():
 
 def _update_generation_status(job_id: str, data: dict):
 	"""Update the generation status in cache and broadcast via socketio."""
-	cache_key = f"site_generation_{job_id}"
+	# builder_ai_ prefix: frappe.clear_cache() erases every other key of the site, and the
+	# build clears the cache before its visual check waited on the image job's status
+	# (wait_for_images saw "not_found" at once and reviewed pages full of placeholders)
+	cache_key = f"builder_ai_site_generation_{job_id}"
 	# Stamp each update — the watchdog uses this to detect dead workers.
 	data = dict(data)
 	data["last_update"] = frappe.utils.now()
@@ -281,7 +284,7 @@ def _update_generation_status(job_id: str, data: dict):
 
 def _get_generation_status(job_id: str) -> dict:
 	"""Get the generation status from cache."""
-	cache_key = f"site_generation_{job_id}"
+	cache_key = f"builder_ai_site_generation_{job_id}"
 	return frappe.cache().get_value(cache_key) or {"status": "not_found", "error": "Job not found"}
 
 

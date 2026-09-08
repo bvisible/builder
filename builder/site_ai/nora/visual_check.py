@@ -87,7 +87,15 @@ def revision_instructions(issues: list[dict]) -> str:
     return "\n".join(lines)
 
 
-def review_page(page: dict, profile: str | None, model: str) -> dict:
+REVIEW_CONTEXT = (
+    "This is a page of a site for '{site_name}' ({activity}). The header, the navigation and the footer are the "
+    "site's shared chrome and are reviewed separately: do not report them. Grey or empty photo boxes and images "
+    "that did not load are photos still being generated: ignore them, judge the layout, the copy and the "
+    "typography of THIS page."
+)
+
+
+def review_page(page: dict, profile: str | None, model: str, site_name: str = "", activity: str = "") -> dict:
     """Screenshot one page and read it. Never raises: a page that cannot be reviewed
     is reported as such."""
     from builder.site_ai.ingestion.visual_critique import critique_screenshot
@@ -101,7 +109,7 @@ def review_page(page: dict, profile: str | None, model: str) -> dict:
         if not shot.get("success"):
             report["error"] = "screenshot failed"
             return report
-        critique, label = critique_screenshot(shot["file_url"], model=model)
+        critique, label = critique_screenshot(shot["file_url"], model=model, context=REVIEW_CONTEXT.format(site_name=site_name, activity=activity[:160]))
         report["professional"] = bool(critique.looks_professional)
         report["overall"] = (critique.overall or "")[:200]
         report["issues"] = actionable(critique)
