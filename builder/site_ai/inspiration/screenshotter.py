@@ -15,6 +15,9 @@ from urllib.parse import unquote, urlparse
 
 import frappe
 
+# Chromium's texture limit is 16384 px; a capture stays well under it
+MAX_CAPTURE_HEIGHT = 12000
+
 
 def static_file_for(url: str, roots: Optional[dict]) -> Optional[str]:
     """The file on disk behind a static URL of the site being rendered.
@@ -121,6 +124,21 @@ class WebsiteScreenshotter:
                             }"""
                         )
                         await page.wait_for_load_state("networkidle", timeout=15000)
+                    except Exception:
+                        pass
+                    # The site's pages scroll inside <body> (html and body are 100% high,
+                    # overflow-y auto): the document itself is one viewport tall, and a
+                    # full-page capture of it was the hero over a blank (2026-09-08). A
+                    # viewport as tall as the content puts every section, and every lazy
+                    # image, in view before the capture.
+                    try:
+                        height = await page.evaluate(
+                            "() => Math.max(document.documentElement.scrollHeight, document.body.scrollHeight)"
+                        )
+                        height = min(int(height or 0), MAX_CAPTURE_HEIGHT)
+                        if height > self.viewport_height:
+                            await page.set_viewport_size({"width": self.viewport_width, "height": height})
+                            await page.wait_for_load_state("networkidle", timeout=15000)
                     except Exception:
                         pass
 
