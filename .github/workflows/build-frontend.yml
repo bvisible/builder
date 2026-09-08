@@ -1,6 +1,9 @@
 name: build-frontend
 
 on:
+  # //// Neoffice — a manual run rebuilds the artifacts when a push touched no frontend file
+  # //// (a merge, a lockfile-only change) or when the bot's artifact push lost a race.
+  workflow_dispatch:
   push:
     branches: [version-15, version-15-amont-1.33]
     paths:
