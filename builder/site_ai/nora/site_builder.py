@@ -212,6 +212,28 @@ def palette_values(prefix: str) -> dict[str, str]:
     return values
 
 
+def ensure_readable_text(prefix: str, palette: dict) -> str | None:
+    """The text token must read on the background token: the brief of The League gave a
+    dark site a dark text (#1a1a1a on #1b1f24), and every page frappe renders itself
+    (login, shop, account request) came out unreadable (2026-09-09). Below the WCAG
+    ratio the text becomes near-white on a dark background, near-black on a light one.
+    Returns the new value, None when nothing moved."""
+    from builder.site_ai.nora.contrast import MIN_RATIO, contrast, luminance, parse_color
+
+    bg, text = parse_color(palette.get(f"{prefix}-background"), palette), parse_color(palette.get(f"{prefix}-text"), palette)
+    if not bg or not text or contrast(text, bg) >= MIN_RATIO:
+        return None
+    value = "#f5f5f5" if luminance(bg) < 0.4 else "#1a1a1a"
+    doc_id = f"{prefix}-text"
+    if frappe.db.exists("Builder Token", doc_id):
+        doc = frappe.get_doc("Builder Token", doc_id)
+        doc.value = value
+        doc.save(ignore_permissions=True)
+        frappe.db.commit()
+    palette[doc_id] = value
+    return value
+
+
 def mint_accent_token(prefix: str, group: str, value: str) -> str:
     """The seventh token, minted from the first page that leans on a colour of its own
     (see accent.py). Returns the handle."""
@@ -911,6 +933,9 @@ def build_site(ctx, spec: dict) -> str:
     prefix = token_prefix(profile or site_name)
     handles = mint_tokens(prefix, profile or site_name, brief, primary, secondary)
     palette = palette_values(prefix)
+    readable = ensure_readable_text(prefix, palette)
+    if readable:
+        ai_log("info", "Text token made readable on the background", value=readable)
     try:
         apply_brief_site_chrome(brief, website_profile=profile)
         config = _get_site_chrome_config(profile)
