@@ -458,6 +458,9 @@ class TestShopIncludes(unittest.TestCase):
 		self.assertNotIn("/all-products", build(secondary=True))
 		self.assertIn("/all-products", build(secondary=False))
 
+	# //// Neoffice — added test (5efa79d1 "feat(nora): a B2B site is a shop window, and
+	# //// frappe's pages read on a dark site"): covers apply_navigation's new Catalogue
+	# //// branch for a B2B or login-gated profile.
 	def test_a_b2b_profile_gets_the_catalogue_entry(self):
 		from unittest.mock import MagicMock
 

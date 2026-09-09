@@ -273,12 +273,17 @@ def get_theme_css(config=None) -> str:
 	surface = str((theme or {}).get("background_color") or "#ffffff").strip()
 	surface_is_light = _is_light(surface)
 	surface_text = "#1f272e" if surface_is_light else "#f5f5f5"
+	# //// Neoffice — see the block marker above: surface_is_light passed to the template
 	return frappe.render_template(
 		"builder/templates/includes/header_footer/theme_variables.html",
 		{"theme": theme, "surface_text": surface_text, "surface_is_light": surface_is_light}
 	)
 
 
+# //// Neoffice — added helper (40dc4a09 "fix(contrast): a data-bound heading is text, and
+# //// frappe's cards read on a dark site"): relative luminance decides whether the chrome's
+# //// surface is light or dark, so the login card and account form get a text colour that
+# //// reads on it (The League, 2026-09-09).
 def _is_light(hex_colour: str) -> bool:
 	"""Relative luminance above 0.5; a colour that is not a flat hex counts as light."""
 	value = hex_colour.lstrip("#")

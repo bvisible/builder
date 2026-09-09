@@ -442,6 +442,10 @@ def _other_business(profile: str | None, site_name: str = "") -> bool:
     return True
 
 
+# //// Neoffice — added helper and _webshop_installed() below (5efa79d1 "feat(nora): a B2B
+# //// site is a shop window, and frappe's pages read on a dark site"): a B2B or login-gated
+# //// profile had no way to the catalogue in its menu, whatever the site type the model chose
+# //// (The League, 2026-09-09: "on a pas la page shop dans le b2b").
 def _profile_is_b2b(profile: str | None) -> bool:
     """Whether the profile is a business-to-business site (its kind, or the sign-in
     gate). Such a site is a shop window whatever the site type the model chose:
@@ -485,6 +489,8 @@ def available_includes(page_type: str, site_type: str = "vitrine", profile: str 
             continue
         if not shop_data and "contact_form" not in tag:
             continue
+        # //// Neoffice — "and not _profile_is_b2b(profile)" added (5efa79d1): a B2B profile is
+        # //// a shop window whatever its site type, so it keeps the product carousels too.
         if app == "webshop" and "carousel" in tag and site_type != "ecommerce" and not _profile_is_b2b(profile):
             continue
         out.append((tag, purpose))
@@ -727,6 +733,8 @@ def apply_navigation(config, created: list[dict], site_type: str, description: s
         config.append("menu_items", {"label": _("Home", lang=lang) if home else page["title"], "url": "/" if home else route, "is_external": False, "open_in_new_tab": False})
         # /all-products is the instance's catalogue: on another business's profile it would
         # be someone else's shop in this site's menu (the florist listed the bakery)
+        # //// Neoffice — reshaped from a single "if ecommerce and home" into if/elif (5efa79d1):
+        # //// a B2B or login-gated profile now gets a Catalogue entry too, whatever its site type.
         if home and not _other_business(profile, site_name):
             if site_type in ("ecommerce", "ecommerce_search"):
                 config.append("menu_items", {"label": _("Shop", lang=lang), "url": "/all-products", "is_external": False, "open_in_new_tab": False})
@@ -857,6 +865,8 @@ def build_site(ctx, spec: dict) -> str:
     # a B2B or login-gated profile needs the account entry in its header whatever the
     # site type: its visitors sign in for their tariff and the cart (the catalogue itself
     # stays open, at the public price)
+    # //// Neoffice — inlined into _profile_is_b2b() (5efa79d1): same site_kind/b2b_only lookup
+    # //// as the menu's Catalogue entry, kept in one place.
     if profile and hasattr(config, "show_user") and _profile_is_b2b(profile):
         config.show_user = True
     if logo_image:
@@ -1095,6 +1105,10 @@ def build_site(ctx, spec: dict) -> str:
         blocks, data_script, error = write_page(page, placeholder_photos(page, activity))
         if not blocks:
             failed.append({"title": page["title"], "error": error})
+            # //// Neoffice — title/message swapped to frappe's documented log_error(title,
+            # //// message) order: the page title (unbounded length) was going in as the title,
+            # //// over frappe's 140-char cap, making log_error itself raise (3171fff1 "fix(agent):
+            # //// the error handler was killing the message it existed to deliver")
             frappe.log_error("Nora site build: page failed", f"{page['title']}: {error or 'no blocks'}")
             continue
         use_host = host_page if (host_reusable and page["route"] == "home") else None

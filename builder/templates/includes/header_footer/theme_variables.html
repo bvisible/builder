@@ -78,6 +78,10 @@
 
 	/* Surface colors */
 	--surface-color: {{ theme.background_color if theme else '#ffffff' }};
+	/* //// Neoffice — --surface-text and --heading-color added (e1e04aa0 "fix(contrast): a card
+	   wears the chrome's surface, and frappe pages read on a dark site"; surface_text's value
+	   later switched to the luminance-based helper by 40dc4a09): frappe's own login and account
+	   pages, and its literal near-black heading colour, could not read on a dark site. */
 	/* what reads on a surface: the surface is light unless a Website Theme says
 	   otherwise, and a dark site's light text was unreadable on the login card and
 	   the account form (The League, 2026-09-09) */
@@ -320,6 +324,14 @@ a:hover {
 	outline-offset: 2px;
 }
 
+/* //// Neoffice ▼▼▼ — frappe's and webshop's own rendered pages (login, account, catalogue,
+   product, cart) sit on frappe's own light chrome even when the site is dark, and its bundle
+   paints headings a literal near-black: added piecemeal as each surface turned out unreadable
+   on The League's dark site (2026-09-09) — e1e04aa0 (card selector + title band), cda46005
+   ("white cards keep dark text on a dark site, and the title band takes the heading colour"),
+   bb88301a ("the links around the login card read on a dark site"), 67e1f9b8 ("only webshop's
+   pages take the light-ground text on a dark site", scoping the block below to body.product-page
+   instead of every frappe content wrapper, login included). */
 /* frappe's and webshop's own cards (login, account request, portal, product cards)
    are white whatever the site: inside them the text variables are the light-surface
    ones, so a dark site's light text and muted text never land on white */
@@ -364,6 +376,7 @@ body.product-page .site-page-header {
 .site-page-header .site-page-header__title {
 	color: var(--heading-color);
 }
+/* //// Neoffice ▲▲▲ */
 
 :where(.u-card) {
 	background: var(--surface-color);
