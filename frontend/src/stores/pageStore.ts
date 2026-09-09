@@ -1,6 +1,6 @@
 import type Block from "@/block";
 import { builderSettings } from "@/data/builderSettings";
-import { webPages } from "@/data/webPage";
+import { savePageDraft, webPages } from "@/data/webPage";
 import router from "@/router";
 import useBuilderStore from "@/stores/builderStore";
 import useCanvasStore from "@/stores/canvasStore";
@@ -277,10 +277,21 @@ const usePageStore = defineStore("pageStore", {
 			}
 			// Optimistically update in-place so reactive bindings stay consistent
 			this.activePage[key] = value;
-			return webPages.setValue.submit({
-				name: this.activePage.name as string,
-				[key]: value,
-			});
+			return webPages.setValue
+				.submit({
+					name: this.activePage.name as string,
+					[key]: value,
+				})
+				//// Neoffice — take the new `modified` back. savePage() now sends the version it
+				//// loaded and the server refuses an older one (neoffice-maintenance#306); a field
+				//// written here advances the document, so forgetting it would make the very next
+				//// autosave look stale and be refused for nothing.
+				.then((page: BuilderPage) => {
+					if (this.activePage && page?.modified) {
+						this.activePage.modified = page.modified;
+					}
+					return page;
+				});
 		},
 
 		savePage() {
@@ -306,11 +317,17 @@ const usePageStore = defineStore("pageStore", {
 
 			// more save requests can be triggered till the first one is completed
 			this.saveId = saveId;
+			//// Neoffice — builder.api.save_page_draft, not frappe.client.set_value: set_value
+			//// re-reads the document before writing, so check_if_latest compares it to itself
+			//// and the optimistic lock never fires. `loaded_modified` is the version this editor
+			//// last synchronised with — the server refuses a draft computed on an older one
+			//// instead of reverting a page a server tool has since rewritten (#306).
 			const args = {
-				name: this.activePage?.name || this.selectedPage,
+				page: this.activePage?.name || this.selectedPage,
 				draft_blocks: pageData,
+				loaded_modified: this.activePage?.modified || null,
 			};
-			return webPages.setValue
+			return savePageDraft
 				.submit(args)
 				.then((page: BuilderPage) => {
 					if (this.activePage) {
@@ -322,6 +339,19 @@ const usePageStore = defineStore("pageStore", {
 				.catch((e: { exc_type?: string }) => {
 					if (e?.exc_type === "InReadOnlyMode") {
 						builderStore.isSiteInReadOnlyMode = true;
+						return;
+					}
+					//// Neoffice — the page moved on under us (a server tool rewrote it, or another
+					//// editor saved). What is on this canvas describes a page that no longer
+					//// exists, so it is NOT written: reload and say so, rather than publish a
+					//// design the site had already replaced (#306).
+					if (e?.exc_type === "TimestampMismatchError") {
+						toast.error(__("This page was changed elsewhere — reloading it"), {
+							description: __("Your last change was not saved: it was made on an older version."),
+						});
+						if (this.selectedPage) {
+							this.setPage(this.selectedPage, true);
+						}
 						return;
 					}
 					throw e;
