@@ -855,4 +855,27 @@ class TestLeagueRun(unittest.TestCase):
 		from builder.site_ai.nora.prompts import site_playbook
 
 		self.assertIn("routes it reports are FINAL", site_playbook(None))
+
+
+class TestWebsiteSwitch(unittest.TestCase):
+	"""An offline site hides itself from visitors, never from staff nor from the build's own render."""
+
+	def test_the_server_side_render_sees_the_offline_site(self):
+		import frappe
+
+		from builder.website_switch import hidden_from_visitor
+
+		offline = {"name": "P", "website_online": 0}
+		with patch.object(frappe, "get_roles", return_value=["Guest"]):
+			with patch.object(frappe.local, "website_profile_doc", offline, create=True):
+				frappe.local.flags.server_side_render = False
+				self.assertTrue(hidden_from_visitor())
+				frappe.local.flags.server_side_render = True
+				self.assertFalse(hidden_from_visitor())
+				frappe.local.flags.server_side_render = False
+			with patch.object(frappe.local, "website_profile_doc", {"name": "P", "website_online": 1}, create=True):
+				self.assertFalse(hidden_from_visitor())
+		with patch.object(frappe, "get_roles", return_value=["System Manager"]), patch.object(frappe.local, "website_profile_doc", offline, create=True):
+			self.assertFalse(hidden_from_visitor())
+
 # //// Neoffice ▲▲▲

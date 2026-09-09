@@ -184,11 +184,11 @@ def inject_site_chrome(context):
 	# //// render bare, no site header/footer ("no website = just a login page",
 	# //// directive 2026-07-10, seen live on lo-alabouche's login). Staff keeps
 	# //// the chrome (faithful preview), same contract as get_header_footer_config.
-	profile = getattr(frappe.local, "website_profile_doc", None)
-	if profile is not None and "website_online" in profile and not profile.get("website_online"):
-		roles = frappe.get_roles()
-		if "System Manager" not in roles and "Website Manager" not in roles:
-			return
+	# //// One answer for every gate, the server-side render included: builder/website_switch.py.
+	from builder.website_switch import hidden_from_visitor
+
+	if hidden_from_visitor():
+		return
 
 	# Navbar and footer Web Templates for non-Builder pages (frappe base.html
 	# renders navbar_template/footer_template). The templates are created by the
