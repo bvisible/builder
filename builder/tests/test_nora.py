@@ -933,3 +933,20 @@ class TestStackedCardsAndPlaceholders(unittest.TestCase):
 		self.assertIn("%23d6aaa8", img["attributes"]["src"])
 		self.assertNotIn("placehold.co", bg["baseStyles"]["backgroundImage"])
 		self.assertEqual(clean["attributes"]["src"], "/files/gen_1.png")
+
+
+class TestReadableText(unittest.TestCase):
+	"""The text token reads on the background token (site_builder.ensure_readable_text)."""
+
+	def test_a_dark_text_on_a_dark_background_turns_light(self):
+		from builder.site_ai.nora.site_builder import ensure_readable_text
+
+		palette = {"x-background": "#1b1f24", "x-text": "#1a1a1a"}
+		with patch("frappe.db.exists", return_value=False):
+			self.assertEqual(ensure_readable_text("x", palette), "#f5f5f5")
+		self.assertEqual(palette["x-text"], "#f5f5f5")
+		light = {"x-background": "#faf7f2", "x-text": "#f0ede8"}
+		with patch("frappe.db.exists", return_value=False):
+			self.assertEqual(ensure_readable_text("x", light), "#1a1a1a")
+		fine = {"x-background": "#faf7f2", "x-text": "#3f3833"}
+		self.assertIsNone(ensure_readable_text("x", fine))
