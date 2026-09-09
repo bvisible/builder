@@ -320,10 +320,20 @@ a:hover {
 	outline-offset: 2px;
 }
 
-/* frappe's own cards (login, account request, portal) are white whatever the site:
-   their text is dark, whatever the site's text colour */
-:where(.frappe-card, .page-card, .card) {
+/* frappe's and webshop's own cards (login, account request, portal, product cards)
+   are white whatever the site: inside them the text variables are the light-surface
+   ones, so a dark site's light text and muted text never land on white */
+:where(.frappe-card, .page-card, .card, .product-card, .item-card, .cart-items) {
+	--text-color: #1f272e;
+	--text-muted: #6b7280;
+	--heading-color: #1f272e;
 	color: #1f272e;
+}
+
+/* the title band of a page frappe renders: frappe's bundle paints every heading in a
+   literal near-black, which a dark site cannot inherit away */
+.site-page-header .site-page-header__title {
+	color: var(--heading-color);
 }
 
 :where(.u-card) {
