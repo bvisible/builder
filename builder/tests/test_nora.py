@@ -899,3 +899,37 @@ class TestHeaderOffLogo(unittest.TestCase):
 			self.assertEqual(header_off_logo_palette(cream, "/files/logo.png", {"tb-background": "#e5d3b4"}, "tb"), "#ffffff")
 			safe = NS(header_bg_color="#ffffff", header_text_color="#111111", get=lambda k, d=None: getattr(safe, k, d))
 			self.assertIsNone(header_off_logo_palette(safe, "/files/logo.png", {}, "tb"))
+
+
+class TestStackedCardsAndPlaceholders(unittest.TestCase):
+	"""Cards never stack in a column (layout.py), and a photo slot without a photo is a plain
+	block in the site's colours (placeholders.py)."""
+
+	def test_a_card_repeater_and_a_card_wrapper_get_a_grid(self):
+		from builder.site_ai.nora.layout import grid_stacked_cards, repeater_counts
+
+		counts = repeater_counts('data.reasons = [{"t":"a"},{"t":"b"},{"t":"c"},{"t":"d"}]\ndata.steps = [{"t":"a"},{"t":"b"}]')
+		self.assertEqual(counts, {"reasons": 4, "steps": 2})
+		template = {"element": "div", "classes": ["u-card", "u-card--flat"], "children": [{"element": "h3"}]}
+		repeater = {"element": "div", "isRepeaterBlock": True, "dataKey": {"key": "reasons"}, "baseStyles": {"gridColumn": "1 / -1"}, "children": [template]}
+		wrapper = {"element": "div", "baseStyles": {"display": "flex", "flexDirection": "column"}, "children": [{"element": "div", "classes": ["u-card"]} for _ in range(3)]}
+		row = {"element": "div", "baseStyles": {"display": "flex"}, "children": [{"element": "div", "classes": ["u-card"]} for _ in range(2)]}
+		grid = {"element": "div", "classes": ["u-grid", "u-grid--3"], "children": [{"element": "div", "classes": ["u-card"]} for _ in range(3)]}
+		self.assertEqual(grid_stacked_cards([{"element": "section", "children": [repeater, wrapper, row, grid]}], counts), 2)
+		self.assertEqual(repeater["classes"], ["u-grid", "u-grid--4"])
+		self.assertEqual(wrapper["classes"], ["u-grid", "u-grid--3"])
+		self.assertEqual(wrapper["baseStyles"], {})
+		self.assertNotIn("classes", row)
+
+	def test_placeholders_become_inline_blocks_in_the_site_colours(self):
+		from builder.site_ai.nora.placeholders import neutral_placeholders
+
+		img = {"element": "img", "attributes": {"src": "https://placehold.co/1200x800/e5e7eb/9ca3af/png?text=Atelier", "alt": "Atelier"}}
+		bg = {"element": "div", "baseStyles": {"backgroundImage": "url('https://placehold.co/800x600/e5e7eb/9ca3af/png?text=Vue')"}}
+		clean = {"element": "img", "attributes": {"src": "/files/gen_1.png"}}
+		self.assertEqual(neutral_placeholders([{"element": "section", "children": [img, bg, clean]}], {"tb-background": "#faf7f2", "tb-secondary": "#d6aaa8"}, "tb"), 2)
+		self.assertTrue(img["attributes"]["src"].startswith("data:image/svg+xml;utf8,"))
+		self.assertIn("1200", img["attributes"]["src"])
+		self.assertIn("%23d6aaa8", img["attributes"]["src"])
+		self.assertNotIn("placehold.co", bg["baseStyles"]["backgroundImage"])
+		self.assertEqual(clean["attributes"]["src"], "/files/gen_1.png")

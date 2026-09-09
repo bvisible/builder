@@ -159,3 +159,50 @@ def strip_title_band(blocks: list, title: str) -> int:
             block["children"] = kept
             removed += len(kids) - len(kept)
     return removed
+
+
+def _is_card(block: dict) -> bool:
+    return "u-card" in (block.get("classes") or [])
+
+
+def repeater_counts(data_script: str) -> dict:
+    """How many rows each repeater has, from the page data script (`data.key = [...]`)."""
+    import json
+
+    counts = {}
+    for m in re.finditer(r"^\s*data\.(\w+)\s*=\s*(\[.*\])\s*;?\s*$", data_script or "", re.M):
+        try:
+            counts[m.group(1)] = len(json.loads(m.group(2)))
+        except ValueError:
+            continue
+    return counts
+
+
+def grid_stacked_cards(blocks: list, data_counts: dict | None = None) -> int:
+    """A repeater whose template is a card, or a plain wrapper holding two cards or
+    more, stacks them in one column when it carries no grid: the trust section of The
+    League's home listed its four reasons as rows (2026-09-09). They get u-grid and a
+    column count from the repeater's data (three when unknown) or the number of cards,
+    between two and four. Returns the edit count."""
+    edits = 0
+    for block in _walk(blocks):
+        classes = list(block.get("classes") or [])
+        styles = block.get("baseStyles") or {}
+        if any(c.startswith("u-grid") for c in classes) or styles.get("display") == "grid":
+            continue
+        if styles.get("display") == "flex" and styles.get("flexDirection") not in ("column", "column-reverse"):
+            continue
+        kids = [c for c in (block.get("children") or []) if isinstance(c, dict)]
+        if _is_repeater(block):
+            if len(kids) != 1 or not _is_card(kids[0]):
+                continue
+            count = (data_counts or {}).get((block.get("dataKey") or {}).get("key")) or 3
+        else:
+            if len(kids) < 2 or not all(_is_card(c) for c in kids):
+                continue
+            count = len(kids)
+        block["classes"] = classes + ["u-grid", f"u-grid--{max(2, min(4, count))}"]
+        for key in ("display", "flexDirection", "flexWrap"):
+            styles.pop(key, None)
+        edits += 1
+    return edits

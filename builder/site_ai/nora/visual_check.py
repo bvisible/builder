@@ -110,8 +110,8 @@ def revision_instructions(issues: list[dict]) -> str:
 REVIEW_CONTEXT = (
     "This is a page of a site for '{site_name}' ({activity}). The header, the navigation and the footer are the "
     "site's shared chrome and are reviewed separately: do not report them. Grey or empty photo boxes and images "
-    "that did not load are photos still being generated: ignore them, judge the layout, the copy and the "
-    "typography of THIS page."
+    "that did not load are photos still being generated, and plain colour blocks in the site's palette where a "
+    "photo would be are deliberate: ignore them, judge the layout, the copy and the typography of THIS page."
 )
 
 
