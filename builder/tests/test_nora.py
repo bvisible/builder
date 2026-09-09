@@ -44,8 +44,10 @@ class TestPages(unittest.TestCase):
 		self.assertEqual(pages[0]["type"], "accueil")
 		self.assertEqual(pages[2]["type"], "services")
 
+	# //// Neoffice — renamed and reworded to match the new behaviour: every page but home now keeps the model's proposed route (7d215ff3 "test(nora): only the home keeps its canonical route over the model's proposal")
 	def test_the_home_keeps_its_canonical_route_the_others_their_proposal(self):
 		pages = normalise_pages([{"title": "Accueil", "route": "accueil"}, {"title": "Contact", "route": "nous-contacter"}, {"title": "Nos ateliers", "route": "ateliers"}], "vitrine")
+		# //// Neoffice — expectation updated: routes now honour the model's proposal for every page except home (2d78d71d "fix(nora): includes written as offered, routes honoured but home, and the build's routes stated as final")
 		self.assertEqual([p["route"] for p in pages], ["home", "nous-contacter", "ateliers"])
 
 	def test_home_comes_first_whatever_the_order(self):
