@@ -820,6 +820,7 @@ class TestInspirations(unittest.TestCase):
 		self.assertIn("Sites you like", text)
 
 
+# //// Neoffice ▼▼▼ — new: tests covering the League build fixes (2d78d71d "fix(nora): includes written as offered, routes honoured but home, and the build's routes stated as final")
 class TestLeagueRun(unittest.TestCase):
 	"""What the first client build (The League, 2026-09-09) taught: includes written as
 	offered, routes honoured but home, and the build's routes stated as final."""
@@ -852,3 +853,4 @@ class TestLeagueRun(unittest.TestCase):
 		from builder.site_ai.nora.prompts import site_playbook
 
 		self.assertIn("routes it reports are FINAL", site_playbook(None))
+# //// Neoffice ▲▲▲

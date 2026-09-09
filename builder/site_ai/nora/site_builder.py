@@ -141,6 +141,7 @@ def normalise_pages(pages: list, site_type: str) -> list[dict]:
         # model proposed (the French "a-propos" over the canonical "about"): forced to
         # the canonical one, the model "corrected" the routes after the build of The
         # League and renamed the open page, the home, to a-propos (2026-09-09)
+        # //// Neoffice — see reasoning above; every page but home now keeps the model's proposed route instead of always falling back to the canonical one (2d78d71d "fix(nora): includes written as offered, routes honoured but home, and the build's routes stated as final")
         proposed = _slug(str(raw.get("route") or "").strip("/")) if raw.get("route") else ""
         route = "home" if known_route == "home" else (proposed or known_route or _slug(title))
         # the canonical type wins as well: with the model's own label ("form", "contact-page")
@@ -313,6 +314,7 @@ PAGE_INCLUDES = {
 }
 
 
+# //// Neoffice ▼▼▼ — new: an include a page carries must be the one the brief offered, written exactly as offered; the model wrote the shop's opening hours with builder's path instead of webshop's and the Contact page of The League answered 417 for a template it could not find (2d78d71d "fix(nora): includes written as offered, routes honoured but home, and the build's routes stated as final")
 INCLUDE_TAG = re.compile(r"\{%-?\s*include\s+['\"]([^'\"]+)['\"]\s*-?%\}")
 ALWAYS_ALLOWED_INCLUDES = ("{% include 'builder/templates/includes/contact_form.html' %}",)
 
@@ -351,6 +353,7 @@ def repair_includes(blocks: list, allowed: list[tuple[str, str]]) -> tuple[int, 
         if len(kept) != len(block.get("children") or []):
             block["children"] = kept
     return rewritten, removed
+# //// Neoffice ▲▲▲
 
 
 def includes_block(includes: list[tuple[str, str]]) -> str:
@@ -954,6 +957,7 @@ def build_site(ctx, spec: dict) -> str:
                 raw = _stream_text(ctx, page_model, messages, llm.TASK_PARAMS["complex"])
                 blocks, data_script = expand_page_yaml(BlockCodec.strip_fences(raw))
                 if blocks:
+                    # //// Neoffice — new call: repairs includes to the offered tag or drops them (2d78d71d "fix(nora): includes written as offered, routes honoured but home, and the build's routes stated as final")
                     # an include is one the brief offered, written as offered (a wrong
                     # path is a 417 at render time): see repair_includes
                     fixed, dropped = repair_includes(blocks, available_includes(page["type"], site["site_type"], site["profile"], site["site_name"]))
@@ -1093,6 +1097,7 @@ def build_site(ctx, spec: dict) -> str:
     ai_log("info", "=== NORA SITE BUILD COMPLETED ===", job_id=job_id, pages=len(created), failed=len(failed), duration=duration)
     lines = [f"DONE in {duration // 60} min {duration % 60} s. Site '{site_name}'" + (f" on profile '{profile}'" if profile else "") + ":"]
     lines += [f"- {p['title']} -> {p['route']} (page {p['name']})" for p in created]
+    # //// Neoffice — new: tells the model its just-written routes are final, so it stops "correcting" them post-build (2d78d71d "fix(nora): includes written as offered, routes honoured but home, and the build's routes stated as final")
     lines.append("These routes are final: do not rename a page or change a route after this build, and do not rewrite the menu or the footer links, they already point at these routes.")
     if failed:
         lines.append("Pages that failed (offer to retry them one by one with generate_page on their page): " + ", ".join(f"{f['title']} ({f['error']})" for f in failed))

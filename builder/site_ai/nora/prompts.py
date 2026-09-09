@@ -53,6 +53,7 @@ def profiles_line(page_id: str | None = None) -> str:
 
 
 def site_playbook(page_id: str | None = None) -> str:
+    # //// Neoffice — the "Site rules" section below states that generate_site's routes are FINAL (never rename a page or rewrite a route/menu link afterwards): after The League build the model kept "correcting" the routes it had just set (2d78d71d "fix(nora): includes written as offered, routes honoured but home, and the build's routes stated as final")
     return f"""
 
 # Building a WHOLE site (Neoffice)

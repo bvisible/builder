@@ -25,6 +25,7 @@
             </div>
         </div>
         {% endfor %}
+    {# //// Neoffice — empty-state hint now shown to editors only, a visitor sees nothing (2d78d71d "fix(nora): includes written as offered, routes honoured but home, and the build's routes stated as final") #}
     {% elif frappe.session.user != "Guest" %}
         {# the hint is for the editor: a visitor sees nothing here, not a placeholder (The League, 2026-09-09) #}
         <p class="no-timeline">{{ _("Company milestones will be displayed here once configured in About Us Settings.") }}</p>
