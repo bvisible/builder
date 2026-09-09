@@ -780,6 +780,41 @@ def clone_client_scripts(source_page, new_page) -> None:
 		new_page.append("client_scripts", {"builder_script": new_script.name})
 
 
+# //// Neoffice — added endpoint (no upstream equivalent). The editor used to save its draft
+# //// through frappe.client.set_value, which RE-READS the document before writing: check_if_latest
+# //// then compares the document to itself, so frappe's optimistic lock can never fire. A draft
+# //// computed before a server-side rewrite (the AI's generate_site rewrites blocks AND
+# //// draft_blocks, then asks the client to refetch) was therefore accepted as-is and silently
+# //// reverted the freshly built page — neoffice-maintenance#306, The League, 2026-09-09: one
+# //// "Publish" away from replacing the built site with the old design. The client sends the
+# //// version it loaded; a draft computed on an older one is refused instead of overwriting.
+@frappe.whitelist()
+@has_page_write("You do not have permission to edit this page.")
+def save_page_draft(page: str, draft_blocks: str | None = None, loaded_modified: str | None = None):
+	"""Save the editor's draft only if it was computed on the page's current version.
+
+	`loaded_modified` is the `modified` the editor last synchronised with. When the
+	document has moved on since — another editor, or a server tool that rewrote the
+	page — the draft in hand describes a page that no longer exists, so it is refused
+	and the editor reloads instead of persisting a stale design.
+	"""
+	doc = frappe.get_doc("Builder Page", page)
+
+	if loaded_modified:
+		current = frappe.utils.get_datetime(doc.modified)
+		loaded = frappe.utils.get_datetime(loaded_modified)
+		if loaded < current:
+			frappe.throw(
+				_("This page was changed elsewhere while you were editing it. Reload before saving."),
+				frappe.TimestampMismatchError,
+				title=_("Page out of date"),
+			)
+
+	doc.draft_blocks = draft_blocks
+	doc.save()
+	return doc.as_dict()
+
+
 @frappe.whitelist()
 @has_page_write("You do not have permission to duplicate a page.")
 def duplicate_page(page_name: str):
