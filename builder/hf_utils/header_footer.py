@@ -271,10 +271,11 @@ def get_theme_css(config=None) -> str:
 	# //// light text was unreadable on the login card and the account form (The League,
 	# //// 2026-09-09), and the surface itself may be dark or light.
 	surface = str((theme or {}).get("background_color") or "#ffffff").strip()
-	surface_text = "#1f272e" if _is_light(surface) else "#f5f5f5"
+	surface_is_light = _is_light(surface)
+	surface_text = "#1f272e" if surface_is_light else "#f5f5f5"
 	return frappe.render_template(
 		"builder/templates/includes/header_footer/theme_variables.html",
-		{"theme": theme, "surface_text": surface_text}
+		{"theme": theme, "surface_text": surface_text, "surface_is_light": surface_is_light}
 	)
 
 

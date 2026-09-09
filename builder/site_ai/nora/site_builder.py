@@ -442,6 +442,28 @@ def _other_business(profile: str | None, site_name: str = "") -> bool:
     return True
 
 
+def _profile_is_b2b(profile: str | None) -> bool:
+    """Whether the profile is a business-to-business site (its kind, or the sign-in
+    gate). Such a site is a shop window whatever the site type the model chose:
+    visitors browse the catalogue at the public price and sign in for their tariff and
+    the cart, so it gets the catalogue entry in its menu and the product carousels on
+    its pages (The League, 2026-09-09: "on a pas la page shop dans le b2b")."""
+    if not profile:
+        return False
+    try:
+        kind, gated = frappe.db.get_value("Website Profile", profile, ["site_kind", "b2b_only"]) or (None, 0)
+    except Exception:
+        return False
+    return kind == "B2B" or bool(gated)
+
+
+def _webshop_installed() -> bool:
+    try:
+        return "webshop" in frappe.get_installed_apps()
+    except Exception:
+        return False
+
+
 def available_includes(page_type: str, site_type: str = "vitrine", profile: str | None = None, site_name: str = "") -> list[tuple[str, str]]:
     """The includes of this page type whose app is installed on the bench (an include of
     an absent app turns the whole page into a 500 at render time), minus every include
@@ -463,7 +485,7 @@ def available_includes(page_type: str, site_type: str = "vitrine", profile: str 
             continue
         if not shop_data and "contact_form" not in tag:
             continue
-        if app == "webshop" and "carousel" in tag and site_type != "ecommerce":
+        if app == "webshop" and "carousel" in tag and site_type != "ecommerce" and not _profile_is_b2b(profile):
             continue
         out.append((tag, purpose))
     return out
@@ -705,8 +727,12 @@ def apply_navigation(config, created: list[dict], site_type: str, description: s
         config.append("menu_items", {"label": _("Home", lang=lang) if home else page["title"], "url": "/" if home else route, "is_external": False, "open_in_new_tab": False})
         # /all-products is the instance's catalogue: on another business's profile it would
         # be someone else's shop in this site's menu (the florist listed the bakery)
-        if site_type in ("ecommerce", "ecommerce_search") and home and not _other_business(profile, site_name):
-            config.append("menu_items", {"label": _("Shop", lang=lang), "url": "/all-products", "is_external": False, "open_in_new_tab": False})
+        if home and not _other_business(profile, site_name):
+            if site_type in ("ecommerce", "ecommerce_search"):
+                config.append("menu_items", {"label": _("Shop", lang=lang), "url": "/all-products", "is_external": False, "open_in_new_tab": False})
+            elif _profile_is_b2b(profile) and _webshop_installed():
+                # a B2B site is a shop window whatever its site type (see _profile_is_b2b)
+                config.append("menu_items", {"label": _("Catalogue", lang=lang), "url": "/all-products", "is_external": False, "open_in_new_tab": False})
     for field, value in (("footer_logo_type", config.get("logo_type")), ("footer_logo_text", config.get("logo_text")), ("footer_logo_image", config.get("logo_image")), ("show_footer_logo", True), ("footer_menu_source", "Custom links")):
         if hasattr(config, field):
             config.set(field, value)
@@ -829,11 +855,10 @@ def build_site(ctx, spec: dict) -> str:
         if hasattr(config, key):
             setattr(config, key, value)
     # a B2B or login-gated profile needs the account entry in its header whatever the
-    # site type: its visitors sign in before they see prices or the catalogue
-    if profile and hasattr(config, "show_user"):
-        kind, gated = frappe.db.get_value("Website Profile", profile, ["site_kind", "b2b_only"]) or (None, 0)
-        if kind == "B2B" or gated:
-            config.show_user = True
+    # site type: its visitors sign in for their tariff and the cart (the catalogue itself
+    # stays open, at the public price)
+    if profile and hasattr(config, "show_user") and _profile_is_b2b(profile):
+        config.show_user = True
     if logo_image:
         config.logo_type = "Image"
         config.logo_image = logo_image

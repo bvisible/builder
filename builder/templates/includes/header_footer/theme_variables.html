@@ -330,6 +330,23 @@ a:hover {
 	--heading-color: #1f272e;
 	color: #1f272e;
 }
+{%- if not surface_is_light %}
+
+/* the pages frappe renders (the catalogue, a product, the login, the account pages)
+   draw on frappe's own light ground (#f8f8f8, white), not on the site's background:
+   on a dark site the page-level texts (the title band, the breadcrumbs, the filters,
+   the sort label) inherited the light --text-color and vanished (The League
+   catalogue, 2026-09-09). Inside frappe's content wrapper the text tokens are the
+   light-surface set; Builder pages have no such wrapper and keep the site's tokens,
+   the chrome its own */
+.page-content-wrapper {
+	--text-color: #1f272e;
+	--text-muted: #6b7280;
+	--text-light: #6b7280;
+	--heading-color: #1f272e;
+	color: #1f272e;
+}
+{%- endif %}
 
 /* the links frappe prints around its login card ("Don't have an account?", the
    password reset) wear the primary colour, invisible when the primary is the dark
