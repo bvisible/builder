@@ -76,6 +76,6 @@ def execute():
 	try:
 		frappe.db.sql_ddl("ALTER TABLE `tabBuilder AI Session` DROP COLUMN messages_json")
 	except Exception as e:
-		frappe.log_error(f"Failed to drop messages_json column: {e}", "AI session migration")
+		frappe.log_error("AI session migration", f"Failed to drop messages_json column: {e}")
 
 	print(f"Migrated {migrated_messages} AI messages across {migrated_sessions} sessions")

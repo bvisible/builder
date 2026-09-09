@@ -1095,7 +1095,7 @@ def build_site(ctx, spec: dict) -> str:
         blocks, data_script, error = write_page(page, placeholder_photos(page, activity))
         if not blocks:
             failed.append({"title": page["title"], "error": error})
-            frappe.log_error(f"Nora site build: page failed: {page['title']}", error or "no blocks")
+            frappe.log_error("Nora site build: page failed", f"{page['title']}: {error or 'no blocks'}")
             continue
         use_host = host_page if (host_reusable and page["route"] == "home") else None
         name, route = _write_page(page, blocks, data_script, profile, use_host, _describe(blocks))

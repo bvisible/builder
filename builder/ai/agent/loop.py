@@ -1265,10 +1265,32 @@ class AgentRunner:
 			return
 		except Exception as e:
 			logger.error(f"Agent LLM call failed: {e!s}", exc_info=True)
-			frappe.log_error(f"Agent LLM call failed: {e}", "AgentRunner.run")
-			# Show a generic message to the user — raw provider/exception strings can
-			# leak internals (keys, model ids, stack detail). Full error is logged above.
-			self.fail_turn("Something went wrong while building your changes. Please try again.")
+			# //// Neoffice — the arguments were the wrong way round: the long provider
+			# //// string went in as the TITLE, which frappe caps at 140 characters. A
+			# //// single-line refusal — Moonshot answering 429 "account is suspended due
+			# //// to insufficient balance" — made log_error itself raise
+			# //// CharacterLengthExceededError, so fail_turn below was never reached: the
+			# //// turn died in silence and the panel showed nothing at all. No error, no
+			# //// end of turn, just a question with no answer (#301).
+			# //// Logging must never be able to swallow the message meant for the user,
+			# //// so it is guarded too: fail_turn runs either way.
+			try:
+				frappe.log_error("AgentRunner.run: LLM call failed", f"Agent LLM call failed: {e}")
+			except Exception:
+				logger.exception("could not write the Error Log entry for the failed turn")
+			# A refusal for quota or balance is not "something went wrong": nobody can
+			# retry their way out of it, and the person who can fix it is not the one
+			# reading the panel. Named without echoing the provider string, which can
+			# carry keys and model ids.
+			low = f"{type(e).__name__} {e}".lower()
+			if any(sign in low for sign in ("rate limit", "ratelimit", "insufficient balance", "quota", "429")):
+				self.fail_turn(
+					"The AI provider refused the request — quota or balance exhausted. "
+					"Please tell your administrator."
+				)
+			else:
+				# Generic message: raw provider/exception strings can leak internals.
+				self.fail_turn("Something went wrong while building your changes. Please try again.")
 			return
 
 		self.finish_turn(summary_text, started)
