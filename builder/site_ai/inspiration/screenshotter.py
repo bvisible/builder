@@ -64,6 +64,7 @@ class WebsiteScreenshotter:
         full_page: bool = True,
         timeout: int = 30000,
         static_roots: Optional[dict] = None,
+        # //// Neoffice — capture_async forwards a headers dict so the loopback render can carry X-Frappe-Site-Name (0445cc94 "fix(visual-check): the loopback render names its site by header, not by host")
         headers: Optional[dict] = None,
     ) -> dict:
         """
@@ -92,6 +93,7 @@ class WebsiteScreenshotter:
                     viewport={"width": self.viewport_width, "height": self.viewport_height}
                 )
 
+                # //// Neoffice — send the headers so the loopback render is named by header, not by host (0445cc94 "fix(visual-check): the loopback render names its site by header, not by host")
                 # a loopback render names its site by header (visual_check.loopback_headers)
                 if headers:
                     await page.set_extra_http_headers({str(k): str(v) for k, v in headers.items()})
@@ -205,6 +207,7 @@ class WebsiteScreenshotter:
         full_page: bool = True,
         timeout: int = 30000,
         static_roots: Optional[dict] = None,
+        # //// Neoffice — capture() takes headers too, threaded down to capture_async (0445cc94 "fix(visual-check): the loopback render names its site by header, not by host")
         headers: Optional[dict] = None,
     ) -> dict:
         """
@@ -224,6 +227,7 @@ class WebsiteScreenshotter:
             loop = asyncio.new_event_loop()
             asyncio.set_event_loop(loop)
 
+        # //// Neoffice — pass headers through to capture_async (0445cc94 "fix(visual-check): the loopback render names its site by header, not by host")
         return loop.run_until_complete(
             self.capture_async(url, full_page, timeout, static_roots, headers)
         )
@@ -234,6 +238,7 @@ class WebsiteScreenshotter:
         doc_name: Optional[str] = None,
         full_page: bool = True,
         static_roots: Optional[dict] = None,
+        # //// Neoffice — capture_and_save takes headers too, for the same loopback site-name header (0445cc94 "fix(visual-check): the loopback render names its site by header, not by host")
         headers: Optional[dict] = None,
     ) -> dict:
         """
@@ -247,6 +252,7 @@ class WebsiteScreenshotter:
         Returns:
             dict with file_url, file_doc, and capture metadata
         """
+        # //// Neoffice — pass headers through to capture (0445cc94 "fix(visual-check): the loopback render names its site by header, not by host")
         result = self.capture(url, full_page=full_page, static_roots=static_roots, headers=headers)
 
         if not result.get("success"):
@@ -278,6 +284,7 @@ class WebsiteScreenshotter:
         }
 
 
+# //// Neoffice — module-level helper takes headers too, for the loopback site-name header (0445cc94 "fix(visual-check): the loopback render names its site by header, not by host")
 def capture_website_screenshot(url: str, full_page: bool = True, static_roots: Optional[dict] = None, headers: Optional[dict] = None) -> dict:
     """
     Convenience function to capture a website screenshot.
@@ -290,4 +297,5 @@ def capture_website_screenshot(url: str, full_page: bool = True, static_roots: O
         dict with capture result
     """
     screenshotter = WebsiteScreenshotter()
+    # //// Neoffice — pass headers through to capture_and_save (0445cc94 "fix(visual-check): the loopback render names its site by header, not by host")
     return screenshotter.capture_and_save(url, full_page=full_page, static_roots=static_roots, headers=headers)

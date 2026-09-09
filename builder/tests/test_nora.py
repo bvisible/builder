@@ -568,10 +568,12 @@ class TestVisualCheck(unittest.TestCase):
 
 		with patch.object(visual_check.frappe, "local") as local, patch.object(visual_check.frappe, "conf", {"webserver_port": 8000}):
 			local.site = "prod.local"
+			# //// Neoffice — assert the loopback URL targets 127.0.0.1 and the site is named via header, not host (0445cc94 "fix(visual-check): the loopback render names its site by header, not by host")
 			self.assertEqual(visual_check.loopback_page_url("/projects", "Nora Test 2"), "http://127.0.0.1:8000/projects?_website_profile=Nora%20Test%202")
 			self.assertEqual(visual_check.loopback_headers(), {"X-Frappe-Site-Name": "prod.local"})
 			self.assertEqual(visual_check.loopback_page_url("/", None), "http://127.0.0.1:8000/")
 			# /home redirects to / and loses the query string: ask for / directly
+			# //// Neoffice — same 127.0.0.1 loopback target as above (0445cc94 "fix(visual-check): the loopback render names its site by header, not by host")
 			self.assertEqual(visual_check.loopback_page_url("/home", "Nora Test 2"), "http://127.0.0.1:8000/?_website_profile=Nora%20Test%202")
 
 	def test_only_body_defects_are_actionable_and_become_instructions(self):

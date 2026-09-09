@@ -42,6 +42,7 @@ def static_roots() -> dict:
     }
 
 
+# //// Neoffice — name the site by header since bench doesn't write it into /etc/hosts on every bench (The League: no; osiris: yes) and frappe reads this header before the host (0445cc94 "fix(visual-check): the loopback render names its site by header, not by host")
 def loopback_headers() -> dict:
     """The site, named by header rather than by host: bench writes the site name into
     /etc/hosts on some benches only (osiris yes, The League no, 2026-09-09), and frappe
@@ -59,6 +60,7 @@ def loopback_page_url(route: str, profile: str | None) -> str:
     # first run reviewed the default site's home instead of the profile's (2026-09-08)
     if path in ("home", "index"):
         path = ""
+    # //// Neoffice — target 127.0.0.1 rather than the site host: the host doesn't always resolve on the bench (0445cc94 "fix(visual-check): the loopback render names its site by header, not by host")
     url = f"http://127.0.0.1:{port}/{path}"
     if profile:
         from urllib.parse import quote
@@ -118,14 +120,17 @@ def _screenshot(url: str, title: str) -> dict:
     30 s on osiris), and the viewport alone is still a review where a skipped page is none."""
     from builder.site_ai.inspiration.screenshotter import capture_website_screenshot
 
+    # //// Neoffice — thread the loopback header (X-Frappe-Site-Name) alongside static_roots so the screenshot names the right site without a host entry (0445cc94 "fix(visual-check): the loopback render names its site by header, not by host")
     roots, headers = static_roots(), loopback_headers()
     try:
+        # //// Neoffice — see the block marker above: header threaded into the capture
         shot = capture_website_screenshot(url, full_page=True, static_roots=roots, headers=headers)
         if shot.get("success"):
             return shot
         raise RuntimeError(str(shot.get("error") or "screenshot failed"))
     except Exception as e:
         ai_log("warning", "Full-page screenshot failed, viewport only", page=title, error=str(e)[:120])
+        # //// Neoffice — see the block marker above: header threaded into the viewport fallback too
         return capture_website_screenshot(url, full_page=False, static_roots=roots, headers=headers)
 
 
