@@ -161,6 +161,9 @@ def strip_title_band(blocks: list, title: str) -> int:
     return removed
 
 
+# //// Neoffice ▼▼▼ — the trust section of The League's home listed its four reasons as
+# //// rows: a card repeater or a card wrapper without a grid now gets u-grid and a
+# //// column count (65d8f360 "fix(nora): cards never stack in a column, and photo slots without photos are plain blocks")
 def _is_card(block: dict) -> bool:
     return "u-card" in (block.get("classes") or [])
 
@@ -206,3 +209,4 @@ def grid_stacked_cards(blocks: list, data_counts: dict | None = None) -> int:
             styles.pop(key, None)
         edits += 1
     return edits
+# //// Neoffice ▲▲▲

@@ -734,6 +734,9 @@ def build_site(ctx, spec: dict) -> str:
     from builder.site_ai.nora.accent import dominant_accent, rewrite_hex
     from builder.site_ai.nora import visual_check
     from builder.hf_utils.header_footer import NEWSLETTER_DEFAULTS
+    # //// Neoffice — cards stack on a grid (grid_stacked_cards/repeater_counts) and, with image
+    # //// generation off, placehold.co slots become inline SVGs (neutral_placeholders) instead of
+    # //// broken external images (65d8f360 "fix(nora): cards never stack in a column, and photo slots without photos are plain blocks")
     from builder.site_ai.nora.layout import grid_stacked_cards, place_orphans, repeater_counts, strip_title_band, unwrap_grid_wrappers
     from builder.site_ai.nora.placeholders import neutral_placeholders
     from builder.site_ai.nora.punctuation import french_spacing
@@ -953,6 +956,8 @@ def build_site(ctx, spec: dict) -> str:
     site = {"site_name": site_name, "activity": activity, "differentiators": spec.get("differentiators"), "site_type": site_type, "profile": profile, "inspiration": inspiration["notes"]}
     created, failed, cancelled = [], [], False
 
+    # //// Neoffice — image generation was switched off (the pictures were not good enough):
+    # //// gates the neutral-SVG fallback below (65d8f360 "fix(nora): cards never stack in a column, and photo slots without photos are plain blocks")
     images_on = _image_backend_available()
 
     def write_page(page: dict, photos: list[str], revision: str | None = None) -> tuple[list, str, str | None]:
@@ -992,6 +997,10 @@ def build_site(ctx, spec: dict) -> str:
                     hoisted = unwrap_grid_wrappers(blocks)
                     if hoisted:
                         ai_log("info", "Grid wrappers unwrapped", page=page["title"], edits=hoisted)
+                    # //// Neoffice — a card repeater or card wrapper without a grid now stacks in a column
+                    # //// (the trust section of The League's home listed its four reasons as rows), and with
+                    # //// image generation off every placehold.co slot becomes an inline SVG instead of a
+                    # //// broken external image (65d8f360 "fix(nora): cards never stack in a column, and photo slots without photos are plain blocks")
                     stacked = grid_stacked_cards(blocks, repeater_counts(data_script))
                     if stacked:
                         ai_log("info", "Stacked cards laid on a grid", page=page["title"], edits=stacked)
@@ -1124,6 +1133,8 @@ def build_site(ctx, spec: dict) -> str:
     if cancelled:
         lines.append("The build was cancelled by the user before every page was written.")
     lines.append(f"Design tokens minted with prefix '{prefix}': " + ", ".join(handles.values()) + ".")
+    # //// Neoffice — reports the neutral-SVG fallback when image generation is off, instead of
+    # //// always claiming a background image job is filling the slots (65d8f360 "fix(nora): cards never stack in a column, and photo slots without photos are plain blocks")
     if image_job:
         lines.append(f"{pending} photo slot(s) are being filled with generated images in the background (job {image_job}).")
     else:
