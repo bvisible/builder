@@ -879,3 +879,23 @@ class TestWebsiteSwitch(unittest.TestCase):
 			self.assertFalse(hidden_from_visitor())
 
 # //// Neoffice ▲▲▲
+
+
+class TestHeaderOffLogo(unittest.TestCase):
+	"""The header never wears one of the logo's own colours (inspiration.py)."""
+
+	def test_a_header_in_a_logo_colour_moves_to_the_site_background_or_white(self):
+		from types import SimpleNamespace as NS
+
+		from builder.site_ai.nora.inspiration import colour_near, header_off_logo_palette
+
+		self.assertTrue(colour_near("#d6aaa8", "#d8aca9"))
+		self.assertFalse(colour_near("#d6aaa8", "#faf7f2"))
+		with patch("builder.site_ai.nora.inspiration.logo_colours", return_value=["#e5d3b4", "#d6aaa8", "#6c655f"]):
+			config = NS(header_bg_color="#d6aaa8", header_text_color="#2d2926", get=lambda k, d=None: getattr(config, k, d))
+			self.assertEqual(header_off_logo_palette(config, "/files/logo.png", {"tb-background": "#faf7f2", "tb-text": "#3f3833"}, "tb"), "#faf7f2")
+			self.assertEqual((config.header_bg_color, config.header_text_color), ("#faf7f2", "#3f3833"))
+			cream = NS(header_bg_color="#d6aaa8", header_text_color="#2d2926", get=lambda k, d=None: getattr(cream, k, d))
+			self.assertEqual(header_off_logo_palette(cream, "/files/logo.png", {"tb-background": "#e5d3b4"}, "tb"), "#ffffff")
+			safe = NS(header_bg_color="#ffffff", header_text_color="#111111", get=lambda k, d=None: getattr(safe, k, d))
+			self.assertIsNone(header_off_logo_palette(safe, "/files/logo.png", {}, "tb"))
