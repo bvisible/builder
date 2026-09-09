@@ -344,10 +344,12 @@ def _enqueue_image_generation(placeholder_images: list) -> str:
 		"error": None,
 	})
 
+	# the text-to-image backend answers in 60 to 70 s per picture since 2026-09-09
+	# (Codex behind the ComfyUI proxy): the worker's budget follows the slot count
 	frappe.enqueue(
 		"builder.api._generate_images_worker",
 		queue="default",
-		timeout=1800,
+		timeout=max(1800, 90 * len(placeholder_images) + 300),
 		job_name=img_job_id,
 		img_job_id=img_job_id,
 		placeholder_images=placeholder_images,
@@ -1971,7 +1973,13 @@ def _scan_placeholder_images(page_names: list, subject: str = "") -> list:
 	return results
 
 
-QUALITY_SUFFIX = "photorealistic, high resolution, no text, no words, no logos, no letters"
+# //// Neoffice 2026-09-09 — the negation list was REMOVED from this suffix. It lands in the
+# //// POSITIVE prompt of a cfg=1.0 model that has no negative-prompt path, so asking for
+# //// "no text, no words, no logos, no letters" made the model draw exactly that: every hero
+# //// image carried a garbled fake sign. Measured A/B the same day, same model, same seed,
+# //// same steps: with the negations the image is unusable, without them plus real
+# //// photographic direction it is usable. Positive direction only from here on.
+QUALITY_SUFFIX = "natural lighting, shallow depth of field, photorealistic, high resolution, candid documentary style"
 
 
 def _build_image_prompt(context: str, is_background: bool = False, subject: str = "") -> str:
@@ -1991,7 +1999,7 @@ def _build_image_prompt(context: str, is_background: bool = False, subject: str 
 	if not context or context.strip() in generic_words:
 		if subject:
 			lead = "atmospheric photography of" if is_background else "professional photography of"
-			return f"{lead} {subject}, natural lighting, {QUALITY_SUFFIX}"
+			return f"{lead} {subject}, {QUALITY_SUFFIX}"
 		if is_background:
 			return f"atmospheric interior photography, soft natural lighting, {QUALITY_SUFFIX}"
 		return f"professional product photography, clean background, {QUALITY_SUFFIX}"
@@ -2012,8 +2020,8 @@ def _build_image_prompt(context: str, is_background: bool = False, subject: str 
 		return _build_image_prompt("", is_background=is_background, subject=subject)
 
 	if is_background:
-		return f"beautiful photography related to {cleaned}, atmospheric lighting, photorealistic, high resolution, no text, no words, no logos, no letters"
-	return f"professional photography of {cleaned}, clean composition, photorealistic, high resolution, no text, no words, no logos, no letters"
+		return f"atmospheric photograph of {cleaned}, {QUALITY_SUFFIX}"
+	return f"editorial photograph of {cleaned}, {QUALITY_SUFFIX}"
 
 
 def _walk_blocks_for_placeholders(blocks, page_name, results, subject: str = ""):

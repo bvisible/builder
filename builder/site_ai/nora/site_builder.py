@@ -1073,7 +1073,8 @@ def build_site(ctx, spec: dict) -> str:
     if created and not cancelled and visual_check.enabled():
         try:
             _progress(ctx, job_id, _("Visual check: waiting for the images"), 95, {"pages_created": created})
-            visual_check.wait_for_images(image_job)
+            # a picture takes 60 to 70 s on the Codex backend: the wait follows the slot count
+            visual_check.wait_for_images(image_job, timeout=min(1800, max(visual_check.IMAGE_WAIT_SECONDS, 75 * pending + 120)))
             by_name = {p["name"]: p for p in pages_by_name(pages, created)}
             for item in created:
                 if ctx.is_cancelled():
