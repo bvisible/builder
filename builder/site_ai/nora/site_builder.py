@@ -212,6 +212,7 @@ def palette_values(prefix: str) -> dict[str, str]:
     return values
 
 
+# //// Neoffice — the text token must read on the background token: the brief of The League gave a dark site a dark text (#1a1a1a on #1b1f24) and every page frappe renders itself (login, shop, account request) came out unreadable (be2042bd "fix(nora): the text token reads on the background token")
 def ensure_readable_text(prefix: str, palette: dict) -> str | None:
     """The text token must read on the background token: the brief of The League gave a
     dark site a dark text (#1a1a1a on #1b1f24), and every page frappe renders itself
@@ -933,6 +934,7 @@ def build_site(ctx, spec: dict) -> str:
     prefix = token_prefix(profile or site_name)
     handles = mint_tokens(prefix, profile or site_name, brief, primary, secondary)
     palette = palette_values(prefix)
+    # //// Neoffice — see the block marker above: text made readable on background
     readable = ensure_readable_text(prefix, palette)
     if readable:
         ai_log("info", "Text token made readable on the background", value=readable)
@@ -1107,6 +1109,7 @@ def build_site(ctx, spec: dict) -> str:
     if created and not cancelled and visual_check.enabled():
         try:
             _progress(ctx, job_id, _("Visual check: waiting for the images"), 95, {"pages_created": created})
+            # //// Neoffice — the text-to-image backend answers in 60 to 70 s per picture (Codex behind the ComfyUI proxy): the wait budget follows the number of slots (77601a8e "fix(images): prompts with photographic direction only, and budgets sized on the slot count")
             # a picture takes 60 to 70 s on the Codex backend: the wait follows the slot count
             visual_check.wait_for_images(image_job, timeout=min(1800, max(visual_check.IMAGE_WAIT_SECONDS, 75 * pending + 120)))
             by_name = {p["name"]: p for p in pages_by_name(pages, created)}

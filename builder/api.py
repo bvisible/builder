@@ -349,6 +349,7 @@ def _enqueue_image_generation(placeholder_images: list) -> str:
 	frappe.enqueue(
 		"builder.api._generate_images_worker",
 		queue="default",
+		# //// Neoffice — see the block marker above: timeout sized on slot count
 		timeout=max(1800, 90 * len(placeholder_images) + 300),
 		job_name=img_job_id,
 		img_job_id=img_job_id,
