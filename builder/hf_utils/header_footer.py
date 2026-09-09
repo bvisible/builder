@@ -267,10 +267,27 @@ def get_theme_css(config=None) -> str:
 		"motion_style": "Calm",
 	}
 
+	# //// Neoffice — what reads on the chrome's surface, from its luminance: a dark site's
+	# //// light text was unreadable on the login card and the account form (The League,
+	# //// 2026-09-09), and the surface itself may be dark or light.
+	surface = str((theme or {}).get("background_color") or "#ffffff").strip()
+	surface_text = "#1f272e" if _is_light(surface) else "#f5f5f5"
 	return frappe.render_template(
 		"builder/templates/includes/header_footer/theme_variables.html",
-		{"theme": theme}
+		{"theme": theme, "surface_text": surface_text}
 	)
+
+
+def _is_light(hex_colour: str) -> bool:
+	"""Relative luminance above 0.5; a colour that is not a flat hex counts as light."""
+	value = hex_colour.lstrip("#")
+	if len(value) == 3:
+		value = "".join(ch * 2 for ch in value)
+	try:
+		r, g, b = (int(value[i : i + 2], 16) / 255 for i in (0, 2, 4))
+	except (ValueError, IndexError):
+		return True
+	return 0.2126 * r + 0.7152 * g + 0.0722 * b > 0.5
 
 
 # //// Neoffice — whitelist REMOVED (was @frappe.whitelist(allow_guest=True)). This is a

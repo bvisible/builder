@@ -99,6 +99,10 @@ def palette_roles(palette: dict[str, str]) -> str:
 
 
 def _has_text(block: dict) -> bool:
+    # a repeater's template carries its text through a binding, not in innerHTML: the
+    # trust cards of The League's home kept light text on white (2026-09-09)
+    if any((d or {}).get("property") == "innerHTML" for d in block.get("dynamicValues") or []):
+        return True
     html = block.get("innerHTML") or ""
     if not isinstance(html, str):
         html = str(html)

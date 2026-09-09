@@ -964,3 +964,13 @@ class TestCardContrast(unittest.TestCase):
 		fixes = repair_contrast([section], palette)
 		self.assertTrue(fixes)
 		self.assertNotEqual(card["children"][0]["baseStyles"]["color"], "var(--x-text)")
+
+	def test_a_repeater_template_bound_to_data_counts_as_text(self):
+		from builder.site_ai.nora.contrast import repair_contrast
+
+		palette = {"x-background": "#1b1f24", "x-text": "#f5f5f5", "x-primary": "#1b1f24"}
+		template = {"element": "div", "classes": ["u-card"], "baseStyles": {"backgroundColor": "#fefefe"}, "children": [{"element": "h3", "baseStyles": {"color": "var(--x-text)"}, "dynamicValues": [{"key": "title", "property": "innerHTML", "type": "key"}]}]}
+		repeater = {"element": "div", "isRepeaterBlock": True, "dataKey": {"key": "reasons"}, "children": [template]}
+		section = {"element": "section", "baseStyles": {"backgroundColor": "var(--x-background)"}, "children": [repeater]}
+		self.assertTrue(repair_contrast([section], palette))
+		self.assertNotEqual(template["children"][0]["baseStyles"]["color"], "var(--x-text)")
