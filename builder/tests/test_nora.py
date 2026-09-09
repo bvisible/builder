@@ -818,3 +818,37 @@ class TestInspirations(unittest.TestCase):
 		text = site_playbook(None)
 		self.assertIn("inspect_inspiration", text)
 		self.assertIn("Sites you like", text)
+
+
+class TestLeagueRun(unittest.TestCase):
+	"""What the first client build (The League, 2026-09-09) taught: includes written as
+	offered, routes honoured but home, and the build's routes stated as final."""
+
+	def test_includes_are_written_as_offered_or_dropped(self):
+		from builder.site_ai.nora.site_builder import repair_includes
+
+		offered = [
+			("{% include 'builder/templates/includes/google_map.html' %}", "a map"),
+			("{% include 'webshop/templates/includes/opening_hours.html' %}", "the hours"),
+		]
+		wrong = {"element": "div", "innerHTML": "{% include 'builder/templates/includes/opening_hours.html' %}"}
+		right = {"element": "div", "innerHTML": "{% include 'builder/templates/includes/google_map.html' %}"}
+		form = {"element": "div", "innerHTML": "{% include 'builder/templates/includes/contact_form.html' %}"}
+		alien = {"element": "div", "innerHTML": "{% include 'builder/templates/includes/team_grid.html' %}"}
+		text = {"element": "p", "innerHTML": "Nous incluons tout le monde."}
+		section = {"element": "section", "children": [wrong, right, form, alien, text]}
+		self.assertEqual(repair_includes([{"element": "div", "children": [section]}], offered), (1, 1))
+		self.assertEqual(wrong["innerHTML"], "{% include 'webshop/templates/includes/opening_hours.html' %}")
+		self.assertEqual(section["children"], [wrong, right, form, text])
+
+	def test_a_proposed_route_is_honoured_except_for_home(self):
+		pages = normalise_pages(
+			[{"title": "Accueil", "route": "accueil"}, {"title": "À propos", "route": "a-propos"}, {"title": "Contact"}, {"title": "Nos marques", "route": "/Nos Marques/"}],
+			"vitrine_user",
+		)
+		self.assertEqual([(p["route"], p["type"]) for p in pages], [("home", "accueil"), ("a-propos", "about"), ("contact", "contact"), ("nos-marques", "generic")])
+
+	def test_the_build_states_its_routes_are_final_and_the_playbook_agrees(self):
+		from builder.site_ai.nora.prompts import site_playbook
+
+		self.assertIn("routes it reports are FINAL", site_playbook(None))

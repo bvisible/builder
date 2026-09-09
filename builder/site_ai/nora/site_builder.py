@@ -134,11 +134,15 @@ def normalise_pages(pages: list, site_type: str) -> list[dict]:
         if not title:
             continue
         known_route, ptype = KNOWN_PAGES.get(_bare(title), (None, None))
-        # a known page keeps its canonical route whatever the model proposed: on the
+        # the home page keeps its canonical route whatever the model proposed: on the
         # B2C regeneration the model sent route "accueil" for Accueil, so the home
         # page lost its "home" route and everything keyed on it (the host page, the
-        # profile's home_page, the hero brief)
-        route = (known_route or raw.get("route") or _slug(title)).strip("/") or _slug(title)
+        # profile's home_page, the hero brief). Every other page keeps the route the
+        # model proposed (the French "a-propos" over the canonical "about"): forced to
+        # the canonical one, the model "corrected" the routes after the build of The
+        # League and renamed the open page, the home, to a-propos (2026-09-09)
+        proposed = _slug(str(raw.get("route") or "").strip("/")) if raw.get("route") else ""
+        route = "home" if known_route == "home" else (proposed or known_route or _slug(title))
         # the canonical type wins as well: with the model's own label ("form", "contact-page")
         # the Contact page of the B2B regeneration got no includes and no CTA link
         ptype = ptype or raw.get("type") or "generic"
@@ -307,6 +311,46 @@ PAGE_INCLUDES = {
         ("{% include 'webshop/templates/includes/opening_hours.html' %}", "the shop's opening hours, live"),
     ],
 }
+
+
+INCLUDE_TAG = re.compile(r"\{%-?\s*include\s+['\"]([^'\"]+)['\"]\s*-?%\}")
+ALWAYS_ALLOWED_INCLUDES = ("{% include 'builder/templates/includes/contact_form.html' %}",)
+
+
+def repair_includes(blocks: list, allowed: list[tuple[str, str]]) -> tuple[int, int]:
+    """An include a page may carry is one the brief offered, written as offered. The
+    model wrote the shop's opening hours with builder's path instead of webshop's and
+    the Contact page of The League answered 417 (a template it could not find,
+    2026-09-09). A tag whose file name was offered is rewritten to the offered tag; any
+    other include block is removed. Returns (rewritten, removed)."""
+    from builder.site_ai.nora.layout import _walk
+
+    canon = {}
+    for tag, _purpose in list(allowed) + [(t, "") for t in ALWAYS_ALLOWED_INCLUDES]:
+        m = INCLUDE_TAG.search(tag)
+        if m:
+            canon[m.group(1).rsplit("/", 1)[-1]] = tag
+    rewritten = removed = 0
+    for block in _walk(blocks):
+        kids = [c for c in (block.get("children") or []) if isinstance(c, dict)]
+        kept = []
+        for child in kids:
+            html = child.get("innerHTML") if isinstance(child.get("innerHTML"), str) else ""
+            m = INCLUDE_TAG.search(html) if html and "include" in html else None
+            if not m:
+                kept.append(child)
+                continue
+            tag = canon.get(m.group(1).rsplit("/", 1)[-1])
+            if not tag:
+                removed += 1
+                continue
+            if html.strip() != tag:
+                child["innerHTML"] = tag
+                rewritten += 1
+            kept.append(child)
+        if len(kept) != len(block.get("children") or []):
+            block["children"] = kept
+    return rewritten, removed
 
 
 def includes_block(includes: list[tuple[str, str]]) -> str:
@@ -910,6 +954,11 @@ def build_site(ctx, spec: dict) -> str:
                 raw = _stream_text(ctx, page_model, messages, llm.TASK_PARAMS["complex"])
                 blocks, data_script = expand_page_yaml(BlockCodec.strip_fences(raw))
                 if blocks:
+                    # an include is one the brief offered, written as offered (a wrong
+                    # path is a 417 at render time): see repair_includes
+                    fixed, dropped = repair_includes(blocks, available_includes(page["type"], site["site_type"], site["profile"], site["site_name"]))
+                    if fixed or dropped:
+                        ai_log("info", "Includes repaired", page=page["title"], rewritten=fixed, removed=dropped)
                     # the page's own accent joins the design system (accent.py): minted
                     # from the first page that has one, every later one is folded into it
                     foreign = dominant_accent(blocks, palette)
@@ -1044,6 +1093,7 @@ def build_site(ctx, spec: dict) -> str:
     ai_log("info", "=== NORA SITE BUILD COMPLETED ===", job_id=job_id, pages=len(created), failed=len(failed), duration=duration)
     lines = [f"DONE in {duration // 60} min {duration % 60} s. Site '{site_name}'" + (f" on profile '{profile}'" if profile else "") + ":"]
     lines += [f"- {p['title']} -> {p['route']} (page {p['name']})" for p in created]
+    lines.append("These routes are final: do not rename a page or change a route after this build, and do not rewrite the menu or the footer links, they already point at these routes.")
     if failed:
         lines.append("Pages that failed (offer to retry them one by one with generate_page on their page): " + ", ".join(f"{f['title']} ({f['error']})" for f in failed))
     if cancelled:
