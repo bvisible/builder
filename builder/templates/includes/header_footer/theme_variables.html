@@ -326,8 +326,19 @@ a:hover {
 :where(.frappe-card, .page-card, .card, .product-card, .item-card, .cart-items) {
 	--text-color: #1f272e;
 	--text-muted: #6b7280;
+	--text-light: #6b7280;
 	--heading-color: #1f272e;
 	color: #1f272e;
+}
+
+/* the links frappe prints around its login card ("Don't have an account?", the
+   password reset) wear the primary colour, invisible when the primary is the dark
+   background itself (The League, 2026-09-09): they take the text colour, underlined */
+.for-login .sign-up-message a,
+.for-email-login .sign-up-message a,
+.for-login .forgot-password-message a {
+	color: var(--secondary-color, var(--text-color));
+	text-decoration: underline;
 }
 
 /* the title band of a page frappe renders: frappe's bundle paints every heading in a
