@@ -219,7 +219,7 @@ def _norm_size(width: int, height: int, max_dim: int = 1024):
 def generate_image(prompt: str, width: int = 1024, height: int = 1024, seed: int = None) -> str:
     """Workflow A — text→image. Returns the saved /files/ URL."""
     wf = copy.deepcopy(_WF_GENERATE)
-    wf["4"]["inputs"]["text"] = prompt or "professional photography, clean composition, no text"
+    wf["4"]["inputs"]["text"] = prompt or "editorial photograph, natural lighting, photorealistic"
     w, h = _norm_size(width, height)
     wf["7"]["inputs"]["width"], wf["7"]["inputs"]["height"] = w, h
     # generate_hash returns hex, so cint() on it was always 0 -> every image
