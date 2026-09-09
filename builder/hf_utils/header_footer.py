@@ -44,15 +44,11 @@ def get_header_footer_config():
 		# //// config here. Staff (System/Website Manager) keeps the chrome so the
 		# //// offline-site preview stays faithful. Keyed on the key existing in the
 		# //// resolved profile dict, like every other gate.
-		profile_doc = getattr(frappe.local, "website_profile_doc", None)
-		if (
-			profile_doc is not None
-			and "website_online" in profile_doc
-			and not profile_doc.get("website_online")
-		):
-			roles = frappe.get_roles()
-			if "System Manager" not in roles and "Website Manager" not in roles:
-				return None
+		# //// One answer for every gate, the server-side render included: builder/website_switch.py.
+		from builder.website_switch import hidden_from_visitor
+
+		if hidden_from_visitor():
+			return None
 
 		# //// Neoffice multi-site: a resolved Website Profile with its own
 		# //// variant gets it; everything else (default site, fleet instances
