@@ -734,7 +734,8 @@ def build_site(ctx, spec: dict) -> str:
     from builder.site_ai.nora.accent import dominant_accent, rewrite_hex
     from builder.site_ai.nora import visual_check
     from builder.hf_utils.header_footer import NEWSLETTER_DEFAULTS
-    from builder.site_ai.nora.layout import place_orphans, strip_title_band, unwrap_grid_wrappers
+    from builder.site_ai.nora.layout import grid_stacked_cards, place_orphans, repeater_counts, strip_title_band, unwrap_grid_wrappers
+    from builder.site_ai.nora.placeholders import neutral_placeholders
     from builder.site_ai.nora.punctuation import french_spacing
     from builder.site_ai.nora.typography import cap_font_sizes
     from builder.site_ai.nora.prompts import page_profile
@@ -952,6 +953,8 @@ def build_site(ctx, spec: dict) -> str:
     site = {"site_name": site_name, "activity": activity, "differentiators": spec.get("differentiators"), "site_type": site_type, "profile": profile, "inspiration": inspiration["notes"]}
     created, failed, cancelled = [], [], False
 
+    images_on = _image_backend_available()
+
     def write_page(page: dict, photos: list[str], revision: str | None = None) -> tuple[list, str, str | None]:
         """One page through the writer and the mechanical passes: (blocks, data_script, error)."""
         brief_text = page_brief_text(site, brief, page, handles, contact_prompt, layout_system, language, photos, cta, palette=palette, revision=revision)
@@ -989,6 +992,14 @@ def build_site(ctx, spec: dict) -> str:
                     hoisted = unwrap_grid_wrappers(blocks)
                     if hoisted:
                         ai_log("info", "Grid wrappers unwrapped", page=page["title"], edits=hoisted)
+                    stacked = grid_stacked_cards(blocks, repeater_counts(data_script))
+                    if stacked:
+                        ai_log("info", "Stacked cards laid on a grid", page=page["title"], edits=stacked)
+                    # no photo will come: the slots become plain blocks in the site's colours
+                    if not images_on:
+                        neutral = neutral_placeholders(blocks, palette, prefix)
+                        if neutral:
+                            ai_log("info", "Photo slots neutralised", page=page["title"], edits=neutral)
                     # an interior page opens under the site's own title band (page_header.py)
                     if page["route"] != "home":
                         stripped = strip_title_band(blocks, page["title"])
@@ -1112,7 +1123,10 @@ def build_site(ctx, spec: dict) -> str:
     if cancelled:
         lines.append("The build was cancelled by the user before every page was written.")
     lines.append(f"Design tokens minted with prefix '{prefix}': " + ", ".join(handles.values()) + ".")
-    lines.append(f"{pending} photo slot(s) are being filled with generated images in the background" + (f" (job {image_job})" if image_job else " (no image backend configured: they stay placeholders)") + ".")
+    if image_job:
+        lines.append(f"{pending} photo slot(s) are being filled with generated images in the background (job {image_job}).")
+    else:
+        lines.append("Image generation is off: the photo slots hold plain blocks in the site's colours, to be replaced by the client's own pictures.")
     if host_reusable and any(p["name"] == host_page for p in created):
         lines.append("The page open in the editor is now the home page; the canvas has been refreshed.")
     lines.append("The header, the menu and the footer are set from the brief (Settings > Theme).")
