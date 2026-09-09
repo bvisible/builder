@@ -950,3 +950,17 @@ class TestReadableText(unittest.TestCase):
 			self.assertEqual(ensure_readable_text("x", light), "#1a1a1a")
 		fine = {"x-background": "#faf7f2", "x-text": "#3f3833"}
 		self.assertIsNone(ensure_readable_text("x", fine))
+
+
+class TestCardContrast(unittest.TestCase):
+	"""A card wears the chrome's surface, not the section behind it (contrast.py)."""
+
+	def test_light_text_on_a_card_of_a_dark_section_is_repaired(self):
+		from builder.site_ai.nora.contrast import repair_contrast
+
+		palette = {"x-background": "#1b1f24", "x-text": "#f5f5f5", "x-primary": "#1b1f24"}
+		card = {"element": "div", "classes": ["u-card", "u-card--flat"], "baseStyles": {}, "children": [{"element": "h3", "baseStyles": {"color": "var(--x-text)"}, "innerHTML": "Sélection exigeante"}]}
+		section = {"element": "section", "baseStyles": {"backgroundColor": "var(--x-background)"}, "children": [card]}
+		fixes = repair_contrast([section], palette)
+		self.assertTrue(fixes)
+		self.assertNotEqual(card["children"][0]["baseStyles"]["color"], "var(--x-text)")
