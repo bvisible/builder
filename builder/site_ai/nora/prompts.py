@@ -1,3 +1,5 @@
+# //// Neoffice — added file (no upstream equivalent): builder/site_ai/** is the Neoffice site
+# //// generator. Upstream builder has no such module — its agent builds ONE page from a prompt.
 """The site-creation playbook appended to the agent's system prompt.
 
 Upstream's agent builds ONE page. On a Neoffice instance the same agent also
