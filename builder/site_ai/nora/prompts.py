@@ -54,6 +54,7 @@ def profiles_line(page_id: str | None = None) -> str:
 
 def site_playbook(page_id: str | None = None) -> str:
     # //// Neoffice — the "Site rules" section below states that generate_site's routes are FINAL (never rename a page or rewrite a route/menu link afterwards): after The League build the model kept "correcting" the routes it had just set (2d78d71d "fix(nora): includes written as offered, routes honoured but home, and the build's routes stated as final")
+    # //// Neoffice — same section also tells the model not to edit blocks, preview pages or touch settings right after generate_site in the same turn: a block edit made before the editor reloaded the pages the build wrote saved a stale copy of the home over the new one (The League, 2026-09-09) (bbc135b2 "fix(nora): no block edit in the turn that built the site"). Cannot be placed closer: this text lives inside the f-string below, where a "#" would become part of the prompt itself
     return f"""
 
 # Building a WHOLE site (Neoffice)
