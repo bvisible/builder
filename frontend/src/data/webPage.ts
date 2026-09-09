@@ -55,4 +55,5 @@ const searchablePages = createListResource({
 	pageLength: 10,
 });
 
+//// Neoffice — see the block marker above: savePageDraft exported alongside the others
 export { savePageDraft, searchablePages, templateGroups, webPages };

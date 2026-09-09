@@ -1,5 +1,6 @@
 import type Block from "@/block";
 import { builderSettings } from "@/data/builderSettings";
+//// Neoffice — savePageDraft import added (bed6489a, see the block marker further below)
 import { savePageDraft, webPages } from "@/data/webPage";
 import router from "@/router";
 import useBuilderStore from "@/stores/builderStore";
@@ -325,8 +326,10 @@ const usePageStore = defineStore("pageStore", {
 			const args = {
 				page: this.activePage?.name || this.selectedPage,
 				draft_blocks: pageData,
+				//// Neoffice — see the block marker above: version sent for the lock check
 				loaded_modified: this.activePage?.modified || null,
 			};
+			//// Neoffice — see the block marker above: savePageDraft replaces webPages.setValue
 			return savePageDraft
 				.submit(args)
 				.then((page: BuilderPage) => {

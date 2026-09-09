@@ -76,6 +76,10 @@ def execute():
 	try:
 		frappe.db.sql_ddl("ALTER TABLE `tabBuilder AI Session` DROP COLUMN messages_json")
 	except Exception as e:
+		# //// Neoffice — title/message swapped to frappe's documented log_error(title, message)
+		# //// order: the reversed order sent a title over frappe's 140-char cap, made log_error
+		# //// itself raise and could swallow the very error it logs (3171fff1 "fix(agent): the
+		# //// error handler was killing the message it existed to deliver")
 		frappe.log_error("AI session migration", f"Failed to drop messages_json column: {e}")
 
 	print(f"Migrated {migrated_messages} AI messages across {migrated_sessions} sessions")
