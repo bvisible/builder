@@ -929,6 +929,7 @@ def build_site(ctx, spec: dict) -> str:
             value = palette.get(f"{prefix}-{key}")
             if value and hasattr(config, field):
                 config.set(field, value)
+        # //// Neoffice — move the header off a background close to a dominant logo colour, see inspiration.py (925e2366 "fix(nora): the header never wears one of the logo's own colours")
         # the header never wears one of the logo's own colours (inspiration.py)
         if logo_image and hasattr(config, "header_bg_color"):
             from builder.site_ai.nora.inspiration import header_off_logo_palette

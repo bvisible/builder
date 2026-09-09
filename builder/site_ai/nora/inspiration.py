@@ -164,6 +164,7 @@ def describe(found: dict, model: str | None = None) -> str:
     return "\n".join(lines) + "\nKeep these for generate_site (inspiration_urls / inspiration_images)."
 
 
+# //// Neoffice ▼▼▼ — the brief painted The 5 Burrows' header in the rose of its wordmark and the wordmark vanished; this guard moves a header background close to a dominant logo colour to the site's background token, or to white when that is a logo colour too (925e2366 "fix(nora): the header never wears one of the logo's own colours")
 LOGO_COLOUR_DISTANCE = 56
 
 
@@ -206,3 +207,4 @@ def header_off_logo_palette(config, logo_image: str | None, palette: dict, prefi
     config.header_bg_color = background
     config.header_text_color = (palette or {}).get(f"{prefix}-text") or "#1a1a1a"
     return background
+# //// Neoffice ▲▲▲
