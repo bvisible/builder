@@ -929,6 +929,13 @@ def build_site(ctx, spec: dict) -> str:
             value = palette.get(f"{prefix}-{key}")
             if value and hasattr(config, field):
                 config.set(field, value)
+        # the header never wears one of the logo's own colours (inspiration.py)
+        if logo_image and hasattr(config, "header_bg_color"):
+            from builder.site_ai.nora.inspiration import header_off_logo_palette
+
+            moved = header_off_logo_palette(config, logo_image, palette, prefix)
+            if moved:
+                ai_log("info", "Header colour moved off the logo palette", background=moved)
         config.save(ignore_permissions=True)
         frappe.db.commit()
     except Exception as e:

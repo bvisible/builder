@@ -162,3 +162,47 @@ def describe(found: dict, model: str | None = None) -> str:
     if not lines:
         return "No inspiration could be read."
     return "\n".join(lines) + "\nKeep these for generate_site (inspiration_urls / inspiration_images)."
+
+
+LOGO_COLOUR_DISTANCE = 56
+
+
+def _rgb(hex_colour: str):
+    value = (hex_colour or "").strip().lstrip("#")
+    if len(value) == 3:
+        value = "".join(ch * 2 for ch in value)
+    try:
+        return tuple(int(value[i : i + 2], 16) for i in (0, 2, 4))
+    except (ValueError, IndexError):
+        return None
+
+
+def colour_near(a: str, b: str, distance: int = LOGO_COLOUR_DISTANCE) -> bool:
+    ra, rb = _rgb(a), _rgb(b)
+    if not ra or not rb:
+        return False
+    return sum((x - y) ** 2 for x, y in zip(ra, rb)) ** 0.5 < distance
+
+
+def logo_colours(file_url: str) -> list[str]:
+    """The dominant colours of the logo, for the header guard below."""
+    if not file_url or not str(file_url).startswith(("/files/", "/private/files/")):
+        return []
+    return [c.get("hex") for c in (_analyse(file_url) or {}).get("dominant_colors") or [] if c.get("hex")]
+
+
+def header_off_logo_palette(config, logo_image: str | None, palette: dict, prefix: str) -> str | None:
+    """A header painted in one of the logo's own colours hides the logo: the brief gave
+    The 5 Burrows the rose of its wordmark and the wordmark vanished (2026-09-09). The
+    background moves to the site's background token, or to white when that is a logo
+    colour too; the text follows. Returns the new background, None when nothing moved."""
+    current = (config.get("header_bg_color") or "").strip()
+    colours = logo_colours(logo_image)
+    if not current or not colours or not any(colour_near(current, c) for c in colours):
+        return None
+    background = (palette or {}).get(f"{prefix}-background") or "#ffffff"
+    if any(colour_near(background, c) for c in colours):
+        background = "#ffffff"
+    config.header_bg_color = background
+    config.header_text_color = (palette or {}).get(f"{prefix}-text") or "#1a1a1a"
+    return background
