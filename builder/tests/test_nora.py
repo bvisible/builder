@@ -458,6 +458,35 @@ class TestShopIncludes(unittest.TestCase):
 		self.assertNotIn("/all-products", build(secondary=True))
 		self.assertIn("/all-products", build(secondary=False))
 
+	def test_a_b2b_profile_gets_the_catalogue_entry(self):
+		from unittest.mock import MagicMock
+
+		from builder.site_ai.nora.site_builder import apply_navigation
+
+		created = [{"name": "p1", "title": "Accueil", "route": "/"}, {"name": "p2", "title": "Espace revendeurs", "route": "/espace-revendeurs"}]
+
+		def build(b2b):
+			config = MagicMock()
+			config.get.return_value = None
+			with patch("builder.site_ai.nora.site_builder._other_business", return_value=False), patch(
+				"builder.site_ai.nora.site_builder._profile_is_b2b", return_value=b2b
+			), patch("builder.site_ai.nora.site_builder.frappe") as mock_frappe:
+				mock_frappe.get_installed_apps.return_value = ["frappe", "builder", "webshop"]
+				apply_navigation(config, created, "vitrine_user", "distributor", "Espace B2B", "fr")
+			return [(c.args[1]["label"], c.args[1]["url"]) for c in config.append.call_args_list if c.args[0] == "menu_items"]
+
+		# a showcase with accounts stays a showcase: no catalogue entry
+		self.assertNotIn("/all-products", [url for _, url in build(b2b=False)])
+		# a B2B profile gets the catalogue right after Home, whatever the site type
+		self.assertEqual(build(b2b=True)[1], ("Catalogue", "/all-products"))
+
+	def test_a_b2b_profile_gets_the_product_carousels(self):
+		with patch("builder.site_ai.nora.site_builder._other_business", return_value=False), patch(
+			"builder.site_ai.nora.site_builder._profile_is_b2b", return_value=True
+		), patch("frappe.get_installed_apps", return_value=["frappe", "builder", "webshop"]):
+			offered = [t for t, _ in available_includes("accueil", "vitrine_user", "Espace B2B")]
+		self.assertTrue(offered and all("carousel" in t for t in offered))
+
 	def test_carousels_need_an_ecommerce_site(self):
 		with patch("builder.site_ai.nora.site_builder._other_business", return_value=False), patch(
 			"frappe.get_installed_apps", return_value=["frappe", "builder", "webshop"]
