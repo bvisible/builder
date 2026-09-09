@@ -78,6 +78,13 @@
 
 	/* Surface colors */
 	--surface-color: {{ theme.background_color if theme else '#ffffff' }};
+	/* what reads on a surface: the surface is light unless a Website Theme says
+	   otherwise, and a dark site's light text was unreadable on the login card and
+	   the account form (The League, 2026-09-09) */
+	--surface-text: {{ theme.text_color if theme and theme.text_color else '#1f272e' }};
+	/* frappe's bundle paints every heading in its own --heading-color: on a dark site
+	   the catalogue and login titles came out near-black on near-black */
+	--heading-color: var(--text-color);
 	--surface-muted: {% if tp %}color-mix(in srgb, var(--text-color) 2%, transparent){% else %}{{ text_hex }}05{% endif %};
 
 	/* Typography Scale - Desktop */
@@ -311,6 +318,10 @@ a:hover {
 .u-btn:focus-visible {
 	outline: 2px solid var(--primary-color);
 	outline-offset: 2px;
+}
+
+:where(.frappe-card, .page-card, .card) {
+	color: var(--surface-text);
 }
 
 :where(.u-card) {

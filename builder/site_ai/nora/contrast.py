@@ -181,6 +181,11 @@ def _walk(block: dict, bg: Color | None, fg: Color | None, palette: dict[str, st
         # copy laid over a photo: the photo decides, not a flat colour
         bg = None
     raw_bg = styles.get("backgroundColor") or styles.get("background")
+    if not raw_bg and any(c == "u-card" or c.startswith("u-card--") for c in _classes(block)):
+        # a card wears the chrome's surface (white unless a Website Theme says otherwise),
+        # not the section behind it: the trust cards of The League's dark home kept the
+        # site's light text on their white face (2026-09-09)
+        raw_bg = palette.get("surface") or "#ffffff"
     if raw_bg:
         parsed = parse_color(raw_bg, palette)
         if parsed is None:
