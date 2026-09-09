@@ -332,14 +332,15 @@ a:hover {
 }
 {%- if not surface_is_light %}
 
-/* the pages frappe renders (the catalogue, a product, the login, the account pages)
-   draw on frappe's own light ground (#f8f8f8, white), not on the site's background:
-   on a dark site the page-level texts (the title band, the breadcrumbs, the filters,
-   the sort label) inherited the light --text-color and vanished (The League
-   catalogue, 2026-09-09). Inside frappe's content wrapper the text tokens are the
-   light-surface set; Builder pages have no such wrapper and keep the site's tokens,
-   the chrome its own */
-.page-content-wrapper {
+/* webshop paints its own pages (the catalogue, a product, the cart: body.product-page)
+   on a light ground whatever the site, while frappe's pages (login, account) sit on
+   the site's ground: on a dark site the catalogue's title band, breadcrumbs, filters
+   and sort label wore the site's light text and vanished (The League, 2026-09-09).
+   On webshop's pages the content and the band take the light-surface tokens; the
+   login page keeps its dark ground and light text, and the chrome (header, footer)
+   its own colours, which is why the tokens are not redefined on the body */
+body.product-page .page-content-wrapper,
+body.product-page .site-page-header {
 	--text-color: #1f272e;
 	--text-muted: #6b7280;
 	--text-light: #6b7280;
