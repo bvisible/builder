@@ -219,6 +219,8 @@ def _norm_size(width: int, height: int, max_dim: int = 1024):
 def generate_image(prompt: str, width: int = 1024, height: int = 1024, seed: int = None) -> str:
     """Workflow A — text→image. Returns the saved /files/ URL."""
     wf = copy.deepcopy(_WF_GENERATE)
+    # //// Neoffice — no negation words in the fallback prompt: on this cfg=1.0 model, "no text"
+    # //// in a positive prompt draws exactly that (77601a8e "fix(images): prompts with photographic direction only, and budgets sized on the slot count")
     wf["4"]["inputs"]["text"] = prompt or "editorial photograph, natural lighting, photorealistic"
     w, h = _norm_size(width, height)
     wf["7"]["inputs"]["width"], wf["7"]["inputs"]["height"] = w, h

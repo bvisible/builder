@@ -107,6 +107,8 @@ def revision_instructions(issues: list[dict]) -> str:
     return "\n".join(lines)
 
 
+# //// Neoffice — tells the vision critic that a plain colour block where a photo would be is
+# //// deliberate (image generation off), not a defect to flag (65d8f360 "fix(nora): cards never stack in a column, and photo slots without photos are plain blocks")
 REVIEW_CONTEXT = (
     "This is a page of a site for '{site_name}' ({activity}). The header, the navigation and the footer are the "
     "site's shared chrome and are reviewed separately: do not report them. Grey or empty photo boxes and images "

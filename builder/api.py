@@ -1999,6 +1999,7 @@ def _build_image_prompt(context: str, is_background: bool = False, subject: str 
 	if not context or context.strip() in generic_words:
 		if subject:
 			lead = "atmospheric photography of" if is_background else "professional photography of"
+			# //// Neoffice — see the block marker above: no negation list, QUALITY_SUFFIX already has the lighting
 			return f"{lead} {subject}, {QUALITY_SUFFIX}"
 		if is_background:
 			return f"atmospheric interior photography, soft natural lighting, {QUALITY_SUFFIX}"
@@ -2019,6 +2020,7 @@ def _build_image_prompt(context: str, is_background: bool = False, subject: str 
 	if not cleaned or len(cleaned) < 3:
 		return _build_image_prompt("", is_background=is_background, subject=subject)
 
+	# //// Neoffice — see the block marker above: no negation list, QUALITY_SUFFIX already has the lighting
 	if is_background:
 		return f"atmospheric photograph of {cleaned}, {QUALITY_SUFFIX}"
 	return f"editorial photograph of {cleaned}, {QUALITY_SUFFIX}"
