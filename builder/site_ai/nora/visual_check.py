@@ -42,17 +42,24 @@ def static_roots() -> dict:
     }
 
 
+def loopback_headers() -> dict:
+    """The site, named by header rather than by host: bench writes the site name into
+    /etc/hosts on some benches only (osiris yes, The League no, 2026-09-09), and frappe
+    reads X-Frappe-Site-Name before the host anyway."""
+    return {"X-Frappe-Site-Name": frappe.local.site}
+
+
 def loopback_page_url(route: str, profile: str | None) -> str:
-    """The page as the web server sees it from the machine itself: the bench's site name
-    resolves to the loopback (bench writes it into /etc/hosts), and the profile is named
-    in the query string for the theme's host resolution."""
+    """The page as the web server sees it from the machine itself (the loopback, the
+    site named by loopback_headers), with the profile in the query string for the
+    theme's host resolution."""
     port = frappe.conf.get("webserver_port") or 8000
     path = (route or "").strip("/")
     # the home route redirects to "/" and the redirect drops the query string: the
     # first run reviewed the default site's home instead of the profile's (2026-09-08)
     if path in ("home", "index"):
         path = ""
-    url = f"http://{frappe.local.site}:{port}/{path}"
+    url = f"http://127.0.0.1:{port}/{path}"
     if profile:
         from urllib.parse import quote
 
@@ -111,15 +118,15 @@ def _screenshot(url: str, title: str) -> dict:
     30 s on osiris), and the viewport alone is still a review where a skipped page is none."""
     from builder.site_ai.inspiration.screenshotter import capture_website_screenshot
 
-    roots = static_roots()
+    roots, headers = static_roots(), loopback_headers()
     try:
-        shot = capture_website_screenshot(url, full_page=True, static_roots=roots)
+        shot = capture_website_screenshot(url, full_page=True, static_roots=roots, headers=headers)
         if shot.get("success"):
             return shot
         raise RuntimeError(str(shot.get("error") or "screenshot failed"))
     except Exception as e:
         ai_log("warning", "Full-page screenshot failed, viewport only", page=title, error=str(e)[:120])
-        return capture_website_screenshot(url, full_page=False, static_roots=roots)
+        return capture_website_screenshot(url, full_page=False, static_roots=roots, headers=headers)
 
 
 def review_page(page: dict, profile: str | None, model: str, site_name: str = "", activity: str = "") -> dict:

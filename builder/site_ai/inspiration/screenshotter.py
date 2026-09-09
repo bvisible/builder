@@ -64,6 +64,7 @@ class WebsiteScreenshotter:
         full_page: bool = True,
         timeout: int = 30000,
         static_roots: Optional[dict] = None,
+        headers: Optional[dict] = None,
     ) -> dict:
         """
         Capture a screenshot of the given URL asynchronously.
@@ -90,6 +91,10 @@ class WebsiteScreenshotter:
                 page = await browser.new_page(
                     viewport={"width": self.viewport_width, "height": self.viewport_height}
                 )
+
+                # a loopback render names its site by header (visual_check.loopback_headers)
+                if headers:
+                    await page.set_extra_http_headers({str(k): str(v) for k, v in headers.items()})
 
                 # a loopback render finds its stylesheets and photos on disk (static_file_for)
                 if static_roots:
@@ -200,6 +205,7 @@ class WebsiteScreenshotter:
         full_page: bool = True,
         timeout: int = 30000,
         static_roots: Optional[dict] = None,
+        headers: Optional[dict] = None,
     ) -> dict:
         """
         Capture a screenshot synchronously (wrapper around async method).
@@ -219,7 +225,7 @@ class WebsiteScreenshotter:
             asyncio.set_event_loop(loop)
 
         return loop.run_until_complete(
-            self.capture_async(url, full_page, timeout, static_roots)
+            self.capture_async(url, full_page, timeout, static_roots, headers)
         )
 
     def capture_and_save(
@@ -228,6 +234,7 @@ class WebsiteScreenshotter:
         doc_name: Optional[str] = None,
         full_page: bool = True,
         static_roots: Optional[dict] = None,
+        headers: Optional[dict] = None,
     ) -> dict:
         """
         Capture screenshot and save to Frappe File.
@@ -240,7 +247,7 @@ class WebsiteScreenshotter:
         Returns:
             dict with file_url, file_doc, and capture metadata
         """
-        result = self.capture(url, full_page=full_page, static_roots=static_roots)
+        result = self.capture(url, full_page=full_page, static_roots=static_roots, headers=headers)
 
         if not result.get("success"):
             return result
@@ -271,7 +278,7 @@ class WebsiteScreenshotter:
         }
 
 
-def capture_website_screenshot(url: str, full_page: bool = True, static_roots: Optional[dict] = None) -> dict:
+def capture_website_screenshot(url: str, full_page: bool = True, static_roots: Optional[dict] = None, headers: Optional[dict] = None) -> dict:
     """
     Convenience function to capture a website screenshot.
 
@@ -283,4 +290,4 @@ def capture_website_screenshot(url: str, full_page: bool = True, static_roots: O
         dict with capture result
     """
     screenshotter = WebsiteScreenshotter()
-    return screenshotter.capture_and_save(url, full_page=full_page, static_roots=static_roots)
+    return screenshotter.capture_and_save(url, full_page=full_page, static_roots=static_roots, headers=headers)
