@@ -10233,3 +10233,19 @@ msgstr "Correction de {0} après le contrôle visuel"
 
 msgid "Reading the inspirations"
 msgstr "Lecture des inspirations"
+
+#: frontend/src/stores/pageStore.ts:336
+msgid "This page was changed elsewhere — reloading it"
+msgstr "Cette page a été modifiée ailleurs — rechargement en cours"
+
+#: frontend/src/stores/pageStore.ts:337
+msgid "Your last change was not saved: it was made on an older version."
+msgstr "Votre dernière modification n'a pas été enregistrée : elle portait sur une version antérieure."
+
+#: builder/api.py:805
+msgid "This page was changed elsewhere while you were editing it. Reload before saving."
+msgstr "Cette page a été modifiée ailleurs pendant que vous l'éditiez. Rechargez-la avant d'enregistrer."
+
+#: builder/api.py:807
+msgid "Page out of date"
+msgstr "Page périmée"
