@@ -70,13 +70,13 @@ class TestCallsToAction(unittest.TestCase):
 				children.append({"element": "a", "blockId": "a" + title, "attributes": {"href": "/nos-marques"}, "innerHTML": "En savoir plus"})
 			return {"element": "div", "blockId": "c" + title, "children": children}
 
-		grid = {"element": "div", "classes": ["u-grid", "u-grid--3"], "children": [card("Volcom", True), card("West Snowboards", False), card("Espace revendeur", True)]}
+		grid = {"element": "div", "classes": ["u-grid", "u-grid--3"], "children": [card("Aurora", True), card("Bravo Boards", False), card("Espace revendeur", True)]}
 		edits = wire_dead_ctas([grid], ROUTES, "/contact")
 		west = grid["children"][1]["children"]
 		self.assertEqual(west[-1]["element"], "a")
 		self.assertEqual(west[-1]["innerHTML"], "En savoir plus")
 		self.assertEqual(west[-1]["attributes"]["href"], "/nos-marques")
-		self.assertNotEqual(west[-1]["blockId"], "aVolcom")
+		self.assertNotEqual(west[-1]["blockId"], "aAurora")
 		self.assertEqual(len(edits), 1)
 
 	def test_a_link_to_another_site_s_page_comes_home(self):

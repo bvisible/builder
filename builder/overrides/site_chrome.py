@@ -182,7 +182,7 @@ def inject_site_chrome(context):
 	# //// Neoffice website switch: an offline site (website_online=0, the fleet
 	# //// default) leaks nothing — the login page and every remaining web page
 	# //// render bare, no site header/footer ("no website = just a login page",
-	# //// directive 2026-07-10, seen live on lo-alabouche's login). Staff keeps
+	# //// directive 2026-07-10, seen live on a customer login). Staff keeps
 	# //// the chrome (faithful preview), same contract as get_header_footer_config.
 	# //// One answer for every gate, the server-side render included: builder/website_switch.py.
 	from builder.website_switch import hidden_from_visitor
