@@ -280,8 +280,26 @@ def get_theme_css(config=None) -> str:
 	# //// Neoffice — see the block marker above: surface_is_light passed to the template
 	return frappe.render_template(
 		"builder/templates/includes/header_footer/theme_variables.html",
-		{"theme": theme, "surface_text": surface_text, "surface_is_light": surface_is_light}
+		{
+			"theme": theme,
+			"surface_text": surface_text,
+			"surface_is_light": surface_is_light,
+			# //// Neoffice — the label colour of the primary and secondary buttons, dark or
+			# //// white by contrast: white on a pale accent reads poorly (2026-09-10)
+			"primary_text": _label_on((theme or {}).get("primary_color")),
+			"secondary_text": _label_on((theme or {}).get("secondary_color")),
+		}
 	)
+
+
+def _label_on(colour: str | None) -> str:
+	"""Dark or white, whichever contrasts more with the colour (white when unknown)."""
+	from builder.builder.doctype.website_header_footer_config.website_header_footer_config import _contrast
+
+	value = str(colour or "").strip()
+	if not value.startswith("#"):
+		return "#ffffff"
+	return "#1f272e" if _contrast("#1f272e", value) >= _contrast("#ffffff", value) else "#ffffff"
 
 
 # //// Neoffice — added helper (40dc4a09 "fix(contrast): a data-bound heading is text, and
