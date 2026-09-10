@@ -8,6 +8,36 @@ from frappe import _
 from frappe.model.document import Document
 
 
+# //// Neoffice — colour arithmetic for get_header_colors (see there).
+def _luminance(hex_colour: str) -> float:
+	"""Relative luminance of a #rgb or #rrggbb colour, 0 (black) to 1 (white); 0.5 when unreadable."""
+	value = (hex_colour or "").strip().lstrip("#")
+	if len(value) == 3:
+		value = "".join(c * 2 for c in value)
+	if len(value) != 6:
+		return 0.5
+	try:
+		channels = [int(value[i : i + 2], 16) / 255 for i in (0, 2, 4)]
+	except ValueError:
+		return 0.5
+	linear = [c / 12.92 if c <= 0.03928 else ((c + 0.055) / 1.055) ** 2.4 for c in channels]
+	return 0.2126 * linear[0] + 0.7152 * linear[1] + 0.0722 * linear[2]
+
+
+def _contrast(a: str, b: str) -> float:
+	la, lb = _luminance(a), _luminance(b)
+	return (max(la, lb) + 0.05) / (min(la, lb) + 0.05)
+
+
+def _readable_on(background: str, candidates: list) -> str:
+	"""The first candidate that stands out from the background (contrast 1.8 or more), else the last one."""
+	usable = [c for c in candidates if c]
+	for colour in usable:
+		if _contrast(colour, background) >= 1.8:
+			return colour
+	return usable[-1]
+
+
 class WebsiteHeaderFooterConfig(Document):
 	# begin: auto-generated types
 	# This code is auto-generated. Do not modify anything in this block.
@@ -174,12 +204,25 @@ class WebsiteHeaderFooterConfig(Document):
 		return icons
 
 	def get_header_colors(self) -> dict:
-		"""Get header color configuration."""
+		"""Get header color configuration.
+
+		//// Neoffice — the CTA wears the primary colour, and the primary of a dark site
+		//// is often the header background itself: the button melted into the bar and
+		//// its hover, a ghost in the primary colour, vanished (The League, 2026-09-10).
+		//// A CTA colour that does not stand out from the header falls back to the
+		//// secondary colour, then to the header text; the label takes the colour that
+		//// reads on the button, not always white (a pale primary made it unreadable).
+		"""
+		bg = self.header_bg_color or "#1a1a1a"
+		text = self.header_text_color or "#ffffff"
+		cta_bg = _readable_on(
+			bg, [getattr(self, "primary_color", None) or "#6366f1", getattr(self, "secondary_color", None), text]
+		)
 		return {
-			"bg": self.header_bg_color or "#1a1a1a",
-			"text": self.header_text_color or "#ffffff",
-			"cta_bg": getattr(self, "primary_color", None) or "#6366f1",
-			"cta_text": "#ffffff",
+			"bg": bg,
+			"text": text,
+			"cta_bg": cta_bg,
+			"cta_text": "#1f272e" if _luminance(cta_bg) > 0.45 else "#ffffff",
 		}
 
 	def get_footer_colors(self) -> dict:

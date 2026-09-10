@@ -252,6 +252,110 @@
 	color: var(--header-text);
 }
 
+/* //// Neoffice — priority navigation. A menu wider than its row ran under the icons,
+   //// and the phone layout only came at 768px whatever the number of entries (The
+   //// League: six entries plus a CTA, 2026-09-10). The script at the end of this file
+   //// moves the last entries into a "more" menu until the row fits and, when fewer
+   //// than two stay visible, hands the bar to the burger whatever the viewport. */
+.site-header__center {
+	min-width: 0;
+}
+
+/* layout B keeps the menu on the left: that section must be able to shrink too */
+.site-header[data-layout="B"] .site-header__left {
+	flex: 1 1 0;
+	min-width: 0;
+}
+
+.site-nav {
+	min-width: 0;
+	max-width: 100%;
+	flex-wrap: nowrap;
+}
+
+.site-nav__more {
+	position: relative;
+	display: none;
+	align-items: center;
+	flex-shrink: 0;
+}
+
+.site-nav__more.is-shown {
+	display: flex;
+}
+
+.site-nav__more-btn {
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	width: 36px;
+	height: 36px;
+	padding: 0;
+	border: none;
+	border-radius: 8px;
+	background: transparent;
+	color: var(--header-text-muted);
+	cursor: pointer;
+	transition: background-color 0.2s ease, color 0.2s ease;
+}
+
+.site-nav__more-btn:hover,
+.site-nav__more-btn[aria-expanded="true"] {
+	color: var(--header-text);
+	background: var(--header-hover-bg);
+}
+
+.site-nav__more-menu {
+	display: none;
+	position: absolute;
+	top: calc(100% + 10px);
+	right: 0;
+	min-width: 200px;
+	padding: 8px 0;
+	background: var(--header-bg);
+	border: 1px solid var(--header-border);
+	border-radius: var(--radius, 8px);
+	box-shadow: var(--shadow, 0 10px 30px rgba(0, 0, 0, 0.12));
+	z-index: 1002;
+	text-shadow: none;
+}
+
+.site-nav--left .site-nav__more-menu,
+.site-nav--center .site-nav__more-menu {
+	left: 0;
+	right: auto;
+}
+
+.site-nav__more.is-open .site-nav__more-menu {
+	display: block;
+}
+
+.site-nav__more-menu .site-nav__link {
+	display: block;
+	padding: 10px 18px;
+}
+
+.site-nav__more-menu .site-nav__link:hover {
+	background: var(--header-hover-bg);
+}
+
+/* the script found no room for even two entries: the bar behaves as on a phone */
+.site-header.is-collapsed .site-nav {
+	display: none;
+}
+
+.site-header.is-collapsed .site-header__right {
+	flex-direction: row;
+	margin-left: auto;
+	gap: 4px;
+}
+
+.site-header.is-collapsed .site-header__burger {
+	display: flex;
+	order: 2;
+	margin-left: 8px;
+}
+
 /* Header icons */
 .site-header__icons {
 	display: flex;
@@ -694,5 +798,88 @@ document.addEventListener('DOMContentLoaded', function() {
 			}
 		});
 	}
+
+	// //// Neoffice — priority navigation (the .site-nav__more rules above). Every
+	// //// pass starts from the full row, so the result only depends on the room
+	// //// available now, never on the previous state: the last entries move into the
+	// //// "more" menu until the row fits; with fewer than two left visible the bar
+	// //// takes the phone layout instead, whatever the viewport.
+	(function () {
+		var header = document.querySelector('.site-header');
+		var nav = header && header.querySelector('.site-nav');
+		var more = nav && nav.querySelector('.site-nav__more');
+		if (!more) return;
+		var button = more.querySelector('.site-nav__more-btn');
+		var menu = more.querySelector('.site-nav__more-menu');
+		var links = Array.prototype.slice.call(nav.querySelectorAll(':scope > .site-nav__link'));
+		if (!links.length) return;
+		var MIN_VISIBLE = 2;
+		var busy = false;
+
+		function fits() {
+			return nav.scrollWidth <= nav.clientWidth + 1;
+		}
+
+		function open() {
+			more.classList.add('is-open');
+			button.setAttribute('aria-expanded', 'true');
+		}
+
+		function close() {
+			more.classList.remove('is-open');
+			button.setAttribute('aria-expanded', 'false');
+		}
+
+		function restore() {
+			links.forEach(function (link) { nav.insertBefore(link, more); });
+			more.classList.remove('is-shown');
+			close();
+		}
+
+		function layout() {
+			if (busy) return;
+			busy = true;
+			header.classList.remove('is-collapsed');
+			restore();
+			// the phone media query already took the bar: nothing to measure
+			if (nav.offsetParent === null) { busy = false; return; }
+			if (!fits()) {
+				more.classList.add('is-shown');
+				var hidden = 0;
+				for (var i = links.length - 1; i >= 0 && !fits(); i--) {
+					menu.insertBefore(links[i], menu.firstChild);
+					hidden++;
+				}
+				if (links.length - hidden < MIN_VISIBLE || !fits()) {
+					restore();
+					header.classList.add('is-collapsed');
+				}
+			}
+			busy = false;
+		}
+
+		button.addEventListener('click', function (e) {
+			e.stopPropagation();
+			if (more.classList.contains('is-open')) { close(); } else { open(); }
+		});
+		document.addEventListener('click', function (e) {
+			if (!more.contains(e.target)) close();
+		});
+		document.addEventListener('keydown', function (e) {
+			if (e.key === 'Escape') close();
+		});
+
+		var raf = 0;
+		function schedule() {
+			if (raf) return;
+			raf = window.requestAnimationFrame(function () { raf = 0; layout(); });
+		}
+		if (window.ResizeObserver) {
+			new ResizeObserver(schedule).observe(header.querySelector('.site-header__container') || header);
+		}
+		window.addEventListener('resize', schedule);
+		if (document.fonts && document.fonts.ready) { document.fonts.ready.then(schedule); }
+		layout();
+	})();
 });
 </script>

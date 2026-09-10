@@ -480,8 +480,11 @@ class TestShopIncludes(unittest.TestCase):
 
 		# a showcase with accounts stays a showcase: no catalogue entry
 		self.assertNotIn("/all-products", [url for _, url in build(b2b=False)])
-		# a B2B profile gets the catalogue right after Home, whatever the site type
-		self.assertEqual(build(b2b=True)[1], ("Catalogue", "/all-products"))
+		# a B2B profile gets the catalogue first, whatever the site type
+		self.assertEqual(build(b2b=True)[0], ("Catalogue", "/all-products"))
+		# the logo is the way home: no "Home" entry in the row
+		self.assertNotIn("/", [url for _, url in build(b2b=True)])
+		self.assertEqual([url for _, url in build(b2b=False)], ["/espace-revendeurs"])
 
 	def test_a_b2b_profile_gets_the_product_carousels(self):
 		with patch("builder.site_ai.nora.site_builder._other_business", return_value=False), patch(

@@ -468,6 +468,18 @@ def _webshop_installed() -> bool:
         return False
 
 
+# neoffice_theme/www/compte_professionnel.py: the form that opens a B2B Account Request
+ACCOUNT_REQUEST_ROUTE = "/compte-professionnel"
+
+
+def _account_request_route() -> str | None:
+    """The theme's professional account request page, when the theme is installed."""
+    try:
+        return ACCOUNT_REQUEST_ROUTE if "neoffice_theme" in frappe.get_installed_apps() else None
+    except Exception:
+        return None
+
+
 def available_includes(page_type: str, site_type: str = "vitrine", profile: str | None = None, site_name: str = "") -> list[tuple[str, str]]:
     """The includes of this page type whose app is installed on the bench (an include of
     an absent app turns the whole page into a 500 at render time), minus every include
@@ -723,24 +735,23 @@ def apply_navigation(config, created: list[dict], site_type: str, description: s
     """Menu, footer and home page from the pages just built (the worker's step 5).
     Labels are translated into the site's language, not the operator's session."""
     config.menu_items = []
+    # /all-products is the instance's catalogue: on another business's profile it would
+    # be someone else's shop in this site's menu (the florist listed the bakery)
+    if not _other_business(profile, site_name):
+        if site_type in ("ecommerce", "ecommerce_search"):
+            config.append("menu_items", {"label": _("Shop", lang=lang), "url": "/all-products", "is_external": False, "open_in_new_tab": False})
+        elif _profile_is_b2b(profile) and _webshop_installed():
+            # a B2B site is a shop window whatever its site type (see _profile_is_b2b)
+            config.append("menu_items", {"label": _("Catalogue", lang=lang), "url": "/all-products", "is_external": False, "open_in_new_tab": False})
     seen = set()
     for page in created:
         route = page["route"]
-        if route in seen:
+        # the logo is the way home: a "Home" entry only fills a row that fills up fast
+        # (The League, 2026-09-10: "le côté accueil fait trop d'entrées")
+        if route in seen or route in ("/", "/home", "/index"):
             continue
         seen.add(route)
-        home = route in ("/", "/home", "/index")
-        config.append("menu_items", {"label": _("Home", lang=lang) if home else page["title"], "url": "/" if home else route, "is_external": False, "open_in_new_tab": False})
-        # /all-products is the instance's catalogue: on another business's profile it would
-        # be someone else's shop in this site's menu (the florist listed the bakery)
-        # //// Neoffice — reshaped from a single "if ecommerce and home" into if/elif (5efa79d1):
-        # //// a B2B or login-gated profile now gets a Catalogue entry too, whatever its site type.
-        if home and not _other_business(profile, site_name):
-            if site_type in ("ecommerce", "ecommerce_search"):
-                config.append("menu_items", {"label": _("Shop", lang=lang), "url": "/all-products", "is_external": False, "open_in_new_tab": False})
-            elif _profile_is_b2b(profile) and _webshop_installed():
-                # a B2B site is a shop window whatever its site type (see _profile_is_b2b)
-                config.append("menu_items", {"label": _("Catalogue", lang=lang), "url": "/all-products", "is_external": False, "open_in_new_tab": False})
+        config.append("menu_items", {"label": page["title"], "url": route, "is_external": False, "open_in_new_tab": False})
     for field, value in (("footer_logo_type", config.get("logo_type")), ("footer_logo_text", config.get("logo_text")), ("footer_logo_image", config.get("logo_image")), ("show_footer_logo", True), ("footer_menu_source", "Custom links")):
         if hasattr(config, field):
             config.set(field, value)
@@ -895,6 +906,10 @@ def build_site(ctx, spec: dict) -> str:
         config.secondary_color = secondary
     contact_page = next((p for p in pages if p["type"] == "contact"), None)
     cta = (_("Contact us", lang=lang_code), f"/{contact_page['route']}" if contact_page else "/")
+    # a B2B site opens accounts before it sells: its CTA asks for one on the theme's
+    # request page, and never doubles the "Sign in" entry or a resellers page of the menu
+    if _profile_is_b2b(profile) and _account_request_route():
+        cta = (_("Request an account", lang=lang_code), _account_request_route())
     config.cta_text, config.cta_url = cta
     if primary and hasattr(config, "cta_button_color"):
         config.cta_button_color = primary
