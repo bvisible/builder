@@ -19,6 +19,10 @@ class TestI18n(FrappeTestCase):
 			"All Pages": {
 				"frontend/src/components/DashboardHead.vue",
 				"frontend/src/components/DashboardSidebar.vue",
+				# //// Neoffice — the cockpit chrome carries the dashboard nav (All Pages /
+				# //// Settings / Folders) into its own contextNav, so the same msgid is
+				# //// extracted from there too (575f427e).
+				"frontend/src/components/NeoCockpitBuilderSidebar.vue",
 			},
 			"Select (v)": {"frontend/src/components/ToolbarItems/ModeSwitcher.vue"},
 			'Are you sure you want to unpublish "{0}"? It will no longer be accessible on the website.': {
