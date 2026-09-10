@@ -42,10 +42,10 @@ def static_roots() -> dict:
     }
 
 
-# //// Neoffice — name the site by header since bench doesn't write it into /etc/hosts on every bench (The League: no; osiris: yes) and frappe reads this header before the host (0445cc94 "fix(visual-check): the loopback render names its site by header, not by host")
+# //// Neoffice — name the site by header since bench doesn't write it into /etc/hosts on every bench (a reseller site: no; osiris: yes) and frappe reads this header before the host (0445cc94 "fix(visual-check): the loopback render names its site by header, not by host")
 def loopback_headers() -> dict:
     """The site, named by header rather than by host: bench writes the site name into
-    /etc/hosts on some benches only (osiris yes, The League no, 2026-09-09), and frappe
+    /etc/hosts on some benches only (osiris yes, a reseller site no, 2026-09-09), and frappe
     reads X-Frappe-Site-Name before the host anyway."""
     return {"X-Frappe-Site-Name": frappe.local.site}
 

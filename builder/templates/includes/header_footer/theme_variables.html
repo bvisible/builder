@@ -84,8 +84,11 @@
 	   pages, and its literal near-black heading colour, could not read on a dark site. */
 	/* what reads on a surface: the surface is light unless a Website Theme says
 	   otherwise, and a dark site's light text was unreadable on the login card and
-	   the account form (The League, 2026-09-09) */
+	   the account form (a reseller site, 2026-09-09) */
 	--surface-text: {{ surface_text or '#1f272e' }};
+	/* //// Neoffice — what reads on a primary or secondary button (get_theme_css, by contrast) */
+	--primary-text: {{ primary_text or '#ffffff' }};
+	--secondary-text: {{ secondary_text or '#ffffff' }};
 	/* frappe's bundle paints every heading in its own --heading-color: on a dark site
 	   the catalogue and login titles came out near-black on near-black */
 	--heading-color: var(--text-color);
@@ -213,7 +216,10 @@ a {
 	color: var(--primary-color);
 }
 
-a:hover {
+/* //// Neoffice — a button is a link too: this generic hover painted its label in the
+   //// primary colour, invisible on a primary button and on a dark site's dark hero
+   //// (a reseller site, 2026-09-10). Buttons keep their own label colour, see .u-btn. */
+a:not(.u-btn):hover {
 	color: var(--primary-hover);
 }
 
@@ -286,25 +292,30 @@ a:hover {
 		transform var(--transition), filter var(--transition);
 }
 
+/* //// Neoffice — the label colour is the one that reads on the button (--primary-text,
+   //// --secondary-text: get_theme_css picks dark or white by contrast; white on The
+   //// League's pink read poorly), and an outline or ghost button is drawn in the text
+   //// colour of where it sits: in the primary colour it vanished on a section painted
+   //// in that colour (2026-09-10). */
 .u-btn--primary {
 	background: var(--primary-color);
-	color: #ffffff;
+	color: var(--primary-text, #ffffff);
 }
 
 .u-btn--secondary {
 	background: var(--secondary-color);
-	color: #ffffff;
+	color: var(--secondary-text, #ffffff);
 }
 
 .u-btn--outline {
 	background: transparent;
-	color: var(--primary-color);
-	border-color: var(--primary-color);
+	color: inherit;
+	border-color: currentColor;
 }
 
 .u-btn--ghost {
 	background: transparent;
-	color: var(--primary-color);
+	color: inherit;
 	padding-left: 0;
 	padding-right: 0;
 }
@@ -312,12 +323,21 @@ a:hover {
 /* One hover behaviour for the whole site. */
 {%- if hover == "Darken" %}
 .u-btn:hover { filter: brightness(0.92); }
-.u-btn--outline:hover { background: var(--primary-color); color: #ffffff; filter: none; }
+/* //// Neoffice — a tint of the current colour, no inversion: filling with the primary
+   //// colour made the button vanish on a primary-coloured section */
+.u-btn--outline:hover, .u-btn--ghost:hover { background: color-mix(in srgb, currentColor 12%, transparent); filter: none; }
 {%- elif hover == "Lift" %}
 .u-btn:hover { transform: translateY(-2px); box-shadow: var(--shadow); }
 {%- elif hover == "Grow" %}
 .u-btn:hover { transform: scale(1.03); }
 {%- endif %}
+
+/* //// Neoffice — whatever the hover mode, a label never changes colour on hover: the
+   //// generic a:hover above stops at buttons, and these say it again for the bundles
+   //// (frappe, webshop) that carry their own link hover */
+.u-btn--primary:hover { color: var(--primary-text, #ffffff); }
+.u-btn--secondary:hover { color: var(--secondary-text, #ffffff); }
+.u-btn--outline:hover, .u-btn--ghost:hover { color: inherit; }
 
 .u-btn:focus-visible {
 	outline: 2px solid var(--primary-color);
@@ -327,7 +347,7 @@ a:hover {
 /* //// Neoffice ▼▼▼ — frappe's and webshop's own rendered pages (login, account, catalogue,
    product, cart) sit on frappe's own light chrome even when the site is dark, and its bundle
    paints headings a literal near-black: added piecemeal as each surface turned out unreadable
-   on The League's dark site (2026-09-09) — e1e04aa0 (card selector + title band), cda46005
+   on a reseller site's dark site (2026-09-09) — e1e04aa0 (card selector + title band), cda46005
    ("white cards keep dark text on a dark site, and the title band takes the heading colour"),
    bb88301a ("the links around the login card read on a dark site"), 67e1f9b8 ("only webshop's
    pages take the light-ground text on a dark site", scoping the block below to body.product-page
@@ -347,7 +367,7 @@ a:hover {
 /* webshop paints its own pages (the catalogue, a product, the cart: body.product-page)
    on a light ground whatever the site, while frappe's pages (login, account) sit on
    the site's ground: on a dark site the catalogue's title band, breadcrumbs, filters
-   and sort label wore the site's light text and vanished (The League, 2026-09-09).
+   and sort label wore the site's light text and vanished (a reseller site, 2026-09-09).
    On webshop's pages the content and the band take the light-surface tokens; the
    login page keeps its dark ground and light text, and the chrome (header, footer)
    its own colours, which is why the tokens are not redefined on the body */
@@ -363,7 +383,7 @@ body.product-page .site-page-header {
 
 /* the links frappe prints around its login card ("Don't have an account?", the
    password reset) wear the primary colour, invisible when the primary is the dark
-   background itself (The League, 2026-09-09): they take the text colour, underlined */
+   background itself (a reseller site, 2026-09-09): they take the text colour, underlined */
 .for-login .sign-up-message a,
 .for-email-login .sign-up-message a,
 .for-login .forgot-password-message a {

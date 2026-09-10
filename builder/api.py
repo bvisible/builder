@@ -785,7 +785,7 @@ def clone_client_scripts(source_page, new_page) -> None:
 # //// then compares the document to itself, so frappe's optimistic lock can never fire. A draft
 # //// computed before a server-side rewrite (the AI's generate_site rewrites blocks AND
 # //// draft_blocks, then asks the client to refetch) was therefore accepted as-is and silently
-# //// reverted the freshly built page — neoffice-maintenance#306, The League, 2026-09-09: one
+# //// reverted the freshly built page — neoffice-maintenance#306, a reseller site, 2026-09-09: one
 # //// "Publish" away from replacing the built site with the old design. The client sends the
 # //// version it loaded; a draft computed on an older one is refused instead of overwriting.
 @frappe.whitelist()

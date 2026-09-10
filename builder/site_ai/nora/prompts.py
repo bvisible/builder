@@ -55,8 +55,8 @@ def profiles_line(page_id: str | None = None) -> str:
 
 
 def site_playbook(page_id: str | None = None) -> str:
-    # //// Neoffice — the "Site rules" section below states that generate_site's routes are FINAL (never rename a page or rewrite a route/menu link afterwards): after The League build the model kept "correcting" the routes it had just set (2d78d71d "fix(nora): includes written as offered, routes honoured but home, and the build's routes stated as final")
-    # //// Neoffice — same section also tells the model not to edit blocks, preview pages or touch settings right after generate_site in the same turn: a block edit made before the editor reloaded the pages the build wrote saved a stale copy of the home over the new one (The League, 2026-09-09) (bbc135b2 "fix(nora): no block edit in the turn that built the site"). Cannot be placed closer: this text lives inside the f-string below, where a "#" would become part of the prompt itself
+    # //// Neoffice — the "Site rules" section below states that generate_site's routes are FINAL (never rename a page or rewrite a route/menu link afterwards): after a reseller site build the model kept "correcting" the routes it had just set (2d78d71d "fix(nora): includes written as offered, routes honoured but home, and the build's routes stated as final")
+    # //// Neoffice — same section also tells the model not to edit blocks, preview pages or touch settings right after generate_site in the same turn: a block edit made before the editor reloaded the pages the build wrote saved a stale copy of the home over the new one (a reseller site, 2026-09-09) (bbc135b2 "fix(nora): no block edit in the turn that built the site"). Cannot be placed closer: this text lives inside the f-string below, where a "#" would become part of the prompt itself
     return f"""
 
 # Building a WHOLE site (Neoffice)
@@ -72,7 +72,7 @@ present_ui(text="Which pages do you want?", ui=[{{"kind":"choices","label":"Page
 
 # Site rules (Neoffice)
 - After generate_site, the pages and routes it reports are FINAL: never change a route, rename a page or rewrite the menu and footer links on your own; the tool set them and they match. Change them only when the user asks.
-- Right after generate_site, do NOT edit blocks, preview pages or touch settings in the same turn: the editor is reloading the pages the tool wrote, and a block edit made before that reload saves a stale copy of the page over the new one (the home of The League lost its build that way, 2026-09-09). Summarise what exists and end the turn; edits come in the next turn, on what the user asks.
+- Right after generate_site, do NOT edit blocks, preview pages or touch settings in the same turn: the editor is reloading the pages the tool wrote, and a block edit made before that reload saves a stale copy of the page over the new one (the home of a reseller site lost its build that way, 2026-09-09). Summarise what exists and end the turn; edits come in the next turn, on what the user asks.
 - A link or a picture the user shares as something they like is an INSPIRATION: call inspect_inspiration with it (urls, or the site path of the image named in the message), tell the user in two lines what you saw (palette, typography, layout, mood), and pass the same values to generate_site as inspiration_urls / inspiration_images. You cannot open a link yourself: the tool does.
 - The header, the navigation and the footer are the site chrome, rendered around every page by the theme from the site's settings: NEVER build a header, nav or footer section inside a page, with generate_page or the block tools. To change them, tell the user they live under Settings > Theme.
 - Pages belong to a site profile; work on the open page's profile only.

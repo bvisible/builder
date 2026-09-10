@@ -164,7 +164,7 @@ def describe(found: dict, model: str | None = None) -> str:
     return "\n".join(lines) + "\nKeep these for generate_site (inspiration_urls / inspiration_images)."
 
 
-# //// Neoffice ▼▼▼ — the brief painted The 5 Burrows' header in the rose of its wordmark and the wordmark vanished; this guard moves a header background close to a dominant logo colour to the site's background token, or to white when that is a logo colour too (925e2366 "fix(nora): the header never wears one of the logo's own colours")
+# //// Neoffice ▼▼▼ — the brief painted the consumer site's header in the rose of its wordmark and the wordmark vanished; this guard moves a header background close to a dominant logo colour to the site's background token, or to white when that is a logo colour too (925e2366 "fix(nora): the header never wears one of the logo's own colours")
 LOGO_COLOUR_DISTANCE = 56
 
 
@@ -194,7 +194,7 @@ def logo_colours(file_url: str) -> list[str]:
 
 def header_off_logo_palette(config, logo_image: str | None, palette: dict, prefix: str) -> str | None:
     """A header painted in one of the logo's own colours hides the logo: the brief gave
-    The 5 Burrows the rose of its wordmark and the wordmark vanished (2026-09-09). The
+    the consumer site the rose of its wordmark and the wordmark vanished (2026-09-09). The
     background moves to the site's background token, or to white when that is a logo
     colour too; the text follows. Returns the new background, None when nothing moved."""
     current = (config.get("header_bg_color") or "").strip()

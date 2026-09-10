@@ -208,7 +208,7 @@ class WebsiteHeaderFooterConfig(Document):
 
 		//// Neoffice — the CTA wears the primary colour, and the primary of a dark site
 		//// is often the header background itself: the button melted into the bar and
-		//// its hover, a ghost in the primary colour, vanished (The League, 2026-09-10).
+		//// its hover, a ghost in the primary colour, vanished (a reseller site, 2026-09-10).
 		//// A CTA colour that does not stand out from the header falls back to the
 		//// secondary colour, then to the header text; the label takes the colour that
 		//// reads on the button, not always white (a pale primary made it unreadable).

@@ -70,8 +70,8 @@ class TestPages(unittest.TestCase):
 
 class TestTokens(unittest.TestCase):
 	def test_prefix_is_the_initials_or_the_first_word(self):
-		self.assertEqual(token_prefix("The League Agency"), "tla")
-		self.assertEqual(token_prefix("The 5 Burrows"), "t5b")
+		self.assertEqual(token_prefix("Torrent Lake Apparel"), "tla")
+		self.assertEqual(token_prefix("The 5 Beacons"), "t5b")
 		self.assertEqual(token_prefix("Fromagerie"), "fromager")
 
 	def test_colour_values_are_literal_or_the_fallback(self):
@@ -406,23 +406,23 @@ class TestShopIncludes(unittest.TestCase):
 	def test_other_business_compares_the_site_name_with_the_instance_company(self):
 		from builder.site_ai.nora.site_builder import _business_key, _other_business
 
-		self.assertEqual(_business_key("Guigoz & Filliez SA"), "guigoz filliez")
+		self.assertEqual(_business_key("Dupont & Fils SA"), "dupont fils")
 		self.assertEqual(_business_key("Boulangerie Solstice Sàrl"), "boulangerie solstice")
 		defaults = {("Website Profile", "Main", "is_default"): 1, ("Website Profile", "Espace B2B", "is_default"): 0, ("Website Profile", "Nora Test", "is_default"): 0}
 		defaults[("Website Profile", "Espace B2B", "title")] = "Espace B2B"
 		defaults[("Website Profile", "Nora Test", "title")] = "Nora Test"
 		defaults[("Website Profile", "Burrows", "is_default")] = 0
-		defaults[("Website Profile", "Burrows", "title")] = "The 5 Burrows"
+		defaults[("Website Profile", "Beacons", "title")] = "The 5 Beacons"
 		with patch("builder.site_ai.nora.site_builder.frappe.db.get_value", side_effect=lambda d, n, f: defaults.get((d, n, f))), patch(
-			"builder.site_ai.nora.site_builder.frappe.db.get_single_value", return_value="Guigoz & Filliez SA"
+			"builder.site_ai.nora.site_builder.frappe.db.get_single_value", return_value="Dupont & Fils SA"
 		):
-			self.assertFalse(_other_business(None, "Valrhône Industrie SA"))
-			self.assertFalse(_other_business("Main", "Valrhône Industrie SA"))
-			self.assertFalse(_other_business("Espace B2B", "Guigoz & Filliez SA"))
-			self.assertFalse(_other_business("Espace B2B", "guigoz filliez"))
+			self.assertFalse(_other_business(None, "Acme Industrie SA"))
+			self.assertFalse(_other_business("Main", "Acme Industrie SA"))
+			self.assertFalse(_other_business("Espace B2B", "Dupont & Fils SA"))
+			self.assertFalse(_other_business("Espace B2B", "dupont fils"))
 			# a second brand of the company gets a profile named after it
-			self.assertFalse(_other_business("Burrows", "The 5 Burrows"))
-			self.assertTrue(_other_business("Nora Test", "Valrhône Industrie SA"))
+			self.assertFalse(_other_business("Beacons", "The 5 Beacons"))
+			self.assertTrue(_other_business("Nora Test", "Acme Industrie SA"))
 			self.assertTrue(_other_business("Nora Test", ""))
 
 	def test_the_tool_names_the_site_types_that_set_the_chrome(self):
@@ -435,7 +435,7 @@ class TestShopIncludes(unittest.TestCase):
 
 	def test_another_business_gets_no_shop_include(self):
 		with patch("builder.site_ai.nora.site_builder._other_business", return_value=True):
-			tags = [t for t, _ in available_includes("contact", "ecommerce", "Nora Test 2", "Valrhône Industrie SA")]
+			tags = [t for t, _ in available_includes("contact", "ecommerce", "Nora Test 2", "Acme Industrie SA")]
 		self.assertTrue(any("contact_form" in t for t in tags))
 		self.assertFalse(any("webshop/" in t for t in tags))
 
@@ -857,9 +857,9 @@ class TestInspirations(unittest.TestCase):
 		self.assertIn("Sites you like", text)
 
 
-# //// Neoffice ▼▼▼ — new: tests covering the League build fixes (2d78d71d "fix(nora): includes written as offered, routes honoured but home, and the build's routes stated as final")
+# //// Neoffice ▼▼▼ — new: tests covering the first client build fixes (2d78d71d "fix(nora): includes written as offered, routes honoured but home, and the build's routes stated as final")
 class TestLeagueRun(unittest.TestCase):
-	"""What the first client build (The League, 2026-09-09) taught: includes written as
+	"""What the first client build (a reseller site, 2026-09-09) taught: includes written as
 	offered, routes honoured but home, and the build's routes stated as final."""
 
 	def test_includes_are_written_as_offered_or_dropped(self):

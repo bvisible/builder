@@ -19,7 +19,7 @@ class TestHeaderColors(unittest.TestCase):
 		self.assertAlmostEqual(_contrast("#1b1f24", "#1b1f24"), 1.0, places=3)
 
 	def test_a_cta_in_the_header_colour_falls_back_to_the_secondary(self):
-		# The League: a dark site whose primary IS the header background
+		# a reseller site: a dark site whose primary IS the header background
 		config = SimpleNamespace(header_bg_color="#1b1f24", header_text_color="#f5f5f5", primary_color="#1b1f24", secondary_color="#e578d1")
 		colours = WebsiteHeaderFooterConfig.get_header_colors(config)
 		self.assertEqual(colours["cta_bg"], "#e578d1")

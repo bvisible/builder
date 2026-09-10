@@ -230,7 +230,7 @@ def get_header_css(config=None) -> str:
 	# //// Neoffice — the stylesheet reads the configured header height from hf_config;
 	# //// without it a Builder page (webpage.html passes it) stood 76px tall while the
 	# //// shop and the login stood 64px, logo and menu 6px lower on one than on the
-	# //// other (The League, 2026-09-10).
+	# //// other (a reseller site, 2026-09-10).
 	return frappe.render_template(
 		"builder/templates/includes/header_footer/header_styles.html",
 		{"colors": colors, "hf_config": config}
@@ -272,7 +272,7 @@ def get_theme_css(config=None) -> str:
 	}
 
 	# //// Neoffice — what reads on the chrome's surface, from its luminance: a dark site's
-	# //// light text was unreadable on the login card and the account form (The League,
+	# //// light text was unreadable on the login card and the account form (a reseller site,
 	# //// 2026-09-09), and the surface itself may be dark or light.
 	surface = str((theme or {}).get("background_color") or "#ffffff").strip()
 	surface_is_light = _is_light(surface)
@@ -287,7 +287,7 @@ def get_theme_css(config=None) -> str:
 # //// Neoffice — added helper (40dc4a09 "fix(contrast): a data-bound heading is text, and
 # //// frappe's cards read on a dark site"): relative luminance decides whether the chrome's
 # //// surface is light or dark, so the login card and account form get a text colour that
-# //// reads on it (The League, 2026-09-09).
+# //// reads on it (a reseller site, 2026-09-09).
 def _is_light(hex_colour: str) -> bool:
 	"""Relative luminance above 0.5; a colour that is not a flat hex counts as light."""
 	value = hex_colour.lstrip("#")

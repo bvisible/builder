@@ -103,7 +103,7 @@ def _has_text(block: dict) -> bool:
     # //// frappe's cards read on a dark site"): a repeater's template carries its text through
     # //// a binding, not innerHTML, so the walker skipped it and left light text on white.
     # a repeater's template carries its text through a binding, not in innerHTML: the
-    # trust cards of The League's home kept light text on white (2026-09-09)
+    # trust cards of a reseller site's home kept light text on white (2026-09-09)
     if any((d or {}).get("property") == "innerHTML" for d in block.get("dynamicValues") or []):
         return True
     html = block.get("innerHTML") or ""
@@ -193,7 +193,7 @@ def _walk(block: dict, bg: Color | None, fg: Color | None, palette: dict[str, st
         # //// surface, and frappe pages read on a dark site"): a u-card with no background of
         # //// its own still needs a surface colour to judge its text against.
         # a card wears the chrome's surface (white unless a Website Theme says otherwise),
-        # not the section behind it: the trust cards of The League's dark home kept the
+        # not the section behind it: the trust cards of a reseller site's dark home kept the
         # site's light text on their white face (2026-09-09)
         raw_bg = palette.get("surface") or "#ffffff"
     if raw_bg:

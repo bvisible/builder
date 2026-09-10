@@ -212,9 +212,9 @@ def palette_values(prefix: str) -> dict[str, str]:
     return values
 
 
-# //// Neoffice — the text token must read on the background token: the brief of The League gave a dark site a dark text (#1a1a1a on #1b1f24) and every page frappe renders itself (login, shop, account request) came out unreadable (be2042bd "fix(nora): the text token reads on the background token")
+# //// Neoffice — the text token must read on the background token: the brief of a reseller site gave a dark site a dark text (#1a1a1a on #1b1f24) and every page frappe renders itself (login, shop, account request) came out unreadable (be2042bd "fix(nora): the text token reads on the background token")
 def ensure_readable_text(prefix: str, palette: dict) -> str | None:
-    """The text token must read on the background token: the brief of The League gave a
+    """The text token must read on the background token: the brief of a reseller site gave a
     dark site a dark text (#1a1a1a on #1b1f24), and every page frappe renders itself
     (login, shop, account request) came out unreadable (2026-09-09). Below the WCAG
     ratio the text becomes near-white on a dark background, near-black on a light one.
@@ -337,7 +337,7 @@ PAGE_INCLUDES = {
 }
 
 
-# //// Neoffice ▼▼▼ — new: an include a page carries must be the one the brief offered, written exactly as offered; the model wrote the shop's opening hours with builder's path instead of webshop's and the Contact page of The League answered 417 for a template it could not find (2d78d71d "fix(nora): includes written as offered, routes honoured but home, and the build's routes stated as final")
+# //// Neoffice ▼▼▼ — new: an include a page carries must be the one the brief offered, written exactly as offered; the model wrote the shop's opening hours with builder's path instead of webshop's and the Contact page of a reseller site answered 417 for a template it could not find (2d78d71d "fix(nora): includes written as offered, routes honoured but home, and the build's routes stated as final")
 INCLUDE_TAG = re.compile(r"\{%-?\s*include\s+['\"]([^'\"]+)['\"]\s*-?%\}")
 ALWAYS_ALLOWED_INCLUDES = ("{% include 'builder/templates/includes/contact_form.html' %}",)
 
@@ -345,7 +345,7 @@ ALWAYS_ALLOWED_INCLUDES = ("{% include 'builder/templates/includes/contact_form.
 def repair_includes(blocks: list, allowed: list[tuple[str, str]]) -> tuple[int, int]:
     """An include a page may carry is one the brief offered, written as offered. The
     model wrote the shop's opening hours with builder's path instead of webshop's and
-    the Contact page of The League answered 417 (a template it could not find,
+    the Contact page of a reseller site answered 417 (a template it could not find,
     2026-09-09). A tag whose file name was offered is rewritten to the offered tag; any
     other include block is removed. Returns (rewritten, removed)."""
     from builder.site_ai.nora.layout import _walk
@@ -435,7 +435,7 @@ def _other_business(profile: str | None, site_name: str = "") -> bool:
     if not mine:
         return True
     # the instance's company, or the profile's own name (a second brand of the company
-    # gets a profile named after it: "The 5 Burrows" beside "The League Agency")
+    # gets a profile named after it: "a second brand" beside "the agency")
     for theirs in (_business_key(company), _business_key(title)):
         if theirs and (mine in theirs or theirs in mine):
             return False
@@ -445,13 +445,13 @@ def _other_business(profile: str | None, site_name: str = "") -> bool:
 # //// Neoffice — added helper and _webshop_installed() below (5efa79d1 "feat(nora): a B2B
 # //// site is a shop window, and frappe's pages read on a dark site"): a B2B or login-gated
 # //// profile had no way to the catalogue in its menu, whatever the site type the model chose
-# //// (The League, 2026-09-09: "on a pas la page shop dans le b2b").
+# //// (a reseller site, 2026-09-09: "on a pas la page shop dans le b2b").
 def _profile_is_b2b(profile: str | None) -> bool:
     """Whether the profile is a business-to-business site (its kind, or the sign-in
     gate). Such a site is a shop window whatever the site type the model chose:
     visitors browse the catalogue at the public price and sign in for their tariff and
     the cart, so it gets the catalogue entry in its menu and the product carousels on
-    its pages (The League, 2026-09-09: "on a pas la page shop dans le b2b")."""
+    its pages (a reseller site, 2026-09-09: "on a pas la page shop dans le b2b")."""
     if not profile:
         return False
     try:
@@ -573,7 +573,11 @@ def page_brief_text(site: dict, brief, page: dict, handles: dict, contact_prompt
             "no em dashes; mobile-first m_style on every grid; font sizes in rem or clamp(), never a bare vw "
             "(h1 at most 4.5rem, h2 3.25rem, body text 1.35rem on desktop). A repeat block carries the grid classes "
             "itself (u-grid u-grid--3 on the repeat, never on a div around it: the clones would stack in one column). "
-            "In a 12-column grid the spans of a text block and of a media block never overlap: text never runs under an image."
+            "In a 12-column grid the spans of a text block and of a media block never overlap: text never runs under an image. "
+            "Every invitation to go further ('Learn more', 'Discover', 'See the…') is a real link: an <a> with an href to one "
+            "of this site's routes, never a bare span; the cards of a group carry the same action each. In a pair of buttons "
+            "the main action comes first, on the left. A button never wears the colour of the section it sits on: no "
+            "u-btn--primary on a section painted in the primary colour (use u-btn--secondary or u-btn--outline there)."
         ),
         revision or "",
     ]
@@ -755,7 +759,7 @@ def apply_navigation(config, created: list[dict], site_type: str, description: s
     for page in created:
         route = page["route"]
         # the logo is the way home: a "Home" entry only fills a row that fills up fast
-        # (The League, 2026-09-10: "le côté accueil fait trop d'entrées")
+        # (a reseller site, 2026-09-10: "le côté accueil fait trop d'entrées")
         # //// Neoffice — route no longer aliased to "Home" (8756214d "feat(chrome): a menu
         # //// that folds by itself, a CTA that reads on its header, no Home entry"): "/",
         # //// "/home" and "/index" are now skipped instead of relabelled.
@@ -1090,12 +1094,28 @@ def build_site(ctx, spec: dict) -> str:
                     if hoisted:
                         ai_log("info", "Grid wrappers unwrapped", page=page["title"], edits=hoisted)
                     # //// Neoffice — a card repeater or card wrapper without a grid now stacks in a column
-                    # //// (the trust section of The League's home listed its four reasons as rows), and with
+                    # //// (the trust section of a reseller site's home listed its four reasons as rows), and with
                     # //// image generation off every placehold.co slot becomes an inline SVG instead of a
                     # //// broken external image (65d8f360 "fix(nora): cards never stack in a column, and photo slots without photos are plain blocks")
                     stacked = grid_stacked_cards(blocks, repeater_counts(data_script))
                     if stacked:
                         ai_log("info", "Stacked cards laid on a grid", page=page["title"], edits=stacked)
+                    # a "Learn more" that goes nowhere, a card without the action its siblings
+                    # carry, a primary button on a primary-coloured section: see buttons.py
+                    from builder.site_ai.nora.buttons import repair_button_variants, wire_dead_ctas
+
+                    routes = ["/" if p["route"] in ("home", "index") else "/" + p["route"].lstrip("/") for p in pages]
+                    routes.append("/login")
+                    if _webshop_installed() and not _other_business(profile, site_name):
+                        routes.append("/all-products")
+                    if _profile_is_b2b(profile) and _account_request_route():
+                        routes.append(_account_request_route())
+                    wired = wire_dead_ctas(blocks, routes, cta[1])
+                    if wired:
+                        ai_log("info", "Calls to action wired", page=page["title"], edits=wired)
+                    variants = repair_button_variants(blocks, palette)
+                    if variants:
+                        ai_log("info", "Button variants repaired", page=page["title"], edits=variants)
                     # no photo will come: the slots become plain blocks in the site's colours
                     if not images_on:
                         neutral = neutral_placeholders(blocks, palette, prefix)

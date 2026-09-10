@@ -161,7 +161,7 @@ def strip_title_band(blocks: list, title: str) -> int:
     return removed
 
 
-# //// Neoffice ▼▼▼ — the trust section of The League's home listed its four reasons as
+# //// Neoffice ▼▼▼ — the trust section of a reseller site's home listed its four reasons as
 # //// rows: a card repeater or a card wrapper without a grid now gets u-grid and a
 # //// column count (65d8f360 "fix(nora): cards never stack in a column, and photo slots without photos are plain blocks")
 def _is_card(block: dict) -> bool:

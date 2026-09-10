@@ -96,7 +96,7 @@ def managed_models() -> list[dict]:
         if model_id and model_id not in seen:
             seen.append(model_id)
     # an id the endpoint cannot serve is incoherent by construction (a gpt-4o left in
-    # site_config from before Moonshot failed every brief in silence on theleague,
+    # site_config from before Moonshot failed every brief in silence on a reseller site,
     # neoffice-maintenance #274): it is dropped here, and the code default takes
     # its place when nothing is left
     coherent = [m for m in seen if _served_by(settings.base_url, m)]
