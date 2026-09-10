@@ -154,9 +154,11 @@ def wire_dead_ctas(blocks: list, routes: list[str], fallback: str) -> list[str]:
                 attrs["href"] = target
                 block["attributes"] = attrs
                 edits.append(f"'{text}' -> {target}")
+        # the words that say what the link means: the card's heading, then the section's
         heading = _heading(block) if element != "a" else ""
+        context = " ".join(part for part in (heading, card_text) if part)
         for child in children:
-            walk(child, inside_link or element == "a", heading or card_text)
+            walk(child, inside_link or element == "a", context)
 
     for block in blocks:
         walk(block, False, "")
@@ -168,11 +170,14 @@ def wire_dead_ctas(blocks: list, routes: list[str], fallback: str) -> list[str]:
             actions = [(card, _action_leaf(card)) for card in cards]
             model = next((leaf for _, leaf in actions if leaf is not None), None)
             if model is not None:
+                model_href = (model.get("attributes") or {}).get("href") or fallback
                 for card, leaf in actions:
                     if leaf is None and card.get("children") is not None:
                         clone = _reidentify(model)
                         clone["attributes"] = dict(clone.get("attributes") or {})
-                        clone["attributes"]["href"] = guess_target(_text(model) + " " + _heading(card), routes, fallback)
+                        # the card's own words first; when they say nothing, the siblings' destination
+                        guessed = guess_target(_text(model) + " " + _heading(card), routes, fallback)
+                        clone["attributes"]["href"] = guessed if guessed != fallback else model_href
                         card["children"].append(clone)
                         edits.append(f"card '{_heading(card)}' gets '{_text(model)}' -> {clone['attributes']['href']}")
         for child in cards:

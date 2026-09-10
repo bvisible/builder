@@ -36,9 +36,11 @@ class TestButtonVariants(unittest.TestCase):
 
 class TestCallsToAction(unittest.TestCase):
 	def test_a_bare_learn_more_becomes_a_link_to_the_matching_page(self):
-		card = {"element": "div", "children": [{"element": "h3", "innerHTML": "Volcom"}, {"element": "p", "innerHTML": "Textile et accessoires"}, {"element": "span", "blockId": "s1", "innerHTML": "En savoir plus"}]}
+		# the card names a brand, the section says "brands": the section's words decide
+		card = {"element": "div", "children": [{"element": "h3", "innerHTML": "Aurora"}, {"element": "p", "innerHTML": "Textile et accessoires"}, {"element": "span", "blockId": "s1", "innerHTML": "En savoir plus"}]}
 		login = {"element": "div", "children": [{"element": "h3", "innerHTML": "Espace revendeur"}, {"element": "span", "blockId": "s2", "innerHTML": "Se connecter"}]}
-		edits = wire_dead_ctas([card, login], ROUTES, "/contact")
+		section = {"element": "section", "children": [{"element": "h2", "innerHTML": "Marques et services"}, card, login]}
+		edits = wire_dead_ctas([section], ROUTES, "/contact")
 		self.assertEqual(card["children"][2]["element"], "a")
 		self.assertEqual(card["children"][2]["attributes"]["href"], "/nos-marques")
 		self.assertEqual(login["children"][1]["attributes"]["href"], "/login")
