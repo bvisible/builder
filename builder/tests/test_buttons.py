@@ -27,6 +27,15 @@ class TestButtonVariants(unittest.TestCase):
 		repair_button_variants([hero], palette)
 		self.assertEqual(hero["children"][0]["classes"], ["u-btn", "u-btn--outline"])
 
+	def test_two_filled_buttons_side_by_side_keep_one_main_action(self):
+		# a hero with a contact and a catalogue button on a primary-coloured section: both
+		# would turn secondary, so the second steps back to outline
+		hero = {"element": "section", "baseStyles": {"backgroundColor": "var(--tla-primary)"}, "children": [{"element": "div", "children": [button("Voir le catalogue", "u-btn--secondary", "b1"), button("Contactez-nous", "u-btn--primary", "b2")]}]}
+		repair_button_variants([hero], PALETTE)
+		row = hero["children"][0]["children"]
+		self.assertEqual(row[0]["classes"], ["u-btn", "u-btn--secondary"])
+		self.assertEqual(row[1]["classes"], ["u-btn", "u-btn--outline"])
+
 	def test_the_background_is_inherited_from_the_section(self):
 		# the button sits in a grid inside the dark section: the section's colour still counts
 		hero = {"element": "section", "baseStyles": {"backgroundColor": "var(--tla-primary)"}, "children": [{"element": "div", "children": [button("Voir", "u-btn--primary")]}]}

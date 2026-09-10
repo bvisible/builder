@@ -81,6 +81,21 @@ def repair_button_variants(blocks: list, palette: dict) -> list[str]:
 
     for block in blocks:
         walk(block, default_bg)
+
+    # one main action per group: two buttons side by side in the same filled variant
+    # read as two equal actions, so the second and the next ones step back to outline
+    def demote_siblings(block: dict) -> None:
+        buttons = [c for c in block.get("children") or [] if "u-btn" in (c.get("classes") or [])]
+        for variant in ("u-btn--primary", "u-btn--secondary"):
+            same = [b for b in buttons if variant in (b.get("classes") or [])]
+            for extra in same[1:]:
+                extra["classes"] = ["u-btn--outline" if c == variant else c for c in extra["classes"]]
+                edits.append(f"'{_text(extra)}': a second {variant} beside the first -> u-btn--outline")
+        for child in block.get("children") or []:
+            demote_siblings(child)
+
+    for block in blocks:
+        demote_siblings(block)
     return edits
 
 
