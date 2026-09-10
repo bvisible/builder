@@ -468,6 +468,10 @@ def _webshop_installed() -> bool:
         return False
 
 
+# //// Neoffice — added ACCOUNT_REQUEST_ROUTE and _account_request_route() below (8756214d
+# //// "feat(chrome): a menu that folds by itself, a CTA that reads on its header, no Home
+# //// entry"): a B2B site now gets "Request an account" on the theme's request page as its
+# //// CTA instead of doubling the resellers page or the sign-in entry.
 # neoffice_theme/www/compte_professionnel.py: the form that opens a B2B Account Request
 ACCOUNT_REQUEST_ROUTE = "/compte-professionnel"
 
@@ -737,6 +741,10 @@ def apply_navigation(config, created: list[dict], site_type: str, description: s
     config.menu_items = []
     # /all-products is the instance's catalogue: on another business's profile it would
     # be someone else's shop in this site's menu (the florist listed the bakery)
+    # //// Neoffice — moved out of the pages loop below (8756214d "feat(chrome): a menu that
+    # //// folds by itself, a CTA that reads on its header, no Home entry"): that loop no
+    # //// longer visits a "Home" entry to hang the Shop/Catalogue append off, so it now runs
+    # //// once here instead.
     if not _other_business(profile, site_name):
         if site_type in ("ecommerce", "ecommerce_search"):
             config.append("menu_items", {"label": _("Shop", lang=lang), "url": "/all-products", "is_external": False, "open_in_new_tab": False})
@@ -748,9 +756,13 @@ def apply_navigation(config, created: list[dict], site_type: str, description: s
         route = page["route"]
         # the logo is the way home: a "Home" entry only fills a row that fills up fast
         # (The League, 2026-09-10: "le côté accueil fait trop d'entrées")
+        # //// Neoffice — route no longer aliased to "Home" (8756214d "feat(chrome): a menu
+        # //// that folds by itself, a CTA that reads on its header, no Home entry"): "/",
+        # //// "/home" and "/index" are now skipped instead of relabelled.
         if route in seen or route in ("/", "/home", "/index"):
             continue
         seen.add(route)
+        # //// Neoffice — see the block marker above: no more Home relabelling
         config.append("menu_items", {"label": page["title"], "url": route, "is_external": False, "open_in_new_tab": False})
     for field, value in (("footer_logo_type", config.get("logo_type")), ("footer_logo_text", config.get("logo_text")), ("footer_logo_image", config.get("logo_image")), ("show_footer_logo", True), ("footer_menu_source", "Custom links")):
         if hasattr(config, field):
@@ -908,6 +920,9 @@ def build_site(ctx, spec: dict) -> str:
     cta = (_("Contact us", lang=lang_code), f"/{contact_page['route']}" if contact_page else "/")
     # a B2B site opens accounts before it sells: its CTA asks for one on the theme's
     # request page, and never doubles the "Sign in" entry or a resellers page of the menu
+    # //// Neoffice — added (8756214d "feat(chrome): a menu that folds by itself, a CTA that
+    # //// reads on its header, no Home entry"): a B2B profile's CTA points to
+    # //// _account_request_route() instead of the default "Contact us" link.
     if _profile_is_b2b(profile) and _account_request_route():
         cta = (_("Request an account", lang=lang_code), _account_request_route())
     config.cta_text, config.cta_url = cta
