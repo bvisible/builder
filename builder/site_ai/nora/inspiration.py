@@ -32,8 +32,14 @@ MAX_COLOURS = 4
 # //// Chroma is (max - min) / 255 of the RGB channels: 0 for any grey, black or white.
 # //// Below this, a page has no colour, whatever its brightness.
 NEUTRAL_CHROMA = 0.12
-# a colour occupying less than this share of a screenshot is an accent, not the palette
-PALETTE_SHARE = 5.0
+# //// Neoffice — and how much of the page may be chromatic before it counts as coloured.
+# //// Measured on six references a client sent as "black and white, no other colour": the
+# //// coloured share came out at 0, 1, 9 and 10 per cent. What pushes a photographic page
+# //// past zero is skin, wood and sand in the pictures, plus the brand mark itself at one
+# //// per cent. Judging each swatch on its own called two of those four pages coloured;
+# //// the share is what actually says whether a page has a palette.
+NEUTRAL_SHARE = 15.0
+PALETTE_SHARE = 5.0  # kept: the name older callers import
 
 
 def clean_list(value) -> list[str]:
@@ -88,14 +94,20 @@ def chroma(hex_colour: str) -> float:
     return (max(channels) - min(channels)) / 255
 
 
+def coloured_share(analysis: dict) -> float:
+    """How much of the picture, in per cent, is anything other than a grey."""
+    return sum(
+        (c.get("percentage") or 0)
+        for c in (analysis or {}).get("dominant_colors") or []
+        if c.get("hex") and chroma(c["hex"]) >= NEUTRAL_CHROMA
+    )
+
+
 def is_neutral(analysis: dict) -> bool:
-    """True when every colour with a real share of the picture is a grey."""
-    weighty = [
-        c for c in (analysis or {}).get("dominant_colors") or [] if c.get("hex") and (c.get("percentage") or 0) >= PALETTE_SHARE
-    ]
-    if not weighty:
+    """True when the picture has no palette: almost none of it is chromatic."""
+    if not (analysis or {}).get("dominant_colors"):
         return False
-    return all(chroma(c["hex"]) < NEUTRAL_CHROMA for c in weighty)
+    return coloured_share(analysis) <= NEUTRAL_SHARE
 
 
 def monochrome(found: dict) -> bool:
