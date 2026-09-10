@@ -411,7 +411,7 @@ class TestShopIncludes(unittest.TestCase):
 		defaults = {("Website Profile", "Main", "is_default"): 1, ("Website Profile", "Espace B2B", "is_default"): 0, ("Website Profile", "Nora Test", "is_default"): 0}
 		defaults[("Website Profile", "Espace B2B", "title")] = "Espace B2B"
 		defaults[("Website Profile", "Nora Test", "title")] = "Nora Test"
-		defaults[("Website Profile", "Burrows", "is_default")] = 0
+		defaults[("Website Profile", "Barrels", "is_default")] = 0
 		defaults[("Website Profile", "Beacons", "title")] = "The 5 Beacons"
 		with patch("builder.site_ai.nora.site_builder.frappe.db.get_value", side_effect=lambda d, n, f: defaults.get((d, n, f))), patch(
 			"builder.site_ai.nora.site_builder.frappe.db.get_single_value", return_value="Dupont & Fils SA"
@@ -858,7 +858,7 @@ class TestInspirations(unittest.TestCase):
 
 
 # //// Neoffice ▼▼▼ — new: tests covering the first client build fixes (2d78d71d "fix(nora): includes written as offered, routes honoured but home, and the build's routes stated as final")
-class TestLeagueRun(unittest.TestCase):
+class TestFirstClientRun(unittest.TestCase):
 	"""What the first client build (a reseller site, 2026-09-09) taught: includes written as
 	offered, routes honoured but home, and the build's routes stated as final."""
 

@@ -3,7 +3,7 @@
 # //// builder_legacy_site_chrome. First commit cf86269e 2026-07-06.
 """Legacy site chrome injection for migrated client sites.
 
-Some client sites (e.g. WordPress migrations like blowbackshop.ch) embed a Builder
+Some client sites (e.g. WordPress migrations) embed a Builder
 navbar/footer component on their Builder pages AND expect the same chrome plus the
 Builder CSS stack (DaisyUI/Tailwind CDN, reset, variables) on non-Builder pages
 (webshop /all-products, cart, item pages...).
@@ -219,7 +219,7 @@ def inject_site_chrome(context):
 	# //// and the whole difference is six declarations — margin-top/bottom of h1,
 	# //// h2, h3 and margin-bottom of p. No daisyUI component class is used
 	# //// anywhere: zero occurrences in builder, in neoffice_theme and across the
-	# //// 24 published pages of osiris and blowbackshop. No Tailwind utility class
+	# //// 24 published pages of osiris and a migrated client site. No Tailwind utility class
 	# //// either — the generator writes inline styles.
 	# ////
 	# //// What daisyUI did here was cancel frappe's `website.bundle.css`, which
