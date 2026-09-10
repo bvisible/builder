@@ -113,7 +113,10 @@ def _score(slot: dict, asset: dict, reuse_count: int) -> float:
         score -= 5
 
     # Semantic overlap between the slot's alt/context and the photo's keywords
-    overlap = _tokens(slot["context"]) & (_tokens(asset.get("tags")) | _tokens(asset.get("vision_description")))
+    # //// Neoffice — the file name counts as keywords too: a client names their pictures
+    # //// after what is in them, and it is the only reading left when the vision pass fails.
+    words = _tokens(asset.get("tags")) | _tokens(asset.get("vision_description")) | _tokens(asset.get("original_filename"))
+    overlap = _tokens(slot["context"]) & words
     score += min(len(overlap), 3)
 
     # Discourage overusing the same photo
@@ -127,12 +130,16 @@ def match_and_apply(session_id: str, page_names: list = None, min_score: float =
     match are left as placeholders (Flux can fill them afterwards)."""
     from builder.api import _scan_placeholder_images, _replace_image_in_page
 
+    # //// Neoffice — `failed` counts when the file itself was read (content_understanding
+    # //// ._local_reading): a photo whose shape and name are known is placeable, and losing
+    # //// the client's whole library to one model outage is the worse outcome.
     assets = frappe.get_all(
         "Builder Content Asset",
-        filters={"session_id": session_id, "asset_type": "Image", "status": ["in", ["understood", "used"]]},
-        fields=["name", "file", "suggested_section", "suggested_slots",
-                "orientation", "quality", "tags", "vision_description"],
+        filters={"session_id": session_id, "asset_type": "Image", "status": ["in", ["understood", "used", "failed"]]},
+        fields=["name", "file", "suggested_section", "suggested_slots", "original_filename",
+                "orientation", "quality", "tags", "vision_description", "status"],
     )
+    assets = [a for a in assets if a.get("status") != "failed" or a.get("orientation")]
     # Logos are brand chrome, not page content.
     assets = [a for a in assets if "logo" not in (a.get("suggested_slots") or "").lower()]
     if not assets:

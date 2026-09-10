@@ -18,8 +18,22 @@ from frappe.utils import now
 
 from builder.site_ai.logging import ai_log
 
-MAX_SOURCES = 3
+# //// Neoffice — a client names the sites they like by the handful, six or eight in one
+# //// email, and three was an arbitrary cap that silently dropped the rest. Reading is
+# //// cheap (a screenshot and a colour count); only the vision pass costs, so it keeps
+# //// its own, smaller bound.
+MAX_URLS = 8
+MAX_IMAGES = 8
+MAX_VISION = 6
+MAX_SOURCES = MAX_URLS  # kept: the name older callers import
 MAX_COLOURS = 4
+
+# //// Neoffice — how far from grey a colour has to be to count as a colour at all.
+# //// Chroma is (max - min) / 255 of the RGB channels: 0 for any grey, black or white.
+# //// Below this, a page has no colour, whatever its brightness.
+NEUTRAL_CHROMA = 0.12
+# a colour occupying less than this share of a screenshot is an accent, not the palette
+PALETTE_SHARE = 5.0
 
 
 def clean_list(value) -> list[str]:
@@ -50,7 +64,46 @@ def _notes(analysis: dict) -> str:
         parts.append("colours " + ", ".join(colours))
     if (analysis or {}).get("is_dark_theme") is not None:
         parts.append("dark" if analysis.get("is_dark_theme") else "light")
+    # //// Neoffice — say it in words, because the hexes alone mislead: a page of large
+    # //// photographs reads back as browns and greys, which is the photography, not a
+    # //// palette. Told plainly, the brief keeps the structure and drops the mud.
+    if colours and is_neutral(analysis):
+        parts.append("NO COLOUR: neutrals only, the photographs carry the page")
     return ", ".join(parts)
+
+
+# //// Neoffice ▼▼▼ — reading "no colour" off the sources. A client who asks for black
+# //// and white says it in words AND by the sites they send; both must reach the brief.
+def chroma(hex_colour: str) -> float:
+    """Distance from grey, 0 (any grey, black, white) to 1 (a pure hue)."""
+    value = (hex_colour or "").strip().lstrip("#")
+    if len(value) == 3:
+        value = "".join(c * 2 for c in value)
+    if len(value) != 6:
+        return 0.0
+    try:
+        channels = [int(value[i : i + 2], 16) for i in (0, 2, 4)]
+    except ValueError:
+        return 0.0
+    return (max(channels) - min(channels)) / 255
+
+
+def is_neutral(analysis: dict) -> bool:
+    """True when every colour with a real share of the picture is a grey."""
+    weighty = [
+        c for c in (analysis or {}).get("dominant_colors") or [] if c.get("hex") and (c.get("percentage") or 0) >= PALETTE_SHARE
+    ]
+    if not weighty:
+        return False
+    return all(chroma(c["hex"]) < NEUTRAL_CHROMA for c in weighty)
+
+
+def monochrome(found: dict) -> bool:
+    """True when EVERY source read is neutral: the client's references have no colour,
+    so neither should the site. One coloured reference is enough to say nothing."""
+    sources = [s for s in (found or {}).get("sources") or [] if (s.get("analysis") or {}).get("dominant_colors")]
+    return bool(sources) and all(is_neutral(s["analysis"]) for s in sources)
+# //// Neoffice ▲▲▲
 
 
 def _analyse(file_url: str) -> dict:
@@ -108,16 +161,16 @@ def _record(item: dict) -> None:
 
 
 def gather(urls: list[str], images: list[str], record: bool = True) -> dict:
-    """Read every source (at most MAX_SOURCES of each kind). Returns the pictures for the
+    """Read every source (at most MAX_URLS sites and MAX_IMAGES pictures). Returns the pictures for the
     vision pass, one line of findings per source, and the sources that could not be read."""
     found, failed = [], []
-    for url in clean_list(urls)[:MAX_SOURCES]:
+    for url in clean_list(urls)[:MAX_URLS]:
         try:
             found.append(read_url(url))
         except Exception as e:
             failed.append(f"{url} ({str(e)[:80]})")
             ai_log("warning", "Inspiration site not read", url=url, error=str(e)[:120])
-    for image in clean_list(images)[:MAX_SOURCES]:
+    for image in clean_list(images)[:MAX_IMAGES]:
         try:
             found.append(read_image(image))
         except Exception as e:
@@ -152,7 +205,7 @@ def describe(found: dict, model: str | None = None) -> str:
                 text = provider.generate(
                     "For each attached picture, in this order, give three short lines: palette (hex), typography feel, "
                     "layout pattern and mood. Number them. No preamble.",
-                    images=found["images"][:MAX_SOURCES],
+                    images=found["images"][:MAX_VISION],
                     max_tokens=600,
                 )
                 if text and text.strip():

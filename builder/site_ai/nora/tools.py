@@ -57,8 +57,10 @@ generate_site = Tool(
             "secondary_color": {"type": "string", "description": "Hex colour, optional."},
             "style_direction": {"type": "string", "description": "The layout direction the user picked, in a few words (e.g. 'editorial grid, calm', 'bold poster')."},
             "logo_image": {"type": "string", "description": "Site file URL of the uploaded logo (/files/...), if any."},
-            "inspiration_urls": {"type": "array", "items": {"type": "string"}, "description": "Public sites the user likes (up to 3 URLs): each is screenshotted and read for its colours, and the brief sees the pictures."},
-            "inspiration_images": {"type": "array", "items": {"type": "string"}, "description": "Pictures the user likes (up to 3 site file URLs: an upload card's /files/..., or the path named in a message with an attached image)."},
+            "inspiration_urls": {"type": "array", "items": {"type": "string"}, "description": "Public sites the user likes (up to 8 URLs): each is screenshotted and read for its colours, and the brief sees the pictures. Pass EVERY site the user named, not a selection."},
+            "inspiration_images": {"type": "array", "items": {"type": "string"}, "description": "Pictures the user likes, as REFERENCES for the look (up to 8 site file URLs). Not the site's own photographs: those go in `photos`."},
+            "photos": {"type": "array", "items": {"type": "string"}, "description": "The client's OWN photographs, to be placed in the pages (site file URLs, up to 40). Each is read for what it shows, its shape and its quality, then laid into the matching image slots; only the slots no photo fits are drawn. Send everything the client supplied."},
+            "palette_mode": {"type": "string", "enum": ["auto", "monochrome"], "description": "'monochrome' when the client wants NO colour: black, white and greys only, the photographs carrying the page. Default 'auto', which also turns monochrome by itself when every inspiration site read has no colour."},
             "website_profile": {"type": "string", "description": "The Website Profile (site) to build for; the open page's profile when omitted."},
             "language": {"type": "string", "description": "Language of the site copy (ISO code or name); the site default when omitted."},
             "replace_existing": {
