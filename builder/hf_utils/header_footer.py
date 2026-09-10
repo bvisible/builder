@@ -227,9 +227,13 @@ def get_header_css(config=None) -> str:
 
 	colors = config.get_header_colors() if config else {"bg": "#1a1a1a", "text": "#ffffff"}
 
+	# //// Neoffice — the stylesheet reads the configured header height from hf_config;
+	# //// without it a Builder page (webpage.html passes it) stood 76px tall while the
+	# //// shop and the login stood 64px, logo and menu 6px lower on one than on the
+	# //// other (The League, 2026-09-10).
 	return frappe.render_template(
 		"builder/templates/includes/header_footer/header_styles.html",
-		{"colors": colors}
+		{"colors": colors, "hf_config": config}
 	)
 
 

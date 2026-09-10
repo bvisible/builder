@@ -24,6 +24,10 @@
 	background: var(--header-bg);
 	border-bottom: {{ "none" if hf and hf.get("header_border") == "None" else "1px solid var(--header-border)" }};
 	z-index: 1000;
+	/* //// Neoffice — the chrome sets its own tracking: frappe's website bundle gives
+	   //// the body 0.02em, a Builder page gives it none, so the same menu was wider on
+	   //// the shop than on the home and folded differently (The League, 2026-09-10) */
+	letter-spacing: normal;
 }
 
 .site-header--sticky {
