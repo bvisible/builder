@@ -177,6 +177,7 @@
 				<span v-if="controlLabel(i)" class="mb-1 block text-p-xs text-ink-gray-5">
 					{{ controlLabel(i) }}
 				</span>
+				<!-- //// Neoffice — bf412e4f "feat(chat card): an upload slot can take a whole batch of photographs" — single-file upload now stores the url in `uploads[i]` as a one-item array, so this control shares the same list shape as the batch upload atom above. -->
 				<FileUploader
 					fileTypes="image/*"
 					:uploadArgs="{
@@ -187,6 +188,7 @@
 					@success="(file: any) => (uploads[i] = [file.file_url])">
 					<template #default="{ openFileSelector, uploading, progress }">
 						<div class="flex items-center gap-2">
+							<!-- //// Neoffice — bf412e4f "feat(chat card): an upload slot can take a whole batch of photographs" — preview reads the first (only) entry of `uploads[i]`, now always an array. -->
 							<img
 								v-if="uploads[i]?.[0]"
 								:src="uploads[i][0]"
@@ -197,6 +199,7 @@
 								variant="subtle"
 								:disabled="!interactive || disabled || uploading"
 								@click="openFileSelector()">
+								<!-- //// Neoffice — bf412e4f "feat(chat card): an upload slot can take a whole batch of photographs" — label checks `uploads[i]?.length` instead of truthiness, since uploads[i] is now an array. -->
 								{{
 									uploading ? `Uploading ${progress}%` : uploads[i]?.length ? "Replace image" : "Upload image"
 								}}
