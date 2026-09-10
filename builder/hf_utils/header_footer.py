@@ -288,7 +288,23 @@ def get_theme_css(config=None) -> str:
 			# //// white by contrast: white on a pale accent reads poorly (2026-09-10)
 			"primary_text": _label_on((theme or {}).get("primary_color")),
 			"secondary_text": _label_on((theme or {}).get("secondary_color")),
+			# //// Neoffice — a link in the page's content reads on the page background:
+			# //// the primary colour is the background itself on some palettes, and every
+			# //// link in the copy was invisible (2026-09-10)
+			"link_color": _link_colour(theme or {}),
 		}
+	)
+
+
+def _link_colour(theme: dict) -> str:
+	"""The colour a link wears in the page's content: the primary when it reads on the
+	page background, else the secondary, else the text colour."""
+	from builder.builder.doctype.website_header_footer_config.website_header_footer_config import _readable_on
+
+	background = str(theme.get("background_color") or "#ffffff").strip()
+	return _readable_on(
+		background,
+		[theme.get("primary_color"), theme.get("secondary_color"), theme.get("text_color"), "#1f272e"],
 	)
 
 
