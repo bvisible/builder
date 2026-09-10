@@ -435,7 +435,7 @@ def _other_business(profile: str | None, site_name: str = "") -> bool:
     if not mine:
         return True
     # the instance's company, or the profile's own name (a second brand of the company
-    # gets a profile named after it: "a B2C storefront" beside "the host agency")
+    # gets a profile named after it: "a second brand" beside "the agency")
     for theirs in (_business_key(company), _business_key(title)):
         if theirs and (mine in theirs or theirs in mine):
             return False
@@ -573,7 +573,11 @@ def page_brief_text(site: dict, brief, page: dict, handles: dict, contact_prompt
             "no em dashes; mobile-first m_style on every grid; font sizes in rem or clamp(), never a bare vw "
             "(h1 at most 4.5rem, h2 3.25rem, body text 1.35rem on desktop). A repeat block carries the grid classes "
             "itself (u-grid u-grid--3 on the repeat, never on a div around it: the clones would stack in one column). "
-            "In a 12-column grid the spans of a text block and of a media block never overlap: text never runs under an image."
+            "In a 12-column grid the spans of a text block and of a media block never overlap: text never runs under an image. "
+            "Every invitation to go further ('Learn more', 'Discover', 'See the…') is a real link: an <a> with an href to one "
+            "of this site's routes, never a bare span; the cards of a group carry the same action each. In a pair of buttons "
+            "the main action comes first, on the left. A button never wears the colour of the section it sits on: no "
+            "u-btn--primary on a section painted in the primary colour (use u-btn--secondary or u-btn--outline there)."
         ),
         revision or "",
     ]
@@ -1096,6 +1100,22 @@ def build_site(ctx, spec: dict) -> str:
                     stacked = grid_stacked_cards(blocks, repeater_counts(data_script))
                     if stacked:
                         ai_log("info", "Stacked cards laid on a grid", page=page["title"], edits=stacked)
+                    # a "Learn more" that goes nowhere, a card without the action its siblings
+                    # carry, a primary button on a primary-coloured section: see buttons.py
+                    from builder.site_ai.nora.buttons import repair_button_variants, wire_dead_ctas
+
+                    routes = ["/" if p["route"] in ("home", "index") else "/" + p["route"].lstrip("/") for p in pages]
+                    routes.append("/login")
+                    if _webshop_installed() and not _other_business(profile, site_name):
+                        routes.append("/all-products")
+                    if _profile_is_b2b(profile) and _account_request_route():
+                        routes.append(_account_request_route())
+                    wired = wire_dead_ctas(blocks, routes, cta[1])
+                    if wired:
+                        ai_log("info", "Calls to action wired", page=page["title"], edits=wired)
+                    variants = repair_button_variants(blocks, palette)
+                    if variants:
+                        ai_log("info", "Button variants repaired", page=page["title"], edits=variants)
                     # no photo will come: the slots become plain blocks in the site's colours
                     if not images_on:
                         neutral = neutral_placeholders(blocks, palette, prefix)
