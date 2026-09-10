@@ -20,6 +20,7 @@ plumbing (base64 data URLs) already used for logo analysis.
 
 import json
 import os
+import re
 
 import frappe
 from frappe import _
@@ -242,12 +243,40 @@ def _understand_document(asset, cfg) -> None:
 # Orchestration
 # ---------------------------------------------------------------------------
 
+# //// Neoffice ▼▼▼ — what a picture tells without a model. The whole reading was the
+# //// vision model's: a bench without one, or one call that failed, left the asset with
+# //// no shape, no words and no score, so the matcher could never place it. The file's
+# //// own dimensions and name are free, they are read first, and the model refines them
+# //// when it answers.
+def _local_reading(asset) -> None:
+    """Orientation, rough quality and keywords, from the file itself."""
+    try:
+        from PIL import Image
+
+        path = asset.get_full_path()
+        with Image.open(path) as picture:
+            width, height = picture.size
+        asset.orientation = "landscape" if width > height * 1.15 else "portrait" if height > width * 1.15 else "square"
+        asset.quality = "high" if min(width, height) >= 1200 else "medium" if min(width, height) >= 600 else "low"
+    except Exception as e:
+        ai_log("warning", "Picture not measured", asset=asset.name, error=str(e)[:120])
+    stem = re.sub(r"\.[A-Za-z0-9]+$", "", asset.original_filename or "")
+    words = [w.lower() for w in re.split(r"[^A-Za-z0-9]+", stem) if len(w) > 2 and not w.isdigit()]
+    if words and not (asset.tags or "").strip():
+        asset.tags = ", ".join(dict.fromkeys(words))[:240]
+# //// Neoffice ▲▲▲
+
+
 def understand_asset(asset_name: str) -> dict:
     """Run the understanding pass on a single asset and persist the result."""
     asset = frappe.get_doc("Builder Content Asset", asset_name)
     cfg = get_ai_settings()
     ai_log("info", "Understanding content asset",
            asset=asset_name, type=asset.asset_type, file=asset.original_filename)
+    # //// Neoffice — see _local_reading: read the file before asking the model, so a
+    # //// failed call still leaves the matcher a shape and some words.
+    if asset.asset_type == "Image":
+        _local_reading(asset)
     try:
         if asset.asset_type == "Image":
             _understand_image(asset, cfg)
@@ -424,3 +453,59 @@ def ingest_content_assets(session_id: str, files, company: str = None) -> dict:
         user=frappe.session.user,
     )
     return {"created": len(names), "asset_names": names}
+
+
+# //// Neoffice ▼▼▼ — the site build's own door into the library. The chat hands over the
+# //// client's photographs as file urls; the build needs them understood BEFORE it places
+# //// them, so this ingests and reads them in line instead of queueing a worker the build
+# //// would then have to wait on.
+MAX_LIBRARY_PHOTOS = 40
+
+
+def ingest_and_understand(session_id: str, files, company: str = None) -> dict:
+    """Take a batch of uploaded files into the session's library and read them now.
+
+    Returns what was taken in and how many came out understood. Never raises: a
+    library that could not be read must not cost the client their site.
+    """
+    urls = []
+    for entry in files or []:
+        url = entry.get("file_url") or entry.get("url") if isinstance(entry, dict) else entry
+        url = str(url or "").strip()
+        if url.startswith(("/files/", "/private/files/")) and url not in urls:
+            urls.append(url)
+    urls = urls[:MAX_LIBRARY_PHOTOS]
+    if not urls:
+        return {"taken": 0, "understood": 0}
+
+    known = set(
+        frappe.get_all("Builder Content Asset", filters={"session_id": session_id}, pluck="file") or []
+    )
+    names = []
+    for url in urls:
+        if url in known:
+            continue
+        try:
+            asset = frappe.new_doc("Builder Content Asset")
+            asset.session_id = session_id
+            asset.company = company
+            asset.asset_type = detect_asset_type(os.path.basename(url.split("?")[0]))
+            asset.file = url
+            asset.original_filename = os.path.basename(url.split("?")[0])
+            asset.status = "pending"
+            asset.insert(ignore_permissions=True)
+            names.append(asset.name)
+        except Exception as e:
+            ai_log("warning", "Library file not taken in", file=url, error=str(e)[:120])
+    frappe.db.commit()
+
+    understood = 0
+    for name in names:
+        try:
+            if understand_asset(name).get("status") == "understood":
+                understood += 1
+        except Exception as e:
+            ai_log("warning", "Library file not understood", asset=name, error=str(e)[:120])
+    ai_log("info", "Client library read", session=session_id, taken=len(names), understood=understood)
+    return {"taken": len(names), "understood": understood}
+# //// Neoffice ▲▲▲

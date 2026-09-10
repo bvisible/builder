@@ -960,7 +960,7 @@ def build_site(ctx, spec: dict) -> str:
         logo_image = contact_data["logo"]
     # the sites and pictures the client likes: read once, shown to the brief's vision
     # pass, and summarised for every page (inspiration.py)
-    from builder.site_ai.nora.inspiration import clean_list, gather
+    from builder.site_ai.nora.inspiration import clean_list, gather, monochrome
 
     inspiration = {"images": [], "notes": [], "failed": []}
     inspiration_urls, inspiration_images = clean_list(spec.get("inspiration_urls")), clean_list(spec.get("inspiration_images"))
@@ -972,7 +972,39 @@ def build_site(ctx, spec: dict) -> str:
         except Exception as e:
             ai_log("warning", "Inspirations skipped", error=str(e)[:200])
     inspiration_prompt = (" Inspirations the client likes (echo their palette and mood): " + " | ".join(inspiration["notes"])) if inspiration["notes"] else ""
-    prompt = f"{site_name}: {activity}. {spec.get('differentiators') or ''} Style: {spec.get('style_direction') or ''}{contact_prompt}{inspiration_prompt}"
+
+    # //// Neoffice ▼▼▼ — "no colour" is a design direction of its own, and it arrives two
+    # //// ways: the client says it, or every site they point at is neutral (inspiration.
+    # //// monochrome). Left to the brief, a black-and-white reference read back as the
+    # //// browns and greys of its own photographs, and the site came out muddy.
+    palette_mode = (spec.get("palette_mode") or "auto").strip().lower()
+    if palette_mode == "auto" and not primary and monochrome(inspiration):
+        palette_mode = "monochrome"
+        ai_log("info", "Monochrome read from the inspirations", sources=len(inspiration.get("sources") or []))
+    monochrome_prompt = ""
+    if palette_mode == "monochrome":
+        primary, secondary = primary or "#000000", None
+        monochrome_prompt = (
+            " PALETTE: no colour at all. Black, white and greys ONLY, on every page and in every section — "
+            "no accent, no tinted background, no coloured button, and never a colour taken from the inspirations "
+            "or from the logo. Contrast comes from the photographs, the type and the empty space."
+        )
+    prompt = f"{site_name}: {activity}. {spec.get('differentiators') or ''} Style: {spec.get('style_direction') or ''}{contact_prompt}{inspiration_prompt}{monochrome_prompt}"
+
+    # the client's own photographs, read into the session's library so the pages can be
+    # laid out with them (placed at step 7, after the pages exist)
+    library = {"taken": 0, "understood": 0}
+    photos = clean_list(spec.get("photos"))
+    if photos and getattr(ctx, "session_id", None):
+        _progress(ctx, job_id, _("Reading your photos"), 7)
+        try:
+            from builder.site_ai.ingestion.content_understanding import ingest_and_understand
+
+            library = ingest_and_understand(ctx.session_id, photos)
+            ai_log("info", "Client library ready", **library)
+        except Exception as e:
+            ai_log("warning", "Client library skipped", error=str(e)[:200])
+    # //// Neoffice ▲▲▲
     settings = get_ai_settings()
     brief = None
     try:
@@ -1198,7 +1230,24 @@ def build_site(ctx, spec: dict) -> str:
     _progress(ctx, job_id, _("Menu, footer and home page"), 92, {"pages_created": created})
     apply_navigation(_get_site_chrome_config(profile), created, site_type, activity, profile, lang_code, site_name=site_name)
 
-    # 7. the images, in the background
+    # 7. the images: the client's own photographs first, drawings only for what is left
+    # //// Neoffice ▼▼▼ — a client who supplies photographs wants THEM on the page, and a
+    # //// drawn stand-in beside them is the tell that nobody read the brief. The library
+    # //// (Builder Content Asset) and its matcher already existed for the old onboarding
+    # //// wizard and no caller reached them; the build now places from the library, then
+    # //// draws only the slots no photograph fits.
+    placed = 0
+    if library.get("taken"):
+        try:
+            _progress(ctx, job_id, _("Placing your photos"), 90, {"pages_created": created})
+            from builder.site_ai.ingestion.image_matcher import match_and_apply
+
+            report = match_and_apply(ctx.session_id, [p["name"] for p in created])
+            placed = report.get("matched") or 0
+            ai_log("info", "Client photos placed", placed=placed, slots=report.get("slots"), assets=report.get("assets"))
+        except Exception as e:
+            ai_log("warning", "Client photos not placed", error=str(e)[:200])
+    # //// Neoffice ▲▲▲
     pending, image_job = 0, None
     try:
         slots = _scan_placeholder_images([p["name"] for p in created], subject=activity[:180])
@@ -1268,10 +1317,18 @@ def build_site(ctx, spec: dict) -> str:
     lines.append(f"Design tokens minted with prefix '{prefix}': " + ", ".join(handles.values()) + ".")
     # //// Neoffice — reports the neutral-SVG fallback when image generation is off, instead of
     # //// always claiming a background image job is filling the slots (65d8f360 "fix(nora): cards never stack in a column, and photo slots without photos are plain blocks")
+    # //// Neoffice — the client's own photographs come first, and what they filled is said
+    # //// before anything about drawn images (see step 7).
+    if library.get("taken"):
+        lines.append(
+            f"{placed} photo slot(s) filled with the client's own pictures, out of {library['taken']} read into the library."
+        )
     if image_job:
         lines.append(f"{pending} photo slot(s) are being filled with generated images in the background (job {image_job}).")
-    else:
+    elif pending:
         lines.append("Image generation is off: the photo slots hold plain blocks in the site's colours, to be replaced by the client's own pictures.")
+    if palette_mode == "monochrome":
+        lines.append("The palette is monochrome: black, white and greys only, as asked.")
     if host_reusable and any(p["name"] == host_page for p in created):
         lines.append("The page open in the editor is now the home page; the canvas has been refreshed.")
     lines.append("The header, the menu and the footer are set from the brief (Settings > Theme).")
