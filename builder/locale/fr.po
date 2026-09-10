@@ -10249,3 +10249,9 @@ msgstr "Cette page a été modifiée ailleurs pendant que vous l'éditiez. Recha
 #: builder/api.py:807
 msgid "Page out of date"
 msgstr "Page périmée"
+
+msgid "More"
+msgstr "Plus"
+
+msgid "Request an account"
+msgstr "Demander un compte"

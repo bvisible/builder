@@ -21,6 +21,15 @@
 		{{ item.label }}
 	</a>
 	{%- endfor -%}
+	{# //// Neoffice — the overflow of a menu wider than its row: the script in
+	   //// header_styles.html moves the last entries in here (priority navigation) and,
+	   //// when even that leaves too little room, hands the bar to the burger. #}
+	<div class="site-nav__more">
+		<button type="button" class="site-nav__more-btn" aria-haspopup="true" aria-expanded="false" aria-label="{{ _('More') }}" title="{{ _('More') }}">
+			<svg width="20" height="20" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true" focusable="false"><circle cx="4" cy="10" r="1.8"/><circle cx="10" cy="10" r="1.8"/><circle cx="16" cy="10" r="1.8"/></svg>
+		</button>
+		<div class="site-nav__more-menu" role="menu"></div>
+	</div>
 </nav>
 {%- endmacro -%}
 
