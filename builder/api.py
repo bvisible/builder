@@ -418,7 +418,19 @@ def upload_builder_asset():
 		and image_file.file_url.endswith((".png", ".jpeg", ".jpg"))
 		and frappe.get_cached_value("Builder Settings", "Builder Settings", "auto_convert_images_to_webp")
 	):
-		convert_to_webp(file_doc=image_file)
+		# //// Neoffice — the conversion is an optimisation, and an optimisation must never
+		# //// cost the upload. It reads the file through frappe's get_local_image, which
+		# //// another installed app can own: on a bench carrying the office suite, that
+		# //// version refuses a plain /files/... url and threw "The File URL you've entered
+		# //// is incorrect" — so EVERY image uploaded from the editor failed, logo included,
+		# //// with an error naming a URL the user never typed. The file is already saved by
+		# //// then; keep it, and leave it unconverted.
+		try:
+			convert_to_webp(file_doc=image_file)
+		except Exception:
+			frappe.log_error("Builder upload: webp conversion skipped", frappe.get_traceback())
+			frappe.clear_messages()
+			image_file.reload()
 	return image_file
 
 
