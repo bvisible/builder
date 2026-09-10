@@ -62,6 +62,19 @@ class TestNoColour(unittest.TestCase):
 		self.assertFalse(is_neutral(BRANDED))
 		self.assertFalse(is_neutral({}))
 
+	def test_colours_without_weights_say_nothing(self):
+		"""`coloured_share` sums a missing percentage as zero, which reads as "no
+		colour at all" -- so an analysis that returned hexes but no weights declared a
+		bright red neutral, and one such source sends the whole brief to black and
+		white. Unknown is not zero."""
+		no_weights = {"dominant_colors": [{"hex": "#d6402a"}, {"hex": "#1f6fb2"}]}
+		self.assertFalse(is_neutral(no_weights))
+		# greys with no weights are just as unknown: the claim needs the measurement
+		self.assertFalse(is_neutral({"dominant_colors": [{"hex": "#111111"}, {"hex": "#eeeeee"}]}))
+		# one weight is a measurement; the rule applies again
+		self.assertTrue(is_neutral({"dominant_colors": [{"hex": "#111111", "percentage": 100.0}]}))
+		self.assertFalse(monochrome({"sources": [{"analysis": PHOTO_PAGE}, {"analysis": no_weights}]}))
+
 	def test_the_coloured_share_is_what_is_measured(self):
 		# skin and wood in the pictures, plus a brand mark: under a tenth of the page
 		self.assertLess(coloured_share(WARM_PHOTOGRAPHY), 15)

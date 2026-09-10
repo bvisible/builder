@@ -833,7 +833,14 @@ class TestInspirations(unittest.TestCase):
 		):
 			found = gather(["https://a.ch", "https://bad.ch"], ["/files/pic.png", "https://not-a-site-file/x.png"], record=False)
 		self.assertEqual(found["images"], ["/files/shot.png", "/files/pic.png"])
-		self.assertEqual(found["notes"], ["https://a.ch: colours #111111, #eeeeee, light", "picture: colours #abcdef, dark"])
+		# What this test owns is the gathering: one note per source, prefixed by where
+		# it came from, and a failure that does not stop the others. The rest of the
+		# note belongs to `_notes`, which has its own tests -- asserting the whole
+		# string here tied this test to a wording it does not own, and a new clause in
+		# that wording broke it (neoffice-maintenance#341).
+		self.assertEqual(len(found["notes"]), 2)
+		self.assertTrue(found["notes"][0].startswith("https://a.ch: colours #111111, #eeeeee, light"))
+		self.assertTrue(found["notes"][1].startswith("picture: colours #abcdef, dark"))
 		self.assertEqual(len(found["failed"]), 2)
 
 	def test_describe_lists_the_findings_without_a_model(self):

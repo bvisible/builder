@@ -105,7 +105,16 @@ def coloured_share(analysis: dict) -> float:
 
 def is_neutral(analysis: dict) -> bool:
     """True when the picture has no palette: almost none of it is chromatic."""
-    if not (analysis or {}).get("dominant_colors"):
+    colours = [c for c in (analysis or {}).get("dominant_colors") or [] if c.get("hex")]
+    if not colours:
+        return False
+    # //// Neoffice — an analysis that carries hexes but no percentages says NOTHING
+    # //// about how much of the page is coloured, and `coloured_share` sums missing
+    # //// weights as zero. Read literally, that made every such palette "neutrals
+    # //// only" -- a bright red and a blue included -- and one neutral source is
+    # //// enough for monochrome() to send the whole brief to black and white. Unknown
+    # //// is not zero: with no weights at all we say nothing.
+    if not any(c.get("percentage") is not None for c in colours):
         return False
     return coloured_share(analysis) <= NEUTRAL_SHARE
 
