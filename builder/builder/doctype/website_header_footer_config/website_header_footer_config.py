@@ -222,7 +222,9 @@ class WebsiteHeaderFooterConfig(Document):
 			"bg": bg,
 			"text": text,
 			"cta_bg": cta_bg,
-			"cta_text": "#1f272e" if _luminance(cta_bg) > 0.45 else "#ffffff",
+			# the label colour that reads best on the button: dark on pink or on a pale
+			# header text, white on indigo
+			"cta_text": "#1f272e" if _contrast("#1f272e", cta_bg) >= _contrast("#ffffff", cta_bg) else "#ffffff",
 		}
 
 	def get_footer_colors(self) -> dict:
