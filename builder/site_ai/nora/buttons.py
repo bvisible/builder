@@ -111,6 +111,33 @@ def guess_target(text: str, routes: list[str], fallback: str) -> str:
     return fallback
 
 
+def repair_foreign_links(blocks: list, routes: list[str], fallback: str) -> list[str]:
+    """A link to a route that is not this site's (another site of the instance, a page
+    the model invented) goes to the page of this site its words mean, or to the site's
+    call to action. Files, assets, anchors and external addresses are left alone."""
+    known = {r.rstrip("/") or "/" for r in routes}
+    edits: list[str] = []
+
+    def walk(block: dict, card_text: str) -> None:
+        attrs = block.get("attributes") or {}
+        href = str(attrs.get("href") or "")
+        if href.startswith("/") and not href.startswith(("/files", "/assets", "/api", "/private", "//")):
+            path = href.split("?", 1)[0].split("#", 1)[0].rstrip("/") or "/"
+            if path not in known:
+                words = " ".join(part for part in (_text(block), path.replace("-", " ").replace("/", " "), card_text) if part)
+                target = guess_target(words, routes, fallback)
+                block["attributes"] = dict(attrs, href=target)
+                edits.append(f"'{_text(block)}' {href} -> {target}")
+        heading = _heading(block) if (block.get("element") or "").lower() != "a" else ""
+        context = " ".join(part for part in (heading, card_text) if part)
+        for child in block.get("children") or []:
+            walk(child, context)
+
+    for block in blocks:
+        walk(block, "")
+    return edits
+
+
 def _new_id() -> str:
     return secrets.token_hex(5)[:9]
 

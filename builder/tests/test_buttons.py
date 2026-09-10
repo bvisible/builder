@@ -79,6 +79,21 @@ class TestCallsToAction(unittest.TestCase):
 		self.assertNotEqual(west[-1]["blockId"], "aVolcom")
 		self.assertEqual(len(edits), 1)
 
+	def test_a_link_to_another_site_s_page_comes_home(self):
+		from builder.site_ai.nora.buttons import repair_foreign_links
+
+		# the model linked the about page of the instance's other site: this site's about page
+		about = {"element": "a", "attributes": {"href": "/about"}, "innerHTML": "Découvrir l’agence"}
+		file = {"element": "a", "attributes": {"href": "/files/brochure.pdf"}, "innerHTML": "Brochure"}
+		ours = {"element": "a", "attributes": {"href": "/contact?from=home"}, "innerHTML": "Contact"}
+		external = {"element": "a", "attributes": {"href": "https://example.ch/"}, "innerHTML": "example.ch"}
+		edits = repair_foreign_links([about, file, ours, external], ROUTES, "/contact")
+		self.assertEqual(about["attributes"]["href"], "/a-propos")
+		self.assertEqual(file["attributes"]["href"], "/files/brochure.pdf")
+		self.assertEqual(ours["attributes"]["href"], "/contact?from=home")
+		self.assertEqual(external["attributes"]["href"], "https://example.ch/")
+		self.assertEqual(len(edits), 1)
+
 	def test_the_target_follows_the_words(self):
 		self.assertEqual(guess_target("Demander un compte revendeur", ROUTES, "/contact"), "/espace-revendeurs")
 		self.assertEqual(guess_target("Voir le catalogue", ROUTES, "/contact"), "/all-products")
