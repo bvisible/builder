@@ -186,6 +186,7 @@
 						upload_endpoint: '/api/method/builder.api.upload_builder_asset',
 					}"
 					@success="(file: any) => (uploads[i] = [file.file_url])">
+					<!-- //// Neoffice — see the block marker above: uploads[i] now an array -->
 					<template #default="{ openFileSelector, uploading, progress }">
 						<div class="flex items-center gap-2">
 							<!-- //// Neoffice — bf412e4f "feat(chat card): an upload slot can take a whole batch of photographs" — preview reads the first (only) entry of `uploads[i]`, now always an array. -->
