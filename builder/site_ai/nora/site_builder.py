@@ -1110,7 +1110,7 @@ def build_site(ctx, spec: dict) -> str:
                     # //// lead somewhere, no client names in comments")
                     # a "Learn more" that goes nowhere, a card without the action its siblings
                     # carry, a primary button on a primary-coloured section: see buttons.py
-                    from builder.site_ai.nora.buttons import repair_button_variants, wire_dead_ctas
+                    from builder.site_ai.nora.buttons import repair_button_variants, repair_foreign_links, wire_dead_ctas
 
                     routes = ["/" if p["route"] in ("home", "index") else "/" + p["route"].lstrip("/") for p in pages]
                     routes.append("/login")
@@ -1121,6 +1121,10 @@ def build_site(ctx, spec: dict) -> str:
                     wired = wire_dead_ctas(blocks, routes, cta[1])
                     if wired:
                         ai_log("info", "Calls to action wired", page=page["title"], edits=wired)
+                    # a link to another site of the instance, or to a page that does not exist
+                    foreign = repair_foreign_links(blocks, routes, cta[1])
+                    if foreign:
+                        ai_log("info", "Foreign links brought home", page=page["title"], edits=foreign)
                     variants = repair_button_variants(blocks, palette)
                     if variants:
                         ai_log("info", "Button variants repaired", page=page["title"], edits=variants)
