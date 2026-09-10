@@ -89,6 +89,11 @@
 	/* //// Neoffice — what reads on a primary or secondary button (get_theme_css, by contrast) */
 	--primary-text: {{ primary_text or '#ffffff' }};
 	--secondary-text: {{ secondary_text or '#ffffff' }};
+	/* //// Neoffice — a link in the page's content: the primary colour when it reads on
+	   //// the page background, otherwise the secondary, otherwise the text colour. Its
+	   //// hover leans towards the text colour, so it can only gain contrast. */
+	--link-color: {{ link_color or 'var(--primary-color)' }};
+	--link-hover: color-mix(in srgb, var(--link-color) 75%, var(--text-color));
 	/* frappe's bundle paints every heading in its own --heading-color: on a dark site
 	   the catalogue and login titles came out near-black on near-black */
 	--heading-color: var(--text-color);
@@ -211,17 +216,27 @@ p {
 	p { font-size: var(--body-size-mobile); }
 }
 
-/* Link colors */
-a {
-	color: var(--primary-color);
+/* //// Neoffice — link colours, for the CONTENT of a page only. ▼▼▼
+   ////
+   //// Everything is wrapped in :where(), which contributes NO specificity, so these
+   //// stay at the weight of a bare `a` and every component rule outranks them. The
+   //// first version of this exclusion was written `a:not(.u-btn):hover`, which weighs
+   //// more than a class — it silently beat the menu, the footer links and the header
+   //// CTA, and repainted all three on hover (2026-09-10). An exclusion must never
+   //// raise the weight of the rule it narrows.
+   ////
+   //// The colour itself is chosen by contrast against the page background
+   //// (get_theme_css): a site whose primary IS its background had invisible links.
+   //// And the hover pulls TOWARDS the page's text colour: it can only gain contrast,
+   //// never lose it, where the old value faded the primary into transparency. */
+a:where(:not(.u-btn)) {
+	color: var(--link-color);
 }
 
-/* //// Neoffice — a button is a link too: this generic hover painted its label in the
-   //// primary colour, invisible on a primary button and on a dark site's dark hero
-   //// (a reseller site, 2026-09-10). Buttons keep their own label colour, see .u-btn. */
-a:not(.u-btn):hover {
-	color: var(--primary-hover);
+a:where(:not(.u-btn)):hover {
+	color: var(--link-hover);
 }
+/* //// Neoffice ▲▲▲ */
 
 /* Button primary colors */
 .btn-primary,
