@@ -574,6 +574,10 @@ def page_brief_text(site: dict, brief, page: dict, handles: dict, contact_prompt
             "(h1 at most 4.5rem, h2 3.25rem, body text 1.35rem on desktop). A repeat block carries the grid classes "
             "itself (u-grid u-grid--3 on the repeat, never on a div around it: the clones would stack in one column). "
             "In a 12-column grid the spans of a text block and of a media block never overlap: text never runs under an image. "
+            # //// Neoffice — added: every "Learn more" must be a real link to a route, cards of a
+            # //// group share the same action, and a button never takes the colour of the section
+            # //// it sits on (0d1ae82c "feat(design system): buttons that read anywhere, calls to
+            # //// action that lead somewhere, no client names in comments")
             "Every invitation to go further ('Learn more', 'Discover', 'See the…') is a real link: an <a> with an href to one "
             "of this site's routes, never a bare span; the cards of a group carry the same action each. In a pair of buttons "
             "the main action comes first, on the left. A button never wears the colour of the section it sits on: no "
@@ -1100,6 +1104,10 @@ def build_site(ctx, spec: dict) -> str:
                     stacked = grid_stacked_cards(blocks, repeater_counts(data_script))
                     if stacked:
                         ai_log("info", "Stacked cards laid on a grid", page=page["title"], edits=stacked)
+                    # //// Neoffice — added: wire orphaned CTAs to real routes and repair button
+                    # //// variants so a button never keeps the section's own colour (0d1ae82c
+                    # //// "feat(design system): buttons that read anywhere, calls to action that
+                    # //// lead somewhere, no client names in comments")
                     # a "Learn more" that goes nowhere, a card without the action its siblings
                     # carry, a primary button on a primary-coloured section: see buttons.py
                     from builder.site_ai.nora.buttons import repair_button_variants, wire_dead_ctas
