@@ -57,6 +57,10 @@ generate_site = Tool(
             "secondary_color": {"type": "string", "description": "Hex colour, optional."},
             "style_direction": {"type": "string", "description": "The layout direction the user picked, in a few words (e.g. 'editorial grid, calm', 'bold poster')."},
             "logo_image": {"type": "string", "description": "Site file URL of the uploaded logo (/files/...), if any."},
+            # //// Neoffice — inspiration bounds widened from 3 to 8 (a screenshot and a colour
+            # //// count are cheap), and two new fields: `photos` for the client's own pictures
+            # //// to place in the pages, `palette_mode` for an explicit "no colour" direction
+            # //// (918629eb "feat(site build): the client's own photographs, every reference site, and a monochrome direction")
             "inspiration_urls": {"type": "array", "items": {"type": "string"}, "description": "Public sites the user likes (up to 8 URLs): each is screenshotted and read for its colours, and the brief sees the pictures. Pass EVERY site the user named, not a selection."},
             "inspiration_images": {"type": "array", "items": {"type": "string"}, "description": "Pictures the user likes, as REFERENCES for the look (up to 8 site file URLs). Not the site's own photographs: those go in `photos`."},
             "photos": {"type": "array", "items": {"type": "string"}, "description": "The client's OWN photographs, to be placed in the pages (site file URLs, up to 40). Each is read for what it shows, its shape and its quality, then laid into the matching image slots; only the slots no photo fits are drawn. Send everything the client supplied."},

@@ -960,6 +960,8 @@ def build_site(ctx, spec: dict) -> str:
         logo_image = contact_data["logo"]
     # the sites and pictures the client likes: read once, shown to the brief's vision
     # pass, and summarised for every page (inspiration.py)
+    # //// Neoffice — imports monochrome() too, needed below to read "no colour" off the
+    # //// inspirations when the client didn't say it (918629eb "feat(site build): the client's own photographs, every reference site, and a monochrome direction")
     from builder.site_ai.nora.inspiration import clean_list, gather, monochrome
 
     inspiration = {"images": [], "notes": [], "failed": []}
@@ -1325,8 +1327,13 @@ def build_site(ctx, spec: dict) -> str:
         )
     if image_job:
         lines.append(f"{pending} photo slot(s) are being filled with generated images in the background (job {image_job}).")
+    # //// Neoffice — "elif pending" instead of "else": the client's own photographs may
+    # //// already have filled every slot, and the old "image generation is off" line no
+    # //// longer applies then (918629eb "feat(site build): the client's own photographs, every reference site, and a monochrome direction")
     elif pending:
         lines.append("Image generation is off: the photo slots hold plain blocks in the site's colours, to be replaced by the client's own pictures.")
+    # //// Neoffice — reports the monochrome direction in the build summary, whether the
+    # //// client asked for it or it was read off the inspirations (918629eb "feat(site build): the client's own photographs, every reference site, and a monochrome direction")
     if palette_mode == "monochrome":
         lines.append("The palette is monochrome: black, white and greys only, as asked.")
     if host_reusable and any(p["name"] == host_page for p in created):
