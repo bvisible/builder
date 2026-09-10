@@ -13,7 +13,7 @@ def button(text, variant, block_id="b1"):
 
 class TestButtonVariants(unittest.TestCase):
 	def test_a_primary_button_on_a_primary_section_becomes_secondary(self):
-		# The League's hero: the section wears the background token, which IS the primary colour
+		# a hero whose section wears the background token, which IS the primary colour
 		hero = {"element": "section", "baseStyles": {"backgroundColor": "var(--tla-background)"}, "children": [button("Contactez-nous", "u-btn--primary")]}
 		light = {"element": "section", "baseStyles": {"backgroundColor": "#fefefe"}, "children": [button("Contactez-nous", "u-btn--primary", "b2")]}
 		edits = repair_button_variants([hero, light], PALETTE)

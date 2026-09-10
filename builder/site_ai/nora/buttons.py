@@ -1,7 +1,7 @@
 # //// Neoffice — added file (no upstream equivalent).
 """Buttons and calls to action the model leaves broken.
 
-Three defects of The League's home (2026-09-10): a primary button on a section
+Three defects seen on one build (2026-09-10): a primary button on a section
 painted in the primary colour (a label floating with no button around it), a
 "Learn more" that was a bare span going nowhere, and a card without the action its
 two siblings carried. None is left to the model: the variant is checked against
