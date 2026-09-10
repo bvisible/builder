@@ -1121,6 +1121,10 @@ def build_site(ctx, spec: dict) -> str:
                     wired = wire_dead_ctas(blocks, routes, cta[1])
                     if wired:
                         ai_log("info", "Calls to action wired", page=page["title"], edits=wired)
+                    # //// Neoffice — on a multi-site instance a link pointing at another site's
+                    # //// route is sent home: to the page its words match, or to the site's call
+                    # //// to action; files, assets and external addresses are left alone
+                    # //// (16a271e0 "feat(buttons): a link to another site's page comes home")
                     # a link to another site of the instance, or to a page that does not exist
                     foreign = repair_foreign_links(blocks, routes, cta[1])
                     if foreign:
