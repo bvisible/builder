@@ -137,6 +137,42 @@
 				@keydown.enter.prevent="onInputEnter()" />
 
 			<!-- upload: the user's own image (logo, photo); URL rides the reply -->
+			<!-- //// Neoffice — a client hands over a folder, not a file: with `multiple` the
+			     atom takes a batch (their photographs for the site), and every URL rides the
+			     reply. The single-file path below is untouched. -->
+			<div v-else-if="el.kind === 'upload' && el.multiple" class="w-full">
+				<span v-if="controlLabel(i)" class="mb-1 block text-p-xs text-ink-gray-5">
+					{{ controlLabel(i) }}
+				</span>
+				<input
+					:ref="(node: any) => (batchInputs[i] = node)"
+					type="file"
+					accept="image/*"
+					multiple
+					class="hidden"
+					@change="(e: any) => uploadBatch(i, e.target.files)" />
+				<div class="flex flex-wrap items-center gap-2">
+					<img
+						v-for="(url, k) in uploads[i] || []"
+						:key="k"
+						:src="url"
+						class="h-10 w-14 rounded border border-outline-gray-2 object-cover"
+						alt="" />
+					<Button
+						size="sm"
+						variant="subtle"
+						:disabled="!interactive || disabled || batchBusy[i]"
+						@click="batchInputs[i]?.click()">
+						{{
+							batchBusy[i]
+								? `Uploading ${batchDone[i]}/${batchTotal[i]}…`
+								: (uploads[i] || []).length
+									? `Add more (${(uploads[i] || []).length})`
+									: "Upload photos"
+						}}
+					</Button>
+				</div>
+			</div>
 			<div v-else-if="el.kind === 'upload'" class="w-full">
 				<span v-if="controlLabel(i)" class="mb-1 block text-p-xs text-ink-gray-5">
 					{{ controlLabel(i) }}
@@ -148,12 +184,12 @@
 						folder: 'Home/Builder Uploads',
 						upload_endpoint: '/api/method/builder.api.upload_builder_asset',
 					}"
-					@success="(file: any) => (uploads[i] = file.file_url)">
+					@success="(file: any) => (uploads[i] = [file.file_url])">
 					<template #default="{ openFileSelector, uploading, progress }">
 						<div class="flex items-center gap-2">
 							<img
-								v-if="uploads[i]"
-								:src="uploads[i]"
+								v-if="uploads[i]?.[0]"
+								:src="uploads[i][0]"
 								class="h-10 w-14 rounded border border-outline-gray-2 object-cover"
 								alt="" />
 							<Button
@@ -161,7 +197,9 @@
 								variant="subtle"
 								:disabled="!interactive || disabled || uploading"
 								@click="openFileSelector()">
-								{{ uploading ? `Uploading ${progress}%` : uploads[i] ? "Replace image" : "Upload image" }}
+								{{
+									uploading ? `Uploading ${progress}%` : uploads[i]?.length ? "Replace image" : "Upload image"
+								}}
 							</Button>
 						</div>
 					</template>
@@ -358,7 +396,45 @@ function safeColor(value: unknown): string | undefined {
 // uploaded file URLs, and per-slot picked colors (colorSlots[elIndex][slotIndex]).
 const selections = reactive<Record<number, Set<number>>>({});
 const inputs = reactive<Record<number, string>>({});
-const uploads = reactive<Record<number, string>>({});
+// //// Neoffice — one atom may carry a whole batch (see the `multiple` branch above),
+// //// so an upload slot holds a LIST of urls; a single upload is a list of one.
+const uploads = reactive<Record<number, string[]>>({});
+const batchInputs = reactive<Record<number, HTMLInputElement | null>>({});
+const batchBusy = reactive<Record<number, boolean>>({});
+const batchDone = reactive<Record<number, number>>({});
+const batchTotal = reactive<Record<number, number>>({});
+
+/** Upload a batch of pictures one by one, so a single refusal costs one file.
+ * //// Neoffice — posts to the same endpoint the single uploader uses. */
+async function uploadBatch(i: number, files: FileList | null) {
+	const chosen = Array.from(files || []).filter((f) => f.type.startsWith("image/"));
+	if (!chosen.length) return;
+	batchBusy[i] = true;
+	batchDone[i] = 0;
+	batchTotal[i] = chosen.length;
+	uploads[i] = uploads[i] || [];
+	for (const file of chosen) {
+		const form = new FormData();
+		form.append("file", file, file.name);
+		form.append("is_private", "0");
+		form.append("folder", "Home/Builder Uploads");
+		try {
+			const response = await fetch("/api/method/builder.api.upload_builder_asset", {
+				method: "POST",
+				headers: { "X-Frappe-CSRF-Token": (window as any).csrf_token || "" },
+				body: form,
+			});
+			const payload = await response.json();
+			const url = payload?.message?.file_url;
+			if (url) uploads[i].push(url);
+		} catch (e) {
+			console.error("upload failed", file.name, e);
+		}
+		batchDone[i] = (batchDone[i] || 0) + 1;
+	}
+	batchBusy[i] = false;
+	if (batchInputs[i]) batchInputs[i]!.value = "";
+}
 const colorSlots = reactive<Record<number, Record<number, string>>>({});
 // Slots the user actually interacted with (picked or cleared). Untouched preset
 // slots submit as "(suggested)" so the model knows its own defaults from choices.
@@ -454,9 +530,10 @@ function submitCollected(actionLabel?: string) {
 			lines.push(label ? `${label}: ${inputs[i].trim()}` : inputs[i].trim());
 			values.push(inputs[i].trim());
 		}
-		if (el.kind === "upload" && uploads[i]) {
-			lines.push(`${el.label || "Uploaded image"}: ${uploads[i]}`);
-			values.push(`${el.label || "image"} uploaded`);
+		if (el.kind === "upload" && uploads[i]?.length) {
+			// //// Neoffice — every url of the batch rides the reply, comma separated
+			lines.push(`${el.label || "Uploaded image"}: ${uploads[i].join(", ")}`);
+			values.push(`${uploads[i].length} ${el.label || "image"}${uploads[i].length > 1 ? "s" : ""} uploaded`);
 		}
 		if (el.kind === "color_input") {
 			const picked = colorSlotDefs(el)
