@@ -15,6 +15,9 @@ from urllib.parse import unquote, urlparse
 
 import frappe
 
+# //// Neoffice — the module logs through the generator's own log (see the navigation guard below).
+from builder.site_ai.logging import ai_log
+
 # Chromium's texture limit is 16384 px; a capture stays well under it
 MAX_CAPTURE_HEIGHT = 12000
 
@@ -113,7 +116,24 @@ class WebsiteScreenshotter:
                     await page.route("**/*", serve_static)
 
                 # Navigate to URL
-                await page.goto(url, timeout=timeout, wait_until="networkidle")
+                # //// Neoffice — networkidle never arrives on a commercial site: trackers,
+                # //// chat widgets and video keep a request in flight for as long as the page
+                # //// is open, so the wait ran to the timeout and the capture was lost. Two of
+                # //// six sites a client sent as references were dropped this way. The document
+                # //// being parsed is what a screenshot needs; the settle below covers the rest,
+                # //// and a page that never even parses still falls back to whatever has painted.
+                try:
+                    await page.goto(url, timeout=timeout, wait_until="domcontentloaded")
+                except Exception as e:
+                    if not page.url or page.url == "about:blank":
+                        raise
+                    ai_log("warning", "Navigation did not complete, capturing what painted", url=url, error=str(e)[:120])
+                # let the fold settle: fonts, hero image, the first paint of a framework
+                try:
+                    await page.wait_for_load_state("load", timeout=8000)
+                except Exception:
+                    pass
+                await page.wait_for_timeout(1500)
 
                 # The site's pages scroll inside <body> (html and body are 100% high,
                 # overflow-y auto): the document itself is one viewport tall, and a

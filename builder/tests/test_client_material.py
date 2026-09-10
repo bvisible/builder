@@ -3,7 +3,7 @@
 import unittest
 from unittest.mock import MagicMock, patch
 
-from builder.site_ai.nora.inspiration import MAX_IMAGES, MAX_URLS, chroma, is_neutral, monochrome
+from builder.site_ai.nora.inspiration import MAX_IMAGES, MAX_URLS, chroma, coloured_share, is_neutral, monochrome
 
 # measured on two real reference sites: pages of large photographs, no colour at all
 PHOTO_PAGE = {
@@ -24,6 +24,25 @@ INK_AND_PAPER = {
 	]
 }
 BRANDED = {"dominant_colors": [{"hex": "#e578d1", "percentage": 40.0}, {"hex": "#1b1f24", "percentage": 30.0}]}
+# measured too: a page of warm photography, and a page whose only pigment is its brand mark
+WARM_PHOTOGRAPHY = {
+	"dominant_colors": [
+		{"hex": "#ece3d9", "percentage": 42.6},
+		{"hex": "#88827d", "percentage": 21.8},
+		{"hex": "#b8b0a8", "percentage": 15.4},
+		{"hex": "#1e1d18", "percentage": 10.5},
+		{"hex": "#72533e", "percentage": 9.7},
+	]
+}
+ONE_ORANGE_MARK = {
+	"dominant_colors": [
+		{"hex": "#fefefe", "percentage": 74.2},
+		{"hex": "#313434", "percentage": 10.9},
+		{"hex": "#875d5d", "percentage": 7.6},
+		{"hex": "#c0b5b5", "percentage": 5.8},
+		{"hex": "#f67012", "percentage": 1.6},
+	]
+}
 
 
 class TestNoColour(unittest.TestCase):
@@ -34,14 +53,24 @@ class TestNoColour(unittest.TestCase):
 		self.assertEqual(chroma("not a colour"), 0.0)
 
 	def test_a_page_of_photographs_reads_as_no_colour(self):
-		"""Its browns and greys are the photography, not a palette."""
+		"""Its browns and greys are the photography, not a palette: what decides is how
+		much of the page is chromatic, not whether one swatch is."""
 		self.assertTrue(is_neutral(PHOTO_PAGE))
 		self.assertTrue(is_neutral(INK_AND_PAPER))
+		self.assertTrue(is_neutral(WARM_PHOTOGRAPHY))
+		self.assertTrue(is_neutral(ONE_ORANGE_MARK))
 		self.assertFalse(is_neutral(BRANDED))
 		self.assertFalse(is_neutral({}))
 
+	def test_the_coloured_share_is_what_is_measured(self):
+		# skin and wood in the pictures, plus a brand mark: under a tenth of the page
+		self.assertLess(coloured_share(WARM_PHOTOGRAPHY), 15)
+		self.assertLess(coloured_share(ONE_ORANGE_MARK), 15)
+		self.assertGreater(coloured_share(BRANDED), 15)
+		self.assertEqual(coloured_share(PHOTO_PAGE), 0)
+
 	def test_monochrome_needs_every_source_to_agree(self):
-		self.assertTrue(monochrome({"sources": [{"analysis": PHOTO_PAGE}, {"analysis": INK_AND_PAPER}]}))
+		self.assertTrue(monochrome({"sources": [{"analysis": PHOTO_PAGE}, {"analysis": INK_AND_PAPER}, {"analysis": WARM_PHOTOGRAPHY}, {"analysis": ONE_ORANGE_MARK}]}))
 		# one coloured reference and the client has not asked for black and white
 		self.assertFalse(monochrome({"sources": [{"analysis": PHOTO_PAGE}, {"analysis": BRANDED}]}))
 		self.assertFalse(monochrome({"sources": []}))
