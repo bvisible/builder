@@ -125,9 +125,8 @@ class TestClientLibrary(unittest.TestCase):
 		with patch.object(cu.frappe, "new_doc", side_effect=new_doc), patch.object(
 			cu.frappe, "get_all", side_effect=get_all
 		), patch.object(cu.frappe.db, "commit"), patch.object(
-			# the log is the production log: a test writes nothing there
 			cu, "understand_asset", return_value={"status": "understood" if understood else "failed"}
-		), patch.object(cu, "ai_log"):
+		), patch.object(cu, "ai_log"):  # the log is the production log: a test writes nothing there
 			result = cu.ingest_and_understand("session-1", files)
 		return result, inserted
 
