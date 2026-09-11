@@ -435,8 +435,11 @@ def category_names(*texts) -> list[str]:
     return []
 
 
-def library_photos(session_id: str | None) -> list[dict]:
-    """The photographs this conversation took in, with what the vision read in them."""
+def library_photos(session_id: str | None, only: list[str] | None = None) -> list[dict]:
+    """The photographs this conversation took in, with what the vision read in them;
+    `only` keeps the ones the build was given. Read whether the build took them in just
+    now or an earlier build of the same conversation did: a rebuild found all twelve
+    already known, took in none, and wrote its pages with placeholders (2026-09-11)."""
     if not session_id or not frappe.db.exists("DocType", "Builder Content Asset"):
         return []
     rows = frappe.get_all(
@@ -445,9 +448,10 @@ def library_photos(session_id: str | None) -> list[dict]:
         fields=["file", "original_filename", "summary", "tags", "orientation", "quality", "extracted_text", "suggested_section"],
         order_by="creation asc",
     )
+    wanted = set(only or [])
     photos = []
     for row in rows:
-        if not (row.file or "").startswith("/files/"):
+        if not (row.file or "").startswith("/files/") or (wanted and row.file not in wanted):
             continue
         stem = (row.original_filename or row.file).rsplit("/", 1)[-1].rsplit(".", 1)[0]
         words = {w for w in re.split(r"[^a-z0-9]+", f"{stem} {row.tags or ''} {row.suggested_section or ''}".lower()) if len(w) > 2}
@@ -1246,7 +1250,7 @@ def build_site(ctx, spec: dict) -> str:
             ai_log("warning", "Client library skipped", error=str(e)[:200])
     # the pages are written with the client's own photographs (photos_for_page), and the
     # categories the brief names get their tiles and a link to the page that lists them
-    client_photos = library_photos(getattr(ctx, "session_id", None)) if library.get("taken") else []
+    client_photos = library_photos(getattr(ctx, "session_id", None), only=photos) if photos else []
     categories = category_names(activity, spec.get("differentiators") or "")
     photos_used: dict[str, int] = {}
     # //// Neoffice ▲▲▲
@@ -1498,7 +1502,7 @@ def build_site(ctx, spec: dict) -> str:
     # //// wizard and no caller reached them; the build now places from the library, then
     # //// draws only the slots no photograph fits.
     placed = 0
-    if library.get("taken"):
+    if client_photos:
         try:
             _progress(ctx, job_id, _("Placing your photos"), 90, {"pages_created": created})
             from builder.site_ai.ingestion.image_matcher import match_and_apply
@@ -1581,9 +1585,10 @@ def build_site(ctx, spec: dict) -> str:
     # //// always claiming a background image job is filling the slots (65d8f360 "fix(nora): cards never stack in a column, and photo slots without photos are plain blocks")
     # //// Neoffice — the client's own photographs come first, and what they filled is said
     # //// before anything about drawn images (see step 7).
-    if library.get("taken"):
+    if client_photos:
         lines.append(
-            f"{placed} photo slot(s) filled with the client's own pictures, out of {library['taken']} read into the library."
+            f"{len(photos_used)} of the client's {len(client_photos)} photographs were laid into the pages as they were "
+            f"written; {placed} leftover photo slot(s) were filled with them afterwards."
         )
     if image_job:
         lines.append(f"{pending} photo slot(s) are being filled with generated images in the background (job {image_job}).")

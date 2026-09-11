@@ -1203,14 +1203,23 @@ def apply_brief_site_chrome(design_brief, website_profile=None) -> list[str]:
 	to the Website Header Footer Config. Returns the list of applied fields."""
 	# //// Neoffice multi-site: targeted generations write the profile's Variant
 	config = _get_site_chrome_config(website_profile)
-	applied = []
+	applied, refused = [], []
 	for field in BRIEF_CHROME_FIELDS:
 		value = getattr(design_brief, field, None)
 		if value in (None, ""):
 			continue
+		# //// Neoffice — a value the target doctype does not offer is left out, not saved: a
+		# //// Select of a profile's Variant lacking an option of the site's Single ("Centered"
+		# //// footer) failed the save, and the whole chrome from the brief was lost (2026-09-11)
+		df = config.meta.get_field(field)
+		if df and df.fieldtype == "Select" and df.options and str(value) not in df.options.split("\n"):
+			refused.append(f"{field}={value}")
+			continue
 		if config.get(field) != value:
 			config.set(field, value)
 		applied.append(field)
+	if refused:
+		frappe.logger("builder").warning(f"brief chrome values refused by {config.doctype}: {refused}")
 	if applied:
 		config.save(ignore_permissions=True)
 		frappe.db.commit()
