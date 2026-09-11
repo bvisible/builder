@@ -421,7 +421,7 @@
    "fieldname": "footer_template",
    "fieldtype": "Select",
    "label": "Footer Template",
-   "options": "Minimal\nStandard\nExtended"
+   "options": "Minimal\nStandard\nExtended\nCentered"
   },
   {
    "fieldname": "column_break_footer_1",
@@ -978,7 +978,7 @@
  "index_web_pages_for_search": 1,
  "issingle": 0,
  "links": [],
- "modified": "2026-07-08 15:00:00.000000",
+ "modified": "2026-09-11 16:45:00.000000",
  "modified_by": "Administrator",
  "module": "Builder",
  "name": "Website Header Footer Variant",

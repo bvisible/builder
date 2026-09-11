@@ -266,6 +266,23 @@ class TestPhotosGoToPages(unittest.TestCase):
 		self.assertEqual(len(urls), len(set(urls)))
 		self.assertIn("it shows:", notes[0])
 
+	def test_a_rebuild_finds_the_photographs_an_earlier_build_took_in(self):
+		"""A rebuild of the same conversation found the twelve photographs already known, took
+		in none, and wrote its pages with placeholders: the library is read either way, and
+		keeps only the photographs the build was given."""
+		import frappe
+
+		from builder.site_ai.nora import site_builder
+
+		rows = [
+			frappe._dict(file="/files/rider.jpg", original_filename="rider.jpg", summary="A rider in powder.", tags="snow", orientation="landscape", quality="high", extracted_text="", suggested_section=""),
+			frappe._dict(file="/files/old.jpg", original_filename="old.jpg", summary="An old picture.", tags="", orientation="portrait", quality="low", extracted_text="", suggested_section=""),
+		]
+		with patch.object(site_builder.frappe.db, "exists", return_value=True), patch.object(site_builder.frappe, "get_all", return_value=rows):
+			self.assertEqual([p["url"] for p in site_builder.library_photos("session-1", only=["/files/rider.jpg"])], ["/files/rider.jpg"])
+			self.assertEqual(len(site_builder.library_photos("session-1")), 2)
+		self.assertEqual(site_builder.library_photos(None), [])
+
 	def test_the_next_page_takes_what_is_left_first(self):
 		from builder.site_ai.nora.site_builder import photos_for_page
 
