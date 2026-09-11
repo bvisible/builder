@@ -783,6 +783,20 @@ export class AIChatController {
 		this.summaryContent.value = "";
 		this.liveSteps.value = [];
 
+		//// Neoffice — a card whose pending message is gone (the transcript was reloaded, or the
+		//// panel reset, while the turn ran) used to be dropped: replacePendingAssistant finds
+		//// nothing to replace, so a card the server had already saved stayed invisible until a
+		//// manual reload (a site build's confirmation card, 2026-09-11). present_ui commits the
+		//// message before emitting, so the transcript has it: reload it, as onComplete and
+		//// onError already do.
+		const pendingId = this.pendingAssistantId.value;
+		if (!pendingId || !this.messages.value.some((m) => m.id === pendingId)) {
+			this.pendingAssistantId.value = null;
+			await this.loadSession();
+			this.scrollToBottom();
+			return;
+		}
+
 		if (data.pending_action) {
 			this.replacePendingAssistant(data.question || "Confirm this change?", {
 				status: "pending_action",
