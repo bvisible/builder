@@ -163,14 +163,74 @@ def clean_logo(value) -> str | None:
 
 def pages_by_name(pages: list[dict], created: list[dict]) -> list[dict]:
     """The page specs (title, route, type) of the pages that were written, keyed later by
-    the Builder Page name they got, so a revision pass can rebuild a page from its brief."""
+    the Builder Page name they got, so a revision pass can rebuild a page from its brief.
+
+    A page is found by the route it was PLANNED under: one written beside a kept page that
+    holds its route is suffixed ("about-d0ec"), and matching on that route left three
+    pages of four out of the visual check's revision pass (2026-09-11)."""
     by_route = {p["route"]: p for p in pages}
     out = []
     for item in created:
-        spec = by_route.get(item["route"].strip("/")) or by_route.get("home" if item["route"] in ("/", "/home") else item["route"].strip("/"))
+        spec = by_route.get(item.get("planned") or "")
+        spec = spec or by_route.get(item["route"].strip("/")) or by_route.get("home" if item["route"] in ("/", "/home") else item["route"].strip("/"))
         if spec:
             out.append({**spec, "name": item["name"]})
     return out
+
+
+def pages_to_replace(classes: dict, replace_existing: str) -> list[str]:
+    """The existing pages a build replaces: the untouched AI pages unless the user keeps
+    everything ('none'), the hand-made ones too only when they said so ('force').
+
+    'keep_edited' is what "keep them" means after a CONFIRM_NEEDED: the hand-made pages
+    stay and the rest goes as usual. Answered with 'none', a question about one page kept
+    the whole previous site beside the new one: two home pages, the new pages' routes
+    suffixed, their calls to action on the old contact page (2026-09-11)."""
+    if replace_existing == "none":
+        return []
+    names = [p["name"] for p in classes.get("untouched") or []]
+    if replace_existing == "force":
+        names += [p["name"] for p in classes.get("protected") or []]
+    return names
+
+
+def moved_routes(created: list[dict]) -> dict[str, str]:
+    """Planned route -> the route the page really got, for the pages suffixed at write
+    time because a kept page held their route. The home page answers for "/" as well."""
+    moved: dict[str, str] = {}
+    for item in created:
+        planned = (item.get("planned") or "").strip("/")
+        if not planned or f"/{planned}" == item["route"]:
+            continue
+        moved[f"/{planned}"] = item["route"]
+        if planned in ("home", "index"):
+            moved["/"] = item["route"]
+    return moved
+
+
+def _repoint_moved_links(created: list[dict], moved: dict[str, str]) -> dict[str, list[str]]:
+    """Rewrite the new pages' links to the routes their targets really got. The stored
+    fingerprint follows, or the page would read as edited by hand at the next build."""
+    from builder.api import _blocks_fingerprint
+    from builder.site_ai.nora.buttons import remap_routes
+
+    edits: dict[str, list[str]] = {}
+    for item in created:
+        draft, published = frappe.db.get_value("Builder Page", item["name"], ["draft_blocks", "blocks"])
+        changes = {}
+        for field, raw in (("draft_blocks", draft), ("blocks", published)):
+            try:
+                blocks = json.loads(raw or "[]")
+            except ValueError:
+                continue
+            done = remap_routes(blocks if isinstance(blocks, list) else [blocks], moved)
+            if done:
+                changes[field] = json.dumps(blocks)
+                edits.setdefault(item["title"], []).extend(done)
+        if changes:
+            changes["ai_blocks_hash"] = _blocks_fingerprint(changes.get("draft_blocks") or draft or changes.get("blocks") or published)
+            frappe.db.set_value("Builder Page", item["name"], changes, update_modified=False)
+    return edits
 
 
 def normalise_pages(pages: list, site_type: str) -> list[dict]:
@@ -926,16 +986,16 @@ def build_site(ctx, spec: dict) -> str:
         ai_log("info", "Site build needs confirmation", site_name=site_name, profile=profile, protected=len(protected))
         return (
             f"CONFIRM_NEEDED: {len(protected)} existing page(s) were designed or edited by hand ({names}). "
-            "Ask the user whether to replace them (replace_existing='force'), keep them and add the new pages beside "
-            "(replace_existing='none'), then call generate_site again with the same arguments plus their choice."
+            "Ask the user whether to replace them too (replace_existing='force') or keep them, the untouched pages "
+            "being replaced as usual (replace_existing='keep_edited'), then call generate_site again with the same "
+            "arguments plus their choice. 'none' keeps every existing page beside the new site: pass it only when "
+            "the user asks for exactly that."
         )
     # the build is real from here on: the confirmation round trip above must leave neither
     # a "running" job behind (get_site_generation_status) nor a START line without an end
     _update_generation_status(job_id, {"status": "running", "progress": 0, "total_pages": total, "current_step": "Starting", "pages_created": [], "error": None, "site_name": site_name, "started_at": now()})
-    ai_log("info", "=== NORA SITE BUILD STARTED ===", job_id=job_id, site_name=site_name, profile=profile, pages=[p["title"] for p in pages])
-    to_delete = [] if replace_existing == "none" else [p["name"] for p in classes["untouched"]]
-    if replace_existing == "force":
-        to_delete += [p["name"] for p in classes["protected"]]
+    ai_log("info", "=== NORA SITE BUILD STARTED ===", job_id=job_id, site_name=site_name, profile=profile, lang=lang_code, replace=replace_existing, pages=[p["title"] for p in pages])
+    to_delete = pages_to_replace(classes, replace_existing)
     host_reusable = host_page and (host_is_blank or host_page in to_delete)
     to_delete = [n for n in to_delete if n != host_page]
     _progress(ctx, job_id, _("Preparing the site"), 3)
@@ -1284,7 +1344,7 @@ def build_site(ctx, spec: dict) -> str:
             continue
         use_host = host_page if (host_reusable and page["route"] == "home") else None
         name, route = _write_page(page, blocks, data_script, profile, use_host, _describe(blocks))
-        created.append({"name": name, "title": page["title"], "route": f"/{route}"})
+        created.append({"name": name, "title": page["title"], "route": f"/{route}", "planned": page["route"]})
         ai_log("info", "Page written", page=page["title"], name=name, route=route, model=page_model)
         if use_host:
             try:
@@ -1299,9 +1359,19 @@ def build_site(ctx, spec: dict) -> str:
         _update_generation_status(job_id, {"status": "failed", "progress": 0, "error": "no page could be generated", "pages_created": []})
         return "FAILED: no page could be generated (" + "; ".join(f"{f['title']}: {f['error']}" for f in failed) + "). Tell the user and offer to try again."
 
+    # the pages written beside kept pages that held their planned routes were suffixed at
+    # write time: their links, and the call to action, move to the routes they really got
+    config = _get_site_chrome_config(profile)
+    moved = moved_routes(created)
+    if moved:
+        repointed = _repoint_moved_links(created, moved)
+        if (config.get("cta_url") or "") in moved:
+            config.cta_url = moved[config.cta_url]
+        ai_log("warning", "Pages written beside kept pages holding their routes", moved=moved, links=sum(len(v) for v in repointed.values()))
+
     # 6. menu, footer, home
     _progress(ctx, job_id, _("Menu, footer and home page"), 92, {"pages_created": created})
-    apply_navigation(_get_site_chrome_config(profile), created, site_type, activity, profile, lang_code, site_name=site_name)
+    apply_navigation(config, created, site_type, activity, profile, lang_code, site_name=site_name)
 
     # 7. the images: the client's own photographs first, drawings only for what is left
     # //// Neoffice ▼▼▼ — a client who supplies photographs wants THEM on the page, and a
