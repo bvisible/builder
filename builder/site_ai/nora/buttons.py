@@ -138,6 +138,51 @@ def repair_foreign_links(blocks: list, routes: list[str], fallback: str) -> list
     return edits
 
 
+HREF_IN_HTML = re.compile(r"""href=(["'])(/[^"'#?]*)([^"']*)\1""")
+
+
+def remap_routes(blocks: list, moved: dict[str, str]) -> list[str]:
+    """Point links at the routes their pages really got (`moved`: planned -> real).
+
+    A page written beside a kept page that holds its planned route is suffixed at write
+    time, after the model, the call to action and the link repairs have all used the
+    planned route: every "Contact us" of a new site led to the contact page it was built
+    beside (2026-09-11). Only exact paths move, with the anchor or query they carry, and
+    a link inside rich text moves like a link block."""
+    edits: list[str] = []
+
+    def moved_href(href: str) -> str | None:
+        match = re.match(r"^(/[^?#]*)(.*)$", href)
+        if not match:
+            return None
+        path = match.group(1).rstrip("/") or "/"
+        return moved[path] + match.group(2) if path in moved else None
+
+    def swap(m: re.Match) -> str:
+        new = moved_href(m.group(2) + m.group(3))
+        if not new:
+            return m.group(0)
+        edits.append(f"{m.group(2)}{m.group(3)} -> {new}")
+        return f"href={m.group(1)}{new}{m.group(1)}"
+
+    def walk(block: dict) -> None:
+        attrs = block.get("attributes") or {}
+        href = str(attrs.get("href") or "")
+        target = moved_href(href) if href.startswith("/") else None
+        if target:
+            block["attributes"] = dict(attrs, href=target)
+            edits.append(f"{href} -> {target}")
+        html = block.get("innerHTML")
+        if isinstance(html, str) and "href=" in html:
+            block["innerHTML"] = HREF_IN_HTML.sub(swap, html)
+        for child in block.get("children") or []:
+            walk(child)
+
+    for block in blocks:
+        walk(block)
+    return edits
+
+
 def _new_id() -> str:
     return secrets.token_hex(5)[:9]
 

@@ -67,14 +67,19 @@ generate_site = Tool(
             "palette_mode": {"type": "string", "enum": ["auto", "monochrome"], "description": "'monochrome' when the client wants NO colour: black, white and greys only, the photographs carrying the page. Default 'auto', which also turns monochrome by itself when every inspiration site read has no colour."},
             "copy_density": {"type": "string", "enum": ["auto", "standard", "minimal"], "description": "'minimal' when the photographs must carry the site and the copy step back: headlines of a few words, a line at most under each, no paragraphs. Default 'auto', which turns minimal by itself when the brief or the chosen direction asks for little text ('less is more', 'through the image')."},
             "website_profile": {"type": "string", "description": "The Website Profile (site) to build for; the open page's profile when omitted."},
-            "language": {"type": "string", "description": "Language of the site copy (ISO code or name); the site default when omitted."},
+            # //// Neoffice — the language is required: the recap step listed every field but this
+            # //// one, and the default filled in (the instance's, else French) wrote a site asked
+            # //// for in English in French (2026-09-11).
+            "language": {"type": "string", "description": "The language the site is WRITTEN in (ISO code or name): the one the user asked for, else the language of their messages. Always pass it: the instance default is only a guess."},
+            # //// Neoffice — keep_edited: "keep them" after a CONFIRM_NEEDED meant keeping the
+            # //// hand-made pages, and 'none' kept the whole previous site beside the new one.
             "replace_existing": {
                 "type": "string",
-                "enum": ["auto", "force", "none"],
-                "description": "What to do with the site's existing pages: auto (replace untouched AI pages, ask before touching hand-made ones), force (replace all), none (keep everything, add the new pages).",
+                "enum": ["auto", "force", "keep_edited", "none"],
+                "description": "What to do with the site's existing pages: auto (replace untouched AI pages, ask before touching hand-made ones), force (replace all), keep_edited (keep the hand-made pages, replace the untouched AI pages: the answer 'keep them' to a CONFIRM_NEEDED), none (keep every existing page and add the new ones beside, only when the user asks for exactly that).",
             },
         },
-        "required": ["site_name", "activity", "pages"],
+        "required": ["site_name", "activity", "pages", "language"],
     },
 )
 
