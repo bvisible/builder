@@ -164,6 +164,20 @@ class ModelRegistry:
 			for m in load_models()
 		]
 
+	# //// Neoffice — the host's vision endpoint (site_ai/managed.py, seeded from site_config
+	# //// nora_base_url) reads documents and checks rendered pages; it is not a conversation
+	# //// model. Offered in the picker it became its FIRST entry — rows come in creation
+	# //// order and it is seeded before the chat models — so every browser without a stored
+	# //// choice, and every client (a managed instance shows no picker), talked to the OCR
+	# //// model (2026-09-11). It stays in catalog() and find(), which its own callers use.
+	@staticmethod
+	def is_host_vision(model: dict) -> bool:
+		try:
+			from builder.site_ai.managed import NORA_PROVIDER_NAME
+		except ImportError:
+			return False
+		return model.get("provider") == NORA_PROVIDER_NAME
+
 	@classmethod
 	def available(cls) -> list[dict]:
 		"""Provider-grouped catalog — the shape the model picker consumes.
@@ -179,6 +193,9 @@ class ModelRegistry:
 		)
 		grouped: dict[str, list] = {}
 		for m in cls.catalog():
+			# //// Neoffice — see is_host_vision: the picker offers conversation models only.
+			if cls.is_host_vision(m):
+				continue
 			grouped.setdefault(m["provider"], []).append(
 				{**m, "ready": bool(provider_api_key(m)) or fallback}
 			)
@@ -224,7 +241,10 @@ class ModelRegistry:
 		if cls.find(model_or_provider):
 			return model_or_provider
 		catalog = cls.catalog()
-		return catalog[0]["name"] if catalog else model_or_provider
+		# //// Neoffice — the fallback is a conversation model, never the host's vision
+		# //// endpoint (see is_host_vision); the endpoint alone still beats nothing.
+		chat = [m for m in catalog if not cls.is_host_vision(m)] or catalog
+		return chat[0]["name"] if chat else model_or_provider
 
 	@classmethod
 	def is_known_model(cls, model: str) -> bool:

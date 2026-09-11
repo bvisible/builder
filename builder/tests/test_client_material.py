@@ -3,7 +3,14 @@
 import unittest
 from unittest.mock import MagicMock, patch
 
-from builder.site_ai.nora.inspiration import MAX_IMAGES, MAX_URLS, chroma, coloured_share, is_neutral, monochrome
+from builder.site_ai.nora.inspiration import (
+	MAX_IMAGES,
+	MAX_URLS,
+	chroma,
+	coloured_share,
+	is_neutral,
+	monochrome,
+)
 
 # measured on two real reference sites: pages of large photographs, no colour at all
 PHOTO_PAGE = {
@@ -190,3 +197,33 @@ class TestLessText(unittest.TestCase):
 
 		blocks = [{"innerHTML": "<h1>Snow</h1>", "children": [{"innerHTML": "<p>Ride the <b>whole</b> mountain</p>"}, {"innerHTML": "{{ product.name }}"}]}]
 		self.assertEqual(page_word_count(blocks), 5)
+
+
+class TestUploadCard(unittest.TestCase):
+	def test_a_slot_for_photographs_takes_a_batch(self):
+		"""A card asking for the client's photos rendered a single-file control: each pick
+		replaced the last, and a dozen photographs could not get through."""
+		from builder.ai.agent.tools.conversation import sanitize_ui
+
+		ui = sanitize_ui(
+			[
+				{"kind": "upload", "label": "Your photos (up to 13)"},
+				{"kind": "upload", "label": "Pictures you like"},
+				{"kind": "upload", "label": "Vos photos"},
+				{"kind": "upload", "label": "Logo"},
+				{"kind": "upload", "label": "Hero image"},
+				{"kind": "upload", "label": "Logo", "multi": True},
+				{"kind": "upload", "label": "Your photos", "multiple": False},
+				{"kind": "upload", "label": "Reference", "multiple": "true"},
+				{"kind": "actions", "buttons": [{"label": "Continue"}]},
+			]
+		)
+		self.assertEqual([el["multiple"] for el in ui[:8]], [True, True, True, False, False, True, False, True])
+		self.assertNotIn("multi", ui[5])
+		self.assertNotIn("multiple", ui[8])
+
+	def test_the_replay_says_the_slot_took_a_batch(self):
+		from builder.ai.agent.tools.conversation import render_element_text
+
+		self.assertEqual(render_element_text({"kind": "upload", "label": "Your photos", "multiple": True}), ["[upload: Your photos (several)]"])
+		self.assertEqual(render_element_text({"kind": "upload", "label": "Logo", "multiple": False}), ["[upload: Logo]"])

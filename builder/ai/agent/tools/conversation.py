@@ -98,9 +98,38 @@ def sanitize_ui(raw) -> list[dict]:
 			el["options"] = [o for o in sanitized if o]
 		elif el.get("kind") == "color_input":
 			el["colors"] = sanitize_color_slots(el.get("colors"))
+		# //// Neoffice — an upload atom always says whether it takes one picture or a
+		# //// batch; see upload_takes_many.
+		elif el.get("kind") == "upload":
+			el["multiple"] = upload_takes_many(el)
+			el.pop("multi", None)
 	while elements and len(json.dumps(elements)) > MAX_UI_JSON:
 		elements.pop()
 	return elements
+
+
+# //// Neoffice — the renderer offers a batch picker only when `multiple` is set, and the
+# //// model sets it only where an example shows it: a card asking a client for "Your
+# //// photos (up to 13)" rendered a single-file control, each pick replacing the last, so
+# //// a dozen photographs could not get through (2026-09-11). What the model states is
+# //// kept; when it says nothing, a label naming pictures in the plural, or a count above
+# //// one, takes a batch. A logo slot stays single, so picking again replaces it.
+BATCH_UPLOAD_LABEL = re.compile(
+	r"\b(?:photos|photographs|photographies|pictures|images|visuels|fotos|bilder|immagini|im[aá]genes|gallery|galerie)\b"
+	r"|\b(?:up to|jusqu['’]à|bis zu|fino a|hasta)\s+(?:[2-9]|\d{2,})\b",
+	re.I,
+)
+
+
+def upload_takes_many(el: dict) -> bool:
+	"""Whether an upload atom takes a whole batch. `multi` is read too: it is the choices
+	atom's word, and models carry it over."""
+	stated = el.get("multiple", el.get("multi"))
+	if isinstance(stated, str) and stated.strip().lower() in ("true", "false"):
+		stated = stated.strip().lower() == "true"
+	if isinstance(stated, bool):
+		return stated
+	return bool(BATCH_UPLOAD_LABEL.search(str(el.get("label") or "")))
 
 
 def sanitize_color_slots(colors) -> list[dict]:
@@ -165,7 +194,10 @@ def render_element_text(el: dict) -> list[str]:
 	if kind == "input":
 		return [f"[input: {el.get('label') or el.get('placeholder') or 'text field'}]"]
 	if kind == "upload":
-		return [f"[upload: {el.get('label') or 'image'}]"]
+		# //// Neoffice — the replay says when the slot took a batch, so the model expects
+		# //// several URLs under one label.
+		several = " (several)" if el.get("multiple") else ""
+		return [f"[upload: {el.get('label') or 'image'}{several}]"]
 	if kind == "color_input":
 		slots = [s.get("label") for s in el.get("colors") or [] if isinstance(s, dict) and s.get("label")]
 		roles = ", ".join(slots) if slots else (el.get("label") or "brand colours")
@@ -235,8 +267,12 @@ present_ui = Tool(
 					"for letting the user pick a hero/section photo; the chosen option's image URL "
 					"comes back in their reply\n"
 					"{kind:'input', label?, placeholder?} — one-line text field\n"
-					"{kind:'upload', label?} — image-upload field (logo, their own photo); the "
-					"uploaded file's URL arrives in their reply. Pair with an actions button, and "
+					# //// Neoffice — `multiple` is documented here: a model sets a flag it has been
+					# //// shown, and a photo slot without it took one file (see upload_takes_many).
+					"{kind:'upload', label?, multiple?} — image-upload field; the uploaded files' "
+					"URLs arrive in their reply. multiple:true takes a whole batch in one go — their "
+					"own photographs, pictures they like, a gallery; leave it out for ONE picture "
+					"such as the logo. Pair with an actions button, and "
 					"usually alongside a choices card of found images as the 'or upload your own' "
 					"escape hatch\n"
 					"{kind:'color_input', label?, colors:[{label, hint?}]} — LABELLED colour slots the "
