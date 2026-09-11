@@ -69,6 +69,55 @@ SECTION_PLANS = {
     "generic": ["an intro", "the page's content in two or three sections", "a CTA"],
 }
 
+# //// Neoffice ▼▼▼ — an image-led site: the photographs carry the page and the copy steps
+# //// back to names and a line. A brief saying "less is more", "not much text", "people
+# //// consume through the image" still got the standard plan above: value propositions
+# //// with icons, testimonials, an about teaser, every one of them a paragraph
+# //// (2026-09-10). These plans build the same pages out of pictures.
+IMAGE_LED_PLANS = {
+    "accueil": [
+        "hero: one full-bleed photograph, the site's name or promise in two to five words over it, one button",
+        "the categories, segments or collections the activity names, one full-bleed photo tile each, its name only (one or two words) as the link",
+        "one wide photograph with a single short line (at most twelve words)",
+        "a closing band: one line and one button",
+    ],
+    "shop": ["the collections as full-bleed photo tiles, their name only", "a strip of products", "one line and a button"],
+    "about": ["one large photograph and three short lines on who they are", "a strip of photographs", "one line and a button"],
+    "contact": ["the contact details from BUSINESS DATA, verbatim, with no introduction", "a contact form: name, email, message, one submit button"],
+    "generic": ["one large photograph with the page's point in one line", "the content as photo tiles with short captions", "one line and a button"],
+}
+# a page that is text by nature keeps its own plan whatever the density
+TEXT_BY_NATURE = {"faq", "blog", "legal"}
+
+# the words of a brief, or of the chosen direction, that ask for less copy
+MINIMAL_COPY_WORDS = re.compile(
+    r"less is more|not much text|little text|no text|almost no text|minimal (?:text|copy)|image[- ]led|"
+    r"photo(?:graph)?[- ]first|through the image|peu de texte|moins de texte|pas (?:besoin )?d['’]autant de texte|par l['’]image",
+    re.I,
+)
+
+
+def wants_minimal_copy(*texts) -> bool:
+    """True when the brief asks for the pictures to carry the page and the copy to step back."""
+    return any(MINIMAL_COPY_WORDS.search(str(t or "")) for t in texts)
+
+
+def page_word_count(blocks: list) -> int:
+    """The words a visitor reads on a page (headings, paragraphs, buttons), templates aside."""
+    count = 0
+
+    def walk(block: dict) -> None:
+        nonlocal count
+        text = re.sub(r"\{\{.*?\}\}|\{%.*?%\}|<[^>]+>", " ", str(block.get("innerHTML") or ""))
+        count += len(re.findall(r"[^\W\d_]{2,}", text))
+        for child in block.get("children") or []:
+            walk(child)
+
+    for block in blocks or []:
+        walk(block)
+    return count
+# //// Neoffice ▲▲▲
+
 CLASS_CONTRACT = (
     "set `classes` on the matching elements: buttons ['u-btn', 'u-btn--primary'] (or --secondary / --outline / --ghost), "
     "cards ['u-card'] (add 'u-card--raised' or 'u-card--flat'), photos and media frames ['u-media'], form fields ['u-input'], "
@@ -515,7 +564,10 @@ def available_includes(page_type: str, site_type: str = "vitrine", profile: str 
 
 def page_brief_text(site: dict, brief, page: dict, handles: dict, contact_prompt: str, layout_system: str, language: str, photos: list[str], cta: tuple[str, str], palette: dict | None = None, revision: str | None = None) -> str:
     is_home = page["route"] == "home"
-    plan = SECTION_PLANS.get(page["type"], SECTION_PLANS["generic"])
+    # //// Neoffice — an image-led site takes the image-led plans (IMAGE_LED_PLANS); a page
+    # //// that is text by nature keeps its own
+    minimal = site.get("copy_density") == "minimal" and page["type"] not in TEXT_BY_NATURE
+    plan = (IMAGE_LED_PLANS.get(page["type"]) or IMAGE_LED_PLANS["generic"]) if minimal else SECTION_PLANS.get(page["type"], SECTION_PLANS["generic"])
     sections = "\n".join(f"{i}. {s}" for i, s in enumerate(plan, 1))
     concept = getattr(brief, "design_concept", "") or ""
     signature = getattr(brief, "signature_element", "") or ""
@@ -555,6 +607,13 @@ def page_brief_text(site: dict, brief, page: dict, handles: dict, contact_prompt
         ),
         f"PAGE: '{page['title']}' at /{page['route']} — {page_role}.",
         f"SECTIONS, in order, with real copy written in {language}:\n{sections}",
+        (
+            # //// Neoffice — the copy rule of an image-led site (see IMAGE_LED_PLANS)
+            "COPY: minimal, the photographs carry the page. Headlines of two to five words, at most one line of twelve "
+            "words under a heading, NO paragraph, no list of features, no testimonials, no grid of icons, no band of "
+            "figures. When in doubt, cut the text and enlarge the photograph."
+            if minimal else ""
+        ),
         f"CTA: the primary button says '{cta[0]}' and links to '{cta[1]}'; use it once in the hero (home) or the last section, and in the final band.",
         (
             "PHOTOS AVAILABLE (placeholders that the site replaces with real photos after the build; use each at most once, "
@@ -991,7 +1050,17 @@ def build_site(ctx, spec: dict) -> str:
             "no accent, no tinted background, no coloured button, and never a colour taken from the inspirations "
             "or from the logo. Contrast comes from the photographs, the type and the empty space."
         )
-    prompt = f"{site_name}: {activity}. {spec.get('differentiators') or ''} Style: {spec.get('style_direction') or ''}{contact_prompt}{inspiration_prompt}{monochrome_prompt}"
+    # //// Neoffice ▼▼▼ — "less text" is a direction too (IMAGE_LED_PLANS), given as
+    # //// copy_density or read off the brief's own words and the direction it chose
+    copy_density = (spec.get("copy_density") or "auto").strip().lower()
+    if copy_density not in ("standard", "minimal"):
+        copy_density = "minimal" if wants_minimal_copy(spec.get("style_direction"), spec.get("differentiators"), activity) else "standard"
+    density_prompt = (
+        " COPY: minimal. The photographs carry the site: short headlines, one line at most under each, no paragraphs."
+        if copy_density == "minimal" else ""
+    )
+    # //// Neoffice ▲▲▲
+    prompt = f"{site_name}: {activity}. {spec.get('differentiators') or ''} Style: {spec.get('style_direction') or ''}{contact_prompt}{inspiration_prompt}{monochrome_prompt}{density_prompt}"
 
     # the client's own photographs, read into the session's library so the pages can be
     # laid out with them (placed at step 7, after the pages exist)
@@ -1087,7 +1156,7 @@ def build_site(ctx, spec: dict) -> str:
     # 5. the pages, on upstream's page engine
     layout_system = choose_layout_system(spec.get("style_direction"), brief)
     page_model = _page_model(ctx)
-    site = {"site_name": site_name, "activity": activity, "differentiators": spec.get("differentiators"), "site_type": site_type, "profile": profile, "inspiration": inspiration["notes"]}
+    site = {"site_name": site_name, "activity": activity, "differentiators": spec.get("differentiators"), "site_type": site_type, "profile": profile, "inspiration": inspiration["notes"], "copy_density": copy_density}
     created, failed, cancelled = [], [], False
 
     # //// Neoffice — image generation was switched off (the pictures were not good enough):
@@ -1189,6 +1258,8 @@ def build_site(ctx, spec: dict) -> str:
                         spaced = french_spacing(blocks)
                         if spaced:
                             ai_log("info", "French spacing applied", page=page["title"], edits=spaced)
+                    # //// Neoffice — measured, so "less text" is a number and not an impression
+                    ai_log("info", "Page copy measured", page=page["title"], words=page_word_count(blocks), density=site.get("copy_density"))
                 if blocks:
                     break
                 error = "the model returned no usable blocks"
@@ -1336,6 +1407,8 @@ def build_site(ctx, spec: dict) -> str:
     # //// client asked for it or it was read off the inspirations (918629eb "feat(site build): the client's own photographs, every reference site, and a monochrome direction")
     if palette_mode == "monochrome":
         lines.append("The palette is monochrome: black, white and greys only, as asked.")
+    if copy_density == "minimal":
+        lines.append("The copy is minimal: short headlines and one line at most per section, the photographs carry the pages.")
     if host_reusable and any(p["name"] == host_page for p in created):
         lines.append("The page open in the editor is now the home page; the canvas has been refreshed.")
     lines.append("The header, the menu and the footer are set from the brief (Settings > Theme).")

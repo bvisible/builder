@@ -166,3 +166,27 @@ class TestPlacingPhotographs(unittest.TestCase):
 		slot = {"section": "generic", "slot_type": "gallery", "orientation": "landscape", "context": ""}
 		asset = {"original_filename": "shop.jpg", "orientation": "landscape", "quality": "high"}
 		self.assertGreater(_score(slot, asset, 0), _score(slot, asset, 2))
+
+
+class TestLessText(unittest.TestCase):
+	def test_the_brief_s_own_words_ask_for_less_text(self):
+		from builder.site_ai.nora.site_builder import wants_minimal_copy
+
+		self.assertTrue(wants_minimal_copy("Less is more. Black or white only."))
+		self.assertTrue(wants_minimal_copy(None, "it has to hit hard, people consume through the image"))
+		self.assertTrue(wants_minimal_copy("Il n’y a pas besoin d’autant de texte"))
+		self.assertTrue(wants_minimal_copy("The Lookbook Wall: full-bleed photography tiles, almost no text"))
+		self.assertFalse(wants_minimal_copy("A calm editorial grid for a law firm", "", None))
+
+	def test_an_image_led_site_takes_the_image_led_plan(self):
+		from builder.site_ai.nora.site_builder import IMAGE_LED_PLANS, SECTION_PLANS, TEXT_BY_NATURE
+
+		self.assertNotEqual(IMAGE_LED_PLANS["accueil"], SECTION_PLANS["accueil"])
+		self.assertFalse(any("testimonial" in s or "value proposition" in s for s in IMAGE_LED_PLANS["accueil"]))
+		self.assertIn("faq", TEXT_BY_NATURE)
+
+	def test_the_words_of_a_page_are_counted(self):
+		from builder.site_ai.nora.site_builder import page_word_count
+
+		blocks = [{"innerHTML": "<h1>Snow</h1>", "children": [{"innerHTML": "<p>Ride the <b>whole</b> mountain</p>"}, {"innerHTML": "{{ product.name }}"}]}]
+		self.assertEqual(page_word_count(blocks), 5)
