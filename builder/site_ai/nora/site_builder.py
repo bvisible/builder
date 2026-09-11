@@ -475,8 +475,9 @@ def photos_for_page(page: dict, library: list[dict], used: dict, categories: lis
     if not library:
         return [], []
 
-    def take(wanted=(), opening=False, landscape=None) -> dict:
-        pool = [p for p in library if not (opening and p["has_text"])] or library
+    def take(wanted=(), landscape=None) -> dict:
+        # a picture carrying text (a banner, an advert) goes nowhere while anything else is left
+        pool = [p for p in library if not p["has_text"]] or library
         if landscape is not None:
             pool = [p for p in pool if p["landscape"] == landscape] or pool
 
@@ -490,16 +491,19 @@ def photos_for_page(page: dict, library: list[dict], used: dict, categories: lis
 
     picks = []
     if page["type"] == "accueil":
-        picks.append((take(opening=True, landscape=True), "the hero, full bleed"))
+        # the category tiles choose first: each needs one precise photograph, the hero any
+        # good one (served first, the hero took the only snow picture and the snow tile got
+        # the banner)
+        tiles = []
         if minimal or categories:
             for name in categories:
                 wanted = [w for w in re.split(r"[^a-z0-9]+", name.lower()) if len(w) > 2]
-                picks.append((take(wanted), f"the tile of '{name}'"))
-        picks.append((take(landscape=True), "a wide photograph"))
+                tiles.append((take(wanted), f"the tile of '{name}'"))
+        picks = [(take(landscape=True), "the hero, full bleed"), *tiles, (take(landscape=True), "a wide photograph")]
     else:
         wanted = [w for w in re.split(r"[^a-z0-9]+", f"{page['title']} {page['type']}".lower()) if len(w) > 2]
         for i in range(PAGE_PHOTO_COUNT.get(page["type"], 2)):
-            picks.append((take(wanted, opening=i == 0), "the first photograph of the page" if i == 0 else "a photograph"))
+            picks.append((take(wanted), "the first photograph of the page" if i == 0 else "a photograph"))
     urls, notes = [], []
     for photo, role in picks:
         if photo["url"] in urls:
