@@ -111,11 +111,17 @@ def guess_target(text: str, routes: list[str], fallback: str) -> str:
     return fallback
 
 
-def repair_foreign_links(blocks: list, routes: list[str], fallback: str) -> list[str]:
+def repair_foreign_links(blocks: list, routes: list[str], fallback: str, categories: list[str] | None = None, listing: str | None = None) -> list[str]:
     """A link to a route that is not this site's (another site of the instance, a page
     the model invented) goes to the page of this site its words mean, or to the site's
-    call to action. Files, assets, anchors and external addresses are left alone."""
+    call to action. Files, assets, anchors and external addresses are left alone.
+
+    A link named after one of the categories the brief lists (a tile "Snow" to /snow, a
+    page the site does not have) goes to `listing`, the page that shows what the site
+    offers, when there is one: the five category tiles of a new site all led to the
+    contact form (2026-09-11)."""
     known = {r.rstrip("/") or "/" for r in routes}
+    category_keys = {c.strip().lower() for c in categories or [] if c.strip()}
     edits: list[str] = []
 
     def walk(block: dict, card_text: str) -> None:
@@ -125,7 +131,8 @@ def repair_foreign_links(blocks: list, routes: list[str], fallback: str) -> list
             path = href.split("?", 1)[0].split("#", 1)[0].rstrip("/") or "/"
             if path not in known:
                 words = " ".join(part for part in (_text(block), path.replace("-", " ").replace("/", " "), card_text) if part)
-                target = guess_target(words, routes, fallback)
+                named = {(_text(block) or "").strip().lower(), path.strip("/").replace("-", " ").lower()}
+                target = listing if listing and named & category_keys else guess_target(words, routes, fallback)
                 block["attributes"] = dict(attrs, href=target)
                 edits.append(f"'{_text(block)}' {href} -> {target}")
         heading = _heading(block) if (block.get("element") or "").lower() != "a" else ""

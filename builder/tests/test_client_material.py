@@ -227,3 +227,49 @@ class TestUploadCard(unittest.TestCase):
 
 		self.assertEqual(render_element_text({"kind": "upload", "label": "Your photos", "multiple": True}), ["[upload: Your photos (several)]"])
 		self.assertEqual(render_element_text({"kind": "upload", "label": "Logo", "multiple": False}), ["[upload: Logo]"])
+
+
+def _photo(url, words, text="", landscape=True, quality="high", has_text=False):
+	return {"url": url, "shows": text.capitalize(), "words": set(words), "text": text, "landscape": landscape, "quality": quality, "has_text": has_text}
+
+
+LIBRARY = [
+	_photo("/files/banner.jpg", ["beach", "banner"], "a brand banner with a slogan over a beach", has_text=True),
+	_photo("/files/rider.jpg", ["snowboarding", "snow", "powder"], "a rider in deep powder snow"),
+	_photo("/files/skate.jpg", ["street", "skate", "urban"], "a skater under a bridge", landscape=False),
+	_photo("/files/surf.jpg", ["water", "surf", "ocean"], "two surfers at the water's edge"),
+	_photo("/files/crew.jpg", ["portrait", "about", "crew"], "two men against a white wall"),
+]
+
+
+class TestPhotosGoToPages(unittest.TestCase):
+	def test_the_brief_s_categories_are_read_in_its_words(self):
+		from builder.site_ai.nora.site_builder import category_names
+
+		self.assertEqual(
+			category_names("Boardsport store in five segments: Snow, Street, Water, Outdoor, Home. Less is more."),
+			["Snow", "Street", "Water", "Outdoor", "Home"],
+		)
+		self.assertEqual(category_names("", "Trois univers : Neige, Rue et Eau."), ["Neige", "Rue", "Eau"])
+		self.assertEqual(category_names("A law firm in Geneva."), [])
+
+	def test_the_home_gives_each_category_its_photograph(self):
+		"""Written with three generic placeholders, an image-led home dropped its category
+		wall and placed two of twelve photographs."""
+		from builder.site_ai.nora.site_builder import photos_for_page
+
+		used = {}
+		urls, notes = photos_for_page({"type": "accueil", "title": "Home"}, LIBRARY, used, ["Snow", "Street", "Water"], True)
+		self.assertNotEqual(urls[0], "/files/banner.jpg")  # a picture that carries text never opens the page
+		tiles = {n.split("'")[1]: u for u, n in zip(urls, notes, strict=True) if "tile of" in n}
+		self.assertEqual(tiles, {"Snow": "/files/rider.jpg", "Street": "/files/skate.jpg", "Water": "/files/surf.jpg"})
+		self.assertEqual(len(urls), len(set(urls)))
+		self.assertIn("it shows:", notes[0])
+
+	def test_the_next_page_takes_what_is_left_first(self):
+		from builder.site_ai.nora.site_builder import photos_for_page
+
+		used = {"/files/rider.jpg": 1, "/files/skate.jpg": 1, "/files/surf.jpg": 1}
+		urls, _ = photos_for_page({"type": "about", "title": "About"}, LIBRARY, used, [], True)
+		self.assertEqual(urls[0], "/files/crew.jpg")
+		self.assertEqual(photos_for_page({"type": "about", "title": "About"}, [], {}, [], True), ([], []))

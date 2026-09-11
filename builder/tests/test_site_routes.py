@@ -56,6 +56,25 @@ class TestBesideKeptPages(unittest.TestCase):
 		self.assertIn('href="/about-d0ec"', kids[4]["innerHTML"])
 		self.assertEqual(len(edits), 4)
 
+	def test_a_category_link_goes_to_the_page_that_lists(self):
+		"""The five category tiles of a new site linked to pages it does not have, and the
+		repair sent all of them to the contact form."""
+		from builder.site_ai.nora.buttons import repair_foreign_links
+
+		routes = ["/", "/brands", "/about", "/contact"]
+		blocks = [
+			{"attributes": {"href": "/snow"}, "children": []},
+			{"attributes": {"href": "/outdoor"}, "children": [{"innerHTML": "Outdoor"}]},
+			{"attributes": {"href": "/pricing"}, "children": [{"innerHTML": "Get a quote"}]},
+		]
+		repair_foreign_links(blocks, routes, "/contact", categories=["Snow", "Street", "Outdoor"], listing="/brands")
+		self.assertEqual([b["attributes"]["href"] for b in blocks[:2]], ["/brands", "/brands"])
+		self.assertEqual(blocks[2]["attributes"]["href"], "/contact")
+		# without a page that lists, the call to action stays the fallback
+		lone = [{"attributes": {"href": "/snow"}, "children": []}]
+		repair_foreign_links(lone, routes, "/contact", categories=["Snow"], listing=None)
+		self.assertEqual(lone[0]["attributes"]["href"], "/contact")
+
 	def test_keep_them_keeps_the_hand_made_pages_only(self):
 		"""Answered with 'none', a question about one hand-made page kept the whole
 		previous site beside the new one."""
