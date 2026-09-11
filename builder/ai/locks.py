@@ -38,6 +38,23 @@ if redis.call('get', KEYS[1]) == ARGV[1] then return redis.call('expire', KEYS[1
 return 0
 """
 
+# //// Neoffice — a lock found missing while its turn still runs is set again under the same
+# //// token. The session lock of a site build vanished in the middle of its visual check
+# //// (2026-09-11: 597 s left at 14:04:23, gone at 14:05:23, no Redis eviction, the job alive),
+# //// and the panel's watchdog read the turn as over. A lock held under another token (another
+# //// turn) is never touched. Returns 1 when extended, 2 when restored, 0 otherwise.
+EXTEND_OR_RESTORE = """
+local held = redis.call('get', KEYS[1])
+if held == ARGV[1] then return redis.call('expire', KEYS[1], ARGV[2]) end
+if not held then
+  if redis.call('set', KEYS[1], ARGV[1], 'EX', ARGV[2], 'NX') then return 2 end
+end
+return 0
+"""
+# //// Neoffice — renewal every few seconds rather than a quarter of the TTL: a deleted lock must
+# //// be back before the watchdog's two polls, 8 s apart, both find it missing.
+HEARTBEAT_SECONDS = 5
+
 
 class Heartbeat:
 	"""Renews the locks a turn holds, from a daemon thread, while the turn runs.
@@ -52,6 +69,7 @@ class Heartbeat:
 		self._every = every
 		self._stop = threading.Event()
 		self._thread: threading.Thread | None = None
+		self.restored = 0  # //// Neoffice — locks found missing and set again (EXTEND_OR_RESTORE)
 
 	def watch(self, key: str, token: str | None, ttl: int) -> None:
 		if not token:
@@ -65,13 +83,23 @@ class Heartbeat:
 		self._stop.set()
 		if self._thread is not None:
 			self._thread.join(timeout=2)
+		# //// Neoffice — a restored lock means something deleted it mid-turn: leave a trace
+		if self.restored:
+			try:
+				from builder.site_ai.logging import ai_log
+
+				ai_log("warning", "Run lock restored after it was deleted mid-turn", times=self.restored)
+			except Exception:
+				frappe.logger("builder").warning(f"run lock restored {self.restored} time(s) mid-turn")
 
 	def _run(self) -> None:
-		every = self._every or max(5, min(ttl for _, _, ttl in self._pairs) // 4)
+		# //// Neoffice — see EXTEND_OR_RESTORE and HEARTBEAT_SECONDS
+		every = self._every or HEARTBEAT_SECONDS
 		while not self._stop.wait(every):
 			for made_key, token, ttl in list(self._pairs):
 				try:
-					self._client.eval(EXTEND_IF_TOKEN_MATCHES, 1, made_key, token, ttl)
+					if self._client.eval(EXTEND_OR_RESTORE, 1, made_key, token, ttl) == 2:
+						self.restored += 1
 				except Exception:
 					pass
 

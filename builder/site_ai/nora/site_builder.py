@@ -410,6 +410,105 @@ def placeholder_photos(page: dict, activity: str) -> list[str]:
     return urls
 
 
+# The client's own photographs go to the page that shows them. Written with three generic
+# placeholders matched afterwards, an image-led home dropped its category wall and placed
+# two of twelve photographs (2026-09-11): the page is now written with the real pictures,
+# each with what the vision read in it and what it is for.
+CATEGORY_LIST = re.compile(
+    r"(?:segments?|categories|collections|departments|univers|rayons|sections)\b[^:.\n]{0,30}[:：]\s*([^.\n]+)",
+    re.I,
+)
+PAGE_PHOTO_COUNT = {"about": 2, "contact": 1, "shop": 3, "portfolio": 4, "services": 3}
+
+
+def category_names(*texts) -> list[str]:
+    """The categories a brief names ("five segments: Snow, Street, Water, Outdoor, Home"),
+    in its own words: an image-led home gives each one its photograph."""
+    for text in texts:
+        found = CATEGORY_LIST.search(text or "")
+        if not found:
+            continue
+        names = [n.strip(" '\"") for n in re.split(r",|;|/|\band\b|\bet\b|\bund\b", found.group(1))]
+        names = [n for n in names if n and len(n.split()) <= 3]
+        if len(names) >= 2:
+            return names[:8]
+    return []
+
+
+def library_photos(session_id: str | None) -> list[dict]:
+    """The photographs this conversation took in, with what the vision read in them."""
+    if not session_id or not frappe.db.exists("DocType", "Builder Content Asset"):
+        return []
+    rows = frappe.get_all(
+        "Builder Content Asset",
+        filters={"session_id": session_id, "asset_type": "Image"},
+        fields=["file", "original_filename", "summary", "tags", "orientation", "quality", "extracted_text", "suggested_section"],
+        order_by="creation asc",
+    )
+    photos = []
+    for row in rows:
+        if not (row.file or "").startswith("/files/"):
+            continue
+        stem = (row.original_filename or row.file).rsplit("/", 1)[-1].rsplit(".", 1)[0]
+        words = {w for w in re.split(r"[^a-z0-9]+", f"{stem} {row.tags or ''} {row.suggested_section or ''}".lower()) if len(w) > 2}
+        photos.append(
+            {
+                "url": row.file,
+                "shows": re.split(r"(?<=[.!?])\s", (row.summary or "").strip())[0][:140],
+                "words": words,
+                "text": (row.summary or "").lower(),
+                "landscape": (row.orientation or "") == "landscape",
+                "quality": row.quality or "",
+                "has_text": bool((row.extracted_text or "").strip()),
+            }
+        )
+    return photos
+
+
+def photos_for_page(page: dict, library: list[dict], used: dict, categories: list[str], minimal: bool) -> tuple[list[str], list[str]]:
+    """The client's photographs a page is written with, and what each is for.
+
+    The home gets its hero, one photograph per category the brief names (matched on what
+    the vision read in it, else the best left) when the site is image-led or names its
+    categories, and a wide one. A photograph carrying text never opens a page, and the ones
+    already used go last, so the pages do not repeat each other."""
+    if not library:
+        return [], []
+
+    def take(wanted=(), opening=False, landscape=None) -> dict:
+        pool = [p for p in library if not (opening and p["has_text"])] or library
+        if landscape is not None:
+            pool = [p for p in pool if p["landscape"] == landscape] or pool
+
+        def rank(p):
+            fit = sum(2 for w in wanted if w in p["words"] or w in p["text"])
+            return fit + {"high": 1.0, "medium": 0.5}.get(p["quality"], 0) - 3 * used.get(p["url"], 0)
+
+        best = max(pool, key=rank)
+        used[best["url"]] = used.get(best["url"], 0) + 1
+        return best
+
+    picks = []
+    if page["type"] == "accueil":
+        picks.append((take(opening=True, landscape=True), "the hero, full bleed"))
+        if minimal or categories:
+            for name in categories:
+                wanted = [w for w in re.split(r"[^a-z0-9]+", name.lower()) if len(w) > 2]
+                picks.append((take(wanted), f"the tile of '{name}'"))
+        picks.append((take(landscape=True), "a wide photograph"))
+    else:
+        wanted = [w for w in re.split(r"[^a-z0-9]+", f"{page['title']} {page['type']}".lower()) if len(w) > 2]
+        for i in range(PAGE_PHOTO_COUNT.get(page["type"], 2)):
+            picks.append((take(wanted, opening=i == 0), "the first photograph of the page" if i == 0 else "a photograph"))
+    urls, notes = [], []
+    for photo, role in picks:
+        if photo["url"] in urls:
+            continue
+        urls.append(photo["url"])
+        notes.append(f"{role}; it shows: {photo['shows']}" if photo["shows"] else role)
+    return urls, notes
+
+
 # Jinja includes a page may carry, by page type: the site's own components (a
 # working contact form, a map, a team grid) and, where the shop app is installed,
 # its live widgets. The old generator listed them per page in its system prompt
@@ -622,7 +721,7 @@ def available_includes(page_type: str, site_type: str = "vitrine", profile: str 
     return out
 
 
-def page_brief_text(site: dict, brief, page: dict, handles: dict, contact_prompt: str, layout_system: str, language: str, photos: list[str], cta: tuple[str, str], palette: dict | None = None, revision: str | None = None) -> str:
+def page_brief_text(site: dict, brief, page: dict, handles: dict, contact_prompt: str, layout_system: str, language: str, photos: list[str], cta: tuple[str, str], palette: dict | None = None, revision: str | None = None, photo_notes: list[str] | None = None) -> str:
     is_home = page["route"] == "home"
     # //// Neoffice — an image-led site takes the image-led plans (IMAGE_LED_PLANS); a page
     # //// that is text by nature keeps its own
@@ -633,7 +732,9 @@ def page_brief_text(site: dict, brief, page: dict, handles: dict, contact_prompt
     signature = getattr(brief, "signature_element", "") or ""
     tone = getattr(brief, "site_tone", "") or ""
     hero = getattr(brief, "hero_style", "") or ""
-    photo_lines = "\n".join(f"{i}. {u}" for i, u in enumerate(photos, 1))
+    # the client's own photographs come with what each shows and what it is for (photos_for_page)
+    notes = photo_notes or []
+    photo_lines = "\n".join(f"{i}. {u}" + (f"  ({notes[i - 1]})" if i - 1 < len(notes) else "") for i, u in enumerate(photos, 1))
     includes = available_includes(page["type"], site.get("site_type") or "vitrine", site.get("profile"), site.get("site_name") or "")
     page_role = (
         "the HOME page: open with the hero" if is_home
@@ -676,7 +777,11 @@ def page_brief_text(site: dict, brief, page: dict, handles: dict, contact_prompt
         ),
         f"CTA: the primary button says '{cta[0]}' and links to '{cta[1]}'; use it once in the hero (home) or the last section, and in the final band.",
         (
-            "PHOTOS AVAILABLE (placeholders that the site replaces with real photos after the build; use each at most once, "
+            "PHOTOS: the client's OWN photographs. Copy each URL exactly, without the note in brackets after it; give each "
+            f"a descriptive alt in {language}; use each at most once and follow its note: the hero opens the page, each "
+            f"category tile takes the photograph named for it, full bleed, the category's name as its only text:\n{photo_lines}"
+            if notes
+            else "PHOTOS AVAILABLE (placeholders that the site replaces with real photos after the build; use each at most once, "
             f"copy the URL exactly, give it a descriptive alt in {language}):\n{photo_lines}"
         ),
         (
@@ -1135,6 +1240,11 @@ def build_site(ctx, spec: dict) -> str:
             ai_log("info", "Client library ready", **library)
         except Exception as e:
             ai_log("warning", "Client library skipped", error=str(e)[:200])
+    # the pages are written with the client's own photographs (photos_for_page), and the
+    # categories the brief names get their tiles and a link to the page that lists them
+    client_photos = library_photos(getattr(ctx, "session_id", None)) if library.get("taken") else []
+    categories = category_names(activity, spec.get("differentiators") or "")
+    photos_used: dict[str, int] = {}
     # //// Neoffice ▲▲▲
     settings = get_ai_settings()
     brief = None
@@ -1223,9 +1333,9 @@ def build_site(ctx, spec: dict) -> str:
     # //// gates the neutral-SVG fallback below (65d8f360 "fix(nora): cards never stack in a column, and photo slots without photos are plain blocks")
     images_on = _image_backend_available()
 
-    def write_page(page: dict, photos: list[str], revision: str | None = None) -> tuple[list, str, str | None]:
+    def write_page(page: dict, photos: list[str], revision: str | None = None, notes: list[str] | None = None) -> tuple[list, str, str | None]:
         """One page through the writer and the mechanical passes: (blocks, data_script, error)."""
-        brief_text = page_brief_text(site, brief, page, handles, contact_prompt, layout_system, language, photos, cta, palette=palette, revision=revision)
+        brief_text = page_brief_text(site, brief, page, handles, contact_prompt, layout_system, language, photos, cta, palette=palette, revision=revision, photo_notes=notes)
         messages = [
             {"role": "system", "content": Prompts.GENERATION_YAML},
             {"role": "user", "content": f"Build this page now:\n{brief_text}"},
@@ -1289,7 +1399,10 @@ def build_site(ctx, spec: dict) -> str:
                     # //// to action; files, assets and external addresses are left alone
                     # //// (16a271e0 "feat(buttons): a link to another site's page comes home")
                     # a link to another site of the instance, or to a page that does not exist
-                    foreign = repair_foreign_links(blocks, routes, cta[1])
+                    # a category tile the model linked to a page the site does not have goes to
+                    # the page that lists what the site offers, not to the contact form
+                    listing = next((r for p, r in zip(pages, routes) if p["type"] == "shop" or re.search(r"brand|shop|catalog|collection|product|boutique|store|marque", f"{p['title']} {p['route']}", re.I)), None)
+                    foreign = repair_foreign_links(blocks, routes, cta[1], categories=categories, listing=listing)
                     if foreign:
                         ai_log("info", "Foreign links brought home", page=page["title"], edits=foreign)
                     variants = repair_button_variants(blocks, palette)
@@ -1333,7 +1446,8 @@ def build_site(ctx, spec: dict) -> str:
             cancelled = True
             break
         _progress(ctx, job_id, _("Writing page {0} of {1}: {2}").format(idx + 1, total, page["title"]), 10 + int(80 * idx / max(total, 1)), {"current_page": page["title"], "pages_created": created})
-        blocks, data_script, error = write_page(page, placeholder_photos(page, activity))
+        page_photos, page_notes = photos_for_page(page, client_photos, photos_used, categories, copy_density == "minimal")
+        blocks, data_script, error = write_page(page, page_photos or placeholder_photos(page, activity), notes=page_notes or None)
         if not blocks:
             failed.append({"title": page["title"], "error": error})
             # //// Neoffice — title/message swapped to frappe's documented log_error(title,
@@ -1426,7 +1540,8 @@ def build_site(ctx, spec: dict) -> str:
                 _progress(ctx, job_id, _("Fixing {0} after the visual check").format(r["title"]), 97, {"pages_created": created})
                 page = by_name[r["name"]]
                 current = frappe.db.get_value("Builder Page", r["name"], "blocks") or ""
-                photos = re.findall(r"/files/gen_[^\"'\s]+", current) or placeholder_photos(page, activity)
+                # the photographs the page already carries, the client's own included, not only the drawn ones
+                photos = list(dict.fromkeys(re.findall(r"/files/[^\"'\s)]+?\.(?:jpe?g|png|webp)", current))) or placeholder_photos(page, activity)
                 blocks, data_script, error = write_page(page, photos, revision=visual_check.revision_instructions(r["issues"]))
                 if not blocks:
                     ai_log("warning", "Revision pass failed", page=r["title"], error=error)
