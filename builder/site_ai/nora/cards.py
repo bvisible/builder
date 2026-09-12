@@ -11,6 +11,7 @@ the tool. Anything unparseable stays plain text.
 
 from __future__ import annotations
 
+import json
 import re
 
 HEX = re.compile(r"#[0-9a-fA-F]{3,8}\b")
@@ -107,9 +108,52 @@ def _braces_to_brackets(text: str) -> str:
     return BRACE_GROUP.sub(one, text)
 
 
+JSON_OBJECT = re.compile(r'\{\s*"(?:text|ui)"\s*:')
+JSON_LIST = re.compile(r'\[\s*\{\s*"kind"\s*:')
+CONTROLS = ("choices", "actions", "color_input", "input", "upload")
+
+
+def _json_card(text: str) -> dict | None:
+    """The present_ui arguments a model printed as JSON instead of calling the tool
+    ('{"text": "…", "ui": [{"kind": "heading", …}, …, {"kind": "actions", …}]}', or the
+    ui list alone): the last complete one, since a model may write several drafts in a row.
+    A recap came back as 61,000 characters of deliberation and JSON drafts, and the card
+    was never tappable (2026-09-12). Unknown kinds (a "note" carrying the model's own tool
+    arguments) are left out; without a control it is no card."""
+    decoder = json.JSONDecoder()
+    found = None
+    starts = sorted([m.start() for m in JSON_OBJECT.finditer(text)] + [m.start() for m in JSON_LIST.finditer(text)])
+    for start in starts:
+        try:
+            obj, _ = decoder.raw_decode(text, start)
+        except ValueError:
+            continue
+        if isinstance(obj, list):
+            obj = {"text": "", "ui": obj}
+        if isinstance(obj, dict) and isinstance(obj.get("ui"), list):
+            found = obj
+    if not found:
+        return None
+    ui = []
+    for element in found["ui"]:
+        if not isinstance(element, dict):
+            continue
+        kind = str(element.get("kind") or "").lower()
+        if kind == "buttons":
+            element, kind = {**element, "kind": "actions"}, "actions"
+        if kind in KINDS:
+            ui.append(element)
+    if not any(el["kind"] in CONTROLS for el in ui):
+        return None
+    return {"text": str(found.get("text") or "…")[:600], "ui": ui}
+
+
 def parse_card(text: str) -> dict | None:
-    """The present_ui arguments for a bracket-written card, or None when the text
-    carries no card."""
+    """The present_ui arguments for a card written as text (JSON, braces or brackets), or
+    None when the text carries no card."""
+    card = _json_card(text or "")
+    if card:
+        return card
     lead, groups = _split_groups(_braces_to_brackets(text or ""))
     if not groups:
         return None

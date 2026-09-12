@@ -943,6 +943,30 @@ class TestHeaderOffLogo(unittest.TestCase):
 			self.assertIsNone(header_off_logo_palette(safe, "/files/logo.png", {}, "tb"))
 
 
+class TestJsonCards(unittest.TestCase):
+	def test_a_recap_printed_as_json_becomes_the_last_card_drafted(self):
+		"""A recap came back as 61,000 characters of deliberation and JSON drafts, and the
+		card was never tappable."""
+		from builder.site_ai.nora.cards import parse_card
+
+		draft = '{"text": "First try", "ui": [{"kind": "actions", "buttons": [{"label": "Old"}]}]}'
+		final = (
+			'{\n  "text": "Here is the rebuild recap:",\n  "ui": [\n    {"kind": "heading", "text": "The site"},\n'
+			'    {"kind": "list", "items": ["Pages: Home, Brands"]},\n    {"kind": "note", "text": "Draft generate_site params"},\n'
+			'    {"kind": "actions", "buttons": [{"label": "Build the site", "variant": "primary"}, {"label": "Change something", "variant": "secondary"}]}\n  ]\n}'
+		)
+		card = parse_card("OK, let me think. " + draft + " No, again. Calling present_ui.\n\n" + final + "\nand that is it")
+		self.assertEqual(card["text"], "Here is the rebuild recap:")
+		self.assertEqual([el["kind"] for el in card["ui"]], ["heading", "list", "actions"])
+		self.assertEqual(card["ui"][-1]["buttons"][0]["label"], "Build the site")
+
+	def test_a_ui_list_alone_and_a_json_without_control(self):
+		from builder.site_ai.nora.cards import parse_card
+
+		card = parse_card('Here: [{"kind": "text", "text": "Pick one"}, {"kind": "buttons", "buttons": [{"label": "Go"}]}]')
+		self.assertEqual([el["kind"] for el in card["ui"]], ["text", "actions"])
+		self.assertIsNone(parse_card('{"text": "Recap", "ui": [{"kind": "heading", "text": "Only a title"}]}'))
+
 class TestStackedCardsAndPlaceholders(unittest.TestCase):
 	"""Cards never stack in a column (layout.py), and a photo slot without a photo is a plain
 	block in the site's colours (placeholders.py)."""
