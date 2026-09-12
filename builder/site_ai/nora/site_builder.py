@@ -415,7 +415,7 @@ def placeholder_photos(page: dict, activity: str) -> list[str]:
 # two of twelve photographs (2026-09-11): the page is now written with the real pictures,
 # each with what the vision read in it and what it is for.
 CATEGORY_LIST = re.compile(
-    r"(?:segments?|categories|collections|departments|univers|rayons|sections)\b[^:.\n]{0,30}[:：]\s*([^.\n]+)",
+    r"(?:segments?|categories|collections|departments|univers|rayons|sections)\b[^:(.\n]{0,30}[:：(]\s*([^.\n)]+)",
     re.I,
 )
 PAGE_PHOTO_COUNT = {"about": 2, "contact": 1, "shop": 3, "portfolio": 4, "services": 3}
@@ -776,6 +776,14 @@ def page_brief_text(site: dict, brief, page: dict, handles: dict, contact_prompt
         ),
         f"PAGE: '{page['title']}' at /{page['route']} — {page_role}.",
         f"SECTIONS, in order, with real copy written in {language}:\n{sections}",
+        (
+            # the client's categories by name: without them the category wall came out with no
+            # name and two repeated photographs (2026-09-12)
+            f"CATEGORIES, in the client's words: {', '.join(site['categories'])}. Name each one exactly so, in this order, "
+            "and give each its own photograph tile (the PHOTOS notes say which)."
+            if site.get("categories") and page["type"] == "accueil"
+            else ""
+        ),
         (
             # //// Neoffice — the copy rule of an image-led site (see IMAGE_LED_PLANS)
             "COPY: minimal, the photographs carry the page. Headlines of two to five words, at most one line of twelve "
@@ -1251,7 +1259,11 @@ def build_site(ctx, spec: dict) -> str:
     # the pages are written with the client's own photographs (photos_for_page), and the
     # categories the brief names get their tiles and a link to the page that lists them
     client_photos = library_photos(getattr(ctx, "session_id", None), only=photos) if photos else []
-    categories = category_names(activity, spec.get("differentiators") or "")
+    # the categories travel as their own list; the brief's own words are only the fallback
+    categories = [str(c).strip() for c in (spec.get("categories") or []) if str(c).strip()][:8] or category_names(
+        activity, spec.get("differentiators") or "", spec.get("style_direction") or ""
+    )
+    ai_log("info", "Client photos ready", photos=len(client_photos), categories=categories)
     photos_used: dict[str, int] = {}
     # //// Neoffice ▲▲▲
     settings = get_ai_settings()
@@ -1334,7 +1346,7 @@ def build_site(ctx, spec: dict) -> str:
     # 5. the pages, on upstream's page engine
     layout_system = choose_layout_system(spec.get("style_direction"), brief)
     page_model = _page_model(ctx)
-    site = {"site_name": site_name, "activity": activity, "differentiators": spec.get("differentiators"), "site_type": site_type, "profile": profile, "inspiration": inspiration["notes"], "copy_density": copy_density}
+    site = {"site_name": site_name, "activity": activity, "differentiators": spec.get("differentiators"), "site_type": site_type, "profile": profile, "inspiration": inspiration["notes"], "copy_density": copy_density, "categories": categories}
     created, failed, cancelled = [], [], False
 
     # //// Neoffice — image generation was switched off (the pictures were not good enough):
