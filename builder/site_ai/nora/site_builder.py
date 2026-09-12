@@ -535,6 +535,16 @@ def photos_for_page(page: dict, library: list[dict], used: dict, categories: lis
     return urls, notes
 
 
+def revision_photos(planned: list[str], planned_notes: list[str], blocks_json: str | None, data_script: str | None) -> tuple[list[str], list[str] | None]:
+    """The photographs a revision writes with: the ones the page was written with, keeping
+    their roles (the tile of each category), then any other the page carries, its data
+    script included. Read from the blocks alone, a revised home lost the tile photographs
+    its data script held and drew three of its five tiles as gradients (2026-09-12)."""
+    found = re.findall(r"/files/[^\"'\s)]+?\.(?:jpe?g|png|webp)", f"{blocks_json or ''}\n{data_script or ''}")
+    photos = list(dict.fromkeys([*(planned or []), *found]))
+    return photos, (list(planned_notes) if planned and planned_notes else None)
+
+
 # Jinja includes a page may carry, by page type: the site's own components (a
 # working contact form, a map, a team grid) and, where the shop app is installed,
 # its live widgets. The old generator listed them per page in its system prompt
@@ -793,6 +803,14 @@ def page_brief_text(site: dict, brief, page: dict, handles: dict, contact_prompt
             f"hover {getattr(brief, 'button_hover', 'Darken')}, motion {getattr(brief, 'motion_style', 'Calm')}."
         ),
         f"PAGE: '{page['title']}' at /{page['route']} — {page_role}.",
+        (
+            # the chrome's band already carries them: a brands page showed "Accueil / Brands"
+            # above its own "Home / Brands" (2026-09-12)
+            "HEADER: the site's page header already shows the breadcrumb and the page title above this page: "
+            "write no breadcrumb of your own."
+            if page["type"] != "accueil"
+            else ""
+        ),
         f"SECTIONS, in order, with real copy written in {language}:\n{sections}",
         (
             # the client's categories by name: without them the category wall came out with no
@@ -1500,6 +1518,8 @@ def build_site(ctx, spec: dict) -> str:
     lister = listing_page(pages)
     lister_route = lister["route"] if lister else None
     site["listing_route"] = lister_route
+    # the photographs each page was written with, and their roles: its revision keeps them
+    planned_photos: dict[str, tuple[list[str], list[str]]] = {}
     for idx, page in enumerate(pages):
         if ctx.is_cancelled():
             cancelled = True
@@ -1517,6 +1537,7 @@ def build_site(ctx, spec: dict) -> str:
             continue
         use_host = host_page if (host_reusable and page["route"] == "home") else None
         name, route = _write_page(page, blocks, data_script, profile, use_host, _describe(blocks))
+        planned_photos[name] = (page_photos, page_notes)
         created.append({"name": name, "title": page["title"], "route": f"/{route}", "planned": page["route"]})
         ai_log("info", "Page written", page=page["title"], name=name, route=route, model=page_model)
         if use_host:
@@ -1598,10 +1619,12 @@ def build_site(ctx, spec: dict) -> str:
                     break
                 _progress(ctx, job_id, _("Fixing {0} after the visual check").format(r["title"]), 97, {"pages_created": created})
                 page = by_name[r["name"]]
-                current = frappe.db.get_value("Builder Page", r["name"], "blocks") or ""
-                # the photographs the page already carries, the client's own included, not only the drawn ones
-                photos = list(dict.fromkeys(re.findall(r"/files/[^\"'\s)]+?\.(?:jpe?g|png|webp)", current))) or placeholder_photos(page, activity)
-                blocks, data_script, error = write_page(page, photos, revision=visual_check.revision_instructions(r["issues"]))
+                stored = frappe.db.get_value("Builder Page", r["name"], ["blocks", "page_data_script"], as_dict=True) or frappe._dict()
+                # the photographs the page was written with, their roles kept, then the ones it
+                # carries besides (the client's own included, not only the drawn ones)
+                planned, planned_notes = planned_photos.get(r["name"], ([], []))
+                photos, notes = revision_photos(planned, planned_notes, stored.get("blocks"), stored.get("page_data_script"))
+                blocks, data_script, error = write_page(page, photos or placeholder_photos(page, activity), notes=notes, revision=visual_check.revision_instructions(r["issues"]))
                 if not blocks:
                     ai_log("warning", "Revision pass failed", page=r["title"], error=error)
                     continue
