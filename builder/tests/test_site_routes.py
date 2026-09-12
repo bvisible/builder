@@ -129,6 +129,18 @@ class TestBesideKeptPages(unittest.TestCase):
 		bound = {(d["property"], d["type"]) for d in block["dynamicValues"]}
 		self.assertEqual(bound, {("backgroundImage", "style"), ("href", "attribute"), ("innerHTML", "key")})
 
+	def test_an_unverified_business_gets_no_made_up_contact_details(self):
+		"""Asked for "clearly generic placeholders", the model wrote a real street and a plausible
+		phone number, different at each build, on a contact page published at once."""
+		from builder.site_ai.nora.site_builder import UNVERIFIED_CONTACT, page_sections
+
+		self.assertIn("not even a placeholder", UNVERIFIED_CONTACT)
+		self.assertNotIn("+41", UNVERIFIED_CONTACT)
+		contact = {"title": "Contact", "route": "contact", "type": "contact"}
+		self.assertTrue(any("contact details" in s for s in page_sections(contact, minimal=False, contact_verified=True)))
+		self.assertFalse(any("contact details" in s for s in page_sections(contact, minimal=False, contact_verified=False)))
+		self.assertFalse(any("contact details" in s for s in page_sections(contact, minimal=True, contact_verified=False)))
+
 	def test_keep_them_keeps_the_hand_made_pages_only(self):
 		"""Answered with 'none', a question about one hand-made page kept the whole
 		previous site beside the new one."""

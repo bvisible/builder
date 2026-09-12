@@ -420,6 +420,16 @@ CATEGORY_LIST = re.compile(
 )
 PAGE_PHOTO_COUNT = {"about": 2, "contact": 1, "shop": 3, "portfolio": 4, "services": 3}
 
+# a business whose contact details nobody verified gets none written: asked for "clearly
+# generic placeholders the client will replace", the model wrote a real Zurich street and a
+# plausible phone number, a different one at each build, on a contact page published at once
+# (2026-09-12)
+UNVERIFIED_CONTACT = (
+    " Contact details: none are verified for this business. Write no address, phone number or e-mail anywhere on "
+    "the site, not even a placeholder (a visitor takes a made-up one for real), and never another company's name, "
+    "logo, address or e-mail: the contact form is the way to reach it."
+)
+
 
 def category_names(*texts) -> list[str]:
     """The categories a brief names ("five segments: Snow, Street, Water, Outdoor, Home"),
@@ -757,12 +767,22 @@ def available_includes(page_type: str, site_type: str = "vitrine", profile: str 
     return out
 
 
+def page_sections(page: dict, minimal: bool, contact_verified: bool = True) -> list[str]:
+    """The sections a page is planned with: the image-led plan on an image-led site, else the
+    page type's own. Without verified contact details no section asks for them: asked for them
+    anyway, the model made them up (see UNVERIFIED_CONTACT)."""
+    plan = (IMAGE_LED_PLANS.get(page["type"]) or IMAGE_LED_PLANS["generic"]) if minimal else SECTION_PLANS.get(page["type"], SECTION_PLANS["generic"])
+    if not contact_verified:
+        plan = [s for s in plan if not s.startswith("the contact details")]
+    return list(plan)
+
+
 def page_brief_text(site: dict, brief, page: dict, handles: dict, contact_prompt: str, layout_system: str, language: str, photos: list[str], cta: tuple[str, str], palette: dict | None = None, revision: str | None = None, photo_notes: list[str] | None = None) -> str:
     is_home = page["route"] == "home"
     # //// Neoffice — an image-led site takes the image-led plans (IMAGE_LED_PLANS); a page
     # //// that is text by nature keeps its own
     minimal = site.get("copy_density") == "minimal" and page["type"] not in TEXT_BY_NATURE
-    plan = (IMAGE_LED_PLANS.get(page["type"]) or IMAGE_LED_PLANS["generic"]) if minimal else SECTION_PLANS.get(page["type"], SECTION_PLANS["generic"])
+    plan = page_sections(page, minimal, contact_verified=site.get("contact_verified", True))
     sections = "\n".join(f"{i}. {s}" for i, s in enumerate(plan, 1))
     concept = getattr(brief, "design_concept", "") or ""
     signature = getattr(brief, "signature_element", "") or ""
@@ -1235,14 +1255,11 @@ def build_site(ctx, spec: dict) -> str:
     # host company's logo in its header and its address on every page, 2026-09-08)
     if _other_business(profile, site_name):
         contact_data = {}
-        contact_prompt = (
-            " Contact details: none are verified for this business. Use clearly generic placeholders the client "
-            "will replace (a street in its town, a Swiss phone in the +41 format, an e-mail on its own domain) and "
-            "never another company's name, logo, address or e-mail."
-        )
+        contact_prompt = UNVERIFIED_CONTACT
     else:
         contact_data = get_site_contact_context(profile)
-        contact_prompt = _contact_context_prompt(contact_data) or ""
+        # the instance's own business without an address on file is no better known
+        contact_prompt = _contact_context_prompt(contact_data) or UNVERIFIED_CONTACT
     if not logo_image and contact_data.get("logo"):
         logo_image = contact_data["logo"]
     # the sites and pictures the client likes: read once, shown to the brief's vision
@@ -1518,6 +1535,7 @@ def build_site(ctx, spec: dict) -> str:
     lister = listing_page(pages)
     lister_route = lister["route"] if lister else None
     site["listing_route"] = lister_route
+    site["contact_verified"] = contact_prompt != UNVERIFIED_CONTACT
     # the photographs each page was written with, and their roles: its revision keeps them
     planned_photos: dict[str, tuple[list[str], list[str]]] = {}
     for idx, page in enumerate(pages):
@@ -1680,5 +1698,10 @@ def build_site(ctx, spec: dict) -> str:
     if host_reusable and any(p["name"] == host_page for p in created):
         lines.append("The page open in the editor is now the home page; the canvas has been refreshed.")
     lines.append("The header, the menu and the footer are set from the brief (Settings > Theme).")
+    if contact_prompt == UNVERIFIED_CONTACT:
+        lines.append(
+            "No contact details are verified for this business, so the site shows none, only the contact form. "
+            "Ask the client for the address, phone and e-mail to show, then add them."
+        )
     lines += visual_check.summary_lines(reviews, revised)
     return "\n".join(lines)
