@@ -125,3 +125,19 @@ class TestBesideKeptPages(unittest.TestCase):
 			{"element": "p", "innerHTML": "Write to us about a collaboration, a shoot or a drop.", "children": []},
 		]
 		self.assertEqual(_describe_page(blocks), "Write to us about a collaboration, a shoot or a drop.")
+
+	def test_the_site_remembers_its_language(self):
+		"""An English site built on a French instance showed "Accueil" and a French contact
+		form: the profile keeps the language the site was written in, for the theme."""
+		from unittest.mock import patch
+
+		from builder.site_ai.nora import site_builder
+
+		db = site_builder.frappe.db
+		with patch.object(db, "has_column", return_value=True), patch.object(db, "exists", return_value=True), patch.object(db, "set_value") as set_value:
+			self.assertTrue(site_builder.remember_site_language("Test Profile", "en"))
+			set_value.assert_called_once_with("Website Profile", "Test Profile", "language", "en")
+		with patch.object(db, "has_column", return_value=False), patch.object(db, "set_value") as set_value:
+			self.assertFalse(site_builder.remember_site_language("Test Profile", "en"))
+			set_value.assert_not_called()
+		self.assertFalse(site_builder.remember_site_language(None, "en"))
