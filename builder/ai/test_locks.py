@@ -106,3 +106,35 @@ class TestLocks(FrappeTestCase):
 		beat.stop()
 
 		self.assertFalse(locks.held(self.key))
+
+	# //// Neoffice — a released token is never restored, even once another turn has come and gone
+	# //// under the same key; a lock deleted under a live turn still comes back (#371).
+	def test_a_released_token_is_never_restored_after_the_next_turn(self):
+		import time
+
+		first = locks.acquire(self.key, 30)
+		beat = locks.Heartbeat(every=0.2)
+		beat.watch(self.key, first, 30)
+		locks.release(self.key, first)
+		second = locks.acquire(self.key, 30)
+		locks.release(self.key, second)
+		time.sleep(0.5)
+		beat.stop()
+
+		self.assertFalse(locks.held(self.key))
+		self.assertEqual(beat.restored, 0)
+
+	def test_a_lock_deleted_under_a_live_turn_still_comes_back(self):
+		import time
+
+		token = locks.acquire(self.key, 30)
+		beat = locks.Heartbeat(every=0.2)
+		beat.watch(self.key, token, 30)
+		cache = frappe.cache()
+		cache.delete(cache.make_key(self.key))
+		time.sleep(0.5)
+		beat.stop()
+
+		self.assertTrue(locks.held(self.key))
+		self.assertGreaterEqual(beat.restored, 1)
+		locks.release(self.key, token)
