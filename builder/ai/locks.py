@@ -43,10 +43,14 @@ return 0
 # //// (2026-09-11: 597 s left at 14:04:23, gone at 14:05:23, no Redis eviction, the job alive),
 # //// and the panel's watchdog read the turn as over. A lock held under another token (another
 # //// turn) is never touched. Returns 1 when extended, 2 when restored, 0 otherwise.
+# //// A lock its OWN token released is not "missing": release() leaves a mark for that token
+# //// (KEYS[2]) and nothing is restored while it exists. Without it the heartbeat revived a
+# //// released lock: a session ended from another request (end_run), or a turn released before
+# //// its heartbeat stopped, stayed locked for up to the TTL (neoffice-maintenance#371).
 EXTEND_OR_RESTORE = """
 local held = redis.call('get', KEYS[1])
 if held == ARGV[1] then return redis.call('expire', KEYS[1], ARGV[2]) end
-if not held then
+if not held and redis.call('exists', KEYS[2]) == 0 then
   if redis.call('set', KEYS[1], ARGV[1], 'EX', ARGV[2], 'NX') then return 2 end
 end
 return 0
@@ -65,7 +69,8 @@ class Heartbeat:
 
 	def __init__(self, every: float | None = None):
 		self._client = frappe.cache()
-		self._pairs: list[tuple[bytes | str, str, int]] = []
+		# //// Neoffice — each entry also carries the token's released mark (see watch())
+		self._pairs: list[tuple[bytes | str, str, int, bytes | str]] = []
 		self._every = every
 		self._stop = threading.Event()
 		self._thread: threading.Thread | None = None
@@ -74,7 +79,9 @@ class Heartbeat:
 	def watch(self, key: str, token: str | None, ttl: int) -> None:
 		if not token:
 			return
-		self._pairs.append((self._client.make_key(key), token, ttl))
+		# //// Neoffice — the released mark of this token rides along (see EXTEND_OR_RESTORE)
+		mark = self._client.make_key(released_mark(key, token))
+		self._pairs.append((self._client.make_key(key), token, ttl, mark))
 		if self._thread is None:
 			self._thread = threading.Thread(target=self._run, name="builder-ai-lock-heartbeat", daemon=True)
 			self._thread.start()
@@ -96,17 +103,28 @@ class Heartbeat:
 		# //// Neoffice — see EXTEND_OR_RESTORE and HEARTBEAT_SECONDS
 		every = self._every or HEARTBEAT_SECONDS
 		while not self._stop.wait(every):
-			for made_key, token, ttl in list(self._pairs):
+			for made_key, token, ttl, mark in list(self._pairs):  # //// Neoffice — mark: see watch()
 				try:
-					if self._client.eval(EXTEND_OR_RESTORE, 1, made_key, token, ttl) == 2:
+					if self._client.eval(EXTEND_OR_RESTORE, 2, made_key, mark, token, ttl) == 2:
 						self.restored += 1
 				except Exception:
 					pass
 
+# //// Neoffice — the release also sets KEYS[2], the released mark of this token. Always: the owner
+# //// is done with the token even when its lock is already gone, and a heartbeat still beating
+# //// must not restore it (neoffice-maintenance#371). Upstream: KEYS[1] only.
 RELEASE_IF_TOKEN_MATCHES = """
+redis.call('set', KEYS[2], '1', 'EX', ARGV[2])
 if redis.call('get', KEYS[1]) == ARGV[1] then return redis.call('del', KEYS[1]) end
 return 0
 """
+# //// Neoffice — a released mark outlives any heartbeat of its turn (the longest lock TTL).
+RELEASED_MARK_TTL = TASK_LOCK_TTL
+
+
+# //// Neoffice — added helper: the unscoped name of the mark release() leaves for a token.
+def released_mark(key: str, token: str) -> str:
+	return f"{key}:released:{token}"
 
 
 def page_key(page_id: str) -> str:
@@ -138,7 +156,15 @@ def release(key: str, token: str | None) -> None:
 	if not token:
 		return
 	cache = frappe.cache()
-	cache.eval(RELEASE_IF_TOKEN_MATCHES, 1, cache.make_key(key), token)
+	# //// Neoffice — + the released mark and its TTL (see RELEASE_IF_TOKEN_MATCHES)
+	cache.eval(
+		RELEASE_IF_TOKEN_MATCHES,
+		2,
+		cache.make_key(key),
+		cache.make_key(released_mark(key, token)),
+		token,
+		RELEASED_MARK_TTL,
+	)
 
 
 def held(key: str) -> bool:
