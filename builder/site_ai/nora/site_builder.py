@@ -1001,6 +1001,16 @@ def _describe(blocks: list) -> str:
         return ""
 
 
+def remember_site_language(profile: str | None, lang: str | None) -> bool:
+    """The site speaks the language it was written in: the theme renders the chrome of a
+    profile's pages (breadcrumb, footer, forms) in the profile's language, where an English
+    site built on a French instance showed "Accueil" and a French contact form (2026-09-12)."""
+    if not (profile and lang) or not frappe.db.has_column("Website Profile", "language") or not frappe.db.exists("Language", lang):
+        return False
+    frappe.db.set_value("Website Profile", profile, "language", lang)
+    return True
+
+
 def apply_navigation(config, created: list[dict], site_type: str, description: str, profile: str | None, lang: str = "fr", site_name: str = "") -> None:
     """Menu, footer and home page from the pages just built (the worker's step 5).
     Labels are translated into the site's language, not the operator's session."""
@@ -1047,6 +1057,7 @@ def apply_navigation(config, created: list[dict], site_type: str, description: s
     if profile and frappe.db.exists("DocType", "Website Profile"):
         if home_name:
             frappe.db.set_value("Website Profile", profile, "home_page", home_name)
+        remember_site_language(profile, lang)
         frappe.cache.delete_value("nt_website_profiles_by_host")
         frappe.cache.delete_value("website_page")
     elif home_name:
