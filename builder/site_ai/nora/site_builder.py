@@ -479,14 +479,21 @@ def photos_for_page(page: dict, library: list[dict], used: dict, categories: lis
     if not library:
         return [], []
 
-    def take(wanted=(), landscape=None) -> dict:
+    category_words = {w for name in categories for w in re.split(r"[^a-z0-9]+", name.lower()) if len(w) > 2}
+
+    def take(wanted=(), landscape=None, avoid=frozenset()) -> dict:
         # a picture carrying text (a banner, an advert) goes nowhere while anything else is left
         pool = [p for p in library if not p["has_text"]] or library
         if landscape is not None:
             pool = [p for p in pool if p["landscape"] == landscape] or pool
 
         def rank(p):
-            fit = sum(2 for w in wanted if w in p["words"] or w in p["text"])
+            # the client's own filing (file name, tags, section) outweighs a word the vision
+            # used in passing, and a photograph filed under another category steps back: a
+            # painting "in street-art style" filed under Home won the Street tile over three
+            # street photographs, on quality alone (2026-09-12)
+            fit = sum(3 if w in p["words"] else 1 if w in p["text"] else 0 for w in wanted)
+            fit -= 2 * len(avoid & p["words"])
             return fit + {"high": 1.0, "medium": 0.5}.get(p["quality"], 0) - 3 * used.get(p["url"], 0)
 
         best = max(pool, key=rank)
@@ -502,7 +509,7 @@ def photos_for_page(page: dict, library: list[dict], used: dict, categories: lis
         if minimal or categories:
             for name in categories:
                 wanted = [w for w in re.split(r"[^a-z0-9]+", name.lower()) if len(w) > 2]
-                tiles.append((take(wanted), f"the tile of '{name}'"))
+                tiles.append((take(wanted, avoid=category_words - set(wanted)), f"the tile of '{name}'"))
         picks = [(take(landscape=True), "the hero, full bleed"), *tiles, (take(landscape=True), "a wide photograph")]
     else:
         wanted = [w for w in re.split(r"[^a-z0-9]+", f"{page['title']} {page['type']}".lower()) if len(w) > 2]
