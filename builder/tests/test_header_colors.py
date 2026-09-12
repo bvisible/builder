@@ -75,3 +75,22 @@ class TestHeaderColors(unittest.TestCase):
 		self.assertEqual(colours["cta_bg"], "#f5f5f5")
 		self.assertEqual(colours["cta_text"], "#1f272e")
 		self.assertEqual(_readable_on("#ffffff", ["#ffffff", None, "#fefefe"]), "#fefefe")
+
+
+class TestOverImageRule(unittest.TestCase):
+	def test_a_block_that_places_itself_keeps_its_position(self):
+		"""A tile's photograph laid across it (position: absolute) was turned back into a flex
+		item by the design system's full-weight `.u-over-image > *` and shrank to a strip beside
+		its title, on the published page only."""
+		import os
+
+		import builder
+
+		path = os.path.join(os.path.dirname(builder.__file__), "templates", "includes", "header_footer", "theme_variables.html")
+		with open(path) as f:
+			css = f.read()
+		self.assertIn(":where(.u-over-image > *)", css)
+		self.assertNotRegex(css, r"(?m)^\.u-over-image > \*")
+		# the scrim comes after the children, so a photograph laid in the section sits under it
+		self.assertIn(".u-over-image::after", css)
+		self.assertNotIn(".u-over-image::before", css)

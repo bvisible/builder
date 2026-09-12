@@ -512,12 +512,19 @@ body.product-page .site-page-header {
 	isolation: isolate;
 }
 
-.u-over-image > * {
+/* Its content reads over the scrim, at zero weight so that a block placing itself keeps
+   its own position: at full weight this rule turned a tile's photograph, laid across the
+   tile (position: absolute; inset: 0), back into a flex item that shrank to a strip beside
+   its title - on the published page only, since the editor does not load this sheet
+   (2026-09-12). */
+:where(.u-over-image > *) {
 	position: relative;
 	z-index: 1;
 }
 
-.u-over-image::before {
+/* The scrim comes after the children: a photograph laid in the section (z-index 0 or
+   none) sits under it, the copy (z-index 1) over it. */
+.u-over-image::after {
 	content: "";
 	position: absolute;
 	inset: 0;
@@ -533,7 +540,7 @@ body.product-page .site-page-header {
 }
 
 /* text at the bottom — a caption, a title over a full-bleed shot */
-.u-over-image--bottom::before {
+.u-over-image--bottom::after {
 	background: linear-gradient(
 		to top,
 		rgba(0, 0, 0, 0.6) 0%,
@@ -543,7 +550,7 @@ body.product-page .site-page-header {
 }
 
 /* a corner, when the composition wants the diagonal free */
-.u-over-image--diagonal::before {
+.u-over-image--diagonal::after {
 	background: linear-gradient(
 		135deg,
 		rgba(0, 0, 0, 0.55) 0%,
@@ -553,7 +560,7 @@ body.product-page .site-page-header {
 }
 
 /* barely there — for an image that is already dark */
-.u-over-image--soft::before {
+.u-over-image--soft::after {
 	background: linear-gradient(
 		to right,
 		rgba(0, 0, 0, 0.3) 0%,
