@@ -95,6 +95,17 @@ class TestBesideKeptPages(unittest.TestCase):
 		self.assertIn('"href": "/contact"', fixed)
 		self.assertEqual(len(edits), 2)
 
+	def test_a_link_bound_under_any_key_is_checked(self):
+		"""One build's category tiles linked through a key named `slug`, which the usual link
+		names did not cover: /snow and /home-burrow stayed dead links."""
+		from builder.site_ai.nora.buttons import repair_data_routes
+
+		blocks = [{"element": "a", "dynamicValues": [{"key": "slug", "property": "href", "type": "attribute"}], "children": []}]
+		script = 'data.categories = [{"name": "Snow", "slug": "/snow"}, {"name": "Home", "slug": "/home-burrow"}]'
+		fixed, edits = repair_data_routes(script, ["/", "/brands", "/contact"], "/contact", categories=["Snow", "Home"], listing="/brands", blocks=blocks)
+		self.assertEqual(fixed.count('"slug": "/brands"'), 2)
+		self.assertEqual(len(edits), 2)
+
 	def test_keep_them_keeps_the_hand_made_pages_only(self):
 		"""Answered with 'none', a question about one hand-made page kept the whole
 		previous site beside the new one."""

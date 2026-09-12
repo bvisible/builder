@@ -146,16 +146,47 @@ def repair_foreign_links(blocks: list, routes: list[str], fallback: str, categor
 
 
 HREF_IN_HTML = re.compile(r"""href=(["'])(/[^"'#?]*)([^"']*)\1""")
-DATA_ROUTE = re.compile(r"""(["'](?:route|href|url|link)["']\s*:\s*["'])(/[^"'#?\s]*)([^"'\s]*)(["'])""")
+DATA_ROUTE_KEYS = ("route", "href", "url", "link")
 
 
-def repair_data_routes(script: str, routes: list[str], fallback: str, categories: list[str] | None = None, listing: str | None = None) -> tuple[str, list[str]]:
+def _href_keys(blocks: list) -> set[str]:
+    """The data keys a page binds to a link's href: a tile's `slug`, `route`, `url`..."""
+    keys: set[str] = set()
+
+    def walk(block: dict) -> None:
+        for dv in block.get("dynamicValues") or []:
+            if isinstance(dv, dict) and dv.get("property") == "href" and dv.get("key"):
+                keys.add(str(dv["key"]).split(".")[-1])
+        for child in block.get("children") or []:
+            if isinstance(child, dict):
+                walk(child)
+
+    for block in blocks or []:
+        if isinstance(block, dict):
+            walk(block)
+    return keys
+
+
+def repair_data_routes(
+    script: str,
+    routes: list[str],
+    fallback: str,
+    categories: list[str] | None = None,
+    listing: str | None = None,
+    blocks: list | None = None,
+) -> tuple[str, list[str]]:
     """The routes a page's data script hands to its repeated blocks go through the same
     check as the links written in the blocks: category tiles bound to "/snow", a page the
     site does not have, led nowhere once their binding worked (2026-09-12). A category's
-    route goes to `listing`, anything else to the page its words mean or to `fallback`."""
+    route goes to `listing`, anything else to the page its words mean or to `fallback`.
+
+    The keys checked are the usual link names and every key the page binds to an href:
+    the tiles of one build linked through a key named `slug` ("/snow", "/home-burrow")."""
     if not script:
         return script, []
+    keys = set(DATA_ROUTE_KEYS) | _href_keys(blocks or [])
+    names = "|".join(re.escape(k) for k in sorted(keys))
+    pattern = re.compile(rf"""(["'](?:{names})["']\s*:\s*["'])(/[^"'#?\s]*)([^"'\s]*)(["'])""")
     known = {r.rstrip("/") or "/" for r in routes}
     category_keys = {c.strip().lower() for c in categories or [] if c.strip()}
     edits: list[str] = []
@@ -165,11 +196,12 @@ def repair_data_routes(script: str, routes: list[str], fallback: str, categories
         if path in known or path.startswith(("/files", "/assets", "/api", "/private")):
             return m.group(0)
         slug = path.strip("/").replace("-", " ").lower()
-        target = listing if listing and slug in category_keys else guess_target(slug, routes, fallback)
+        named = slug in category_keys or bool(set(slug.split()) & category_keys)
+        target = listing if listing and named else guess_target(slug, routes, fallback)
         edits.append(f"{m.group(2)} -> {target}")
         return f"{m.group(1)}{target}{m.group(3)}{m.group(4)}"
 
-    return DATA_ROUTE.sub(swap, script), edits
+    return pattern.sub(swap, script), edits
 
 
 def remap_routes(blocks: list, moved: dict[str, str]) -> list[str]:
