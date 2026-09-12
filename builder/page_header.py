@@ -281,6 +281,67 @@ def render_page_header() -> str:
 	return render(context)
 
 
+# //// Neoffice — the band's subtitle is never a line the page already prints
+# //// (neoffice-maintenance#393). A generated page's meta description IS its first paragraph
+# //// (builder.api._describe_page takes it so that the band does not echo the headline), so the
+# //// band printed that sentence and the page repeated it just below, on every interior page.
+# //// The three helpers below serve that check in render_builder_page_header.
+_SHORTEST_REPEAT = 25
+
+
+def _plain(text) -> str:
+	"""The words a block shows: tags and Jinja out, entities decoded, spaces collapsed, no case."""
+	import html
+
+	clean = re.sub(r"<[^>]+>", " ", str(text or ""))
+	clean = re.sub(r"\{%.*?%\}|\{\{.*?\}\}|\{#.*?#\}", " ", clean, flags=re.S)
+	clean = html.unescape(clean).replace("\u00a0", " ")
+	return re.sub(r"\s+", " ", clean).strip().casefold()
+
+
+def _page_prints(blocks, line: str) -> bool:
+	"""Whether one of `blocks` (the block tree, or its JSON as stored) prints `line`.
+
+	The line may end on the ellipsis builder.api._shorten_for_footer puts on a cut. A
+	line of a few words is never called a repeat: it could sit inside any sentence.
+	"""
+	import json
+
+	wanted = _plain(line).rstrip("…").rstrip()
+	if len(wanted) < _SHORTEST_REPEAT:
+		return False
+	if isinstance(blocks, str):
+		try:
+			blocks = json.loads(blocks)
+		except ValueError:
+			return False
+	if not isinstance(blocks, list):
+		return False
+
+	def prints(node, depth=0) -> bool:
+		if depth > 16 or not isinstance(node, dict):
+			return False
+		text = node.get("innerHTML") or node.get("innerText") or ""
+		if text and wanted in _plain(text):
+			return True
+		return any(prints(child, depth + 1) for child in node.get("children") or [])
+
+	return any(prints(block) for block in blocks)
+
+
+def _rendered_blocks(doc):
+	"""The blocks this request shows: the draft in a preview, the published ones otherwise,
+	as BuilderPage.get_context chooses them."""
+
+	def value(name):
+		return (doc.get(name) if hasattr(doc, "get") else getattr(doc, name, None)) or ""
+
+	request = getattr(frappe.local, "request", None)
+	if getattr(request, "for_preview", None) and value("draft_blocks"):
+		return value("draft_blocks")
+	return value("blocks")
+
+
 # //// Neoffice — whitelist REMOVED (was @frappe.whitelist(allow_guest=True)). Same reason as
 # //// render_page_header above, plus one of its own: `doc` came from the caller, so over HTTP
 # //// this rendered a band out of whatever dict was posted.
@@ -313,7 +374,12 @@ def render_builder_page_header(doc=None) -> str:
 	# The page's meta description is already one descriptive line about this
 	# page, written by whoever made it. Reusing it beats adding a second field
 	# that says the same thing and that nothing fills.
-	subtitle = _field("page_header_subtitle") or _field("meta_description")
+	subtitle = _field("page_header_subtitle")
+	description = _field("meta_description")
+	# //// Neoffice — ...unless the page prints that line itself (neoffice-maintenance#393, see
+	# //// _page_prints). A subtitle written for the band is kept as it is.
+	if not subtitle and description and not _page_prints(_rendered_blocks(doc), description):
+		subtitle = description
 
 	context = frappe._dict({"title": title, "page_header_subtitle": subtitle})
 	# a Builder page has no `parents`; the route is the trail
