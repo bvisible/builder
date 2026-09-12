@@ -1428,7 +1428,7 @@ def build_site(ctx, spec: dict) -> str:
                     # the routes the data script hands to repeated blocks pass the same check
                     from builder.site_ai.nora.buttons import repair_data_routes
 
-                    data_script, data_moved = repair_data_routes(data_script, routes, cta[1], categories=categories, listing=listing)
+                    data_script, data_moved = repair_data_routes(data_script, routes, cta[1], categories=categories, listing=listing, blocks=blocks)
                     if data_moved:
                         ai_log("info", "Data script links brought home", page=page["title"], edits=data_moved)
                     variants = repair_button_variants(blocks, palette)
