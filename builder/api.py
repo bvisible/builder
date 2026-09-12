@@ -2310,6 +2310,9 @@ def _describe_page(blocks) -> str:
 			# friends back into characters — this line is read by a human and
 			# by a search engine, not by a browser
 			clean = re.sub(r"<[^>]+>", " ", str(raw))
+			# //// Neoffice \u2014 Jinja left out: a contact page whose first text was its form's
+			# //// include printed "{% include '\u2026/contact_form.html' %}" under its title (2026-09-12)
+			clean = re.sub(r"\{%.*?%\}|\{\{.*?\}\}|\{#.*?#\}", " ", clean, flags=re.S)
 			clean = html.unescape(clean).replace("\u00a0", " ")
 			clean = re.sub(r"\s+", " ", clean).strip()
 			# skip eyebrows (short, shouted) and bare stat numerals
