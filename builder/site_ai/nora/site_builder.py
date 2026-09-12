@@ -1322,7 +1322,10 @@ def build_site(ctx, spec: dict) -> str:
             ai_log("warning", "Client library skipped", error=str(e)[:200])
     # the pages are written with the client's own photographs (photos_for_page), and the
     # categories the brief names get their tiles and a link to the page that lists them
-    client_photos = library_photos(getattr(ctx, "session_id", None), only=photos) if photos else []
+    # without a list, a rebuild takes every photograph the conversation already took in: asked
+    # for "the same 12 photos", the model hunted them in the File list and found 10 on the pages,
+    # or product shots beside them (2026-09-12)
+    client_photos = library_photos(getattr(ctx, "session_id", None), only=photos or None)
     # the categories travel as their own list; the brief's own words are only the fallback
     categories = [str(c).strip() for c in (spec.get("categories") or []) if str(c).strip()][:8] or category_names(
         activity, spec.get("differentiators") or "", spec.get("style_direction") or ""
