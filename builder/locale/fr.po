@@ -10255,3 +10255,15 @@ msgstr "Plus"
 
 msgid "Request an account"
 msgstr "Demander un compte"
+
+#: builder/templates/includes/contact_form.html
+msgid "Contact from the website"
+msgstr "Contact depuis le site web"
+
+#: builder/templates/includes/contact_form.html
+msgid "Thank you, your message has been sent."
+msgstr "Merci, votre message a été envoyé."
+
+#: builder/templates/includes/contact_form.html
+msgid "Your message could not be sent. Please check your email address and try again."
+msgstr "Votre message n'a pas pu être envoyé. Veuillez vérifier votre adresse e-mail et réessayer."

@@ -1,27 +1,37 @@
 {# //// Neoffice — added file (no upstream equivalent): Jinja block: a contact form that really submits to
    //// Frappe. Reusable block the generator may include; Neoffice-only. First commit 747f0f91 2026-02-03. #}
 {# Contact Form Template - Functional form that submits to Frappe #}
+{# //// Neoffice — ONE field is named `sender`: the email (neoffice-maintenance#398). The name field was
+   //// `sender` too, so the browser posted sender=<name>&sender=<address>; frappe keeps the first value
+   //// and send_message refused the name as an address: no message ever arrived. send_message takes
+   //// sender, subject and message only, so the script at the bottom puts the name and the phone at the
+   //// top of the message and says on the page whether it went. Without JavaScript the form still posts
+   //// the address and the message. The subject was French written in the code: it is translated now. #}
 <div class="builder-contact-form">
-    <form action="/api/method/frappe.www.contact.send_message" method="POST" class="contact-form">
+    <form action="/api/method/frappe.www.contact.send_message" method="POST" class="contact-form"
+          data-sent="{{ _('Thank you, your message has been sent.') | e }}"
+          data-failed="{{ _('Your message could not be sent. Please check your email address and try again.') | e }}"
+          data-name-label="{{ _('Name') | e }}"
+          data-phone-label="{{ _('Phone') | e }}">
         <input type="hidden" name="cmd" value="frappe.www.contact.send_message">
-        <input type="hidden" name="subject" value="Contact depuis le site web">
+        <input type="hidden" name="subject" value="{{ _('Contact from the website') | e }}">
 
         <div class="form-row">
             <div class="form-group">
                 <label for="sender_name">{{ _("Name") }} <span class="required">*</span></label>
-                <input type="text" id="sender_name" name="sender" required
+                <input type="text" id="sender_name" name="full_name" required autocomplete="name"
                        placeholder="{{ _('Your name') }}">
             </div>
             <div class="form-group">
                 <label for="sender_email">{{ _("Email") }} <span class="required">*</span></label>
-                <input type="email" id="sender_email" name="sender" required
+                <input type="email" id="sender_email" name="sender" required autocomplete="email"
                        placeholder="{{ _('your.email@example.com') }}">
             </div>
         </div>
 
         <div class="form-group">
             <label for="contact_phone">{{ _("Phone") }}</label>
-            <input type="tel" id="contact_phone" name="phone"
+            <input type="tel" id="contact_phone" name="phone" autocomplete="tel"
                    placeholder="{{ _('+41 XX XXX XX XX') }}">
         </div>
 
@@ -34,6 +44,7 @@
         <button type="submit" class="btn btn-primary">
             {{ _("Send Message") }}
         </button>
+        <p class="builder-contact-form__status" role="status" aria-live="polite" hidden></p>
     </form>
 </div>
 
@@ -116,4 +127,65 @@
     background: var(--primary-hover, var(--primary-color, #111111));
     transform: translateY(-1px);
 }
+.builder-contact-form button[type="submit"]:disabled {
+    opacity: 0.6;
+    cursor: progress;
+    transform: none;
+}
+/* //// Neoffice — what the visitor reads once the form is sent (neoffice-maintenance#398): in the
+   section's ink like the labels; a failure is marked by a red rule, not by red text that a light
+   or a dark ground could swallow. */
+.builder-contact-form__status {
+    margin: 1rem 0 0;
+    font-weight: 600;
+}
+.builder-contact-form__status.is-error {
+    border-left: 3px solid #ef4444;
+    padding-left: 0.75rem;
+}
 </style>
+
+<script>
+// //// Neoffice — sends the form and says whether it went (neoffice-maintenance#398, see the
+// //// marker above the form). One listener per form, even when a page includes the form twice.
+(function () {
+    document.querySelectorAll(".builder-contact-form form:not([data-bound])").forEach(function (form) {
+        form.setAttribute("data-bound", "1");
+        form.addEventListener("submit", function (event) {
+            event.preventDefault();
+            var status = form.querySelector(".builder-contact-form__status");
+            var button = form.querySelector('button[type="submit"]');
+            var field = function (name) {
+                var input = form.elements.namedItem(name);
+                return input && input.value ? input.value.trim() : "";
+            };
+            var head = [];
+            if (field("full_name")) head.push(form.dataset.nameLabel + ": " + field("full_name"));
+            if (field("phone")) head.push(form.dataset.phoneLabel + ": " + field("phone"));
+            var body = new URLSearchParams({
+                sender: field("sender"),
+                subject: field("subject"),
+                message: (head.length ? head.join("\n") + "\n\n" : "") + field("message"),
+            });
+            var headers = { Accept: "application/json" };
+            if (window.frappe && window.frappe.csrf_token) headers["X-Frappe-CSRF-Token"] = window.frappe.csrf_token;
+            button.disabled = true;
+            fetch(form.action, { method: "POST", body: body, headers: headers, credentials: "same-origin" })
+                .then(function (response) {
+                    if (!response.ok) throw new Error(String(response.status));
+                    form.reset();
+                    status.textContent = form.dataset.sent;
+                    status.classList.remove("is-error");
+                })
+                .catch(function () {
+                    status.textContent = form.dataset.failed;
+                    status.classList.add("is-error");
+                })
+                .finally(function () {
+                    status.hidden = false;
+                    button.disabled = false;
+                });
+        });
+    });
+})();
+</script>
