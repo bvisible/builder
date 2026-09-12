@@ -91,6 +91,10 @@ SNAPSHOT_TOOLS = frozenset(
 	}
 )
 
+# //// Neoffice — added: server tools that rewrite the open page in the database. The working
+# //// tree follows them (see follow_page_rewrite), as it follows generate_page.
+PAGE_REWRITING_TOOLS = frozenset({"generate_site"})
+
 # Script tools ALWAYS apply through their server handlers, editor sessions included.
 # Applying them in the browser (frappe.client.insert from toolDispatch) lost scripts
 # silently — two parallel attaches in one round raced and .catch(() => null) ate the
@@ -859,6 +863,29 @@ class AgentRunner:
 			page_writer.save_draft_blocks(self.page_id, self.tree.root)
 		return ops
 
+	# //// Neoffice — added method (see run_op and PAGE_REWRITING_TOOLS)
+	def follow_page_rewrite(self, tool_name: str, content) -> bool:
+		"""Reload the working tree from the database after a server tool rewrote the open page.
+
+		generate_site builds the whole site and refills the page open in the editor, but the
+		tree kept that page as it was when the turn began: the agent's next edits matched its
+		old blocks, and save_draft_blocks wrote the old page back over the new draft (a rebuilt
+		home's draft kept one section of the previous page while the published page had four,
+		2026-09-12). Queued ops are persisted before this runs, so nothing the tree held is
+		lost. The revert snapshot is retaken while the turn has not used it, so "Revert" undoes
+		the edits made after the rewrite, not the rewrite itself. Returns whether the tree was
+		reloaded."""
+		if tool_name not in PAGE_REWRITING_TOOLS or not self.page_id or str(content).startswith("FAILED"):
+			return False
+		from builder.ai import page_writer
+
+		# the build may have replaced the open page by another one: an empty tree, not a crash
+		root = page_writer.load_page_root(self.page_id) if frappe.db.exists("Builder Page", self.page_id) else None
+		self.tree = WorkingTree(root)
+		if root is not None and self.pending_state is not None:
+			self.pending_state = capture_page_state(self.page_id)
+		return True
+
 	def page_root(self) -> dict | None:
 		"""The current page's root block — the authoritative working tree. Edits made
 		this turn are visible to context rebuilds and the query tools, and refs stay
@@ -1103,6 +1130,9 @@ class AgentRunner:
 		content = self.run_handler(tool, op)
 		self.end_activity(entry)
 		self.drain_queued_ops()
+		# //// Neoffice — a server tool can rewrite the open page in the database: the next block
+		# //// edit must land on that page, not on the one loaded when the turn began
+		self.follow_page_rewrite(op["tool_name"], content)
 		if op["tool_name"] not in READ_ONLY_SERVER_TOOLS and not str(content).startswith("FAILED"):
 			self.server_mutations += 1
 			if op["tool_name"] in SCRIPT_TWIN_TOOLS:
