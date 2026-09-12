@@ -251,6 +251,8 @@ class TestPhotosGoToPages(unittest.TestCase):
 			["Snow", "Street", "Water", "Outdoor", "Home"],
 		)
 		self.assertEqual(category_names("", "Trois univers : Neige, Rue et Eau."), ["Neige", "Rue", "Eau"])
+		# a list in brackets, as a model summarises it
+		self.assertEqual(category_names("Boardsport store in five segments (Snow, Street, Water, Outdoor, Home)."), ["Snow", "Street", "Water", "Outdoor", "Home"])
 		self.assertEqual(category_names("A law firm in Geneva."), [])
 
 	def test_the_home_gives_each_category_its_photograph(self):
