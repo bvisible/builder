@@ -77,6 +77,37 @@ class TestHeaderColors(unittest.TestCase):
 		self.assertEqual(_readable_on("#ffffff", ["#ffffff", None, "#fefefe"]), "#fefefe")
 
 
+class TestShopPagesKeepTheChromeInk(unittest.TestCase):
+	"""The chrome never writes light-ground text over the shop's pages.
+
+	The shop draws on the chrome's ground with the chrome's ink (its tokens read
+	--background-color and --text-color), so a rule giving `body.product-page` the dark
+	light-surface text made the product title, the filter heading and the icons vanish on
+	a dark site (2026-09-12). The white-card rule stays for frappe's own cards, and names
+	none of the shop's.
+	"""
+
+	def _css(self):
+		"""The template's rules, its comments stripped: the history above the block names
+		the very selector this test forbids."""
+		import pathlib
+		import re
+
+		css = pathlib.Path(__file__).parent.parent.joinpath("templates/includes/header_footer/theme_variables.html").read_text()
+		return re.sub(r"/\*.*?\*/", "", css, flags=re.S)
+
+	def test_no_rule_targets_the_shop_pages(self):
+		self.assertNotIn("body.product-page", self._css())
+
+	def test_the_white_card_rule_names_no_shop_card(self):
+		import re
+
+		rule = re.search(r":where\(([^)]*)\)\s*\{\s*--text-color: #1f272e", self._css())
+		self.assertIsNotNone(rule, "the white-card rule is gone")
+		for shop_class in (".product-card", ".item-card", ".cart-items"):
+			self.assertNotIn(shop_class, rule.group(1))
+
+
 class TestOverImageRule(unittest.TestCase):
 	def test_a_block_that_places_itself_keeps_its_position(self):
 		"""A tile's photograph laid across it (position: absolute) was turned back into a flex
