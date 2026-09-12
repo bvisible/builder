@@ -469,13 +469,24 @@ def library_photos(session_id: str | None, only: list[str] | None = None) -> lis
     return photos
 
 
-def photos_for_page(page: dict, library: list[dict], used: dict, categories: list[str], minimal: bool) -> tuple[list[str], list[str]]:
+LISTING_WORDS = re.compile(r"brand|shop|catalog|collection|product|boutique|store|marque", re.I)
+
+
+def listing_page(pages: list[dict]) -> dict | None:
+    """The page that shows what the site offers (a shop, the brands, the collections): where
+    a category tile leads, and a page that shows each category with its own photograph."""
+    return next((p for p in pages if p.get("type") == "shop" or LISTING_WORDS.search(f"{p.get('title', '')} {p.get('route', '')}")), None)
+
+
+def photos_for_page(page: dict, library: list[dict], used: dict, categories: list[str], minimal: bool, listing: bool = False) -> tuple[list[str], list[str]]:
     """The client's photographs a page is written with, and what each is for.
 
     The home gets its hero, one photograph per category the brief names (matched on what
-    the vision read in it, else the best left) when the site is image-led or names its
-    categories, and a wide one. A photograph carrying text never opens a page, and the ones
-    already used go last, so the pages do not repeat each other."""
+    the vision read in it, else the best left), and a wide one. The page that lists the
+    offer (`listing`) shows each category with its own photograph too: given two, it drew
+    four of its five category panels as flat colour (2026-09-12). A photograph carrying
+    text never opens a page, and the ones already used go last, so the pages do not repeat
+    each other."""
     if not library:
         return [], []
 
@@ -491,8 +502,9 @@ def photos_for_page(page: dict, library: list[dict], used: dict, categories: lis
             # the client's own filing (file name, tags, section) outweighs a word the vision
             # used in passing, and a photograph filed under another category steps back: a
             # painting "in street-art style" filed under Home won the Street tile over three
-            # street photographs, on quality alone (2026-09-12)
-            fit = sum(3 if w in p["words"] else 1 if w in p["text"] else 0 for w in wanted)
+            # street photographs, on quality alone (2026-09-12). Filed under the category, a
+            # photograph already shown still beats one that is not about it.
+            fit = sum(4 if w in p["words"] else 1 if w in p["text"] else 0 for w in wanted)
             fit -= 2 * len(avoid & p["words"])
             return fit + {"high": 1.0, "medium": 0.5}.get(p["quality"], 0) - 3 * used.get(p["url"], 0)
 
@@ -500,21 +512,20 @@ def photos_for_page(page: dict, library: list[dict], used: dict, categories: lis
         used[best["url"]] = used.get(best["url"], 0) + 1
         return best
 
-    picks = []
+    # the category tiles choose first: each needs one precise photograph, the hero any good
+    # one (served first, the hero took the only snow picture and the snow tile got the banner)
+    tiles = []
+    if categories and (page["type"] == "accueil" or listing):
+        for name in categories:
+            wanted = [w for w in re.split(r"[^a-z0-9]+", name.lower()) if len(w) > 2]
+            tiles.append((take(wanted, avoid=category_words - set(wanted)), f"the tile of '{name}'"))
     if page["type"] == "accueil":
-        # the category tiles choose first: each needs one precise photograph, the hero any
-        # good one (served first, the hero took the only snow picture and the snow tile got
-        # the banner)
-        tiles = []
-        if minimal or categories:
-            for name in categories:
-                wanted = [w for w in re.split(r"[^a-z0-9]+", name.lower()) if len(w) > 2]
-                tiles.append((take(wanted, avoid=category_words - set(wanted)), f"the tile of '{name}'"))
         picks = [(take(landscape=True), "the hero, full bleed"), *tiles, (take(landscape=True), "a wide photograph")]
+    elif tiles:
+        picks = [(take(landscape=True), "the first photograph of the page"), *tiles]
     else:
         wanted = [w for w in re.split(r"[^a-z0-9]+", f"{page['title']} {page['type']}".lower()) if len(w) > 2]
-        for i in range(PAGE_PHOTO_COUNT.get(page["type"], 2)):
-            picks.append((take(wanted), "the first photograph of the page" if i == 0 else "a photograph"))
+        picks = [(take(wanted), "the first photograph of the page" if i == 0 else "a photograph") for i in range(PAGE_PHOTO_COUNT.get(page["type"], 2))]
     urls, notes = [], []
     for photo, role in picks:
         if photo["url"] in urls:
@@ -788,7 +799,7 @@ def page_brief_text(site: dict, brief, page: dict, handles: dict, contact_prompt
             # name and two repeated photographs (2026-09-12)
             f"CATEGORIES, in the client's words: {', '.join(site['categories'])}. Name each one exactly so, in this order, "
             "and give each its own photograph tile (the PHOTOS notes say which)."
-            if site.get("categories") and page["type"] == "accueil"
+            if site.get("categories") and (page["type"] == "accueil" or page["route"] == site.get("listing_route"))
             else ""
         ),
         (
@@ -1428,7 +1439,7 @@ def build_site(ctx, spec: dict) -> str:
                     # a link to another site of the instance, or to a page that does not exist
                     # a category tile the model linked to a page the site does not have goes to
                     # the page that lists what the site offers, not to the contact form
-                    listing = next((r for p, r in zip(pages, routes) if p["type"] == "shop" or re.search(r"brand|shop|catalog|collection|product|boutique|store|marque", f"{p['title']} {p['route']}", re.I)), None)
+                    listing = next((r for p, r in zip(pages, routes) if p["route"] == lister_route), None)
                     foreign = repair_foreign_links(blocks, routes, cta[1], categories=categories, listing=listing)
                     if foreign:
                         ai_log("info", "Foreign links brought home", page=page["title"], edits=foreign)
@@ -1474,12 +1485,16 @@ def build_site(ctx, spec: dict) -> str:
                 ai_log("warning", "Page generation attempt failed", page=page["title"], attempt=attempt + 1, error=error)
         return blocks, data_script, error
 
+    # the page that lists the offer: where the category tiles lead, and a page of tiles itself
+    lister = listing_page(pages)
+    lister_route = lister["route"] if lister else None
+    site["listing_route"] = lister_route
     for idx, page in enumerate(pages):
         if ctx.is_cancelled():
             cancelled = True
             break
         _progress(ctx, job_id, _("Writing page {0} of {1}: {2}").format(idx + 1, total, page["title"]), 10 + int(80 * idx / max(total, 1)), {"current_page": page["title"], "pages_created": created})
-        page_photos, page_notes = photos_for_page(page, client_photos, photos_used, categories, copy_density == "minimal")
+        page_photos, page_notes = photos_for_page(page, client_photos, photos_used, categories, copy_density == "minimal", listing=page["route"] == lister_route)
         blocks, data_script, error = write_page(page, page_photos or placeholder_photos(page, activity), notes=page_notes or None)
         if not blocks:
             failed.append({"title": page["title"], "error": error})

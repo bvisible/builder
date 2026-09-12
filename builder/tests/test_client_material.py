@@ -282,6 +282,27 @@ class TestPhotosGoToPages(unittest.TestCase):
 		tiles = {n.split("'")[1]: u for u, n in zip(urls, notes, strict=True) if "tile of" in n}
 		self.assertEqual(tiles, {"Street": "/files/street-skate-bridge.jpg", "Home": "/files/home-studio-artists.jpg"})
 
+	def test_the_page_that_lists_shows_each_category_with_its_photograph(self):
+		"""Given two photographs, the page listing five categories drew four of its category
+		panels as flat colour."""
+		from builder.site_ai.nora.site_builder import listing_page, photos_for_page
+
+		pages = [
+			{"title": "Home", "route": "home", "type": "accueil"},
+			{"title": "Brands", "route": "brands", "type": "generic"},
+			{"title": "About", "route": "about", "type": "about"},
+		]
+		self.assertEqual(listing_page(pages)["route"], "brands")
+		self.assertIsNone(listing_page(pages[2:]))
+		used = {}
+		photos_for_page(pages[0], LIBRARY, used, ["Snow", "Street", "Water"], True)
+		urls, notes = photos_for_page(pages[1], LIBRARY, used, ["Snow", "Street", "Water"], True, listing=True)
+		tiles = {n.split("'")[1]: u for u, n in zip(urls, notes, strict=True) if "tile of" in n}
+		# already shown on the home, each category's own photograph still wins its tile
+		self.assertEqual(tiles, {"Snow": "/files/rider.jpg", "Street": "/files/skate.jpg", "Water": "/files/surf.jpg"})
+		# a page that does not list has no tiles
+		self.assertFalse(any("tile of" in n for n in photos_for_page(pages[2], LIBRARY, dict(used), ["Snow"], True)[1]))
+
 	def test_a_rebuild_finds_the_photographs_an_earlier_build_took_in(self):
 		"""A rebuild of the same conversation found the twelve photographs already known, took
 		in none, and wrote its pages with placeholders: the library is read either way, and
