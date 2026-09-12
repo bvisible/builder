@@ -123,9 +123,13 @@ def _json_card(text: str) -> dict | None:
     decoder = json.JSONDecoder()
     found = None
     starts = sorted([m.start() for m in JSON_OBJECT.finditer(text)] + [m.start() for m in JSON_LIST.finditer(text)])
+    end = -1
     for start in starts:
+        if start < end:
+            # inside the card just read: its own ui list is not a card of its own
+            continue
         try:
-            obj, _ = decoder.raw_decode(text, start)
+            obj, end = decoder.raw_decode(text, start)
         except ValueError:
             continue
         if isinstance(obj, list):
