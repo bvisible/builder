@@ -359,42 +359,32 @@ a:where(:not(.u-btn)):hover {
 	outline-offset: 2px;
 }
 
-/* //// Neoffice ▼▼▼ — frappe's and webshop's own rendered pages (login, account, catalogue,
-   product, cart) sit on frappe's own light chrome even when the site is dark, and its bundle
-   paints headings a literal near-black: added piecemeal as each surface turned out unreadable
-   on a reseller site's dark site (2026-09-09) — e1e04aa0 (card selector + title band), cda46005
-   ("white cards keep dark text on a dark site, and the title band takes the heading colour"),
-   bb88301a ("the links around the login card read on a dark site"), 67e1f9b8 ("only webshop's
-   pages take the light-ground text on a dark site", scoping the block below to body.product-page
-   instead of every frappe content wrapper, login included). */
-/* frappe's and webshop's own cards (login, account request, portal, product cards)
-   are white whatever the site: inside them the text variables are the light-surface
-   ones, so a dark site's light text and muted text never land on white */
-:where(.frappe-card, .page-card, .card, .product-card, .item-card, .cart-items) {
+/* //// Neoffice ▼▼▼ — frappe's own rendered pages (login, account) sit on frappe's own
+   light chrome even when the site is dark, and its bundle paints headings a literal
+   near-black: added piecemeal as each surface turned out unreadable on a reseller site's
+   dark site (2026-09-09) — e1e04aa0 (card selector + title band), cda46005 ("white cards
+   keep dark text on a dark site, and the title band takes the heading colour"), bb88301a
+   ("the links around the login card read on a dark site"), 67e1f9b8 ("only webshop's pages
+   take the light-ground text on a dark site").
+   The shop's pages LEFT this block on 2026-09-12. Since 2026-09-11 the shop draws on the
+   chrome's ground with the chrome's ink (webshop_tokens.scss reads --background-color,
+   --text-color…), and the rule that gave `body.product-page` the light-ground text — right
+   while the shop painted a white ground whatever the site — turned its ink dark on its own
+   dark ground: the product title (this chrome's own title band), the filter heading, the
+   search icon and the hearts vanished on the same reseller site. The shop's own cards
+   (.product-card, .item-card, .cart-items) left the list below for the same reason: they
+   are chrome surfaces now, and the shop re-anchors the tokens inside them itself
+   (webshop_ground.scss). */
+/* frappe's own cards (login, account request, portal) and a bare bootstrap card are white
+   whatever the site: inside them the text variables are the light-surface ones, so a dark
+   site's light text and muted text never land on white */
+:where(.frappe-card, .page-card, .card) {
 	--text-color: #1f272e;
 	--text-muted: #6b7280;
 	--text-light: #6b7280;
 	--heading-color: #1f272e;
 	color: #1f272e;
 }
-{%- if not surface_is_light %}
-
-/* webshop paints its own pages (the catalogue, a product, the cart: body.product-page)
-   on a light ground whatever the site, while frappe's pages (login, account) sit on
-   the site's ground: on a dark site the catalogue's title band, breadcrumbs, filters
-   and sort label wore the site's light text and vanished (a reseller site, 2026-09-09).
-   On webshop's pages the content and the band take the light-surface tokens; the
-   login page keeps its dark ground and light text, and the chrome (header, footer)
-   its own colours, which is why the tokens are not redefined on the body */
-body.product-page .page-content-wrapper,
-body.product-page .site-page-header {
-	--text-color: #1f272e;
-	--text-muted: #6b7280;
-	--text-light: #6b7280;
-	--heading-color: #1f272e;
-	color: #1f272e;
-}
-{%- endif %}
 
 /* the links frappe prints around its login card ("Don't have an account?", the
    password reset) wear the primary colour, invisible when the primary is the dark
