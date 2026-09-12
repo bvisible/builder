@@ -237,6 +237,26 @@ def strip_binding_prefix(key) -> str:
 BINDING_SOURCES = {"props.": "props", "component.": "componentData"}
 
 
+# //// Neoffice — added: the properties a `bind` sets as CSS. A tile's photograph bound as
+# //// `backgroundImage` went out as an HTML attribute named backgroundImage and the tile rendered
+# //// empty (2026-09-12); builder renders a "style" binding into the style attribute and the canvas
+# //// applies it too. Width and height stay attributes: they are an image's own.
+STYLE_BINDINGS = frozenset(
+	{
+		"background",
+		"backgroundImage",
+		"backgroundColor",
+		"backgroundPosition",
+		"backgroundSize",
+		"color",
+		"borderColor",
+		"opacity",
+		"objectPosition",
+		"aspectRatio",
+	}
+)
+
+
 def binding_entry(prop: str, field) -> dict:
 	key = str(field or "").strip()
 	comes_from = None
@@ -247,10 +267,11 @@ def binding_entry(prop: str, field) -> dict:
 			break
 	else:
 		key = strip_binding_prefix(key)
+	# //// Neoffice — a CSS property binds a style, not an HTML attribute (see STYLE_BINDINGS)
 	entry = (
 		{"key": key, "property": "innerHTML", "type": "key"}
 		if prop in ("innerHTML", "text")
-		else {"key": key, "property": prop, "type": "attribute"}
+		else {"key": key, "property": prop, "type": "style" if prop in STYLE_BINDINGS else "attribute"}
 	)
 	if comes_from:
 		entry["comesFrom"] = comes_from

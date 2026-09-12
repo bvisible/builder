@@ -106,6 +106,29 @@ class TestBesideKeptPages(unittest.TestCase):
 		self.assertEqual(fixed.count('"slug": "/brands"'), 2)
 		self.assertEqual(len(edits), 2)
 
+	def test_a_category_link_under_a_section_path_goes_to_the_listing(self):
+		"""The seventh build linked its home tiles to /culture/snow and the like, and the repair
+		sent all five to the contact form."""
+		from builder.site_ai.nora.buttons import repair_data_routes, repair_foreign_links
+
+		routes = ["/", "/brands", "/about", "/contact"]
+		blocks = [{"attributes": {"href": "/culture/snow"}, "children": []}, {"attributes": {"href": "/pricing/plans"}, "children": []}]
+		repair_foreign_links(blocks, routes, "/contact", categories=["Snow"], listing="/brands")
+		self.assertEqual([b["attributes"]["href"] for b in blocks], ["/brands", "/contact"])
+		script = 'data.tiles = [{"name": "Street", "route": "/culture/street"}]'
+		fixed, edits = repair_data_routes(script, routes, "/contact", categories=["Street"], listing="/brands")
+		self.assertIn('"route": "/brands"', fixed)
+		self.assertEqual(len(edits), 1)
+
+	def test_a_bind_to_a_css_property_binds_a_style(self):
+		"""A tile's photograph bound as backgroundImage went out as an HTML attribute and the
+		tile rendered empty."""
+		from builder.ai.page_writer import convert_yaml_block
+
+		block = convert_yaml_block({"el": "a", "bind": {"backgroundImage": "image", "href": "href", "text": "label"}})
+		bound = {(d["property"], d["type"]) for d in block["dynamicValues"]}
+		self.assertEqual(bound, {("backgroundImage", "style"), ("href", "attribute"), ("innerHTML", "key")})
+
 	def test_keep_them_keeps_the_hand_made_pages_only(self):
 		"""Answered with 'none', a question about one hand-made page kept the whole
 		previous site beside the new one."""

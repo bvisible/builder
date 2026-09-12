@@ -7,6 +7,21 @@ import type { ChatMessage } from "./types";
 /** HTML attributes that map to first-class Block attributes (vs. customAttributes). */
 export const STANDARD_ATTRS = new Set(["src", "alt", "href", "title", "value", "type", "placeholder"]);
 
+//// Neoffice — the properties a `bind` sets as CSS (mirrors page_writer.STYLE_BINDINGS). Width and
+//// height stay attributes: they are an image's own.
+export const STYLE_BINDINGS = new Set([
+	"background",
+	"backgroundImage",
+	"backgroundColor",
+	"backgroundPosition",
+	"backgroundSize",
+	"color",
+	"borderColor",
+	"opacity",
+	"objectPosition",
+	"aspectRatio",
+]);
+
 export function buildLocalMessage(
 	role: "user" | "assistant",
 	content: string,
@@ -78,10 +93,13 @@ export function bindingEntry(property: string, field: string | null | undefined)
 		key = stripBindingPrefix(key);
 	}
 	const isContent = property === "innerHTML" || property === "text";
+	//// Neoffice — a CSS property binds a style, not an HTML attribute (mirrors
+	//// page_writer.STYLE_BINDINGS): a tile's photograph bound as backgroundImage rendered nothing.
+	const type = isContent ? "key" : STYLE_BINDINGS.has(property) ? "style" : "attribute";
 	return {
 		key,
 		property: isContent ? "innerHTML" : property,
-		type: (isContent ? "key" : "attribute") as BlockDataKeyType,
+		type: type as BlockDataKeyType,
 		...(comesFrom ? { comesFrom } : {}),
 	};
 }
