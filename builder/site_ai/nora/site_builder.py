@@ -1425,6 +1425,12 @@ def build_site(ctx, spec: dict) -> str:
                     foreign = repair_foreign_links(blocks, routes, cta[1], categories=categories, listing=listing)
                     if foreign:
                         ai_log("info", "Foreign links brought home", page=page["title"], edits=foreign)
+                    # the routes the data script hands to repeated blocks pass the same check
+                    from builder.site_ai.nora.buttons import repair_data_routes
+
+                    data_script, data_moved = repair_data_routes(data_script, routes, cta[1], categories=categories, listing=listing)
+                    if data_moved:
+                        ai_log("info", "Data script links brought home", page=page["title"], edits=data_moved)
                     variants = repair_button_variants(blocks, palette)
                     if variants:
                         ai_log("info", "Button variants repaired", page=page["title"], edits=variants)

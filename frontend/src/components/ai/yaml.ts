@@ -114,10 +114,18 @@ export function convertYAMLtoBlock(yamlBlock: Record<string, any>, isRoot = fals
 	if (yamlBlock.child_of) block.isChildOfComponent = yamlBlock.child_of;
 	// `bind` maps a template field to a loop-item key → dynamicValues. innerHTML/text
 	// bind by content ("key"); anything else binds an HTML attribute (e.g. href, src).
-	if (yamlBlock.bind && typeof yamlBlock.bind === "object" && !Array.isArray(yamlBlock.bind)) {
-		block.dynamicValues = Object.entries(yamlBlock.bind).map(([prop, field]) =>
-			bindingEntry(prop, field as string),
-		);
+	//// Neoffice — a `bind` written inside `attrs` is the block's binding, not an HTML attribute
+	//// (mirrors page_writer.convert_yaml_block): left there, a repeated tile's image and link
+	//// bound nothing and rendered as an empty frame and a dead link (2026-09-12).
+	const attrs = block.attributes as Record<string, any>;
+	const misplacedBind =
+		attrs && attrs.bind && typeof attrs.bind === "object" && !Array.isArray(attrs.bind) ? attrs.bind : null;
+	if (misplacedBind) delete attrs.bind;
+	const ownBind =
+		yamlBlock.bind && typeof yamlBlock.bind === "object" && !Array.isArray(yamlBlock.bind) ? yamlBlock.bind : {};
+	const bind = { ...(misplacedBind || {}), ...ownBind };
+	if (Object.keys(bind).length) {
+		block.dynamicValues = Object.entries(bind).map(([prop, field]) => bindingEntry(prop, field as string));
 	}
 	// A value that is EXACTLY one moustache ("{{ item.city }}") would go through Jinja
 	// on the published page and CRASH the route on the undefined variable — absorb it

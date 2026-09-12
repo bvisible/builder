@@ -297,8 +297,13 @@ def convert_yaml_block(node, is_root: bool = False) -> dict | None:
 		block["tabletStyles"] = tab
 	# Generation dumps every attr into `attributes` (the standard/custom split is a
 	# tool-edit concern, not a generation one — matches convertYAMLtoBlock).
-	if isinstance(node.get("attrs"), dict) and node["attrs"]:
-		block["attributes"] = node["attrs"]
+	# //// Neoffice — a `bind` written inside `attrs` is the block's binding, not an HTML
+	# //// attribute: left there, a repeated tile's image and link bound nothing and rendered
+	# //// as an empty frame and a dead link (2026-09-12). Mirrored in convertYAMLtoBlock.
+	attrs = dict(node["attrs"]) if isinstance(node.get("attrs"), dict) else {}
+	misplaced_bind = attrs.pop("bind", None)
+	if attrs:
+		block["attributes"] = attrs
 	if isinstance(node.get("classes"), list) and node["classes"]:
 		block["classes"] = node["classes"]
 	if node.get("text"):
@@ -313,6 +318,9 @@ def convert_yaml_block(node, is_root: bool = False) -> dict | None:
 	# `bind` maps a template field → loop-item key. innerHTML/text bind by content;
 	# anything else binds an HTML attribute (href, src, …).
 	bind = node.get("bind")
+	# //// Neoffice — see above: the misplaced bind joins the block's own
+	if isinstance(misplaced_bind, dict):
+		bind = {**misplaced_bind, **(bind if isinstance(bind, dict) else {})}
 	if isinstance(bind, dict) and bind:
 		block["dynamicValues"] = bind_to_dynamic_values(bind)
 
