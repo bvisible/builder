@@ -75,6 +75,26 @@ class TestBesideKeptPages(unittest.TestCase):
 		repair_foreign_links(lone, routes, "/contact", categories=["Snow"], listing=None)
 		self.assertEqual(lone[0]["attributes"]["href"], "/contact")
 
+	def test_a_bind_written_inside_attrs_binds(self):
+		"""A repeated tile's image and link carried their bind inside `attrs`, bound nothing,
+		and rendered as an empty frame and a dead link."""
+		from builder.ai.page_writer import convert_yaml_block
+
+		block = convert_yaml_block({"el": "img", "attrs": {"bind": {"src": "image", "alt": "alt"}, "loading": "lazy"}})
+		self.assertEqual(block["attributes"], {"loading": "lazy"})
+		bound = {(d["property"], d["key"], d["type"]) for d in block["dynamicValues"]}
+		self.assertEqual(bound, {("src", "image", "attribute"), ("alt", "alt", "attribute")})
+
+	def test_the_data_script_s_routes_are_checked_too(self):
+		from builder.site_ai.nora.buttons import repair_data_routes
+
+		script = 'data.categories = [{"name": "Snow", "route": "/snow"}, {"name": "About us", "route": "/about"}, {"name": "Quote", "href": "/pricing"}]'
+		fixed, edits = repair_data_routes(script, ["/", "/brands", "/about", "/contact"], "/contact", categories=["Snow"], listing="/brands")
+		self.assertIn('"route": "/brands"', fixed)
+		self.assertIn('"route": "/about"', fixed)
+		self.assertIn('"href": "/contact"', fixed)
+		self.assertEqual(len(edits), 2)
+
 	def test_keep_them_keeps_the_hand_made_pages_only(self):
 		"""Answered with 'none', a question about one hand-made page kept the whole
 		previous site beside the new one."""

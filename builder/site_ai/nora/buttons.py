@@ -146,6 +146,30 @@ def repair_foreign_links(blocks: list, routes: list[str], fallback: str, categor
 
 
 HREF_IN_HTML = re.compile(r"""href=(["'])(/[^"'#?]*)([^"']*)\1""")
+DATA_ROUTE = re.compile(r"""(["'](?:route|href|url|link)["']\s*:\s*["'])(/[^"'#?\s]*)([^"'\s]*)(["'])""")
+
+
+def repair_data_routes(script: str, routes: list[str], fallback: str, categories: list[str] | None = None, listing: str | None = None) -> tuple[str, list[str]]:
+    """The routes a page's data script hands to its repeated blocks go through the same
+    check as the links written in the blocks: category tiles bound to "/snow", a page the
+    site does not have, led nowhere once their binding worked (2026-09-12). A category's
+    route goes to `listing`, anything else to the page its words mean or to `fallback`."""
+    if not script:
+        return script, []
+    known = {r.rstrip("/") or "/" for r in routes}
+    category_keys = {c.strip().lower() for c in categories or [] if c.strip()}
+    edits: list[str] = []
+
+    def swap(m: re.Match) -> str:
+        path = m.group(2).rstrip("/") or "/"
+        if path in known or path.startswith(("/files", "/assets", "/api", "/private")):
+            return m.group(0)
+        slug = path.strip("/").replace("-", " ").lower()
+        target = listing if listing and slug in category_keys else guess_target(slug, routes, fallback)
+        edits.append(f"{m.group(2)} -> {target}")
+        return f"{m.group(1)}{target}{m.group(3)}{m.group(4)}"
+
+    return DATA_ROUTE.sub(swap, script), edits
 
 
 def remap_routes(blocks: list, moved: dict[str, str]) -> list[str]:
