@@ -303,6 +303,21 @@ class TestPhotosGoToPages(unittest.TestCase):
 		# a page that does not list has no tiles
 		self.assertFalse(any("tile of" in n for n in photos_for_page(pages[2], LIBRARY, dict(used), ["Snow"], True)[1]))
 
+	def test_a_revision_keeps_the_photographs_the_page_was_written_with(self):
+		"""A revised home lost the tile photographs its data script held and drew three of its
+		five tiles as gradients."""
+		from builder.site_ai.nora.site_builder import revision_photos
+
+		planned = ["/files/hero.jpg", "/files/snow.jpg", "/files/water.jpg"]
+		notes = ["the hero, full bleed", "the tile of 'Snow'", "the tile of 'Water'"]
+		blocks = '[{"attributes": {"src": "/files/hero.jpg"}}]'
+		script = 'data.tiles = [{"image": "url(\'/files/snow.jpg\')"}, {"image": "/files/extra.png"}]'
+		photos, kept = revision_photos(planned, notes, blocks, script)
+		self.assertEqual(photos, ["/files/hero.jpg", "/files/snow.jpg", "/files/water.jpg", "/files/extra.png"])
+		self.assertEqual(kept, notes)
+		# written without planned photographs, a page keeps what it carries, data script included
+		self.assertEqual(revision_photos([], [], blocks, script), (["/files/hero.jpg", "/files/snow.jpg", "/files/extra.png"], None))
+
 	def test_a_rebuild_finds_the_photographs_an_earlier_build_took_in(self):
 		"""A rebuild of the same conversation found the twelve photographs already known, took
 		in none, and wrote its pages with placeholders: the library is read either way, and
