@@ -55,11 +55,17 @@
 .builder-contact-form .form-group {
     margin-bottom: 1.5rem;
 }
+/* //// Neoffice — the form wears the ink of the section it sits in (neoffice-maintenance#394).
+   It wore the site's tokens (--text-color, --surface-color): on a dark site, in a light band
+   the page put it in, the labels were light on light (only the red asterisks showed) and the
+   fields black. The section's own text reads on its ground (the contrast pass,
+   site_ai/nora/contrast.py, rewrites it when it does not), so the labels take that ink and the
+   fields are drawn from it: border, text and caret in that colour, the ground showing through. */
 .builder-contact-form label {
     display: block;
     margin-bottom: 0.5rem;
     font-weight: 500;
-    color: var(--text-color, #1f2937);
+    color: inherit;
 }
 .builder-contact-form .required {
     color: #ef4444;
@@ -68,28 +74,37 @@
 .builder-contact-form textarea {
     width: 100%;
     padding: 0.75rem 1rem;
-    border: 1px solid var(--border-color, #e5e7eb);
+    border: 1px solid color-mix(in srgb, currentColor 30%, transparent);
     border-radius: 8px;
+    font-family: inherit;
     font-size: 1rem;
     transition: border-color 0.2s, box-shadow 0.2s;
-    background: var(--surface-color, #ffffff);
-    color: var(--text-color, #1f2937);
+    background: transparent;
+    color: inherit;
+}
+.builder-contact-form input::placeholder,
+.builder-contact-form textarea::placeholder {
+    color: inherit;
+    opacity: 0.55;
 }
 .builder-contact-form input:focus,
 .builder-contact-form textarea:focus {
     outline: none;
-    border-color: var(--primary-color, #3b82f6);
-    box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
+    border-color: currentColor;
+    box-shadow: 0 0 0 3px color-mix(in srgb, currentColor 18%, transparent);
 }
 .builder-contact-form textarea {
     resize: vertical;
     min-height: 120px;
 }
+/* //// Neoffice — the label reads on the primary (--primary-text: dark on a pale primary), and
+   the hover is the chrome's --primary-hover. --primary-color-dark is defined nowhere, so the
+   button turned blue (#2563eb) under the pointer on every site. */
 .builder-contact-form button[type="submit"] {
     width: 100%;
     padding: 1rem 2rem;
-    background: var(--primary-color, #3b82f6);
-    color: white;
+    background: var(--primary-color, #111111);
+    color: var(--primary-text, #ffffff);
     border: none;
     border-radius: 8px;
     font-size: 1rem;
@@ -98,7 +113,7 @@
     transition: background 0.2s, transform 0.1s;
 }
 .builder-contact-form button[type="submit"]:hover {
-    background: var(--primary-color-dark, #2563eb);
+    background: var(--primary-hover, var(--primary-color, #111111));
     transform: translateY(-1px);
 }
 </style>
