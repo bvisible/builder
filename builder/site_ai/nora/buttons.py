@@ -60,6 +60,21 @@ def _background(block: dict, palette: dict, inherited: Color | None) -> Color | 
     return inherited
 
 
+def _over_photo(block: dict, inherited: bool) -> bool:
+    """Whether a block's content sits on a photograph: a section over an image (its class, a
+    background picture, a photograph laid across it), unless the block paints its own colour."""
+    styles = block.get("baseStyles") or {}
+    classes = block.get("classes") or []
+    if any(str(c).startswith("u-over-image") for c in classes) or "url(" in str(styles.get("backgroundImage") or styles.get("background") or ""):
+        return True
+    for child in block.get("children") or []:
+        if isinstance(child, dict) and (child.get("element") or "").lower() == "img" and (child.get("baseStyles") or {}).get("position") == "absolute":
+            return True
+    if str(styles.get("backgroundColor") or "").strip().lower() not in ("", "transparent", "none"):
+        return False
+    return inherited
+
+
 def repair_button_variants(blocks: list, palette: dict) -> list[str]:
     """A u-btn--primary on a primary-coloured background becomes secondary (or outline),
     and a u-btn--secondary on a secondary-coloured one becomes primary (or outline)."""
@@ -67,9 +82,15 @@ def repair_button_variants(blocks: list, palette: dict) -> list[str]:
     default_bg = _role(palette, "background") or (255.0, 255.0, 255.0, 1.0)
     edits: list[str] = []
 
-    def walk(block: dict, bg: Color | None) -> None:
+    def walk(block: dict, bg: Color | None, photo: bool = False) -> None:
+        photo = _over_photo(block, photo)
         bg = _background(block, palette, bg)
         classes = list(block.get("classes") or [])
+        # an outline over a photograph reads on none of it: the design system's own backing (the
+        # ghost "Contact us" of a photo hero was a dark outline on a dark picture, 2026-09-12)
+        if photo and "u-btn" in classes and {"u-btn--outline", "u-btn--ghost"} & set(classes):
+            block["classes"] = classes = ["u-btn--on-image" if c in ("u-btn--outline", "u-btn--ghost") else c for c in classes]
+            edits.append(f"'{_text(block)}': an outline button over a photograph -> u-btn--on-image")
         for variant, colour, other, other_name in (("u-btn--primary", primary, secondary, "u-btn--secondary"), ("u-btn--secondary", secondary, primary, "u-btn--primary")):
             if variant in classes and colour is not None and bg is not None and contrast(colour, bg) < BUTTON_MIN_RATIO:
                 new = other_name if other is not None and contrast(other, bg) >= BUTTON_MIN_RATIO else "u-btn--outline"
@@ -77,7 +98,7 @@ def repair_button_variants(blocks: list, palette: dict) -> list[str]:
                 edits.append(f"'{_text(block)}': {variant} on its own colour -> {new}")
                 break
         for child in block.get("children") or []:
-            walk(child, bg)
+            walk(child, bg, photo)
 
     for block in blocks:
         walk(block, default_bg)
@@ -131,7 +152,10 @@ def repair_foreign_links(blocks: list, routes: list[str], fallback: str, categor
             path = href.split("?", 1)[0].split("#", 1)[0].rstrip("/") or "/"
             if path not in known:
                 words = " ".join(part for part in (_text(block), path.replace("-", " ").replace("/", " "), card_text) if part)
+                # a category as the link says it or as its path spells it: "/snow", "/home-burrow",
+                # and "/culture/snow", which the seventh build's tiles linked to (2026-09-12)
                 named = {(_text(block) or "").strip().lower(), path.strip("/").replace("-", " ").lower()}
+                named |= set(re.split(r"[/\s_-]+", path.strip("/").lower()))
                 target = listing if listing and named & category_keys else guess_target(words, routes, fallback)
                 block["attributes"] = dict(attrs, href=target)
                 edits.append(f"'{_text(block)}' {href} -> {target}")
@@ -196,7 +220,8 @@ def repair_data_routes(
         if path in known or path.startswith(("/files", "/assets", "/api", "/private")):
             return m.group(0)
         slug = path.strip("/").replace("-", " ").lower()
-        named = slug in category_keys or bool(set(slug.split()) & category_keys)
+        # the path's words: "/culture/snow" names Snow as much as "/snow" does
+        named = slug in category_keys or bool(set(re.split(r"[/\s_]+", slug)) & category_keys)
         target = listing if listing and named else guess_target(slug, routes, fallback)
         edits.append(f"{m.group(2)} -> {target}")
         return f"{m.group(1)}{target}{m.group(3)}{m.group(4)}"

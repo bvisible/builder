@@ -3,7 +3,7 @@ import unittest
 
 from builder.site_ai.nora.buttons import guess_target, repair_button_variants, wire_dead_ctas
 
-PALETTE = {"tla-primary": "#1b1f24", "tla-secondary": "#e578d1", "tla-background": "#1b1f24", "tla-text": "#f5f5f5"}
+PALETTE = {"site-primary": "#1b1f24", "site-secondary": "#e578d1", "site-background": "#1b1f24", "site-text": "#f5f5f5"}
 ROUTES = ["/", "/a-propos", "/nos-marques", "/espace-revendeurs", "/contact", "/login", "/all-products", "/compte-professionnel"]
 
 
@@ -14,7 +14,7 @@ def button(text, variant, block_id="b1"):
 class TestButtonVariants(unittest.TestCase):
 	def test_a_primary_button_on_a_primary_section_becomes_secondary(self):
 		# a hero whose section wears the background token, which IS the primary colour
-		hero = {"element": "section", "baseStyles": {"backgroundColor": "var(--tla-background)"}, "children": [button("Contactez-nous", "u-btn--primary")]}
+		hero = {"element": "section", "baseStyles": {"backgroundColor": "var(--site-background)"}, "children": [button("Contactez-nous", "u-btn--primary")]}
 		light = {"element": "section", "baseStyles": {"backgroundColor": "#fefefe"}, "children": [button("Contactez-nous", "u-btn--primary", "b2")]}
 		edits = repair_button_variants([hero, light], PALETTE)
 		self.assertEqual(hero["children"][0]["classes"], ["u-btn", "u-btn--secondary"])
@@ -22,15 +22,15 @@ class TestButtonVariants(unittest.TestCase):
 		self.assertEqual(len(edits), 1)
 
 	def test_without_a_contrasting_secondary_the_button_is_outlined(self):
-		palette = dict(PALETTE, **{"tla-secondary": "#1b1f24"})
-		hero = {"element": "section", "baseStyles": {"backgroundColor": "var(--tla-primary)"}, "children": [button("Contactez-nous", "u-btn--primary")]}
+		palette = dict(PALETTE, **{"site-secondary": "#1b1f24"})
+		hero = {"element": "section", "baseStyles": {"backgroundColor": "var(--site-primary)"}, "children": [button("Contactez-nous", "u-btn--primary")]}
 		repair_button_variants([hero], palette)
 		self.assertEqual(hero["children"][0]["classes"], ["u-btn", "u-btn--outline"])
 
 	def test_two_filled_buttons_side_by_side_keep_one_main_action(self):
 		# a hero with a contact and a catalogue button on a primary-coloured section: both
 		# would turn secondary, so the second steps back to outline
-		hero = {"element": "section", "baseStyles": {"backgroundColor": "var(--tla-primary)"}, "children": [{"element": "div", "children": [button("Voir le catalogue", "u-btn--secondary", "b1"), button("Contactez-nous", "u-btn--primary", "b2")]}]}
+		hero = {"element": "section", "baseStyles": {"backgroundColor": "var(--site-primary)"}, "children": [{"element": "div", "children": [button("Voir le catalogue", "u-btn--secondary", "b1"), button("Contactez-nous", "u-btn--primary", "b2")]}]}
 		repair_button_variants([hero], PALETTE)
 		row = hero["children"][0]["children"]
 		self.assertEqual(row[0]["classes"], ["u-btn", "u-btn--secondary"])
@@ -38,10 +38,31 @@ class TestButtonVariants(unittest.TestCase):
 
 	def test_the_background_is_inherited_from_the_section(self):
 		# the button sits in a grid inside the dark section: the section's colour still counts
-		hero = {"element": "section", "baseStyles": {"backgroundColor": "var(--tla-primary)"}, "children": [{"element": "div", "children": [button("Voir", "u-btn--primary")]}]}
+		hero = {"element": "section", "baseStyles": {"backgroundColor": "var(--site-primary)"}, "children": [{"element": "div", "children": [button("Voir", "u-btn--primary")]}]}
 		repair_button_variants([hero], PALETTE)
 		self.assertEqual(hero["children"][0]["children"][0]["classes"], ["u-btn", "u-btn--secondary"])
 
+
+	def test_an_outline_button_over_a_photograph_gets_its_own_backing(self):
+		"""The ghost "Contact us" of a photo hero was a dark outline on a dark photograph."""
+		hero = {
+			"element": "section",
+			"classes": ["u-over-image", "u-over-image--bottom"],
+			"children": [
+				{"element": "img", "baseStyles": {"position": "absolute"}, "children": []},
+				button("Contact us", "u-btn--outline", "b1"),
+				{"element": "div", "baseStyles": {"backgroundColor": "#ffffff"}, "children": [button("Read", "u-btn--outline", "b2")]},
+			],
+		}
+		edits = repair_button_variants([hero], PALETTE)
+		self.assertEqual(hero["children"][1]["classes"], ["u-btn", "u-btn--on-image"])
+		# a card of its own colour inside the photograph keeps its outline
+		self.assertEqual(hero["children"][2]["children"][0]["classes"], ["u-btn", "u-btn--outline"])
+		self.assertEqual(sum("on-image" in e for e in edits), 1)
+		# a tile whose photograph is laid across it counts as well
+		tile = {"element": "a", "children": [{"element": "img", "baseStyles": {"position": "absolute"}}, button("Go", "u-btn--ghost", "b3")]}
+		repair_button_variants([tile], PALETTE)
+		self.assertEqual(tile["children"][1]["classes"], ["u-btn", "u-btn--on-image"])
 
 class TestCallsToAction(unittest.TestCase):
 	def test_a_bare_learn_more_becomes_a_link_to_the_matching_page(self):
