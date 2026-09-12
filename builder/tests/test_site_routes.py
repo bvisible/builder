@@ -114,3 +114,14 @@ class TestBesideKeptPages(unittest.TestCase):
 		self.assertEqual(pages_to_replace(classes, "auto"), ["old-home", "old-contact"])
 		self.assertEqual(pages_to_replace(classes, "force"), ["old-home", "old-contact", "promo"])
 		self.assertEqual(pages_to_replace(classes, "none"), [])
+
+	def test_a_page_description_leaves_jinja_out(self):
+		"""A contact page whose first text was its form's include printed the include tag under
+		its title."""
+		from builder.api import _describe_page
+
+		blocks = [
+			{"element": "div", "innerHTML": "{% include 'builder/templates/includes/contact_form.html' %}", "children": []},
+			{"element": "p", "innerHTML": "Write to us about a collaboration, a shoot or a drop.", "children": []},
+		]
+		self.assertEqual(_describe_page(blocks), "Write to us about a collaboration, a shoot or a drop.")
