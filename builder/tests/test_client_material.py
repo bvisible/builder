@@ -268,6 +268,20 @@ class TestPhotosGoToPages(unittest.TestCase):
 		self.assertEqual(len(urls), len(set(urls)))
 		self.assertIn("it shows:", notes[0])
 
+	def test_a_tile_takes_the_photograph_filed_under_its_category(self):
+		"""A painting "in street-art style", filed under Home, won the Street tile over the
+		street photographs on quality alone."""
+		from builder.site_ai.nora.site_builder import photos_for_page
+
+		library = [
+			_photo("/files/home-studio-paint.jpg", ["home", "studio", "paint", "street", "art"], "a canvas of abstract street-art style painting"),
+			_photo("/files/street-skate-bridge.jpg", ["street", "skate", "bridge"], "a skater under a bridge", quality="medium"),
+			_photo("/files/home-studio-artists.jpg", ["home", "studio", "artists"], "two women working in a creative studio", quality="medium"),
+		]
+		urls, notes = photos_for_page({"type": "accueil", "title": "Home"}, library, {}, ["Street", "Home"], True)
+		tiles = {n.split("'")[1]: u for u, n in zip(urls, notes, strict=True) if "tile of" in n}
+		self.assertEqual(tiles, {"Street": "/files/street-skate-bridge.jpg", "Home": "/files/home-studio-artists.jpg"})
+
 	def test_a_rebuild_finds_the_photographs_an_earlier_build_took_in(self):
 		"""A rebuild of the same conversation found the twelve photographs already known, took
 		in none, and wrote its pages with placeholders: the library is read either way, and
