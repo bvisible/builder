@@ -455,7 +455,7 @@ def library_photos(session_id: str | None, only: list[str] | None = None) -> lis
     rows = frappe.get_all(
         "Builder Content Asset",
         filters={"session_id": session_id, "asset_type": "Image"},
-        fields=["file", "original_filename", "summary", "tags", "orientation", "quality", "extracted_text", "suggested_section"],
+        fields=["file", "original_filename", "summary", "tags", "orientation", "quality", "extracted_text", "suggested_section", "understanding"],
         order_by="creation asc",
     )
     wanted = set(only or [])
@@ -473,10 +473,21 @@ def library_photos(session_id: str | None, only: list[str] | None = None) -> lis
                 "text": (row.summary or "").lower(),
                 "landscape": (row.orientation or "") == "landscape",
                 "quality": row.quality or "",
-                "has_text": bool((row.extracted_text or "").strip()),
+                "has_text": bool((row.extracted_text or "").strip()) or _vision_saw_text(row.understanding),
             }
         )
     return photos
+
+
+def _vision_saw_text(understanding) -> bool:
+    """Whether the vision pass found the picture carrying text (ImageUnderstanding's
+    contains_text). A photograph's reading lives in `understanding`; `extracted_text` is a
+    document's only: read from it alone, a beach photograph lettered "Thank You!" counted as
+    plain and went onto a category tile (2026-09-12)."""
+    try:
+        return bool(json.loads(understanding or "{}").get("contains_text"))
+    except (TypeError, ValueError, AttributeError):
+        return False
 
 
 LISTING_WORDS = re.compile(r"brand|shop|catalog|collection|product|boutique|store|marque", re.I)
@@ -785,8 +796,32 @@ def page_sections(page: dict, minimal: bool, contact_verified: bool = True) -> l
     return list(plan)
 
 
+def page_headlines(blocks: list, categories: list[str] | None = None) -> list[str]:
+    """The headlines a written page uses (its h1 and h2), for the pages written after it:
+    each page reached for the home's line, and "Five cultures, one collective." opened the
+    home, then Brands, then About (2026-09-13). A label of one or two words (a category,
+    "Contact") is left out: the pages share those on purpose."""
+    names = {c.strip().lower() for c in categories or []}
+    found: list[str] = []
+
+    def walk(block) -> None:
+        if not isinstance(block, dict):
+            return
+        if str(block.get("element") or "").lower() in ("h1", "h2"):
+            text = " ".join(re.sub(r"<[^>]+>", " ", str(block.get("innerHTML") or "")).split())
+            if len(text.split()) >= 3 and text.lower() not in names and text not in found and "{{" not in text:
+                found.append(text[:120])
+        for child in block.get("children") or []:
+            walk(child)
+
+    for block in blocks or []:
+        walk(block)
+    return found[:8]
+
+
 def page_brief_text(site: dict, brief, page: dict, handles: dict, contact_prompt: str, layout_system: str, language: str, photos: list[str], cta: tuple[str, str], palette: dict | None = None, revision: str | None = None, photo_notes: list[str] | None = None) -> str:
     is_home = page["route"] == "home"
+    used_headlines = [h for route, lines in (site.get("headlines_by_route") or {}).items() if route != page["route"] for h in lines]
     # //// Neoffice — an image-led site takes the image-led plans (IMAGE_LED_PLANS); a page
     # //// that is text by nature keeps its own
     minimal = site.get("copy_density") == "minimal" and page["type"] not in TEXT_BY_NATURE
@@ -855,7 +890,21 @@ def page_brief_text(site: dict, brief, page: dict, handles: dict, contact_prompt
             "figures. When in doubt, cut the text and enlarge the photograph."
             if minimal else ""
         ),
-        f"CTA: the primary button says '{cta[0]}' and links to '{cta[1]}'; use it once in the hero (home) or the last section, and in the final band.",
+        (
+            # the contact page closed on a "Contact us" button to itself, under its own form
+            # (2026-09-13): the page the call to action leads to carries none
+            "CTA: this page is where the site's call to action leads: no button to it and no final band inviting to "
+            "get in touch; the page closes on its own content."
+            if cta[1].rstrip("/") == f"/{page['route']}".rstrip("/")
+            else f"CTA: the primary button says '{cta[0]}' and links to '{cta[1]}'; use it once in the hero (home) or the last section, and in the final band."
+        ),
+        (
+            # the pages are written one at a time and each reached for the home's line
+            # (page_headlines)
+            "HEADLINES ALREADY USED on the site's other pages (write this page's own, never one of these nor a close "
+            "variant): " + " | ".join(f"'{h}'" for h in used_headlines[:12])
+            if used_headlines else ""
+        ),
         (
             "PHOTOS: the client's OWN photographs. Copy each URL exactly, without the note in brackets after it; give each "
             f"a descriptive alt in {language}; use each at most once and follow its note: the hero opens the page, each "
@@ -1503,12 +1552,33 @@ def build_site(ctx, spec: dict) -> str:
                     foreign = repair_foreign_links(blocks, routes, cta[1], categories=categories, listing=listing)
                     if foreign:
                         ai_log("info", "Foreign links brought home", page=page["title"], edits=foreign)
+                    # a call to action never leads to the page it is on (buttons.py)
+                    from builder.site_ai.nora.buttons import retarget_self_links
+
+                    own = retarget_self_links(blocks, page["route"], cta[1])
+                    if own:
+                        ai_log("info", "Links to the page itself retargeted", page=page["title"], edits=own)
                     # the routes the data script hands to repeated blocks pass the same check
                     from builder.site_ai.nora.buttons import repair_data_routes
 
                     data_script, data_moved = repair_data_routes(data_script, routes, cta[1], categories=categories, listing=listing, blocks=blocks)
                     if data_moved:
                         ai_log("info", "Data script links brought home", page=page["title"], edits=data_moved)
+                    # a category tile leads to its own panel on the page that lists them, not to
+                    # the top of that page (anchors.py)
+                    if listing and categories:
+                        from builder.site_ai.nora.anchors import (
+                            anchor_category_data_links,
+                            anchor_category_links,
+                            anchor_category_panels,
+                        )
+                        from builder.site_ai.nora.buttons import _href_keys
+
+                        anchored = anchor_category_panels(blocks, categories) if page["route"] == lister_route else []
+                        pointed = anchor_category_links(blocks, listing, categories)
+                        data_script, bound = anchor_category_data_links(data_script, listing, categories, _href_keys(blocks))
+                        if anchored or pointed or bound:
+                            ai_log("info", "Category anchors", page=page["title"], panels=anchored, links=pointed + bound)
                     variants = repair_button_variants(blocks, palette)
                     if variants:
                         ai_log("info", "Button variants repaired", page=page["title"], edits=variants)
@@ -1580,6 +1650,8 @@ def build_site(ctx, spec: dict) -> str:
         planned_photos[name] = (page_photos, page_notes)
         created.append({"name": name, "title": page["title"], "route": f"/{route}", "planned": page["route"]})
         ai_log("info", "Page written", page=page["title"], name=name, route=route, model=page_model)
+        # the next pages are told the headlines this one took (page_headlines)
+        site.setdefault("headlines_by_route", {})[page["route"]] = page_headlines(blocks, categories)
         if use_host:
             try:
                 # _write_page has committed: an after_commit emit would wait for the

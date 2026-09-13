@@ -118,23 +118,39 @@ REVIEW_CONTEXT = (
 )
 
 
+# the web server may be restarting when a page's turn comes (a deployment, a restart by
+# another hand): a refused connection is waited out, not taken for the page's failure; two
+# of four pages went unreviewed that way (2026-09-13)
+TRANSIENT_ERRORS = ("ERR_CONNECTION_REFUSED", "ERR_CONNECTION_RESET", "ERR_CONNECTION_CLOSED", "ERR_EMPTY_RESPONSE")
+SERVER_RETRIES = 9
+SERVER_RETRY_SECONDS = 10
+
+
 def _screenshot(url: str, title: str) -> dict:
     """Full page first; a long page can exceed Chromium's screenshot deadline (Services,
-    30 s on osiris), and the viewport alone is still a review where a skipped page is none."""
+    30 s on osiris), and the viewport alone is still a review where a skipped page is none.
+    A server that refuses the connection is waited for, SERVER_RETRIES times."""
     from builder.site_ai.inspiration.screenshotter import capture_website_screenshot
 
     # //// Neoffice — thread the loopback header (X-Frappe-Site-Name) alongside static_roots so the screenshot names the right site without a host entry (0445cc94 "fix(visual-check): the loopback render names its site by header, not by host")
     roots, headers = static_roots(), loopback_headers()
-    try:
-        # //// Neoffice — see the block marker above: header threaded into the capture
-        shot = capture_website_screenshot(url, full_page=True, static_roots=roots, headers=headers)
-        if shot.get("success"):
-            return shot
-        raise RuntimeError(str(shot.get("error") or "screenshot failed"))
-    except Exception as e:
-        ai_log("warning", "Full-page screenshot failed, viewport only", page=title, error=str(e)[:120])
-        # //// Neoffice — see the block marker above: header threaded into the viewport fallback too
-        return capture_website_screenshot(url, full_page=False, static_roots=roots, headers=headers)
+    error = ""
+    for attempt in range(SERVER_RETRIES + 1):
+        try:
+            # //// Neoffice — see the block marker above: header threaded into the capture
+            shot = capture_website_screenshot(url, full_page=True, static_roots=roots, headers=headers)
+            if shot.get("success"):
+                return shot
+            error = str(shot.get("error") or "screenshot failed")
+        except Exception as e:
+            error = str(e)
+        if attempt == SERVER_RETRIES or not any(code in error for code in TRANSIENT_ERRORS):
+            break
+        ai_log("info", "Web server not answering, waiting", page=title, attempt=attempt + 1)
+        time.sleep(SERVER_RETRY_SECONDS)
+    ai_log("warning", "Full-page screenshot failed, viewport only", page=title, error=error[:120])
+    # //// Neoffice — see the block marker above: header threaded into the viewport fallback too
+    return capture_website_screenshot(url, full_page=False, static_roots=roots, headers=headers)
 
 
 def review_page(page: dict, profile: str | None, model: str, site_name: str = "", activity: str = "") -> dict:

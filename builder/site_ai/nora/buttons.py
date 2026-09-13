@@ -361,3 +361,58 @@ def wire_dead_ctas(blocks: list, routes: list[str], fallback: str) -> list[str]:
     for block in blocks:
         equalize(block)
     return edits
+
+
+CONTACT_FORM_ANCHOR = "contact-form"
+
+
+def retarget_self_links(blocks: list, own_route: str, fallback: str) -> list[str]:
+    """A call to action never leads to the page it is on. The Contact page of a monochrome
+    build closed on "Start a conversation" and a "Contact us" button to itself, under its
+    own form (2026-09-13). On a page that carries the contact form, such a button goes to
+    the form, which gets the anchor; on another page, an invitation ("Discover", "See the
+    brands") goes to the site's call to action. Returns one line per edit."""
+    route = str(own_route or "").strip("/")
+    own = "/" if route in ("", "home", "index") else f"/{route}"
+    form = _include_block(blocks, "contact_form.html")
+    edits: list[str] = []
+
+    def walk(block: dict) -> None:
+        attrs = block.get("attributes") or {}
+        href = str(attrs.get("href") or "")
+        text = _text(block)
+        if href.startswith("/") and "#" not in href and (href.split("?", 1)[0].rstrip("/") or "/") == own:
+            target = None
+            if form is not None and ("u-btn" in (block.get("classes") or []) or CTA_TEXT.match(text)):
+                anchor = (form.get("attributes") or {}).get("id") or CONTACT_FORM_ANCHOR
+                form["attributes"] = {**(form.get("attributes") or {}), "id": anchor}
+                # a sticky header does not cover the form it scrolls to
+                form["baseStyles"] = {**(form.get("baseStyles") or {}), "scrollMarginTop": "calc(var(--header-height, 72px) + 16px)"}
+                target = f"#{anchor}"
+            elif CTA_TEXT.match(text) and fallback and (fallback.rstrip("/") or "/") != own:
+                target = fallback
+            if target:
+                block["attributes"] = {**attrs, "href": target}
+                edits.append(f"'{text}' {href} -> {target}")
+        for child in block.get("children") or []:
+            if isinstance(child, dict):
+                walk(child)
+
+    for block in blocks:
+        if isinstance(block, dict):
+            walk(block)
+    return edits
+
+
+def _include_block(blocks: list, template: str) -> dict | None:
+    """The block whose text includes `template` (the contact form, the map)."""
+    for block in blocks or []:
+        if not isinstance(block, dict):
+            continue
+        html = block.get("innerHTML")
+        if isinstance(html, str) and "include" in html and template in html:
+            return block
+        found = _include_block(block.get("children") or [], template)
+        if found is not None:
+            return found
+    return None

@@ -335,6 +335,31 @@ class TestPhotosGoToPages(unittest.TestCase):
 			self.assertEqual(len(site_builder.library_photos("session-1")), 2)
 		self.assertEqual(site_builder.library_photos(None), [])
 
+	def test_a_photograph_the_vision_found_lettered_carries_text(self):
+		"""The vision pass flagged a beach photograph lettered "Thank You!" (contains_text), but
+		the library read only extracted_text, a document's field, and the picture went onto the
+		Water tile (2026-09-12)."""
+		import json
+
+		import frappe
+
+		from builder.site_ai.nora import site_builder
+
+		def row(url, name, words, understanding):
+			return frappe._dict(file=url, original_filename=name, summary=f"{words} photograph.", tags=words, orientation="landscape", quality="high", extracted_text="", suggested_section="", understanding=understanding)
+
+		rows = [
+			row("/files/towel.jpg", "water-beach-towel.jpg", "water", json.dumps({"contains_text": True})),
+			row("/files/surf.jpg", "water-surf.jpg", "water", json.dumps({"contains_text": False})),
+			row("/files/old.jpg", "old.jpg", "", "not json"),
+		]
+		with patch.object(site_builder.frappe.db, "exists", return_value=True), patch.object(site_builder.frappe, "get_all", return_value=rows):
+			library = site_builder.library_photos("session-1")
+		self.assertEqual({p["url"]: p["has_text"] for p in library}, {"/files/towel.jpg": True, "/files/surf.jpg": False, "/files/old.jpg": False})
+		# the Water tile, the hero and the wide photograph all go to a picture without text
+		urls, _ = site_builder.photos_for_page({"type": "accueil", "title": "Home", "route": "home"}, library, {}, ["Water"], False)
+		self.assertNotIn("/files/towel.jpg", urls)
+
 	def test_the_next_page_takes_what_is_left_first(self):
 		from builder.site_ai.nora.site_builder import photos_for_page
 

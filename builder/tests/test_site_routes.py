@@ -198,6 +198,48 @@ class TestBesideKeptPages(unittest.TestCase):
 		self.assertGreaterEqual(len(steps), 4)
 		self.assertEqual(steps, sorted(steps))
 
+	def test_a_page_is_told_the_headlines_the_others_used(self):
+		"""The pages are written one at a time, and "Five cultures, one collective." opened the
+		home, then Brands, then About (2026-09-13)."""
+		from types import SimpleNamespace
+
+		from builder.site_ai.nora.site_builder import page_brief_text, page_headlines
+
+		home = [
+			{
+				"element": "div",
+				"children": [
+					{"element": "h1", "innerHTML": "Five cultures, one collective."},
+					{"element": "h2", "innerHTML": "Snow"},
+					{"element": "h2", "innerHTML": "Join the collective today"},
+				],
+			}
+		]
+		used = page_headlines(home, ["Snow"])
+		self.assertEqual(used, ["Five cultures, one collective.", "Join the collective today"])
+		site = {"site_name": "X", "activity": "Y", "headlines_by_route": {"home": used, "brands": ["Bring your brand in"]}}
+		handles = {k: "var(--x)" for k in ("primary", "secondary", "background", "text", "font-heading", "font-body")}
+		page = {"title": "Brands", "route": "brands", "type": "about"}
+		text = page_brief_text(site, SimpleNamespace(), page, handles, "", "bento", "English", [], ("Contact us", "/contact"))
+		self.assertIn("'Five cultures, one collective.'", text)
+		# its own headlines are not held against it (a revision keeps them)
+		self.assertNotIn("Bring your brand in", text)
+
+	def test_the_page_the_call_to_action_leads_to_carries_none(self):
+		"""The Contact page closed on a "Contact us" button to itself, under its own form
+		(2026-09-13)."""
+		from types import SimpleNamespace
+
+		from builder.site_ai.nora.site_builder import page_brief_text
+
+		handles = {k: "var(--x)" for k in ("primary", "secondary", "background", "text", "font-heading", "font-body")}
+		site = {"site_name": "X", "activity": "Y"}
+		cta = ("Contact us", "/contact")
+		contact = page_brief_text(site, SimpleNamespace(), {"title": "Contact", "route": "contact", "type": "contact"}, handles, "", "bento", "English", [], cta)
+		about = page_brief_text(site, SimpleNamespace(), {"title": "About", "route": "about", "type": "about"}, handles, "", "bento", "English", [], cta)
+		self.assertIn("no button to it", contact)
+		self.assertIn("links to '/contact'", about)
+
 	def test_keep_them_keeps_the_hand_made_pages_only(self):
 		"""Answered with 'none', a question about one hand-made page kept the whole
 		previous site beside the new one."""
