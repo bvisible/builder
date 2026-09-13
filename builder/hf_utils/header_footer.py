@@ -304,16 +304,27 @@ def get_theme_css(config=None) -> str:
 	)
 
 
-def _link_colour(theme: dict) -> str:
-	"""The colour a link wears in the page's content: the primary when it reads on the
-	page background, else the secondary, else the text colour."""
-	from builder.builder.doctype.website_header_footer_config.website_header_footer_config import _readable_on
+# //// Neoffice — a link is text: it reads at 4.5:1 on the page (WCAG AA), not at the 1.8 of a
+# //// button. Taken as soon as it stood out, a light green primary left every link of a shop at
+# //// 2.9:1 on white ("Tout effacer" on /all-products, neoffice-maintenance#415, 2026-09-13).
+LINK_MIN_CONTRAST = 4.5
+LINK_SHADE_STEPS = (0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9)
 
+
+def _link_colour(theme: dict) -> str:
+	"""The colour a link wears in the page's content: the primary when it reads on the page
+	background as text (the token, so a retheme still reaches it), else the primary deepened
+	towards the text colour until it does (the brand's hue kept), else the secondary likewise,
+	else the text colour."""
 	background = str(theme.get("background_color") or "#ffffff").strip()
-	return _readable_on(
-		background,
-		[theme.get("primary_color"), theme.get("secondary_color"), theme.get("text_color"), "#1f272e"],
-	)
+	text = str(theme.get("text_color") or "").strip()
+	if not _is_hex(text):
+		text = "#1f272e" if _is_light(background) else "#f5f5f5"
+	for colour, token in ((theme.get("primary_color"), "--primary-color"), (theme.get("secondary_color"), "--secondary-color")):
+		readable = _readable_shade(colour, background, text, token, minimum=LINK_MIN_CONTRAST, steps=LINK_SHADE_STEPS)
+		if readable:
+			return readable[1]
+	return _expand_hex(text)
 
 
 def _label_on(colour: str | None) -> str:
@@ -374,10 +385,11 @@ def button_colours(theme: dict) -> dict:
 	}
 
 
-def _readable_shade(colour, background: str, text: str, token: str):
-	"""(hex, css, shaded) for a colour that reads on the background: as it is — the css is then
-	the token — or mixed step by step with the text colour until it does; None when it is the
-	background itself, or cannot be made to read."""
+def _readable_shade(colour, background: str, text: str, token: str, minimum: float = BUTTON_MIN_CONTRAST, steps=SHADE_STEPS):
+	"""(hex, css, shaded) for a colour that reads on the background (`minimum`: a button's 1.8 by
+	default, a link's LINK_MIN_CONTRAST): as it is — the css is then the token — or mixed step by
+	step with the text colour until it does; None when it is the background itself, or cannot be
+	made to read."""
 	from builder.builder.doctype.website_header_footer_config.website_header_footer_config import _contrast
 
 	value = str(colour or "").strip().lower()
@@ -385,13 +397,13 @@ def _readable_shade(colour, background: str, text: str, token: str):
 		return None
 	value = _expand_hex(value)
 	ratio = _contrast(value, background)
-	if ratio >= BUTTON_MIN_CONTRAST:
+	if ratio >= minimum:
 		return (value, f"var({token})", False)
 	if ratio < GROUND_MAX_CONTRAST:
 		return None
-	for weight in SHADE_STEPS:
+	for weight in steps:
 		mixed = _mix(value, text, weight)
-		if _contrast(mixed, background) >= BUTTON_MIN_CONTRAST:
+		if _contrast(mixed, background) >= minimum:
 			return (mixed, mixed, True)
 	return None
 

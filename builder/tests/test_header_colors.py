@@ -35,21 +35,40 @@ class TestHeaderColors(unittest.TestCase):
 	def test_a_link_reads_on_the_page_background(self):
 		from builder.hf_utils.header_footer import _link_colour
 
-		# a dark site whose primary IS its background: the links took the secondary
+		# a dark site whose primary IS its background: the links take the secondary, as its token
 		self.assertEqual(
 			_link_colour({"background_color": "#1b1f24", "primary_color": "#1b1f24", "secondary_color": "#e578d1", "text_color": "#f5f5f5"}),
-			"#e578d1",
+			"var(--secondary-color)",
 		)
 		# nothing else stands out: the page's own text colour
 		self.assertEqual(
 			_link_colour({"background_color": "#1b1f24", "primary_color": "#1b1f24", "secondary_color": "#1b1f24", "text_color": "#f5f5f5"}),
 			"#f5f5f5",
 		)
-		# an ordinary palette keeps its primary
+		# a primary that reads as text keeps its token
 		self.assertEqual(
-			_link_colour({"background_color": "#ffffff", "primary_color": "#6366f1", "secondary_color": "#e578d1", "text_color": "#1a1a1a"}),
-			"#6366f1",
+			_link_colour({"background_color": "#ffffff", "primary_color": "#1c3d52", "secondary_color": "#e578d1", "text_color": "#1a1a1a"}),
+			"var(--primary-color)",
 		)
+
+	def test_a_link_is_text_and_reads_at_four_and_a_half(self):
+		"""A light green primary left the shop's links at 2.9:1 on white (neoffice-maintenance#415):
+		a link is deepened until it reads as text, and keeps the brand's hue."""
+		from builder.hf_utils.header_footer import LINK_MIN_CONTRAST, _link_colour, _mix
+
+		for primary in ("#37ac50", "#8a9b8c", "#e578d1", "#6366f1"):
+			link = _link_colour({"background_color": "#ffffff", "primary_color": primary, "secondary_color": "#f3e9d9", "text_color": "#1f272e"})
+			self.assertTrue(link.startswith("#"), f"{primary} -> {link}")
+			self.assertGreaterEqual(_contrast(link, "#ffffff"), LINK_MIN_CONTRAST, f"{primary} -> {link}")
+		# no darker than it needs: the indigo just under 4.5 takes the first step only
+		self.assertEqual(
+			_link_colour({"background_color": "#ffffff", "primary_color": "#6366f1", "text_color": "#1a1a1a"}),
+			_mix("#6366f1", "#1a1a1a", 0.1),
+		)
+		# a sage whose site text is a mid grey still reads, and stays a sage
+		sage = _link_colour({"background_color": "#ffffff", "primary_color": "#8a9b8c", "secondary_color": "#f3e9d9", "text_color": "#5c6b5e"})
+		self.assertGreaterEqual(_contrast(sage, "#ffffff"), LINK_MIN_CONTRAST)
+		self.assertNotEqual(sage, "#5c6b5e")
 
 	def test_the_generic_link_rules_never_outrank_a_component(self):
 		"""The page's link colours must stay at the weight of a bare `a`.
