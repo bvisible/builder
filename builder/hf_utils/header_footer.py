@@ -11,6 +11,8 @@ This module provides functions to render headers and footers from the
 Website Header Footer Config DocType.
 """
 
+import re
+
 import frappe
 from frappe import _
 from frappe.utils import cstr
@@ -292,14 +294,12 @@ def get_theme_css(config=None) -> str:
 			# //// the primary colour is the background itself on some palettes, and every
 			# //// link in the copy was invisible (2026-09-10)
 			"link_color": _link_colour(theme or {}),
-			# //// Neoffice — the page's call-to-action colour (2026-09-13): the header already
-			# //// picks, by contrast with its own background, the primary, else the secondary,
-			# //// else the text (get_header_colors); the content's primary buttons kept the raw
-			# //// primary and were dark on dark on a site whose primary is its background. The
-			# //// same rule against the page background, exposed as --cta-color/--cta-text so
-			# //// the shop's buttons read it too.
-			"cta_color": _link_colour(theme or {}),
-			"cta_text": _label_on(_link_colour(theme or {})),
+			# //// Neoffice — the colours of the page's buttons (2026-09-13), see button_colours():
+			# //// the content's primary buttons kept the raw primary and were dark on dark on a
+			# //// site whose primary is its background, while the header's button had already
+			# //// switched to the secondary. --btn-primary is the token frappe's own .btn-primary
+			# //// reads, so the shop follows without a rule of its own.
+			**button_colours(theme or {}),
 		}
 	)
 
@@ -324,6 +324,94 @@ def _label_on(colour: str | None) -> str:
 	if not value.startswith("#"):
 		return "#ffffff"
 	return "#1f272e" if _contrast("#1f272e", value) >= _contrast("#ffffff", value) else "#ffffff"
+
+
+# //// Neoffice — added helpers (2026-09-13): the colours of the page's buttons. One rule for
+# //// the content's .u-btn--primary, the shop's buttons (through --btn-primary, the token
+# //// frappe's .btn-primary reads) and, once aligned, the header's button and the generator's
+# //// repair pass: the primary when it reads on the page background, a deeper shade of it when
+# //// it is merely pale (a client's sage or sand stays the brand's colour on its buttons), the
+# //// secondary when the primary IS the background (a dark reseller site paints its ground with
+# //// it), the text colour last. The secondary button then steps back to an outline, so a hero
+# //// never shows two identical filled buttons side by side.
+BUTTON_MIN_CONTRAST = 1.8  # the threshold _readable_on already applies to links
+GROUND_MAX_CONTRAST = 1.25  # below this a colour is the background itself, not a pale accent
+SHADE_STEPS = (0.1, 0.2, 0.3, 0.4, 0.5, 0.6)
+
+
+def button_colours(theme: dict) -> dict:
+	"""The context of theme_variables.html for the page's buttons.
+
+	cta_color / cta_hex / cta_text: what the primary button paints (a token when the colour is
+	used as it is, so a retheme through the Design Tokens still reaches it; a hex when it had
+	to be deepened), the same as a hex, and the label that reads on it. cta_source is
+	"primary", "secondary" or "text"; cta_shaded says the primary was deepened.
+	secondary_button / secondary_button_text: the secondary button's fill and label, or None
+	when it must be an outline — the primary button already wears the secondary colour, or the
+	secondary does not read on the page.
+	"""
+	background = str(theme.get("background_color") or "#ffffff").strip()
+	text = str(theme.get("text_color") or "").strip()
+	if not _is_hex(text):
+		text = "#1f272e" if _is_light(background) else "#f5f5f5"
+	primary = _readable_shade(theme.get("primary_color"), background, text, "--primary-color")
+	secondary = _readable_shade(theme.get("secondary_color"), background, text, "--secondary-color")
+	if primary:
+		cta, source = primary, "primary"
+	elif secondary:
+		cta, source, secondary = secondary, "secondary", None
+	else:
+		cta, source = (_expand_hex(text), "var(--text-color)", False), "text"
+	hex_value, css, shaded = cta
+	return {
+		"cta_color": css,
+		"cta_hex": hex_value,
+		"cta_text": _label_on(hex_value),
+		"cta_source": source,
+		"cta_shaded": shaded,
+		"secondary_button": secondary[1] if secondary else None,
+		"secondary_button_text": _label_on(secondary[0]) if secondary else None,
+	}
+
+
+def _readable_shade(colour, background: str, text: str, token: str):
+	"""(hex, css, shaded) for a colour that reads on the background: as it is — the css is then
+	the token — or mixed step by step with the text colour until it does; None when it is the
+	background itself, or cannot be made to read."""
+	from builder.builder.doctype.website_header_footer_config.website_header_footer_config import _contrast
+
+	value = str(colour or "").strip().lower()
+	if not _is_hex(value):
+		return None
+	value = _expand_hex(value)
+	ratio = _contrast(value, background)
+	if ratio >= BUTTON_MIN_CONTRAST:
+		return (value, f"var({token})", False)
+	if ratio < GROUND_MAX_CONTRAST:
+		return None
+	for weight in SHADE_STEPS:
+		mixed = _mix(value, text, weight)
+		if _contrast(mixed, background) >= BUTTON_MIN_CONTRAST:
+			return (mixed, mixed, True)
+	return None
+
+
+def _is_hex(value) -> bool:
+	return bool(re.fullmatch(r"#(?:[0-9a-fA-F]{3}|[0-9a-fA-F]{6})", str(value or "").strip()))
+
+
+def _expand_hex(value: str) -> str:
+	value = value.strip().lower()
+	if len(value) == 4:
+		value = "#" + "".join(ch * 2 for ch in value[1:])
+	return value
+
+
+def _mix(colour: str, other: str, weight: float) -> str:
+	"""`colour` with `weight` (0..1) of `other`, mixed in sRGB like CSS color-mix, as #rrggbb."""
+	a, b = _expand_hex(colour), _expand_hex(other)
+	channels = ((int(a[i : i + 2], 16), int(b[i : i + 2], 16)) for i in (1, 3, 5))
+	return "#" + "".join(f"{round(x * (1 - weight) + y * weight):02x}" for x, y in channels)
 
 
 # //// Neoffice — added helper (40dc4a09 "fix(contrast): a data-bound heading is text, and

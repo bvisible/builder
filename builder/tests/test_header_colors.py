@@ -77,31 +77,81 @@ class TestHeaderColors(unittest.TestCase):
 		self.assertEqual(_readable_on("#ffffff", ["#ffffff", None, "#fefefe"]), "#fefefe")
 
 
-class TestPageCallToAction(unittest.TestCase):
-	"""One action colour for the page: the primary buttons of the content read --cta-color,
-	which the chrome computes like the header's button (primary if it reads on the page
-	background, else secondary, else text). On a site whose primary is its background the
-	content's primary buttons were dark on dark while the header's was pink (2026-09-13)."""
+class TestButtonColours(unittest.TestCase):
+	"""One action colour for the page (button_colours): the primary when it reads on the page
+	background, a deeper shade when it is pale, the secondary when the primary is the
+	background itself, the text colour last; the secondary button steps back to an outline
+	when the primary button already wears its colour. On a dark reseller site the content's
+	primary buttons were dark on dark next to a pink header button (2026-09-13)."""
 
-	def test_the_primary_button_reads_the_call_to_action_tokens(self):
+	def test_a_readable_primary_stays_the_token(self):
+		from builder.hf_utils.header_footer import button_colours
+
+		out = button_colours({"background_color": "#ffffff", "primary_color": "#6366f1", "secondary_color": "#e578d1", "text_color": "#1a1a1a"})
+		self.assertEqual(out["cta_color"], "var(--primary-color)")
+		self.assertEqual(out["cta_source"], "primary")
+		self.assertFalse(out["cta_shaded"])
+		self.assertEqual(out["cta_text"], "#ffffff")
+		self.assertEqual(out["secondary_button"], "var(--secondary-color)")
+		self.assertEqual(out["secondary_button_text"], "#1f272e")
+
+	def test_a_client_sage_is_kept_as_it_is(self):
+		# about 2.8:1 on an off-white page reads as a button fill: the brand's colour stays
+		from builder.hf_utils.header_footer import button_colours
+
+		out = button_colours({"background_color": "#fbfaf7", "primary_color": "#8a9b8c", "secondary_color": "#d9cdb8", "text_color": "#2b2b2b"})
+		self.assertEqual(out["cta_color"], "var(--primary-color)")
+		self.assertFalse(out["cta_shaded"])
+
+	def test_a_pale_primary_is_deepened_not_replaced(self):
+		from builder.hf_utils.header_footer import button_colours
+
+		out = button_colours({"background_color": "#ffffff", "primary_color": "#e8dcc4", "secondary_color": "#2f4f4f", "text_color": "#1a1a1a"})
+		self.assertEqual(out["cta_source"], "primary")
+		self.assertTrue(out["cta_shaded"])
+		self.assertTrue(out["cta_color"].startswith("#"))
+		self.assertGreaterEqual(_contrast(out["cta_hex"], "#ffffff"), 1.8)
+		self.assertLess(_contrast(out["cta_hex"], "#e8dcc4"), 1.8, "a shade, not another colour")
+		self.assertEqual(out["secondary_button"], "var(--secondary-color)")
+
+	def test_a_primary_that_is_the_ground_hands_over_to_the_secondary(self):
+		from builder.hf_utils.header_footer import button_colours
+
+		out = button_colours({"background_color": "#1b1f24", "primary_color": "#1b1f24", "secondary_color": "#e578d1", "text_color": "#f5f5f5"})
+		self.assertEqual(out["cta_color"], "var(--secondary-color)")
+		self.assertEqual(out["cta_hex"], "#e578d1")
+		self.assertEqual(out["cta_source"], "secondary")
+		self.assertEqual(out["cta_text"], "#1f272e")
+		self.assertIsNone(out["secondary_button"], "drawn as an outline, not a second pink fill")
+
+	def test_when_nothing_reads_the_text_colour_acts(self):
+		from builder.hf_utils.header_footer import button_colours
+
+		out = button_colours({"background_color": "#1b1f24", "primary_color": "#1b1f24", "secondary_color": "#20252b", "text_color": "#f5f5f5"})
+		self.assertEqual(out["cta_color"], "var(--text-color)")
+		self.assertEqual(out["cta_source"], "text")
+		self.assertEqual(out["cta_text"], "#1f272e")
+		self.assertIsNone(out["secondary_button"])
+
+	def test_a_palette_without_hex_colours_falls_back(self):
+		from builder.hf_utils.header_footer import button_colours
+
+		out = button_colours({})
+		self.assertEqual(out["cta_source"], "text")
+		self.assertEqual(out["cta_hex"], "#1f272e")
+
+	def test_the_sheet_reads_the_tokens(self):
 		import pathlib
 
 		css = pathlib.Path(__file__).parent.parent.joinpath("templates/includes/header_footer/theme_variables.html").read_text()
-		self.assertIn("--cta-color:", css)
-		self.assertIn("--cta-text:", css)
+		self.assertIn("--btn-primary: {{ cta_color", css)
+		self.assertIn("--btn-primary-text:", css)
+		self.assertNotIn("--cta-color", css, "the header's --cta-* tokens are its own")
 		block = css[css.index(".u-btn--primary {"):]
 		block = block[: block.index("}")]
-		self.assertIn("var(--cta-color", block)
-		self.assertIn("var(--cta-text", block)
-
-	def test_the_call_to_action_falls_back_like_a_link(self):
-		from builder.hf_utils.header_footer import _label_on, _link_colour
-
-		dark = {"background_color": "#1b1f24", "primary_color": "#1b1f24", "secondary_color": "#e578d1", "text_color": "#f5f5f5"}
-		self.assertEqual(_link_colour(dark), "#e578d1")
-		self.assertEqual(_label_on("#e578d1"), "#1f272e")
-		light = {"background_color": "#ffffff", "primary_color": "#6366f1", "secondary_color": "#e578d1", "text_color": "#1a1a1a"}
-		self.assertEqual(_link_colour(light), "#6366f1")
+		self.assertIn("var(--btn-primary", block)
+		self.assertIn("var(--btn-primary-text", block)
+		self.assertIn("not secondary_button", css)
 
 
 class TestShopPagesKeepTheChromeInk(unittest.TestCase):

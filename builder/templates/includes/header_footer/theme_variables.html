@@ -55,14 +55,26 @@
 	--font-family: {% if tp %}var(--{{ tp }}-font-body, '{{ body_family }}'){% else %}'{{ body_family }}'{% endif %}, sans-serif;
 
 	/* Frappe/WebShop button variables.
-	   `website.bundle.css` peint le bouton primaire avec `.btn.btn-primary`,
-	   soit DEUX classes : plus spécifique que toute règle `.btn-primary` qu'on
-	   écrirait ensuite, quel que soit son ordre. Le tunnel d'achat gardait donc
-	   son noir d'usine pendant que le reste du site portait la couleur de la
-	   maison. On alimente la variable qu'il lit, plutôt que de lutter avec des
-	   sélecteurs. */
-	--btn-primary: var(--primary-color);
-	--btn-primary-hover: {% if tp %}color-mix(in srgb, var(--primary-color) 87%, transparent){% else %}{{ primary_hex }}dd{% endif %};
+	   `website.bundle.css` paints the primary button through `.btn.btn-primary`,
+	   TWO classes: more specific than any `.btn-primary` rule written after it,
+	   whatever the order. The purchase tunnel therefore kept its factory black
+	   while the rest of the site wore the house colour. We feed the variable it
+	   reads instead of fighting selectors.
+	   //// Neoffice — since 2026-09-13 the token carries the page's call-to-action
+	   //// colour (get_theme_css → button_colours): the primary when it reads on the
+	   //// page background, a deeper shade of it when it is pale, the secondary when
+	   //// the primary is the background itself, the text colour last. The content's
+	   //// .u-btn--primary and the shop's --wsh-primary read it, so one action colour
+	   //// serves the pages and the shop. --btn-primary-text is the label that reads
+	   //// on it; the hover leans towards the text colour, so it can only gain
+	   //// contrast. */
+	--btn-primary: {{ cta_color or 'var(--primary-color)' }};
+	--btn-primary-text: {{ cta_text or 'var(--primary-text, #ffffff)' }};
+	--btn-primary-hover: color-mix(in srgb, var(--btn-primary) 87%, var(--text-color));
+	/* //// Neoffice — the secondary button's fill and label; the fallbacks when it is
+	   //// drawn as an outline instead (see .u-btn--secondary below) */
+	--btn-secondary: {{ secondary_button or 'var(--secondary-color)' }};
+	--btn-secondary-text: {{ secondary_button_text or 'var(--secondary-text, #ffffff)' }};
 
 	/* Derived colors for WebShop compatibility. With a token prefix the shades are
 	   mixed from the aliased token at render time (color-mix, Baseline 2023), so a
@@ -94,14 +106,6 @@
 	   //// hover leans towards the text colour, so it can only gain contrast. */
 	--link-color: {{ link_color or 'var(--primary-color)' }};
 	--link-hover: color-mix(in srgb, var(--link-color) 75%, var(--text-color));
-	/* //// Neoffice — the call-to-action colour of the page (2026-09-13): the primary when
-	   //// it reads on the page background, otherwise the secondary, otherwise the text —
-	   //// the rule the header already applies to its own button. The primary buttons of
-	   //// the content and the shop's buttons read these, so a site whose primary is its
-	   //// background (a reseller's dark site) gets one action colour everywhere. */
-	--cta-color: {{ cta_color or 'var(--primary-color)' }};
-	--cta-text: {{ cta_text or 'var(--primary-text, #ffffff)' }};
-	--cta-hover: color-mix(in srgb, var(--cta-color) 87%, var(--text-color));
 	/* frappe's bundle paints every heading in its own --heading-color: on a dark site
 	   the catalogue and login titles came out near-black on near-black */
 	--heading-color: var(--text-color);
@@ -321,15 +325,28 @@ a:where(:not(.u-btn)):hover {
    //// colour of where it sits: in the primary colour it vanished on a section painted
    //// in that colour (2026-09-10). */
 .u-btn--primary {
-	/* //// Neoffice — the page's call-to-action colour, see --cta-color above (2026-09-13) */
-	background: var(--cta-color, var(--primary-color));
-	color: var(--cta-text, var(--primary-text, #ffffff));
+	/* //// Neoffice — the page's call-to-action colour, see --btn-primary above (2026-09-13) */
+	background: var(--btn-primary, var(--primary-color));
+	color: var(--btn-primary-text, var(--primary-text, #ffffff));
 }
 
+{%- if secondary_button is defined and not secondary_button %}
+/* //// Neoffice — the primary button already wears the secondary colour, or the secondary
+   //// does not read on this page: the secondary button steps back to an outline in the
+   //// action colour, so a hero never shows two identical filled buttons side by side
+   //// (button_colours, 2026-09-13) */
 .u-btn--secondary {
-	background: var(--secondary-color);
-	color: var(--secondary-text, #ffffff);
+	background: transparent;
+	color: var(--btn-primary);
+	border-color: var(--btn-primary);
 }
+{%- else %}
+.u-btn--secondary {
+	/* //// Neoffice — the secondary button's own tokens, see --btn-secondary above */
+	background: var(--btn-secondary, var(--secondary-color));
+	color: var(--btn-secondary-text, var(--secondary-text, #ffffff));
+}
+{%- endif %}
 
 .u-btn--outline {
 	background: transparent;
@@ -359,12 +376,17 @@ a:where(:not(.u-btn)):hover {
 /* //// Neoffice — whatever the hover mode, a label never changes colour on hover: the
    //// generic a:hover above stops at buttons, and these say it again for the bundles
    //// (frappe, webshop) that carry their own link hover */
-.u-btn--primary:hover { color: var(--primary-text, #ffffff); }
-.u-btn--secondary:hover { color: var(--secondary-text, #ffffff); }
+.u-btn--primary:hover { color: var(--btn-primary-text, var(--primary-text, #ffffff)); }
+{%- if secondary_button is defined and not secondary_button %}
+.u-btn--secondary:hover { color: var(--btn-primary); background: color-mix(in srgb, var(--btn-primary) 12%, transparent); filter: none; }
+{%- else %}
+.u-btn--secondary:hover { color: var(--btn-secondary-text, var(--secondary-text, #ffffff)); }
+{%- endif %}
 .u-btn--outline:hover, .u-btn--ghost:hover { color: inherit; }
 
 .u-btn:focus-visible {
-	outline: 2px solid var(--primary-color);
+	/* //// Neoffice — the ring in the action colour: the primary is the page itself on some sites */
+	outline: 2px solid var(--btn-primary, var(--primary-color));
 	outline-offset: 2px;
 }
 
