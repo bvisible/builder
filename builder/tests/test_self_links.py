@@ -2,7 +2,7 @@
 # //// it is on (builder/site_ai/nora/buttons.py).
 import unittest
 
-from builder.site_ai.nora.buttons import retarget_self_links
+from builder.site_ai.nora.buttons import drop_closing_band, retarget_self_links
 
 FORM = "{% include 'builder/templates/includes/contact_form.html' %}"
 
@@ -45,3 +45,23 @@ class TestSelfLinks(unittest.TestCase):
 		label = button("/", "Home")
 		retarget_self_links([label], "home", "/contact")
 		self.assertEqual(label["attributes"]["href"], "/")
+
+
+class TestClosingBand(unittest.TestCase):
+	"""A contact page closed on "Vous avez une question ? Voir le formulaire", under its own form."""
+
+	def page(self, *last):
+		form = {"element": "section", "children": [{"element": "div", "innerHTML": FORM}]}
+		return [{"element": "div", "children": [form, {"element": "section", "children": list(last)}]}]
+
+	def test_a_band_back_to_the_page_goes(self):
+		blocks = self.page({"element": "h2", "innerHTML": "Vous avez une question ?"}, button("#contact-form", "Voir le formulaire"))
+		self.assertEqual(drop_closing_band(blocks, "contact"), ["Vous avez une question ?"])
+		self.assertEqual(len(blocks[0]["children"]), 1)
+
+	def test_a_band_to_another_page_or_holding_the_form_stays(self):
+		elsewhere = self.page({"element": "h2", "innerHTML": "Nos tarifs"}, button("/tarifs", "Voir les tarifs"))
+		self.assertEqual(drop_closing_band(elsewhere, "contact"), [])
+		alone = [{"element": "div", "children": [{"element": "section", "children": [{"element": "div", "innerHTML": FORM}, button("/contact#top")]}]}]
+		self.assertEqual(drop_closing_band(alone, "contact"), [])
+		self.assertEqual(len(alone[0]["children"]), 1)

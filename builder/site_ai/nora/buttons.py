@@ -518,6 +518,46 @@ def retarget_self_links(blocks: list, own_route: str, fallback: str) -> list[str
     return edits
 
 
+def drop_closing_band(blocks: list, own_route: str) -> list[str]:
+    """On the page the site's call to action leads to, a closing band whose every link leads back
+    to the page itself goes. Told that this page carries none, a contact page still closed on
+    "Vous avez une question ? Voir le formulaire", a band under its own form sending the visitor
+    back up (2026-09-13). Only the page's last section, and only a short one with no form,
+    include or field: the band, never content. Returns the heading of what went."""
+    route = str(own_route or "").strip("/")
+    own = "/" if route in ("", "home", "index") else f"/{route}"
+    top = [b for b in blocks or [] if isinstance(b, dict)]
+    sections = top[0]["children"] if len(top) == 1 and top[0].get("children") else top
+    if not sections or not isinstance(sections[-1], dict):
+        return []
+    links: list[str] = []
+    state = {"words": 0, "fields": False, "heading": ""}
+
+    def walk(block: dict) -> None:
+        element = (block.get("element") or "").lower()
+        if "{%" in str(block.get("innerHTML") or "") or element in ("form", "input", "textarea", "select", "iframe"):
+            state["fields"] = True
+        if element in ("h1", "h2", "h3", "h4", "h5", "h6") and not state["heading"]:
+            state["heading"] = _text(block)
+        href = str((block.get("attributes") or {}).get("href") or "")
+        if href:
+            links.append(href)
+        state["words"] += len(_text(block).split())
+        for child in block.get("children") or []:
+            if isinstance(child, dict):
+                walk(child)
+
+    def to_itself(href: str) -> bool:
+        path = href.split("#", 1)[0].split("?", 1)[0].rstrip("/") or "/"
+        return href.startswith("#") or (href.startswith("/") and path == own)
+
+    walk(sections[-1])
+    if state["fields"] or not links or state["words"] > 60 or not all(to_itself(h) for h in links):
+        return []
+    sections.pop()
+    return [state["heading"] or "the closing band"]
+
+
 def _include_block(blocks: list, template: str) -> dict | None:
     """The block whose text includes `template` (the contact form, the map)."""
     for block in blocks or []:

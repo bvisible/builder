@@ -300,6 +300,25 @@ class TestBesideKeptPages(unittest.TestCase):
 		self.assertFalse(any("find the place" in s for s in page_sections(contact, minimal=False, contact_verified=False)))
 		self.assertFalse(any("map" in url for url in placeholder_photos(contact, "Physiothérapie")))
 
+	def test_a_headline_another_page_already_says_goes_back(self):
+		"""The services page opened on "Des soins adaptés à chaque étape de votre récupération",
+		under the home's "Des soins pensés pour chaque étape de votre récupération" (2026-09-13)."""
+		from builder.site_ai.nora.site_builder import headline_echoes
+
+		earlier = ["Des soins pensés pour chaque étape de votre récupération"]
+		page = [
+			{
+				"element": "section",
+				"children": [
+					{"element": "h2", "innerHTML": "Des soins adaptés à chaque étape de votre récupération"},
+					{"element": "h2", "innerHTML": "Comment se déroule une première séance"},
+				],
+			}
+		]
+		issues = headline_echoes(page, earlier)
+		self.assertEqual([i["area"] for i in issues], ["headline"])
+		self.assertIn("Des soins adaptés", issues[0]["problem"])
+
 	def test_keep_them_keeps_the_hand_made_pages_only(self):
 		"""Answered with 'none', a question about one hand-made page kept the whole
 		previous site beside the new one."""

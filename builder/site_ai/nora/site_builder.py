@@ -836,17 +836,43 @@ def page_headlines(blocks: list, categories: list[str] | None = None) -> list[st
     return found[:8]
 
 
+def stored_page(name: str) -> tuple[list, str]:
+    """The blocks and the data script a page was saved with."""
+    stored = frappe.db.get_value("Builder Page", name, ["blocks", "page_data_script"], as_dict=True) or frappe._dict()
+    try:
+        blocks = json.loads(stored.get("blocks") or "[]")
+    except ValueError:
+        blocks = []
+    return (blocks if isinstance(blocks, list) else [blocks]), stored.get("page_data_script") or ""
+
+
 def page_facts(name: str, known: str) -> list[dict]:
     """The facts the stored page states that `known` (what its writer was given) does not
     contain: see facts.py."""
     from builder.site_ai.nora.facts import invented_facts
 
-    stored = frappe.db.get_value("Builder Page", name, ["blocks", "page_data_script"], as_dict=True) or frappe._dict()
-    try:
-        blocks = json.loads(stored.get("blocks") or "[]")
-    except ValueError:
-        return []
-    return invented_facts(blocks if isinstance(blocks, list) else [blocks], stored.get("page_data_script") or "", known, today=frappe.utils.today())
+    blocks, script = stored_page(name)
+    return invented_facts(blocks, script, known, today=frappe.utils.today())
+
+
+def headline_echoes(blocks: list, earlier: list[str]) -> list[dict]:
+    """The headlines of a page that say what a page written before it already says, as revision
+    issues. Given the lines already taken, a services page still opened on "Des soins adaptés à
+    chaque étape de votre récupération" under the home's "Des soins pensés pour chaque étape de
+    votre récupération" (2026-09-13)."""
+    from builder.site_ai.nora.cards import says_the_same
+
+    issues = []
+    for line in page_headlines(blocks):
+        twin = next((other for other in earlier if says_the_same(line, other)), None)
+        if twin:
+            issues.append({
+                "severity": "medium",
+                "area": "headline",
+                "problem": f"'{line}' says what another page already says ('{twin}')",
+                "fix": "write a headline of this page's own",
+            })
+    return issues
 
 
 def page_brief_text(site: dict, brief, page: dict, handles: dict, contact_prompt: str, layout_system: str, language: str, photos: list[str], cta: tuple[str, str], palette: dict | None = None, revision: str | None = None, photo_notes: list[str] | None = None) -> str:
@@ -1234,7 +1260,7 @@ def build_site(ctx, spec: dict) -> str:
     # //// generation off, placehold.co slots become inline SVGs (neutral_placeholders) instead of
     # //// broken external images (65d8f360 "fix(nora): cards never stack in a column, and photo slots without photos are plain blocks")
     from builder.site_ai.nora.layout import grid_stacked_cards, place_orphans, repeater_counts, strip_title_band, unwrap_grid_wrappers
-    from builder.site_ai.nora.facts import facts_issues, known_text
+    from builder.site_ai.nora.facts import facts_issues, invented_facts, known_text
     from builder.site_ai.nora.placeholders import neutral_named_slots, neutral_placeholders
     from builder.site_ai.nora.punctuation import french_spacing
     from builder.site_ai.nora.typography import cap_font_sizes
@@ -1603,6 +1629,13 @@ def build_site(ctx, spec: dict) -> str:
                     own = retarget_self_links(blocks, page["route"], cta[1])
                     if own:
                         ai_log("info", "Links to the page itself retargeted", page=page["title"], edits=own)
+                    # nor does that page close on a band sending the visitor back to it (buttons.py)
+                    if cta[1].rstrip("/") == f"/{page['route']}".rstrip("/"):
+                        from builder.site_ai.nora.buttons import drop_closing_band
+
+                        closing = drop_closing_band(blocks, page["route"])
+                        if closing:
+                            ai_log("info", "Closing band to the page itself dropped", page=page["title"], band=closing)
                     # the routes the data script hands to repeated blocks pass the same check
                     from builder.site_ai.nora.buttons import repair_data_routes
 
@@ -1781,17 +1814,26 @@ def build_site(ctx, spec: dict) -> str:
                     _progress(ctx, job_id, _("Visual check: {0}").format(item["title"]), 96, {"pages_created": created})
                     reviews.append(visual_check.review_page(item, profile, page_model, site_name=site_name, activity=activity))
             known = known_text(site, contact_prompt)
+            earlier: list[str] = []
             for item in created:
-                found = page_facts(item["name"], known)
-                if not found:
+                stored_blocks, stored_script = stored_page(item["name"])
+                found = invented_facts(stored_blocks, stored_script, known, today=frappe.utils.today())
+                # a page written later does not say again what an earlier one said (headline_echoes)
+                echoes = headline_echoes(stored_blocks, earlier)
+                earlier += page_headlines(stored_blocks, categories)
+                if not found and not echoes:
                     continue
-                ai_log("info", "Invented facts found", page=item["title"], facts=[f["text"] for f in found][:12])
+                if found:
+                    ai_log("info", "Invented facts found", page=item["title"], facts=[f["text"] for f in found][:12])
+                if echoes:
+                    ai_log("info", "Headlines another page already says", page=item["title"], lines=[e["problem"][:120] for e in echoes])
                 review = next((r for r in reviews if r["name"] == item["name"]), None)
                 if review is None:
                     review = {"name": item["name"], "title": item["title"], "route": item["route"], "professional": None, "issues": [], "error": None, "overall": ""}
                     reviews.append(review)
-                review["issues"] = facts_issues(found) + review["issues"]
-                review["facts"] = len(found)
+                review["issues"] = facts_issues(found) + echoes + review["issues"]
+                if found:
+                    review["facts"] = len(found)
             # every page stating made-up facts is revised; the designer's points take the places
             # left: the pages that failed the first glance first, then the ones with most defects
             ranked = sorted(
