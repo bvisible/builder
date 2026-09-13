@@ -508,7 +508,7 @@ class TestShopIncludes(unittest.TestCase):
 	def test_carousels_need_an_ecommerce_site(self):
 		with patch("builder.site_ai.nora.site_builder._other_business", return_value=False), patch(
 			"frappe.get_installed_apps", return_value=["frappe", "builder", "webshop"]
-		), patch("builder.site_ai.nora.site_builder._opening_hours_configured", return_value=True):
+		), patch("builder.empty_includes.opening_hours_configured", return_value=True):
 			vitrine = [t for t, _ in available_includes("accueil", "vitrine", None)]
 			shop = [t for t, _ in available_includes("accueil", "ecommerce", None)]
 			hours = [t for t, _ in available_includes("contact", "vitrine", None)]

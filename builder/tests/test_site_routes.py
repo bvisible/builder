@@ -151,8 +151,8 @@ class TestBesideKeptPages(unittest.TestCase):
 		def offered(address, hours):
 			with (
 				patch.object(site_builder.frappe, "get_installed_apps", return_value=["frappe", "builder", "webshop"]),
-				patch.object(site_builder, "_site_has_address", return_value=address),
-				patch.object(site_builder, "_opening_hours_configured", return_value=hours),
+				patch("builder.empty_includes.site_has_address", return_value=address),
+				patch("builder.empty_includes.opening_hours_configured", return_value=hours),
 			):
 				return " ".join(tag for tag, _ in site_builder.available_includes("contact"))
 
@@ -162,6 +162,27 @@ class TestBesideKeptPages(unittest.TestCase):
 		self.assertIn("google_map", both)
 		self.assertIn("opening_hours", both)
 		self.assertIn("contact_form", offered(address=False, hours=False))
+
+	def test_an_about_page_is_offered_no_empty_team_or_timeline(self):
+		"""The about pages of a reseller site carried a team heading over no one and a "key
+		figures" heading over no milestone: About Us Settings was empty."""
+		from unittest.mock import patch
+
+		from builder.site_ai.nora import site_builder
+
+		def offered(rows):
+			with (
+				patch.object(site_builder.frappe, "get_installed_apps", return_value=["frappe", "builder"]),
+				patch("builder.empty_includes.about_us_rows", side_effect=lambda field: field in rows),
+			):
+				return " ".join(tag for tag, _ in site_builder.available_includes("about"))
+
+		self.assertEqual(offered(set()), "")
+		self.assertIn("team_grid", offered({"team_members"}))
+		self.assertNotIn("company_timeline", offered({"team_members"}))
+		both = offered({"team_members", "company_history"})
+		self.assertIn("team_grid", both)
+		self.assertIn("company_timeline", both)
 
 	def test_keep_them_keeps_the_hand_made_pages_only(self):
 		"""Answered with 'none', a question about one hand-made page kept the whole

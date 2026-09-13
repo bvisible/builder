@@ -544,6 +544,12 @@ class BuilderPage(WebsiteGenerator):
 		if context.preview and self.draft_blocks:
 			blocks = self.draft_blocks
 
+		# //// Neoffice — an include with nothing to show on this site (a map without an address,
+		# //// hours never typed, an empty team) is not drawn, nor the short heading announcing it:
+		# //// the page kept a label over an empty space (builder/empty_includes.py, 2026-09-13).
+		from builder.empty_includes import prune_for_render
+
+		blocks = prune_for_render(blocks, getattr(frappe.local, "website_profile", None))
 		content, style, fonts, has_dual_mode_image = get_block_html(blocks)
 
 		# Propagate the root block's background to html/body. Otherwise a full-bleed

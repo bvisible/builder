@@ -738,35 +738,17 @@ def _account_request_route() -> str | None:
         return None
 
 
-def _site_has_address(profile: str | None) -> bool:
-    """Whether the site's business has an address the map include can show."""
-    try:
-        from builder.api import get_site_contact_context
-
-        return bool(get_site_contact_context(profile).get("address"))
-    except Exception:
-        return False
-
-
-def _opening_hours_configured() -> bool:
-    """Whether the shop has opening hours typed, so the hours include has something to show."""
-    try:
-        from webshop.webshop.utils.store_hours import webshop_opening_hours
-
-        return bool(webshop_opening_hours())
-    except Exception:
-        # the shop app absent, or installed without the apps it needs on this site
-        return False
-
-
 def available_includes(page_type: str, site_type: str = "vitrine", profile: str | None = None, site_name: str = "") -> list[tuple[str, str]]:
     """The includes of this page type whose app is installed on the bench (an include of
     an absent app turns the whole page into a 500 at render time), minus every include
     that would show another business's data — the team, the timeline, the map of the
     address, the hours, the products: only the contact form is left to a site built for
     a business other than the instance's (the About page of the B2C test site carried
-    the host's employees and milestones, 2026-09-08) — and the product and brand
-    carousels only on an e-commerce site."""
+    the host's employees and milestones, 2026-09-08) — the product and brand carousels
+    only on an e-commerce site, and no include with nothing to show on this site
+    (builder.empty_includes.include_has_data)."""
+    from builder.empty_includes import include_has_data
+
     try:
         installed = set(frappe.get_installed_apps())
     except Exception:
@@ -785,10 +767,9 @@ def available_includes(page_type: str, site_type: str = "vitrine", profile: str 
         if app == "webshop" and "carousel" in tag and site_type != "ecommerce" and not _profile_is_b2b(profile):
             continue
         # an include with nothing to show is an empty section on the page: a map without an
-        # address, a week without hours (a reseller site's contact page, 2026-09-13)
-        if "google_map" in tag and not _site_has_address(profile):
-            continue
-        if "opening_hours" in tag and not _opening_hours_configured():
+        # address, a week without hours, a team or a timeline with no one in it (a reseller
+        # site's contact and about pages, 2026-09-13). The renderer drops one all the same.
+        if path and include_has_data(path.group(1), profile) is False:
             continue
         out.append((tag, purpose))
     return out

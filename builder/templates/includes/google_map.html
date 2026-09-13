@@ -6,7 +6,9 @@
     generator writes includes this block with no address, and it showed every visitor
     "Map placeholder - configure address" (2026-09-13). With no address at all it draws
     nothing, rather than a configuration hint on a public page. -#}
-{% set map_address = (address | default("")) or site_map_address() %}
+{#- site_map_address is a Jinja method (hooks.py): an instance still holding hooks cached from
+    before it existed draws no map instead of failing the whole page (2026-09-13). -#}
+{% set map_address = (address | default("")) or (site_map_address() if site_map_address is defined else "") %}
 {% set map_height = height | default("400px") %}
 {% set map_zoom = zoom | default("16") %}
 {% set map_type = type | default("m") %}
