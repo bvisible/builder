@@ -13,6 +13,7 @@ from __future__ import annotations
 
 import json
 import re
+import unicodedata
 
 HEX = re.compile(r"#[0-9a-fA-F]{3,8}\b")
 KINDS = ("choices", "buttons", "actions", "color_input", "input", "upload", "heading", "text", "list", "swatches", "divider")
@@ -289,3 +290,20 @@ def materialise_text_card(ctx, text: str) -> bool:
 
     failed = run_present_ui(ctx, spec)
     return not failed
+
+
+def says_the_same(first: str, second: str) -> bool:
+    """Whether two short texts say the same thing: most words of the shorter one are in the
+    other. The model wrote "Deux pages existantes ont été retouchées à la main… Tu
+    confirmes ?" as its message, then again as the card's text, and the panel showed the
+    question twice (2026-09-13). A text of fewer than five words is never judged."""
+
+    def words(text: str) -> list[str]:
+        plain = unicodedata.normalize("NFKD", str(text or "")).encode("ascii", "ignore").decode().lower()
+        return [w for w in re.findall(r"[a-z0-9]+", plain) if len(w) > 1]
+
+    a, b = words(first), words(second)
+    if min(len(a), len(b)) < 5:
+        return False
+    shorter, longer = (a, set(b)) if len(a) <= len(b) else (b, set(a))
+    return sum(1 for w in shorter if w in longer) / len(shorter) >= 0.7

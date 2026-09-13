@@ -81,3 +81,34 @@ class TestBareButtons(unittest.TestCase):
 
 	def test_a_footnote_is_not_a_button(self):
 		self.assertIsNone(parse_card("The brief says so in the second email [1]"))
+
+
+class TestCardEcho(unittest.TestCase):
+	"""The question written as the message, then again as the card's text: shown twice."""
+
+	FIRST = (
+		"Deux pages existantes ont été retouchées à la main : Accueil et À propos. Je dois les "
+		"remplacer aussi pour construire le site complet. Tu confirmes ?"
+	)
+	CARD = (
+		"Deux pages existantes ont été retouchées à la main : Accueil et À propos. Pour construire "
+		"le site complet, je dois les remplacer. Tu confirmes ?"
+	)
+
+	def test_the_same_question_in_other_words(self):
+		from builder.site_ai.nora.cards import says_the_same
+
+		self.assertTrue(says_the_same(self.FIRST, self.CARD))
+		self.assertFalse(says_the_same("Which pages do you want?", "Pages"))
+		self.assertFalse(says_the_same("I read the three sites you like.", self.CARD))
+
+	def test_the_echo_leaves_the_timeline(self):
+		from builder.ai.agent.tools.conversation import _without_echo
+
+		tool = {"id": 0, "kind": "tool", "tool": "generate_site"}
+		echo = {"id": 1, "kind": "text", "text": self.FIRST}
+		self.assertEqual(_without_echo([tool, echo], self.CARD), [tool])
+		# a narration before a later tool call is another moment of the turn
+		self.assertEqual(_without_echo([echo, tool], self.CARD), [echo, tool])
+		other = {"id": 1, "kind": "text", "text": "I read the three sites you like."}
+		self.assertEqual(_without_echo([tool, other], self.CARD), [tool, other])

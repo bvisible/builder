@@ -42,6 +42,23 @@ MAX_ELEMENTS = 30
 MAX_UI_JSON = 24000
 
 
+# //// Neoffice — added function, see run_present_ui: a narration that repeats the card is dropped.
+def _without_echo(steps: list[dict], text: str) -> list[dict]:
+	"""The timeline without its last narration when that says what the card says. Only a
+	narration written after the last tool call counts: one before it is another moment."""
+	from builder.site_ai.nora.cards import says_the_same
+
+	for index in range(len(steps) - 1, -1, -1):
+		kind = steps[index].get("kind")
+		if kind == "tool":
+			break
+		if kind == "text":
+			if says_the_same(steps[index].get("text") or "", text):
+				return steps[:index] + steps[index + 1 :]
+			break
+	return steps
+
+
 def run_present_ui(ctx, args: dict) -> str | None:
 	text = (args.get("text") or "").strip()
 	ui = sanitize_ui(args.get("ui"))
@@ -66,6 +83,9 @@ def run_present_ui(ctx, args: dict) -> str | None:
 	content = render_ui_text(text, ui)
 	metadata = {"status": "ui", "text": text, "ui": ui}
 	if timeline := ctx.timeline():
+		# //// Neoffice — the model often writes the card's question as its message too, and the
+		# //// panel showed it twice, as the narration and as the card's text (2026-09-13).
+		timeline = _without_echo(timeline, text)
 		metadata["steps"] = timeline  # research done before asking survives a reload
 	# after_commit: the event triggers a session reload on the client, which must
 	# see this message already in the DB.
