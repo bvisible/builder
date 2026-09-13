@@ -2056,6 +2056,7 @@ def _scan_placeholder_images(page_names: list, subject: str = "", avoid: tuple =
 QUALITY_SUFFIX = "natural lighting, shallow depth of field, photorealistic, high resolution, candid documentary style"
 
 
+# //// Neoffice — `avoid` added: names kept out of the prompt (see the marker in the body)
 def _build_image_prompt(context: str, is_background: bool = False, subject: str = "", avoid: tuple = ()) -> str:
 	"""Build an image generation prompt from context text.
 
