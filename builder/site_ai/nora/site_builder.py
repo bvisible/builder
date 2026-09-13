@@ -996,6 +996,12 @@ def page_brief_text(site: dict, brief, page: dict, handles: dict, contact_prompt
             "sparingly); use it instead of inventing another bright colour, and no other raw hex."
             if handles.get("accent") else ""
         ),
+        (
+            # the model wrote "d un", "l écoute": a space where the apostrophe goes (2026-09-13)
+            "FRENCH: every elision takes the apostrophe ’ (d’un, l’équipe, qu’il, aujourd’hui), never a space in its place."
+            if language.lower().startswith("fr")
+            else ""
+        ),
         "CLASS CONTRACT: " + CLASS_CONTRACT,
         includes_block(includes),
         (
@@ -1270,7 +1276,7 @@ def build_site(ctx, spec: dict) -> str:
     from builder.site_ai.nora.layout import grid_stacked_cards, place_orphans, repeater_counts, strip_title_band, unwrap_grid_wrappers
     from builder.site_ai.nora.facts import facts_issues, invented_facts, known_text
     from builder.site_ai.nora.placeholders import neutral_named_slots, neutral_placeholders
-    from builder.site_ai.nora.punctuation import french_spacing
+    from builder.site_ai.nora.punctuation import french_elisions, french_spacing, script_elisions
     from builder.site_ai.nora.typography import cap_font_sizes
     from builder.site_ai.nora.prompts import page_profile
 
@@ -1710,6 +1716,11 @@ def build_site(ctx, spec: dict) -> str:
                         spaced = french_spacing(blocks)
                         if spaced:
                             ai_log("info", "French spacing applied", page=page["title"], edits=spaced)
+                        # nor an elision written with a space for its apostrophe (punctuation.py)
+                        elided = french_elisions(blocks)
+                        data_script, script_elided = script_elisions(data_script)
+                        if elided or script_elided:
+                            ai_log("info", "French apostrophes restored", page=page["title"], blocks=elided, data=script_elided)
                     # //// Neoffice — measured, so "less text" is a number and not an impression
                     ai_log("info", "Page copy measured", page=page["title"], words=page_word_count(blocks), density=site.get("copy_density"))
                 if blocks:

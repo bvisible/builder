@@ -800,6 +800,24 @@ class TestRenderFidelity(unittest.TestCase):
 		self.assertIn(" ?", blocks[2]["innerHTML"])
 		self.assertIn(" ?", blocks[3]["innerHTML"])
 
+	def test_an_elision_written_with_a_space_gets_its_apostrophe(self):
+		"""A practice's services page read "les bases d un travail" and "un temps d écoute"."""
+		from builder.site_ai.nora.punctuation import french_elisions, script_elisions
+
+		blocks = [
+			{"element": "p", "innerHTML": "Les bases d un travail, un temps d écoute. L évaluation, qu il faut, aujourd hui."},
+			{"element": "img", "attributes": {"alt": "Résultat d une prise en charge"}},
+			{"element": "p", "innerHTML": "À 5 m à pied, il a une idée : y aller <a href='/d un'>ici</a>"},
+		]
+		self.assertEqual(french_elisions(blocks), 2)
+		self.assertEqual(blocks[0]["innerHTML"], "Les bases d’un travail, un temps d’écoute. L’évaluation, qu’il faut, aujourd’hui.")
+		self.assertEqual(blocks[1]["attributes"]["alt"], "Résultat d’une prise en charge")
+		self.assertEqual(blocks[2]["innerHTML"], "À 5 m à pied, il a une idée : y aller <a href='/d un'>ici</a>")
+		script, edits = script_elisions('data.steps = [{"title":"L\\u2019\\u00e9valuation","text":"Les bases d un travail"}]\nx = 1')
+		self.assertEqual(edits, 1)
+		self.assertIn("d\\u2019un travail", script)
+		self.assertTrue(script.endswith("\nx = 1"))
+
 	def test_another_business_gets_the_contact_form_only(self):
 		with patch("builder.site_ai.nora.site_builder._other_business", return_value=True), patch(
 			"frappe.get_installed_apps", return_value=["frappe", "builder", "webshop"]
