@@ -395,7 +395,11 @@ def mint_tokens(prefix: str, group: str, brief, primary: str, secondary: str) ->
     return handles
 
 
-def placeholder_photos(page: dict, activity: str) -> list[str]:
+def placeholder_photos(page: dict, activity: str, categories=(), listing: bool = False) -> list[str]:
+    """The photo slots a page is written with when the client gave no photograph. The home and
+    the page that lists the offer get one per category besides: given two for four services, a
+    practice's services grid came out with photos on some cards and icons on the others
+    (2026-09-13)."""
     subject = (activity or "").strip()[:60] or page["title"]
     shots = {
         "accueil": [f"{subject}, hero", f"{subject}, in action", f"{subject}, team"],
@@ -408,6 +412,9 @@ def placeholder_photos(page: dict, activity: str) -> list[str]:
         "shop": [f"{subject}, product 1", f"{subject}, product 2", f"{subject}, product 3"],
         "one_page": [f"{subject}, hero", f"{subject}, in action", f"{subject}, storefront"],
     }.get(page["type"], [f"{subject}, {page['title']}"])
+    # one slot per category where the categories are shown, after the page's first photograph
+    if categories and (page["type"] == "accueil" or listing):
+        shots = [shots[0], *(f"{subject}, {name}" for name in categories), *shots[1:2]]
     urls = []
     for i, text in enumerate(shots):
         w, h = (1600, 900) if i == 0 else (1200, 800)
@@ -981,7 +988,8 @@ def page_brief_text(site: dict, brief, page: dict, handles: dict, contact_prompt
             f"category tile takes the photograph named for it, full bleed, the category's name as its only text:\n{photo_lines}"
             if notes
             else "PHOTOS AVAILABLE (placeholders that the site replaces with real photos after the build; use each at most once, "
-            f"copy the URL exactly, give it a descriptive alt in {language}):\n{photo_lines}"
+            f"copy the URL exactly, give it a descriptive alt in {language}; the cards of one grid are alike: each gets a photo, "
+            f"or none does):\n{photo_lines}"
         ),
         (
             f"ACCENT: {handles['accent']} is the site's signature accent (kickers, badges, one highlight per section, "
@@ -1725,7 +1733,7 @@ def build_site(ctx, spec: dict) -> str:
             break
         _progress(ctx, job_id, _("Writing page {0} of {1}: {2}").format(idx + 1, total, page["title"]), 10 + int(80 * idx / max(total, 1)), {"current_page": page["title"], "pages_created": created})
         page_photos, page_notes = photos_for_page(page, client_photos, photos_used, categories, copy_density == "minimal", listing=page["route"] == lister_route)
-        blocks, data_script, error = write_page(page, page_photos or placeholder_photos(page, activity), notes=page_notes or None)
+        blocks, data_script, error = write_page(page, page_photos or placeholder_photos(page, activity, categories, listing=page["route"] == lister_route), notes=page_notes or None)
         if not blocks:
             failed.append({"title": page["title"], "error": error})
             # //// Neoffice — title/message swapped to frappe's documented log_error(title,
@@ -1851,7 +1859,7 @@ def build_site(ctx, spec: dict) -> str:
                 # carries besides (the client's own included, not only the drawn ones)
                 planned, planned_notes = planned_photos.get(r["name"], ([], []))
                 photos, notes = revision_photos(planned, planned_notes, stored.get("blocks"), stored.get("page_data_script"))
-                blocks, data_script, error = write_page(page, photos or placeholder_photos(page, activity), notes=notes, revision=visual_check.revision_instructions(r["issues"]))
+                blocks, data_script, error = write_page(page, photos or placeholder_photos(page, activity, categories, listing=page["route"] == lister_route), notes=notes, revision=visual_check.revision_instructions(r["issues"]))
                 if not blocks:
                     ai_log("warning", "Revision pass failed", page=r["title"], error=error)
                     continue

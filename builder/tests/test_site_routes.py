@@ -300,6 +300,22 @@ class TestBesideKeptPages(unittest.TestCase):
 		self.assertFalse(any("find the place" in s for s in page_sections(contact, minimal=False, contact_verified=False)))
 		self.assertFalse(any("map" in url for url in placeholder_photos(contact, "Physiothérapie")))
 
+	def test_the_pages_showing_the_categories_get_a_photo_slot_each(self):
+		"""Given two photo slots for four services, a practice's services grid came out with photos
+		on some cards and icons on the others (2026-09-13)."""
+		from urllib.parse import quote
+
+		from builder.site_ai.nora.site_builder import placeholder_photos
+
+		categories = ["Rééducation", "Drainage lymphatique", "Pilates"]
+		services = {"title": "Prestations", "route": "prestations", "type": "services"}
+		listed = placeholder_photos(services, "Physiothérapie", categories, listing=True)
+		self.assertEqual(len(listed), 1 + len(categories) + 1)
+		self.assertTrue(all(any(quote(name) in url for url in listed) for name in categories))
+		self.assertEqual(len(placeholder_photos(services, "Physiothérapie", categories)), 2)
+		home = {"title": "Accueil", "route": "home", "type": "accueil"}
+		self.assertEqual(len(placeholder_photos(home, "Physiothérapie", categories)), 1 + len(categories) + 1)
+
 	def test_a_headline_another_page_already_says_goes_back(self):
 		"""The services page opened on "Des soins adaptés à chaque étape de votre récupération",
 		under the home's "Des soins pensés pour chaque étape de votre récupération" (2026-09-13)."""
