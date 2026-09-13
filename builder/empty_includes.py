@@ -39,6 +39,8 @@ ACTIVE_MARKUP = re.compile(
 	re.I,
 )
 STYLE_FIELDS = ("baseStyles", "mobileStyles", "tabletStyles", "rawStyles")
+# an inline icon hidden from assistive technology is an ornament, not content
+DECORATIVE_SVG = re.compile(r"<svg\b[^>]*\baria-hidden\s*=\s*['\"]?true['\"]?[^>]*>.*?</svg>", re.I | re.S)
 
 
 def site_has_address(profile: str | None = None) -> bool:
@@ -110,9 +112,10 @@ def prune_for_render(blocks, profile: str | None = None):
 def prune_empty_includes(blocks, has_data) -> int:
 	"""Removes, in place, each bare include block for which has_data(path) is False, the short
 	text-only blocks right before it that announce it (ANNOUNCEMENT_MAX_CHARS together, and
-	only when no text follows it in the same parent: a heading over more than the include
-	stays), and every block the removal leaves with nothing to show. `blocks` is a block or a
-	list of blocks; a top-level block is never removed. Returns how many includes went."""
+	only when nothing with content follows it in the same parent: a heading over more than
+	the include, such as key figures the page's data fills, stays), and every block the
+	removal leaves with nothing to show. `blocks` is a block or a list of blocks; a top-level
+	block is never removed. Returns how many includes went."""
 	removed = 0
 
 	def empty_include(block: dict) -> bool:
@@ -139,9 +142,9 @@ def prune_empty_includes(blocks, has_data) -> int:
 				kept.append(child)
 				continue
 			# the child goes (an empty include, or a block its own pruning emptied), and so
-			# does what announced it, unless that also heads the text after it
+			# does what announced it, unless that also heads the content after it
 			dropped = True
-			if not any(_text_length(c) for c in children[index + 1 :] if isinstance(c, dict)):
+			if not any(_carries_content(c) for c in children[index + 1 :] if isinstance(c, dict)):
 				_drop_announcement(kept)
 		if not dropped:
 			return False
@@ -167,9 +170,11 @@ def _drop_announcement(kept: list) -> None:
 
 def _text_only_size(block: dict) -> int | None:
 	"""The length of the text a block and its children show, or None when one of them shows
-	more than text: media, a link or a control, a background image, an include, a binding."""
+	more than text: media, a link or a control, a background image, an include, a binding
+	(key figures bound to the page's data are content). An ornament hidden from assistive
+	technology (an icon marked aria-hidden) is not content and does not count."""
 	size = 0
-	for node in _subtree(block):
+	for node in _content_nodes(block):
 		element = str(node.get("element") or "").lower()
 		if element in MEDIA_ELEMENTS or element in ACTIVE_ELEMENTS or node.get("dynamicValues"):
 			return None
@@ -177,16 +182,21 @@ def _text_only_size(block: dict) -> int | None:
 			return None
 		if _has_background_image(node):
 			return None
-		text = node.get("innerHTML") if isinstance(node.get("innerHTML"), str) else ""
+		text = DECORATIVE_SVG.sub("", node.get("innerHTML") if isinstance(node.get("innerHTML"), str) else "")
 		if "{%" in text or "{{" in text or ACTIVE_MARKUP.search(text):
 			return None
 		size += len(_plain(text))
 	return size
 
 
-def _text_length(block: dict) -> int:
-	# the text a block and its children carry, whatever else they show
-	return sum(len(_plain(node.get("innerHTML"))) for node in _subtree(block))
+def _carries_content(block: dict) -> bool:
+	# text, or values the page's data fills (bound key figures), anywhere in the block; a
+	# photo alone does not need the heading above the include
+	for node in _content_nodes(block):
+		text = node.get("innerHTML") if isinstance(node.get("innerHTML"), str) else ""
+		if node.get("dynamicValues") or "{%" in text or "{{" in text or _plain(DECORATIVE_SVG.sub("", text)):
+			return True
+	return False
 
 
 def _shows_something(block: dict) -> bool:
@@ -204,8 +214,17 @@ def _plain(text) -> str:
 	return " ".join(html.unescape(re.sub(r"<[^>]+>", " ", text if isinstance(text, str) else "")).split())
 
 
-def _subtree(block: dict):
+def _decorative(block: dict) -> bool:
+	# hidden from assistive technology: an ornament (an icon, a rule), not content
+	attributes = block.get("attributes")
+	return isinstance(attributes, dict) and str(attributes.get("aria-hidden", "")).lower() == "true"
+
+
+def _content_nodes(block: dict):
+	# the block and its children, ornaments left out
+	if _decorative(block):
+		return
 	yield block
 	for child in block.get("children") or []:
 		if isinstance(child, dict):
-			yield from _subtree(child)
+			yield from _content_nodes(child)

@@ -111,6 +111,16 @@ class TestPruneEmptyIncludes(unittest.TestCase):
 		prune_empty_includes([box(section)], nothing)
 		self.assertEqual(section["children"], [picture])
 
+	def test_figures_bound_after_the_include_keep_its_heading(self):
+		# a reseller site's "a few landmarks" heading sat over the timeline include, then over
+		# key figures the page's data fills (2026-09-13)
+		heading = box(text("h2", "A few landmarks"), text("p", "Figures and dates from our story."))
+		figure = text("span", "", dynamicValues=[{"key": "value", "property": "innerHTML", "type": "key"}])
+		figures = box(figure, photo())
+		section = box(heading, include(TIMELINE), figures)
+		prune_empty_includes([box(section)], nothing)
+		self.assertEqual(section["children"], [heading, figures])
+
 	def test_the_grey_frame_of_a_map_goes_with_it(self):
 		words = box(text("h2", "Find us"), text("p", "y" * 200))
 		frame = box(include(MAP), baseStyles={"backgroundColor": "#f0f0f0", "minHeight": "400px"})
@@ -138,6 +148,32 @@ class TestPruneEmptyIncludes(unittest.TestCase):
 		group = box(link, include(HOURS))
 		prune_empty_includes([box(group, text("p", "other"))], nothing)
 		self.assertEqual(group["children"], [link])
+
+	def test_a_decorative_icon_does_not_make_a_heading_content(self):
+		# a reseller site's heading carried an aria-hidden icon beside its title (2026-09-13)
+		icon = text(
+			"div", "<svg viewBox='0 0 24 32'><path d='M0 0h24'/></svg>", attributes={"aria-hidden": "true"}
+		)
+		heading = box(box(icon, text("h2", "Milestones"), text("p", "Dates that tell our story.")))
+		picture = box(photo())
+		section = box(heading, include(TIMELINE), picture)
+		prune_empty_includes([box(section)], nothing)
+		self.assertEqual(section["children"], [picture])
+
+	def test_an_inline_icon_marked_hidden_is_an_ornament(self):
+		label = text("p", '<svg aria-hidden="true" viewBox="0 0 8 8"><circle r="4"/></svg> Hours')
+		other = text("p", "other")
+		root = box(box(label, include(HOURS)), other)
+		prune_empty_includes([box(root)], nothing)
+		self.assertEqual(root["children"], [other])
+
+	def test_key_figures_bound_to_the_page_data_are_content(self):
+		# a "milestones and key figures" heading over figures the page's data fills stays
+		figure = text("span", "", dynamicValues=[{"key": "value", "property": "innerHTML", "type": "key"}])
+		heading = box(text("h2", "Milestones and key figures"), box(figure))
+		section = box(heading, include(TIMELINE))
+		prune_empty_includes([box(section)], nothing)
+		self.assertEqual(section["children"], [heading])
 
 	def test_an_include_with_its_record_or_unknown_stays(self):
 		page = [box(box(text("p", "Hours"), include(HOURS)), box(text("p", "Write to us"), include(FORM)))]
