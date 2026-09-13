@@ -184,6 +184,20 @@ class TestBesideKeptPages(unittest.TestCase):
 		self.assertIn("team_grid", both)
 		self.assertIn("company_timeline", both)
 
+	def test_the_build_progress_never_goes_back(self):
+		"""The panel read "Reading the inspirations" through the design brief's minutes of
+		thinking: the brief was announced before the inspirations and the photos were read,
+		and the bar went 8, 6, 7 (2026-09-11)."""
+		import inspect
+		import re
+
+		from builder.site_ai.nora import site_builder
+
+		pattern = r'_progress\(ctx, job_id, _\("[^"]+"\)(?:\.format\([^)]*\))?, (\d+)'
+		steps = [int(n) for n in re.findall(pattern, inspect.getsource(site_builder))]
+		self.assertGreaterEqual(len(steps), 4)
+		self.assertEqual(steps, sorted(steps))
+
 	def test_keep_them_keeps_the_hand_made_pages_only(self):
 		"""Answered with 'none', a question about one hand-made page kept the whole
 		previous site beside the new one."""

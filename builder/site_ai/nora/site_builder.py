@@ -1256,7 +1256,6 @@ def build_site(ctx, spec: dict) -> str:
     frappe.db.commit()
 
     # 3. the design brief (K3 with design intelligence), grounded in real business data
-    _progress(ctx, job_id, _("Writing the design brief"), 8)
     # the instance's own company (ERPNext Company, its address, its logo) grounds the
     # site of THAT business; a site built for another business on a secondary profile
     # must not inherit its logo, address, phone or e-mail (the B2B test site carried the
@@ -1279,7 +1278,7 @@ def build_site(ctx, spec: dict) -> str:
     inspiration = {"images": [], "notes": [], "failed": []}
     inspiration_urls, inspiration_images = clean_list(spec.get("inspiration_urls")), clean_list(spec.get("inspiration_images"))
     if inspiration_urls or inspiration_images:
-        _progress(ctx, job_id, _("Reading the inspirations"), 6)
+        _progress(ctx, job_id, _("Reading the inspirations"), 5)
         try:
             inspiration = gather(inspiration_urls, inspiration_images)
             ai_log("info", "Inspirations read", sites=len(inspiration_urls), pictures=len(inspiration_images), notes=inspiration["notes"], failed=inspiration["failed"])
@@ -1320,7 +1319,7 @@ def build_site(ctx, spec: dict) -> str:
     library = {"taken": 0, "understood": 0}
     photos = clean_list(spec.get("photos"))
     if photos and getattr(ctx, "session_id", None):
-        _progress(ctx, job_id, _("Reading your photos"), 7)
+        _progress(ctx, job_id, _("Reading your photos"), 6)
         try:
             from builder.site_ai.ingestion.content_understanding import ingest_and_understand
 
@@ -1341,6 +1340,10 @@ def build_site(ctx, spec: dict) -> str:
     ai_log("info", "Client photos ready", photos=len(client_photos), categories=categories)
     photos_used: dict[str, int] = {}
     # //// Neoffice ▲▲▲
+    # announced when the brief is really written: said before the inspirations and the photos
+    # were read, it left the panel on "Reading the inspirations" through the brief's minutes
+    # of thinking, and the bar went 8, 6, 7 (2026-09-11)
+    _progress(ctx, job_id, _("Writing the design brief"), 8)
     settings = get_ai_settings()
     brief = None
     try:
@@ -1514,6 +1517,14 @@ def build_site(ctx, spec: dict) -> str:
                         neutral = neutral_placeholders(blocks, palette, prefix)
                         if neutral:
                             ai_log("info", "Photo slots neutralised", page=page["title"], edits=neutral)
+                    # one photo treatment for the whole site: on a black-and-white site every
+                    # photograph is black and white, on every page (photo_treatment.py)
+                    if palette_mode == "monochrome":
+                        from builder.site_ai.nora.photo_treatment import grayscale_photos
+
+                        treated = grayscale_photos(blocks, keep={logo_image} if logo_image else frozenset())
+                        if treated:
+                            ai_log("info", "Photos in black and white", page=page["title"], edits=len(treated))
                     # an interior page opens under the site's own title band (page_header.py)
                     if page["route"] != "home":
                         stripped = strip_title_band(blocks, page["title"])
@@ -1605,7 +1616,8 @@ def build_site(ctx, spec: dict) -> str:
     placed = 0
     if client_photos:
         try:
-            _progress(ctx, job_id, _("Placing your photos"), 90, {"pages_created": created})
+            # after the menu (92), not before it: the bar went 92, 90 (2026-09-13)
+            _progress(ctx, job_id, _("Placing your photos"), 93, {"pages_created": created})
             from builder.site_ai.ingestion.image_matcher import match_and_apply
 
             report = match_and_apply(ctx.session_id, [p["name"] for p in created])
