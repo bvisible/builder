@@ -17,7 +17,6 @@ from urllib.parse import quote, unquote_plus
 
 from builder.site_ai.nora.layout import _walk
 
-PLACEHOLD = re.compile(r"https?://placehold\.co/(\d+)x(\d+)[^\s'\")]*")
 TEXT_PARAM = re.compile(r"[?&]text=([^&'\")\s]+)")
 
 # a slot a generated picture would make a false statement in: a stranger's face is taken for the
@@ -32,26 +31,55 @@ DOCUMENT = re.compile(
 PERSON = re.compile(r"\b[A-ZÀ-Ý][a-zà-ÿ'’]+(?:[ -][A-ZÀ-Ý][a-zà-ÿ'’]+){1,2}\b")
 
 
-def neutral_image(width: int, height: int, palette: dict, prefix: str) -> str:
-    """An inline SVG: the site's background with a wash of its secondary colour."""
-    base = (palette or {}).get(f"{prefix}-background") or "#f3f1ec"
-    wash = (palette or {}).get(f"{prefix}-secondary") or (palette or {}).get(f"{prefix}-primary") or "#c8c2b8"
+def neutral_image(width: int, height: int, palette: dict, prefix: str, colour: str | None = None) -> str:
+    """An inline SVG: the colour the placeholder asked for when it names one of its own (the page
+    was composed around it: a dark hero under light text), else the site's background with a
+    wash of its secondary colour."""
+    base = colour or (palette or {}).get(f"{prefix}-background") or "#f3f1ec"
+    wash = None if colour else ((palette or {}).get(f"{prefix}-secondary") or (palette or {}).get(f"{prefix}-primary") or "#c8c2b8")
     svg = (
         f"<svg xmlns='http://www.w3.org/2000/svg' width='{width}' height='{height}' viewBox='0 0 {width} {height}'>"
         f"<rect width='100%' height='100%' fill='{base}'/>"
-        f"<rect width='100%' height='100%' fill='{wash}' fill-opacity='0.35'/>"
-        "</svg>"
+        + (f"<rect width='100%' height='100%' fill='{wash}' fill-opacity='0.35'/>" if wash else "")
+        + "</svg>"
     )
     # the quotes of the SVG's attributes are encoded: a slot written as a CSS background sits
     # inside url('…'), which a bare quote would close
     return "data:image/svg+xml;utf8," + quote(svg, safe="/:=<> ,.")
 
 
-def _replace(text: str, palette: dict, prefix: str) -> str:
-    def swap(m):
-        return neutral_image(int(m.group(1)), int(m.group(2)), palette, prefix)
+# a placehold.co URL: its size, and the background colour it names when it names one. The
+# greys handed to the model by default stand for no colour: the site's own takes their place.
+SLOT = re.compile(r"placehold\.co/(\d+)x(\d+)(?:/([0-9a-fA-F]{3,8})(?=[/?&.]|$))?")
+OUR_GREYS = {"e5e7eb", "cccccc", "ccc", "eeeeee", "eee"}
+# the URL a placeholder takes in CSS, and in an HTML src: whole, up to its closing quote, since
+# its caption may carry an apostrophe ("Cave+d'affinage" cut there left a broken image showing
+# its alt text, 2026-09-13)
+CSS_URL = re.compile(r"url\(\s*(['\"]?)(https?://placehold\.co/[^)]*?)\1\s*\)")
+HTML_SRC = re.compile(r"(\bsrc\s*=\s*)(['\"])(https?://placehold\.co/.*?)\2")
 
-    return PLACEHOLD.sub(swap, text)
+
+def _neutral_for(url: str, palette: dict, prefix: str) -> str:
+    """The plain block standing in for one placehold.co URL, of its size and colour."""
+    match = SLOT.search(url or "")
+    if not match:
+        return neutral_image(1200, 800, palette, prefix)
+    named = (match.group(3) or "").lower()
+    colour = f"#{named}" if named and named not in OUR_GREYS else None
+    return neutral_image(int(match.group(1)), int(match.group(2)), palette, prefix, colour)
+
+
+def _replace_css(value: str, palette: dict, prefix: str) -> str:
+    replaced = CSS_URL.sub(lambda m: f"url('{_neutral_for(m.group(2), palette, prefix)}')", value)
+    if replaced == value and value.strip().startswith(("http://placehold.co", "https://placehold.co")):
+        return f"url('{_neutral_for(value.strip(), palette, prefix)}')"
+    return replaced
+
+
+def _replace(text: str, palette: dict, prefix: str) -> str:
+    """Each placehold.co URL of an HTML text: in a src attribute, whole, or in a CSS url()."""
+    text = HTML_SRC.sub(lambda m: f"{m.group(1)}{m.group(2)}{_neutral_for(m.group(3), palette, prefix)}{m.group(2)}", text)
+    return _replace_css(text, palette, prefix)
 
 
 def neutral_placeholders(blocks: list, palette: dict, prefix: str) -> int:
@@ -61,17 +89,21 @@ def neutral_placeholders(blocks: list, palette: dict, prefix: str) -> int:
     for block in _walk(blocks):
         changed = False
         attrs = block.get("attributes") or {}
-        for key in ("src", "data-src", "srcset"):
+        for key in ("src", "data-src"):
             value = attrs.get(key)
             if isinstance(value, str) and "placehold.co" in value:
-                attrs[key] = _replace(value, palette, prefix)
+                attrs[key] = _neutral_for(value, palette, prefix)
                 changed = True
+        # the src carries the plain block; a srcset of placeholders would override it
+        if isinstance(attrs.get("srcset"), str) and "placehold.co" in attrs["srcset"]:
+            attrs.pop("srcset")
+            changed = True
         for style_key in ("baseStyles", "mobileStyles", "tabletStyles", "rawStyles"):
             styles = block.get(style_key) or {}
             for prop in ("backgroundImage", "background"):
                 value = styles.get(prop)
                 if isinstance(value, str) and "placehold.co" in value:
-                    styles[prop] = _replace(value, palette, prefix)
+                    styles[prop] = _replace_css(value, palette, prefix)
                     changed = True
         html = block.get("innerHTML")
         if isinstance(html, str) and "placehold.co" in html:
@@ -137,7 +169,7 @@ def neutral_named_slots(blocks: list, palette: dict, prefix: str, names=()) -> l
         if isinstance(src, str) and "placehold.co" in src:
             alt = str(attrs.get("alt") or "")
             if must_not_be_drawn(alt, known):
-                attrs["src"] = _replace(src, palette, prefix)
+                attrs["src"] = _neutral_for(src, palette, prefix)
                 edits.append(alt[:60])
         for style_key in ("baseStyles", "mobileStyles", "tabletStyles"):
             styles = block.get(style_key) or {}
@@ -148,6 +180,6 @@ def neutral_named_slots(blocks: list, palette: dict, prefix: str, names=()) -> l
                 param = TEXT_PARAM.search(value)
                 text = unquote_plus(param.group(1)) if param else ""
                 if must_not_be_drawn(text, known):
-                    styles[prop] = _replace(value, palette, prefix)
+                    styles[prop] = _replace_css(value, palette, prefix)
                     edits.append(text[:60])
     return edits

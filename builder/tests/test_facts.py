@@ -129,7 +129,23 @@ class TestPlaceholdersAtRender(unittest.TestCase):
 		# inside url('…') the data URI carries no bare quote that would close it
 		inside = background.split("url('", 1)[1].rsplit("')", 1)[0]
 		self.assertTrue(inside.startswith("data:image/svg+xml") and "'" not in inside)
+		# the dark brown the hero was composed on, under its light text
+		self.assertIn("2c1810", inside)
 		self.assertIn("placehold.co", stored)
+
+	def test_a_caption_with_an_apostrophe_is_replaced_whole(self):
+		"""Cut at the apostrophe of "Cave+d'affinage", an image kept "'affinage" after its plain
+		block and showed its alt text instead."""
+		from builder.site_ai.nora.placeholders import neutral_placeholders
+
+		img = {"element": "img", "attributes": {"src": "https://placehold.co/800x1000/A67C00/ffffff?text=Cave+d'affinage", "alt": "Cave"}}
+		inline = {"element": "div", "innerHTML": "<img src=\"https://placehold.co/600x400/e5e7eb/9ca3af?text=L'atelier\" alt=\"\">"}
+		self.assertEqual(neutral_placeholders([img, inline], {"x-background": "#ffffff", "x-secondary": "#b08548"}, "x"), 2)
+		src = img["attributes"]["src"]
+		self.assertTrue(src.startswith("data:image/svg+xml") and "affinage" not in src and "a67c00" in src)
+		# our default grey stands for no colour: the site's own takes its place
+		self.assertNotIn("atelier", inline["innerHTML"])
+		self.assertIn("b08548", inline["innerHTML"])
 
 
 class TestImagePrompt(unittest.TestCase):
