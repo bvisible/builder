@@ -8,6 +8,11 @@ on:
 jobs:
   regenerate-pot-file:
     name: Regenerate POT file
+    # //// Neoffice — upstream's weekly POT pull request, made with upstream's release token
+    # //// against upstream's develop. On this fork it checked out a develop branch without
+    # //// the helper script and failed (first scheduled run 2026-09-13, after the 1.33
+    # //// merge); the fork keeps its own catalogues, so the job runs in frappe/builder only.
+    if: github.repository == 'frappe/builder'
     runs-on: ubuntu-latest
     strategy:
       fail-fast: false
