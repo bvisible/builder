@@ -292,6 +292,14 @@ def get_theme_css(config=None) -> str:
 			# //// the primary colour is the background itself on some palettes, and every
 			# //// link in the copy was invisible (2026-09-10)
 			"link_color": _link_colour(theme or {}),
+			# //// Neoffice — the page's call-to-action colour (2026-09-13): the header already
+			# //// picks, by contrast with its own background, the primary, else the secondary,
+			# //// else the text (get_header_colors); the content's primary buttons kept the raw
+			# //// primary and were dark on dark on a site whose primary is its background. The
+			# //// same rule against the page background, exposed as --cta-color/--cta-text so
+			# //// the shop's buttons read it too.
+			"cta_color": _link_colour(theme or {}),
+			"cta_text": _label_on(_link_colour(theme or {})),
 		}
 	)
 

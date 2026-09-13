@@ -94,6 +94,14 @@
 	   //// hover leans towards the text colour, so it can only gain contrast. */
 	--link-color: {{ link_color or 'var(--primary-color)' }};
 	--link-hover: color-mix(in srgb, var(--link-color) 75%, var(--text-color));
+	/* //// Neoffice — the call-to-action colour of the page (2026-09-13): the primary when
+	   //// it reads on the page background, otherwise the secondary, otherwise the text —
+	   //// the rule the header already applies to its own button. The primary buttons of
+	   //// the content and the shop's buttons read these, so a site whose primary is its
+	   //// background (a reseller's dark site) gets one action colour everywhere. */
+	--cta-color: {{ cta_color or 'var(--primary-color)' }};
+	--cta-text: {{ cta_text or 'var(--primary-text, #ffffff)' }};
+	--cta-hover: color-mix(in srgb, var(--cta-color) 87%, var(--text-color));
 	/* frappe's bundle paints every heading in its own --heading-color: on a dark site
 	   the catalogue and login titles came out near-black on near-black */
 	--heading-color: var(--text-color);
@@ -313,8 +321,9 @@ a:where(:not(.u-btn)):hover {
    //// colour of where it sits: in the primary colour it vanished on a section painted
    //// in that colour (2026-09-10). */
 .u-btn--primary {
-	background: var(--primary-color);
-	color: var(--primary-text, #ffffff);
+	/* //// Neoffice — the page's call-to-action colour, see --cta-color above (2026-09-13) */
+	background: var(--cta-color, var(--primary-color));
+	color: var(--cta-text, var(--primary-text, #ffffff));
 }
 
 .u-btn--secondary {

@@ -77,6 +77,33 @@ class TestHeaderColors(unittest.TestCase):
 		self.assertEqual(_readable_on("#ffffff", ["#ffffff", None, "#fefefe"]), "#fefefe")
 
 
+class TestPageCallToAction(unittest.TestCase):
+	"""One action colour for the page: the primary buttons of the content read --cta-color,
+	which the chrome computes like the header's button (primary if it reads on the page
+	background, else secondary, else text). On a site whose primary is its background the
+	content's primary buttons were dark on dark while the header's was pink (2026-09-13)."""
+
+	def test_the_primary_button_reads_the_call_to_action_tokens(self):
+		import pathlib
+
+		css = pathlib.Path(__file__).parent.parent.joinpath("templates/includes/header_footer/theme_variables.html").read_text()
+		self.assertIn("--cta-color:", css)
+		self.assertIn("--cta-text:", css)
+		block = css[css.index(".u-btn--primary {"):]
+		block = block[: block.index("}")]
+		self.assertIn("var(--cta-color", block)
+		self.assertIn("var(--cta-text", block)
+
+	def test_the_call_to_action_falls_back_like_a_link(self):
+		from builder.hf_utils.header_footer import _label_on, _link_colour
+
+		dark = {"background_color": "#1b1f24", "primary_color": "#1b1f24", "secondary_color": "#e578d1", "text_color": "#f5f5f5"}
+		self.assertEqual(_link_colour(dark), "#e578d1")
+		self.assertEqual(_label_on("#e578d1"), "#1f272e")
+		light = {"background_color": "#ffffff", "primary_color": "#6366f1", "secondary_color": "#e578d1", "text_color": "#1a1a1a"}
+		self.assertEqual(_link_colour(light), "#6366f1")
+
+
 class TestShopPagesKeepTheChromeInk(unittest.TestCase):
 	"""The chrome never writes light-ground text over the shop's pages.
 
