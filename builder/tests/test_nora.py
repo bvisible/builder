@@ -840,9 +840,10 @@ class TestInspirations(unittest.TestCase):
 				raise RuntimeError("timeout")
 			return {"kind": "URL", "source": url, "image": "/files/shot.png", "analysis": {"dominant_colors": [{"hex": "#111111"}, {"hex": "#eeeeee"}], "is_dark_theme": False}, "title": "A"}
 
+		# the log is the production log: a test writes nothing there (its "bad.ch" line misled a reading)
 		with patch("builder.site_ai.nora.inspiration.read_url", side_effect=read_url), patch(
 			"builder.site_ai.nora.inspiration._analyse", return_value={"dominant_colors": [{"hex": "#abcdef"}], "is_dark_theme": True}
-		):
+		), patch("builder.site_ai.nora.inspiration.ai_log"):
 			found = gather(["https://a.ch", "https://bad.ch"], ["/files/pic.png", "https://not-a-site-file/x.png"], record=False)
 		self.assertEqual(found["images"], ["/files/shot.png", "/files/pic.png"])
 		# What this test owns is the gathering: one note per source, prefixed by where
