@@ -75,10 +75,40 @@ def _over_photo(block: dict, inherited: bool) -> bool:
     return inherited
 
 
-def repair_button_variants(blocks: list, palette: dict) -> list[str]:
-    """A u-btn--primary on a primary-coloured background becomes secondary (or outline),
-    and a u-btn--secondary on a secondary-coloured one becomes primary (or outline)."""
+def _hex(colour: Color | None) -> str | None:
+    if colour is None:
+        return None
+    return "#" + "".join(f"{max(0, min(255, round(channel))):02x}" for channel in colour[:3])
+
+
+def rendered_buttons(palette: dict) -> tuple[Color | None, Color | None]:
+    """The colours the theme paints the two buttons with (header_footer.button_colours): the
+    page's action colour for the primary, and for the secondary its fill, or None when the
+    theme draws it as an outline. Judged on the raw palette, the pass swapped a primary
+    button the theme was already painting in the readable secondary (a site whose primary is
+    its own background), and missed one painted in that colour on a section of the same
+    colour (2026-09-13)."""
     primary, secondary = _role(palette, "primary"), _role(palette, "secondary")
+    try:
+        from builder.hf_utils.header_footer import button_colours
+    except ImportError:
+        # an edition without the site chrome paints the palette as it is
+        return primary, secondary
+    theme = {f"{role}_color": _hex(_role(palette, role)) for role in ("primary", "secondary", "background", "text")}
+    colours = button_colours(theme)
+    painted = parse_color(colours.get("cta_hex"), palette) or primary
+    fill = colours.get("secondary_button")
+    if fill is None:
+        return painted, None
+    return painted, secondary if str(fill).startswith("var(") else parse_color(fill, palette)
+
+
+def repair_button_variants(blocks: list, palette: dict) -> list[str]:
+    """A u-btn--primary on a background of the colour the theme paints it with becomes
+    secondary (or outline), and a u-btn--secondary on a background of its own fill becomes
+    primary (or outline). An outlined secondary reads everywhere and is left alone. The
+    colours are the ones the page will show (rendered_buttons), not the raw palette."""
+    primary, secondary = rendered_buttons(palette)
     default_bg = _role(palette, "background") or (255.0, 255.0, 255.0, 1.0)
     edits: list[str] = []
 
@@ -118,6 +148,90 @@ def repair_button_variants(blocks: list, palette: dict) -> list[str]:
     for block in blocks:
         demote_siblings(block)
     return edits
+
+
+def settle_rendered_variants(blocks: list, palette: dict) -> int:
+    """In place, at render: each u-btn--primary or u-btn--secondary whose painted colour does not
+    stand out from the section behind it steps to the other filled variant when that one does
+    and no button beside it wears it already, else to the outline. The render's half of
+    repair_button_variants, without its design choices (one main action per group, the variant
+    over a photograph): the page keeps the variant its author chose, and a theme that changes
+    after the page was written (a retheme, a new rule for what the buttons paint) is judged at
+    each render. A button over a photograph keeps its variant. Returns how many changed."""
+    primary, secondary = rendered_buttons(palette)
+    painted = {"u-btn--primary": primary, "u-btn--secondary": secondary}
+    changed = 0
+
+    def settle(button: dict, row: list, bg: Color) -> bool:
+        classes = list(button.get("classes") or [])
+        for variant, other in (("u-btn--primary", "u-btn--secondary"), ("u-btn--secondary", "u-btn--primary")):
+            colour = painted[variant]
+            if variant not in classes or colour is None or contrast(colour, bg) >= BUTTON_MIN_RATIO:
+                continue
+            fill = painted[other]
+            taken = any(other in (sibling.get("classes") or []) for sibling in row if sibling is not button)
+            new = other if fill is not None and not taken and contrast(fill, bg) >= BUTTON_MIN_RATIO else "u-btn--outline"
+            button["classes"] = [new if c == variant else c for c in classes]
+            return True
+        return False
+
+    def walk(block: dict, bg: Color, photo: bool) -> None:
+        nonlocal changed
+        photo = _over_photo(block, photo)
+        bg = _background(block, palette, bg)
+        row = [child for child in block.get("children") or [] if isinstance(child, dict)]
+        for child in row:
+            if "u-btn" in (child.get("classes") or []) and not _over_photo(child, photo) and settle(child, row, bg):
+                changed += 1
+            walk(child, bg, photo)
+
+    page = _role(palette, "background") or (255.0, 255.0, 255.0, 1.0)
+    for block in blocks:
+        if isinstance(block, dict):
+            walk(block, page, False)
+    return changed
+
+
+def _render_palette() -> dict | None:
+    """The colours of this render, keyed as the repair reads them: the four roles from the
+    chrome's theme (the site's own variant, as theme_variables.html gets it) first, then every
+    Builder Token and the chrome's own variables, so that a section's var(--…) resolves. None
+    when the page has no chrome theme (an offline site, a bench without the config)."""
+    from builder.builder.doctype.builder_token.builder_token import get_css_variables
+    from builder.hf_utils.header_footer import get_header_footer_config
+
+    config = get_header_footer_config()
+    theme = config.get_theme_data() if config else None
+    if not theme:
+        return None
+    roles = [role for role in ("primary", "secondary", "background", "text") if theme.get(f"{role}_color")]
+    # the bare role names come first: _role() takes the first key naming the role, and the
+    # tokens of every site of the instance (nt2-primary, nt3-primary…) name it as well
+    palette = {role: theme[f"{role}_color"] for role in roles}
+    tokens, _dark = get_css_variables()
+    palette.update({name.removeprefix("--"): value for name, value in (tokens or {}).items()})
+    palette.update({f"{role}-color": theme[f"{role}_color"] for role in roles})
+    return palette
+
+
+def settle_for_render(blocks):
+    """The blocks a page renders, each filled button in the variant that reads on its section
+    with the theme of this render (settle_rendered_variants). `blocks` as stored (JSON text) or
+    parsed; returned untouched when nothing changes, and on any error: this runs on every page
+    view and must never be the reason a page fails."""
+    if not blocks or (isinstance(blocks, str) and "u-btn--" not in blocks):
+        return blocks
+    import frappe
+
+    try:
+        palette = _render_palette()
+        if not palette:
+            return blocks
+        data = frappe.parse_json(blocks) if isinstance(blocks, str) else copy.deepcopy(blocks)
+        return data if settle_rendered_variants(data if isinstance(data, list) else [data], palette) else blocks
+    except Exception:
+        frappe.log_error("Buttons: page rendered without the variant check", frappe.get_traceback())
+        return blocks
 
 
 def guess_target(text: str, routes: list[str], fallback: str) -> str:

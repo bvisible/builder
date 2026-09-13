@@ -550,6 +550,13 @@ class BuilderPage(WebsiteGenerator):
 		from builder.empty_includes import prune_for_render
 
 		blocks = prune_for_render(blocks, getattr(frappe.local, "website_profile", None))
+		# //// Neoffice — a filled button is drawn in the variant that reads on its section with the
+		# //// theme of this render (builder/site_ai/nora/buttons.py settle_for_render, 2026-09-13):
+		# //// the rule for the buttons' colour changed under pages written before it, and a primary
+		# //// button of a dark site went pink on a pink band. The stored variant stays the author's.
+		from builder.site_ai.nora.buttons import settle_for_render
+
+		blocks = settle_for_render(blocks)
 		content, style, fonts, has_dual_mode_image = get_block_html(blocks)
 
 		# Propagate the root block's background to html/body. Otherwise a full-bleed

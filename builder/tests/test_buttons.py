@@ -1,9 +1,20 @@
 # //// Neoffice — added file (no upstream equivalent): the buttons and calls to action passes.
+import json
 import unittest
+from unittest.mock import patch
 
-from builder.site_ai.nora.buttons import guess_target, repair_button_variants, wire_dead_ctas
+from builder.site_ai.nora import buttons
+from builder.site_ai.nora.buttons import (
+	guess_target,
+	repair_button_variants,
+	settle_for_render,
+	settle_rendered_variants,
+	wire_dead_ctas,
+)
 
 PALETTE = {"site-primary": "#1b1f24", "site-secondary": "#e578d1", "site-background": "#1b1f24", "site-text": "#f5f5f5"}
+# a light site whose primary reads on its page: the theme paints the buttons as they are
+LIGHT = {"site-primary": "#2f6f5e", "site-secondary": "#e8d9b0", "site-background": "#ffffff", "site-text": "#1f272e"}
 ROUTES = ["/", "/a-propos", "/nos-marques", "/espace-revendeurs", "/contact", "/login", "/all-products", "/compte-professionnel"]
 
 
@@ -12,34 +23,43 @@ def button(text, variant, block_id="b1"):
 
 
 class TestButtonVariants(unittest.TestCase):
-	def test_a_primary_button_on_a_primary_section_becomes_secondary(self):
-		# a hero whose section wears the background token, which IS the primary colour
+	# the colours judged are the ones the theme paints (rendered_buttons, header_footer.
+	# button_colours): on the dark site above, whose primary is its own background, the theme
+	# paints the primary buttons in the readable secondary and outlines the secondary ones
+
+	def test_on_a_dark_site_the_primary_button_already_reads(self):
 		hero = {"element": "section", "baseStyles": {"backgroundColor": "var(--site-background)"}, "children": [button("Contactez-nous", "u-btn--primary")]}
 		light = {"element": "section", "baseStyles": {"backgroundColor": "#fefefe"}, "children": [button("Contactez-nous", "u-btn--primary", "b2")]}
-		edits = repair_button_variants([hero, light], PALETTE)
-		self.assertEqual(hero["children"][0]["classes"], ["u-btn", "u-btn--secondary"])
-		self.assertEqual(light["children"][0]["classes"], ["u-btn", "u-btn--primary"])
-		self.assertEqual(len(edits), 1)
+		self.assertEqual(repair_button_variants([hero, light], PALETTE), [])
+		self.assertEqual(hero["children"][0]["classes"], ["u-btn", "u-btn--primary"])
 
-	def test_without_a_contrasting_secondary_the_button_is_outlined(self):
-		palette = dict(PALETTE, **{"site-secondary": "#1b1f24"})
+	def test_on_a_section_of_the_colour_it_is_painted_it_is_outlined(self):
+		# the pink section of the dark site: its primary buttons are painted pink too, and its
+		# secondary ones are outlines, so the button steps back to an outline
+		band = {"element": "section", "baseStyles": {"backgroundColor": "var(--site-secondary)"}, "children": [button("Contactez-nous", "u-btn--primary"), button("Catalogue", "u-btn--secondary", "b2")]}
+		repair_button_variants([band], PALETTE)
+		self.assertEqual(band["children"][0]["classes"], ["u-btn", "u-btn--outline"])
+		# an outlined secondary reads everywhere
+		self.assertEqual(band["children"][1]["classes"], ["u-btn", "u-btn--secondary"])
+
+	def test_a_primary_button_on_a_primary_section_becomes_secondary(self):
 		hero = {"element": "section", "baseStyles": {"backgroundColor": "var(--site-primary)"}, "children": [button("Contactez-nous", "u-btn--primary")]}
-		repair_button_variants([hero], palette)
-		self.assertEqual(hero["children"][0]["classes"], ["u-btn", "u-btn--outline"])
+		repair_button_variants([hero], LIGHT)
+		self.assertEqual(hero["children"][0]["classes"], ["u-btn", "u-btn--secondary"])
 
 	def test_two_filled_buttons_side_by_side_keep_one_main_action(self):
 		# a hero with a contact and a catalogue button on a primary-coloured section: both
 		# would turn secondary, so the second steps back to outline
 		hero = {"element": "section", "baseStyles": {"backgroundColor": "var(--site-primary)"}, "children": [{"element": "div", "children": [button("Voir le catalogue", "u-btn--secondary", "b1"), button("Contactez-nous", "u-btn--primary", "b2")]}]}
-		repair_button_variants([hero], PALETTE)
+		repair_button_variants([hero], LIGHT)
 		row = hero["children"][0]["children"]
 		self.assertEqual(row[0]["classes"], ["u-btn", "u-btn--secondary"])
 		self.assertEqual(row[1]["classes"], ["u-btn", "u-btn--outline"])
 
 	def test_the_background_is_inherited_from_the_section(self):
-		# the button sits in a grid inside the dark section: the section's colour still counts
+		# the button sits in a grid inside the primary section: the section's colour still counts
 		hero = {"element": "section", "baseStyles": {"backgroundColor": "var(--site-primary)"}, "children": [{"element": "div", "children": [button("Voir", "u-btn--primary")]}]}
-		repair_button_variants([hero], PALETTE)
+		repair_button_variants([hero], LIGHT)
 		self.assertEqual(hero["children"][0]["children"][0]["classes"], ["u-btn", "u-btn--secondary"])
 
 
@@ -63,6 +83,53 @@ class TestButtonVariants(unittest.TestCase):
 		tile = {"element": "a", "children": [{"element": "img", "baseStyles": {"position": "absolute"}}, button("Go", "u-btn--ghost", "b3")]}
 		repair_button_variants([tile], PALETTE)
 		self.assertEqual(tile["children"][1]["classes"], ["u-btn", "u-btn--on-image"])
+
+class TestRenderedVariants(unittest.TestCase):
+	"""The render's half: the page keeps the variant its author chose, the render draws the one
+	that reads with the theme of the moment."""
+
+	def band(self, *children, background="var(--site-secondary)", **styles):
+		return {"element": "section", "baseStyles": dict(styles, backgroundColor=background), "children": list(children)}
+
+	def test_a_primary_on_a_band_of_its_painted_colour_is_drawn_as_an_outline(self):
+		band = self.band(button("Contactez-nous", "u-btn--primary"))
+		page = {"element": "section", "children": [button("Contactez-nous", "u-btn--primary", "b2")]}
+		self.assertEqual(settle_rendered_variants([band, page], PALETTE), 1)
+		self.assertEqual(band["children"][0]["classes"], ["u-btn", "u-btn--outline"])
+		# on the dark page itself the pink button reads
+		self.assertEqual(page["children"][0]["classes"], ["u-btn", "u-btn--primary"])
+
+	def test_a_variant_worn_beside_it_is_not_doubled(self):
+		hero = self.band(button("Catalogue", "u-btn--secondary", "b1"), button("Contact", "u-btn--primary", "b2"), background="var(--site-primary)")
+		self.assertEqual(settle_rendered_variants([hero], LIGHT), 1)
+		self.assertEqual([b["classes"][1] for b in hero["children"]], ["u-btn--secondary", "u-btn--outline"])
+		alone = self.band(button("Contact", "u-btn--primary"), background="var(--site-primary)")
+		settle_rendered_variants([alone], LIGHT)
+		self.assertEqual(alone["children"][0]["classes"], ["u-btn", "u-btn--secondary"])
+
+	def test_a_button_over_a_photograph_keeps_its_variant(self):
+		hero = self.band(button("Contact", "u-btn--primary"), backgroundImage="url(/files/hero.jpg)")
+		self.assertEqual(settle_rendered_variants([hero], PALETTE), 0)
+		self.assertEqual(hero["children"][0]["classes"], ["u-btn", "u-btn--primary"])
+
+	def test_the_render_leaves_the_stored_page_alone(self):
+		stored = json.dumps([self.band(button("Contactez-nous", "u-btn--primary"))])
+		with patch.object(buttons, "_render_palette", return_value=PALETTE):
+			drawn = settle_for_render(stored)
+			readable = json.dumps([{"element": "section", "children": [button("Go", "u-btn--primary")]}])
+			self.assertIs(settle_for_render(readable), readable)
+		self.assertEqual(drawn[0]["children"][0]["classes"], ["u-btn", "u-btn--outline"])
+		self.assertIn("u-btn--primary", stored)
+
+	def test_a_page_without_buttons_or_a_failure_renders_as_stored(self):
+		plain = json.dumps([{"element": "section", "children": [{"element": "p", "innerHTML": "Bonjour"}]}])
+		with patch.object(buttons, "_render_palette", side_effect=AssertionError("not reached")):
+			self.assertIs(settle_for_render(plain), plain)
+		stored = json.dumps([self.band(button("Go", "u-btn--primary"))])
+		with patch.object(buttons, "_render_palette", side_effect=RuntimeError("no theme")), patch("frappe.log_error") as log:
+			self.assertIs(settle_for_render(stored), stored)
+		log.assert_called_once()
+
 
 class TestCallsToAction(unittest.TestCase):
 	def test_a_bare_learn_more_becomes_a_link_to_the_matching_page(self):
