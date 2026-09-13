@@ -865,10 +865,11 @@ class AgentRunner:
 				op["args"]["blocks"] = page_writer.normalize_component_instances(op["args"]["blocks"])
 				self.tree.root = op["args"]["blocks"]
 		self.applied_operations.extend(ops)
-		self.emit("tool_batch", operations=ops)
-		if self.page_id and self.tree and self.tree.root:
-			# //// Neoffice — written over the draft it was read from (see persist_tree)
-			self.persist_tree()
+		# //// Neoffice — saved first, over the draft it was read from (see persist_tree), then
+		# //// mirrored with the page's new version; a page changed elsewhere is refetched instead
+		if self.page_id and self.tree and self.tree.root and not self.persist_tree():
+			return ops
+		self.emit("tool_batch", operations=ops, page_modified=self.page_version())
 		return ops
 
 	# //// Neoffice — added method (see run_op and PAGE_REWRITING_TOOLS)
@@ -912,6 +913,16 @@ class AgentRunner:
 		self.tree = WorkingTree(root, base=base)
 		self.emit("refetch", resources=["page", "page_data", "canvas"], after_commit=False)
 		return False
+
+	# //// Neoffice — added method (neoffice-maintenance#395): the page's version as the server now
+	# //// holds it, sent with every mirrored batch. The editor saved the agent's changes again
+	# //// with the version it had loaded, older than the one the agent's own write had just set:
+	# //// "This page was changed elsewhere", a reload, after every change the agent made.
+	def page_version(self) -> str | None:
+		if not self.page_id:
+			return None
+		modified = frappe.db.get_value("Builder Page", self.page_id, "modified")
+		return str(modified) if modified else None
 
 	def page_root(self) -> dict | None:
 		"""The current page's root block — the authoritative working tree. Edits made
@@ -1106,7 +1117,9 @@ class AgentRunner:
 			# after_commit: an op can reference a doc this round created (a component
 			# extract) — mirrored early, the canvas fetches it before the checkpoint
 			# commit lands and caches a Missing placeholder.
-			self.emit("tool_batch", operations=applied, after_commit=True)
+			# //// Neoffice — with the page's new version: the editor mirrors the batch without saving
+			# //// it again, and its next save starts from what the server wrote (see page_version)
+			self.emit("tool_batch", operations=applied, after_commit=True, page_modified=self.page_version())
 		return results, applied
 
 	def run_handler(self, tool, op: dict) -> str:
@@ -1151,7 +1164,8 @@ class AgentRunner:
 			if ops:
 				# The authoritative op replaces the throwaway streamed preview with
 				# the server's block tree (shared ids).
-				self.emit("tool_batch", operations=ops)
+				# //// Neoffice — with the page's version the generator wrote (see page_version)
+				self.emit("tool_batch", operations=ops, page_modified=self.page_version())
 			return content
 		entry = self.begin_activity(op["tool_name"], op["args"])
 		if op["tool_name"] in SNAPSHOT_TOOLS:
@@ -1169,7 +1183,8 @@ class AgentRunner:
 				# script list / undo tracking — flagged so the canvas does NO DB work.
 				op["args"]["server_applied"] = True
 				self.applied_operations.append(op)
-				self.emit("tool_batch", operations=[op])
+				# //// Neoffice — the script was saved on the page: its new version goes along
+				self.emit("tool_batch", operations=[op], page_modified=self.page_version())
 		return content
 
 	def commit_round_text(self, text: str, applied: list[dict]) -> None:

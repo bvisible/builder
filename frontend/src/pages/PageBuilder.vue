@@ -343,6 +343,8 @@ watch(
 			canvasStore.editingMode === "page" &&
 			!builderStore.readOnlyMode &&
 			!builderStore.aiBuildingCanvas &&
+			//// Neoffice — a batch the AI agent already saved is not saved again (pageStore.mirroringServerOps)
+			!pageStore.mirroringServerOps &&
 			!pageCanvas.value?.canvasProps?.settingCanvas
 		) {
 			pageStore.savingPage = true;

@@ -624,12 +624,24 @@ export class AIChatController {
 	onToolBatch = (data: {
 		session_id?: string;
 		operations?: Array<{ tool_name: string; args: Record<string, any> }>;
+		//// Neoffice — the page's version on the server after this batch (loop.page_version)
+		page_modified?: string | null;
 	}) => {
 		// Cancel any pending throttled stream render so it can't fire AFTER and clobber
 		// the authoritative apply below with stale partial YAML.
 		this.clearStreamRenderTimer();
 		if (!data.operations?.length) return;
 		this.previewUnconfirmed = false;
+		//// Neoffice — the server already saved this batch (loop.persist_tree). Mirroring it used to
+		//// set off the editor's autosave with the version it had loaded, older than the one the
+		//// agent's write had just set: "This page was changed elsewhere" and a reload after every
+		//// change the agent made. The editor takes the server's version and does not save the
+		//// mirrored batch again; the autosave watch stands down until it has run (nextTick below).
+		const serverSaved = Boolean(data.page_modified);
+		if (serverSaved) {
+			this.pageStore.mirroringServerOps = true;
+			if (this.pageStore.activePage) this.pageStore.activePage.modified = data.page_modified as string;
+		}
 		for (const op of data.operations) {
 			this.dispatcher.trackAffectedItem(op.tool_name, op.args); // track before apply (remove_block)
 			try {
@@ -638,6 +650,8 @@ export class AIChatController {
 				console.warn(`[AI agent] tool "${op.tool_name}" failed:`, e);
 			}
 		}
+		//// Neoffice — see the block above: the watch ran during this tick, the autosave comes back
+		if (serverSaved) nextTick(() => (this.pageStore.mirroringServerOps = false));
 		const followId = this.followTargetIn(data.operations);
 		if (followId) nextTick(() => this.canvasStore.activeCanvas?.followBlock(followId));
 		// Don't overwrite the bubble with a static "Applying N changes…" — the loop emits

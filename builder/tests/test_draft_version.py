@@ -75,3 +75,41 @@ class TestPersistTree(unittest.TestCase):
 		self.assertEqual(runner.tree.base, THEIRS)
 		runner.emit.assert_called_once_with("refetch", resources=["page", "page_data", "canvas"], after_commit=False)
 		self.assertIn("NOT SAVED", loop.PAGE_CHANGED_ELSEWHERE)
+
+
+class TestMirroredBatches(unittest.TestCase):
+	"""The editor saved the agent's changes again with the version it had loaded, older than the
+	one the agent's own write had just set: "This page was changed elsewhere" after every change."""
+
+	def runner(self, saved=True):
+		tree = MagicMock(root={"blockId": "root", "children": []})
+		tree.apply = MagicMock(return_value="Applied to block b1.")
+		return SimpleNamespace(
+			page_id="page-1",
+			tree=tree,
+			emit=MagicMock(),
+			applied_operations=[],
+			tool_failures=[],
+			ensure_revert_snapshot=MagicMock(),
+			persist_tree=MagicMock(return_value=saved),
+			page_version=MagicMock(return_value="2026-09-13 11:00:00.000001"),
+		)
+
+	def test_a_saved_round_is_mirrored_with_the_page_version(self):
+		from builder.ai.agent import loop
+
+		runner = self.runner()
+		ops = [{"tool_name": "update_block", "args": {"block_id": "b1"}}]
+		_, applied = loop.AgentRunner.apply_client_ops(runner, ops)
+		self.assertEqual(applied, ops)
+		runner.emit.assert_called_once_with("tool_batch", operations=ops, after_commit=True, page_modified="2026-09-13 11:00:00.000001")
+
+	def test_a_round_on_a_page_changed_elsewhere_is_not_mirrored(self):
+		from builder.ai.agent import loop
+
+		runner = self.runner(saved=False)
+		ops = [{"tool_name": "update_block", "args": {"block_id": "b1"}}]
+		results, applied = loop.AgentRunner.apply_client_ops(runner, ops)
+		self.assertEqual(applied, [])
+		self.assertEqual(results[id(ops[0])], loop.PAGE_CHANGED_ELSEWHERE)
+		runner.emit.assert_not_called()

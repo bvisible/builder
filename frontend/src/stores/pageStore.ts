@@ -32,6 +32,9 @@ const usePageStore = defineStore("pageStore", {
 		activePage: <BuilderPage | null>null,
 		activePageScripts: <BuilderClientScript[]>[],
 		savingPage: false,
+		//// Neoffice — true while the canvas mirrors a batch the AI agent already saved on the
+		//// server: the autosave watch stands down (see AIChatController.onToolBatch)
+		mirroringServerOps: false,
 		settingPage: false,
 		pageLoadToken: 0,
 		snapshotsVersion: 0,
