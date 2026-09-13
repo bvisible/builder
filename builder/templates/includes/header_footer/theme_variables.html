@@ -427,6 +427,15 @@ a:where(:not(.u-btn)):hover {
 	text-decoration: underline;
 }
 
+/* //// Neoffice — the active entry of frappe's portal sidebar (the account pages: orders,
+   //// addresses, the shop's gift cards…) wears frappe's --primary and its 12 % tint, invisible
+   //// on a site whose primary is its own background (a dark reseller site, 2026-09-13): it
+   //// takes the link colour — the accent that reads on this page — and a tint of it */
+.sidebar-item a.active {
+	color: var(--link-color, var(--primary-color));
+	background-color: color-mix(in srgb, var(--link-color, var(--primary-color)) 12%, transparent);
+}
+
 /* the title band of a page frappe renders: frappe's bundle paints every heading in a
    literal near-black, which a dark site cannot inherit away */
 .site-page-header .site-page-header__title {

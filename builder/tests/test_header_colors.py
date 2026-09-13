@@ -140,6 +140,16 @@ class TestButtonColours(unittest.TestCase):
 		self.assertEqual(out["cta_source"], "text")
 		self.assertEqual(out["cta_hex"], "#1f272e")
 
+	def test_the_portal_sidebar_active_entry_reads_the_link_colour(self):
+		# frappe paints it in --primary: invisible on a site whose primary is its background
+		import pathlib
+
+		css = pathlib.Path(__file__).parent.parent.joinpath("templates/includes/header_footer/theme_variables.html").read_text()
+		block = css[css.index(".sidebar-item a.active {"):]
+		block = block[: block.index("}")]
+		self.assertIn("var(--link-color", block)
+		self.assertNotIn("var(--primary)", block)
+
 	def test_the_sheet_reads_the_tokens(self):
 		import pathlib
 
