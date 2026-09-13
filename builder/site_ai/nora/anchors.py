@@ -118,6 +118,85 @@ def anchor_category_data_links(
 	return re.sub(r"\{[^{}]*\}", entry, script), edits
 
 
+def anchor_repeated_panels(blocks: list, script: str, categories: list[str]) -> tuple[str, list[str]]:
+	"""The listing page may draw its category panels by repeating one block over a list its
+	data script holds (data.cultures = [{"name": "Snow", ...}, ...]): the names are bound and
+	there is no heading to anchor (2026-09-13). Each entry naming one category gets an
+	"anchor", the category's slug, and the repeated block its id from it, when every entry
+	of the list has one. Returns the script and what it anchored."""
+	edits: list[str] = []
+	if not script or not categories:
+		return script, edits
+	for repeater in _repeaters(blocks):
+		key = str((repeater.get("dataKey") or {}).get("key") or "")
+		items = [c for c in repeater.get("children") or [] if isinstance(c, dict)]
+		span = _list_span(script, key) if key and items else None
+		if not span:
+			continue
+		start, end = span
+		body = script[start:end]
+		entries = list(re.finditer(r"\{[^{}]*\}", body))
+		anchored = []
+		for m in entries:
+			entry = m.group(0)
+			if re.search(r"""["']anchor["']\s*:""", entry):
+				anchored.append(entry)
+				continue
+			named = [c for c in categories if re.search(rf"""["']{re.escape(c)}["']""", entry, re.I)]
+			if len(named) != 1:
+				break
+			anchored.append('{"anchor": "' + category_slug(named[0]) + '", ' + entry[1:].lstrip())
+		# an entry without the key would render its panel with an id of its own: all or none
+		if not entries or len(anchored) != len(entries):
+			continue
+		for m, new in reversed(list(zip(entries, anchored, strict=True))):
+			body = body[: m.start()] + new + body[m.end() :]
+		script = script[:start] + body + script[end:]
+		item = items[0]
+		values = [d for d in item.get("dynamicValues") or [] if isinstance(d, dict)]
+		if not any(d.get("property") == "id" for d in values):
+			item["dynamicValues"] = [*values, {"key": "anchor", "property": "id", "type": "attribute"}]
+		item["baseStyles"] = {**(item.get("baseStyles") or {}), "scrollMarginTop": SCROLL_MARGIN}
+		edits.append(f"{key}: {len(entries)} repeated panels anchored")
+	return script, edits
+
+
+def _repeaters(blocks: list):
+	for block in blocks or []:
+		if not isinstance(block, dict):
+			continue
+		if block.get("isRepeaterBlock"):
+			yield block
+		yield from _repeaters(block.get("children") or [])
+
+
+def _list_span(script: str, key: str) -> tuple[int, int] | None:
+	"""Where the list assigned to data.<key> sits in the script, from its "[" to its "]"."""
+	m = re.search(rf"""data(?:\.{re.escape(key)}|\[\s*["']{re.escape(key)}["']\s*\])\s*=\s*\[""", script)
+	if not m:
+		return None
+	start = m.end() - 1
+	depth, quote, i = 0, None, start
+	while i < len(script):
+		ch = script[i]
+		if quote:
+			if ch == "\\":
+				i += 2
+				continue
+			if ch == quote:
+				quote = None
+		elif ch in "\"'":
+			quote = ch
+		elif ch == "[":
+			depth += 1
+		elif ch == "]":
+			depth -= 1
+			if depth == 0:
+				return start, i + 1
+		i += 1
+	return None
+
+
 def _heading_chain(blocks: list, name: str) -> list[dict]:
 	"""The blocks from the top of the page down to the category's heading: a heading element
 	whose text is the category's name, else any text block that says exactly that."""

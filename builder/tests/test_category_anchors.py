@@ -6,6 +6,7 @@ from builder.site_ai.nora.anchors import (
 	anchor_category_data_links,
 	anchor_category_links,
 	anchor_category_panels,
+	anchor_repeated_panels,
 	category_slug,
 )
 
@@ -115,3 +116,51 @@ class TestDataLinks(unittest.TestCase):
 			'[{"name": "Water", "slug": "/brands"}]', "/brands", CATEGORIES, {"slug"}
 		)
 		self.assertIn('"slug": "/brands#water"', new)
+
+
+class TestRepeatedPanels(unittest.TestCase):
+	"""A listing page drawing its five category panels by repeating one block over its data
+	script: the names bound, no heading to anchor (2026-09-13)."""
+
+	def page(self):
+		item = {
+			"element": "a",
+			"dynamicValues": [{"key": "path", "property": "href", "type": "attribute"}],
+			"children": [
+				{
+					"element": "img",
+					"dynamicValues": [{"key": "image", "property": "src", "type": "attribute"}],
+				},
+				{"element": "h2", "dynamicValues": [{"key": "name", "property": "innerHTML", "type": "key"}]},
+			],
+		}
+		repeater = {
+			"element": "div",
+			"isRepeaterBlock": True,
+			"dataKey": {"key": "cultures"},
+			"children": [item],
+		}
+		return [{"element": "div", "children": [repeater]}], item
+
+	def test_each_repeated_panel_gets_its_anchor(self):
+		blocks, item = self.page()
+		script = (
+			'data.cultures = [{"name":"Snow","path":"/brands"},{"name":"Street","path":"/brands"},'
+			'{"name":"Water","path":"/brands"}]'
+		)
+		new, edits = anchor_repeated_panels(blocks, script, CATEGORIES)
+		self.assertIn('{"anchor": "snow", "name":"Snow"', new)
+		self.assertIn('{"anchor": "water", "name":"Water"', new)
+		self.assertIn({"key": "anchor", "property": "id", "type": "attribute"}, item["dynamicValues"])
+		self.assertIn("scrollMarginTop", item["baseStyles"])
+		self.assertEqual(len(edits), 1)
+		# a second pass adds nothing
+		again, _ = anchor_repeated_panels(blocks, new, CATEGORIES)
+		self.assertEqual(again, new)
+		self.assertEqual(sum(1 for d in item["dynamicValues"] if d["property"] == "id"), 1)
+
+	def test_a_list_with_an_entry_of_no_category_is_left_alone(self):
+		blocks, item = self.page()
+		script = 'data.cultures = [{"name":"Snow"},{"name":"Gift cards"}]'
+		self.assertEqual(anchor_repeated_panels(blocks, script, CATEGORIES), (script, []))
+		self.assertNotIn("baseStyles", item)

@@ -152,13 +152,30 @@ def _json_card(text: str) -> dict | None:
     return {"text": str(found.get("text") or "…")[:600], "ui": ui}
 
 
+BARE_BUTTONS = re.compile(r"(?:^|\n)[ \t]*((?:\[[^\[\]\n:]{2,40}\][ \t]*){1,4})\s*$")
+
+
+def _bare_buttons(text: str) -> str:
+    """'[Build the site] [Change something]' closing a message: the buttons of a card the
+    model wrote as text without the kind the parser reads, so the recap came with nothing to
+    tap (2026-09-13). Rewritten '[buttons: Build the site, Change something]'. A footnote
+    ([1]) or a kind group ([choices: …]) is not a button."""
+    m = BARE_BUTTONS.search(text or "")
+    if not m:
+        return text
+    labels = [label.strip() for label in re.findall(r"\[([^\[\]\n:]{2,40})\]", m.group(1))]
+    if not labels or any(not re.search(r"[^\W\d_]", label) or label.split()[0].lower() in KINDS for label in labels):
+        return text
+    return text[: m.start(1)] + "[buttons: " + ", ".join(labels) + "]"
+
+
 def parse_card(text: str) -> dict | None:
     """The present_ui arguments for a card written as text (JSON, braces or brackets), or
     None when the text carries no card."""
     card = _json_card(text or "")
     if card:
         return card
-    lead, groups = _split_groups(_braces_to_brackets(text or ""))
+    lead, groups = _split_groups(_braces_to_brackets(_bare_buttons(text or "")))
     if not groups:
         return None
     ui: list[dict] = []

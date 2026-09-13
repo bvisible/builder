@@ -1571,10 +1571,15 @@ def build_site(ctx, spec: dict) -> str:
                             anchor_category_data_links,
                             anchor_category_links,
                             anchor_category_panels,
+                            anchor_repeated_panels,
                         )
                         from builder.site_ai.nora.buttons import _href_keys
 
                         anchored = anchor_category_panels(blocks, categories) if page["route"] == lister_route else []
+                        if page["route"] == lister_route:
+                            # panels repeated over the data script carry their name bound
+                            data_script, repeated = anchor_repeated_panels(blocks, data_script, categories)
+                            anchored += repeated
                         pointed = anchor_category_links(blocks, listing, categories)
                         data_script, bound = anchor_category_data_links(data_script, listing, categories, _href_keys(blocks))
                         if anchored or pointed or bound:

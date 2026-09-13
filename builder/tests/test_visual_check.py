@@ -10,6 +10,12 @@ REFUSED = RuntimeError("Page.goto: net::ERR_CONNECTION_REFUSED at http://127.0.0
 
 
 class TestScreenshotWaitsForTheServer(unittest.TestCase):
+	def setUp(self):
+		# the log is the production log: a test writes nothing there (its lines misled a diagnosis)
+		logging = patch.object(visual_check, "ai_log")
+		logging.start()
+		self.addCleanup(logging.stop)
+
 	def test_a_refused_connection_is_waited_out(self):
 		good = {"success": True, "file_url": "/files/shot.png"}
 		with (

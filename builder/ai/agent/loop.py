@@ -1198,6 +1198,27 @@ class AgentRunner:
 		self.live_text = ""
 		self.add_step("text", status="done", text=note)
 
+	# //// Neoffice — added method. Asked to rebuild a site, the model answered in eleven seconds
+	# //// "[the site] is rebuilt and published", its previous answer word for word, and called
+	# //// no tool: nothing was built, and the chat said it was (2026-09-13).
+	def send_back_unrun_claim(self, messages: list[dict], text: str) -> bool:
+		"""When the user asked for a build, no tool ran in this turn and the answer says the
+		build is done, take the answer off the chat and ask the model again with that fact.
+		Once per turn. Returns True when the model is asked again."""
+		from builder.site_ai.nora.claims import NUDGE, unrun_build_claim
+
+		if getattr(self, "claim_sent_back", False) or self.tool_steps() or self.applied_operations:
+			return False
+		if not unrun_build_claim(self.prompt, text):
+			return False
+		self.claim_sent_back = True
+		logger.warning("Agent said a build was done with no tool run; asking again")
+		self.live_text = ""
+		self.emit("stream", chunk="", replace=True)
+		messages.append({"role": "assistant", "content": text})
+		messages.append({"role": "user", "content": NUDGE})
+		return True
+
 	def flush_pending_images(self, messages: list[dict]) -> None:
 		"""Images a tool captured this round (preview_page screenshots) ride a
 		follow-up user message — appended only after every role:"tool" result,
@@ -1302,6 +1323,10 @@ class AgentRunner:
 
 					if summary_text and materialise_text_card(self, summary_text):
 						return
+					# //// Neoffice — a build said done when no tool ran goes back to the model once
+					# //// (send_back_unrun_claim, builder/site_ai/nora/claims.py)
+					if summary_text and self.send_back_unrun_claim(messages, summary_text):
+						continue
 					self.stop_reason = "model_finished"
 					break
 
