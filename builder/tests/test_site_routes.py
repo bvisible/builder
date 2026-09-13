@@ -240,6 +240,22 @@ class TestBesideKeptPages(unittest.TestCase):
 		self.assertIn("no button to it", contact)
 		self.assertIn("links to '/contact'", about)
 
+	def test_every_page_knows_the_categories_by_name(self):
+		"""About and Contact invented sets of five of their own ("Gather, Studio, Trail…"),
+		beside five categories that were Snow, Street, Water, Outdoor and Home (2026-09-13)."""
+		from types import SimpleNamespace
+
+		from builder.site_ai.nora.site_builder import page_brief_text
+
+		handles = {k: "var(--x)" for k in ("primary", "secondary", "background", "text", "font-heading", "font-body")}
+		site = {"site_name": "X", "activity": "Y", "categories": ["Snow", "Street", "Water"], "listing_route": "brands"}
+		about = page_brief_text(site, SimpleNamespace(), {"title": "About", "route": "about", "type": "about"}, handles, "", "bento", "English", [], ("Contact us", "/contact"))
+		self.assertIn("Snow, Street, Water", about)
+		self.assertIn("never a set of its own", about)
+		# the home keeps its tile order
+		home = page_brief_text(site, SimpleNamespace(), {"title": "Home", "route": "home", "type": "accueil"}, handles, "", "bento", "English", [], ("Contact us", "/contact"))
+		self.assertIn("give each its own photograph tile", home)
+
 	def test_keep_them_keeps_the_hand_made_pages_only(self):
 		"""Answered with 'none', a question about one hand-made page kept the whole
 		previous site beside the new one."""

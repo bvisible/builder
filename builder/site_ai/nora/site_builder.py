@@ -881,7 +881,14 @@ def page_brief_text(site: dict, brief, page: dict, handles: dict, contact_prompt
             f"CATEGORIES, in the client's words: {', '.join(site['categories'])}. Name each one exactly so, in this order, "
             "and give each its own photograph tile (the PHOTOS notes say which)."
             if site.get("categories") and (page["type"] == "accueil" or page["route"] == site.get("listing_route"))
-            else ""
+            else (
+                # the other pages invented sets of their own: "Gather, Studio, Trail, Water, Camp" on
+                # About and "Roam, Move, Rest, Gather, Create" on Contact, beside five categories
+                # that were Snow, Street, Water, Outdoor and Home (2026-09-13)
+                f"CATEGORIES of the site, in the client's words: {', '.join(site['categories'])}. When this page names or "
+                "lists categories, it names exactly these, in this order; never a set of its own."
+                if site.get("categories") else ""
+            )
         ),
         (
             # //// Neoffice — the copy rule of an image-led site (see IMAGE_LED_PLANS)
