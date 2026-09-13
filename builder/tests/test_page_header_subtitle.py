@@ -70,6 +70,26 @@ class TestBuilderPageBandSubtitle(unittest.TestCase):
 	def test_a_subtitle_written_for_the_band_is_kept(self):
 		self.assertEqual(self.band(meta_description=LINE, page_header_subtitle=LINE), LINE)
 
+	def test_a_home_gets_no_band_whatever_its_route(self):
+		"""A home the generator wrote beside another one ("home-c98e") opened on a band that said
+		"Accueil" above its own hero, the site's menu linking it as its home."""
+		band = lambda route: page_header.render_builder_page_header(frappe._dict(route=route, page_title="Accueil", blocks="[]"))  # noqa: E731
+		with patch.object(page_header, "_config", return_value=None), patch.object(page_header, "render", return_value="(band)"):
+			self.assertEqual(band("home-c98e"), "")
+			self.assertEqual(band("index"), "")
+			# a route that only starts like a home is an interior page (a shop's category)
+			self.assertEqual(band("home-decor"), "(band)")
+			self.assertEqual(band("about"), "(band)")
+			previous = (getattr(frappe.local, "website_profile_doc", None), getattr(frappe.local, "request", None))
+			try:
+				frappe.local.website_profile_doc = {"home_route": "accueil-studio"}
+				self.assertEqual(band("accueil-studio"), "")
+				frappe.local.website_profile_doc = None
+				frappe.local.request = SimpleNamespace(path="/")
+				self.assertEqual(band("accueil"), "")
+			finally:
+				frappe.local.website_profile_doc, frappe.local.request = previous
+
 	def test_a_preview_judges_the_draft(self):
 		draft = json.dumps([{"element": "p", "innerHTML": OTHER}])
 		previous = getattr(frappe.local, "request", None)

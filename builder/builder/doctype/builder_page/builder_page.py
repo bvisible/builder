@@ -557,6 +557,13 @@ class BuilderPage(WebsiteGenerator):
 		from builder.site_ai.nora.buttons import settle_for_render
 
 		blocks = settle_for_render(blocks)
+		# //// Neoffice — a photo slot never filled (a page written before 2026-09-09, or one whose
+		# //// picture the image job is still drawing) is drawn as a plain block in the site's colours,
+		# //// not as the third party's grey placeholder with its caption across the hero
+		# //// (builder/site_ai/nora/placeholders.py neutral_for_render, 2026-09-13).
+		from builder.site_ai.nora.placeholders import neutral_for_render
+
+		blocks = neutral_for_render(blocks)
 		content, style, fonts, has_dual_mode_image = get_block_html(blocks)
 
 		# Propagate the root block's background to html/body. Otherwise a full-bleed

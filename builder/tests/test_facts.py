@@ -107,6 +107,31 @@ class TestNamedSlots(unittest.TestCase):
 		self.assertEqual(neutral_named_slots([self.slot("Physiotherapy Session In Progress")], PALETTE, "pt"), [])
 
 
+class TestPlaceholdersAtRender(unittest.TestCase):
+	"""A test site's home showed "Cave daffinage" in grey capitals across its hero: a slot the image
+	job never filled is drawn as a plain block at render, and the stored page keeps it."""
+
+	def test_a_slot_is_drawn_plain_and_the_stored_page_keeps_it(self):
+		import json
+		from unittest.mock import patch
+
+		from builder.site_ai.nora import buttons, placeholders
+
+		url = "https://placehold.co/1920x1080/2C1810/ffffff?text=Cave+daffinage"
+		hero = {"element": "section", "baseStyles": {"background": f"linear-gradient(rgba(0,0,0,.5),rgba(0,0,0,.3)), url('{url}')"}}
+		stored = json.dumps([hero])
+		plain = json.dumps([{"element": "p", "innerHTML": "Bonjour"}])
+		with patch.object(buttons, "_render_palette", return_value={"background": "#1b1f24", "secondary": "#a67c00"}):
+			drawn = placeholders.neutral_for_render(stored)
+			self.assertIs(placeholders.neutral_for_render(plain), plain)
+		background = drawn[0]["baseStyles"]["background"]
+		self.assertNotIn("placehold.co", background)
+		# inside url('…') the data URI carries no bare quote that would close it
+		inside = background.split("url('", 1)[1].rsplit("')", 1)[0]
+		self.assertTrue(inside.startswith("data:image/svg+xml") and "'" not in inside)
+		self.assertIn("placehold.co", stored)
+
+
 class TestImagePrompt(unittest.TestCase):
 	def test_the_site_name_stays_out_of_the_picture(self):
 		"""Asked for "the practice <name>", the image model lettered the name on a wall."""

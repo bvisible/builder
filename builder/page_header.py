@@ -73,6 +73,34 @@ _CSS = (
 # also for any one-off landing page a client wants bare.
 SKIP_PATHS = ("", "home", "index")
 
+# //// Neoffice — a home never gets the band, whatever its route. The band told a home by
+# //// SKIP_PATHS alone: a home the generator wrote beside an existing one gets a hashed route
+# //// ("home-c98e", site_builder), the menu of a test site linked it as its "Accueil", and the
+# //// page opened on a band that said "Accueil" above its own hero (2026-09-13).
+HOME_ROUTE = re.compile(r"^(?:home|index)(?:-[0-9a-f]{4})?$")
+
+
+def _is_home(route: str) -> bool:
+	"""Whether a page is a home: served at the site's root, the home of the resolved site
+	profile or of the site's settings, or a home the generator wrote beside another one."""
+	route = (route or "").strip("/")
+	if not route or HOME_ROUTE.match(route):
+		return True
+	try:
+		path = getattr(getattr(frappe.local, "request", None), "path", None)
+		if isinstance(path, str) and not path.strip("/"):
+			return True
+		profile = getattr(frappe.local, "website_profile_doc", None)
+		homes = {
+			profile.get("home_route") if profile is not None and hasattr(profile, "get") else None,
+			getattr(frappe.local.flags, "home_page", None),
+			frappe.get_cached_value("Builder Settings", "Builder Settings", "home_page"),
+			frappe.db.get_single_value("Website Settings", "home_page", cache=True),
+		}
+	except Exception:
+		return False
+	return route in {str(home).strip("/") for home in homes if home}
+
 
 def _excluded_routes(config: dict) -> tuple:
 	"""Routes that get no band: the setting, or the default when it is empty.
@@ -359,6 +387,9 @@ def render_builder_page_header(doc=None) -> str:
 	route = (doc.get("route") if hasattr(doc, "get") else getattr(doc, "route", "")) or ""
 	route = str(route).strip("/")
 	if _is_excluded(route, _excluded_routes(settings())):
+		return ""
+	# //// Neoffice — a home keeps the hero composed for it (see _is_home)
+	if _is_home(route):
 		return ""
 
 	title = (

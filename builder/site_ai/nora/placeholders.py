@@ -11,6 +11,7 @@ outside and looks composed rather than unfinished.
 
 Pure functions over the block tree."""
 
+import copy
 import re
 from urllib.parse import quote, unquote_plus
 
@@ -41,7 +42,9 @@ def neutral_image(width: int, height: int, palette: dict, prefix: str) -> str:
         f"<rect width='100%' height='100%' fill='{wash}' fill-opacity='0.35'/>"
         "</svg>"
     )
-    return "data:image/svg+xml;utf8," + quote(svg, safe="/:='<> ,.")
+    # the quotes of the SVG's attributes are encoded: a slot written as a CSS background sits
+    # inside url('…'), which a bare quote would close
+    return "data:image/svg+xml;utf8," + quote(svg, safe="/:=<> ,.")
 
 
 def _replace(text: str, palette: dict, prefix: str) -> str:
@@ -77,6 +80,33 @@ def neutral_placeholders(blocks: list, palette: dict, prefix: str) -> int:
         if changed:
             edits += 1
     return edits
+
+
+def neutral_for_render(blocks):
+    """The blocks a page renders, each placehold.co slot drawn as the plain block of
+    neutral_placeholders, in the colours of this render. A page written before the slots were
+    neutralised at the build (2026-09-09) kept them, and a slot waits for its picture while the
+    image job draws it: a test site's home showed "Cave daffinage" in grey capitals across its
+    hero, fetched from a third party by every visitor (2026-09-13). The stored page keeps its
+    slots, for the image job to find. `blocks` as stored (JSON text) or parsed; returned
+    untouched when there is no slot, and on any error: this runs on every page view."""
+    if not blocks or (isinstance(blocks, str) and "placehold.co" not in blocks):
+        return blocks
+    import frappe
+
+    try:
+        from builder.site_ai.nora.buttons import _render_palette
+
+        palette = _render_palette() or {}
+        colours = {
+            "render-background": palette.get("background") or "#f3f1ec",
+            "render-secondary": palette.get("secondary") or palette.get("primary") or "#c8c2b8",
+        }
+        data = frappe.parse_json(blocks) if isinstance(blocks, str) else copy.deepcopy(blocks)
+        return data if neutral_placeholders(data if isinstance(data, list) else [data], colours, "render") else blocks
+    except Exception:
+        frappe.log_error("Placeholders: page rendered with its placeholders", frappe.get_traceback())
+        return blocks
 
 
 def _names_a_person(text: str, names: set[str]) -> bool:
