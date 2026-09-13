@@ -1,6 +1,7 @@
 # //// Neoffice — added file (no upstream equivalent): the visual check waits out a web server
 # //// that is restarting (builder/site_ai/nora/visual_check.py).
 import unittest
+from types import SimpleNamespace
 from unittest.mock import patch
 
 from builder.site_ai.nora import visual_check
@@ -47,3 +48,42 @@ class TestScreenshotWaitsForTheServer(unittest.TestCase):
 			self.assertEqual(visual_check._screenshot("http://127.0.0.1:8000/about", "About"), viewport)
 		self.assertEqual(capture.call_count, visual_check.SERVER_RETRIES + 2)
 		self.assertEqual(sleep.call_count, visual_check.SERVER_RETRIES)
+
+
+class TestTheCaptureIsDropped(unittest.TestCase):
+	"""Every build left one public PNG per page reviewed among the site's files (78 on a test
+	instance in three days)."""
+
+	def setUp(self):
+		logging = patch.object(visual_check, "ai_log")
+		logging.start()
+		self.addCleanup(logging.stop)
+
+	def review(self, **critique):
+		page = {"name": "p1", "title": "About", "route": "/about"}
+		shot = {"success": True, "file_url": "/files/shot.png"}
+		with (
+			patch.object(visual_check, "_screenshot", return_value=shot),
+			patch.object(visual_check.frappe.db, "commit"),
+			patch("builder.site_ai.ingestion.visual_critique.critique_screenshot", **critique),
+			patch.object(visual_check, "_drop_capture") as drop,
+		):
+			report = visual_check.review_page(page, None, "model")
+		drop.assert_called_once_with(shot)
+		return report
+
+	def test_after_the_critique_and_after_a_failure(self):
+		read = SimpleNamespace(looks_professional=True, overall="", issues=[])
+		self.assertTrue(self.review(return_value=(read, "model"))["professional"])
+		self.assertEqual(self.review(side_effect=RuntimeError("model down"))["error"], "model down")
+
+	def test_the_file_record_goes(self):
+		with (
+			patch.object(visual_check.frappe, "get_all", return_value=["f1"]) as get_all,
+			patch.object(visual_check.frappe, "delete_doc") as delete,
+			patch.object(visual_check.frappe.db, "commit"),
+		):
+			visual_check._drop_capture({"success": True, "file_url": "/files/shot.png"})
+			visual_check._drop_capture(None)
+		get_all.assert_called_once_with("File", filters={"file_url": "/files/shot.png"}, pluck="name")
+		delete.assert_called_once_with("File", "f1", ignore_permissions=True, delete_permanently=True)

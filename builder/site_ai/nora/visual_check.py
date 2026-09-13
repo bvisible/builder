@@ -161,6 +161,7 @@ def review_page(page: dict, profile: str | None, model: str, site_name: str = ""
 
     report = {"name": page["name"], "title": page["title"], "route": page["route"], "professional": None, "issues": [], "error": None, "overall": ""}
     url = loopback_page_url(page["route"], profile)
+    shot = None
     try:
         shot = _screenshot(url, page["title"])
         frappe.db.commit()  # the screenshot File must be visible to the model's read
@@ -176,7 +177,24 @@ def review_page(page: dict, profile: str | None, model: str, site_name: str = ""
     except Exception as e:
         report["error"] = str(e)[:200]
         ai_log("warning", "Visual check failed", page=page["title"], error=report["error"])
+    finally:
+        _drop_capture(shot)
     return report
+
+
+def _drop_capture(shot: dict | None) -> None:
+    """The screenshot is read once, by the critique, and then removed: every build left one public
+    PNG per page reviewed among the site's files (78 on a test instance in three days,
+    2026-09-13). Never raises."""
+    url = (shot or {}).get("file_url")
+    if not url:
+        return
+    try:
+        for name in frappe.get_all("File", filters={"file_url": url}, pluck="name"):
+            frappe.delete_doc("File", name, ignore_permissions=True, delete_permanently=True)
+        frappe.db.commit()
+    except Exception as e:
+        ai_log("warning", "Screenshot not removed", url=url, error=str(e)[:120])
 
 
 def summary_lines(reviews: list[dict], revised: dict[str, int]) -> list[str]:
