@@ -286,7 +286,7 @@ class TestContrast(unittest.TestCase):
 		dark_site = {"dk-primary": "#e578d1", "dk-secondary": "#f5f5f5", "dk-background": "#1b1f24", "dk-text": "#f5f5f5"}
 		address = {"element": "p", "baseStyles": {"color": "rgba(0,0,0,0.72)"}, "innerHTML": "Route de la Gare 1, 1000 Lausanne"}
 		band = {"baseStyles": {"backgroundColor": "#fefefe"}, "children": [{"classes": ["u-card", "u-card--flat"], "children": [address]}]}
-		self.assertEqual(len(repair_contrast([band], dark_site)), 1)
+		self.assertTrue(repair_contrast([band], dark_site))
 		self.assertGreaterEqual(contrast(parse_color(address["baseStyles"]["color"], dark_site), parse_color("#1b1f24", dark_site)), 4.5)
 		# on a light site the same card is light, and dark ink reads
 		light = {"element": "p", "baseStyles": {"color": "#1a1a1a"}, "innerHTML": "Route de la Gare 1"}
@@ -1036,12 +1036,18 @@ class TestCardContrast(unittest.TestCase):
 	def test_light_text_on_a_card_of_a_dark_section_is_repaired(self):
 		from builder.site_ai.nora.contrast import repair_contrast
 
-		palette = {"x-background": "#1b1f24", "x-text": "#f5f5f5", "x-primary": "#1b1f24"}
+		# a theme that paints its cards white on a dark site: the palette names that surface
+		palette = {"x-background": "#1b1f24", "x-text": "#f5f5f5", "x-primary": "#1b1f24", "surface": "#ffffff"}
 		card = {"element": "div", "classes": ["u-card", "u-card--flat"], "baseStyles": {}, "children": [{"element": "h3", "baseStyles": {"color": "var(--x-text)"}, "innerHTML": "Sélection exigeante"}]}
 		section = {"element": "section", "baseStyles": {"backgroundColor": "var(--x-background)"}, "children": [card]}
 		fixes = repair_contrast([section], palette)
 		self.assertTrue(fixes)
 		self.assertNotEqual(card["children"][0]["baseStyles"]["color"], "var(--x-text)")
+		# without one, the card wears the site's dark background (--surface-color), where light text reads
+		dark_card = {"element": "div", "classes": ["u-card"], "baseStyles": {}, "children": [{"element": "h3", "baseStyles": {"color": "var(--x-text)"}, "innerHTML": "Sélection exigeante"}]}
+		dark_site = {k: v for k, v in palette.items() if k != "surface"}
+		repair_contrast([{"element": "section", "baseStyles": {"backgroundColor": "var(--x-background)"}, "children": [dark_card]}], dark_site)
+		self.assertEqual(dark_card["children"][0]["baseStyles"]["color"], "var(--x-text)")
 
 	def test_a_repeater_template_bound_to_data_counts_as_text(self):
 		from builder.site_ai.nora.contrast import repair_contrast

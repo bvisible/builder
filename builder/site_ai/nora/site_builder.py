@@ -752,9 +752,11 @@ def _opening_hours_configured() -> bool:
     """Whether the shop has opening hours typed, so the hours include has something to show."""
     try:
         from webshop.webshop.utils.store_hours import webshop_opening_hours
-    except ImportError:
+
+        return bool(webshop_opening_hours())
+    except Exception:
+        # the shop app absent, or installed without the apps it needs on this site
         return False
-    return bool(webshop_opening_hours())
 
 
 def available_includes(page_type: str, site_type: str = "vitrine", profile: str | None = None, site_name: str = "") -> list[tuple[str, str]]:
