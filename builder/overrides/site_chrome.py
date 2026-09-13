@@ -118,7 +118,8 @@ def get_builder_component_html(component_name):
 						ctx = builder_data.get("page_data", {}) or {}
 						content = render_template(content, ctx)
 					except Exception as e:
-						frappe.log_error("Legacy chrome Jinja render error", f"Component {component_name}: {e}")
+						# the traceback names the template and the frame: the message alone said "request"
+						frappe.log_error("Legacy chrome Jinja render error", f"Component {component_name}: {e}\n\n{frappe.get_traceback()}")
 
 				if content:
 					html_parts.append(content)
@@ -188,6 +189,12 @@ def inject_site_chrome(context):
 	from builder.website_switch import hidden_from_visitor
 
 	if hidden_from_visitor():
+		return
+
+	# a render with no request serves no visitor (the website search index renders the routes
+	# from a background job), and a navbar whose Jinja reads the request failed there: "Component
+	# navbar: request" in a migrated client site's Error Log, 32 times in two weeks (2026-09-13)
+	if not getattr(frappe.local, "request", None):
 		return
 
 	# Navbar and footer Web Templates for non-Builder pages (frappe base.html
