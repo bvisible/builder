@@ -1,3 +1,4 @@
+# //// Neoffice — added file (no upstream equivalent): what this instance lets the Studio and the agent do.
 """What this instance allows the Studio and the agent to do.
 
 A capability is a server answer, never a build flag: the same code serves a

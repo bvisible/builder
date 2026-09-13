@@ -1,3 +1,4 @@
+# //// Neoffice — added file (no upstream equivalent): a card the model wrote as text becomes a present_ui card.
 """Turn a card the model wrote as text into a real present_ui card.
 
 Both Kimi models call present_ui for the first question of a conversation, then

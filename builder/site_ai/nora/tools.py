@@ -1,3 +1,4 @@
+# //// Neoffice — added file (no upstream equivalent): the generate_site tool for the editor agent.
 """The generate_site tool: our site pipeline, callable by the editor agent."""
 
 from __future__ import annotations

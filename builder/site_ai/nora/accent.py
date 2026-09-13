@@ -1,3 +1,4 @@
+# //// Neoffice — added file (no upstream equivalent): the site's signature accent as a design token.
 """The site's signature accent as a token.
 
 The design brief invites "an unexpected accent colour" and the model obliges with a raw

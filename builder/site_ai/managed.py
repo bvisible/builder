@@ -1,3 +1,4 @@
+# //// Neoffice — added file (no upstream equivalent): the managed AI provider, kept in sync with site_config.
 """The managed AI provider: one Builder AI Provider row, kept in sync with
 site_config on every migrate, so the upstream agent (litellm) runs on the
 models the host operates for its customers without anyone entering a key.

@@ -1,3 +1,4 @@
+# //// Neoffice — added file (no upstream equivalent): the layout passes a written page goes through.
 """Layout a page can live with.
 
 The page writer lays sections on a 12-column grid and places each child by a span

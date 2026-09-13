@@ -1,3 +1,4 @@
+# //// Neoffice — added file (no upstream equivalent): the site engine on upstream's LLM layer.
 """The site engine on upstream's LLM layer.
 
 Every model call of the site engine (brief, page copy) goes through

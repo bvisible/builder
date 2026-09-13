@@ -267,10 +267,10 @@ def binding_entry(prop: str, field) -> dict:
 			break
 	else:
 		key = strip_binding_prefix(key)
-	# //// Neoffice — a CSS property binds a style, not an HTML attribute (see STYLE_BINDINGS)
 	entry = (
 		{"key": key, "property": "innerHTML", "type": "key"}
 		if prop in ("innerHTML", "text")
+		# //// Neoffice — a CSS property binds a style, not an HTML attribute (see STYLE_BINDINGS)
 		else {"key": key, "property": prop, "type": "style" if prop in STYLE_BINDINGS else "attribute"}
 	)
 	if comes_from:
@@ -552,9 +552,11 @@ def load_page_draft(page_id: str) -> tuple[dict | None, str]:
 	try:
 		data = json.loads(draft or published or "")
 	except (json.JSONDecodeError, TypeError):
+		# //// Neoffice — the draft text comes back even when it is not valid JSON (load_page_draft)
 		return None, draft or ""
 	if isinstance(data, list):
 		data = data[0] if data else None
+	# //// Neoffice — the root and the draft text it was read from (load_page_draft)
 	return (data if isinstance(data, dict) else None), draft or ""
 
 
@@ -570,6 +572,7 @@ def save_draft_blocks(page_id: str, root_block: dict, expected: str | None = Non
 	meanwhile are not overwritten, while settings and data tools, which move `modified` but
 	not the blocks, cause no conflict. Returns the text written, or None when nothing was.
 	Without `expected` the write is unconditional, as upstream."""
+	# //// Neoffice — the conditional write and the text returned: see the marker above the def
 	text = compact_json([root_block])
 	if expected is None:
 		frappe.db.set_value("Builder Page", page_id, "draft_blocks", text, update_modified=True)
@@ -579,6 +582,8 @@ def save_draft_blocks(page_id: str, root_block: dict, expected: str | None = Non
 		WHERE name=%(page)s AND BINARY COALESCE(draft_blocks, '') = BINARY %(expected)s""",
 		{"new": text, "now": frappe.utils.now(), "user": frappe.session.user, "page": page_id, "expected": expected},
 	)
+	# //// Neoffice — the raw UPDATE bypasses the document cache: cleared, a later get_doc reads
+	# //// this draft; the text read back says whether the write took place
 	frappe.clear_document_cache("Builder Page", page_id)
 	return text if frappe.db.get_value("Builder Page", page_id, "draft_blocks") == text else None
 

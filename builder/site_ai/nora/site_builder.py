@@ -1,3 +1,4 @@
+# //// Neoffice — added file (no upstream equivalent): the site pipeline behind the generate_site tool.
 """The site pipeline behind the generate_site tool.
 
 Our orchestration (brief with design intelligence, design tokens, site chrome,

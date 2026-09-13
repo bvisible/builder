@@ -11,7 +11,7 @@ Checked with `fork_markers.py` from `bvisible/neoffice-ci`:
 
 ```bash
 curl -fsSL https://raw.githubusercontent.com/bvisible/neoffice-ci/main/scripts/fork_markers.py -o /tmp/fm.py
-python3 /tmp/fm.py check --base 518e9e7d --head origin/version-15   # → 3, all three explained below
+python3 /tmp/fm.py check --base 518e9e7d --head origin/version-15   # → see *Hunks a comment cannot reach* below
 python3 /tmp/fm.py verify --base <the commit before your edits>     # a marking pass is comments only
 ```
 
@@ -166,12 +166,16 @@ markers.** At a merge, rebuild rather than resolve.
   marker** — it is regenerated from a source that has none, and marking that
   source is wrong too, because `frontend/index.html` is byte-identical to
   upstream's and would only manufacture a merge conflict. This entry is the
-  durable record; the checker reports the file and always will (see *Hunks a
-  comment cannot reach*).
+  durable record, and the *Artifact* table below is what the checker reads to
+  skip the file (since 2026-09-13; before that it reported the file at every push).
 - `frontend/components.d.ts` — written by `unplugin-vue-components`. Its
   divergence is nothing but the list of the `.vue` components we added; each of
   the 9 lines carries a one-line marker, but a local `vite` run rewrites them.
   **Regenerate this file at the merge; never resolve it by hand.**
+
+| Artifact | Why it carries no marker |
+|---|---|
+| `builder/www/_builder.html` | the SPA shell vite rewrites from `frontend/index.html` at every build: a marker written in it is gone at the next one (`4d66cb31`) |
 
 ### Binaries and translations (no comment syntax, not flagged by the checker)
 
@@ -187,25 +191,25 @@ markers.** At a merge, rebuild rather than resolve.
 
 ### Hunks a comment cannot reach
 
-`fork_markers.py check --base <BASE> --head origin/version-15` reports **three**
-hunks and will keep reporting them. None is unmarked by neglect; each is
-somewhere a marker cannot legally or durably sit. The reason for each lives here.
+Of the hunks `fork_markers.py check` reports, **two** will always be there.
+Neither is unmarked by neglect; each is somewhere a marker cannot legally sit.
+The reason for each lives here.
 
 | File | What changed | Why no marker | Where the reason is |
 |---|---|---|---|
 | `frontend/src/components/DashboardHead.vue` | `:placeholder="__('Filter by title or route')"`, i18n pass `bd5dc7f1` | the line is **inside a multi-line opening tag** (`<BuilderInput …>`), between two attributes: neither `<!-- -->` nor `//` is legal there | on `<BuilderInput` and at the top of the `<template>` — but the checker only looks 3 lines up, and `class` + `type` sit in between |
 | `frontend/src/components/Settings/GlobalAI.vue` | `:placeholder="preset === 'ollama' ? … "`, provider-aware, `c58af069` | same: inside `<FormControl …>` | on `<FormControl`, four lines above |
-| `builder/www/_builder.html` | the whole file (generated SPA shell) | **build output**: `yarn build` rewrites it from `frontend/index.html` and any marker is gone, proven by `4d66cb31` | *Generated artifacts* above, `.gitignore`, `frontend/vite.config.mjs` |
 
-The two Vue hunks are one line each and change nothing but a translated string;
-the third is not source at all. Raising `LOOKBACK` in the checker would silence
-the first two, and adding `www/_builder.html` to its `_BUILT_ASSET` pattern would
-silence the third — both are changes to `bvisible/neoffice-ci`, not to this fork.
+The two Vue hunks are one line each and change nothing but a translated string.
+Raising `LOOKBACK` in the checker would silence them, a change to
+`bvisible/neoffice-ci`, not to this fork. `builder/www/_builder.html`, the third
+row of this table until 2026-09-13, is now skipped through the *Artifact* table
+(see *Generated artifacts*).
 
 ### Files we added and deliberately left unmarked
 
 Every commentable file we added carries a
-`//// Neoffice — added file (no upstream equivalent): …` header — **147 of them**.
+`//// Neoffice — added file (no upstream equivalent): …` header — **212 of them** (2026-09-13).
 Fourteen do not, on purpose:
 
 | File | Content |

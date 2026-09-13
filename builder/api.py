@@ -1232,6 +1232,7 @@ def apply_brief_site_chrome(design_brief, website_profile=None) -> list[str]:
 		if config.get(field) != value:
 			config.set(field, value)
 		applied.append(field)
+	# //// Neoffice — the values left out are logged, not dropped in silence (see the marker above)
 	if refused:
 		frappe.logger("builder").warning(f"brief chrome values refused by {config.doctype}: {refused}")
 	if applied:

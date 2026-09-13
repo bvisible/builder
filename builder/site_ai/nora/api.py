@@ -1,3 +1,4 @@
+# //// Neoffice — added file (no upstream equivalent): the endpoints the Studio calls around the site playbook.
 """Endpoints the Studio calls around the site playbook."""
 
 from __future__ import annotations

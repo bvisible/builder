@@ -1,3 +1,4 @@
+# //// Neoffice — added file (no upstream equivalent): font sizes a page can live with.
 """Font sizes a page can live with.
 
 Given a "big display type" direction the model reaches for viewport units without a

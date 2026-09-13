@@ -99,7 +99,7 @@ export function bindingEntry(property: string, field: string | null | undefined)
 	return {
 		key,
 		property: isContent ? "innerHTML" : property,
-		type: type as BlockDataKeyType,
+		type: type as BlockDataKeyType, //// Neoffice — style or attribute, chosen above (STYLE_BINDINGS)
 		...(comesFrom ? { comesFrom } : {}),
 	};
 }

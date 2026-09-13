@@ -1,3 +1,4 @@
+# //// Neoffice — added file (no upstream equivalent): the final look at a built site, read by a vision model.
 """The final look at what was built.
 
 Each page is rendered server-side, screenshotted and read by the vision model against
