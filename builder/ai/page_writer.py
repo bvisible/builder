@@ -539,23 +539,48 @@ def expand_page_yaml(yaml_text: str, is_root: bool = True) -> tuple[list, str]:
 def load_page_root(page_id: str) -> dict | None:
 	"""The page's current root block dict — draft_blocks when present, else the
 	published blocks. None when the page is empty or the JSON is invalid."""
-	draft, published = frappe.db.get_value("Builder Page", page_id, ["draft_blocks", "blocks"])
+	# //// Neoffice — read through load_page_draft, which also returns the draft text
+	return load_page_draft(page_id)[0]
+
+
+# //// Neoffice — added: the root and the draft text it was read from, the version a later
+# //// write must still find in place (save_draft_blocks, neoffice-maintenance#395)
+def load_page_draft(page_id: str) -> tuple[dict | None, str]:
+	"""The page's root block (draft_blocks when present, else the published blocks) and the
+	draft text as stored, "" when the page has no draft yet."""
+	draft, published = frappe.db.get_value("Builder Page", page_id, ["draft_blocks", "blocks"]) or (None, None)
 	try:
 		data = json.loads(draft or published or "")
 	except (json.JSONDecodeError, TypeError):
-		return None
+		return None, draft or ""
 	if isinstance(data, list):
 		data = data[0] if data else None
-	return data if isinstance(data, dict) else None
+	return (data if isinstance(data, dict) else None), draft or ""
 
 
-def save_draft_blocks(page_id: str, root_block: dict) -> None:
+# //// Neoffice — `expected` added, and the text written returned (neoffice-maintenance#395): a
+# //// server write over blocks another editor, tab or build wrote meanwhile went through silently.
+def save_draft_blocks(page_id: str, root_block: dict, expected: str | None = None) -> str | None:
 	"""Persist an edited block tree back to draft_blocks (same shape persist_page
 	writes). Used by the headless loop after each round of applied block ops; the
-	round's checkpoint commit is what makes a cancelled or crashed turn keep it."""
-	frappe.db.set_value(
-		"Builder Page", page_id, "draft_blocks", compact_json([root_block]), update_modified=True
+	round's checkpoint commit is what makes a cancelled or crashed turn keep it.
+
+	With `expected` (the draft text the tree was read from, or last wrote) the write happens
+	only if the page still holds that text, compared byte for byte: blocks written elsewhere
+	meanwhile are not overwritten, while settings and data tools, which move `modified` but
+	not the blocks, cause no conflict. Returns the text written, or None when nothing was.
+	Without `expected` the write is unconditional, as upstream."""
+	text = compact_json([root_block])
+	if expected is None:
+		frappe.db.set_value("Builder Page", page_id, "draft_blocks", text, update_modified=True)
+		return text
+	frappe.db.sql(
+		"""UPDATE `tabBuilder Page` SET draft_blocks=%(new)s, modified=%(now)s, modified_by=%(user)s
+		WHERE name=%(page)s AND BINARY COALESCE(draft_blocks, '') = BINARY %(expected)s""",
+		{"new": text, "now": frappe.utils.now(), "user": frappe.session.user, "page": page_id, "expected": expected},
 	)
+	frappe.clear_document_cache("Builder Page", page_id)
+	return text if frappe.db.get_value("Builder Page", page_id, "draft_blocks") == text else None
 
 
 def persist_page(page_id: str, yaml_text: str) -> tuple[dict | None, str]:

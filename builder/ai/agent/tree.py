@@ -328,8 +328,11 @@ def insert_child(parent: dict, block: dict, after_block_id: str | None, index) -
 
 
 class WorkingTree:
-	def __init__(self, root: dict | None):
+	# //// Neoffice — `base`: the draft text the tree was read from, or last wrote; the page is
+	# //// written only over it (page_writer.save_draft_blocks, neoffice-maintenance#395)
+	def __init__(self, root: dict | None, base: str | None = None):
 		self.root = root
+		self.base = base
 
 	def resolve(self, block_id: str | None) -> dict | None:
 		return find_block(self.root, block_id) if (self.root and block_id) else None

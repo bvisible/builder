@@ -25,12 +25,14 @@ class TestFollowPageRewrite(unittest.TestCase):
 
 		runner = self.runner()
 		with (
-			patch("builder.ai.page_writer.load_page_root", return_value=NEW),
+			patch("builder.ai.page_writer.load_page_draft", return_value=(NEW, "the new draft")),
 			patch.object(loop.frappe.db, "exists", return_value=True),
 			patch.object(loop, "capture_page_state", return_value="after the build"),
 		):
 			self.assertTrue(loop.AgentRunner.follow_page_rewrite(runner, "generate_site", "Site built."))
 		self.assertEqual([c["blockName"] for c in runner.tree.root["children"]], ["hero", "categories", "statement", "closing"])
+		# the next write must find the build's draft in place
+		self.assertEqual(runner.tree.base, "the new draft")
 		# "Revert" now undoes what came after the build, not the build
 		self.assertEqual(runner.pending_state, "after the build")
 
@@ -47,7 +49,7 @@ class TestFollowPageRewrite(unittest.TestCase):
 		from builder.ai.agent import loop
 
 		runner = self.runner()
-		with patch("builder.ai.page_writer.load_page_root", return_value=NEW) as load:
+		with patch("builder.ai.page_writer.load_page_draft", return_value=(NEW, "the new draft")) as load:
 			self.assertFalse(loop.AgentRunner.follow_page_rewrite(runner, "update_block", "Applied to block old."))
 			self.assertFalse(loop.AgentRunner.follow_page_rewrite(runner, "generate_site", "FAILED: the build stopped."))
 			load.assert_not_called()

@@ -95,6 +95,13 @@ SNAPSHOT_TOOLS = frozenset(
 # //// tree follows them (see follow_page_rewrite), as it follows generate_page.
 PAGE_REWRITING_TOOLS = frozenset({"generate_site"})
 
+# //// Neoffice — added: the tool result of a round the page no longer matched (see persist_tree)
+PAGE_CHANGED_ELSEWHERE = (
+	"NOT SAVED: the page was changed elsewhere (another editor, another tab or a build) while you "
+	"were editing, so this change was not applied. The page has been reloaded: read it again "
+	"before editing."
+)
+
 # Script tools ALWAYS apply through their server handlers, editor sessions included.
 # Applying them in the browser (frappe.client.insert from toolDispatch) lost scripts
 # silently — two parallel attaches in one round raced and .catch(() => null) ate the
@@ -860,7 +867,8 @@ class AgentRunner:
 		self.applied_operations.extend(ops)
 		self.emit("tool_batch", operations=ops)
 		if self.page_id and self.tree and self.tree.root:
-			page_writer.save_draft_blocks(self.page_id, self.tree.root)
+			# //// Neoffice — written over the draft it was read from (see persist_tree)
+			self.persist_tree()
 		return ops
 
 	# //// Neoffice — added method (see run_op and PAGE_REWRITING_TOOLS)
@@ -880,11 +888,30 @@ class AgentRunner:
 		from builder.ai import page_writer
 
 		# the build may have replaced the open page by another one: an empty tree, not a crash
-		root = page_writer.load_page_root(self.page_id) if frappe.db.exists("Builder Page", self.page_id) else None
-		self.tree = WorkingTree(root)
+		root, base = page_writer.load_page_draft(self.page_id) if frappe.db.exists("Builder Page", self.page_id) else (None, None)
+		self.tree = WorkingTree(root, base=base)
 		if root is not None and self.pending_state is not None:
 			self.pending_state = capture_page_state(self.page_id)
 		return True
+
+	# //// Neoffice — added method (neoffice-maintenance#395)
+	def persist_tree(self) -> bool:
+		"""Write the working tree to the page's draft after a round, so a cancelled or crashed
+		turn keeps the work done so far, but only over the draft the tree was read from (or
+		last wrote). When the blocks changed elsewhere meanwhile (another editor, another tab,
+		a build), nothing is written: the tree is reloaded from the page, the canvas refetches
+		it, and False tells the caller to warn the model."""
+		from builder.ai import page_writer
+
+		written = page_writer.save_draft_blocks(self.page_id, self.tree.root, expected=self.tree.base)
+		if written is not None:
+			self.tree.base = written
+			return True
+		logger.warning("Draft of %s changed elsewhere: the round was not saved", self.page_id)
+		root, base = page_writer.load_page_draft(self.page_id)
+		self.tree = WorkingTree(root, base=base)
+		self.emit("refetch", resources=["page", "page_data", "canvas"], after_commit=False)
+		return False
 
 	def page_root(self) -> dict | None:
 		"""The current page's root block — the authoritative working tree. Edits made
@@ -907,7 +934,9 @@ class AgentRunner:
 			)
 		self.held_locks.append((key, token))
 		self.heartbeat.watch(key, token, locks.PAGE_LOCK_TTL)  # //// Neoffice — see __init__
-		self.tree = WorkingTree(page_writer.load_page_root(page_id))
+		# //// Neoffice — the tree keeps the draft text it was read from (see persist_tree)
+		root, base = page_writer.load_page_draft(page_id)
+		self.tree = WorkingTree(root, base=base)
 		self.pending_state = capture_page_state(page_id)
 		return ""
 
@@ -1067,17 +1096,17 @@ class AgentRunner:
 			if not content.startswith("FAILED"):
 				applied.append(op)
 		if applied:
+			# //// Neoffice — persisted first, and only over the draft the tree was read from (see
+			# //// persist_tree): a round the page no longer matches is neither kept nor mirrored
+			if self.page_id and self.tree.root and not self.persist_tree():
+				for op in applied:
+					results[id(op)] = PAGE_CHANGED_ELSEWHERE
+				return results, []
 			self.applied_operations.extend(applied)
 			# after_commit: an op can reference a doc this round created (a component
 			# extract) — mirrored early, the canvas fetches it before the checkpoint
 			# commit lands and caches a Missing placeholder.
 			self.emit("tool_batch", operations=applied, after_commit=True)
-			if self.page_id and self.tree.root:
-				from builder.ai import page_writer
-
-				# Persist after every applied round so a cancel/crash keeps the work
-				# done so far (the same live-apply semantics the canvas shows).
-				page_writer.save_draft_blocks(self.page_id, self.tree.root)
 		return results, applied
 
 	def run_handler(self, tool, op: dict) -> str:
@@ -1500,7 +1529,8 @@ class AgentRunner:
 		if not ops:
 			return ("FAILED: generation produced nothing. Retry generate_page with a fuller brief.", [])
 		root = ops[0]["args"]["blocks"][0]
-		self.tree = WorkingTree(root)
+		# //// Neoffice — the generator persisted the draft: the tree is based on what it wrote
+		self.tree = WorkingTree(root, base=frappe.db.get_value("Builder Page", self.page_id, "draft_blocks") or "")
 		return (
 			"Page generated and saved. Now finish the build: add the client scripts the plan "
 			"calls for (set_page_script), fix obvious breakage with the block tools, verify "
