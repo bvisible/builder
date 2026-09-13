@@ -80,6 +80,13 @@ def run_present_ui(ctx, args: dict) -> str | None:
 			"answer. `ui` must be an ARRAY of element objects, e.g. "
 			"[{'kind': 'choices', 'options': [...]}]. Call present_ui again with real elements."
 		)
+	# //// Neoffice — the recap before a build names the site it is built for, from the page open
+	# //// in the editor (cards.recap_names_the_site): a whole recap listed the name, the pages and
+	# //// the colours of a new site, but not the site it would be built on (2026-09-13).
+	from builder.site_ai.nora.cards import recap_names_the_site
+	from builder.site_ai.nora.prompts import page_profile
+
+	ui = recap_names_the_site(ui, text, page_profile(getattr(ctx, "page_id", None)))
 	content = render_ui_text(text, ui)
 	metadata = {"status": "ui", "text": text, "ui": ui}
 	if timeline := ctx.timeline():

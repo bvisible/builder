@@ -308,3 +308,35 @@ def says_the_same(first: str, second: str) -> bool:
         return False
     shorter, longer = (a, set(b)) if len(a) <= len(b) else (b, set(a))
     return sum(1 for w in shorter if w in longer) / len(shorter) >= 0.7
+
+
+# a build button on a card: "Build the site", "Construire le site", "Créer le site", "Site erstellen"
+BUILD_BUTTON = re.compile(
+    r"\b(?:build|rebuild|construire|reconstruire|cr[ée]er|g[ée]n[ée]rer|erstellen|bauen|costruire|creare|crea)\b.{0,20}"
+    r"\b(?:site|website|webseite|sito)\b|\b(?:site|website|webseite|sito)\b.{0,20}\b(?:erstellen|bauen)\b",
+    re.I,
+)
+
+
+def recap_names_the_site(ui: list[dict], text: str, site: str | None) -> list[dict]:
+    """A recap that ends on a build button says which site the build is for. The playbook asks
+    for it, and the recap of a practice's site listed its name, pages and colours but not the
+    site it would be built on (2026-09-13). The line joins the card's list, in the list's own
+    form ("Label : value" or "Label: value"); a card that already names the site, or an
+    instance with a single site (no profile), is left as it is."""
+    if not site or not any(
+        el.get("kind") == "actions" and any(BUILD_BUTTON.search(str(b.get("label") or "")) for b in el.get("buttons") or [])
+        for el in ui
+    ):
+        return ui
+    shown = " ".join([text or "", *(str(item) for el in ui for item in (el.get("items") or []))]).lower()
+    if site.lower() in shown:
+        return ui
+    lists = [el for el in ui if el.get("kind") == "list"]
+    separator = " : " if any(" : " in str(item) for el in lists for item in el.get("items") or []) else ": "
+    line = f"Site{separator}{site}"
+    if lists:
+        lists[0]["items"] = [*(lists[0].get("items") or []), line]
+        return ui
+    at = next((i for i, el in enumerate(ui) if el.get("kind") == "actions"), len(ui))
+    return [*ui[:at], {"kind": "list", "items": [line]}, *ui[at:]]

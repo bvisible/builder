@@ -112,3 +112,32 @@ class TestCardEcho(unittest.TestCase):
 		self.assertEqual(_without_echo([echo, tool], self.CARD), [echo, tool])
 		other = {"id": 1, "kind": "text", "text": "I read the three sites you like."}
 		self.assertEqual(_without_echo([tool, other], self.CARD), [tool, other])
+
+
+class TestRecapNamesTheSite(unittest.TestCase):
+	"""A whole recap listed a new site's name, pages and colours, not the site it was built on."""
+
+	def recap(self):
+		return [
+			{"kind": "heading", "text": "Récap du site"},
+			{"kind": "list", "items": ["Cabinet : Atelier Nord", "Pages : Accueil, Contact"]},
+			{"kind": "actions", "buttons": [{"label": "Build the site"}, {"label": "Change something"}]},
+		]
+
+	def test_the_site_is_named_before_the_build(self):
+		from builder.site_ai.nora.cards import recap_names_the_site
+
+		ui = recap_names_the_site(self.recap(), "Voici le récapitulatif.", "Nora Test")
+		self.assertEqual(ui[1]["items"][-1], "Site : Nora Test")
+		bare = recap_names_the_site([{"kind": "actions", "buttons": [{"label": "Construire le site"}]}], "", "Nora Test")
+		self.assertEqual(bare[0], {"kind": "list", "items": ["Site: Nora Test"]})
+
+	def test_a_card_that_names_it_or_asks_something_else_stays(self):
+		from builder.site_ai.nora.cards import recap_names_the_site
+
+		named = self.recap()
+		named[1]["items"].append("Site : Nora Test")
+		self.assertEqual(recap_names_the_site([dict(el) for el in named], "", "Nora Test"), named)
+		question = [{"kind": "choices", "options": [{"label": "Oui"}]}, {"kind": "actions", "buttons": [{"label": "Continuer"}]}]
+		self.assertEqual(recap_names_the_site(list(question), "", "Nora Test"), question)
+		self.assertEqual(recap_names_the_site(self.recap(), "", None), self.recap())
