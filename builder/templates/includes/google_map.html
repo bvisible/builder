@@ -2,12 +2,17 @@
    //// key. Reusable block the generator may include; Neoffice-only. First commit cddda576 2026-02-04. #}
 {# Google Maps Embed - No API key required #}
 {# Based on: https://github.com/SheeetFace/react-google-map-location #}
-{% set map_address = address | default("") %}
+{#- The address the includer passes, else the site's own business address: a page the site
+    generator writes includes this block with no address, and it showed every visitor
+    "Map placeholder - configure address" (2026-09-13). With no address at all it draws
+    nothing, rather than a configuration hint on a public page. -#}
+{% set map_address = (address | default("")) or site_map_address() %}
 {% set map_height = height | default("400px") %}
 {% set map_zoom = zoom | default("16") %}
 {% set map_type = type | default("m") %}
 {% set encoded_address = map_address | urlencode %}
 
+{% if map_address %}
 <div class="builder-map-container" style="
     width: 100%;
     height: {{ map_height }};
@@ -15,7 +20,6 @@
     overflow: hidden;
     box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
 ">
-    {% if map_address %}
     <iframe
         width="100%"
         height="100%"
@@ -26,19 +30,6 @@
         src="https://maps.google.com/maps?q={{ encoded_address }}&t={{ map_type }}&z={{ map_zoom }}&output=embed"
         title="{{ _('Map showing') }} {{ map_address }}"
     ></iframe>
-    {% else %}
-    <div style="
-        width: 100%;
-        height: 100%;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        background: var(--surface-color, #f5f5f5);
-        color: var(--muted-color, #666);
-    ">
-        <p>{{ _("Map placeholder - configure address") }}</p>
-    </div>
-    {% endif %}
 </div>
 
 <style>
@@ -52,3 +43,4 @@
     }
 }
 </style>
+{% endif %}

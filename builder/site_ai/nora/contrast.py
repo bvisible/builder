@@ -175,6 +175,11 @@ def repair_contrast(blocks: list[dict], palette: dict[str, str], minimum: float 
     resolved background. Returns one line per fix. `palette` maps token ids
     (without the leading dashes) to their values."""
     fixes: list[str] = []
+    # //// Neoffice — a card's surface as the theme draws it: the chrome's --surface-color IS the
+    # //// site's background colour, so a card is dark on a dark site. Judged against white, an
+    # //// address in dark ink on a dark card passed on a reseller site's contact page (2026-09-13).
+    palette = dict(palette)
+    palette.setdefault("surface", next((v for k, v in palette.items() if k.endswith("-background")), "") or "#ffffff")
     default_bg = next((parse_color(v, palette) for k, v in palette.items() if k.endswith("-background")), None) or NAMED["white"]
     default_fg = next((parse_color(v, palette) for k, v in palette.items() if k.endswith("-text")), None) or (26.0, 26.0, 26.0, 1.0)
     for block in blocks or []:
@@ -192,9 +197,10 @@ def _walk(block: dict, bg: Color | None, fg: Color | None, palette: dict[str, st
         # //// Neoffice — added branch (e1e04aa0 "fix(contrast): a card wears the chrome's
         # //// surface, and frappe pages read on a dark site"): a u-card with no background of
         # //// its own still needs a surface colour to judge its text against.
-        # a card wears the chrome's surface (white unless a Website Theme says otherwise),
-        # not the section behind it: the trust cards of a reseller site's dark home kept the
-        # site's light text on their white face (2026-09-09)
+        # a card wears the chrome's surface, not the section behind it: the trust cards of a
+        # reseller site's dark home kept the site's light text on their white face (2026-09-09).
+        # That surface is the site's background colour unless the palette names one (see
+        # repair_contrast): white on a light site, dark on a dark one.
         raw_bg = palette.get("surface") or "#ffffff"
     if raw_bg:
         parsed = parse_color(raw_bg, palette)

@@ -141,6 +141,28 @@ class TestBesideKeptPages(unittest.TestCase):
 		self.assertFalse(any("contact details" in s for s in page_sections(contact, minimal=False, contact_verified=False)))
 		self.assertFalse(any("contact details" in s for s in page_sections(contact, minimal=True, contact_verified=False)))
 
+	def test_a_contact_page_is_offered_no_include_with_nothing_to_show(self):
+		"""A contact page carried a map with no address ("Map placeholder - configure address"
+		for every visitor) and an hours block with no hours."""
+		from unittest.mock import patch
+
+		from builder.site_ai.nora import site_builder
+
+		def offered(address, hours):
+			with (
+				patch.object(site_builder.frappe, "get_installed_apps", return_value=["frappe", "builder", "webshop"]),
+				patch.object(site_builder, "_site_has_address", return_value=address),
+				patch.object(site_builder, "_opening_hours_configured", return_value=hours),
+			):
+				return " ".join(tag for tag, _ in site_builder.available_includes("contact"))
+
+		self.assertNotIn("google_map", offered(address=False, hours=True))
+		self.assertNotIn("opening_hours", offered(address=True, hours=False))
+		both = offered(address=True, hours=True)
+		self.assertIn("google_map", both)
+		self.assertIn("opening_hours", both)
+		self.assertIn("contact_form", offered(address=False, hours=False))
+
 	def test_keep_them_keeps_the_hand_made_pages_only(self):
 		"""Answered with 'none', a question about one hand-made page kept the whole
 		previous site beside the new one."""

@@ -68,6 +68,8 @@ jinja = {
 		"builder.page_header.render_page_header",
 		"builder.page_header.render_builder_page_header",
 		"builder.builder.doctype.builder_component.builder_component.get_component_data",
+		# //// Neoffice — the address the map include falls back to (templates/includes/google_map.html)
+		"builder.api.site_map_address",
 	],
 	"filters": [
 		"builder.utils.combine",

@@ -1035,6 +1035,20 @@ def import_template_group(template_group: str, project_folder: str | None = None
 	return created
 
 
+# //// Neoffice — added: the address a map include falls back to when the page passes none.
+# //// A Jinja method (hooks.jinja), not an API endpoint.
+def site_map_address() -> str:
+	"""The business address a map include shows when its page passes none: a page the site
+	generator writes includes the map without one, and the include showed every visitor
+	"Map placeholder - configure address" (2026-09-13). The generator offers the map only to
+	a site of the instance's own company (site_builder.available_includes), so this is that
+	company's address, as get_site_contact_context reads it. "" when there is none."""
+	try:
+		return get_site_contact_context(getattr(frappe.local, "website_profile", None)).get("address") or ""
+	except Exception:
+		return ""
+
+
 def get_site_contact_context(website_profile=None) -> dict:  # //// Neoffice multi-site
 	"""bvisible: real, verified contact data of this site — ERPNext Company,
 	its linked Address, and the header config logo. Injected into generation

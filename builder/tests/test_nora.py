@@ -280,6 +280,18 @@ class TestContrast(unittest.TestCase):
 		self.assertEqual(repair_contrast([section], PALETTE), [])
 		self.assertEqual(numbers["baseStyles"]["color"], "#ffffff")
 
+	def test_a_card_on_a_dark_site_is_judged_on_its_dark_face(self):
+		"""An address in dark ink sat in a card that the theme paints in the site's dark
+		background colour, inside a light band: judged against white, it passed."""
+		dark_site = {"dk-primary": "#e578d1", "dk-secondary": "#f5f5f5", "dk-background": "#1b1f24", "dk-text": "#f5f5f5"}
+		address = {"element": "p", "baseStyles": {"color": "rgba(0,0,0,0.72)"}, "innerHTML": "Route de la Gare 1, 1000 Lausanne"}
+		band = {"baseStyles": {"backgroundColor": "#fefefe"}, "children": [{"classes": ["u-card", "u-card--flat"], "children": [address]}]}
+		self.assertEqual(len(repair_contrast([band], dark_site)), 1)
+		self.assertGreaterEqual(contrast(parse_color(address["baseStyles"]["color"], dark_site), parse_color("#1b1f24", dark_site)), 4.5)
+		# on a light site the same card is light, and dark ink reads
+		light = {"element": "p", "baseStyles": {"color": "#1a1a1a"}, "innerHTML": "Route de la Gare 1"}
+		self.assertEqual(repair_contrast([{"children": [{"classes": ["u-card"], "children": [light]}]}], PALETTE), [])
+
 
 class TestBriefHeroColours(unittest.TestCase):
 	def test_missing_hero_colours_follow_the_palette(self):
@@ -661,7 +673,7 @@ class TestVisualCheck(unittest.TestCase):
 		self.assertTrue(text.rstrip().endswith("REVISION: fix the hero"))
 
 
-class TestLayout(unittest.TestCase):
+class TestGridPlacement(unittest.TestCase):
 	"""An unplaced child of a wide grid spans the row (layout.py)."""
 
 	def test_orphans_of_a_twelve_column_grid_span_the_row(self):
