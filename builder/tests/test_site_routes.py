@@ -256,6 +256,50 @@ class TestBesideKeptPages(unittest.TestCase):
 		home = page_brief_text(site, SimpleNamespace(), {"title": "Home", "route": "home", "type": "accueil"}, handles, "", "bento", "English", [], ("Contact us", "/contact"))
 		self.assertIn("give each its own photograph tile", home)
 
+	def test_the_brief_forbids_made_up_facts_and_dates_the_page(self):
+		"""A practice opening "in October" came out with prices, a testimonial and an opening in
+		October 2024 (2026-09-13)."""
+		from types import SimpleNamespace
+
+		import frappe
+
+		from builder.site_ai.nora.facts import FACTS_RULE
+		from builder.site_ai.nora.site_builder import page_brief_text
+
+		handles = {k: "var(--x)" for k in ("primary", "secondary", "background", "text", "font-heading", "font-body")}
+		site = {"site_name": "X", "activity": "Y", "page_types": ["accueil", "services", "pricing"]}
+		services = page_brief_text(site, SimpleNamespace(), {"title": "Services", "route": "services", "type": "services"}, handles, "", "bento", "English", [], ("Contact us", "/contact"))
+		self.assertIn(FACTS_RULE, services)
+		self.assertIn(f"TODAY: {frappe.utils.today()}", services)
+		# the pricing page answers the questions and gives the prices, not the services page
+		self.assertNotIn("FAQ", services)
+
+	def test_one_page_answers_the_questions_and_one_gives_the_prices(self):
+		"""The FAQs of two pages answered the same question two ways, and the services page listed
+		packages the pricing page did not have (2026-09-13)."""
+		from builder.site_ai.nora.site_builder import page_sections
+
+		services = {"title": "Prestations", "route": "prestations", "type": "services"}
+		pricing = {"title": "Tarifs", "route": "tarifs", "type": "pricing"}
+		self.assertTrue(any("FAQ" in s for s in page_sections(services, minimal=False)))
+		beside_prices = page_sections(services, minimal=False, others=["pricing"])
+		self.assertFalse(any("FAQ" in s for s in beside_prices))
+		self.assertFalse(any("/ packages" in s for s in beside_prices))
+		self.assertIn("FAQ", page_sections(pricing, minimal=False, others=["services"]))
+		self.assertNotIn("FAQ", page_sections(pricing, minimal=False, others=["faq"]))
+
+	def test_proof_prices_and_directions_come_from_the_brief(self):
+		"""A practice about to open got a patient's testimonial, three prices and a drawn access map
+		showing a street address nobody gave (2026-09-13)."""
+		from builder.site_ai.nora.site_builder import SECTION_PLANS, page_sections, placeholder_photos
+
+		self.assertTrue(any("only what the brief gives" in s for s in SECTION_PLANS["accueil"]))
+		self.assertTrue(any("no amount" in s for s in SECTION_PLANS["pricing"]))
+		contact = {"title": "Contact", "route": "contact", "type": "contact"}
+		self.assertFalse(any("map" in s for s in page_sections(contact, minimal=False)))
+		self.assertFalse(any("find the place" in s for s in page_sections(contact, minimal=False, contact_verified=False)))
+		self.assertFalse(any("map" in url for url in placeholder_photos(contact, "Physiothérapie")))
+
 	def test_keep_them_keeps_the_hand_made_pages_only(self):
 		"""Answered with 'none', a question about one hand-made page kept the whole
 		previous site beside the new one."""

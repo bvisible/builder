@@ -41,32 +41,36 @@ KNOWN_PAGES = {
     "fonctionnalites": ("features", "features"), "features": ("features", "features"),
 }
 
+# a section asking for proof, figures, prices or people is filled from the brief or left out: asked
+# for "proof: testimonials, figures" and "three plans side by side", a practice about to open came
+# out with a patient's testimonial, three prices and a "most chosen" badge, and its contact page
+# with a drawn access map showing a street address nobody gave (2026-09-13)
 SECTION_PLANS = {
     "accueil": [
         "hero: the site's promise in one line, a supporting sentence and the main CTA",
         "three or four value propositions with Lucide icons",
         "the featured services or products, one card each",
         "an about teaser with a photo and a link to the About page",
-        "proof: testimonials, figures or partner logos",
+        "proof, only what the brief gives: its testimonials, figures, clients or partners by name (no such section when it gives none)",
         "a final CTA band",
     ],
-    "about": ["the story and the mission", "values, three of them", "the team or the founder", "milestones or key figures", "a CTA"],
+    "about": ["the story and the mission", "values, three of them", "the team or the founder", "milestones or key figures the brief gives (none when it gives none)", "a CTA"],
     "services": ["the services, one detailed card each", "how it works in three steps", "what is included / packages", "three FAQ entries", "a CTA"],
     "contact": [
         "the contact details from BUSINESS DATA, verbatim: address, phone, email, opening hours",
         "a contact form: name, email, message, one submit button",
-        "directions or a map placeholder image",
+        "how to find the place, in words, from the address in BUSINESS DATA",
         "a CTA to call or write",
     ],
     "faq": ["an intro line", "eight questions and answers grouped by theme", "a CTA to contact"],
-    "team": ["an intro", "the team members as cards with photo placeholders", "a CTA to contact"],
-    "blog": ["an intro", "three article teasers with placeholder photos and dates", "a newsletter or CTA band"],
-    "testimonials": ["an intro", "six testimonials as cards", "a CTA"],
+    "team": ["an intro", "the team members the brief names, as cards with photo placeholders", "a CTA to contact"],
+    "blog": ["an intro", "three article teasers with placeholder photos", "a newsletter or CTA band"],
+    "testimonials": ["an intro", "the testimonials the brief gives, one card each (without any: an invitation to share one, never a made-up quote)", "a CTA"],
     "shop": ["an intro to the catalogue", "featured products with placeholders", "why buy here", "a CTA to the products list at /all-products"],
-    "pricing": ["an intro", "three plans side by side with a highlighted one", "what is included", "FAQ", "a CTA"],
+    "pricing": ["an intro", "the prices the brief gives, as plans or a list (without prices in the brief: how prices are set and how to get one, no amount)", "what is included", "FAQ", "a CTA"],
     "portfolio": ["an intro", "a project grid with placeholder photos", "the way of working", "a CTA"],
-    "features": ["an intro", "the features as an alternating rows layout with icons", "a comparison or figures", "a CTA"],
-    "one_page": ["hero", "services", "about", "proof", "contact details and form", "final CTA"],
+    "features": ["an intro", "the features as an alternating rows layout with icons", "a comparison, or figures the brief gives", "a CTA"],
+    "one_page": ["hero", "services", "about", "proof the brief gives (none when it gives none)", "contact details and form", "final CTA"],
     "generic": ["an intro", "the page's content in two or three sections", "a CTA"],
 }
 
@@ -395,9 +399,9 @@ def placeholder_photos(page: dict, activity: str) -> list[str]:
     subject = (activity or "").strip()[:60] or page["title"]
     shots = {
         "accueil": [f"{subject}, hero", f"{subject}, in action", f"{subject}, team"],
-        "about": [f"{subject}, founder portrait", f"{subject}, workshop"],
+        "about": [f"{subject}, at work", f"{subject}, workshop"],
         "services": [f"{subject}, service detail", f"{subject}, result"],
-        "contact": [f"{subject}, storefront", "map"],
+        "contact": [f"{subject}, storefront", f"{subject}, welcome"],
         "team": [f"{subject}, team member portrait", f"{subject}, team member portrait 2", f"{subject}, team member portrait 3"],
         "blog": [f"{subject}, article 1", f"{subject}, article 2", f"{subject}, article 3"],
         "portfolio": [f"{subject}, project 1", f"{subject}, project 2", f"{subject}, project 3", f"{subject}, project 4"],
@@ -787,13 +791,25 @@ def available_includes(page_type: str, site_type: str = "vitrine", profile: str 
     return out
 
 
-def page_sections(page: dict, minimal: bool, contact_verified: bool = True) -> list[str]:
+def page_sections(page: dict, minimal: bool, contact_verified: bool = True, others=()) -> list[str]:
     """The sections a page is planned with: the image-led plan on an image-led site, else the
     page type's own. Without verified contact details no section asks for them: asked for them
-    anyway, the model made them up (see UNVERIFIED_CONTACT)."""
+    anyway, the model made them up (see UNVERIFIED_CONTACT).
+
+    `others` are the types of the site's other pages: one page answers the questions and one
+    gives the prices. The two FAQs of a site answered the same question two ways (a session of
+    45 minutes on one page, of 60 on the other), and its services page listed packages its
+    pricing page did not have (2026-09-13)."""
     plan = (IMAGE_LED_PLANS.get(page["type"]) or IMAGE_LED_PLANS["generic"]) if minimal else SECTION_PLANS.get(page["type"], SECTION_PLANS["generic"])
     if not contact_verified:
-        plan = [s for s in plan if not s.startswith("the contact details")]
+        plan = [s for s in plan if not s.startswith(("the contact details", "how to find the place", "a CTA to call or write"))]
+    others = set(others or ())
+    if page["type"] == "services" and others & {"faq", "pricing"}:
+        plan = [s for s in plan if "FAQ" not in s]
+    if page["type"] == "pricing" and "faq" in others:
+        plan = [s for s in plan if s != "FAQ"]
+    if page["type"] != "pricing" and "pricing" in others:
+        plan = [s.replace("what is included / packages", "what is included (prices and packages belong to the pricing page)") for s in plan]
     return list(plan)
 
 
@@ -820,13 +836,31 @@ def page_headlines(blocks: list, categories: list[str] | None = None) -> list[st
     return found[:8]
 
 
+def page_facts(name: str, known: str) -> list[dict]:
+    """The facts the stored page states that `known` (what its writer was given) does not
+    contain: see facts.py."""
+    from builder.site_ai.nora.facts import invented_facts
+
+    stored = frappe.db.get_value("Builder Page", name, ["blocks", "page_data_script"], as_dict=True) or frappe._dict()
+    try:
+        blocks = json.loads(stored.get("blocks") or "[]")
+    except ValueError:
+        return []
+    return invented_facts(blocks if isinstance(blocks, list) else [blocks], stored.get("page_data_script") or "", known, today=frappe.utils.today())
+
+
 def page_brief_text(site: dict, brief, page: dict, handles: dict, contact_prompt: str, layout_system: str, language: str, photos: list[str], cta: tuple[str, str], palette: dict | None = None, revision: str | None = None, photo_notes: list[str] | None = None) -> str:
+    from builder.site_ai.nora.facts import FACTS_RULE, today_line
+
     is_home = page["route"] == "home"
     used_headlines = [h for route, lines in (site.get("headlines_by_route") or {}).items() if route != page["route"] for h in lines]
     # //// Neoffice — an image-led site takes the image-led plans (IMAGE_LED_PLANS); a page
     # //// that is text by nature keeps its own
     minimal = site.get("copy_density") == "minimal" and page["type"] not in TEXT_BY_NATURE
-    plan = page_sections(page, minimal, contact_verified=site.get("contact_verified", True))
+    others = list(site.get("page_types") or [])
+    if page["type"] in others:
+        others.remove(page["type"])
+    plan = page_sections(page, minimal, contact_verified=site.get("contact_verified", True), others=others)
     sections = "\n".join(f"{i}. {s}" for i, s in enumerate(plan, 1))
     concept = getattr(brief, "design_concept", "") or ""
     signature = getattr(brief, "signature_element", "") or ""
@@ -844,9 +878,11 @@ def page_brief_text(site: dict, brief, page: dict, handles: dict, contact_prompt
         f"DESIGN DIRECTION: {concept or 'a distinctive direction that fits the brand'} (tone: {tone or 'professional'}; hero style: {hero or 'free'}).",
         f"LAYOUT SYSTEM: {layout_system}. SIGNATURE MOVE: {signature or 'choose one that fits the system'}. Keep the SAME system and move on every page of this site.",
         ("INSPIRATION (what the client likes; echo the palette and the mood, never copy): " + " | ".join(site["inspiration"])) if site.get("inspiration") else "",
+        today_line(frappe.utils.today()),
         f"BRAND: {site['site_name']}. Activity: {site['activity']}",
         f"POSITIONING: {site.get('differentiators') or 'derive it from the activity'}",
         contact_prompt.strip() if contact_prompt else "",
+        FACTS_RULE,
         (
             f"PALETTE (token handles, use them for every brand colour): primary {handles['primary']}, secondary {handles['secondary']}, "
             f"background {handles['background']}, text {handles['text']}. Literal hex only for derived shades (rgba() tints)."
@@ -1198,7 +1234,8 @@ def build_site(ctx, spec: dict) -> str:
     # //// generation off, placehold.co slots become inline SVGs (neutral_placeholders) instead of
     # //// broken external images (65d8f360 "fix(nora): cards never stack in a column, and photo slots without photos are plain blocks")
     from builder.site_ai.nora.layout import grid_stacked_cards, place_orphans, repeater_counts, strip_title_band, unwrap_grid_wrappers
-    from builder.site_ai.nora.placeholders import neutral_placeholders
+    from builder.site_ai.nora.facts import facts_issues, known_text
+    from builder.site_ai.nora.placeholders import neutral_named_slots, neutral_placeholders
     from builder.site_ai.nora.punctuation import french_spacing
     from builder.site_ai.nora.typography import cap_font_sizes
     from builder.site_ai.nora.prompts import page_profile
@@ -1481,7 +1518,7 @@ def build_site(ctx, spec: dict) -> str:
     # 5. the pages, on upstream's page engine
     layout_system = choose_layout_system(spec.get("style_direction"), brief)
     page_model = _page_model(ctx)
-    site = {"site_name": site_name, "activity": activity, "differentiators": spec.get("differentiators"), "site_type": site_type, "profile": profile, "inspiration": inspiration["notes"], "copy_density": copy_density, "categories": categories}
+    site = {"site_name": site_name, "activity": activity, "differentiators": spec.get("differentiators"), "site_type": site_type, "profile": profile, "inspiration": inspiration["notes"], "copy_density": copy_density, "categories": categories, "page_types": [p["type"] for p in pages]}
     created, failed, cancelled = [], [], False
 
     # //// Neoffice — image generation was switched off (the pictures were not good enough):
@@ -1600,6 +1637,12 @@ def build_site(ctx, spec: dict) -> str:
                         neutral = neutral_placeholders(blocks, palette, prefix)
                         if neutral:
                             ai_log("info", "Photo slots neutralised", page=page["title"], edits=neutral)
+                    # a picture that would state something false is not drawn: a stranger's face
+                    # for the practitioner the page names, a map with made-up streets (placeholders.py)
+                    else:
+                        withheld = neutral_named_slots(blocks, palette, prefix, names=[site_name, *categories])
+                        if withheld:
+                            ai_log("info", "Photo slots kept from the image job", page=page["title"], slots=withheld)
                     # one photo treatment for the whole site: on a black-and-white site every
                     # photograph is black and white, on every page (photo_treatment.py)
                     if palette_mode == "monochrome":
@@ -1713,7 +1756,7 @@ def build_site(ctx, spec: dict) -> str:
     # //// Neoffice ▲▲▲
     pending, image_job = 0, None
     try:
-        slots = _scan_placeholder_images([p["name"] for p in created], subject=activity[:180])
+        slots = _scan_placeholder_images([p["name"] for p in created], subject=activity[:180], avoid=(site_name,))
         pending = len(slots)
         if slots and _image_backend_available():
             image_job = _enqueue_image_generation(slots)
@@ -1721,25 +1764,41 @@ def build_site(ctx, spec: dict) -> str:
         ai_log("warning", "Image generation not started", error=str(e)[:200])
 
     # 8. the final look: each page rendered, screenshotted and read against the brief by the
-    # vision model; the body defects come back as one revision pass (visual_check.py)
-    reviews, revised = [], {}
-    if created and not cancelled and visual_check.enabled():
+    # vision model; the body defects come back as one revision pass (visual_check.py). A fact
+    # the brief never gave (a price, a year, a testimonial) sends the page back too (facts.py)
+    reviews, revised, facts_left = [], {}, {}
+    if created and not cancelled:
         try:
-            _progress(ctx, job_id, _("Visual check: waiting for the images"), 95, {"pages_created": created})
-            # //// Neoffice — the text-to-image backend answers in 60 to 70 s per picture (Codex behind the ComfyUI proxy): the wait budget follows the number of slots (77601a8e "fix(images): prompts with photographic direction only, and budgets sized on the slot count")
-            # a picture takes 60 to 70 s on the Codex backend: the wait follows the slot count
-            visual_check.wait_for_images(image_job, timeout=min(1800, max(visual_check.IMAGE_WAIT_SECONDS, 75 * pending + 120)))
             by_name = {p["name"]: p for p in pages_by_name(pages, created)}
+            if visual_check.enabled():
+                _progress(ctx, job_id, _("Visual check: waiting for the images"), 95, {"pages_created": created})
+                # //// Neoffice — the text-to-image backend answers in 60 to 70 s per picture (Codex behind the ComfyUI proxy): the wait budget follows the number of slots (77601a8e "fix(images): prompts with photographic direction only, and budgets sized on the slot count")
+                # a picture takes 60 to 70 s on the Codex backend: the wait follows the slot count
+                visual_check.wait_for_images(image_job, timeout=min(1800, max(visual_check.IMAGE_WAIT_SECONDS, 75 * pending + 120)))
+                for item in created:
+                    if ctx.is_cancelled():
+                        break
+                    _progress(ctx, job_id, _("Visual check: {0}").format(item["title"]), 96, {"pages_created": created})
+                    reviews.append(visual_check.review_page(item, profile, page_model, site_name=site_name, activity=activity))
+            known = known_text(site, contact_prompt)
             for item in created:
-                if ctx.is_cancelled():
-                    break
-                _progress(ctx, job_id, _("Visual check: {0}").format(item["title"]), 96, {"pages_created": created})
-                reviews.append(visual_check.review_page(item, profile, page_model, site_name=site_name, activity=activity))
-            # the pages that failed the first glance first, then the ones with most defects
-            todo = sorted(
+                found = page_facts(item["name"], known)
+                if not found:
+                    continue
+                ai_log("info", "Invented facts found", page=item["title"], facts=[f["text"] for f in found][:12])
+                review = next((r for r in reviews if r["name"] == item["name"]), None)
+                if review is None:
+                    review = {"name": item["name"], "title": item["title"], "route": item["route"], "professional": None, "issues": [], "error": None, "overall": ""}
+                    reviews.append(review)
+                review["issues"] = facts_issues(found) + review["issues"]
+                review["facts"] = len(found)
+            # every page stating made-up facts is revised; the designer's points take the places
+            # left: the pages that failed the first glance first, then the ones with most defects
+            ranked = sorted(
                 [r for r in reviews if r["issues"] and r["name"] in by_name],
                 key=lambda r: (r["professional"] is not False, -len(r["issues"])),
-            )[: visual_check.MAX_REVISIONS]
+            )
+            todo = [r for r in ranked if r.get("facts")] + [r for r in ranked if not r.get("facts")][: visual_check.MAX_REVISIONS]
             for r in todo:
                 if ctx.is_cancelled():
                     break
@@ -1757,8 +1816,15 @@ def build_site(ctx, spec: dict) -> str:
                 _write_page(page, blocks, data_script, profile, r["name"], _describe(blocks))
                 revised[r["name"]] = len(r["issues"])
                 ai_log("info", "Page revised after the visual check", page=r["title"], issues=len(r["issues"]))
+            # what the revision still left made up is said in the summary, not revised again
+            for r in todo:
+                if r.get("facts") and r["name"] in revised:
+                    left = page_facts(r["name"], known)
+                    if left:
+                        facts_left[r["title"]] = [f["text"] for f in left][:6]
+                        ai_log("warning", "Invented facts left after the revision", page=r["title"], facts=facts_left[r["title"]])
             if revised:
-                slots = _scan_placeholder_images([n for n in revised])
+                slots = _scan_placeholder_images([n for n in revised], subject=activity[:180], avoid=(site_name,))
                 if slots:
                     _enqueue_image_generation(slots)
                     ai_log("info", "Images re-queued after the revision pass", slots=len(slots))
@@ -1812,4 +1878,12 @@ def build_site(ctx, spec: dict) -> str:
             "Ask the client for the address, phone and e-mail to show, then add them."
         )
     lines += visual_check.summary_lines(reviews, revised)
+    rewritten = [r["title"] for r in reviews if r.get("facts") and r["name"] in revised]
+    if rewritten:
+        lines.append(
+            "Facts the brief did not give (prices, durations, years, figures, testimonials) were found on "
+            + ", ".join(rewritten) + ": those pages were rewritten without them."
+        )
+    for title, texts in facts_left.items():
+        lines.append(f"Still on {title} after that rewrite, to confirm with the client or remove: " + ", ".join(texts))
     return "\n".join(lines)

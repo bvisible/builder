@@ -12,11 +12,23 @@ outside and looks composed rather than unfinished.
 Pure functions over the block tree."""
 
 import re
-from urllib.parse import quote
+from urllib.parse import quote, unquote_plus
 
 from builder.site_ai.nora.layout import _walk
 
 PLACEHOLD = re.compile(r"https?://placehold\.co/(\d+)x(\d+)[^\s'\")]*")
+TEXT_PARAM = re.compile(r"[?&]text=([^&'\")\s]+)")
+
+# a slot a generated picture would make a false statement in: a stranger's face is taken for the
+# person the page names, and a map, a sign or a document comes drawn with made-up streets and
+# lettering (the access map of a contact page showed an invented street address, 2026-09-13)
+PORTRAIT = re.compile(r"\b(?:portrait|porträt|ritratto|headshot)s?\b", re.I)
+DOCUMENT = re.compile(
+    r"\b(?:maps?|carte|plans?|itinéraire|itinerary|directions|karte|lageplan|signs?|signage|enseigne|panneau|schild"
+    r"|logos?|brochure|flyer|menu|document|certificat|certificate|diplôme|diploma|screen|écran|bildschirm)\b",
+    re.I,
+)
+PERSON = re.compile(r"\b[A-ZÀ-Ý][a-zà-ÿ'’]+(?:[ -][A-ZÀ-Ý][a-zà-ÿ'’]+){1,2}\b")
 
 
 def neutral_image(width: int, height: int, palette: dict, prefix: str) -> str:
@@ -64,4 +76,48 @@ def neutral_placeholders(blocks: list, palette: dict, prefix: str) -> int:
             changed = True
         if changed:
             edits += 1
+    return edits
+
+
+def _names_a_person(text: str, names: set[str]) -> bool:
+    """Whether the text names someone: two or three capitalised words in a row that are not one of
+    `names` (the site's own name, its categories). A Title Case text says nothing either way."""
+    words = re.findall(r"[^\W\d_]{4,}", text)
+    if words and all(word[0].isupper() for word in words):
+        return False
+    return any(match.group(0).lower() not in names for match in PERSON.finditer(text))
+
+
+def must_not_be_drawn(text: str, names: set[str] | frozenset = frozenset()) -> bool:
+    """A picture of this would state something false: a portrait, a named person, a map, a sign or
+    a document."""
+    return bool(PORTRAIT.search(text) or DOCUMENT.search(text) or _names_a_person(text, names))
+
+
+def neutral_named_slots(blocks: list, palette: dict, prefix: str, names=()) -> list[str]:
+    """The photo slots the image job must not fill become the plain block a site without image
+    generation gets (must_not_be_drawn: read from an image's alt, or from the text of a background
+    placeholder). `names` are the proper names that are not people: the site's own, its
+    categories. Returns the texts of the slots changed."""
+    known = {str(name).strip().lower() for name in names or () if str(name).strip()}
+    edits: list[str] = []
+    for block in _walk(blocks):
+        attrs = block.get("attributes") or {}
+        src = attrs.get("src")
+        if isinstance(src, str) and "placehold.co" in src:
+            alt = str(attrs.get("alt") or "")
+            if must_not_be_drawn(alt, known):
+                attrs["src"] = _replace(src, palette, prefix)
+                edits.append(alt[:60])
+        for style_key in ("baseStyles", "mobileStyles", "tabletStyles"):
+            styles = block.get(style_key) or {}
+            for prop in ("backgroundImage", "background"):
+                value = styles.get(prop)
+                if not (isinstance(value, str) and "placehold.co" in value):
+                    continue
+                param = TEXT_PARAM.search(value)
+                text = unquote_plus(param.group(1)) if param else ""
+                if must_not_be_drawn(text, known):
+                    styles[prop] = _replace(value, palette, prefix)
+                    edits.append(text[:60])
     return edits

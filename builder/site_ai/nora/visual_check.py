@@ -101,8 +101,8 @@ def actionable(critique) -> list[dict]:
 def revision_instructions(issues: list[dict]) -> str:
     """What the page writer gets on the revision pass."""
     lines = [
-        "REVISION (a designer reviewed a screenshot of the rendered page; fix exactly these points and keep "
-        "everything else, the structure, the copy and the photos included):"
+        "REVISION (the page was checked against its brief and a designer reviewed a screenshot of it; fix exactly "
+        "these points and keep everything else, the structure, the copy and the photos included):"
     ]
     lines += [f"- [{i['severity']}] {i['area']}: {i['problem']} -> {i['fix']}" for i in issues]
     return "\n".join(lines)

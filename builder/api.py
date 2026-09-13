@@ -2029,7 +2029,8 @@ def get_shortcodes_for_ai():
 # =========================================================================
 
 
-def _scan_placeholder_images(page_names: list, subject: str = "") -> list:
+# //// Neoffice — `avoid`: names kept out of the image prompts (see _build_image_prompt)
+def _scan_placeholder_images(page_names: list, subject: str = "", avoid: tuple = ()) -> list:
 	"""Scan Builder Pages for img blocks with placehold.co URLs."""
 	import re
 	results = []
@@ -2038,7 +2039,8 @@ def _scan_placeholder_images(page_names: list, subject: str = "") -> list:
 		try:
 			page = frappe.get_doc("Builder Page", page_name)
 			blocks = json.loads(page.blocks) if page.blocks else []
-			_walk_blocks_for_placeholders(blocks, page_name, results, subject=subject)
+			# //// Neoffice — see the marker above the def: `avoid` passed down
+			_walk_blocks_for_placeholders(blocks, page_name, results, subject=subject, avoid=avoid)
 		except Exception as e:
 			frappe.log_error("Scan placeholder images error", f"Page {page_name}: {str(e)}")
 
@@ -2054,7 +2056,7 @@ def _scan_placeholder_images(page_names: list, subject: str = "") -> list:
 QUALITY_SUFFIX = "natural lighting, shallow depth of field, photorealistic, high resolution, candid documentary style"
 
 
-def _build_image_prompt(context: str, is_background: bool = False, subject: str = "") -> str:
+def _build_image_prompt(context: str, is_background: bool = False, subject: str = "", avoid: tuple = ()) -> str:
 	"""Build an image generation prompt from context text.
 
 	Avoids words like 'website', 'section', 'page' that cause Flux
@@ -2065,6 +2067,15 @@ def _build_image_prompt(context: str, is_background: bool = False, subject: str 
 	Without it the fallback used to ask for "beautiful landscape photography",
 	which is why a yoga studio got a mountain lake above the fold.
 	"""
+	# //// Neoffice — `avoid` (the site's own name) is kept out of the picture: asked for "the
+	# //// practice <name>", the image model lettered the name on a wall and on a polo shirt, a sign
+	# //// the business does not have (2026-09-13)
+	import re as _re
+
+	for name in avoid or ():
+		if name and str(name).strip():
+			context = _re.sub(_re.escape(str(name).strip()), " ", context or "", flags=_re.IGNORECASE)
+			subject = _re.sub(_re.escape(str(name).strip()), " ", subject or "", flags=_re.IGNORECASE)
 	# Words that are too generic/abstract for image generation
 	generic_words = {"Hero Image", "Feature", "Image", "Photo", "Hero", "Section", "Banner"}
 
@@ -2098,7 +2109,8 @@ def _build_image_prompt(context: str, is_background: bool = False, subject: str 
 	return f"editorial photograph of {cleaned}, {QUALITY_SUFFIX}"
 
 
-def _walk_blocks_for_placeholders(blocks, page_name, results, subject: str = ""):
+# //// Neoffice — `avoid`: names kept out of the image prompts (see _build_image_prompt)
+def _walk_blocks_for_placeholders(blocks, page_name, results, subject: str = "", avoid: tuple = ()):
 	"""Recursively walk blocks to find placehold.co URLs in img src or background images."""
 	import re
 
@@ -2123,7 +2135,7 @@ def _walk_blocks_for_placeholders(blocks, page_name, results, subject: str = "")
 						pass  # Skip small images (avatars, icons)
 					else:
 						size = f"{w}x{h}"
-						alt = _build_image_prompt(attrs.get("alt", ""), is_background=False, subject=subject)
+						alt = _build_image_prompt(attrs.get("alt", ""), is_background=False, subject=subject, avoid=avoid)  # //// Neoffice — `avoid` passed
 						results.append({
 							"page_name": page_name,
 							"block_id": block_id,
@@ -2133,7 +2145,7 @@ def _walk_blocks_for_placeholders(blocks, page_name, results, subject: str = "")
 							"type": "img",
 						})
 				else:
-					alt = _build_image_prompt(attrs.get("alt", ""), is_background=False, subject=subject)
+					alt = _build_image_prompt(attrs.get("alt", ""), is_background=False, subject=subject, avoid=avoid)  # //// Neoffice — `avoid` passed
 					results.append({
 						"page_name": page_name,
 						"block_id": block_id,
@@ -2158,7 +2170,7 @@ def _walk_blocks_for_placeholders(blocks, page_name, results, subject: str = "")
 				# Extract text param as thematic context (NOT literal text to render in image)
 				text_match = re.search(r"text=([^&'\"]+)", bg)
 				context = text_match.group(1).replace("+", " ") if text_match else ""
-				alt = _build_image_prompt(context, is_background=True, subject=subject)
+				alt = _build_image_prompt(context, is_background=True, subject=subject, avoid=avoid)  # //// Neoffice — `avoid` passed
 				results.append({
 					"page_name": page_name,
 					"block_id": block_id,
@@ -2170,7 +2182,7 @@ def _walk_blocks_for_placeholders(blocks, page_name, results, subject: str = "")
 
 		# Recurse into children
 		if block.get("children"):
-			_walk_blocks_for_placeholders(block["children"], page_name, results, subject=subject)
+			_walk_blocks_for_placeholders(block["children"], page_name, results, subject=subject, avoid=avoid)  # //// Neoffice — `avoid` passed
 
 
 def _generate_images_worker(img_job_id: str, placeholder_images: list):
