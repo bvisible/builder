@@ -92,8 +92,9 @@ SNAPSHOT_TOOLS = frozenset(
 )
 
 # //// Neoffice — added: server tools that rewrite the open page in the database. The working
-# //// tree follows them (see follow_page_rewrite), as it follows generate_page.
-PAGE_REWRITING_TOOLS = frozenset({"generate_site"})
+# //// tree follows them (see follow_page_rewrite), as it follows generate_page. edit_component
+# //// (frappe/builder#823) syncs every page that embeds the component, the open one included.
+PAGE_REWRITING_TOOLS = frozenset({"generate_site", "edit_component"})
 
 # //// Neoffice — added: the tool result of a round the page no longer matched (see persist_tree)
 PAGE_CHANGED_ELSEWHERE = (
@@ -252,6 +253,8 @@ TOOL_LABELS = {
 	"query_blocks": ("Searching the page", "Searched the page"),
 	"search_images": ("Searching for photos", "Searched for photos"),
 	"extract_component": ("Making a reusable component", "Made a reusable component"),
+	# //// Neoffice — frappe/builder#823, taken ahead of upstream (open on 2026-09-14)
+	"edit_component": ("Updating a shared component", "Updated a shared component"),
 	"write_page_data_script": ("Connecting the page to data", "Connected the page to data"),
 	"list_doctypes": ("Looking for existing data", "Looked for existing data"),
 	"run_python": ("Looking up site data", "Looked up site data"),

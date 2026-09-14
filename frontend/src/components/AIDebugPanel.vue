@@ -256,6 +256,8 @@ const TOOL_TONES: Record<string, string> = {
 	update_block: AMBER,
 	update_blocks: AMBER,
 	update_script: AMBER,
+	//// Neoffice — frappe/builder#823, taken ahead of upstream (open on 2026-09-14)
+	edit_component: AMBER,
 	move_block: AMBER,
 	set_page_settings: AMBER,
 	remove_block: RED,

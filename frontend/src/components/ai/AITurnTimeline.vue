@@ -123,6 +123,8 @@ const TOOL_ICONS: Record<string, string> = {
 	update_script: "lucide-code",
 	create_component: "lucide-box",
 	extract_component: "lucide-box",
+	//// Neoffice — frappe/builder#823, taken ahead of upstream (open on 2026-09-14)
+	edit_component: "lucide-box",
 	write_page_data_script: "lucide-database",
 	list_doctypes: "lucide-database",
 	get_doctype_schema: "lucide-database",
