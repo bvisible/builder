@@ -646,7 +646,16 @@ class BuilderPage(WebsiteGenerator):
 		# Replace <body> tags with <div> to avoid nested body elements
 		# when the template already provides a body tag
 		import re
-		rendered_content = re.sub(r'<body([^>]*)>', r'<div\1 class="builder-page-content">', rendered_content)
+		# //// Neoffice — merged into the body's own class list: the root block carries its style
+		# //// class, so the rewrite wrote a second class attribute, which the browser drops, and
+		# //// div.builder-page-content never existed on a generated page (2026-09-14).
+		def _as_div(match):
+			attrs = match.group(1)
+			if re.search(r"\sclass=[\"']", attrs):
+				return "<div" + re.sub(r"(\sclass=[\"'])", r"\1builder-page-content ", attrs, count=1) + ">"
+			return f'<div{attrs} class="builder-page-content">'
+
+		rendered_content = re.sub(r"<body([^>]*)>", _as_div, rendered_content)
 		rendered_content = re.sub(r'</body>', '</div>', rendered_content)
 		context["__content"] = rendered_content
 

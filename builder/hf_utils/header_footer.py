@@ -31,6 +31,19 @@ NEWSLETTER_DEFAULTS = {"newsletter_title": "Subscribe to our newsletter", "newsl
 # //// decorator only opened an HTTP door. Worse, `config` is a parameter: over HTTP a
 # //// caller passed a string where a Document was expected and got a 500 out of the
 # //// public site. No caller anywhere in the fork reaches these over HTTP.
+# //// Neoffice — a variant is served from the document cache only while the cache is as new as its
+# //// row. After a site build rewrote a menu and its footer links, the pages kept the previous
+# //// menu, with a footer link to a page the build had deleted and no menu in the header, until
+# //// the cached document was dropped by hand (2026-09-14). One indexed read per render.
+def _fresh_variant(name: str):
+	doc = frappe.get_cached_doc("Website Header Footer Variant", name)
+	modified = frappe.db.get_value("Website Header Footer Variant", name, "modified")
+	if modified and str(doc.get("modified")) != str(modified):
+		frappe.clear_document_cache("Website Header Footer Variant", name)
+		doc = frappe.get_cached_doc("Website Header Footer Variant", name)
+	return doc
+
+
 def get_header_footer_config():
 	"""Get the header/footer configuration for the current website.
 
@@ -58,7 +71,7 @@ def get_header_footer_config():
 		profile = getattr(frappe.local, "website_profile", None)
 		if profile and frappe.db.exists("DocType", "Website Header Footer Variant"):
 			if frappe.db.exists("Website Header Footer Variant", profile):
-				return frappe.get_cached_doc("Website Header Footer Variant", profile)
+				return _fresh_variant(profile)
 
 		# Check if the DocType exists first
 		if not frappe.db.exists("DocType", "Website Header Footer Config"):
@@ -498,7 +511,7 @@ def get_icon(name: str) -> str:
 def _editor_chrome_config(website_profile=None):
 	if website_profile and frappe.db.exists("DocType", "Website Header Footer Variant"):
 		if frappe.db.exists("Website Header Footer Variant", website_profile):
-			return frappe.get_cached_doc("Website Header Footer Variant", website_profile)
+			return _fresh_variant(website_profile)
 	return get_header_footer_config()
 
 
