@@ -699,6 +699,58 @@ def render_component_band(component, data: dict) -> str:
 	return f'{links}{style}<section class="site-page-header site-page-header--builder">{body}</section>'
 
 
+def default_band_block(prefix: str = "") -> dict:
+	"""The top page a site starts from when it designs its own: the trail, the title and the subtitle of
+	the page, bound to the band's data and set in the site's tokens. The trail is a Jinja loop in the
+	block's text, the way the Builder's shortcodes are written."""
+	def token(name: str, fallback: str) -> str:
+		return f"var(--{prefix}-{name})" if prefix else fallback
+
+	def uid() -> str:
+		return frappe.generate_hash(length=10)
+
+	trail = (
+		"{% for crumb in breadcrumbs %}{% if not loop.first %}<span aria-hidden=\"true\"> / </span>{% endif %}"
+		"{% if crumb.url %}<a href=\"{{ crumb.url }}\">{{ crumb.label }}</a>"
+		"{% else %}<span aria-current=\"page\">{{ crumb.label }}</span>{% endif %}{% endfor %}"
+	)
+	text = {"color": token("text", "#111111"), "fontFamily": token("font-body", "inherit")}
+	return {
+		"blockId": uid(),
+		"element": "section",
+		"blockName": "top-page",
+		"baseStyles": {
+			"display": "flex", "flexDirection": "column", "width": "100%", "paddingTop": "56px",
+			"paddingBottom": "48px", "paddingLeft": "24px", "paddingRight": "24px",
+			"background": token("background", "#ffffff"),
+		},
+		"children": [{
+			"blockId": uid(),
+			"element": "div",
+			"blockName": "top-page-inner",
+			"baseStyles": {
+				"display": "flex", "flexDirection": "column", "gap": "12px", "width": "100%",
+				"maxWidth": "1280px", "marginLeft": "auto", "marginRight": "auto",
+			},
+			"children": [
+				{"blockId": uid(), "element": "nav", "blockName": "trail", "innerHTML": trail,
+				 "attributes": {"aria-label": "Breadcrumb"},
+				 "baseStyles": {**text, "fontSize": "13px", "opacity": "0.7"}, "children": []},
+				{"blockId": uid(), "element": "h1", "blockName": "title", "innerHTML": "Page title",
+				 "baseStyles": {"margin": "0", "fontSize": "clamp(2rem, 1.2rem + 2.4vw, 3.2rem)", "lineHeight": "1.1",
+				                "color": token("text", "#111111"), "fontFamily": token("font-heading", "inherit")},
+				 "dynamicValues": [{"key": "page_title", "property": "innerHTML", "type": "key", "comesFrom": "dataScript"}],
+				 "children": []},
+				{"blockId": uid(), "element": "p", "blockName": "subtitle", "innerHTML": "One line under the title.",
+				 "baseStyles": {**text, "margin": "0", "maxWidth": "62ch", "fontSize": "17px", "lineHeight": "1.6", "opacity": "0.8"},
+				 "dynamicValues": [{"key": "page_subtitle", "property": "innerHTML", "type": "key", "comesFrom": "dataScript"}],
+				 "visibilityCondition": {"key": "page_subtitle", "comesFrom": "dataScript"},
+				 "children": []},
+			],
+		}],
+	}
+
+
 def clear_band_cache(doc, method=None) -> None:
 	"""A component in use as a site's band changes every page: the page cache holds the old one."""
 	for doctype in ("Website Header Footer Config", "Website Header Footer Variant"):

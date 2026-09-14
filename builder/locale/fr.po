@@ -10300,3 +10300,18 @@ msgstr "Aucun haut de page sur cette page"
 
 msgid "The breadcrumb stays in the page for search engines."
 msgstr "Le fil d'Ariane reste dans la page pour les moteurs de recherche."
+
+msgid "Top page component"
+msgstr "Composant du haut de page"
+
+msgid "Create a top page"
+msgstr "Créer un haut de page"
+
+msgid "Edit in the Builder"
+msgstr "Modifier dans Builder"
+
+msgid "None yet"
+msgstr "Aucun pour le moment"
+
+msgid "Its blocks show the page when bound to page_title, page_subtitle, breadcrumbs and page_image."
+msgstr "Ses blocs affichent la page une fois liés à page_title, page_subtitle, breadcrumbs et page_image."

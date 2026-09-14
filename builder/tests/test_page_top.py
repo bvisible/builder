@@ -46,6 +46,19 @@ def trail_of(html):
 	return [item["name"] for item in data["itemListElement"]]
 
 
+def component_reader(block_json):
+	"""frappe.db.get_value answering the Builder Component's block, and passing every other read on:
+	rendering blocks reads DocType rows through the same call."""
+	original = frappe.db.get_value
+
+	def read(doctype, *args, **kwargs):
+		if doctype == "Builder Component":
+			return block_json
+		return original(doctype, *args, **kwargs)
+
+	return read
+
+
 class TestPageTop(unittest.TestCase):
 	def band(self, blocks, title="Services", route="services", **config):
 		doc = frappe._dict(route=route, page_title=title, blocks=blocks)
@@ -160,7 +173,7 @@ class TestPageTop(unittest.TestCase):
 		with (
 			patch.object(page_header, "_config", return_value=None),
 			patch.object(page_header, "settings", return_value=settings),
-			patch.object(frappe.db, "get_value", return_value=component),
+			patch.object(frappe.db, "get_value", side_effect=component_reader(component)),
 		):
 			html = page_header.render_builder_page_header(doc)
 		self.assertIn("site-page-header--builder", html)
@@ -172,6 +185,24 @@ class TestPageTop(unittest.TestCase):
 		settings = dict(page_header.DEFAULTS, page_header_template="Builder", page_header_component="")
 		html = self.band(CONTENT_FIRST, **{k: v for k, v in settings.items() if k != "show_breadcrumbs"})
 		self.assertIn("site-page-header--standard", html)
+
+	def test_the_starting_top_page_binds_the_page_and_speaks_the_site_tokens(self):
+		block = page_header.default_band_block("xx")
+		flat = json.dumps(block)
+		self.assertIn("var(--xx-font-heading)", flat)
+		self.assertIn('"key": "page_title"', flat)
+		self.assertIn('"key": "page_subtitle"', flat)
+		self.assertIn("{% for crumb in breadcrumbs %}", flat)
+		# drawn with the band's data, the starting component shows the page, not its design text
+		with patch.object(frappe.db, "get_value", side_effect=component_reader(flat)):
+			html = page_header.render_component_band(
+				"Top Band",
+				{"page_title": "Services", "page_subtitle": "", "breadcrumbs": [{"label": "Home", "url": "/"}, {"label": "Services", "url": ""}], "page_image": ""},
+			)
+		self.assertIn("Services", html)
+		self.assertIn('<a href="/">Home</a>', html)
+		self.assertNotIn("Page title", html)
+		self.assertNotIn("One line under the title.", html)
 
 	def test_the_first_section_decides(self):
 		"""An h1 further down the page is not the page's top."""

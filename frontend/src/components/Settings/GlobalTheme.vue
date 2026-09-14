@@ -486,6 +486,26 @@
 					:description="__('Always in the page for search engines: this only shows or hides it.')"
 					:modelValue="!!state.show_breadcrumbs"
 					@update:modelValue="(v: boolean) => (state.show_breadcrumbs = v ? 1 : 0)" />
+				<!-- //// Neoffice — a top page designed in the Builder (page_header.render_component_band):
+				     //// choose the site's component, start from one, or open it in the canvas -->
+				<template v-if="state.page_header_template === 'Builder'">
+					<FormControl
+						type="select"
+						size="sm"
+						:label="__('Top page component')"
+						:options="componentOptions"
+						:modelValue="state.page_header_component"
+						@update:modelValue="(v: string) => (state.page_header_component = v)" />
+					<div class="flex flex-wrap gap-2">
+						<Button size="sm" @click="createTopPageComponent">{{ __("Create a top page") }}</Button>
+						<Button size="sm" variant="solid" :disabled="!state.page_header_component" @click="editTopPageComponent">
+							{{ __("Edit in the Builder") }}
+						</Button>
+					</div>
+					<p class="text-xs text-ink-gray-5">
+						{{ __("Its blocks show the page when bound to page_title, page_subtitle, breadcrumbs and page_image.") }}
+					</p>
+				</template>
 			</template>
 		</div>
 
@@ -591,6 +611,9 @@ import { watchDebounced } from "@vueuse/core";
 import { Button, createResource, FileUploadHandler, FormControl, Switch, toast } from "frappe-ui";
 import { computed, reactive, ref, watch } from "vue";
 import usePageStore from "@/stores/pageStore";
+//// Neoffice — the top page component is opened in the canvas the way the Components panel opens one
+import useBuilderStore from "@/stores/builderStore";
+import useComponentStore from "@/stores/componentStore";
 
 const API = "builder.hf_utils.chrome_api";
 
@@ -601,6 +624,38 @@ const API = "builder.hf_utils.chrome_api";
 const pageStore = usePageStore();
 const siteProfile = (): string | undefined => (pageStore.activePage as any)?.neo_website_profile || undefined;
 const siteProfileName = computed(() => siteProfile() || "");
+
+//// Neoffice — the top page designed in the Builder (page_header.render_component_band): the site's
+//// components, one to start from (chrome_api.create_page_header_component), and the canvas to edit it
+//// in: the settings close and the component opens in fragment mode, as from the Components panel.
+const builderStore = useBuilderStore();
+const componentStore = useComponentStore();
+const topPageComponents = createResource({ url: `${API}.list_page_header_components`, auto: true });
+const componentOptions = computed(() => [
+	{ label: __("None yet"), value: "" },
+	...((topPageComponents.data || []) as { name: string; component_name?: string }[]).map((c) => ({
+		label: c.component_name || c.name,
+		value: c.name,
+	})),
+]);
+async function createTopPageComponent() {
+	try {
+		const created = await createResource({ url: `${API}.create_page_header_component` }).submit({
+			profile: siteProfile(),
+		});
+		await topPageComponents.reload();
+		state.page_header_template = "Builder";
+		state.page_header_component = created.component;
+		editTopPageComponent();
+	} catch (error) {
+		toast.error(error instanceof Error ? error.message : String(error));
+	}
+}
+function editTopPageComponent() {
+	if (!state.page_header_component) return;
+	builderStore.showSettingsDialog = false;
+	componentStore.editComponent(null, state.page_header_component as string);
+}
 
 const themeColors = [
 	{ field: "primary_color", label: __("Primary") },

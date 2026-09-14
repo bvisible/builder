@@ -242,3 +242,45 @@ def update_chrome_settings(settings: str | dict, profile: str | None = None) -> 
 	# menu into Website Settings)
 	doc.save()
 	return {"ok": True}
+
+
+# //// Neoffice — the top page designed in the Builder (page_header.render_component_band, 2026-09-14): the
+# //// components a site can take as its band, and one to start from, opened in the canvas by the Theme screen.
+@frappe.whitelist()
+def list_page_header_components() -> list[dict]:
+	"""The components a site can take as its top page (not tied to one page), newest first."""
+	frappe.has_permission("Builder Component", "read", throw=True)
+	return frappe.get_all(
+		"Builder Component",
+		fields=["name", "component_name"],
+		filters={"for_web_page": ["is", "not set"]},
+		order_by="modified desc",
+		limit=100,
+	)
+
+
+@frappe.whitelist()
+def create_page_header_component(profile: str | None = None) -> dict:
+	"""A top page to start from: the page's trail, title and subtitle bound to the band's data, in the
+	site's tokens. It becomes the site's band (template "Builder") and is returned for the editor."""
+	frappe.has_permission("Builder Component", "create", throw=True)
+	from builder.page_header import default_band_block
+
+	doc = _write_doc(profile)
+	block = default_band_block((doc.get("token_prefix") or "").strip())
+	label = frappe._("Top page")
+	if doc.doctype == "Website Header Footer Variant":
+		label = f"{label} · {doc.name}"
+	component = frappe.get_doc(
+		{
+			"doctype": "Builder Component",
+			"component_id": f"top-page-{frappe.generate_hash(length=8)}",
+			"component_name": label,
+			"block": json.dumps(block),
+		}
+	).insert()
+	doc.page_header_template = "Builder"
+	doc.page_header_component = component.name
+	doc.save()
+	return {"component": component.name, "component_name": component.component_name}
+
