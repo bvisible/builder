@@ -8,7 +8,7 @@ import frappe
 
 from builder.site_ai.nora.contrast import repair_contrast, repair_opaque_overlays
 from builder.site_ai.nora.facts import drop_placeholders
-from builder.site_ai.nora.layout import balance_grids
+from builder.site_ai.nora.layout import balance_grids, phone_columns
 from builder.site_ai.nora.site_builder import brands_page, page_sections
 
 PALETTE = {"xx-background": "#ffffff", "xx-text": "#111111", "xx-primary": "#111111", "xx-secondary": "#eeeeee"}
@@ -186,6 +186,26 @@ class TestBalancedGrids(unittest.TestCase):
 		self.assertEqual(balance_grids([grid], {"categories": 5}), 1)
 		self.assertEqual(grid["baseStyles"]["gridTemplateColumns"], "repeat(5, minmax(0, 1fr))")
 
+	def test_the_row_of_five_gets_two_columns_on_the_phone(self):
+		"""The row of five kept its five columns on a 390 px phone: 50 px tiles, labels cut."""
+		grid = self.grid(3)
+		balance_grids([grid], {"categories": 5})
+		self.assertEqual(grid["mobileStyles"]["gridTemplateColumns"], "repeat(2, minmax(0, 1fr))")
+		self.assertNotIn("gridTemplateColumns", grid.get("tabletStyles") or {})
+
+	def test_six_on_four_columns_get_three_on_the_tablet(self):
+		grid = self.grid(4)
+		balance_grids([grid], {"categories": 6})
+		self.assertEqual(grid["baseStyles"]["gridTemplateColumns"], "repeat(6, minmax(0, 1fr))")
+		self.assertEqual(grid["tabletStyles"]["gridTemplateColumns"], "repeat(3, minmax(0, 1fr))")
+		self.assertEqual(grid["mobileStyles"]["gridTemplateColumns"], "repeat(2, minmax(0, 1fr))")
+
+	def test_the_columns_a_page_wrote_for_the_phone_stay(self):
+		grid = self.grid(3)
+		grid["mobileStyles"] = {"gridTemplateColumns": "1fr"}
+		balance_grids([grid], {"categories": 5})
+		self.assertEqual(grid["mobileStyles"]["gridTemplateColumns"], "1fr")
+
 	def test_a_grid_that_fills_its_rows_or_is_long_stays(self):
 		for count in (6, 7, 9):
 			self.assertEqual(balance_grids([self.grid(3)], {"categories": count}), 0, count)
@@ -203,6 +223,46 @@ class TestBalancedGrids(unittest.TestCase):
 		self.assertIn("u-grid--fill", grid["classes"])
 		full = {"element": "div", "isRepeaterBlock": True, "dataKey": {"key": "categories"}, "classes": ["u-grid", "u-grid--3"], "baseStyles": {}, "children": [box()]}
 		self.assertEqual(balance_grids([full], {"categories": 6}), 0)
+
+
+class TestPhoneColumns(unittest.TestCase):
+	"""A grid of equal items written with four columns and nothing for the phone kept four there."""
+
+	def test_four_cards_get_two_columns_on_the_phone(self):
+		grid = box(box(), box(), box(), box(), display="grid", gridTemplateColumns="repeat(4, 1fr)")
+		self.assertEqual(phone_columns([grid]), 1)
+		self.assertEqual(grid["mobileStyles"]["gridTemplateColumns"], "repeat(2, minmax(0, 1fr))")
+
+	def test_three_cards_stack_on_the_phone(self):
+		grid = box(box(), box(), box(), display="grid", gridTemplateColumns="1fr 1fr 1fr")
+		self.assertEqual(phone_columns([grid]), 1)
+		self.assertEqual(grid["mobileStyles"]["gridTemplateColumns"], "minmax(0, 1fr)")
+
+	def test_an_odd_last_card_takes_the_phone_row(self):
+		grid = box(box(), box(), box(), box(), box(), display="grid", gridTemplateColumns="repeat(5, minmax(0, 1fr))")
+		phone_columns([grid])
+		self.assertEqual(grid["children"][-1]["mobileStyles"]["gridColumn"], "1 / -1")
+		self.assertNotIn("mobileStyles", grid["children"][0])
+
+	def test_what_the_phone_already_has_stays(self):
+		own = box(box(), box(), box(), box(), display="grid", gridTemplateColumns="repeat(4, 1fr)")
+		own["mobileStyles"] = {"gridTemplateColumns": "1fr"}
+		tablet = box(box(), box(), box(), box(), display="grid", gridTemplateColumns="repeat(4, 1fr)")
+		tablet["tabletStyles"] = {"gridTemplateColumns": "repeat(2, 1fr)"}
+		self.assertEqual(phone_columns([own, tablet]), 0)
+		self.assertEqual(own["mobileStyles"]["gridTemplateColumns"], "1fr")
+		self.assertNotIn("mobileStyles", tablet)
+
+	def test_layout_grids_and_placed_children_are_left_alone(self):
+		twelve = box(box(gridColumn="1 / span 6"), box(gridColumn="7 / span 6"), display="grid", gridTemplateColumns="repeat(12, 1fr)")
+		placed = box(box(gridColumn="1 / 3"), box(), display="grid", gridTemplateColumns="repeat(3, 1fr)")
+		fluid = box(box(), box(), box(), display="grid", gridTemplateColumns="repeat(auto-fit, minmax(220px, 1fr))")
+		self.assertEqual(phone_columns([twelve, placed, fluid]), 0)
+
+	def test_a_repeater_counts_its_rows(self):
+		grid = {"element": "div", "isRepeaterBlock": True, "dataKey": {"key": "brands"}, "baseStyles": {"display": "grid", "gridTemplateColumns": "repeat(4, 1fr)"}, "children": [box()]}
+		self.assertEqual(phone_columns([grid], {"brands": 3}), 1)
+		self.assertEqual(grid["mobileStyles"]["gridTemplateColumns"], "minmax(0, 1fr)")
 
 
 class TestBrandsPage(unittest.TestCase):

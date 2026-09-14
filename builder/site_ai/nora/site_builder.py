@@ -1645,6 +1645,12 @@ def build_site(ctx, spec: dict) -> str:
                     balanced = balance_grids(blocks, repeater_counts(data_script))
                     if balanced:
                         ai_log("info", "Grids balanced", page=page["title"], edits=balanced)
+                    # //// Neoffice — and a grid of equal items gets columns of its own on the phone (layout.phone_columns)
+                    from builder.site_ai.nora.layout import phone_columns
+
+                    phoned = phone_columns(blocks, repeater_counts(data_script))
+                    if phoned:
+                        ai_log("info", "Grids given phone columns", page=page["title"], edits=phoned)
                     # //// Neoffice — added: wire orphaned CTAs to real routes and repair button
                     # //// variants so a button never keeps the section's own colour (0d1ae82c
                     # //// "feat(design system): buttons that read anywhere, calls to action that

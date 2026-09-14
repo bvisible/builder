@@ -213,12 +213,86 @@ def grid_stacked_cards(blocks: list, data_counts: dict | None = None) -> int:
 # //// Neoffice ▲▲▲
 
 
+# //// Neoffice — columns for the phone (2026-09-14): balance_grids gave a home's five tiles five
+# //// columns and nothing for the narrower screens, and a 390 px phone showed five 50 px cells with
+# //// their labels cut. A grid of equal items that the phone would lay out at three columns or more
+# //// gets columns of its own there: two from four items, one below.
+def _tracks(value) -> int:
+    """The number of columns a gridTemplateColumns value lays out: repeat(N, ...) or a list of
+    tracks. 0 when there is none, 1 for a repeat(auto-fit, ...) that lays itself out."""
+    text = str(value or "").strip()
+    m = WIDE_GRID.match(text)
+    if m:
+        return int(m.group(1))
+    count, depth, inside = 0, 0, False
+    for ch in text:
+        if ch == "(":
+            depth += 1
+        elif ch == ")":
+            depth -= 1
+        if ch.isspace() and depth == 0:
+            if inside:
+                count += 1
+            inside = False
+        else:
+            inside = True
+    return count + 1 if inside else count
+
+
+def _narrow_screens(block: dict, items: int) -> int:
+    """Columns for the tablet and the phone of a grid of `items` equal items, where the page wrote
+    none: three on the tablet for six items or more, two on the phone from four items and one below.
+    The odd last card of a plain grid takes the phone's whole row (a repeater's clones cannot be told
+    apart). A screen inherits the wider screen's columns, so what it would inherit is what is judged.
+    Returns the edit count."""
+    edits = 0
+    base = (block.get("baseStyles") or {}).get("gridTemplateColumns")
+    tablet = block.get("tabletStyles") or {}
+    mobile = block.get("mobileStyles") or {}
+    if items >= 6 and "gridTemplateColumns" not in tablet and _tracks(base) >= 6:
+        tablet["gridTemplateColumns"] = "repeat(3, minmax(0, 1fr))"
+        block["tabletStyles"] = tablet
+        edits += 1
+    if "gridTemplateColumns" in mobile or _tracks(tablet.get("gridTemplateColumns") or base) < 3:
+        return edits
+    mobile["gridTemplateColumns"] = "repeat(2, minmax(0, 1fr))" if items >= 4 else "minmax(0, 1fr)"
+    block["mobileStyles"] = mobile
+    edits += 1
+    kids = [c for c in block.get("children") or [] if isinstance(c, dict)]
+    if items >= 4 and items % 2 and kids and not _is_repeater(block):
+        last = kids[-1].get("mobileStyles") or {}
+        last.setdefault("gridColumn", "1 / -1")
+        kids[-1]["mobileStyles"] = last
+    return edits
+
+
+def phone_columns(blocks: list, data_counts: dict | None = None) -> int:
+    """Every grid of equal items (no child placed by a span) that the phone would lay out at three
+    columns or more gets columns of its own there (_narrow_screens). The twelve-column layout grids
+    are left to place_orphans and to the page's own mobile styles. Returns the edit count."""
+    edits = 0
+    for block in _walk(blocks):
+        styles = block.get("baseStyles") or {}
+        if styles.get("display") != "grid" or _tracks(styles.get("gridTemplateColumns")) >= MIN_COLUMNS:
+            continue
+        kids = [c for c in block.get("children") or [] if isinstance(c, dict)]
+        if any(_placed(c) for c in kids):
+            continue
+        if _is_repeater(block):
+            items = (data_counts or {}).get((block.get("dataKey") or {}).get("key")) or _tracks(styles.get("gridTemplateColumns"))
+        else:
+            items = len(kids)
+        edits += _narrow_screens(block, items)
+    return edits
+
+
 # //// Neoffice — a grid never ends on a hole it can avoid (2026-09-14): five photo tiles on three
 # //// columns left the sixth cell of a home empty, a black square in a row of photographs.
 def balance_grids(blocks: list, data_counts: dict | None = None) -> int:
     """A grid of up to six items that its column count does not divide lays them on one row of a
     desktop: five tiles, five columns. The count is the repeater's rows (from the page data) or the
-    grid's children; the tablet and mobile columns stay as written. Returns the edit count."""
+    grid's children. The narrower screens the page wrote no columns for get some (_narrow_screens):
+    five columns are a desktop answer. Returns the edit count."""
     edits = 0
     for block in _walk(blocks):
         styles = block.get("baseStyles") or {}
@@ -233,6 +307,7 @@ def balance_grids(blocks: list, data_counts: dict | None = None) -> int:
             continue
         styles["gridTemplateColumns"] = f"repeat({items}, minmax(0, 1fr))"
         block["baseStyles"] = styles
+        _narrow_screens(block, items)
         edits += 1
     # //// Neoffice — a grid drawn by the design system's classes (u-grid u-grid--3) carries no inline
     # //// columns to change: the brands page of a consumer site kept its sixth cell empty on the rebuilt
