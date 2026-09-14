@@ -1744,6 +1744,12 @@ def build_site(ctx, spec: dict) -> str:
                     phoned = phone_columns(blocks, repeater_counts(data_script))
                     if phoned:
                         ai_log("info", "Grids given phone columns", page=page["title"], edits=phoned)
+                    # //// Neoffice — and the last item alone on its phone row takes the row (layout.fill_last_phone_row)
+                    from builder.site_ai.nora.layout import fill_last_phone_row
+
+                    filled = fill_last_phone_row(blocks)
+                    if filled:
+                        ai_log("info", "Last phone rows filled", page=page["title"], edits=filled)
                     # //// Neoffice — added: wire orphaned CTAs to real routes and repair button
                     # //// variants so a button never keeps the section's own colour (0d1ae82c
                     # //// "feat(design system): buttons that read anywhere, calls to action that

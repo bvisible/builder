@@ -8,7 +8,12 @@ import frappe
 
 from builder.site_ai.nora.contrast import repair_contrast, repair_opaque_overlays
 from builder.site_ai.nora.facts import drop_placeholders
-from builder.site_ai.nora.layout import balance_grids, complete_tile_photos, phone_columns
+from builder.site_ai.nora.layout import (
+	balance_grids,
+	complete_tile_photos,
+	fill_last_phone_row,
+	phone_columns,
+)
 from builder.site_ai.nora.site_builder import brands_page, category_photo_map, page_sections
 
 PALETTE = {"xx-background": "#ffffff", "xx-text": "#111111", "xx-primary": "#111111", "xx-secondary": "#eeeeee"}
@@ -311,6 +316,34 @@ class TestTilePhotos(unittest.TestCase):
 	def test_the_name_may_sit_in_a_longer_label(self):
 		grid = self.grid(self.tile("Snow gear"), self.tile("Street", "/files/street.jpg"), self.tile("Water"))
 		self.assertEqual(complete_tile_photos([grid], self.PHOTOS), ["snow", "water"])
+
+
+class TestLastPhoneRow(unittest.TestCase):
+	"""Five framed tiles on the two phone columns their page wrote left a white cell beside the fifth."""
+
+	def grid(self, count, phone="repeat(2, 1fr)", **kid_styles):
+		grid = box(*[box(**kid_styles) for _ in range(count)], display="grid", gridTemplateColumns=f"repeat({count}, 1fr)")
+		grid["mobileStyles"] = {"gridTemplateColumns": phone}
+		return grid
+
+	def test_the_fifth_tile_takes_the_phone_row(self):
+		grid = self.grid(5)
+		self.assertEqual(fill_last_phone_row([grid]), 1)
+		self.assertEqual(grid["children"][-1]["mobileStyles"]["gridColumn"], "1 / -1")
+		self.assertNotIn("mobileStyles", grid["children"][0])
+
+	def test_full_rows_repeaters_and_placed_items_stay(self):
+		full = self.grid(4)
+		two_left = self.grid(5, phone="repeat(3, 1fr)")
+		placed = self.grid(5, gridColumn="span 1")
+		repeater = self.grid(5)
+		repeater["isRepeaterBlock"] = True
+		self.assertEqual(fill_last_phone_row([full, two_left, placed, repeater]), 0)
+
+	def test_seven_on_three_leave_the_seventh_the_row(self):
+		grid = self.grid(7, phone="repeat(3, minmax(0, 1fr))")
+		self.assertEqual(fill_last_phone_row([grid]), 1)
+		self.assertEqual(grid["children"][6]["mobileStyles"]["gridColumn"], "1 / -1")
 
 
 class TestCategoryPhotoMap(unittest.TestCase):

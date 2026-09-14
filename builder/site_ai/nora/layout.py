@@ -447,3 +447,35 @@ def complete_tile_photos(blocks: list, category_photos: dict) -> list[str]:
             done.append(name)
     return done
 
+
+# //// Neoffice — the last item alone on its phone row takes the row (2026-09-14): an About page's five
+# //// framed category tiles, on the two phone columns the page wrote itself, left a white cell beside
+# //// the fifth inside the frame.
+def _phone_template(block: dict) -> str | None:
+    """The columns the phone lays a grid on: its own, else the tablet's, else the desktop's."""
+    for key in ("mobileStyles", "tabletStyles", "baseStyles"):
+        value = (block.get(key) or {}).get("gridTemplateColumns")
+        if value:
+            return value
+    return None
+
+
+def fill_last_phone_row(blocks: list) -> int:
+    """In a plain grid of equal items, the last item alone on its phone row spans the row. A
+    repeater's clones cannot be told apart and are left as they are. Returns the edit count."""
+    edits = 0
+    for block in _walk(blocks):
+        if (block.get("baseStyles") or {}).get("display") != "grid" or _is_repeater(block):
+            continue
+        kids = [c for c in block.get("children") or [] if isinstance(c, dict)]
+        columns = _tracks(_phone_template(block))
+        if columns < 2 or len(kids) <= columns or len(kids) % columns != 1 or any(_placed(c) for c in kids):
+            continue
+        last = kids[-1].get("mobileStyles") or {}
+        if "gridColumn" in last:
+            continue
+        last["gridColumn"] = "1 / -1"
+        kids[-1]["mobileStyles"] = last
+        edits += 1
+    return edits
+
