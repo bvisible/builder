@@ -91,6 +91,27 @@ IMAGE_LED_PLANS = {
     "contact": ["the contact details from BUSINESS DATA, verbatim, with no introduction", "a contact form: name, email, message, one submit button"],
     "generic": ["one large photograph with the page's point in one line", "the content as photo tiles with short captions", "one line and a button"],
 }
+# //// Neoffice — a brands page shows the brands the brief names (2026-09-14): given inside the
+# //// activity, they never reached an image-led brands page, which laid out the site's segments
+# //// and named no brand. The categories keep their tiles below, where the home's tiles lead.
+BRAND_WORDS = re.compile(r"\bbrands?\b|\bmarques?\b|\bmarken\b", re.I)
+BRAND_PLAN = [
+    "an intro line",
+    "the brands the brief names, one card each: the brand's name as its title and one line on what it makes",
+    "the categories the brief names, one card each with its photograph (none named: no such section)",
+    "a CTA",
+]
+BRAND_PLAN_IMAGE_LED = [
+    "the brands the brief names, one after the other: the brand's name as a large title and one short line",
+    "the categories the brief names, one full-bleed photo tile each, its name only (none named: no such section)",
+    "one line and a button",
+]
+
+
+def brands_page(page: dict) -> bool:
+    return page.get("type") == "brands" or bool(BRAND_WORDS.search(f"{page.get('title', '')} {page.get('route', '')}"))
+
+
 # a page that is text by nature keeps its own plan whatever the density
 TEXT_BY_NATURE = {"faq", "blog", "legal"}
 
@@ -798,7 +819,7 @@ def available_includes(page_type: str, site_type: str = "vitrine", profile: str 
     return out
 
 
-def page_sections(page: dict, minimal: bool, contact_verified: bool = True, others=()) -> list[str]:
+def page_sections(page: dict, minimal: bool, contact_verified: bool = True, others=(), brands=()) -> list[str]:
     """The sections a page is planned with: the image-led plan on an image-led site, else the
     page type's own. Without verified contact details no section asks for them: asked for them
     anyway, the model made them up (see UNVERIFIED_CONTACT).
@@ -808,6 +829,8 @@ def page_sections(page: dict, minimal: bool, contact_verified: bool = True, othe
     45 minutes on one page, of 60 on the other), and its services page listed packages its
     pricing page did not have (2026-09-13)."""
     plan = (IMAGE_LED_PLANS.get(page["type"]) or IMAGE_LED_PLANS["generic"]) if minimal else SECTION_PLANS.get(page["type"], SECTION_PLANS["generic"])
+    if brands and brands_page(page):
+        plan = BRAND_PLAN_IMAGE_LED if minimal else BRAND_PLAN
     if not contact_verified:
         plan = [s for s in plan if not s.startswith(("the contact details", "how to find the place", "a CTA to call or write"))]
     others = set(others or ())
@@ -893,7 +916,7 @@ def page_brief_text(site: dict, brief, page: dict, handles: dict, contact_prompt
     others = list(site.get("page_types") or [])
     if page["type"] in others:
         others.remove(page["type"])
-    plan = page_sections(page, minimal, contact_verified=site.get("contact_verified", True), others=others)
+    plan = page_sections(page, minimal, contact_verified=site.get("contact_verified", True), others=others, brands=site.get("brands") or ())
     sections = "\n".join(f"{i}. {s}" for i, s in enumerate(plan, 1))
     concept = getattr(brief, "design_concept", "") or ""
     signature = getattr(brief, "signature_element", "") or ""
@@ -959,6 +982,11 @@ def page_brief_text(site: dict, brief, page: dict, handles: dict, contact_prompt
                 "lists categories, it names exactly these, in this order; never a set of its own."
                 if site.get("categories") else ""
             )
+        ),
+        (
+            f"BRANDS the business carries, in the client's words: {', '.join(site['brands'])}. A page that names brands "
+            "names exactly these; never a brand of its own."
+            if site.get("brands") else ""
         ),
         (
             # //// Neoffice — the copy rule of an image-led site (see IMAGE_LED_PLANS)
@@ -1558,7 +1586,9 @@ def build_site(ctx, spec: dict) -> str:
     # 5. the pages, on upstream's page engine
     layout_system = choose_layout_system(spec.get("style_direction"), brief)
     page_model = _page_model(ctx)
-    site = {"site_name": site_name, "activity": activity, "differentiators": spec.get("differentiators"), "site_type": site_type, "profile": profile, "inspiration": inspiration["notes"], "copy_density": copy_density, "categories": categories, "page_types": [p["type"] for p in pages]}
+    # //// Neoffice — the brands the brief names (see BRAND_PLAN)
+    brands = [str(b).strip() for b in (spec.get("brands") or []) if str(b).strip()][:24]
+    site = {"site_name": site_name, "activity": activity, "differentiators": spec.get("differentiators"), "site_type": site_type, "profile": profile, "inspiration": inspiration["notes"], "copy_density": copy_density, "categories": categories, "brands": brands, "page_types": [p["type"] for p in pages]}
     created, failed, cancelled = [], [], False
 
     # //// Neoffice — image generation was switched off (the pictures were not good enough):
@@ -1609,6 +1639,12 @@ def build_site(ctx, spec: dict) -> str:
                     stacked = grid_stacked_cards(blocks, repeater_counts(data_script))
                     if stacked:
                         ai_log("info", "Stacked cards laid on a grid", page=page["title"], edits=stacked)
+                    # //// Neoffice — nor a grid that ends on a hole it can avoid (layout.balance_grids)
+                    from builder.site_ai.nora.layout import balance_grids
+
+                    balanced = balance_grids(blocks, repeater_counts(data_script))
+                    if balanced:
+                        ai_log("info", "Grids balanced", page=page["title"], edits=balanced)
                     # //// Neoffice — added: wire orphaned CTAs to real routes and repair button
                     # //// variants so a button never keeps the section's own colour (0d1ae82c
                     # //// "feat(design system): buttons that read anywhere, calls to action that
@@ -1676,6 +1712,17 @@ def build_site(ctx, spec: dict) -> str:
                         data_script, bound = anchor_category_data_links(data_script, listing, categories, _href_keys(blocks))
                         if anchored or pointed or bound:
                             ai_log("info", "Category anchors", page=page["title"], panels=anchored, links=pointed + bound)
+                    # //// Neoffice — a bracketed placeholder never reaches a visitor (facts.drop_placeholders),
+                    # //// and a layer over a photograph is a veil, never a wall (contrast.repair_opaque_overlays)
+                    from builder.site_ai.nora.contrast import repair_opaque_overlays
+                    from builder.site_ai.nora.facts import drop_placeholders
+
+                    scrubbed = drop_placeholders(blocks)
+                    if scrubbed:
+                        ai_log("info", "Placeholders dropped", page=page["title"], edits=scrubbed[:6])
+                    veiled = repair_opaque_overlays(blocks, palette)
+                    if veiled:
+                        ai_log("info", "Opaque layers over photos made scrims", page=page["title"], edits=veiled)
                     variants = repair_button_variants(blocks, palette)
                     if variants:
                         ai_log("info", "Button variants repaired", page=page["title"], edits=variants)

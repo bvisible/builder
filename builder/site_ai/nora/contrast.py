@@ -189,6 +189,17 @@ def repair_contrast(blocks: list[dict], palette: dict[str, str], minimum: float 
 
 def _walk(block: dict, bg: Color | None, fg: Color | None, palette: dict[str, str], minimum: float, fixes: list[str]) -> None:
     styles = block.get("baseStyles") or {}
+    # //// Neoffice — lettering filled with a photograph (a transparent text colour over a background
+    # //// clipped to the letters) reads only where the picture is light behind every letter: the
+    # //// brand tiles of a black site showed a name in near-black on black (2026-09-14). The letters
+    # //// take the ink their band reads in, and the picture stays in its tile.
+    if _photo_lettering(styles):
+        for key in LETTERING_KEYS:
+            styles.pop(key, None)
+        ink = best_text(bg, palette, minimum)[0] if bg is not None else "#ffffff"
+        styles["color"] = ink
+        block["baseStyles"] = styles
+        fixes.append(f"{block.get('blockName') or block.get('element') or 'block'}: photo lettering -> {ink}")
     if any(c.startswith("u-over-image") for c in _classes(block)):
         # copy laid over a photo: the photo decides, not a flat colour
         bg = None
@@ -236,3 +247,82 @@ def _walk(block: dict, bg: Color | None, fg: Color | None, palette: dict[str, st
             fixes.append(f"{block.get('blockName') or block.get('element') or 'block'}: {ratio:.1f}:1 -> {replacement}")
     for child in children:
         _walk(child, bg, fg, palette, minimum, fixes)
+
+
+# //// Neoffice — see _walk: the keys that paint letters with a picture
+LETTERING_KEYS = (
+    "background", "backgroundImage", "backgroundClip", "WebkitBackgroundClip", "webkitBackgroundClip",
+    "WebkitTextFillColor", "webkitTextFillColor", "backgroundSize", "backgroundPosition", "backgroundRepeat",
+)
+TRANSPARENT = re.compile(r"^(?:transparent|rgba\([^)]*,\s*0(?:\.0+)?\s*\))$", re.I)
+
+
+def _photo_lettering(styles: dict) -> bool:
+    """Letters painted with a picture: a transparent text colour over a background clipped to the text."""
+    color = str(styles.get("color") or "").strip()
+    fill = str(styles.get("WebkitTextFillColor") or styles.get("webkitTextFillColor") or "").strip()
+    if not (TRANSPARENT.match(color) or TRANSPARENT.match(fill)):
+        return False
+    clip = " ".join(str(styles.get(k) or "") for k in ("backgroundClip", "WebkitBackgroundClip", "webkitBackgroundClip")).lower()
+    return "text" in clip or "url(" in f"{styles.get('background') or ''}{styles.get('backgroundImage') or ''}"
+
+
+# //// Neoffice — a layer laid over a photograph is a veil, never a wall (2026-09-14): a contact page
+# //// covered its photograph with an opaque black layer, and the section showed a black rectangle where
+# //// the client's picture was. The layer keeps its hue and becomes a gradient scrim.
+SCRIM_TOP, SCRIM_BOTTOM = 0.12, 0.62
+ZERO = ("0", "0px", "0%")
+
+
+def _shows_picture(block: dict) -> bool:
+    styles = block.get("baseStyles") or {}
+    if str(block.get("element") or "").lower() == "img" or styles.get("objectFit"):
+        return True
+    return "url(" in f"{styles.get('backgroundImage') or ''}{styles.get('background') or ''}"
+
+
+def _spans_parent(styles: dict) -> bool:
+    if str(styles.get("inset") or "").strip() in ZERO:
+        return True
+    offsets = [str(styles.get(k) or "").strip() for k in ("top", "right", "bottom", "left")]
+    if all(o in ZERO for o in offsets):
+        return True
+    return offsets[0] in ZERO and offsets[3] in ZERO and str(styles.get("width") or "") == "100%" and str(styles.get("height") or "") == "100%"
+
+
+def repair_opaque_overlays(blocks: list[dict], palette: dict[str, str]) -> list[str]:
+    """Turns an opaque, text-free layer spread over a photograph into a gradient scrim of its own
+    hue. A layer with a blend mode is a deliberate effect and is left alone. Returns one line per fix."""
+    fixes: list[str] = []
+
+    def walk(block) -> None:
+        if not isinstance(block, dict):
+            return
+        children = [c for c in block.get("children") or [] if isinstance(c, dict)]
+        if _shows_picture(block) or any(_shows_picture(c) for c in children):
+            for child in children:
+                styles = child.get("baseStyles") or {}
+                if styles.get("position") != "absolute" or styles.get("mixBlendMode") or not _spans_parent(styles):
+                    continue
+                if _shows_picture(child) or _has_text(child):
+                    continue
+                raw = styles.get("backgroundColor") or styles.get("background")
+                color = parse_color(raw, palette) if raw else None
+                try:
+                    opacity = float(styles.get("opacity") or 1)
+                except (TypeError, ValueError):
+                    opacity = 1.0
+                if color is None or color[3] * opacity < 0.9:
+                    continue
+                r, g, b = (round(v) for v in color[:3])
+                styles.pop("backgroundColor", None)
+                styles["background"] = f"linear-gradient(to top, rgba({r},{g},{b},{SCRIM_BOTTOM}), rgba({r},{g},{b},{SCRIM_TOP}))"
+                child["baseStyles"] = styles
+                fixes.append(f"{child.get('blockName') or 'overlay'}: opaque layer over a photo -> scrim")
+        for child in children:
+            walk(child)
+
+    for block in blocks or []:
+        walk(block)
+    return fixes
+

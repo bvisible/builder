@@ -69,6 +69,9 @@ generate_site = Tool(
             # //// by the model, "five segments: Snow, Street, Water, Outdoor, Home" was lost, and the
             # //// home's category wall came out with two repeated photographs and no name (2026-09-12)
             "categories": {"type": "array", "items": {"type": "string"}, "description": "The categories, segments or collections the site is organised in, in the user's own words (an image-led home gives each one a photo tile). Pass every one the user named."},
+            # //// Neoffice — the brands travel as their own list too: given inside the activity, they
+            # //// never reached the brands page, which laid out the site's segments instead (2026-09-14)
+            "brands": {"type": "array", "items": {"type": "string"}, "description": "The brands the business carries, makes or represents, by name, in the user's words: a brands page lists them. Pass every one the user named; none when the user named none."},
             "palette_mode": {"type": "string", "enum": ["auto", "monochrome"], "description": "'monochrome' when the client wants NO colour: black, white and greys only, the photographs carrying the page. Default 'auto', which also turns monochrome by itself when every inspiration site read has no colour."},
             "copy_density": {"type": "string", "enum": ["auto", "standard", "minimal"], "description": "'minimal' when the photographs must carry the site and the copy step back: headlines of a few words, a line at most under each, no paragraphs. Default 'auto', which turns minimal by itself when the brief or the chosen direction asks for little text ('less is more', 'through the image')."},
             "website_profile": {"type": "string", "description": "The Website Profile (site) to build for; the open page's profile when omitted."},

@@ -211,3 +211,28 @@ def grid_stacked_cards(blocks: list, data_counts: dict | None = None) -> int:
         edits += 1
     return edits
 # //// Neoffice ▲▲▲
+
+
+# //// Neoffice — a grid never ends on a hole it can avoid (2026-09-14): five photo tiles on three
+# //// columns left the sixth cell of a home empty, a black square in a row of photographs.
+def balance_grids(blocks: list, data_counts: dict | None = None) -> int:
+    """A grid of up to six items that its column count does not divide lays them on one row of a
+    desktop: five tiles, five columns. The count is the repeater's rows (from the page data) or the
+    grid's children; the tablet and mobile columns stay as written. Returns the edit count."""
+    edits = 0
+    for block in _walk(blocks):
+        styles = block.get("baseStyles") or {}
+        columns = _columns(styles)
+        if not columns:
+            continue
+        if _is_repeater(block):
+            items = (data_counts or {}).get((block.get("dataKey") or {}).get("key"))
+        else:
+            items = len([c for c in block.get("children") or [] if isinstance(c, dict)])
+        if not items or items > 6 or items % columns == 0:
+            continue
+        styles["gridTemplateColumns"] = f"repeat({items}, minmax(0, 1fr))"
+        block["baseStyles"] = styles
+        edits += 1
+    return edits
+

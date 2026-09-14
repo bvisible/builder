@@ -21,7 +21,9 @@ FACTS_RULE = (
     "FACTS: state only what this brief gives (BRAND, POSITIONING, CATEGORIES, BUSINESS DATA). Never invent a price, "
     "a duration, a date or a year, a figure or a percentage, a rating, a testimonial or a review, a client, a partner, "
     "an award, or an insurance, legal or medical claim: a visitor takes each for true. A section that needs a fact "
-    "the brief does not give is written without it (how to get a price, what a first visit covers) or left out."
+    "the brief does not give is written without it (how to get a price, what a first visit covers) or left out. "
+    "Never write a placeholder in brackets ([email address], [phone]): a detail the brief does not give is left "
+    "out, and its label with it."
 )
 
 TAG = re.compile(r"<[^>]+>")
@@ -205,5 +207,77 @@ def facts_issues(found: list[dict]) -> list[dict]:
 
 def known_text(site: dict, contact_prompt: str = "") -> str:
     """Everything the page writer was given about the business: what a page may state."""
-    parts = [site.get("site_name"), site.get("activity"), site.get("differentiators"), " ".join(site.get("categories") or []), contact_prompt]
+    parts = [site.get("site_name"), site.get("activity"), site.get("differentiators"), " ".join(site.get("categories") or []), " ".join(site.get("brands") or []), contact_prompt]
     return " ".join(str(part) for part in parts if part)
+
+
+# //// Neoffice — a bracketed placeholder never reaches a visitor (2026-09-14). With no e-mail and no
+# //// website in its business data, a contact page printed "[email address]" and "[website]" under
+# //// their labels, and the build published it.
+PLACEHOLDER = re.compile(r"\[\s*[^\W\d_][^\[\]<>{}|]{0,40}?\s*\]")
+SEPARATOR = r"\s*(?:[·|•,–—-]\s*)?"
+LABEL_ELEMENTS = {"p", "span", "div", "small", "strong", "label", "dt", "h4", "h5", "h6"}
+
+
+def _text_of(block: dict) -> str:
+    return " ".join(TAG.sub(" ", str(block.get("innerHTML") or "")).split())
+
+
+def _is_label(block: dict) -> bool:
+    """A short caption naming the detail that follows ("EMAIL", "Website:")."""
+    text = _text_of(block)
+    return (
+        str(block.get("element") or "").lower() in LABEL_ELEMENTS
+        and 0 < len(text) <= 24
+        and len(text.split()) <= 3
+        and not PLACEHOLDER.search(text)
+        and not any(isinstance(c, dict) and _text_of(c) for c in block.get("children") or [])
+    )
+
+
+def _cut(html: str) -> str:
+    """The placeholder cut out of a longer text, with the separator that tied it to the rest."""
+    cut = re.sub(SEPARATOR + PLACEHOLDER.pattern, "", html)
+    cut = re.sub(PLACEHOLDER.pattern + SEPARATOR, "", cut)
+    return cut.strip()
+
+
+def drop_placeholders(blocks: list) -> list[str]:
+    """Takes the bracketed placeholders out of a written page. A block that shows nothing else goes,
+    with the short label just before it, and a wrapper they leave empty goes too; inside a longer
+    text the placeholder alone is cut. Jinja and bound text are left alone. Returns one line per
+    edit."""
+    edits: list[str] = []
+
+    def clean(parent: dict) -> bool:
+        """Cleans the children of `parent`; True when it had some and has none left."""
+        kids = parent.get("children")
+        if not isinstance(kids, list) or not kids:
+            return False
+        kept: list = []
+        for child in kids:
+            if not isinstance(child, dict):
+                kept.append(child)
+                continue
+            html = str(child.get("innerHTML") or "")
+            if html and "{%" not in html and "{{" not in html and PLACEHOLDER.search(html):
+                text = _text_of(child)
+                if PLACEHOLDER.fullmatch(text):
+                    if kept and isinstance(kept[-1], dict) and _is_label(kept[-1]):
+                        edits.append(f"label '{_text_of(kept.pop())}' dropped with its placeholder")
+                    edits.append(f"'{text}' dropped")
+                    continue
+                child["innerHTML"] = _cut(html)
+                edits.append(f"placeholder cut from '{text[:48]}'")
+            if clean(child) and not _text_of(child):
+                edits.append("wrapper left empty dropped")
+                continue
+            kept.append(child)
+        parent["children"] = kept
+        return not kept
+
+    for block in blocks or []:
+        if isinstance(block, dict):
+            clean(block)
+    return edits
+
