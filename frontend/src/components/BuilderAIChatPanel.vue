@@ -371,6 +371,7 @@
 							</button>
 						</Dropdown>
 						<span v-else class="flex h-7 items-center gap-1.5 px-1.5 text-xs text-ink-gray-5">
+							<!-- //// Neoffice — the host's assistant name where the model picker was (see above). -->
 							<span class="lucide-sparkles size-3.5 shrink-0" />
 							<span class="truncate">{{ assistantLabel }}</span>
 						</span>

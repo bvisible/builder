@@ -59,7 +59,7 @@ const BuilderSettings = defineAsyncComponent(() => import("@/components/BuilderS
 const { showSettingsDialog, settingsTab } = useDashboardState();
 
 const telemetry = useTelemetry();
-const route = useRoute();
+const route = useRoute(); //// Neoffice — read by the ?chat= entry below
 
 onMounted(prefetchBuilderSettings);
 //// Neoffice — see the import above.

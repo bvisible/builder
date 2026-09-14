@@ -14,7 +14,7 @@ the first consumer.
 """
 
 import secrets
-import threading
+import threading  # //// Neoffice — the heartbeat that renews a live turn's locks (see below)
 from contextlib import contextmanager
 
 import frappe

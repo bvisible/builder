@@ -339,6 +339,7 @@ class BuilderPage(WebsiteGenerator):
 
 	def clear_route_cache(self):
 		get_web_pages_with_dynamic_routes.clear_cache()
+		# //// Neoffice — the cached lookup behind find_page_with_path (see _find_page_with_path_cached)
 		_find_page_with_path_cached.clear_cache()
 		clear_cache(self.route)
 
@@ -778,7 +779,7 @@ class BuilderPage(WebsiteGenerator):
 			set_request(method="GET", path=f"/{self.route or ''}")
 			frappe.local.request.for_preview = True
 			frappe.local.no_cache = 1
-			self._name_website_profile()
+			self._name_website_profile()  # //// Neoffice — see previous_profile above
 			renderer = BuilderPageRenderer(path="")
 			renderer.docname = self.name
 			renderer.doctype = "Builder Page"
@@ -1948,6 +1949,8 @@ def find_page_with_path(route, website_profile=None):
 	return _find_page_with_path_cached(route, website_profile)
 
 
+# //// Neoffice — upstream's cached find_page_with_path, renamed: the public find_page_with_path
+# //// above gates offline sites on every call, and only this lookup is cached (#280).
 @redis_cache(ttl=60 * 60)
 def _find_page_with_path_cached(route, website_profile=None):
 	try:
