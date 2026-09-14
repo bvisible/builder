@@ -38,9 +38,14 @@
 		{%- endif -%}
 		{%- endmacro -%}
 
+		{#- //// Neoffice — Crumbs: the trail alone, above a page that opens on its own title
+		    (page_header._band_parts, 2026-09-14). -#}
+		{%- if template == "Crumbs" -%}
+		{{ crumbs() }}
+
 		{#- Split — the title holds the left, the line explains on the right.
 		    Reads editorial, and only works when there IS a subtitle. -#}
-		{%- if template == "Split" and subtitle -%}
+		{%- elif template == "Split" and subtitle -%}
 		{{ crumbs() }}
 		<div class="site-page-header__split">
 			<h1 class="site-page-header__title">{{ title }}</h1>

@@ -70,7 +70,7 @@ _DARK_BACKGROUNDS = ("Image", "Solid")
 # //// Neoffice — the inner column sits on the site grid with the header and the footer
 # //// (theme_variables.html, --container-*), at their thresholds: 24px then 16px without the grid tokens.
 _CSS = (
-	"<style>.site-page-header{border-bottom:1px solid var(--footer-border,rgba(0,0,0,0.08))}.site-page-header__inner{max-width:var(--container-width,1280px);margin:0 auto;padding:44px var(--container-padding,24px) 36px;font-family:var(--sph-body-font,inherit)}.site-page-header__crumbs{display:flex;flex-wrap:wrap;align-items:center;gap:6px;font-size:0.8125rem;color:var(--muted-color,#6b7280);margin-bottom:12px}.site-page-header__crumbs a{color:inherit;text-decoration:none}.site-page-header__crumbs a:hover{color:var(--primary-color,#111)}.site-page-header__sep{opacity:0.5}.site-page-header__title{font-size:clamp(1.9rem,1.2rem + 2.2vw,3rem);font-weight:var(--sph-heading-weight,700);font-family:var(--sph-heading-font,var(--heading-font,inherit));line-height:1.15;margin:0}.site-page-header__subtitle{max-width:62ch;margin:10px 0 0;color:var(--muted-color,#6b7280);line-height:1.6}.site-page-header--minimal .site-page-header__inner{padding-top:32px;padding-bottom:24px}.site-page-header--centered .site-page-header__inner{text-align:center}.site-page-header--centered .site-page-header__crumbs{justify-content:center}.site-page-header--centered .site-page-header__subtitle{margin-left:auto;margin-right:auto}.site-page-header__split{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:32px;align-items:end}.site-page-header__split .site-page-header__subtitle{margin-top:0}@media (max-width:768px){.site-page-header__split{grid-template-columns:1fr;gap:12px}}.site-page-header--bg-image .site-page-header__inner,.site-page-header--bg-solid .site-page-header__inner{padding-top:72px;padding-bottom:64px}.site-page-header--on-dark{border-bottom-color:transparent}.site-page-header--on-dark .site-page-header__title{color:#fff}.site-page-header--on-dark .site-page-header__subtitle,.site-page-header--on-dark .site-page-header__crumbs{color:rgba(255,255,255,0.82)}.site-page-header--on-dark .site-page-header__crumbs a:hover{color:#fff}.site-page-header--bg-tinted{border-bottom-color:transparent}@media (max-width:768px){.site-page-header .site-page-header__inner{padding-left:var(--container-padding-tablet,16px);padding-right:var(--container-padding-tablet,16px)}}@media (max-width:576px){.site-page-header .site-page-header__inner{padding-left:var(--container-padding-phone,16px);padding-right:var(--container-padding-phone,16px)}}</style>"
+	"<style>.site-page-header{border-bottom:1px solid var(--footer-border,rgba(0,0,0,0.08))}.site-page-header__inner{max-width:var(--container-width,1280px);margin:0 auto;padding:44px var(--container-padding,24px) 36px;font-family:var(--sph-body-font,inherit)}.site-page-header__crumbs{display:flex;flex-wrap:wrap;align-items:center;gap:6px;font-size:0.8125rem;color:var(--muted-color,#6b7280);margin-bottom:12px}.site-page-header__crumbs a{color:inherit;text-decoration:none}.site-page-header__crumbs a:hover{color:var(--primary-color,#111)}.site-page-header__sep{opacity:0.5}.site-page-header__title{font-size:clamp(1.9rem,1.2rem + 2.2vw,3rem);font-weight:var(--sph-heading-weight,700);font-family:var(--sph-heading-font,var(--heading-font,inherit));line-height:1.15;margin:0}.site-page-header__subtitle{max-width:62ch;margin:10px 0 0;color:var(--muted-color,#6b7280);line-height:1.6}.site-page-header--minimal .site-page-header__inner{padding-top:32px;padding-bottom:24px}.site-page-header--centered .site-page-header__inner{text-align:center}.site-page-header--centered .site-page-header__crumbs{justify-content:center}.site-page-header--centered .site-page-header__subtitle{margin-left:auto;margin-right:auto}.site-page-header__split{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:32px;align-items:end}.site-page-header__split .site-page-header__subtitle{margin-top:0}@media (max-width:768px){.site-page-header__split{grid-template-columns:1fr;gap:12px}}.site-page-header--bg-image .site-page-header__inner,.site-page-header--bg-solid .site-page-header__inner{padding-top:72px;padding-bottom:64px}.site-page-header--on-dark{border-bottom-color:transparent}.site-page-header--on-dark .site-page-header__title{color:#fff}.site-page-header--on-dark .site-page-header__subtitle,.site-page-header--on-dark .site-page-header__crumbs{color:rgba(255,255,255,0.82)}.site-page-header--on-dark .site-page-header__crumbs a:hover{color:#fff}.site-page-header--bg-tinted{border-bottom-color:transparent}.site-page-header--crumbs .site-page-header__inner{padding-top:14px;padding-bottom:14px}.site-page-header--crumbs .site-page-header__crumbs{margin-bottom:0}@media (max-width:768px){.site-page-header .site-page-header__inner{padding-left:var(--container-padding-tablet,16px);padding-right:var(--container-padding-tablet,16px)}}@media (max-width:576px){.site-page-header .site-page-header__inner{padding-left:var(--container-padding-phone,16px);padding-right:var(--container-padding-phone,16px)}}</style>"
 )
 
 
@@ -153,6 +153,48 @@ def settings() -> dict:
 	return out
 
 
+# //// Neoffice — the shop's trail (2026-09-14): the band followed frappe's `parents` and read "Home /
+# //// Shop by Category / Products / T-Shirt", while the shop's own breadcrumb (webshop
+# //// templates/includes/breadcrumbs.html), hidden under the band, reads "Home / Shop / Products /
+# //// T-Shirt". On a shop page the band now follows the shop's rules: Home, Shop (/all-products), the
+# //// last two parents that are neither the listing nor the categories page, then the page itself.
+_SHOP_DOCTYPES = ("Website Item", "Item Group")
+_SHOP_ROUTES = ("all-products", "shop-by-category", "cart", "wishlist", "product_search", "checkout")
+_SHOP_LISTING_ROUTES = ("", "home", "all-products", "shop-by-category")
+_SHOP_LISTING_TITLES = ("Home", "All Products", "Shop", "Shop by Category")
+
+
+def _is_shop_page(context, path: str) -> bool:
+	if getattr(context.get("doc"), "doctype", None) in _SHOP_DOCTYPES:
+		return True
+	return (path.split("/")[0] if path else "") in _SHOP_ROUTES
+
+
+def _shop_trail(context, current: str) -> list:
+	"""Home, Shop, the last two categories, then the page: the trail of the shop's own breadcrumb."""
+	listing = {t.lower() for t in _SHOP_LISTING_TITLES} | {_(t).lower() for t in _SHOP_LISTING_TITLES}
+	crumbs = [{"label": _("Home"), "url": "/"}, {"label": _("Shop"), "url": "/all-products"}]
+	parents = []
+	for parent in context.get("parents") or []:
+		label = str(parent.get("label") or parent.get("title") or parent.get("name") or "")
+		route = str(parent.get("route") or parent.get("url") or "").strip("/")
+		if label and route not in _SHOP_LISTING_ROUTES and label.strip().lower() not in listing:
+			parents.append({"label": label, "url": "/" + route})
+	crumbs += parents[-2:]
+	if current and current.strip().lower() not in listing:
+		crumbs.append({"label": current, "url": ""})
+	else:
+		# the listing itself: the Shop crumb is the page
+		crumbs[-1] = {"label": crumbs[-1]["label"], "url": ""}
+	deduped = []
+	for crumb in crumbs:
+		if deduped and deduped[-1]["label"].strip().lower() == crumb["label"].strip().lower():
+			deduped[-1] = crumb
+			continue
+		deduped.append(crumb)
+	return deduped
+
+
 def _breadcrumbs(context, path: str, current: str) -> list:
 	"""Home, the trail, then the page itself — each label once.
 
@@ -160,6 +202,8 @@ def _breadcrumbs(context, path: str, current: str) -> list:
 	titles, so it wins when present. It also already starts at Home, which is
 	why this cannot simply prepend one: /blog was reading "Home / Home / Portal".
 	"""
+	if _is_shop_page(context, path):
+		return _shop_trail(context, current)
 	crumbs = []
 	parents = context.get("parents") or []
 
@@ -230,8 +274,28 @@ def _band_parts(context) -> tuple[str, str]:
 	# //// with it.
 	trail = _breadcrumbs(context, path, title)
 	seo = _breadcrumb_ld(trail)
-	if template == "None" or context.get("page_opens_itself"):
+	if template == "None":
 		return "", seo
+	# //// Neoffice — a page that opens on its own title keeps a visible trail (2026-09-14): it kept only
+	# //// the JSON-LD, and a visitor saw no breadcrumb at all on most generated pages. The trail alone
+	# //// is drawn above the page, on the band's grid; a page set to go without the band keeps the
+	# //// JSON-LD only.
+	if context.get("page_opens_itself"):
+		if context.get("page_hides_band") or not config.get("show_breadcrumbs") or len(trail) < 2:
+			return "", seo
+		return _CSS + frappe.render_template(
+			"builder/templates/includes/header_footer/page_header.html",
+			{
+				"template": "Crumbs",
+				"background": "None",
+				"fill": "",
+				"on_dark": False,
+				"fonts": context.get("page_fonts") or "",
+				"title": "",
+				"subtitle": "",
+				"breadcrumbs": [{"label": escape_html(c["label"]), "url": escape_html(c["url"])} for c in trail],
+			},
+		), seo
 
 	# //// Neoffice — a band designed in the Builder: the component chosen for the site, drawn with
 	# //// the page's title, subtitle, trail and picture (render_component_band). Without a component
@@ -364,6 +428,14 @@ def render_page_header() -> str:
 def breadcrumb_ld(context) -> str:
 	"""The breadcrumb trail of a page frappe renders, as JSON-LD for its <head>."""
 	return _band_parts(context)[1]
+
+
+# //// Neoffice — one trail per page (2026-09-14): site_chrome keeps the page's own breadcrumb out of
+# //// the markup when the band draws one (context.no_breadcrumbs, which the shop's and frappe's
+# //// breadcrumb includes already honour).
+def band_draws_trail(context) -> bool:
+	"""Whether the band draws the page's breadcrumb trail, visibly."""
+	return 'class="site-page-header__crumbs"' in _band_parts(context)[0]
 
 
 # //// Neoffice — the band's subtitle is never a line the page already prints
@@ -569,7 +641,7 @@ def render_builder_page_header(doc=None, own_top=None) -> str:
 	composed for it; every interior page opens on this instead of a title band
 	each generation improvises differently — which is the whole point of having
 	one. An interior page that opens on its own title keeps it too: the band then
-	leaves only the breadcrumb trail, as JSON-LD.
+	leaves only the breadcrumb trail, drawn in a slim strip and given as JSON-LD.
 	"""
 	if doc is None:
 		return ""
@@ -626,6 +698,8 @@ def render_builder_page_header(doc=None, own_top=None) -> str:
 			"title": title,
 			"page_header_subtitle": subtitle,
 			"page_opens_itself": opens_itself,
+			# the page setting "No top page on this page": not even the trail's strip is drawn
+			"page_hides_band": bool(_field("hide_page_header")) and own_top is None,
 			"page_fonts": _page_fonts(blocks),
 			"page_image": _field("meta_image"),
 		}

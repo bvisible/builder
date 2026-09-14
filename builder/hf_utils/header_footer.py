@@ -597,11 +597,18 @@ def get_editor_page_header_html(page=None, website_profile=None):
 			frappe.local.website_profile = profile
 			frappe.local.website_profile_doc = frappe.get_cached_doc("Website Profile", profile)
 		html = render_builder_page_header(view, own_top=False) or ""
+		# //// Neoffice — and the trail's strip, which a page opening on its own title shows instead
+		# //// (page_header._band_parts, 2026-09-14)
+		crumbs_html = render_builder_page_header(view, own_top=True) or ""
 	finally:
 		frappe.local.website_profile, frappe.local.website_profile_doc = previous
-	html = re.sub(r'<script type="application/ld\+json">.*?</script>', "", html, flags=re.S)
-	html = re.sub(r'<style>\.site-header__spacer.*?</style>\s*<div class="site-header__spacer[^"]*"[^>]*></div>', "", html, flags=re.S)
-	return {"configured": bool(html.strip()), "html": html}
+
+	def preview(markup):
+		markup = re.sub(r'<script type="application/ld\+json">.*?</script>', "", markup, flags=re.S)
+		return re.sub(r'<style>\.site-header__spacer.*?</style>\s*<div class="site-header__spacer[^"]*"[^>]*></div>', "", markup, flags=re.S)
+
+	html, crumbs_html = preview(html), preview(crumbs_html)
+	return {"configured": bool(html.strip()), "html": html, "crumbs_html": crumbs_html}
 
 
 # The whole-page chrome, as Jinja methods. api.py exposes the same thing as

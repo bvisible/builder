@@ -69,12 +69,44 @@ class TestPageTop(unittest.TestCase):
 			return page_header.render_builder_page_header(doc)
 
 	def test_a_page_opening_on_its_own_title_gets_no_second_one(self):
-		"""A services page drew "Services" in the band, then its own "Our services": two h1."""
+		"""A services page drew "Services" in the band, then its own "Our services": two h1. The trail
+		stays visible above it, in a strip of its own: without it a visitor saw no breadcrumb at all on
+		most generated pages (2026-09-14)."""
 		html = self.band(OWN_TOP)
 		self.assertNotIn("<h1", html)
-		self.assertNotIn("site-page-header", html)
-		# the trail stays for the search engines
+		self.assertIn("site-page-header--crumbs", html)
+		self.assertIn('<nav class="site-page-header__crumbs"', html)
 		self.assertEqual(trail_of(html), [frappe._("Home"), "Services"])
+
+	def test_an_own_title_page_without_the_breadcrumb_keeps_only_the_json_ld(self):
+		html = self.band(OWN_TOP, show_breadcrumbs=0)
+		self.assertNotIn("site-page-header", html)
+		self.assertEqual(trail_of(html), [frappe._("Home"), "Services"])
+
+	def test_a_shop_page_follows_the_shop_trail(self):
+		"""The band read "Home / Shop by Category / Products / T-Shirt" where the shop's own trail, hidden
+		under it, reads "Home / Shop / Products / T-Shirt"."""
+		parents = [
+			{"route": "shop-by-category", "title": "Shop by Category"},
+			{"route": "products", "title": "Products"},
+			{"route": "products/t-shirt", "title": "T-Shirt"},
+		]
+		context = frappe._dict(doc=frappe._dict(doctype="Website Item"), parents=parents)
+		trail = page_header._breadcrumbs(context, "products/t-shirt/coastline", "Coastline")
+		self.assertEqual([c["label"] for c in trail], [frappe._("Home"), frappe._("Shop"), "Products", "T-Shirt", "Coastline"])
+		self.assertEqual(trail[1]["url"], "/all-products")
+		listing = page_header._breadcrumbs(frappe._dict(), "all-products", frappe._("All Products"))
+		self.assertEqual([c["label"] for c in listing], [frappe._("Home"), frappe._("Shop")])
+		self.assertEqual(listing[-1]["url"], "")
+
+	def test_the_band_says_when_it_draws_the_trail(self):
+		"""site_chrome keeps the page's own breadcrumb out of the markup when the band draws one."""
+		context = frappe._dict(title="Cart", parents=[])
+		with patch.object(frappe.local, "page_header_route", "cart", create=True):
+			with patch.object(page_header, "settings", return_value=dict(page_header.DEFAULTS)):
+				self.assertTrue(page_header.band_draws_trail(context))
+			with patch.object(page_header, "settings", return_value=dict(page_header.DEFAULTS, show_breadcrumbs=0)):
+				self.assertFalse(page_header.band_draws_trail(context))
 
 	def test_a_page_opening_on_its_content_keeps_the_band(self):
 		html = self.band(CONTENT_FIRST)
@@ -130,7 +162,10 @@ class TestPageTop(unittest.TestCase):
 			patch.object(page_header, "settings", return_value=dict(page_header.DEFAULTS)),
 		):
 			self.assertIn('class="site-page-header', page_header.render_builder_page_header(doc, own_top=False))
-			self.assertNotIn("site-page-header", page_header.render_builder_page_header(doc))
+			# on its own, the page shows the trail's strip and no second title
+			auto = page_header.render_builder_page_header(doc)
+			self.assertIn("site-page-header--crumbs", auto)
+			self.assertNotIn("<h1", auto)
 
 	def test_a_page_set_to_go_without_the_band_keeps_its_trail(self):
 		doc = frappe._dict(route="services", page_title="Services", blocks=CONTENT_FIRST, hide_page_header=1)

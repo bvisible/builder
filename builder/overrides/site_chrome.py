@@ -306,6 +306,17 @@ def _inject_config_chrome(context):
 			trail = ""
 		if trail:
 			context["head_include"] = (context.get("head_include") or "") + trail
+		# //// Neoffice — one trail per page (2026-09-14): when the band draws the breadcrumb, the page's
+		# //// own (the shop's templates/includes/breadcrumbs.html, frappe's) stays out of the markup. The
+		# //// shop only hid it under the band, and its microdata doubled the band's trail for the search
+		# //// engines. Both includes already honour no_breadcrumbs.
+		try:
+			from builder.page_header import band_draws_trail
+
+			if band_draws_trail(context):
+				context["no_breadcrumbs"] = 1
+		except Exception:
+			pass
 
 	# An explicit choice by the page wins: the Builder's own generator template
 	# renders the chrome itself, and portal pages may set their own.
