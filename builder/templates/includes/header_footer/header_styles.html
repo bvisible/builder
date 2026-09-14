@@ -887,6 +887,13 @@ document.addEventListener('DOMContentLoaded', function() {
 		}
 		window.addEventListener('resize', schedule);
 		if (document.fonts && document.fonts.ready) { document.fonts.ready.then(schedule); }
+		// //// Neoffice — fonts.ready resolves at once when the menu's web font has not started loading
+		// //// yet, and the container keeps its size while the labels widen: the row was measured in the
+		// //// fallback font and its last link slid under the account block instead of into "more" (a
+		// //// reseller site at 1400 px, 2026-09-14). Measure again when any font lands and when the page
+		// //// has loaded (the links are not observed: the fold itself moves them).
+		if (document.fonts && document.fonts.addEventListener) { document.fonts.addEventListener('loadingdone', schedule); }
+		window.addEventListener('load', schedule);
 		layout();
 	})();
 });
