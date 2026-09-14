@@ -835,6 +835,7 @@ def duplicate_page(page_name: str):
 	del new_page.page_name
 	new_page.route = None
 	clone_client_scripts(page, new_page)
+	new_page.flags.source = "duplicate"
 	new_page.insert()
 	return new_page
 
@@ -915,7 +916,9 @@ def _strip_template_navigation(blocks: list, components: list) -> list:
 	return strip(blocks if isinstance(blocks, list) else [blocks])
 
 
-def create_page_from_bundle(bundle: dict, project_folder: str | None = None) -> str:
+def create_page_from_bundle(
+	bundle: dict, project_folder: str | None = None, template_page: str | None = None
+) -> str:
 	"""Create an editable page from a fetched hub bundle and return its name.
 
 	Installs shared components/variables/scripts/fonts, then builds the page
@@ -965,6 +968,8 @@ def create_page_from_bundle(bundle: dict, project_folder: str | None = None) -> 
 		)
 		new_script.insert(ignore_permissions=True)
 		new_page.append("client_scripts", {"builder_script": new_script.name})
+	new_page.flags.source = "template"
+	new_page.flags.template_page = template_page
 	new_page.insert()
 	# only fall back to async generation when the template carried no preview
 	if not preview:
@@ -991,7 +996,7 @@ def create_page_from_template(template_page: str, project_folder: str | None = N
 		frappe.throw(frappe._("Could not load the selected template. Please try again."))
 
 	assert isinstance(bundle, dict)
-	return create_page_from_bundle(bundle, project_folder)
+	return create_page_from_bundle(bundle, project_folder, template_page)
 
 
 @frappe.whitelist()
@@ -1016,7 +1021,7 @@ def import_template_group(template_group: str, project_folder: str | None = None
 			continue
 		if not bundle or not bundle.get("page"):
 			continue
-		name = create_page_from_bundle(bundle, project_folder)
+		name = create_page_from_bundle(bundle, project_folder, page.get("name"))
 		created.append(name)
 
 	if not created:
@@ -1479,6 +1484,20 @@ def get_component_data(
 	)
 
 	return _get_component_data(component_name, props, script)
+
+
+@frappe.whitelist()
+@has_page_read("You do not have permission to submit the survey.")
+def identify_persona(role: str | None = None, use_case: str | None = None, source: str | None = None) -> None:
+	"""Attach the onboarding answers to the site's Pulse profile so every Builder
+	metric can be split by persona without joining events."""
+	if not any((role, use_case, source)):
+		return
+	try:
+		from frappe.utils.telemetry.pulse.client import identify
+	except ImportError:  # pulse identify shipped with frappe v16
+		return
+	identify({"builder_role": role, "builder_use_case": use_case, "builder_source": source})
 
 
 # //// Neoffice — added block (no upstream equivalent), ~1350 lines to the end of the file:
