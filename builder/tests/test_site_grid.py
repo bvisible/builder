@@ -65,6 +65,13 @@ class TestChromeOnTheGrid(unittest.TestCase):
 		self.assertIn("padding:44px var(--container-padding,24px) 36px", _CSS)
 		self.assertIn("var(--container-padding-phone,16px)", _CSS)
 
+	def test_on_a_phone_the_logo_gives_way_to_the_buttons(self):
+		"""A wordmark kept its 280px on a 390px screen: the burger ended at 420px and the page zoomed out."""
+		header = template("header_styles.html")
+		phone = header[header.index("on a phone the logo gives way") :]
+		self.assertIn(".site-header:not([data-layout=\"B\"]) .site-header__left {\n\t\tflex: 0 1 auto;\n\t\tmin-width: 0;", phone)
+		self.assertIn("max-width: 100%;\n\t\tmax-height: 36px;", phone)
+
 	def test_the_designed_band_starts_on_the_grid(self):
 		"""The gutter sits on the column that carries the width, like the header's container: on the
 		outer section it put the band's text 24px left of the logo."""

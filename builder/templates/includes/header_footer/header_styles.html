@@ -693,6 +693,26 @@ html:not(.is-signed-in) .site-header [data-audience="signed-in"] {
 		height: 64px;
 	}
 
+	/* //// Neoffice — on a phone the logo gives way to the buttons: a wordmark twelve times wider than
+	   //// tall kept its 280px, and the burger ended at 420px on a 390px screen, which zoomed the whole
+	   //// page out (a reseller site, 2026-09-14). The logo column shrinks, the image scales with it. */
+	.site-header:not([data-layout="B"]) .site-header__left {
+		flex: 0 1 auto;
+		min-width: 0;
+	}
+
+	.site-header .site-logo {
+		min-width: 0;
+	}
+
+	.site-header .site-logo__image {
+		width: auto;
+		height: auto;
+		min-width: 0;
+		max-width: 100%;
+		max-height: 36px;
+	}
+
 	.site-header__center,
 	.site-header__right .site-cta {
 		display: none;
@@ -726,6 +746,11 @@ html:not(.is-signed-in) .site-header [data-audience="signed-in"] {
 	.site-header__container,
 	.site-header__search-bar-full-container {
 		padding: 0 var(--container-padding-phone, 16px);
+	}
+
+	/* the buttons of a phone bar stand closer: the room goes to the logo */
+	.site-header__container {
+		gap: 12px;
 	}
 }
 
