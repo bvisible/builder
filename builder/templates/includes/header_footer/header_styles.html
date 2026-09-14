@@ -688,7 +688,8 @@ html:not(.is-signed-in) .site-header [data-audience="signed-in"] {
 
 @media (max-width: 768px) {
 	.site-header__container {
-		padding: 0 16px;
+		/* //// Neoffice — the site grid (theme_variables.html); 16px without it, as before */
+		padding: 0 var(--container-padding-tablet, 16px);
 		height: 64px;
 	}
 
@@ -715,7 +716,16 @@ html:not(.is-signed-in) .site-header [data-audience="signed-in"] {
 	}
 
 	.site-header__search-bar-full-container {
-		padding: 0 16px;
+		padding: 0 var(--container-padding-tablet, 16px);
+	}
+}
+
+/* //// Neoffice — on a phone the pages take their own gutter (the Builder's mobile styles start at 576px):
+   //// the bar follows it (theme_variables.html, --container-padding-phone; 16px without it, as before). */
+@media (max-width: 576px) {
+	.site-header__container,
+	.site-header__search-bar-full-container {
+		padding: 0 var(--container-padding-phone, 16px);
 	}
 }
 

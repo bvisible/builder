@@ -66,8 +66,11 @@ _DARK_BACKGROUNDS = ("Image", "Solid")
 #
 # On a Builder page the title and the text take the page's own faces when it has some
 # (--sph-*, see _page_fonts): the theme's fonts are the fallback, not the rule.
+#
+# //// Neoffice — the inner column sits on the site grid with the header and the footer
+# //// (theme_variables.html, --container-*), at their thresholds: 24px then 16px without the grid tokens.
 _CSS = (
-	"<style>.site-page-header{border-bottom:1px solid var(--footer-border,rgba(0,0,0,0.08))}.site-page-header__inner{max-width:var(--container-width,1280px);margin:0 auto;padding:44px 24px 36px;font-family:var(--sph-body-font,inherit)}.site-page-header__crumbs{display:flex;flex-wrap:wrap;align-items:center;gap:6px;font-size:0.8125rem;color:var(--muted-color,#6b7280);margin-bottom:12px}.site-page-header__crumbs a{color:inherit;text-decoration:none}.site-page-header__crumbs a:hover{color:var(--primary-color,#111)}.site-page-header__sep{opacity:0.5}.site-page-header__title{font-size:clamp(1.9rem,1.2rem + 2.2vw,3rem);font-weight:var(--sph-heading-weight,700);font-family:var(--sph-heading-font,var(--heading-font,inherit));line-height:1.15;margin:0}.site-page-header__subtitle{max-width:62ch;margin:10px 0 0;color:var(--muted-color,#6b7280);line-height:1.6}.site-page-header--minimal .site-page-header__inner{padding-top:32px;padding-bottom:24px}.site-page-header--centered .site-page-header__inner{text-align:center}.site-page-header--centered .site-page-header__crumbs{justify-content:center}.site-page-header--centered .site-page-header__subtitle{margin-left:auto;margin-right:auto}.site-page-header__split{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:32px;align-items:end}.site-page-header__split .site-page-header__subtitle{margin-top:0}@media (max-width:768px){.site-page-header__split{grid-template-columns:1fr;gap:12px}}.site-page-header--bg-image .site-page-header__inner,.site-page-header--bg-solid .site-page-header__inner{padding-top:72px;padding-bottom:64px}.site-page-header--on-dark{border-bottom-color:transparent}.site-page-header--on-dark .site-page-header__title{color:#fff}.site-page-header--on-dark .site-page-header__subtitle,.site-page-header--on-dark .site-page-header__crumbs{color:rgba(255,255,255,0.82)}.site-page-header--on-dark .site-page-header__crumbs a:hover{color:#fff}.site-page-header--bg-tinted{border-bottom-color:transparent}</style>"
+	"<style>.site-page-header{border-bottom:1px solid var(--footer-border,rgba(0,0,0,0.08))}.site-page-header__inner{max-width:var(--container-width,1280px);margin:0 auto;padding:44px var(--container-padding,24px) 36px;font-family:var(--sph-body-font,inherit)}.site-page-header__crumbs{display:flex;flex-wrap:wrap;align-items:center;gap:6px;font-size:0.8125rem;color:var(--muted-color,#6b7280);margin-bottom:12px}.site-page-header__crumbs a{color:inherit;text-decoration:none}.site-page-header__crumbs a:hover{color:var(--primary-color,#111)}.site-page-header__sep{opacity:0.5}.site-page-header__title{font-size:clamp(1.9rem,1.2rem + 2.2vw,3rem);font-weight:var(--sph-heading-weight,700);font-family:var(--sph-heading-font,var(--heading-font,inherit));line-height:1.15;margin:0}.site-page-header__subtitle{max-width:62ch;margin:10px 0 0;color:var(--muted-color,#6b7280);line-height:1.6}.site-page-header--minimal .site-page-header__inner{padding-top:32px;padding-bottom:24px}.site-page-header--centered .site-page-header__inner{text-align:center}.site-page-header--centered .site-page-header__crumbs{justify-content:center}.site-page-header--centered .site-page-header__subtitle{margin-left:auto;margin-right:auto}.site-page-header__split{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:32px;align-items:end}.site-page-header__split .site-page-header__subtitle{margin-top:0}@media (max-width:768px){.site-page-header__split{grid-template-columns:1fr;gap:12px}}.site-page-header--bg-image .site-page-header__inner,.site-page-header--bg-solid .site-page-header__inner{padding-top:72px;padding-bottom:64px}.site-page-header--on-dark{border-bottom-color:transparent}.site-page-header--on-dark .site-page-header__title{color:#fff}.site-page-header--on-dark .site-page-header__subtitle,.site-page-header--on-dark .site-page-header__crumbs{color:rgba(255,255,255,0.82)}.site-page-header--on-dark .site-page-header__crumbs a:hover{color:#fff}.site-page-header--bg-tinted{border-bottom-color:transparent}@media (max-width:768px){.site-page-header .site-page-header__inner{padding-left:var(--container-padding-tablet,16px);padding-right:var(--container-padding-tablet,16px)}}@media (max-width:576px){.site-page-header .site-page-header__inner{padding-left:var(--container-padding-phone,16px);padding-right:var(--container-padding-phone,16px)}}</style>"
 )
 
 
@@ -721,8 +724,14 @@ def default_band_block(prefix: str = "") -> dict:
 		"blockName": "top-page",
 		"baseStyles": {
 			"display": "flex", "flexDirection": "column", "width": "100%", "paddingTop": "56px",
-			"paddingBottom": "48px", "paddingLeft": "24px", "paddingRight": "24px",
+			"paddingBottom": "48px", "paddingLeft": "var(--container-padding, 24px)",
+			"paddingRight": "var(--container-padding, 24px)",
 			"background": token("background", "#ffffff"),
+		},
+		# the site grid of the header and the footer (theme_variables.html), down to the phone
+		"mobileStyles": {
+			"paddingLeft": "var(--container-padding-phone, 16px)",
+			"paddingRight": "var(--container-padding-phone, 16px)",
 		},
 		"children": [{
 			"blockId": uid(),
@@ -730,7 +739,7 @@ def default_band_block(prefix: str = "") -> dict:
 			"blockName": "top-page-inner",
 			"baseStyles": {
 				"display": "flex", "flexDirection": "column", "gap": "12px", "width": "100%",
-				"maxWidth": "1280px", "marginLeft": "auto", "marginRight": "auto",
+				"maxWidth": "var(--container-width, 1280px)", "marginLeft": "auto", "marginRight": "auto",
 			},
 			"children": [
 				{"blockId": uid(), "element": "nav", "blockName": "trail", "innerHTML": trail,

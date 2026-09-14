@@ -32,6 +32,15 @@
    ========================================================================== */
 
 :root {
+{%- if tp %}
+	/* //// Neoffice — the site grid (Dimension tokens <prefix>-container, -gutter and -gutter-phone, minted
+	   //// by Nora from its layout system, site_builder.SITE_GRIDS): header, footer and top page band sit
+	   //// on the pages' grid. A site without these tokens keeps the fallbacks, and its rendering. */
+	--container-width: var(--{{ tp }}-container, 1280px);
+	--container-padding: var(--{{ tp }}-gutter, 24px);
+	--container-padding-tablet: var(--{{ tp }}-gutter, 16px);
+	--container-padding-phone: var(--{{ tp }}-gutter-phone, 16px);
+{%- endif %}
 	/* Primary colors - WebShop compatibility */
 	--primary: {% if tp %}var(--{{ tp }}-primary, {{ primary_hex }}){% else %}{{ primary_hex }}{% endif %};
 	--primary-color: {% if tp %}var(--{{ tp }}-primary, {{ primary_hex }}){% else %}{{ primary_hex }}{% endif %};

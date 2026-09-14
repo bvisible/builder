@@ -320,6 +320,21 @@
 	color: var(--footer-text);
 }
 
+/* //// Neoffice — the site grid at the header's thresholds (theme_variables.html): the footer took 16px
+   //// only below 640px while the bar did below 768px. The doubled class wins over the 640px rule below;
+   //// without the grid tokens the values are the bar's, 16px. */
+@media (max-width: 768px) {
+	.site-footer .site-footer__container {
+		padding: 0 var(--container-padding-tablet, 16px);
+	}
+}
+
+@media (max-width: 576px) {
+	.site-footer .site-footer__container {
+		padding: 0 var(--container-padding-phone, 16px);
+	}
+}
+
 /* Responsive */
 @media (max-width: 1024px) {
 	.site-footer--standard .site-footer__main,

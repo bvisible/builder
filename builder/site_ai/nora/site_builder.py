@@ -416,6 +416,58 @@ def mint_tokens(prefix: str, group: str, brief, primary: str, secondary: str) ->
     return handles
 
 
+# //// Neoffice ▼▼▼ — the site grid the chrome shares with the pages (2026-09-14). Header, footer and top
+# //// page band sat on 1280 px / 24 px while an editorial grid's pages sat on 1440 px / 48 px: a 36 px
+# //// staircase at 1400 px, and 16 px against 24 px on a phone. The container of each layout system
+# //// (builder/ai/prompts.py, "Layout systems") becomes three Dimension tokens that the chrome reads
+# //// (theme_variables.html) and that the pages are told to use (site_grid_line).
+SITE_GRIDS = {
+    "editorial-grid": ("1440px", "48px"),
+    "classic-centered": ("1200px", "64px"),
+    "bento": ("1280px", "24px"),
+}
+DEFAULT_GRID = ("1280px", "24px")
+# the craft floor's section padding on a phone, '64px 24px' (builder/ai/prompts.py)
+PHONE_GUTTER = "24px"
+
+
+def site_grid(layout_system: str) -> dict:
+    """The container width, the gutter and the phone gutter of a layout system."""
+    width, gutter = SITE_GRIDS.get(layout_system, DEFAULT_GRID)
+    return {"container": width, "gutter": gutter, "gutter-phone": PHONE_GUTTER}
+
+
+def mint_grid_tokens(prefix: str, group: str, layout_system: str) -> dict:
+    """The site grid as three Dimension tokens with stable ids; returns their handles."""
+    handles = {}
+    for key, value in site_grid(layout_system).items():
+        doc_id = f"{prefix}-{key}"
+        label = f"{group} {key.replace('-', ' ').title()}"
+        if frappe.db.exists("Builder Token", doc_id):
+            doc = frappe.get_doc("Builder Token", doc_id)
+            doc.update({"type": "Dimension", "value": value, "token_name": label, "group": group})
+            doc.save(ignore_permissions=True)
+        else:
+            frappe.get_doc(
+                {"doctype": "Builder Token", "token_name": label, "type": "Dimension", "value": value, "group": group}
+            ).insert(ignore_permissions=True, set_name=doc_id)
+        handles[key] = f"var(--{doc_id})"
+    frappe.db.commit()
+    return handles
+
+
+def site_grid_line(handles: dict) -> str:
+    """The page brief's line on the site grid, when the site has one."""
+    if not handles.get("container"):
+        return ""
+    return (
+        f"SITE GRID: when a section has an inner container, it is maxWidth {handles['container']}, margin '0 auto', "
+        f"paddingLeft and paddingRight {handles['gutter']} (m_style {handles['gutter-phone']}). The header, the top page "
+        "band and the footer sit on this grid, so the content lines up with them."
+    )
+# //// Neoffice ▲▲▲
+
+
 def placeholder_photos(page: dict, activity: str, categories=(), listing: bool = False) -> list[str]:
     """The photo slots a page is written with when the client gave no photograph. The home and
     the page that lists the offer get one per category besides: given two for four services, a
@@ -933,6 +985,8 @@ def page_brief_text(site: dict, brief, page: dict, handles: dict, contact_prompt
     lines = [
         f"DESIGN DIRECTION: {concept or 'a distinctive direction that fits the brand'} (tone: {tone or 'professional'}; hero style: {hero or 'free'}).",
         f"LAYOUT SYSTEM: {layout_system}. SIGNATURE MOVE: {signature or 'choose one that fits the system'}. Keep the SAME system and move on every page of this site.",
+        # //// Neoffice — the grid the header, the band and the footer share (site_grid_line)
+        site_grid_line(handles),
         ("INSPIRATION (what the client likes; echo the palette and the mood, never copy): " + " | ".join(site["inspiration"])) if site.get("inspiration") else "",
         today_line(frappe.utils.today()),
         f"BRAND: {site['site_name']}. Activity: {site['activity']}",
@@ -1539,6 +1593,11 @@ def build_site(ctx, spec: dict) -> str:
     # 4. the design system as tokens, and the chrome from the brief
     prefix = token_prefix(profile or site_name)
     handles = mint_tokens(prefix, profile or site_name, brief, primary, secondary)
+    # //// Neoffice — and the site grid the chrome shares with the pages (SITE_GRIDS)
+    try:
+        handles.update(mint_grid_tokens(prefix, profile or site_name, choose_layout_system(spec.get("style_direction"), brief)))
+    except Exception as e:
+        ai_log("warning", "Grid tokens failed", error=str(e)[:200])
     palette = palette_values(prefix)
     # //// Neoffice — see the block marker above: text made readable on background
     readable = ensure_readable_text(prefix, palette)
