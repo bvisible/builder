@@ -756,12 +756,12 @@ def render_builder_page_header(doc=None, own_top=None) -> str:
 # //// Neoffice — the trail inside the page's own top (2026-09-14). A page that opens on its own title
 # //// showed its trail above that top, in a strip on the band's ground, while the top below had a ground of
 # //// its own: the trail read as a separate bar. It now sits in the top, under the title and under the rule
-# //// that underlines it when there is one, in the title's colour and the page's text face. It has classes
-# //// of its own: the band's paint its trail in a muted grey that a title on a photograph would lose.
+# //// that underlines it when there is one, in the colour of the line under it and the page's text face. It
+# //// has classes of its own: the band's paint its trail in a muted grey that a title on a photograph would lose.
 _CRUMBS_CSS = (
 	"<style>.site-page-crumbs{display:flex;flex-wrap:wrap;align-items:center;gap:6px;margin:.5em 0 0;"
 	"font-family:var(--sph-body-font,inherit);font-size:.8125rem;font-weight:400;line-height:1.5;"
-	"letter-spacing:normal;text-transform:none;opacity:.8}.site-page-crumbs a{color:inherit;"
+	"letter-spacing:normal;text-transform:none}.site-page-crumbs a{color:inherit;"
 	"text-decoration:none}.site-page-crumbs a:hover{text-decoration:underline}"
 	".site-page-crumbs__sep{opacity:.6}</style>"
 )
@@ -789,35 +789,62 @@ def _is_title(block) -> bool:
 	)
 
 
+def _first_text(node, depth=0):
+	"""The first block of `node`'s subtree, itself included, that shows text; None when it shows none."""
+	if depth > 16 or not isinstance(node, dict):
+		return None
+	if _plain(node.get("innerHTML") or ""):
+		return node
+	for child in node.get("children") or []:
+		found = _first_text(child, depth + 1)
+		if found is not None:
+			return found
+	return None
+
+
 def _title_and_rules(blocks):
-	"""The block that carries the h1 of the page's first section, and the number of rules drawn right
-	under it; (None, 0) when that section has no h1."""
+	"""The block that carries the h1 of the page's first section, the number of rules drawn right under
+	it, and the first block below them that shows text — the line the trail reads with. (None, 0, None)
+	when that section has no h1."""
 
 	def find(node, depth=0):
 		if depth > 16 or not isinstance(node, dict):
-			return None, 0
+			return None, 0, None
 		children = [child for child in node.get("children") or [] if isinstance(child, dict)]
 		for index, child in enumerate(children):
 			if _is_title(child):
 				rules = 0
 				while index + 1 + rules < len(children) and _is_rule(children[index + 1 + rules]):
 					rules += 1
-				return child, rules
+				line = None
+				for after in children[index + 1 + rules:]:
+					line = _first_text(after)
+					if line is not None:
+						break
+				return child, rules, line
 			found = find(child, depth + 1)
 			if found[0] is not None:
 				return found
-		return None, 0
+		return None, 0, None
 
 	first = _first_section(blocks)
 	if first is None:
-		return None, 0
-	return (first, 0) if _is_title(first) else find(first)
+		return None, 0, None
+	return (first, 0, None) if _is_title(first) else find(first)
 
 
-def _crumbs_style(title) -> str:
-	"""The trail's colour and alignment: the title's, when its block sets them."""
+def _crumbs_style(title, line) -> str:
+	"""The trail's colour and alignment.
+
+	The colour is the one of the line under the title, the reading ink of that ground — not the title's
+	accent, which is chosen for a size the trail does not have: gold under a gold title measured 2.74:1
+	against its pale ground, where small text needs 4.5:1 (2026-09-14). A line that sets no colour of its
+	own leaves the trail to inherit, which is exactly what that line shows. A title alone in its top —
+	over a photograph — lends its own.
+	"""
 	styles = (title.get("baseStyles") or {}) if isinstance(title, dict) else {}
-	colour = _colour(str(styles.get("color") or ""))
+	source = line if isinstance(line, dict) else title
+	colour = _colour(str(((source.get("baseStyles") or {}) if isinstance(source, dict) else {}).get("color") or ""))
 	align = _CRUMBS_ALIGN.get(str(styles.get("textAlign") or "").strip().lower())
 	return (f"color:{colour};" if colour else "") + (f"justify-content:{align};" if align else "")
 
@@ -859,7 +886,7 @@ def place_page_crumbs(content: str, doc) -> str:
 	blocks = _rendered_blocks(doc)
 	if not _opens_with_own_title(blocks):
 		return content
-	heading, rules = _title_and_rules(blocks)
+	heading, rules, line = _title_and_rules(blocks)
 	at = _after_title(content, rules)
 	if at < 0:
 		return content
@@ -873,7 +900,7 @@ def place_page_crumbs(content: str, doc) -> str:
 		for crumb in trail[:-1]
 	)
 	current = f'<span aria-current="page">{escape_html(trail[-1]["label"])}</span>'
-	style = _crumbs_style(heading) + _page_fonts(blocks)
+	style = _crumbs_style(heading, line) + _page_fonts(blocks)
 	style_attr = f' style="{style}"' if style else ""
 	label = escape_html(_("Breadcrumb"))
 	nav = f'<nav class="site-page-crumbs" aria-label="{label}"{style_attr}>{links}{current}</nav>'

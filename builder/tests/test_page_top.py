@@ -357,9 +357,21 @@ class TestPageTop(unittest.TestCase):
 		html = self.placed(RULED_TOP)
 		self.assertIn('<div class="rule"></div><style>', html)
 		nav = nav_of(html)
-		self.assertIn("color:#a67c00;", nav)
 		self.assertIn("justify-content:center;", nav)
 		self.assertIn("--sph-body-font:'DM Sans', sans-serif;", nav)
+
+	def test_the_trail_reads_with_the_line_under_the_title(self):
+		"""The title's accent is chosen for a size the trail does not have: gold under a gold title measured
+		2.74:1 against its pale ground, where small text needs 4.5:1 (2026-09-14)."""
+		# the line sets a colour of its own: the trail takes it, not the title's
+		coloured = page(section(text("h1", "What we do", color="#a67c00"), text("p", "From the market.", color="#222222")))
+		self.assertIn("color:#222222;", nav_of(self.placed(coloured, content="<h1>T</h1><p>x</p>")))
+		# it sets none: the trail inherits, which is what that line shows
+		plain = page(section(text("h1", "What we do", color="#a67c00"), text("p", "From the market.")))
+		self.assertNotIn("color:", nav_of(self.placed(plain, content="<h1>T</h1><p>x</p>")))
+		# a title alone in its top, over a photograph: its colour is the only one there
+		alone = page(section(text("h1", "Boardsports", color="#ffffff")))
+		self.assertIn("color:#ffffff;", nav_of(self.placed(alone, content="<h1>T</h1>")))
 
 	def test_no_trail_under_the_title_where_the_band_draws_it_or_nothing_should(self):
 		self.assertEqual(self.placed(CONTENT_FIRST), TOP_MARKUP)
