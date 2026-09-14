@@ -294,6 +294,18 @@ def _inject_config_chrome(context):
 	# The page header renders inside a Web Template, which has its own scope and
 	# cannot see this dict. Stash it where render_page_header can find it.
 	frappe.local.page_header_context = context
+	# its breadcrumb trail goes into <head>: inside the Site Header web template the JSON-LD
+	# <script> is hoisted without its type (page_header.render_page_header). A Builder page
+	# draws its own band, trail included, from webpage.html.
+	if getattr(context.get("doc"), "doctype", None) != "Builder Page":
+		try:
+			from builder.page_header import breadcrumb_ld
+
+			trail = breadcrumb_ld(context)
+		except Exception:
+			trail = ""
+		if trail:
+			context["head_include"] = (context.get("head_include") or "") + trail
 
 	# An explicit choice by the page wins: the Builder's own generator template
 	# renders the chrome itself, and portal pages may set their own.

@@ -191,12 +191,12 @@ def _breadcrumbs(context, path: str, current: str) -> list:
 	return deduped
 
 
-def render(context) -> str:
-	"""The band, or an empty string when this page should not have one.
+def _band_parts(context) -> tuple[str, str]:
+	"""(the band, the breadcrumb trail as JSON-LD) for a page; either may be empty.
 
-	The breadcrumb trail rides along as JSON-LD whenever the page has one. It stays for the
-	search engines when the band is switched off, when the trail is not shown, and when the
-	page opens on a title of its own (see _opens_with_own_title).
+	The trail is there whenever the page has one. It stays for the search engines when the
+	band is switched off, when the trail is not shown, and when the page opens on a title of
+	its own (see _opens_with_own_title).
 	"""
 	config = settings()
 	template = config.get("page_header_template") or "Standard"
@@ -204,21 +204,21 @@ def render(context) -> str:
 	# A page may say it opens on its own composition — our 404 is a centred
 	# statement, and a band above it would be the same words twice.
 	if context.get("show_page_header") is False:
-		return ""
+		return "", ""
 
 	path = (getattr(frappe.local, "page_header_route", None) or (frappe.request.path if frappe.request else "")).strip("/")
 	if _is_excluded(path, _excluded_routes(config)):
-		return ""
+		return "", ""
 
 	# an article opens on its cover; that hero already is the page header
 	doc = context.get("doc")
 	doctype = getattr(doc, "doctype", None) if doc else None
 	if doctype == "Blog Post":
-		return ""
+		return "", ""
 
 	title = context.get("page_header_title") or context.get("title") or ""
 	if not title:
-		return ""
+		return "", ""
 
 	# //// Neoffice — the trail stays in the page whatever is drawn (2026-09-14): switching the
 	# //// breadcrumb off, or the whole band, took it out of the markup, and the search engines
@@ -226,7 +226,7 @@ def render(context) -> str:
 	trail = _breadcrumbs(context, path, title)
 	seo = _breadcrumb_ld(trail)
 	if template == "None" or context.get("page_opens_itself"):
-		return seo
+		return "", seo
 
 	background = config.get("page_header_background") or "None"
 	# //// Neoffice — escaped here, at the seam, rather than in the template. frappe's Jinja
@@ -252,7 +252,13 @@ def render(context) -> str:
 				{"label": escape_html(c["label"]), "url": escape_html(c["url"])} for c in crumbs
 			],
 		},
-	) + seo
+	), seo
+
+
+def render(context) -> str:
+	"""The band with its breadcrumb trail, or an empty string when this page should not have one."""
+	band, seo = _band_parts(context)
+	return band + seo
 
 
 # //// Neoffice — colour allowlist. `page_header_bg_color` was interpolated straight into a
@@ -323,7 +329,16 @@ def render_page_header() -> str:
 	context = getattr(frappe.local, "page_header_context", None)
 	if context is None:
 		return ""
-	return render(context)
+	# the band alone: frappe hoists the <script> tags of a web template into a <script
+	# data-web-template> without their type, so the trail's JSON-LD ran as JavaScript (a
+	# SyntaxError on every page) and no search engine read it (2026-09-14). The trail goes into
+	# the page's <head> instead: see breadcrumb_ld and site_chrome._inject_config_chrome.
+	return _band_parts(context)[0]
+
+
+def breadcrumb_ld(context) -> str:
+	"""The breadcrumb trail of a page frappe renders, as JSON-LD for its <head>."""
+	return _band_parts(context)[1]
 
 
 # //// Neoffice — the band's subtitle is never a line the page already prints

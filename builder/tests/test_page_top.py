@@ -120,6 +120,43 @@ class TestPageTop(unittest.TestCase):
 		for unreadable in ("not json", None, "{}"):
 			self.assertFalse(page_header._opens_with_own_title(unreadable))
 
+	def test_a_frappe_page_band_carries_no_script(self):
+		"""frappe hoists a web template's <script> tags without their type: the trail's JSON-LD
+		ran as JavaScript on every page that went through the Site Header template."""
+		previous = (getattr(frappe.local, "page_header_route", None), getattr(frappe.local, "page_header_context", None))
+		frappe.local.page_header_route = "shop/boards"
+		frappe.local.page_header_context = frappe._dict(title="Boards")
+		try:
+			with patch.object(page_header, "settings", return_value=dict(page_header.DEFAULTS)):
+				band = page_header.render_page_header()
+				head = page_header.breadcrumb_ld(frappe.local.page_header_context)
+		finally:
+			frappe.local.page_header_route, frappe.local.page_header_context = previous
+		self.assertIn('class="site-page-header', band)
+		self.assertNotIn("<script", band)
+		self.assertEqual(trail_of(head), [frappe._("Home"), "Shop", "Boards"])
+
+	def test_the_head_of_a_frappe_page_gets_the_trail(self):
+		from builder.overrides import site_chrome
+
+		previous = (getattr(frappe.local, "page_header_route", None), getattr(frappe.local, "page_header_context", None))
+		frappe.local.page_header_route = "shop/boards"
+		try:
+			with (
+				patch("builder.hf_utils.header_footer.get_header_footer_config", return_value=frappe._dict(header_layout="Logo | Menu Center | Icons")),
+				patch.object(page_header, "settings", return_value=dict(page_header.DEFAULTS)),
+			):
+				listing = frappe._dict(title="Boards", head_include="<meta name='x'>")
+				site_chrome._inject_config_chrome(listing)
+				builder_page = frappe._dict(title="About", doc=frappe._dict(doctype="Builder Page"))
+				site_chrome._inject_config_chrome(builder_page)
+		finally:
+			frappe.local.page_header_route, frappe.local.page_header_context = previous
+		self.assertTrue(listing.head_include.startswith("<meta name='x'>"))
+		self.assertEqual(trail_of(listing.head_include), [frappe._("Home"), "Shop", "Boards"])
+		# a Builder page carries its trail in its own band
+		self.assertNotIn("ld+json", builder_page.get("head_include") or "")
+
 	def test_a_frappe_page_carries_the_trail_too(self):
 		"""A listing frappe renders gets the same trail, walked from its route."""
 		previous = getattr(frappe.local, "page_header_route", None)
