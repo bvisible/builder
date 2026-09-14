@@ -724,22 +724,24 @@ def default_band_block(prefix: str = "") -> dict:
 		"blockName": "top-page",
 		"baseStyles": {
 			"display": "flex", "flexDirection": "column", "width": "100%", "paddingTop": "56px",
-			"paddingBottom": "48px", "paddingLeft": "var(--container-padding, 24px)",
-			"paddingRight": "var(--container-padding, 24px)",
-			"background": token("background", "#ffffff"),
-		},
-		# the site grid of the header and the footer (theme_variables.html), down to the phone
-		"mobileStyles": {
-			"paddingLeft": "var(--container-padding-phone, 16px)",
-			"paddingRight": "var(--container-padding-phone, 16px)",
+			"paddingBottom": "48px", "background": token("background", "#ffffff"),
 		},
 		"children": [{
 			"blockId": uid(),
 			"element": "div",
 			"blockName": "top-page-inner",
+			# the column of the header and the footer (theme_variables.html): the width and the gutter on
+			# the same box, down to the phone. The gutter on the outer section put the text 24px left of
+			# the logo (2026-09-14).
 			"baseStyles": {
 				"display": "flex", "flexDirection": "column", "gap": "12px", "width": "100%",
 				"maxWidth": "var(--container-width, 1280px)", "marginLeft": "auto", "marginRight": "auto",
+				"paddingLeft": "var(--container-padding, 24px)", "paddingRight": "var(--container-padding, 24px)",
+				"boxSizing": "border-box",
+			},
+			"mobileStyles": {
+				"paddingLeft": "var(--container-padding-phone, 16px)",
+				"paddingRight": "var(--container-padding-phone, 16px)",
 			},
 			"children": [
 				{"blockId": uid(), "element": "nav", "blockName": "trail", "innerHTML": trail,

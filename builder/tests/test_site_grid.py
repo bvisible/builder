@@ -66,7 +66,12 @@ class TestChromeOnTheGrid(unittest.TestCase):
 		self.assertIn("var(--container-padding-phone,16px)", _CSS)
 
 	def test_the_designed_band_starts_on_the_grid(self):
+		"""The gutter sits on the column that carries the width, like the header's container: on the
+		outer section it put the band's text 24px left of the logo."""
 		band = default_band_block("xx")
-		self.assertEqual(band["baseStyles"]["paddingLeft"], "var(--container-padding, 24px)")
-		self.assertEqual(band["mobileStyles"]["paddingLeft"], "var(--container-padding-phone, 16px)")
-		self.assertEqual(band["children"][0]["baseStyles"]["maxWidth"], "var(--container-width, 1280px)")
+		inner = band["children"][0]["baseStyles"]
+		self.assertEqual(inner["maxWidth"], "var(--container-width, 1280px)")
+		self.assertEqual(inner["paddingLeft"], "var(--container-padding, 24px)")
+		self.assertEqual(inner["boxSizing"], "border-box")
+		self.assertEqual(band["children"][0]["mobileStyles"]["paddingLeft"], "var(--container-padding-phone, 16px)")
+		self.assertNotIn("paddingLeft", band["baseStyles"])
