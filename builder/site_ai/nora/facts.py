@@ -23,7 +23,8 @@ FACTS_RULE = (
     "an award, or an insurance, legal or medical claim: a visitor takes each for true. A section that needs a fact "
     "the brief does not give is written without it (how to get a price, what a first visit covers) or left out. "
     "Never write a placeholder in brackets ([email address], [phone]): a detail the brief does not give is left "
-    "out, and its label with it."
+    "out, and its label with it. Never write an e-mail address, a web address or a phone number that BUSINESS "
+    "DATA does not give."
 )
 
 TAG = re.compile(r"<[^>]+>")
@@ -269,6 +270,91 @@ def drop_placeholders(blocks: list) -> list[str]:
                     continue
                 child["innerHTML"] = _cut(html)
                 edits.append(f"placeholder cut from '{text[:48]}'")
+            if clean(child) and not _text_of(child):
+                edits.append("wrapper left empty dropped")
+                continue
+            kept.append(child)
+        parent["children"] = kept
+        return not kept
+
+    for block in blocks or []:
+        if isinstance(block, dict):
+            clean(block)
+    return edits
+
+
+# //// Neoffice — a contact detail comes from the business data or does not appear (2026-09-14). Told to
+# //// leave out a detail it did not have, the model wrote a plausible one instead: a consumer site's contact
+# //// page showed an e-mail address and a website that do not exist, under the real phone number.
+EMAIL = re.compile(r"[\w.+-]+@[\w-]+(?:\.[\w-]+)+")
+WEB = re.compile(
+    r"\b(?:https?://)?(?:www\.)?[a-z0-9][a-z0-9-]*(?:\.[a-z0-9-]+)*\.(?:ch|com|net|org|io|swiss|shop|store|fr|de|it|eu|co|info|biz)\b(?:/[^\s<\"']*)?",
+    re.I,
+)
+PHONE = re.compile(r"(?:\+|\b00)\d[\d\s().-]{7,}\d")
+
+
+def _host(address: str) -> str:
+    return re.sub(r"^(?:https?://)?(?:www\.)?", "", address.lower()).split("/", 1)[0]
+
+
+def _digits(number: str) -> str:
+    return re.sub(r"\D", "", number)[-9:]
+
+
+def invented_contacts(text: str, known: str) -> list[str]:
+    """The e-mail addresses, web addresses and phone numbers of `text` that `known` (what the brief
+    and the business data give) does not contain."""
+    emails = {e.lower() for e in EMAIL.findall(known or "")}
+    hosts = {_host(w) for w in WEB.findall(known or "")} | {e.split("@", 1)[1] for e in emails}
+    phones = {_digits(p) for p in PHONE.findall(known or "")}
+    found: list[str] = []
+    for email in EMAIL.findall(text or ""):
+        if email.lower() not in emails:
+            found.append(email)
+    rest = EMAIL.sub(" ", text or "")
+    for web in WEB.findall(rest):
+        if _host(web) not in hosts:
+            found.append(web)
+    for phone in PHONE.findall(rest):
+        if _digits(phone) not in phones:
+            found.append(phone)
+    return found
+
+
+def drop_invented_contacts(blocks: list, known: str) -> list[str]:
+    """Takes out of a written page the contact details the brief does not give. A block that shows
+    nothing else goes, with the short label just before it; inside a longer text the detail is cut,
+    with its link. Jinja and bound text are left alone. Returns one line per edit."""
+    edits: list[str] = []
+
+    def clean(parent: dict) -> bool:
+        kids = parent.get("children")
+        if not isinstance(kids, list) or not kids:
+            return False
+        kept: list = []
+        for child in kids:
+            if not isinstance(child, dict):
+                kept.append(child)
+                continue
+            html = str(child.get("innerHTML") or "")
+            if html and "{%" not in html and "{{" not in html:
+                text = _text_of(child)
+                invented = invented_contacts(text, known)
+                if invented:
+                    rest = text
+                    for item in invented:
+                        rest = rest.replace(item, " ")
+                    if len(re.sub(r"[\W_]+", "", rest)) < 3:
+                        if kept and isinstance(kept[-1], dict) and _is_label(kept[-1]):
+                            edits.append(f"label '{_text_of(kept.pop())}' dropped with its contact")
+                        edits.append(f"'{text[:48]}' dropped: not in the business data")
+                        continue
+                    for item in invented:
+                        html = re.sub(r"<a\b[^>]*>[^<]*" + re.escape(item) + r"[^<]*</a>", "", html)
+                        html = re.sub(SEPARATOR + re.escape(item), "", html).replace(item, "")
+                    child["innerHTML"] = html.strip()
+                    edits.append(f"{', '.join(invented)} cut: not in the business data")
             if clean(child) and not _text_of(child):
                 edits.append("wrapper left empty dropped")
                 continue

@@ -1720,9 +1720,23 @@ def build_site(ctx, spec: dict) -> str:
                     scrubbed = drop_placeholders(blocks)
                     if scrubbed:
                         ai_log("info", "Placeholders dropped", page=page["title"], edits=scrubbed[:6])
+                    # //// Neoffice — nor a contact detail the business data does not give: told to leave one
+                    # //// out, the model wrote a plausible e-mail and website instead (facts.drop_invented_contacts)
+                    from builder.site_ai.nora.facts import drop_invented_contacts
+
+                    invented = drop_invented_contacts(blocks, known_text(site, contact_prompt))
+                    if invented:
+                        ai_log("info", "Invented contact details dropped", page=page["title"], edits=invented[:6])
                     veiled = repair_opaque_overlays(blocks, palette)
                     if veiled:
                         ai_log("info", "Opaque layers over photos made scrims", page=page["title"], edits=veiled)
+                    # //// Neoffice — and copy laid on a photograph without a veil gets the design system's
+                    # //// scrim (contrast.veil_copy_on_photos)
+                    from builder.site_ai.nora.contrast import veil_copy_on_photos
+
+                    scrimmed = veil_copy_on_photos(blocks)
+                    if scrimmed:
+                        ai_log("info", "Copy on photos given a scrim", page=page["title"], edits=scrimmed)
                     variants = repair_button_variants(blocks, palette)
                     if variants:
                         ai_log("info", "Button variants repaired", page=page["title"], edits=variants)

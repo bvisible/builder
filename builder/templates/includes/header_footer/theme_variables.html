@@ -497,6 +497,38 @@ a:where(:not(.u-btn)):hover {
 	}
 }
 
+/* //// Neoffice — a grid whose last row would keep a hole shares that row out (layout.balance_grids,
+   2026-09-14): five tiles on three columns left the sixth cell empty. Its items grow to fill each row. */
+:where(.u-grid--fill) {
+	display: flex;
+	flex-wrap: wrap;
+}
+
+:where(.u-grid--fill > *) {
+	flex: 1 1 calc((100% - 48px) / 3);
+	min-width: 0;
+}
+
+:where(.u-grid--fill.u-grid--2 > *) {
+	flex-basis: calc((100% - 24px) / 2);
+}
+
+:where(.u-grid--fill.u-grid--4 > *) {
+	flex-basis: calc((100% - 72px) / 4);
+}
+
+@media (max-width: 1024px) {
+	:where(.u-grid--fill > *, .u-grid--fill.u-grid--4 > *) {
+		flex-basis: calc((100% - 24px) / 2);
+	}
+}
+
+@media (max-width: 640px) {
+	:where(.u-grid--fill > *, .u-grid--fill.u-grid--2 > *, .u-grid--fill.u-grid--4 > *) {
+		flex-basis: 100%;
+	}
+}
+
 :where(.u-input) {
 	border-radius: var(--radius);
 	border: 1px solid var(--border-color);

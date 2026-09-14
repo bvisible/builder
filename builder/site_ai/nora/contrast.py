@@ -326,3 +326,50 @@ def repair_opaque_overlays(blocks: list[dict], palette: dict[str, str]) -> list[
         walk(block)
     return fixes
 
+
+# //// Neoffice — copy laid on a photograph gets the design system's scrim (2026-09-14): the photo cards of
+# //// a black-and-white site put white titles straight on light street photographs, with no veil, and two
+# //// of five read as nothing. The card takes u-over-image (--bottom: its copy sits low), whose ::after
+# //// scrim sits between the picture and the copy (theme_variables.html).
+VEILED = ("u-over-image",)
+
+
+def _covering_picture(block: dict) -> bool:
+    styles = block.get("baseStyles") or {}
+    return _shows_picture(block) and styles.get("position") == "absolute" and (_spans_parent(styles) or bool(styles.get("objectFit")))
+
+
+def _veil(block: dict) -> bool:
+    """An absolute layer with a translucent or gradient fill: a scrim the model drew itself."""
+    styles = block.get("baseStyles") or {}
+    if styles.get("position") != "absolute" or _has_text(block) or _shows_picture(block):
+        return False
+    raw = str(styles.get("background") or styles.get("backgroundColor") or "")
+    return "gradient" in raw or ("rgba(" in raw and not raw.strip().endswith(", 1)"))
+
+
+def veil_copy_on_photos(blocks: list[dict]) -> list[str]:
+    """Gives u-over-image u-over-image--bottom to a block that lays a picture across itself and
+    copy over it without any scrim. Returns one line per block."""
+    fixes: list[str] = []
+
+    def walk(block) -> None:
+        if not isinstance(block, dict):
+            return
+        children = [c for c in block.get("children") or [] if isinstance(c, dict)]
+        classes = _classes(block)
+        if (
+            not any(c.startswith(VEILED) for c in classes)
+            and any(_covering_picture(c) for c in children)
+            and any(_has_text(c) and not _covering_picture(c) for c in children)
+            and not any(_veil(c) for c in children)
+        ):
+            block["classes"] = [*classes, "u-over-image", "u-over-image--bottom"]
+            fixes.append(f"{block.get('blockName') or block.get('element') or 'block'}: copy on a photo gets the scrim")
+        for child in children:
+            walk(child)
+
+    for block in blocks or []:
+        walk(block)
+    return fixes
+

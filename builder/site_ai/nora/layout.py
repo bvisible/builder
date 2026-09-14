@@ -234,5 +234,22 @@ def balance_grids(blocks: list, data_counts: dict | None = None) -> int:
         styles["gridTemplateColumns"] = f"repeat({items}, minmax(0, 1fr))"
         block["baseStyles"] = styles
         edits += 1
+    # //// Neoffice — a grid drawn by the design system's classes (u-grid u-grid--3) carries no inline
+    # //// columns to change: the brands page of a consumer site kept its sixth cell empty on the rebuilt
+    # //// site. It takes u-grid--fill, whose items share the last row at every width (theme_variables.html).
+    for block in _walk(blocks):
+        classes = [str(c) for c in block.get("classes") or []]
+        wide = next((c for c in classes if c.startswith("u-grid--") and c[8:].isdigit()), None)
+        if not wide or "u-grid--fill" in classes or (block.get("baseStyles") or {}).get("display") == "grid":
+            continue
+        columns = int(wide[8:])
+        if _is_repeater(block):
+            items = (data_counts or {}).get((block.get("dataKey") or {}).get("key"))
+        else:
+            items = len([c for c in block.get("children") or [] if isinstance(c, dict)])
+        if not items or items % columns == 0:
+            continue
+        block["classes"] = [*classes, "u-grid--fill"]
+        edits += 1
     return edits
 

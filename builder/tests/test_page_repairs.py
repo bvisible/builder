@@ -52,6 +52,76 @@ class TestPlaceholders(unittest.TestCase):
 		self.assertEqual(note["innerHTML"], "See the terms [1].")
 
 
+class TestInventedContacts(unittest.TestCase):
+	"""Told to leave out what it did not have, the model wrote an e-mail and a website that do not exist."""
+
+	KNOWN = "BUSINESS DATA: Atelier Nord Sàrl, Lausanne, +41 21 000 00 00, hello@atelier-nord.test"
+
+	def test_a_detail_the_data_does_not_give_goes_with_its_label(self):
+		page = [
+			box(
+				box(text("p", "PHONE"), text("p", "+41 21 000 00 00")),
+				box(text("p", "EMAIL"), text("p", "info@made-up.ch")),
+				box(text("p", "WEBSITE"), text("p", "made-up.ch")),
+			)
+		]
+		from builder.site_ai.nora.facts import drop_invented_contacts
+
+		edits = drop_invented_contacts(page, self.KNOWN)
+		kids = page[0]["children"]
+		self.assertEqual(len(kids), 1)
+		self.assertEqual([c["innerHTML"] for c in kids[0]["children"]], ["PHONE", "+41 21 000 00 00"])
+		self.assertTrue(any("EMAIL" in e for e in edits))
+
+	def test_what_the_data_gives_stays_and_a_detail_is_cut_from_a_line(self):
+		from builder.site_ai.nora.facts import drop_invented_contacts, invented_contacts
+
+		self.assertEqual(invented_contacts("Write to hello@atelier-nord.test or call +41 21 000 00 00", self.KNOWN), [])
+		line = text("p", 'Atelier Nord Sàrl · <a href="https://made-up.ch">made-up.ch</a> · Lausanne')
+		drop_invented_contacts([box(line)], self.KNOWN)
+		self.assertNotIn("made-up.ch", line["innerHTML"])
+		self.assertIn("Lausanne", line["innerHTML"])
+
+
+class TestCopyOnPhotos(unittest.TestCase):
+	"""Photo cards put white titles straight on light photographs, with no veil."""
+
+	def card(self, *extra, classes=None):
+		return {
+			"element": "a",
+			"classes": classes or ["u-media"],
+			"baseStyles": {"position": "relative"},
+			"children": [
+				{"element": "img", "attributes": {"src": "/files/a.jpg"}, "baseStyles": {"position": "absolute", "inset": "0", "objectFit": "cover"}, "children": []},
+				*extra,
+				text("h2", "Street", color="#ffffff"),
+			],
+		}
+
+	def test_copy_on_a_photo_gets_the_scrim(self):
+		from builder.site_ai.nora.contrast import veil_copy_on_photos
+
+		card = self.card()
+		self.assertEqual(len(veil_copy_on_photos([card])), 1)
+		self.assertIn("u-over-image", card["classes"])
+		self.assertIn("u-over-image--bottom", card["classes"])
+
+	def test_a_card_with_a_veil_or_the_class_is_left_alone(self):
+		from builder.site_ai.nora.contrast import veil_copy_on_photos
+
+		veiled = self.card({"element": "div", "baseStyles": {"position": "absolute", "inset": "0", "background": "linear-gradient(to top, rgba(0,0,0,.6), transparent)"}, "children": []})
+		self.assertEqual(veil_copy_on_photos([veiled]), [])
+		self.assertEqual(veil_copy_on_photos([self.card(classes=["u-over-image"])]), [])
+
+
+class TestSiteTypeWords(unittest.TestCase):
+	def test_the_brief_names_the_site_type_in_words(self):
+		from builder.site_ai.generators.brief_generator import SITE_TYPE_WORDS
+
+		self.assertEqual(SITE_TYPE_WORDS["vitrine"], "a showcase website")
+		self.assertNotIn("vitrine", " ".join(SITE_TYPE_WORDS.values()))
+
+
 class TestVeils(unittest.TestCase):
 	"""A contact page covered its photograph with an opaque black layer."""
 
@@ -124,6 +194,15 @@ class TestBalancedGrids(unittest.TestCase):
 		grid = box(box(), box(), display="grid", gridTemplateColumns="repeat(3, minmax(0, 1fr))")
 		self.assertEqual(balance_grids([grid]), 1)
 		self.assertEqual(grid["baseStyles"]["gridTemplateColumns"], "repeat(2, minmax(0, 1fr))")
+
+
+	def test_a_class_drawn_grid_fills_its_last_row(self):
+		"""A brands page's category tiles, drawn by u-grid u-grid--3, kept their sixth cell empty."""
+		grid = {"element": "div", "isRepeaterBlock": True, "dataKey": {"key": "categories"}, "classes": ["u-grid", "u-grid--3"], "baseStyles": {}, "children": [box()]}
+		self.assertEqual(balance_grids([grid], {"categories": 5}), 1)
+		self.assertIn("u-grid--fill", grid["classes"])
+		full = {"element": "div", "isRepeaterBlock": True, "dataKey": {"key": "categories"}, "classes": ["u-grid", "u-grid--3"], "baseStyles": {}, "children": [box()]}
+		self.assertEqual(balance_grids([full], {"categories": 6}), 0)
 
 
 class TestBrandsPage(unittest.TestCase):

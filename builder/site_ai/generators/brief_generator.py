@@ -18,6 +18,19 @@ from builder.site_ai.schemas.design_brief import DesignBrief, TypographyScale, S
 from builder.site_ai.validators.brief_validator import BriefValidator, BriefValidationResult
 from builder.site_ai.logging import ai_log
 
+# //// Neoffice — the site type in words: the internal code ("vitrine", the French for a shop window) went
+# //// into the brief as it is, and a site written in English called itself a "boardsport vitrine" (2026-09-14).
+SITE_TYPE_WORDS = {
+    "vitrine": "a showcase website",
+    "vitrine_user": "a showcase website with customer accounts",
+    "ecommerce": "an online shop",
+    "ecommerce_search": "an online shop with a search bar",
+    "blog": "a blog",
+    "portfolio": "a portfolio",
+    "saas": "a software product website",
+    "one_page": "a one-page website",
+}
+
 
 def _hero_background_for_style(hero_style: str, primary: str, secondary: str) -> str:
     """Return a hero background CSS value appropriate for the hero style."""
@@ -548,7 +561,7 @@ class BriefGenerator:
         user_prompt = f"""Create the design brief for this website:
 
 **Site Name:** {site_name}
-**Site Type:** {site_type}
+**Site Type:** {SITE_TYPE_WORDS.get(site_type, site_type)}
 **Description:** {prompt}
 
 **Theme hint (a starting mood, not a cage):** {theme_name}
