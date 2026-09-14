@@ -155,10 +155,10 @@ class TestSiteIdentity(unittest.TestCase):
 	def test_the_site_settings_name_the_business(self):
 		from builder.api import site_identity
 
-		config = frappe_dict(business_name="WEST LEAGUE Sàrl", business_address="Châtel-St-Denis, Switzerland")
+		config = frappe_dict(business_name="Atelier Nord Sàrl", business_address="Lausanne, Switzerland")
 		self.assertEqual(
 			site_identity(config),
-			{"company_name": "WEST LEAGUE Sàrl", "address": "Châtel-St-Denis, Switzerland"},
+			{"company_name": "Atelier Nord Sàrl", "address": "Lausanne, Switzerland"},
 		)
 		# empty settings leave the company's own data in place
 		self.assertEqual(site_identity(frappe_dict(business_name="", business_address="  ")), {})
