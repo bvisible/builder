@@ -444,6 +444,11 @@ def _has_h1(node, depth=0) -> bool:
 	return any(_has_h1(child, depth + 1) for child in node.get("children") or [])
 
 
+def _has_any_h1(blocks) -> bool:
+	"""Whether any block of the page carries an h1."""
+	return any(_has_h1(block) for block in _page_tree(blocks))
+
+
 def _opens_with_own_title(blocks) -> bool:
 	"""Whether the page's first section carries its h1: the page brings its own top."""
 	first = _first_section(blocks)
@@ -577,11 +582,20 @@ def render_builder_page_header(doc=None, own_top=None) -> str:
 	# //// page's faces (2026-09-14, see _opens_with_own_title and _page_fonts).
 	# `own_top` False draws the band whatever the first section is: the editor's preview hides it
 	# itself while the live page carries its own h1 (header_footer.get_editor_page_header_html)
+	quiet_title = ""
 	opens_itself = _opens_with_own_title(blocks) if own_top is None else bool(own_top)
 	# a page set to go without the band keeps only its trail, like a page with a top of its own
 	# (the page settings' "No top page on this page", patches/add_page_top_fields.py)
 	if _field("hide_page_header") and own_top is None:
 		opens_itself = True
+		# ...but a page keeps its title: without the band and with no h1 of its own it had none at all
+		# (2026-09-14). The title stays as a visually hidden h1, read by screen readers and search engines.
+		if not _has_any_h1(blocks):
+			quiet_title = (
+				'<h1 class="site-page-header__quiet" style="position:absolute;width:1px;height:1px;margin:-1px;'
+				'padding:0;overflow:hidden;clip:rect(0,0,0,0);white-space:nowrap;border:0">'
+				f"{escape_html(title)}</h1>"
+			)
 	context = frappe._dict(
 		{
 			"title": title,
@@ -597,6 +611,7 @@ def render_builder_page_header(doc=None, own_top=None) -> str:
 	finally:
 		frappe.local.page_header_route = None
 
+	band = quiet_title + band if (band or quiet_title) else band
 	if not band:
 		return ""
 	# only the trail, for the search engines: nothing drawn needs room under the header,

@@ -126,8 +126,24 @@ class TestPageTop(unittest.TestCase):
 			patch.object(page_header, "settings", return_value=dict(page_header.DEFAULTS)),
 		):
 			html = page_header.render_builder_page_header(doc)
-		self.assertNotIn("site-page-header", html)
+		# no band drawn: only the quiet title and the trail stay
+		self.assertNotIn('<section class="site-page-header', html)
 		self.assertEqual(trail_of(html), [frappe._("Home"), "Services"])
+
+	def test_a_page_without_the_band_keeps_its_title_quietly(self):
+		"""Hidden by the page setting, the band took the page's only h1 with it."""
+		doc = frappe._dict(route="services", page_title="Services", blocks=CONTENT_FIRST, hide_page_header=1)
+		with (
+			patch.object(page_header, "_config", return_value=None),
+			patch.object(page_header, "settings", return_value=dict(page_header.DEFAULTS)),
+		):
+			html = page_header.render_builder_page_header(doc)
+			own = page_header.render_builder_page_header(frappe._dict(route="services", page_title="Services", blocks=OWN_TOP, hide_page_header=1))
+		self.assertEqual(html.count("<h1"), 1)
+		self.assertIn('class="site-page-header__quiet"', html)
+		self.assertIn("clip:rect(0,0,0,0)", html)
+		# a page with an h1 of its own needs no second one
+		self.assertNotIn("<h1", own)
 
 	def test_the_first_section_decides(self):
 		"""An h1 further down the page is not the page's top."""
