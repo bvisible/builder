@@ -1098,10 +1098,27 @@ def get_site_contact_context(website_profile=None) -> dict:  # //// Neoffice mul
 		config = _get_site_chrome_config(website_profile)
 		if not data.get("logo") and config.get("logo_image"):
 			data["logo"] = config.logo_image
+		# //// Neoffice — the name and the address a site shows are the site's own when its
+		# //// settings name them: one company in ERPNext may run a shop under another legal name,
+		# //// without a pickup address to publish (a consumer site asked for its new legal name
+		# //// and its town alone, 2026-09-14). The company record is never renamed for a site.
+		data.update(site_identity(config))
 	except Exception:
 		pass
 
 	return data
+
+
+# //// Neoffice — added helper (see the marker in get_site_contact_context)
+def site_identity(config) -> dict:
+	"""The business name and address a site's chrome settings give, to show instead of the
+	company's: only the ones that are filled."""
+	identity = {}
+	for field, key in (("business_name", "company_name"), ("business_address", "address")):
+		value = str((config.get(field) if config is not None and hasattr(config, "get") else "") or "").strip()
+		if value:
+			identity[key] = value
+	return identity
 
 
 def _contact_context_prompt(data: dict) -> str:

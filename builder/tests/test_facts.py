@@ -148,6 +148,29 @@ class TestPlaceholdersAtRender(unittest.TestCase):
 		self.assertIn("b08548", inline["innerHTML"])
 
 
+class TestSiteIdentity(unittest.TestCase):
+	"""A consumer site asked to show its new legal name and its town alone, while the company in
+	ERPNext keeps its name and its full address."""
+
+	def test_the_site_settings_name_the_business(self):
+		from builder.api import site_identity
+
+		config = frappe_dict(business_name="WEST LEAGUE Sàrl", business_address="Châtel-St-Denis, Switzerland")
+		self.assertEqual(
+			site_identity(config),
+			{"company_name": "WEST LEAGUE Sàrl", "address": "Châtel-St-Denis, Switzerland"},
+		)
+		# empty settings leave the company's own data in place
+		self.assertEqual(site_identity(frappe_dict(business_name="", business_address="  ")), {})
+		self.assertEqual(site_identity(None), {})
+
+
+def frappe_dict(**values):
+	import frappe
+
+	return frappe._dict(values)
+
+
 class TestImagePrompt(unittest.TestCase):
 	def test_the_site_name_stays_out_of_the_picture(self):
 		"""Asked for "the practice <name>", the image model lettered the name on a wall."""

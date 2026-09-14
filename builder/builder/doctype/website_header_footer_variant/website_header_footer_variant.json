@@ -64,6 +64,8 @@
   "footer_content_section",
   "footer_description",
   "copyright_text",
+  "business_name",
+  "business_address",
   "social_section",
   "show_social_links",
   "facebook_url",
@@ -499,6 +501,18 @@
    "fieldname": "copyright_text",
    "fieldtype": "Data",
    "label": "Copyright Text"
+  },
+  {
+   "description": "The legal name this site shows, on its contact and legal pages. Empty: the name of the company in ERPNext.",
+   "fieldname": "business_name",
+   "fieldtype": "Data",
+   "label": "Business Name Shown on the Site"
+  },
+  {
+   "description": "The address this site shows, for instance only its town. Empty: the address of the company in ERPNext.",
+   "fieldname": "business_address",
+   "fieldtype": "Data",
+   "label": "Address Shown on the Site"
   },
   {
    "fieldname": "social_section",
@@ -978,7 +992,7 @@
  "index_web_pages_for_search": 1,
  "issingle": 0,
  "links": [],
- "modified": "2026-09-11 16:45:00.000000",
+ "modified": "2026-09-14 09:40:00.000000",
  "modified_by": "Administrator",
  "module": "Builder",
  "name": "Website Header Footer Variant",
