@@ -35,6 +35,20 @@ CONTENT_FIRST = page(
 		text("p", "Every Saturday morning.", fontFamily='"DM Sans", sans-serif'),
 	)
 )
+# the same page top with a rule under its title, the title coloured and centred
+RULED_TOP = page(
+	section(
+		text("p", "OUR SERVICES"),
+		text("h1", "What we do", color="#a67c00", textAlign="center"),
+		{"element": "div", "baseStyles": {"width": "80px", "height": "2px"}, "children": []},
+		text("p", "From the market to the table.", fontFamily="'DM Sans', sans-serif"),
+	),
+)
+# how such a top renders: the eyebrow, the title, its rule, the line under it
+TOP_MARKUP = (
+	'<section><p>OUR SERVICES</p><h1 class="t">What we do</h1><div class="rule"></div>'
+	"<p>From the market to the table.</p></section>"
+)
 
 
 def trail_of(html):
@@ -44,6 +58,12 @@ def trail_of(html):
 		return None
 	data = json.loads(found.group(1))
 	return [item["name"] for item in data["itemListElement"]]
+
+
+def nav_of(html):
+	"""The trail a page draws under its own title, or None."""
+	found = re.search(r'<nav class="site-page-crumbs".*?</nav>', html, re.S)
+	return found.group(0) if found else None
 
 
 def component_reader(block_json):
@@ -68,14 +88,23 @@ class TestPageTop(unittest.TestCase):
 		):
 			return page_header.render_builder_page_header(doc)
 
+	def placed(self, blocks, content=TOP_MARKUP, title="Services", route="services", fields=None, **config):
+		"""The page's rendered markup once place_page_crumbs has been through it."""
+		doc = frappe._dict(route=route, page_title=title, blocks=blocks, **(fields or {}))
+		with (
+			patch.object(page_header, "_config", return_value=None),
+			patch.object(page_header, "settings", return_value=dict(page_header.DEFAULTS, **config)),
+		):
+			return page_header.place_page_crumbs(content, doc)
+
 	def test_a_page_opening_on_its_own_title_gets_no_second_one(self):
-		"""A services page drew "Services" in the band, then its own "Our services": two h1. The trail
-		stays visible above it, in a strip of its own: without it a visitor saw no breadcrumb at all on
-		most generated pages (2026-09-14)."""
+		"""A services page drew "Services" in the band, then its own "Our services": two h1. The band draws
+		nothing above such a page: the page shows the trail under its own title (place_page_crumbs), and the
+		trail stays in the JSON-LD (2026-09-14)."""
 		html = self.band(OWN_TOP)
 		self.assertNotIn("<h1", html)
-		self.assertIn("site-page-header--crumbs", html)
-		self.assertIn('<nav class="site-page-header__crumbs"', html)
+		self.assertNotIn("site-page-header", html)
+		self.assertNotIn("<nav", html)
 		self.assertEqual(trail_of(html), [frappe._("Home"), "Services"])
 
 	def test_an_own_title_page_without_the_breadcrumb_keeps_only_the_json_ld(self):
@@ -107,9 +136,10 @@ class TestPageTop(unittest.TestCase):
 				self.assertEqual(page_header.band_draws(context), {"trail": True, "title": True})
 			with patch.object(page_header, "settings", return_value=dict(page_header.DEFAULTS, page_header_template="None")):
 				self.assertEqual(page_header.band_draws(context), {"trail": False, "title": False})
+			# a page that opens on its own title draws its trail itself, under that title
 			own = frappe._dict(title="Cart", parents=[], page_opens_itself=True)
 			with patch.object(page_header, "settings", return_value=dict(page_header.DEFAULTS)):
-				self.assertEqual(page_header.band_draws(own), {"trail": True, "title": False})
+				self.assertEqual(page_header.band_draws(own), {"trail": False, "title": False})
 
 	def test_the_band_says_when_it_draws_the_trail(self):
 		"""site_chrome keeps the page's own breadcrumb out of the markup when the band draws one."""
@@ -174,9 +204,9 @@ class TestPageTop(unittest.TestCase):
 			patch.object(page_header, "settings", return_value=dict(page_header.DEFAULTS)),
 		):
 			self.assertIn('class="site-page-header', page_header.render_builder_page_header(doc, own_top=False))
-			# on its own, the page shows the trail's strip and no second title
+			# on its own, the page gets no band and no second title: its trail goes under its own title
 			auto = page_header.render_builder_page_header(doc)
-			self.assertIn("site-page-header--crumbs", auto)
+			self.assertNotIn("site-page-header", auto)
 			self.assertNotIn("<h1", auto)
 
 	def test_a_page_set_to_go_without_the_band_keeps_its_trail(self):
@@ -310,3 +340,51 @@ class TestPageTop(unittest.TestCase):
 			frappe.local.page_header_route = previous
 		self.assertIn('class="site-page-header', html)
 		self.assertEqual(trail_of(html), [frappe._("Home"), "Shop", "Boards"])
+
+	def test_the_trail_sits_in_the_page_top_under_its_title(self):
+		"""The trail of a page opening on its own title sat in a strip of its own above that top, on the
+		band's ground, and read as a separate bar (2026-09-14). It now sits under the title."""
+		html = self.placed(OWN_TOP)
+		nav = nav_of(html)
+		self.assertIsNotNone(nav)
+		self.assertIn('<h1 class="t">What we do</h1><style>', html)
+		self.assertEqual(html.count('class="site-page-crumbs"'), 1)
+		self.assertIn(f'<a href="/">{frappe._("Home")}</a>', nav)
+		self.assertIn('<span aria-current="page">Services</span>', nav)
+		self.assertLess(html.index("</nav>"), html.index("From the market"))
+
+	def test_the_rule_under_the_title_stays_with_it(self):
+		html = self.placed(RULED_TOP)
+		self.assertIn('<div class="rule"></div><style>', html)
+		nav = nav_of(html)
+		self.assertIn("color:#a67c00;", nav)
+		self.assertIn("justify-content:center;", nav)
+		self.assertIn("--sph-body-font:'DM Sans', sans-serif;", nav)
+
+	def test_no_trail_under_the_title_where_the_band_draws_it_or_nothing_should(self):
+		self.assertEqual(self.placed(CONTENT_FIRST), TOP_MARKUP)
+		self.assertEqual(self.placed(OWN_TOP, show_breadcrumbs=0), TOP_MARKUP)
+		self.assertEqual(self.placed(OWN_TOP, page_header_template="None"), TOP_MARKUP)
+		self.assertEqual(self.placed(OWN_TOP, fields={"hide_page_header": 1}), TOP_MARKUP)
+		self.assertEqual(self.placed(OWN_TOP, fields={"is_template": 1}), TOP_MARKUP)
+		self.assertEqual(self.placed(OWN_TOP, title="Home", route="home"), TOP_MARKUP)
+		self.assertEqual(self.placed(OWN_TOP, content="<p>No title</p>"), "<p>No title</p>")
+
+	def test_the_trail_under_the_title_cannot_open_markup(self):
+		nav = nav_of(self.placed(OWN_TOP, title="Tips <script>alert(1)</script>", route="tips"))
+		self.assertNotIn("<script", nav)
+		self.assertIn("&lt;script&gt;", nav)
+		leaking = page(section(text("h1", "T", color="red;background:url(//x.test/a.png)")))
+		self.assertNotIn("url(", nav_of(self.placed(leaking, content="<h1>T</h1>", title="T", route="t")))
+
+	def test_the_404_draws_no_trail(self):
+		"""A wrong address read "Home > Shop > Page not found": frappe's web.html drew the shop's breadcrumb
+		under the 404's own statement."""
+		import importlib
+
+		not_found = importlib.import_module("builder.www.404")
+		context = frappe._dict()
+		with patch("builder.hf_utils.header_footer.get_header_footer_config", return_value=None):
+			not_found.get_context(context)
+		self.assertEqual(context.no_breadcrumbs, 1)
+		self.assertIs(context.show_page_header, False)

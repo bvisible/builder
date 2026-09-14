@@ -92,13 +92,13 @@
 					</div>
 				</div>
 				<!-- //// Neoffice — added: the top-of-page band a visitor sees above this page, between the header
-				     //// and the page, greyed like them. While the page's first section carries its own h1, only the
-				     //// breadcrumb's strip is shown, as on the published page (page_header._band_parts, 2026-09-14). -->
+				     //// and the page, greyed like them. Hidden while the page's first section carries its own h1,
+				     //// as on the published page (page_header.render_builder_page_header, 2026-09-14). -->
 				<div
-					v-if="configuredPageHeaderHtml?.configured && showBlocks && !hideTopPage && (!pageOpensItself || configuredPageHeaderHtml.crumbs_html)"
+					v-if="configuredPageHeaderHtml?.configured && showBlocks && !pageOpensItself && !hideTopPage"
 					class="editor-preview-block editor-page-header-preview pointer-events-none relative opacity-60"
 					:style="{ borderBottom: '2px dashed var(--outline-gray-3)' }">
-					<div v-html="pageOpensItself ? configuredPageHeaderHtml.crumbs_html : configuredPageHeaderHtml.html"></div>
+					<div v-html="configuredPageHeaderHtml.html"></div>
 					<div class="absolute bottom-2 right-2 z-10 rounded bg-surface-gray-2 px-2 py-0.5 text-xs text-ink-gray-5">
 						{{ __("Top page preview") }}
 					</div>
@@ -219,9 +219,7 @@ const configuredHeaderHtml = ref<{ html: string; css: string; configured: boolea
 const configuredFooterHtml = ref<{ html: string; css: string; configured: boolean } | null>(null);
 //// Neoffice — the page's top band (get_editor_page_header_html), and whether the page opens on its
 //// own h1, in which case the published page shows no band either (page_header._opens_with_own_title)
-//// Neoffice — crumbs_html: the breadcrumb's strip, drawn instead of the band above a page whose first
-//// section carries its own h1 (fee04275)
-const configuredPageHeaderHtml = ref<{ html: string; crumbs_html?: string; configured: boolean } | null>(null);
+const configuredPageHeaderHtml = ref<{ html: string; configured: boolean } | null>(null);
 function carriesH1(node: any, depth = 0): boolean {
 	if (!node || depth > 16) return false;
 	if (node.element === "h1" || String(node.innerHTML || "").toLowerCase().includes("<h1")) return true;

@@ -657,6 +657,12 @@ class BuilderPage(WebsiteGenerator):
 
 		rendered_content = re.sub(r"<body([^>]*)>", _as_div, rendered_content)
 		rendered_content = re.sub(r'</body>', '</div>', rendered_content)
+		# //// Neoffice — a page that opens on its own title carries its breadcrumb trail under that title,
+		# //// in its own top (page_header.place_page_crumbs, 2026-09-14). Written into the rendered markup,
+		# //// after the page's Jinja ran, so no page title ever reaches the template engine.
+		from builder.page_header import place_page_crumbs
+
+		rendered_content = place_page_crumbs(rendered_content, self)
 		context["__content"] = rendered_content
 
 	def set_meta_tags(self, context, page_data=None):

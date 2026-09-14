@@ -62,6 +62,10 @@ def get_context(context):
 	# This page is its own opening statement, centred on the page: the shared
 	# band above it would print the same words a second time.
 	context.show_page_header = False
+	# //// Neoffice — ...nor a breadcrumb of its own (2026-09-14): frappe's web.html then drew the shop's
+	# //// (webshop templates/includes/breadcrumbs.html), which always names the shop, so a wrong address
+	# //// read "Home > Shop > Page not found". A trail to a page that does not exist leads nowhere.
+	context.no_breadcrumbs = 1
 	context.is_reserved = bool(reserved)
 	context.reserved_label = _(reserved["label"]) if reserved else ""
 	context.title = _("Coming soon") if reserved else _("Page not found")
