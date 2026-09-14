@@ -584,6 +584,28 @@ def listing_page(pages: list[dict]) -> dict | None:
     return next((p for p in pages if p.get("type") == "shop" or LISTING_WORDS.search(f"{p.get('title', '')} {p.get('route', '')}")), None)
 
 
+def _best_photo(library: list[dict], used: dict, wanted=(), landscape=None, avoid=frozenset()) -> dict:
+    """The client's photograph that fits `wanted` best, counted as used."""
+    # a picture carrying text (a banner, an advert) goes nowhere while anything else is left
+    pool = [p for p in library if not p["has_text"]] or library
+    if landscape is not None:
+        pool = [p for p in pool if p["landscape"] == landscape] or pool
+
+    def rank(p):
+        # the client's own filing (file name, tags, section) outweighs a word the vision
+        # used in passing, and a photograph filed under another category steps back: a
+        # painting "in street-art style" filed under Home won the Street tile over three
+        # street photographs, on quality alone (2026-09-12). Filed under the category, a
+        # photograph already shown still beats one that is not about it.
+        fit = sum(4 if w in p["words"] else 1 if w in p["text"] else 0 for w in wanted)
+        fit -= 2 * len(avoid & p["words"])
+        return fit + {"high": 1.0, "medium": 0.5}.get(p["quality"], 0) - 3 * used.get(p["url"], 0)
+
+    best = max(pool, key=rank)
+    used[best["url"]] = used.get(best["url"], 0) + 1
+    return best
+
+
 def photos_for_page(page: dict, library: list[dict], used: dict, categories: list[str], minimal: bool, listing: bool = False) -> tuple[list[str], list[str]]:
     """The client's photographs a page is written with, and what each is for.
 
@@ -599,24 +621,7 @@ def photos_for_page(page: dict, library: list[dict], used: dict, categories: lis
     category_words = {w for name in categories for w in re.split(r"[^a-z0-9]+", name.lower()) if len(w) > 2}
 
     def take(wanted=(), landscape=None, avoid=frozenset()) -> dict:
-        # a picture carrying text (a banner, an advert) goes nowhere while anything else is left
-        pool = [p for p in library if not p["has_text"]] or library
-        if landscape is not None:
-            pool = [p for p in pool if p["landscape"] == landscape] or pool
-
-        def rank(p):
-            # the client's own filing (file name, tags, section) outweighs a word the vision
-            # used in passing, and a photograph filed under another category steps back: a
-            # painting "in street-art style" filed under Home won the Street tile over three
-            # street photographs, on quality alone (2026-09-12). Filed under the category, a
-            # photograph already shown still beats one that is not about it.
-            fit = sum(4 if w in p["words"] else 1 if w in p["text"] else 0 for w in wanted)
-            fit -= 2 * len(avoid & p["words"])
-            return fit + {"high": 1.0, "medium": 0.5}.get(p["quality"], 0) - 3 * used.get(p["url"], 0)
-
-        best = max(pool, key=rank)
-        used[best["url"]] = used.get(best["url"], 0) + 1
-        return best
+        return _best_photo(library, used, wanted, landscape, avoid)
 
     # the category tiles choose first: each needs one precise photograph, the hero any good
     # one (served first, the hero took the only snow picture and the snow tile got the banner)
@@ -639,6 +644,25 @@ def photos_for_page(page: dict, library: list[dict], used: dict, categories: lis
         urls.append(photo["url"])
         notes.append(f"{role}; it shows: {photo['shows']}" if photo["shows"] else role)
     return urls, notes
+
+
+# //// Neoffice — the photograph of each category, for the whole site (2026-09-14): only the home and the
+# //// listing page were handed one per category, and an About page that showed the five categories as
+# //// tiles drew four of them in flat grey beside one photograph. Every page that shows the categories
+# //// as tiles is now told each one's photograph (page_brief_text), and layout.complete_tile_photos
+# //// completes a grid the model still leaves half photographed.
+def category_photo_map(library: list[dict], categories: list[str]) -> dict[str, str]:
+    """The photograph of each category, chosen as the home's tiles are (_best_photo): filed under the
+    category first, a different one for each while the library allows."""
+    if not library or not categories:
+        return {}
+    category_words = {w for name in categories for w in re.split(r"[^a-z0-9]+", name.lower()) if len(w) > 2}
+    used: dict[str, int] = {}
+    mapping = {}
+    for name in categories:
+        wanted = [w for w in re.split(r"[^a-z0-9]+", name.lower()) if len(w) > 2]
+        mapping[name] = _best_photo(library, used, wanted, avoid=category_words - set(wanted))["url"]
+    return mapping
 
 
 def revision_photos(planned: list[str], planned_notes: list[str], blocks_json: str | None, data_script: str | None) -> tuple[list[str], list[str] | None]:
@@ -1034,6 +1058,13 @@ def page_brief_text(site: dict, brief, page: dict, handles: dict, contact_prompt
                 # that were Snow, Street, Water, Outdoor and Home (2026-09-13)
                 f"CATEGORIES of the site, in the client's words: {', '.join(site['categories'])}. When this page names or "
                 "lists categories, it names exactly these, in this order; never a set of its own."
+                # //// Neoffice — and shown as tiles, each on its own photograph (category_photo_map)
+                + (
+                    " Shown as tiles, each takes its own photograph, full bleed, its name as its only text: "
+                    + "; ".join(f"{name} {url}" for name, url in site["category_photos"].items())
+                    + "."
+                    if site.get("category_photos") else ""
+                )
                 if site.get("categories") else ""
             )
         ),
@@ -1067,7 +1098,8 @@ def page_brief_text(site: dict, brief, page: dict, handles: dict, contact_prompt
         (
             "PHOTOS: the client's OWN photographs. Copy each URL exactly, without the note in brackets after it; give each "
             f"a descriptive alt in {language}; use each at most once and follow its note: the hero opens the page, each "
-            f"category tile takes the photograph named for it, full bleed, the category's name as its only text:\n{photo_lines}"
+            f"category tile takes the photograph named for it, full bleed, the category's name as its only text; the tiles "
+            f"of one grid are alike: each gets a photograph, or none does:\n{photo_lines}"
             if notes
             else "PHOTOS AVAILABLE (placeholders that the site replaces with real photos after the build; use each at most once, "
             f"copy the URL exactly, give it a descriptive alt in {language}; the cards of one grid are alike: each gets a photo, "
@@ -1555,6 +1587,8 @@ def build_site(ctx, spec: dict) -> str:
     )
     ai_log("info", "Client photos ready", photos=len(client_photos), categories=categories)
     photos_used: dict[str, int] = {}
+    # //// Neoffice — each category's photograph, for every page that shows the categories as tiles
+    category_photos = category_photo_map(client_photos, categories)
     # //// Neoffice ▲▲▲
     # announced when the brief is really written: said before the inspirations and the photos
     # were read, it left the panel on "Reading the inspirations" through the brief's minutes
@@ -1802,6 +1836,13 @@ def build_site(ctx, spec: dict) -> str:
                     scrimmed = veil_copy_on_photos(blocks)
                     if scrimmed:
                         ai_log("info", "Copy on photos given a scrim", page=page["title"], edits=scrimmed)
+                    # //// Neoffice — and the tiles of one grid are alike: a category tile left flat beside
+                    # //// photographed ones takes its category's photograph (layout.complete_tile_photos)
+                    from builder.site_ai.nora.layout import complete_tile_photos
+
+                    completed = complete_tile_photos(blocks, site.get("category_photos") or {})
+                    if completed:
+                        ai_log("info", "Category tiles given their photographs", page=page["title"], edits=completed)
                     variants = repair_button_variants(blocks, palette)
                     if variants:
                         ai_log("info", "Button variants repaired", page=page["title"], edits=variants)
@@ -1861,6 +1902,7 @@ def build_site(ctx, spec: dict) -> str:
     lister = listing_page(pages)
     lister_route = lister["route"] if lister else None
     site["listing_route"] = lister_route
+    site["category_photos"] = category_photos
     site["contact_verified"] = contact_prompt != UNVERIFIED_CONTACT
     # the photographs each page was written with, and their roles: its revision keeps them
     planned_photos: dict[str, tuple[list[str], list[str]]] = {}

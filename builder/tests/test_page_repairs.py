@@ -8,8 +8,8 @@ import frappe
 
 from builder.site_ai.nora.contrast import repair_contrast, repair_opaque_overlays
 from builder.site_ai.nora.facts import drop_placeholders
-from builder.site_ai.nora.layout import balance_grids, phone_columns
-from builder.site_ai.nora.site_builder import brands_page, page_sections
+from builder.site_ai.nora.layout import balance_grids, complete_tile_photos, phone_columns
+from builder.site_ai.nora.site_builder import brands_page, category_photo_map, page_sections
 
 PALETTE = {"xx-background": "#ffffff", "xx-text": "#111111", "xx-primary": "#111111", "xx-secondary": "#eeeeee"}
 
@@ -263,6 +263,67 @@ class TestPhoneColumns(unittest.TestCase):
 		grid = {"element": "div", "isRepeaterBlock": True, "dataKey": {"key": "brands"}, "baseStyles": {"display": "grid", "gridTemplateColumns": "repeat(4, 1fr)"}, "children": [box()]}
 		self.assertEqual(phone_columns([grid], {"brands": 3}), 1)
 		self.assertEqual(grid["mobileStyles"]["gridTemplateColumns"], "minmax(0, 1fr)")
+
+
+TILE_PHOTOS = {"Snow": "/files/snow.jpg", "Street": "/files/street.jpg", "Water": "/files/water.jpg"}
+
+
+class TestTilePhotos(unittest.TestCase):
+	"""An About page showed the five categories as tiles: one on its photograph, four in flat grey."""
+
+	PHOTOS = TILE_PHOTOS
+
+	def tile(self, name, photo=None):
+		styles = {"backgroundImage": f"url('{photo}')", "backgroundSize": "cover"} if photo else {"background": "#444444"}
+		heading = text("h3", name, color="#ffffff" if photo else "#111111")
+		return {"element": "div", "blockId": name, "baseStyles": {**styles, "minHeight": "300px"}, "children": [heading]}
+
+	def grid(self, *tiles):
+		return box(*tiles, display="grid", gridTemplateColumns="repeat(5, 1fr)")
+
+	def test_a_flat_tile_takes_its_photograph_and_the_photographed_tile_dress(self):
+		grid = self.grid(self.tile("Snow"), self.tile("Street", "/files/street.jpg"), self.tile("Water"))
+		self.assertEqual(complete_tile_photos([grid], self.PHOTOS), ["snow", "water"])
+		snow = grid["children"][0]
+		self.assertEqual(snow["baseStyles"]["backgroundImage"], "url('/files/snow.jpg')")
+		self.assertNotIn("background", snow["baseStyles"])
+		self.assertEqual(snow["children"][0]["baseStyles"]["color"], "#ffffff")
+		self.assertEqual((snow["children"][0]["innerHTML"], snow["blockId"]), ("Snow", "Snow"))
+
+	def test_a_tile_built_differently_becomes_a_relabelled_copy(self):
+		photo = self.tile("Street", "/files/street.jpg")
+		photo["children"].insert(0, box(backgroundImage="linear-gradient(180deg, transparent, rgba(0,0,0,0.55))"))
+		grid = self.grid(self.tile("Snow"), photo, self.tile("Water"))
+		self.assertEqual(complete_tile_photos([grid], self.PHOTOS), ["snow", "water"])
+		snow = grid["children"][0]
+		self.assertEqual(snow["baseStyles"]["backgroundImage"], "url('/files/snow.jpg')")
+		self.assertEqual([b["innerHTML"] for b in snow["children"] if b.get("innerHTML")], ["Snow"])
+		self.assertEqual(len(snow["children"]), 2)
+		self.assertNotEqual(snow["blockId"], photo["blockId"])
+
+	def test_alike_grids_and_tiles_of_no_category_stay(self):
+		photos = self.grid(self.tile("Snow", "/files/a.jpg"), self.tile("Street", "/files/b.jpg"), self.tile("Water", "/files/c.jpg"))
+		flat = self.grid(self.tile("Snow"), self.tile("Street"), self.tile("Water"))
+		other = self.grid(self.tile("Gather"), self.tile("Street", "/files/street.jpg"), self.tile("Camp"))
+		self.assertEqual(complete_tile_photos([photos, flat, other], self.PHOTOS), [])
+		self.assertEqual(other["children"][0]["baseStyles"]["background"], "#444444")
+
+	def test_the_name_may_sit_in_a_longer_label(self):
+		grid = self.grid(self.tile("Snow gear"), self.tile("Street", "/files/street.jpg"), self.tile("Water"))
+		self.assertEqual(complete_tile_photos([grid], self.PHOTOS), ["snow", "water"])
+
+
+class TestCategoryPhotoMap(unittest.TestCase):
+	def photo(self, url, *words):
+		return {"url": url, "has_text": False, "landscape": True, "words": set(words), "text": " ".join(words), "quality": "high", "shows": ""}
+
+	def test_each_category_gets_its_own_photograph(self):
+		library = [self.photo("/files/water.jpg", "water", "surf"), self.photo("/files/snow.jpg", "snow"), self.photo("/files/street.jpg", "street")]
+		self.assertEqual(
+			category_photo_map(library, ["Snow", "Street", "Water"]),
+			{"Snow": "/files/snow.jpg", "Street": "/files/street.jpg", "Water": "/files/water.jpg"},
+		)
+		self.assertEqual(category_photo_map([], ["Snow"]), {})
 
 
 class TestBrandsPage(unittest.TestCase):

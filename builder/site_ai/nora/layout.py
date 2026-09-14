@@ -10,8 +10,10 @@ forgotten child across the row is what the author meant.
 
 Pure functions over the block tree."""
 
+import copy
 import re
 import unicodedata
+import uuid
 
 STYLE_KEYS = ("baseStyles", "tabletStyles")
 WIDE_GRID = re.compile(r"repeat\(\s*(\d+)\s*,")
@@ -327,4 +329,121 @@ def balance_grids(blocks: list, data_counts: dict | None = None) -> int:
         block["classes"] = [*classes, "u-grid--fill"]
         edits += 1
     return edits
+
+
+# //// Neoffice — the tiles of one grid are alike (2026-09-14): an About page showed the site's five
+# //// categories as tiles, one on its photograph and four in flat grey, because only the home and the
+# //// listing page were handed a photograph per category (site_builder.category_photo_map).
+URL_IN_BACKGROUND = re.compile(r"url\((['\"]?)([^'\")]+)\1\)")
+STYLE_FIELDS = ("baseStyles", "mobileStyles", "tabletStyles", "rawStyles", "classes")
+
+
+def _tile_photo(block: dict) -> str | None:
+    """The photograph a tile shows: an image's source or a background image's url."""
+    for b in _walk([block]):
+        if b.get("element") == "img":
+            src = str((b.get("attributes") or {}).get("src") or "")
+            if src and not src.startswith("data:"):
+                return src
+        m = URL_IN_BACKGROUND.search(str((b.get("baseStyles") or {}).get("backgroundImage") or ""))
+        if m:
+            return m.group(2)
+    return None
+
+
+def _shape(block: dict) -> tuple:
+    return (block.get("element"), tuple(_shape(c) for c in block.get("children") or [] if isinstance(c, dict)))
+
+
+def _texts(block: dict) -> list[dict]:
+    return [b for b in _walk([block]) if isinstance(b.get("innerHTML"), str) and _plain(b["innerHTML"])]
+
+
+def _tile_category(tile: dict, names: dict) -> str | None:
+    """The category a tile is named after: its text is the name, or holds it as a whole word."""
+    label = _plain(" ".join(b["innerHTML"] for b in _texts(tile)))
+    if label in names:
+        return label
+    found = [n for n in names if re.search(rf"\b{re.escape(n)}\b", label)]
+    return found[0] if len(found) == 1 else None
+
+
+def _restyle(tile: dict, model: dict, old_url: str, new_url: str) -> None:
+    """Give `tile` the styles of `model`, block by block, with its own photograph in place of the
+    model's; the texts, links and bindings stay the tile's."""
+    pairs = [(tile, model)]
+    while pairs:
+        t, m = pairs.pop()
+        for field in STYLE_FIELDS:
+            if field not in m:
+                t.pop(field, None)
+                continue
+            value = copy.deepcopy(m[field])
+            if isinstance(value, dict):
+                value = {k: v.replace(old_url, new_url) if isinstance(v, str) else v for k, v in value.items()}
+            t[field] = value
+        if t.get("element") == "img" and (m.get("attributes") or {}).get("src") == old_url:
+            t.setdefault("attributes", {})["src"] = new_url
+        pairs.extend(
+            zip(
+                [c for c in t.get("children") or [] if isinstance(c, dict)],
+                [c for c in m.get("children") or [] if isinstance(c, dict)],
+                strict=True,
+            )
+        )
+
+
+def _relabelled_copy(tile: dict, model: dict, old_url: str, new_url: str) -> dict | None:
+    """The model tile with the tile's texts and links, when their structures differ (a veil layer the
+    flat tile lacks): None unless both carry the same number of texts and links."""
+    texts, model_texts = _texts(tile), _texts(model)
+    links = [b for b in _walk([tile]) if b.get("element") == "a"]
+    clone = copy.deepcopy(model)
+    clone_links = [b for b in _walk([clone]) if b.get("element") == "a"]
+    if len(texts) != len(model_texts) or len(links) != len(clone_links):
+        return None
+    for mine, theirs in zip(_texts(clone), texts, strict=True):
+        mine["innerHTML"] = theirs["innerHTML"]
+    for mine, theirs in zip(clone_links, links, strict=True):
+        mine["attributes"] = {**(mine.get("attributes") or {}), **{k: v for k, v in (theirs.get("attributes") or {}).items() if k == "href"}}
+    for b in _walk([clone]):
+        b["blockId"] = uuid.uuid4().hex[:10]
+        styles = b.get("baseStyles") or {}
+        for key, value in list(styles.items()):
+            if isinstance(value, str) and old_url in value:
+                styles[key] = value.replace(old_url, new_url)
+        if b.get("element") == "img" and (b.get("attributes") or {}).get("src") == old_url:
+            b["attributes"]["src"] = new_url
+    return clone
+
+
+def complete_tile_photos(blocks: list, category_photos: dict) -> list[str]:
+    """A grid of three tiles or more that shows some on a photograph and others flat: each flat tile
+    named after a category takes that category's photograph, dressed like the photographed tile.
+    Returns the names of the tiles completed."""
+    names = {_plain(name): url for name, url in (category_photos or {}).items() if url and _plain(name)}
+    done = []
+    if not names:
+        return done
+    for grid in _walk(blocks):
+        tiles = [c for c in grid.get("children") or [] if isinstance(c, dict)]
+        if len(tiles) < 3 or not _is_grid(grid):
+            continue
+        photos = [_tile_photo(t) for t in tiles]
+        if all(photos) or not any(photos):
+            continue
+        model, model_url = next((t, url) for t, url in zip(tiles, photos, strict=True) if url)
+        for tile, url in zip(tiles, photos, strict=True):
+            name = None if url else _tile_category(tile, names)
+            if not name:
+                continue
+            if _shape(tile) == _shape(model):
+                _restyle(tile, model, model_url, names[name])
+            else:
+                clone = _relabelled_copy(tile, model, model_url, names[name])
+                if clone is None:
+                    continue
+                grid["children"][grid["children"].index(tile)] = clone
+            done.append(name)
+    return done
 
