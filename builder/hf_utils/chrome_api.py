@@ -47,6 +47,7 @@ SIMPLE_FIELDS = (
 	# had dropped it — so the Theme read a field that no longer existed and
 	# showed two empty selects over values that were sitting in the database.
 	"page_header_template",
+	"page_header_component",
 	"page_header_background",
 	"page_header_bg_color",
 	"page_header_image",

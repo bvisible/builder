@@ -189,6 +189,11 @@ doc_events = {
 	"Builder Token": {
 		"on_update": "builder.hf_utils.tokens.sync_token_to_chrome",
 	},
+	# //// Neoffice — a component in use as the site's top page band changes every page: the page
+	# //// cache is cleared when it is saved (builder.page_header.clear_band_cache).
+	"Builder Component": {
+		"on_update": "builder.page_header.clear_band_cache",
+	},
 }
 
 # Scheduled Tasks

@@ -89,6 +89,7 @@
   "footer_html",
   "page_header_section",
   "page_header_template",
+  "page_header_component",
   "page_header_background",
   "page_header_bg_color",
   "page_header_image",
@@ -942,9 +943,17 @@
    "fieldname": "page_header_template",
    "fieldtype": "Select",
    "label": "Page Header Template",
-   "options": "None\nMinimal\nStandard\nCentered\nSplit",
+   "options": "None\nMinimal\nStandard\nCentered\nSplit\nBuilder",
    "default": "Standard",
    "description": "Which preset the shared band uses on interior pages"
+  },
+  {
+   "fieldname": "page_header_component",
+   "fieldtype": "Link",
+   "label": "Top Page Component",
+   "options": "Builder Component",
+   "depends_on": "eval:doc.page_header_template=='Builder'",
+   "description": "A component designed in the Builder, drawn at the top of every inner page. Its blocks can bind page_title, page_subtitle, breadcrumbs (label, url) and page_image."
   },
   {
    "fieldname": "page_header_background",
@@ -998,7 +1007,7 @@
  "index_web_pages_for_search": 1,
  "issingle": 1,
  "links": [],
- "modified": "2026-09-14 09:40:00.000000",
+ "modified": "2026-09-14 12:00:00.000000",
  "modified_by": "Administrator",
  "module": "Builder",
  "name": "Website Header Footer Config",

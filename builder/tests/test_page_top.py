@@ -145,6 +145,34 @@ class TestPageTop(unittest.TestCase):
 		# a page with an h1 of its own needs no second one
 		self.assertNotIn("<h1", own)
 
+	def test_a_designed_top_page_draws_its_component_with_the_page_data(self):
+		"""The band as a component designed in the Builder: its title block is bound to page_title."""
+		component = json.dumps({
+			"blockId": "band", "element": "section", "baseStyles": {"padding": "48px 24px"},
+			"children": [{
+				"blockId": "title", "element": "h1", "innerHTML": "Designed title", "baseStyles": {},
+				"dynamicValues": [{"key": "page_title", "property": "innerHTML", "type": "key", "comesFrom": "dataScript"}],
+				"children": [],
+			}],
+		})
+		doc = frappe._dict(route="services", page_title="Services <b>", blocks=CONTENT_FIRST)
+		settings = dict(page_header.DEFAULTS, page_header_template="Builder", page_header_component="Top Band")
+		with (
+			patch.object(page_header, "_config", return_value=None),
+			patch.object(page_header, "settings", return_value=settings),
+			patch.object(frappe.db, "get_value", return_value=component),
+		):
+			html = page_header.render_builder_page_header(doc)
+		self.assertIn("site-page-header--builder", html)
+		self.assertIn("Services &lt;b&gt;", html)
+		self.assertNotIn("Designed title", html)
+		self.assertEqual(trail_of(html), [frappe._("Home"), "Services <b>"])
+
+	def test_a_designed_top_page_without_its_component_falls_back_to_the_preset(self):
+		settings = dict(page_header.DEFAULTS, page_header_template="Builder", page_header_component="")
+		html = self.band(CONTENT_FIRST, **{k: v for k, v in settings.items() if k != "show_breadcrumbs"})
+		self.assertIn("site-page-header--standard", html)
+
 	def test_the_first_section_decides(self):
 		"""An h1 further down the page is not the page's top."""
 		later = page(section(text("h2", "Intro")), section(text("h1", "Late title")))

@@ -39,7 +39,8 @@ from frappe.utils import escape_html
 #
 # So: WE design the presets, the AI picks one and picks a fill. `footer_template`
 # works exactly this way.
-TEMPLATES = ("Minimal", "Standard", "Centered", "Split", "None")
+# //// Neoffice — "Builder": the band is a component the site designs in the Builder (2026-09-14)
+TEMPLATES = ("Minimal", "Standard", "Centered", "Split", "None", "Builder")
 BACKGROUNDS = ("None", "Tinted", "Solid", "Image")
 
 DEFAULTS = {
@@ -49,6 +50,7 @@ DEFAULTS = {
 	"page_header_image": "",
 	"page_header_excluded_routes": "",
 	"show_breadcrumbs": 1,
+	"page_header_component": "",
 }
 
 # Fills that put the title over something dark enough to need light text.
@@ -227,6 +229,26 @@ def _band_parts(context) -> tuple[str, str]:
 	seo = _breadcrumb_ld(trail)
 	if template == "None" or context.get("page_opens_itself"):
 		return "", seo
+
+	# //// Neoffice — a band designed in the Builder: the component chosen for the site, drawn with
+	# //// the page's title, subtitle, trail and picture (render_component_band). Without a component
+	# //// yet, the standard preset stands in.
+	if template == "Builder":
+		designed = render_component_band(
+			config.get("page_header_component"),
+			{
+				"page_title": escape_html(title),
+				"page_subtitle": escape_html(context.get("page_header_subtitle") or ""),
+				"breadcrumbs": [
+					{"label": escape_html(c["label"]), "url": escape_html(c["url"])}
+					for c in (trail if config.get("show_breadcrumbs") else [])
+				],
+				"page_image": escape_html(context.get("page_image") or ""),
+			},
+		)
+		if designed:
+			return designed, seo
+		template = "Standard"
 
 	background = config.get("page_header_background") or "None"
 	# //// Neoffice — escaped here, at the seam, rather than in the template. frappe's Jinja
@@ -602,6 +624,7 @@ def render_builder_page_header(doc=None, own_top=None) -> str:
 			"page_header_subtitle": subtitle,
 			"page_opens_itself": opens_itself,
 			"page_fonts": _page_fonts(blocks),
+			"page_image": _field("meta_image"),
 		}
 	)
 	# a Builder page has no `parents`; the route is the trail
@@ -647,3 +670,50 @@ def render_builder_page_header(doc=None, own_top=None) -> str:
 		) + band
 
 	return band
+
+
+# //// Neoffice — the band designed in the Builder (2026-09-14): "comme si c'était une page, mais c'est juste
+# //// le top". The site picks a Builder Component (page_header_component, template "Builder"); it is drawn
+# //// on every inner page with the page's data bound by its blocks, the same way a page binds its data
+# //// script: page_title, page_subtitle, breadcrumbs (a list of label and url) and page_image.
+def render_component_band(component, data: dict) -> str:
+	"""The chosen component rendered as the band, or an empty string when there is none or it fails.
+	`data` must already be escaped: frappe's Jinja does not escape."""
+	if not component:
+		return ""
+	block = frappe.db.get_value("Builder Component", component, "block")
+	if not block:
+		return ""
+	from builder.builder.doctype.builder_page.builder_page import get_block_html, get_google_font_urls
+
+	try:
+		html, style, fonts, _dual = get_block_html(frappe.parse_json(block))
+		body = frappe.render_template(html, data)
+		style = frappe.render_template(style, data) if style else ""
+	except Exception:
+		frappe.log_error("Top page component could not be drawn", frappe.get_traceback())
+		return ""
+	links = "".join(
+		f'<link rel="stylesheet" href="{escape_html(url)}" media="screen">' for url in get_google_font_urls(fonts or {})
+	)
+	return f'{links}{style}<section class="site-page-header site-page-header--builder">{body}</section>'
+
+
+def clear_band_cache(doc, method=None) -> None:
+	"""A component in use as a site's band changes every page: the page cache holds the old one."""
+	for doctype in ("Website Header Footer Config", "Website Header Footer Variant"):
+		try:
+			if not frappe.get_meta(doctype).has_field("page_header_component"):
+				continue
+			if doctype == "Website Header Footer Config":
+				used = frappe.db.get_single_value(doctype, "page_header_component") == doc.name
+			else:
+				used = bool(frappe.db.exists(doctype, {"page_header_component": doc.name}))
+		except Exception:
+			continue
+		if used:
+			from frappe.website.utils import clear_cache
+
+			clear_cache()
+			return
+
