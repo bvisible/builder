@@ -91,6 +91,18 @@
 						Header Preview
 					</div>
 				</div>
+				<!-- //// Neoffice — added: the top-of-page band a visitor sees above this page, between the header
+				     //// and the page, greyed like them. Hidden while the page's first section carries its own h1,
+				     //// as on the published page (page_header.render_builder_page_header, 2026-09-14). -->
+				<div
+					v-if="configuredPageHeaderHtml?.configured && showBlocks && !pageOpensItself && !hideTopPage"
+					class="editor-preview-block editor-page-header-preview pointer-events-none relative opacity-60"
+					:style="{ borderBottom: '2px dashed var(--outline-gray-3)' }">
+					<div v-html="configuredPageHeaderHtml.html"></div>
+					<div class="absolute bottom-2 right-2 z-10 rounded bg-surface-gray-2 px-2 py-0.5 text-xs text-ink-gray-5">
+						{{ __("Top page preview") }}
+					</div>
+				</div>
 				<!-- Main Content -->
 				<!-- //// Neoffice — min-h-[inherit] flex-1: the page is now one flex child between the two chrome
 				     //// previews (9b804199). -->
@@ -205,6 +217,19 @@ const canvasId = `builder-canvas-${useId()}`;
 // Header/footer HTML from Website Header Footer Config
 const configuredHeaderHtml = ref<{ html: string; css: string; configured: boolean } | null>(null);
 const configuredFooterHtml = ref<{ html: string; css: string; configured: boolean } | null>(null);
+//// Neoffice — the page's top band (get_editor_page_header_html), and whether the page opens on its
+//// own h1, in which case the published page shows no band either (page_header._opens_with_own_title)
+const configuredPageHeaderHtml = ref<{ html: string; configured: boolean } | null>(null);
+function carriesH1(node: any, depth = 0): boolean {
+	if (!node || depth > 16) return false;
+	if (node.element === "h1" || String(node.innerHTML || "").toLowerCase().includes("<h1")) return true;
+	return (node.children || []).some((child: any) => carriesH1(child, depth + 1));
+}
+const hideTopPage = computed(() => !!(pageStore.activePage as any)?.hide_page_header);
+const pageOpensItself = computed(() => {
+	const first = (block.value?.children || []).find((child: any) => child?.getStyle?.("display") !== "none");
+	return carriesH1(first);
+});
 
 // Load header/footer HTML from Website Header Footer Config
 async function loadConfiguredHeaderFooter() {
@@ -223,10 +248,27 @@ async function loadConfiguredHeaderFooter() {
 		configuredHeaderHtml.value = { configured: false, html: "", css: "" };
 		configuredFooterHtml.value = { configured: false, html: "", css: "" };
 	}
+	//// Neoffice — the page's top band, fetched on its own: a failure never hides the header and footer
+	try {
+		configuredPageHeaderHtml.value = await call("builder.hf_utils.header_footer.get_editor_page_header_html", {
+			page: pageStore.activePage?.name || null,
+			website_profile,
+		});
+	} catch (e) {
+		configuredPageHeaderHtml.value = { configured: false, html: "" };
+	}
 }
 
 // Load header/footer on mount, and again when the open page belongs to another profile
 watch(() => pageStore.activePage?.neo_website_profile, loadConfiguredHeaderFooter, { immediate: true });
+//// Neoffice — the previews follow the page (its title is the band's) and every save of the Theme
+//// screen, which announces itself with builder:chrome-saved (GlobalTheme.vue): they used to load once
+watch(
+	() => [pageStore.activePage?.name, pageStore.activePage?.page_title, pageStore.activePage?.meta_description, (pageStore.activePage as any)?.page_header_subtitle],
+	loadConfiguredHeaderFooter,
+);
+onMounted(() => window.addEventListener("builder:chrome-saved", loadConfiguredHeaderFooter));
+onUnmounted(() => window.removeEventListener("builder:chrome-saved", loadConfiguredHeaderFooter));
 
 const { cssVariables, darkCssVariables, fontTokens } = useBuilderToken();
 

@@ -109,6 +109,26 @@ class TestPageTop(unittest.TestCase):
 	def test_a_home_gets_nothing(self):
 		self.assertEqual(self.band(OWN_TOP, title="Home", route="home"), "")
 
+	def test_the_editor_preview_draws_the_band_whatever_the_first_section(self):
+		"""The editor hides the band itself while its live page opens on an h1: it asks for it anyway."""
+		doc = frappe._dict(route="services", page_title="Services", blocks=OWN_TOP)
+		with (
+			patch.object(page_header, "_config", return_value=None),
+			patch.object(page_header, "settings", return_value=dict(page_header.DEFAULTS)),
+		):
+			self.assertIn('class="site-page-header', page_header.render_builder_page_header(doc, own_top=False))
+			self.assertNotIn("site-page-header", page_header.render_builder_page_header(doc))
+
+	def test_a_page_set_to_go_without_the_band_keeps_its_trail(self):
+		doc = frappe._dict(route="services", page_title="Services", blocks=CONTENT_FIRST, hide_page_header=1)
+		with (
+			patch.object(page_header, "_config", return_value=None),
+			patch.object(page_header, "settings", return_value=dict(page_header.DEFAULTS)),
+		):
+			html = page_header.render_builder_page_header(doc)
+		self.assertNotIn("site-page-header", html)
+		self.assertEqual(trail_of(html), [frappe._("Home"), "Services"])
+
 	def test_the_first_section_decides(self):
 		"""An h1 further down the page is not the page's top."""
 		later = page(section(text("h2", "Intro")), section(text("h1", "Late title")))

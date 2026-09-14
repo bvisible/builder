@@ -425,11 +425,12 @@
 					class="inline-block size-4"
 					:class="open.pageHeader ? 'lucide-chevron-down' : 'lucide-chevron-right'"
 					aria-hidden="true" />
-				{{ __("Page header") }}
+				<!-- //// Neoffice — "Top page", the product's own word for the band (2026-09-14) -->
+				{{ __("Top page") }}
 			</button>
 			<template v-if="open.pageHeader">
 				<p class="text-xs text-ink-gray-5">
-					{{ __("Shown above the content of pages the editor does not build — the blog, a section that is coming. Pages that open on a hero of their own keep it.") }}
+					{{ __("The band at the top of every inner page, in the site's style. A page that opens on its own title keeps it, and the breadcrumb always stays in the page for search engines.") }}
 				</p>
 				<!-- A preset and a fill, the same shape as the footer: we draw the
 				     presets, the site picks one and picks what it sits on. The
@@ -482,6 +483,7 @@
 				<Switch
 					size="sm"
 					:label="__('Breadcrumbs')"
+					:description="__('Always in the page for search engines: this only shows or hides it.')"
 					:modelValue="!!state.show_breadcrumbs"
 					@update:modelValue="(v: boolean) => (state.show_breadcrumbs = v ? 1 : 0)" />
 			</template>
@@ -822,6 +824,8 @@ watchDebounced(
 			});
 			snapshot = serialized;
 			savedAt.value = Date.now();
+			//// Neoffice — the editor's header, footer and top page previews reload on this (BuilderCanvas.vue)
+			window.dispatchEvent(new CustomEvent("builder:chrome-saved"));
 		} catch (error) {
 			toast.error(error instanceof Error ? error.message : String(error));
 		} finally {

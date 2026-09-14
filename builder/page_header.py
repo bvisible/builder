@@ -532,7 +532,7 @@ def _breadcrumb_ld(trail) -> str:
 # //// Neoffice — whitelist REMOVED (was @frappe.whitelist(allow_guest=True)). Same reason as
 # //// render_page_header above, plus one of its own: `doc` came from the caller, so over HTTP
 # //// this rendered a band out of whatever dict was posted.
-def render_builder_page_header(doc=None) -> str:
+def render_builder_page_header(doc=None, own_top=None) -> str:
 	"""The same band, for a page the editor built.
 
 	Called from the Builder page template. The homepage keeps the hero the AI
@@ -575,7 +575,13 @@ def render_builder_page_header(doc=None) -> str:
 
 	# //// Neoffice — a page that opens on its own title keeps it, and the band writes in the
 	# //// page's faces (2026-09-14, see _opens_with_own_title and _page_fonts).
-	opens_itself = _opens_with_own_title(blocks)
+	# `own_top` False draws the band whatever the first section is: the editor's preview hides it
+	# itself while the live page carries its own h1 (header_footer.get_editor_page_header_html)
+	opens_itself = _opens_with_own_title(blocks) if own_top is None else bool(own_top)
+	# a page set to go without the band keeps only its trail, like a page with a top of its own
+	# (the page settings' "No top page on this page", patches/add_page_top_fields.py)
+	if _field("hide_page_header") and own_top is None:
+		opens_itself = True
 	context = frappe._dict(
 		{
 			"title": title,

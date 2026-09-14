@@ -10267,3 +10267,36 @@ msgstr "Merci, votre message a été envoyé."
 #: builder/templates/includes/contact_form.html
 msgid "Your message could not be sent. Please check your email address and try again."
 msgstr "Votre message n'a pas pu être envoyé. Veuillez vérifier votre adresse e-mail et réessayer."
+
+msgid "Top page"
+msgstr "Haut de page"
+
+msgid "The band at the top of every inner page, in the site's style. A page that opens on its own title keeps it, and the breadcrumb always stays in the page for search engines."
+msgstr "La bande en haut de chaque page intérieure, dans le style du site. Une page qui s'ouvre sur son propre titre la conserve, et le fil d'Ariane reste toujours dans la page pour les moteurs de recherche."
+
+msgid "Always in the page for search engines: this only shows or hides it."
+msgstr "Toujours dans la page pour les moteurs de recherche : ceci ne fait que l'afficher ou le masquer."
+
+msgid "Top page preview"
+msgstr "Aperçu du haut de page"
+
+msgid "Drop image to attach"
+msgstr "Déposez l'image pour la joindre"
+
+msgid "Updating a shared component"
+msgstr "Mise à jour d'un composant partagé"
+
+msgid "Updated a shared component"
+msgstr "Composant partagé mis à jour"
+
+msgid "Top page subtitle"
+msgstr "Sous-titre du haut de page"
+
+msgid "Under the title, in the band at the top of this page. Empty: the description, unless the page already shows it."
+msgstr "Sous le titre, dans la bande en haut de cette page. Vide : la description, sauf si la page l'affiche déjà."
+
+msgid "No top page on this page"
+msgstr "Aucun haut de page sur cette page"
+
+msgid "The breadcrumb stays in the page for search engines."
+msgstr "Le fil d'Ariane reste dans la page pour les moteurs de recherche."

@@ -16,6 +16,20 @@
 						:modelValue="pageStore.activePage?.meta_description"
 						:hideClearButton="true"
 						@update:modelValue="(val: string) => pageStore.updateActivePage('meta_description', val)" />
+					<!-- //// Neoffice — the page's own settings of the top page band (page_header.py,
+					     //// patches/add_page_top_fields.py): a subtitle of its own, or no band at all -->
+					<BuilderInput
+						type="text"
+						:label="__('Top page subtitle')"
+						:description="__('Under the title, in the band at the top of this page. Empty: the description, unless the page already shows it.')"
+						:modelValue="topPageSubtitle"
+						@update:modelValue="(val: string) => setPageField('page_header_subtitle', val)" />
+					<Switch
+						size="sm"
+						:label="__('No top page on this page')"
+						:description="__('The breadcrumb stays in the page for search engines.')"
+						:modelValue="hideTopPage"
+						@update:modelValue="(val: boolean) => setPageField('hide_page_header', val ? 1 : 0)" />
 				</div>
 				<div class="flex flex-1 flex-col justify-between gap-2">
 					<ImageUploadInput
@@ -75,4 +89,11 @@
 import ImageUploadInput from "@/components/ImageUploadInput.vue";
 import usePageStore from "@/stores/pageStore";
 const pageStore = usePageStore();
+//// Neoffice — the top page fields are custom fields of Builder Page (patches/add_page_top_fields.py),
+//// so they are not in the page's type
+import { Switch } from "frappe-ui";
+import { computed } from "vue";
+const topPageSubtitle = computed(() => (pageStore.activePage as any)?.page_header_subtitle || "");
+const hideTopPage = computed(() => !!(pageStore.activePage as any)?.hide_page_header);
+const setPageField = (field: string, value: unknown) => pageStore.updateActivePage(field as any, value as any);
 </script>

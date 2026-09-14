@@ -566,6 +566,44 @@ def get_editor_footer_html(website_profile=None):
 	}
 
 
+# //// Neoffice — added: the top-of-page band of the open page for the editor, drawn between the header
+# //// and footer previews so the page is designed with the band a visitor will see above it (2026-09-14,
+# //// "le top page doit être très visible dans le builder").
+@frappe.whitelist()
+@builder_role_required()
+def get_editor_page_header_html(page=None, website_profile=None):
+	"""The band a visitor sees above `page`, for the editor. It is drawn whatever the page's first
+	section is: the editor hides it itself while the live page opens on its own h1. The breadcrumb's
+	JSON-LD and the floating header's spacer are left out: neither is seen in a preview."""
+	import re
+
+	from builder.page_header import render_builder_page_header
+
+	if not page or not frappe.db.exists("Builder Page", page):
+		return {"configured": False, "html": ""}
+	doc = frappe.get_doc("Builder Page", page)
+	profile = website_profile or doc.get("neo_website_profile")
+	view = frappe._dict(
+		route=doc.route,
+		page_title=doc.page_title,
+		meta_description=doc.meta_description,
+		page_header_subtitle=doc.get("page_header_subtitle"),
+		blocks=doc.draft_blocks or doc.blocks,
+	)
+	# the band reads the chrome of the page's own site, not of the editor's host (see #284)
+	previous = (getattr(frappe.local, "website_profile", None), getattr(frappe.local, "website_profile_doc", None))
+	try:
+		if profile and frappe.db.exists("Website Profile", profile):
+			frappe.local.website_profile = profile
+			frappe.local.website_profile_doc = frappe.get_cached_doc("Website Profile", profile)
+		html = render_builder_page_header(view, own_top=False) or ""
+	finally:
+		frappe.local.website_profile, frappe.local.website_profile_doc = previous
+	html = re.sub(r'<script type="application/ld\+json">.*?</script>', "", html, flags=re.S)
+	html = re.sub(r'<style>\.site-header__spacer.*?</style>\s*<div class="site-header__spacer[^"]*"[^>]*></div>', "", html, flags=re.S)
+	return {"configured": bool(html.strip()), "html": html}
+
+
 # The whole-page chrome, as Jinja methods. api.py exposes the same thing as
 # whitelisted endpoints; these are what a template calls — the Builder page
 # generator, and the Web Templates frappe's base.html renders on every other
