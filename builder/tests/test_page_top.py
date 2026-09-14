@@ -99,6 +99,18 @@ class TestPageTop(unittest.TestCase):
 		self.assertEqual([c["label"] for c in listing], [frappe._("Home"), frappe._("Shop")])
 		self.assertEqual(listing[-1]["url"], "")
 
+	def test_the_band_says_when_it_prints_the_title(self):
+		"""The shop's product page hid its h1 under the band's and kept it in the markup."""
+		context = frappe._dict(title="Cart", parents=[])
+		with patch.object(frappe.local, "page_header_route", "cart", create=True):
+			with patch.object(page_header, "settings", return_value=dict(page_header.DEFAULTS)):
+				self.assertEqual(page_header.band_draws(context), {"trail": True, "title": True})
+			with patch.object(page_header, "settings", return_value=dict(page_header.DEFAULTS, page_header_template="None")):
+				self.assertEqual(page_header.band_draws(context), {"trail": False, "title": False})
+			own = frappe._dict(title="Cart", parents=[], page_opens_itself=True)
+			with patch.object(page_header, "settings", return_value=dict(page_header.DEFAULTS)):
+				self.assertEqual(page_header.band_draws(own), {"trail": True, "title": False})
+
 	def test_the_band_says_when_it_draws_the_trail(self):
 		"""site_chrome keeps the page's own breadcrumb out of the markup when the band draws one."""
 		context = frappe._dict(title="Cart", parents=[])

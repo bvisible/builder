@@ -310,11 +310,17 @@ def _inject_config_chrome(context):
 		# //// own (the shop's templates/includes/breadcrumbs.html, frappe's) stays out of the markup. The
 		# //// shop only hid it under the band, and its microdata doubled the band's trail for the search
 		# //// engines. Both includes already honour no_breadcrumbs.
+		# //// ...and when it prints the page's title, band_prints_title tells the page's own template,
+		# //// which may then write its heading as something other than a second h1 (the shop's product
+		# //// page hid its h1 under the band, and kept it in the markup).
 		try:
-			from builder.page_header import band_draws_trail
+			from builder.page_header import band_draws
 
-			if band_draws_trail(context):
+			drawn = band_draws(context)
+			if drawn["trail"]:
 				context["no_breadcrumbs"] = 1
+			if drawn["title"]:
+				context["band_prints_title"] = 1
 		except Exception:
 			pass
 
