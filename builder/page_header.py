@@ -18,6 +18,7 @@ carries the title and the category — a page header there would be a title abov
 a title.
 """
 
+import json
 # //// Neoffice — re: the colour allowlist added below (_COLOUR_RE).
 import re
 
@@ -60,8 +61,11 @@ _DARK_BACKGROUNDS = ("Image", "Solid")
 # leave it unstyled — breadcrumbs flush against the window edge — on every page
 # the AI generated. Shipping the rules with the markup is what makes one band
 # actually mean one band.
+#
+# On a Builder page the title and the text take the page's own faces when it has some
+# (--sph-*, see _page_fonts): the theme's fonts are the fallback, not the rule.
 _CSS = (
-	"<style>.site-page-header{border-bottom:1px solid var(--footer-border,rgba(0,0,0,0.08))}.site-page-header__inner{max-width:var(--container-width,1280px);margin:0 auto;padding:44px 24px 36px}.site-page-header__crumbs{display:flex;flex-wrap:wrap;align-items:center;gap:6px;font-size:0.8125rem;color:var(--muted-color,#6b7280);margin-bottom:12px}.site-page-header__crumbs a{color:inherit;text-decoration:none}.site-page-header__crumbs a:hover{color:var(--primary-color,#111)}.site-page-header__sep{opacity:0.5}.site-page-header__title{font-size:clamp(1.9rem,1.2rem + 2.2vw,3rem);font-weight:700;font-family:var(--heading-font,inherit);line-height:1.15;margin:0}.site-page-header__subtitle{max-width:62ch;margin:10px 0 0;color:var(--muted-color,#6b7280);line-height:1.6}.site-page-header--minimal .site-page-header__inner{padding-top:32px;padding-bottom:24px}.site-page-header--centered .site-page-header__inner{text-align:center}.site-page-header--centered .site-page-header__crumbs{justify-content:center}.site-page-header--centered .site-page-header__subtitle{margin-left:auto;margin-right:auto}.site-page-header__split{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:32px;align-items:end}.site-page-header__split .site-page-header__subtitle{margin-top:0}@media (max-width:768px){.site-page-header__split{grid-template-columns:1fr;gap:12px}}.site-page-header--bg-image .site-page-header__inner,.site-page-header--bg-solid .site-page-header__inner{padding-top:72px;padding-bottom:64px}.site-page-header--on-dark{border-bottom-color:transparent}.site-page-header--on-dark .site-page-header__title{color:#fff}.site-page-header--on-dark .site-page-header__subtitle,.site-page-header--on-dark .site-page-header__crumbs{color:rgba(255,255,255,0.82)}.site-page-header--on-dark .site-page-header__crumbs a:hover{color:#fff}.site-page-header--bg-tinted{border-bottom-color:transparent}</style>"
+	"<style>.site-page-header{border-bottom:1px solid var(--footer-border,rgba(0,0,0,0.08))}.site-page-header__inner{max-width:var(--container-width,1280px);margin:0 auto;padding:44px 24px 36px;font-family:var(--sph-body-font,inherit)}.site-page-header__crumbs{display:flex;flex-wrap:wrap;align-items:center;gap:6px;font-size:0.8125rem;color:var(--muted-color,#6b7280);margin-bottom:12px}.site-page-header__crumbs a{color:inherit;text-decoration:none}.site-page-header__crumbs a:hover{color:var(--primary-color,#111)}.site-page-header__sep{opacity:0.5}.site-page-header__title{font-size:clamp(1.9rem,1.2rem + 2.2vw,3rem);font-weight:var(--sph-heading-weight,700);font-family:var(--sph-heading-font,var(--heading-font,inherit));line-height:1.15;margin:0}.site-page-header__subtitle{max-width:62ch;margin:10px 0 0;color:var(--muted-color,#6b7280);line-height:1.6}.site-page-header--minimal .site-page-header__inner{padding-top:32px;padding-bottom:24px}.site-page-header--centered .site-page-header__inner{text-align:center}.site-page-header--centered .site-page-header__crumbs{justify-content:center}.site-page-header--centered .site-page-header__subtitle{margin-left:auto;margin-right:auto}.site-page-header__split{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:32px;align-items:end}.site-page-header__split .site-page-header__subtitle{margin-top:0}@media (max-width:768px){.site-page-header__split{grid-template-columns:1fr;gap:12px}}.site-page-header--bg-image .site-page-header__inner,.site-page-header--bg-solid .site-page-header__inner{padding-top:72px;padding-bottom:64px}.site-page-header--on-dark{border-bottom-color:transparent}.site-page-header--on-dark .site-page-header__title{color:#fff}.site-page-header--on-dark .site-page-header__subtitle,.site-page-header--on-dark .site-page-header__crumbs{color:rgba(255,255,255,0.82)}.site-page-header--on-dark .site-page-header__crumbs a:hover{color:#fff}.site-page-header--bg-tinted{border-bottom-color:transparent}</style>"
 )
 
 
@@ -188,11 +192,14 @@ def _breadcrumbs(context, path: str, current: str) -> list:
 
 
 def render(context) -> str:
-	"""The band, or an empty string when this page should not have one."""
+	"""The band, or an empty string when this page should not have one.
+
+	The breadcrumb trail rides along as JSON-LD whenever the page has one. It stays for the
+	search engines when the band is switched off, when the trail is not shown, and when the
+	page opens on a title of its own (see _opens_with_own_title).
+	"""
 	config = settings()
 	template = config.get("page_header_template") or "Standard"
-	if template == "None":
-		return ""
 
 	# A page may say it opens on its own composition — our 404 is a centred
 	# statement, and a band above it would be the same words twice.
@@ -213,6 +220,14 @@ def render(context) -> str:
 	if not title:
 		return ""
 
+	# //// Neoffice — the trail stays in the page whatever is drawn (2026-09-14): switching the
+	# //// breadcrumb off, or the whole band, took it out of the markup, and the search engines
+	# //// with it.
+	trail = _breadcrumbs(context, path, title)
+	seo = _breadcrumb_ld(trail)
+	if template == "None" or context.get("page_opens_itself"):
+		return seo
+
 	background = config.get("page_header_background") or "None"
 	# //// Neoffice — escaped here, at the seam, rather than in the template. frappe's Jinja
 	# //// environment has NO autoescape, and webpage.html renders this band through `| safe`
@@ -220,7 +235,7 @@ def render(context) -> str:
 	# //// Builder Page's) and the subtitle its meta description: both are plain text that
 	# //// authors, and on generated sites the LLM, supply. Escaping is done in Python so the
 	# //// template stays one composition and cannot forget a field.
-	crumbs = _breadcrumbs(context, path, title) if config.get("show_breadcrumbs") else []
+	crumbs = trail if config.get("show_breadcrumbs") else []
 	return _CSS + frappe.render_template(
 		"builder/templates/includes/header_footer/page_header.html",
 		{
@@ -228,6 +243,8 @@ def render(context) -> str:
 			"background": background,
 			"fill": _fill(background, config),
 			"on_dark": background in _DARK_BACKGROUNDS,
+			# custom properties already checked by _page_fonts
+			"fonts": context.get("page_fonts") or "",
 			# //// Neoffice — escaped (see the marker above `crumbs`).
 			"title": escape_html(title),
 			"subtitle": escape_html(context.get("page_header_subtitle") or ""),
@@ -235,7 +252,7 @@ def render(context) -> str:
 				{"label": escape_html(c["label"]), "url": escape_html(c["url"])} for c in crumbs
 			],
 		},
-	)
+	) + seo
 
 
 # //// Neoffice — colour allowlist. `page_header_bg_color` was interpolated straight into a
@@ -370,6 +387,133 @@ def _rendered_blocks(doc):
 	return value("blocks")
 
 
+# //// Neoffice — the page's own opening wins over the band (2026-09-14). A generated interior page
+# //// may open on a section of its own that carries its h1, a page top composed in the site's style.
+# //// The band then drew a second title above it, in the theme's faces: a services page showed
+# //// "Services" in one serif, then "Our services" in another, two h1 in a row. The page's first
+# //// section decides. With an h1 there, the page brings its own top and the band steps aside,
+# //// leaving the breadcrumb trail as JSON-LD; without one, the band carries the title.
+_INVISIBLE = {"script", "style", "link", "meta", "template"}
+
+
+def _page_tree(blocks) -> list:
+	"""The block tree, parsed from its stored JSON when needed; empty when it cannot be read."""
+	if isinstance(blocks, str):
+		try:
+			blocks = json.loads(blocks or "[]")
+		except ValueError:
+			return []
+	return blocks if isinstance(blocks, list) else []
+
+
+def _first_section(blocks):
+	"""The first section a visitor sees: the first shown child of the body block Builder roots
+	every page on (or the first shown top-level block of a tree without one)."""
+	tree = _page_tree(blocks)
+	if len(tree) == 1 and isinstance(tree[0], dict) and "body" in (tree[0].get("originalElement"), tree[0].get("element")):
+		tree = tree[0].get("children") or []
+	for block in tree:
+		if not isinstance(block, dict) or block.get("element") in _INVISIBLE:
+			continue
+		if str((block.get("baseStyles") or {}).get("display") or "").strip() == "none":
+			continue
+		return block
+	return None
+
+
+def _has_h1(node, depth=0) -> bool:
+	if depth > 16 or not isinstance(node, dict):
+		return False
+	if node.get("element") == "h1" or "<h1" in str(node.get("innerHTML") or "").lower():
+		return True
+	return any(_has_h1(child, depth + 1) for child in node.get("children") or [])
+
+
+def _opens_with_own_title(blocks) -> bool:
+	"""Whether the page's first section carries its h1: the page brings its own top."""
+	first = _first_section(blocks)
+	return first is not None and _has_h1(first)
+
+
+# A face is a font stack or a token; a weight is a number or a keyword. Anything else could
+# leave the custom property it is written into, so it is not a face.
+_FONT_RE = re.compile(r"""^(?:var\(--[\w-]{1,60}\)|[\w\s,'-]{1,120})$""")
+_WEIGHT_RE = re.compile(r"^(?:[1-9]00|normal|bold|lighter|bolder)$")
+
+
+def _page_fonts(blocks) -> str:
+	"""The page's own heading and text faces, as custom properties for the band (`--sph-*`).
+
+	A page whose blocks name their fonts drew its band in the theme's instead: the band read as
+	another website on top of the page (2026-09-14). The first heading and the first paragraph
+	that name a face give it.
+	"""
+	found = {}
+
+	def walk(node, depth=0):
+		if depth > 16 or not isinstance(node, dict) or ("heading" in found and "body" in found):
+			return
+		styles = node.get("baseStyles") or {}
+		family = str(styles.get("fontFamily") or "").strip().replace('"', "'")
+		if family and _FONT_RE.match(family):
+			element = node.get("element")
+			if element in ("h1", "h2", "h3") and "heading" not in found:
+				found["heading"] = family
+				weight = str(styles.get("fontWeight") or "").strip()
+				if _WEIGHT_RE.match(weight):
+					found["weight"] = weight
+			elif element == "p" and "body" not in found:
+				found["body"] = family
+		for child in node.get("children") or []:
+			walk(child, depth + 1)
+
+	for block in _page_tree(blocks):
+		walk(block)
+	declarations = [
+		f"--sph-{name}:{found[key]};"
+		for name, key in (("heading-font", "heading"), ("heading-weight", "weight"), ("body-font", "body"))
+		if found.get(key)
+	]
+	return "".join(declarations)
+
+
+def _absolute(url: str) -> str:
+	"""`url` on the host this request is served on. A site profile answers on its own domain,
+	which frappe.utils.get_url() does not know when the site's config names one host."""
+	if url.startswith(("http://", "https://")):
+		return url
+	request = getattr(frappe.local, "request", None)
+	host = getattr(request, "host", None) if request is not None else None
+	if isinstance(host, str) and host:
+		try:
+			forwarded = (request.headers.get("X-Forwarded-Proto") or "").split(",")[0].strip()
+		except Exception:
+			forwarded = ""
+		scheme = forwarded or getattr(request, "scheme", None) or "https"
+		return f"{scheme}://{host}{url}"
+	return frappe.utils.get_url(url)
+
+
+def _breadcrumb_ld(trail) -> str:
+	"""The trail as schema.org JSON-LD, for the search engines. The last crumb is the page
+	itself and needs no link."""
+	if not trail or len(trail) < 2:
+		return ""
+	items = []
+	for position, crumb in enumerate(trail, 1):
+		item = {"@type": "ListItem", "position": position, "name": str(crumb.get("label") or "")}
+		if crumb.get("url") and position < len(trail):
+			item["item"] = _absolute(str(crumb["url"]))
+		items.append(item)
+	data = json.dumps(
+		{"@context": "https://schema.org", "@type": "BreadcrumbList", "itemListElement": items},
+		ensure_ascii=False,
+	)
+	# a label is a page title: nothing in it may close the script or open a comment
+	data = data.replace("<", "\\u003c").replace(">", "\\u003e").replace("&", "\\u0026")
+	return f'<script type="application/ld+json">{data}</script>'
+
+
 # //// Neoffice — whitelist REMOVED (was @frappe.whitelist(allow_guest=True)). Same reason as
 # //// render_page_header above, plus one of its own: `doc` came from the caller, so over HTTP
 # //// this rendered a band out of whatever dict was posted.
@@ -379,7 +523,8 @@ def render_builder_page_header(doc=None) -> str:
 	Called from the Builder page template. The homepage keeps the hero the AI
 	composed for it; every interior page opens on this instead of a title band
 	each generation improvises differently — which is the whole point of having
-	one.
+	one. An interior page that opens on its own title keeps it too: the band then
+	leaves only the breadcrumb trail, as JSON-LD.
 	"""
 	if doc is None:
 		return ""
@@ -407,12 +552,23 @@ def render_builder_page_header(doc=None) -> str:
 	# that says the same thing and that nothing fills.
 	subtitle = _field("page_header_subtitle")
 	description = _field("meta_description")
+	blocks = _rendered_blocks(doc)
 	# //// Neoffice — ...unless the page prints that line itself (neoffice-maintenance#393, see
 	# //// _page_prints). A subtitle written for the band is kept as it is.
-	if not subtitle and description and not _page_prints(_rendered_blocks(doc), description):
+	if not subtitle and description and not _page_prints(blocks, description):
 		subtitle = description
 
-	context = frappe._dict({"title": title, "page_header_subtitle": subtitle})
+	# //// Neoffice — a page that opens on its own title keeps it, and the band writes in the
+	# //// page's faces (2026-09-14, see _opens_with_own_title and _page_fonts).
+	opens_itself = _opens_with_own_title(blocks)
+	context = frappe._dict(
+		{
+			"title": title,
+			"page_header_subtitle": subtitle,
+			"page_opens_itself": opens_itself,
+			"page_fonts": _page_fonts(blocks),
+		}
+	)
 	# a Builder page has no `parents`; the route is the trail
 	frappe.local.page_header_route = route
 	try:
@@ -422,6 +578,10 @@ def render_builder_page_header(doc=None) -> str:
 
 	if not band:
 		return ""
+	# only the trail, for the search engines: nothing drawn needs room under the header,
+	# unless the page opens on a top of its own
+	if not opens_itself and "site-page-header" not in band:
+		return band
 
 	# Two header presets deliberately pull the page up underneath themselves,
 	# because a generated homepage opens on a tall hero built to sit under the

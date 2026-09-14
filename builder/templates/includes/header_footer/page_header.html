@@ -20,7 +20,7 @@
 #}
 {%- set on_image = background == "Image" -%}
 <section class="site-page-header site-page-header--{{ template | lower }} site-page-header--bg-{{ background | lower }}{% if on_dark %} site-page-header--on-dark{% endif %}"
-	{%- if fill %} style="{{ fill }}"{% endif %}>
+	{%- if fill or fonts %} style="{{ fill }}{{ fonts }}"{% endif %}>
 	<div class="site-page-header__inner">
 
 		{%- macro crumbs() -%}
