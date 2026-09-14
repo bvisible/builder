@@ -38,6 +38,11 @@ def _readable_on(background: str, candidates: list) -> str:
 	return usable[-1]
 
 
+# //// Neoffice — the audience choices of the header's button and cart, as data-audience values
+# //// (get_cta_audience); "Automatic" is decided per site.
+AUDIENCES = {"Everyone": "everyone", "Visitors only": "visitors", "Signed-in users only": "signed-in"}
+
+
 class WebsiteHeaderFooterConfig(Document):
 	# begin: auto-generated types
 	# This code is auto-generated. Do not modify anything in this block.
@@ -49,7 +54,9 @@ class WebsiteHeaderFooterConfig(Document):
 		from builder.builder.doctype.website_menu_item.website_menu_item import WebsiteMenuItem
 		from builder.builder.doctype.website_footer_link.website_footer_link import WebsiteFooterLink
 
+		cart_audience: DF.Literal["Automatic", "Everyone", "Signed-in users only"]
 		copyright_text: DF.Data | None
+		cta_audience: DF.Literal["Automatic", "Everyone", "Visitors only", "Signed-in users only"]
 		cta_shape: DF.Literal["Rounded", "Pill", "Square"]
 		cta_size: DF.Literal["Medium", "Small"]
 		cta_style: DF.Literal["Primary", "Secondary", "Outline"]
@@ -188,6 +195,8 @@ class WebsiteHeaderFooterConfig(Document):
 			"user": self.show_user,
 			"wishlist": self.show_wishlist,
 			"cart": self.show_cart,
+			# //// Neoffice — who sees the cart: "everyone" or "signed-in" (get_cart_audience)
+			"cart_audience": self.get_cart_audience(),
 		}
 
 		try:
@@ -268,7 +277,61 @@ class WebsiteHeaderFooterConfig(Document):
 			"text": self.cta_text,
 			"url": self.cta_url,
 			"style": self.cta_style,
+			# //// Neoffice — who sees it: "everyone", "visitors" or "signed-in" (get_cta_audience)
+			"audience": self.get_cta_audience(),
 		}
+
+	# //// Neoffice ▼▼▼ — who sees the header's button and its cart (2026-09-14): a signed-in reseller
+	# //// still had "request an account" in the bar, and no cart on a B2B site whose cart is theirs.
+	# //// A page is cached for every visitor alike, so the header carries the audience as
+	# //// data-audience (macros.html) and the browser applies it (the is-signed-in class, header.html).
+	ACCOUNT_PATHS = ("/login", "/signup", "/sign-up", "/register")
+
+	def get_cta_audience(self) -> str:
+		"""everyone, visitors or signed-in. Automatic keeps a button that leads to signing in, signing
+		up or requesting an account for visitors: once they are signed in it has nothing to offer."""
+		choice = self.get("cta_audience") or "Automatic"
+		if choice in AUDIENCES:
+			return AUDIENCES[choice]
+		return "visitors" if self.leads_to_an_account(self.cta_url) else "everyone"
+
+	def leads_to_an_account(self, url: str | None) -> bool:
+		"""Whether a link opens the sign-in, the sign-up or the professional account request."""
+		from urllib.parse import urlparse
+
+		parsed = urlparse((url or "").strip())
+		if parsed.netloc:
+			return False
+		paths = set(self.ACCOUNT_PATHS)
+		try:
+			from builder.site_ai.nora.site_builder import ACCOUNT_REQUEST_ROUTE
+
+			paths.add(ACCOUNT_REQUEST_ROUTE)
+		except Exception:
+			pass
+		path = (parsed.path or "").rstrip("/").lower()
+		return path in paths or parsed.fragment.lower() in ("signup", "sign-up", "register")
+
+	def get_cart_audience(self) -> str:
+		"""everyone or signed-in. Automatic keeps the cart for signed-in visitors on a B2B site, where
+		a visitor browses the catalogue and signs in to order."""
+		choice = self.get("cart_audience") or "Automatic"
+		if choice in AUDIENCES:
+			return AUDIENCES[choice]
+		return "signed-in" if self.is_b2b_site() else "everyone"
+
+	def is_b2b_site(self) -> bool:
+		"""Whether the site this chrome dresses is business-to-business: its kind, or its sign-in gate."""
+		profile = self.get("website_profile") or getattr(frappe.local, "website_profile", None)
+		if not profile:
+			return False
+		try:
+			kind, gated = frappe.db.get_value("Website Profile", profile, ["site_kind", "b2b_only"]) or (None, 0)
+		except Exception:
+			return False
+		return kind == "B2B" or bool(gated)
+
+	# //// Neoffice ▲▲▲
 
 	def get_social_links(self) -> list[dict]:
 		"""Get social media links."""

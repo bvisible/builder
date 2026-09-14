@@ -260,6 +260,14 @@
 	color: var(--header-text);
 }
 
+/* //// Neoffice — who sees the button and the cart (data-audience, macros.html): "visitors" leaves once
+   //// the visitor is signed in (a "request an account" button), "signed-in" waits for it (a B2B cart).
+   //// html.is-signed-in is set by header.html from the user_id cookie, then by user_header.html. */
+html.is-signed-in .site-header [data-audience="visitors"],
+html:not(.is-signed-in) .site-header [data-audience="signed-in"] {
+	display: none !important;
+}
+
 /* //// Neoffice — priority navigation. A menu wider than its row ran under the icons,
    //// and the phone layout only came at 768px whatever the number of entries (The
    //// League: six entries plus a CTA, 2026-09-10). The script at the end of this file
@@ -883,7 +891,17 @@ document.addEventListener('DOMContentLoaded', function() {
 			raf = window.requestAnimationFrame(function () { raf = 0; layout(); });
 		}
 		if (window.ResizeObserver) {
-			new ResizeObserver(schedule).observe(header.querySelector('.site-header__container') || header);
+			var observer = new ResizeObserver(schedule);
+			observer.observe(header.querySelector('.site-header__container') || header);
+			// //// Neoffice — and the blocks on either side of the menu, which change after the first
+			// //// measure while the container keeps its width: the account block fills in when the server
+			// //// answers ("Hello <name>" instead of "Log in"), a logo image lands late, a signed-in
+			// //// visitor trades the button for the cart. The last link slid under "Hello Administrator"
+			// //// until the window was resized (a reseller site, 2026-09-14).
+			['.site-header__left', '.site-header__right'].forEach(function (selector) {
+				var side = header.querySelector(selector);
+				if (side) observer.observe(side);
+			});
 		}
 		window.addEventListener('resize', schedule);
 		if (document.fonts && document.fonts.ready) { document.fonts.ready.then(schedule); }

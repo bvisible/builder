@@ -217,7 +217,36 @@
 						:options="options.cta_style"
 						:modelValue="state.cta_style"
 						@update:modelValue="(v: string) => (state.cta_style = v)" />
+					<!-- //// Neoffice — who sees the button: Automatic keeps a sign-up or account request button for visitors -->
+					<FormControl
+						type="select"
+						size="sm"
+						:label="__('Show the button to')"
+						:options="options.cta_audience"
+						:modelValue="state.cta_audience"
+						@update:modelValue="(v: string) => (state.cta_audience = v)" />
 				</div>
+				<!-- //// Neoffice — the account and cart buttons, and who sees the cart (a B2B cart waits for the sign-in) -->
+				<div class="flex items-center gap-5">
+					<Switch
+						size="sm"
+						:label="__('Account button')"
+						:modelValue="!!state.show_user"
+						@update:modelValue="(v: boolean) => (state.show_user = v ? 1 : 0)" />
+					<Switch
+						size="sm"
+						:label="__('Cart')"
+						:modelValue="!!state.show_cart"
+						@update:modelValue="(v: boolean) => (state.show_cart = v ? 1 : 0)" />
+				</div>
+				<FormControl
+					v-if="state.show_cart"
+					type="select"
+					size="sm"
+					:label="__('Show the cart to')"
+					:options="options.cart_audience"
+					:modelValue="state.cart_audience"
+					@update:modelValue="(v: string) => (state.cart_audience = v)" />
 			</template>
 		</div>
 

@@ -183,6 +183,9 @@
 		})
 		.then(response => response.json())
 		.then(data => {
+			// //// Neoffice — the server's answer settles the state header.html read from the user_id
+			// //// cookie (the data-audience rule of the header's button and cart); a failed call keeps it
+			document.documentElement.classList.toggle('is-signed-in', !!(data.message && data.message.is_logged_in));
 			if (data.message && data.message.is_logged_in) {
 				// User is logged in
 				isLoggedIn = true;

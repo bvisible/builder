@@ -10315,3 +10315,47 @@ msgstr "Aucun pour le moment"
 
 msgid "Its blocks show the page when bound to page_title, page_subtitle, breadcrumbs and page_image."
 msgstr "Ses blocs affichent la page une fois liés à page_title, page_subtitle, breadcrumbs et page_image."
+
+#: builder/builder/doctype/website_header_footer_config/website_header_footer_config.json
+msgid "CTA Audience"
+msgstr "Audience du bouton"
+
+#: builder/builder/doctype/website_header_footer_config/website_header_footer_config.json
+msgid "Cart Audience"
+msgstr "Audience du panier"
+
+#: builder/builder/doctype/website_header_footer_config/website_header_footer_config.json
+msgid "Automatic"
+msgstr "Automatique"
+
+#: builder/builder/doctype/website_header_footer_config/website_header_footer_config.json
+msgid "Everyone"
+msgstr "Tout le monde"
+
+#: builder/builder/doctype/website_header_footer_config/website_header_footer_config.json
+msgid "Visitors only"
+msgstr "Visiteurs uniquement"
+
+#: builder/builder/doctype/website_header_footer_config/website_header_footer_config.json
+msgid "Signed-in users only"
+msgstr "Utilisateurs connectés uniquement"
+
+#: builder/builder/doctype/website_header_footer_config/website_header_footer_config.json
+msgid "Automatic: a button that leads to signing in, signing up or requesting an account is hidden once the visitor is signed in."
+msgstr "Automatique : un bouton menant à la connexion, à l'inscription ou à la demande de compte est masqué une fois le visiteur connecté."
+
+#: builder/builder/doctype/website_header_footer_config/website_header_footer_config.json
+msgid "Automatic: on a B2B site, the cart shows once the visitor is signed in."
+msgstr "Automatique : sur un site B2B, le panier s'affiche une fois le visiteur connecté."
+
+#: frontend/src/components/Settings/GlobalTheme.vue
+msgid "Show the button to"
+msgstr "Afficher le bouton pour"
+
+#: frontend/src/components/Settings/GlobalTheme.vue
+msgid "Account button"
+msgstr "Bouton de compte"
+
+#: frontend/src/components/Settings/GlobalTheme.vue
+msgid "Show the cart to"
+msgstr "Afficher le panier pour"

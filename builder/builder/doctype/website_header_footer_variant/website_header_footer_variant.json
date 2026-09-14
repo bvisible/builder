@@ -36,6 +36,7 @@
   "show_user",
   "show_wishlist",
   "show_cart",
+  "cart_audience",
   "cta_section",
   "show_cta",
   "cta_text",
@@ -44,6 +45,7 @@
   "cta_style",
   "cta_shape",
   "cta_size",
+  "cta_audience",
   "menu_tab",
   "menu_section",
   "menu_items",
@@ -355,6 +357,15 @@
    "options": "Medium\nSmall"
   },
   {
+   "default": "Automatic",
+   "depends_on": "show_cta",
+   "description": "Automatic: a button that leads to signing in, signing up or requesting an account is hidden once the visitor is signed in.",
+   "fieldname": "cta_audience",
+   "fieldtype": "Select",
+   "label": "CTA Audience",
+   "options": "Automatic\nEveryone\nVisitors only\nSigned-in users only"
+  },
+  {
    "description": "Configure header icons and search options",
    "fieldname": "icons_section",
    "fieldtype": "Section Break",
@@ -392,6 +403,15 @@
    "fieldname": "show_cart",
    "fieldtype": "Check",
    "label": "Cart"
+  },
+  {
+   "default": "Automatic",
+   "depends_on": "show_cart",
+   "description": "Automatic: on a B2B site, the cart shows once the visitor is signed in.",
+   "fieldname": "cart_audience",
+   "fieldtype": "Select",
+   "label": "Cart Audience",
+   "options": "Automatic\nEveryone\nSigned-in users only"
   },
   {
    "fieldname": "menu_tab",
@@ -1001,7 +1021,7 @@
  "index_web_pages_for_search": 1,
  "issingle": 0,
  "links": [],
- "modified": "2026-09-14 12:00:00.000000",
+ "modified": "2026-09-14 13:30:00.000000",
  "modified_by": "Administrator",
  "module": "Builder",
  "name": "Website Header Footer Variant",

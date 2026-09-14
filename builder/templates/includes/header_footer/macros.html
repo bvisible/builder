@@ -56,7 +56,8 @@
 
 	{# Cart (icon with badge, triggers drawer) #}
 	{%- if icons.cart -%}
-	<button class="header-icon header-icon--cart" aria-label="{{ _('Cart') }}">
+	{#- //// Neoffice — data-audience "signed-in": a B2B cart waits for the sign-in (get_cart_audience) -#}
+	<button class="header-icon header-icon--cart" aria-label="{{ _('Cart') }}"{% if icons.cart_audience == "signed-in" %} data-audience="signed-in"{% endif %}>
 		{% include "builder/templates/includes/header_footer/icons/cart.html" %}
 		<span class="header-icon__badge cart-badge" style="display: none;">0</span>
 	</button>
@@ -64,9 +65,11 @@
 </div>
 {%- endmacro -%}
 
+{#- //// Neoffice — data-audience: who sees the button, "visitors" or "signed-in" (get_cta_audience); the
+    //// rule in header_styles.html applies it once the browser knows the visitor's state -#}
 {%- macro render_cta(cta) -%}
 <a href="{{ cta.url or '#' }}"
-   class="site-cta site-cta--{{ cta.style | lower }} site-cta--shape-{{ (cta.shape or 'Rounded') | lower }} site-cta--size-{{ (cta.size or 'Medium') | lower }}">
+   class="site-cta site-cta--{{ cta.style | lower }} site-cta--shape-{{ (cta.shape or 'Rounded') | lower }} site-cta--size-{{ (cta.size or 'Medium') | lower }}"{% if cta.audience in ("visitors", "signed-in") %} data-audience="{{ cta.audience }}"{% endif %}>
 	{{ cta.text or "Contact" }}
 </a>
 {%- endmacro -%}

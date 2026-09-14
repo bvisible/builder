@@ -35,10 +35,13 @@ SIMPLE_FIELDS = (
 	"cta_text",
 	"cta_url",
 	"cta_style",
+	# //// Neoffice — who sees the header's button and its cart (website_header_footer_config.get_cta_audience)
+	"cta_audience",
 	"search_type",
 	"show_user",
 	"show_wishlist",
 	"show_cart",
+	"cart_audience",
 	# footer
 	"footer_template",
 	"footer_menu_source",
@@ -102,6 +105,8 @@ OPTION_FIELDS = (
 	"header_height",
 	"logo_type",
 	"cta_style",
+	"cta_audience",
+	"cart_audience",
 	"search_type",
 	"footer_template",
 	"footer_menu_source",

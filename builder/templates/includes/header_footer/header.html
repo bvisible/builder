@@ -4,6 +4,19 @@
 {# Header Template for Website Header Footer Config #}
 {%- from "builder/templates/includes/header_footer/macros.html" import render_logo, render_menu, render_icons, render_cta, render_search_bar -%}
 
+{#- //// Neoffice — the visitor's state, for the data-audience rule (header_styles.html): the page is
+    //// cached for every visitor alike, so the bar carries both states and the browser picks one. Frappe
+    //// keeps a readable user_id cookie ("Guest" when signed out) beside the HttpOnly session cookie;
+    //// read before the bar is parsed, a signed-in visitor never sees "request an account" for a frame.
+    //// user_header.html settles it again from the server's answer. -#}
+<script>
+	(function () {
+		var match = document.cookie.match(/(?:^|;\s*)user_id=([^;]*)/);
+		var user = match ? decodeURIComponent(match[1]) : "Guest";
+		document.documentElement.classList.toggle("is-signed-in", !!user && user !== "Guest");
+	})();
+</script>
+
 {# Include search overlay if search icon mode is enabled #}
 {%- if icons.search -%}
 {% include "builder/templates/includes/header_footer/components/search_overlay.html" %}
