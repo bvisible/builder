@@ -219,6 +219,8 @@ const configuredHeaderHtml = ref<{ html: string; css: string; configured: boolea
 const configuredFooterHtml = ref<{ html: string; css: string; configured: boolean } | null>(null);
 //// Neoffice — the page's top band (get_editor_page_header_html), and whether the page opens on its
 //// own h1, in which case the published page shows no band either (page_header._opens_with_own_title)
+//// Neoffice — crumbs_html: the breadcrumb's strip, drawn instead of the band above a page whose first
+//// section carries its own h1 (fee04275)
 const configuredPageHeaderHtml = ref<{ html: string; crumbs_html?: string; configured: boolean } | null>(null);
 function carriesH1(node: any, depth = 0): boolean {
 	if (!node || depth > 16) return false;
