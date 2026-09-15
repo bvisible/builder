@@ -1114,6 +1114,13 @@ def page_brief_text(site: dict, brief, page: dict, handles: dict, contact_prompt
             if site.get("brands") else ""
         ),
         (
+            # //// Neoffice — what the reviewer saw on the pages already written (2026-09-15): the
+            # //// same defect was written on every page of a site before anyone looked at one.
+            "SEEN BY THE REVIEWER ON THE PAGES ALREADY BUILT, do not repeat them here:\n"
+            + "\n".join(f"- {line}" for line in site["seen_before"][-8:])
+            if site.get("seen_before") else ""
+        ),
+        (
             # //// Neoffice — the copy rule of an image-led site (see IMAGE_LED_PLANS)
             "COPY: minimal, the photographs carry the page. Headlines of two to five words, at most one line of twelve "
             "words under a heading, NO paragraph, no list of features, no testimonials, no grid of icons, no band of "
@@ -2005,6 +2012,33 @@ def build_site(ctx, spec: dict) -> str:
         ai_log("info", "Page written", page=page["title"], name=name, route=route, model=page_model)
         # the next pages are told the headlines this one took (page_headlines)
         site.setdefault("headlines_by_route", {})[page["route"]] = page_headlines(blocks, categories)
+        # //// Neoffice — the page is looked at as soon as it is written (2026-09-15). The model saw
+        # //// its own work only at the very end, once every page was written the same way: a site came
+        # //// out as four pages with the same defect. Now each page is rendered, screenshotted and read
+        # //// the moment it is published; what the reviewer says fixes it on the spot, and the pages
+        # //// that follow are told what was seen. The final pass stays for what this one cannot see
+        # //// yet: the pictures are generated after the pages.
+        if visual_check.enabled() and not ctx.is_cancelled():
+            look = visual_check.review_page(created[-1], profile, page_model, site_name=site_name, activity=activity)
+            seen = look.get("issues") or []
+            if seen:
+                site.setdefault("seen_before", []).extend(f"{page['title']}: {i['problem']}" for i in seen[:3])
+            # a page the reviewer calls unprofessional, or that collected more than one point, is
+            # rewritten here rather than at the end, while its brief and its photographs are at hand
+            if seen and (look.get("professional") is False or len(seen) > 1):
+                _progress(ctx, job_id, _("Fixing {0} after looking at it").format(page["title"]), 10 + int(80 * idx / max(total, 1)), {"pages_created": created})
+                fixed, fixed_script, fix_error = write_page(
+                    page,
+                    page_photos or placeholder_photos(page, activity, categories, listing=page["route"] == lister_route),
+                    notes=page_notes or None,
+                    revision=visual_check.revision_instructions(seen),
+                )
+                if fixed:
+                    _write_page(page, fixed, fixed_script, profile, name, _describe(fixed))
+                    site["headlines_by_route"][page["route"]] = page_headlines(fixed, categories)
+                    ai_log("info", "Page fixed on the spot", page=page["title"], issues=len(seen))
+                else:
+                    ai_log("warning", "The look found points but the fix failed", page=page["title"], error=fix_error)
         if use_host:
             try:
                 # _write_page has committed: an after_commit emit would wait for the

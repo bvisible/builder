@@ -122,6 +122,18 @@ class TestPageBrief(unittest.TestCase):
 		about = page_brief_text(site, FakeBrief(), {"title": "À propos", "route": "about", "type": "about"}, handles, "", "bento", "French", [], ("CTA", "/"))
 		self.assertNotIn("INCLUDES REQUIRED", about)
 
+	# //// Neoffice — added test (2026-09-15): the pages already written are looked at, and what the
+	# //// reviewer saw travels to the next page's brief (build_site's page loop).
+	def test_the_next_page_is_told_what_the_reviewer_saw(self):
+		site = {"site_name": "X", "activity": "Y", "seen_before": ["Home: the title sits on a busy part of the photograph"]}
+		handles = {k: "var(--x)" for k in ("primary", "secondary", "background", "text", "font-heading", "font-body")}
+		page = {"title": "About", "route": "about", "type": "about"}
+		text = page_brief_text(site, FakeBrief(), page, handles, "", "bento", "English", [], ("CTA", "/"))
+		self.assertIn("SEEN BY THE REVIEWER", text)
+		self.assertIn("the title sits on a busy part of the photograph", text)
+		# nothing seen yet: no such section
+		self.assertNotIn("SEEN BY THE REVIEWER", page_brief_text({"site_name": "X", "activity": "Y"}, FakeBrief(), page, handles, "", "bento", "English", [], ("CTA", "/")))
+
 	def test_known_pages_keep_their_canonical_type(self):
 		pages = normalise_pages([{"title": "Contact", "type": "form"}, {"title": "Accueil", "route": "accueil", "type": "landing"}], "vitrine")
 		self.assertEqual([(p["route"], p["type"]) for p in pages], [("home", "accueil"), ("contact", "contact")])
