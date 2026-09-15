@@ -1860,7 +1860,10 @@ def build_site(ctx, spec: dict) -> str:
                             mark = str(config.get("logo_image") or "") if hasattr(config, "get") else ""
                         except Exception:
                             mark = ""
-                        if category_wheel(blocks, site.get("category_photos") or {}, hub_image=mark):
+                        from builder.site_ai.nora.layout import repeater_rows
+
+                        rows = repeater_rows(data_script)
+                        if category_wheel(blocks, site.get("category_photos") or {}, hub_image=mark, data_rows=rows):
                             ai_log("info", "Categories drawn as a circle of parts", page=page["title"])
                     variants = repair_button_variants(blocks, palette)
                     if variants:

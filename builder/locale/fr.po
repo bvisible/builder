@@ -220,6 +220,15 @@ msgstr "Abandonné"
 msgid "About"
 msgstr "À propos"
 
+#. Option for the 'Breadcrumb Position' (Select) field in DocType 'Website
+#. Header Footer Config'
+#. Option for the 'Breadcrumb Position' (Select) field in DocType 'Website
+#. Header Footer Variant'
+#: builder/builder/doctype/website_header_footer_config/website_header_footer_config.json
+#: builder/builder/doctype/website_header_footer_variant/website_header_footer_variant.json
+msgid "Above the title"
+msgstr "Au-dessus du titre"
+
 #: frontend/src/components/Settings/CodexPairing.vue:76
 msgid "Access token"
 msgstr "Token d'accès"
@@ -784,6 +793,15 @@ msgstr "Basique"
 msgid "Bebas Neue"
 msgstr "Bebas Neue"
 
+#. Option for the 'Breadcrumb Position' (Select) field in DocType 'Website
+#. Header Footer Config'
+#. Option for the 'Breadcrumb Position' (Select) field in DocType 'Website
+#. Header Footer Variant'
+#: builder/builder/doctype/website_header_footer_config/website_header_footer_config.json
+#: builder/builder/doctype/website_header_footer_variant/website_header_footer_variant.json
+msgid "Below the title"
+msgstr "Sous le titre"
+
 #: frontend/src/utils/fontManager.ts:26
 msgid "Black"
 msgstr "Noir"
@@ -973,6 +991,17 @@ msgstr "Branche"
 #: builder/templates/includes/header_footer/page_header.html:28
 msgid "Breadcrumb"
 msgstr "Fil d'Ariane"
+
+#. Label of a Select field in DocType 'Website Header Footer Config'
+#. Label of a Select field in DocType 'Website Header Footer Variant'
+#: builder/builder/doctype/website_header_footer_config/website_header_footer_config.json
+#: builder/builder/doctype/website_header_footer_variant/website_header_footer_variant.json
+msgid "Breadcrumb Position"
+msgstr "Position du fil d'Ariane"
+
+#: frontend/src/components/Settings/GlobalTheme.vue:524
+msgid "Breadcrumb position"
+msgstr "Position du fil d'Ariane"
 
 #. Label of a Check field in DocType 'Website Header Footer Config'
 #. Label of a Check field in DocType 'Website Header Footer Variant'
@@ -9293,6 +9322,15 @@ msgstr "Quand l'IA doit-elle utiliser ce shortcode ? (par ex. 'Pour les sites e-
 #: builder/builder/doctype/website_header_footer_variant/website_header_footer_variant.json
 msgid "Where the cover image goes on an article."
 msgstr "Où va l'image de couverture sur un article."
+
+#. Description of the 'Breadcrumb Position' (Select) field in DocType 'Website
+#. Header Footer Config'
+#. Description of the 'Breadcrumb Position' (Select) field in DocType 'Website
+#. Header Footer Variant'
+#: builder/builder/doctype/website_header_footer_config/website_header_footer_config.json
+#: builder/builder/doctype/website_header_footer_variant/website_header_footer_variant.json
+msgid "Where the trail sits in the page top. A page that opens on its own title carries it there too."
+msgstr "Où le fil d'Ariane se place dans le haut de page. Une page qui ouvre sur son propre titre le porte aussi à cet endroit."
 
 #. Description of the 'Available' (Check) field in DocType 'Website Plugin'
 #: builder/builder/doctype/website_plugin/website_plugin.json

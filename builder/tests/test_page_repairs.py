@@ -14,6 +14,7 @@ from builder.site_ai.nora.layout import (
 	complete_tile_photos,
 	fill_last_phone_row,
 	phone_columns,
+	repeater_rows,
 )
 from builder.site_ai.nora.site_builder import brands_page, category_photo_map, page_sections
 
@@ -471,6 +472,36 @@ class TestCategoryWheel(unittest.TestCase):
 		self.assertEqual("wheel-hub", hub["blockName"])
 		self.assertEqual("/files/mark.png", hub["children"][0]["attributes"]["src"])
 		self.assertEqual(6, len(page[0]["children"]))
+
+	def test_a_repeater_over_the_page_rows_becomes_the_circle(self):
+		"""A generated home clones one template over its categories: the rows are the parts."""
+		template = box(text("h3", "Category", fontFamily="'Archivo', sans-serif"), position="relative")
+		template["isRepeaterBlock"] = 1
+		template["dataKey"] = {"key": "categories", "property": "innerHTML", "type": "key"}
+		page = [box(template, display="grid", gridTemplateColumns="repeat(5, minmax(0, 1fr))")]
+		script = 'data.categories = [' + ", ".join(
+			'{"title": "%s", "url": "/brands#%s", "photo": "/files/%s.jpg"}' % (n, n.lower(), n.lower())
+			for n in self.NAMES
+		) + ']'
+		rows = repeater_rows(script)
+		self.assertEqual(5, len(rows["categories"]))
+		self.assertEqual(1, category_wheel(page, {}, data_rows=rows))
+		parts = page[0]["children"]
+		self.assertEqual(5, len(parts))
+		self.assertEqual(self.NAMES, [p["children"][0]["innerHTML"] for p in parts])
+		self.assertIn("street.jpg", parts[1]["baseStyles"]["backgroundImage"])
+		self.assertEqual("/brands#street", parts[1]["attributes"]["href"])
+		# the words keep the face the template gave them
+		self.assertEqual("'Archivo', sans-serif", parts[0]["children"][0]["baseStyles"]["fontFamily"])
+
+	def test_a_repeater_of_the_wrong_size_is_left_alone(self):
+		template = box(text("h3", "Category"), position="relative")
+		template["isRepeaterBlock"] = 1
+		template["dataKey"] = {"key": "logos", "property": "innerHTML", "type": "key"}
+		page = [box(template, display="grid")]
+		rows = repeater_rows('data.logos = [' + ", ".join('{"title": "L%d", "photo": "/files/l%d.png"}' % (i, i) for i in range(9)) + ']')
+		self.assertEqual(0, category_wheel(page, {}, data_rows=rows))
+		self.assertEqual("grid", page[0]["baseStyles"]["display"])
 
 	def test_a_tile_without_a_photograph_takes_its_category_one(self):
 		page = [self.tiles(photos=False)]

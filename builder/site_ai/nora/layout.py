@@ -185,6 +185,23 @@ def repeater_counts(data_script: str) -> dict:
     return counts
 
 
+def repeater_rows(data_script: str) -> dict:
+	"""The rows each repeater draws, from the page data script (`data.key = [{...}]`). A generated
+	page lists its categories there and clones one template over them, so the rows are where their
+	words, photographs and links live."""
+	import json
+
+	rows = {}
+	for m in re.finditer(r"^\s*data\.(\w+)\s*=\s*(\[.*\])\s*;?\s*$", data_script or "", re.M):
+		try:
+			value = json.loads(m.group(2))
+		except ValueError:
+			continue
+		if isinstance(value, list) and value and all(isinstance(row, dict) for row in value):
+			rows[m.group(1)] = value
+	return rows
+
+
 def grid_stacked_cards(blocks: list, data_counts: dict | None = None) -> int:
     """A repeater whose template is a card, or a plain wrapper holding two cards or
     more, stacks them in one column when it carries no grid: the trust section of The
@@ -540,6 +557,20 @@ def _wheel_parts(tiles: list, names: dict) -> list | None:
 	return parts
 
 
+def _rows_parts(rows: list, names: dict, template: dict) -> list | None:
+	"""The parts a repeater's rows draw: each row's words, photograph and link, set in the face the
+	template gives its words. None when a row has no picture or nothing to say."""
+	_label, styles = _tile_label(template)
+	parts = []
+	for row in rows:
+		label = str(row.get("title") or row.get("label") or row.get("name") or "")
+		photo = str(row.get("photo") or row.get("image") or "") or names.get(_plain(label), "")
+		if not _plain(label) or not photo:
+			return None
+		parts.append((label, styles, photo, str(row.get("url") or row.get("href") or "")))
+	return parts
+
+
 def _wheel_children(parts: list, hub_image: str) -> list:
 	"""The parts of the circle, and the mark in the middle when the site has one."""
 	count = len(parts)
@@ -618,22 +649,29 @@ def _wheel_container(grid: dict) -> None:
 	})
 
 
-def category_wheel(blocks: list, category_photos: dict, hub_image: str = "") -> int:
+def category_wheel(blocks: list, category_photos: dict, hub_image: str = "", data_rows: dict | None = None) -> int:
 	"""The grid of category tiles, drawn as one circle cut into as many parts, each on its own
-	photograph. The words and the links of the tiles are kept. One grid per page — the one whose tiles
-	are all named after a category, else the first that can be drawn. Returns 1 when one was turned."""
+	photograph. The words and the links are kept, whether the page wrote the tiles one by one or
+	clones one template over its data (repeater_rows). One grid per page — the one whose tiles are all
+	named after a category, else the first that can be drawn. Returns 1 when one was turned."""
 	names = {_plain(name): url for name, url in (category_photos or {}).items() if _plain(name)}
 	candidates = []
 	for grid in _walk(blocks):
 		if not _is_grid(grid):
 			continue
 		tiles = [c for c in grid.get("children") or [] if isinstance(c, dict)]
-		if not (WHEEL_MIN <= len(tiles) <= WHEEL_MAX):
-			continue
-		parts = _wheel_parts(tiles, names)
+		parts, named = None, False
+		if WHEEL_MIN <= len(tiles) <= WHEEL_MAX:
+			parts = _wheel_parts(tiles, names)
+			named = bool(names) and all(_tile_category(t, names) for t in tiles)
+		elif len(tiles) == 1 and _is_repeater(tiles[0]):
+			# one template cloned over the page's rows: the rows are the parts
+			rows = (data_rows or {}).get(str((tiles[0].get("dataKey") or {}).get("key") or ""))
+			if rows and WHEEL_MIN <= len(rows) <= WHEEL_MAX:
+				parts = _rows_parts(rows, names, tiles[0])
+				named = True
 		if parts is None:
 			continue
-		named = bool(names) and all(_tile_category(t, names) for t in tiles)
 		candidates.append((named, grid, parts))
 	if not candidates:
 		return 0
