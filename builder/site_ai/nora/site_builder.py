@@ -39,6 +39,18 @@ KNOWN_PAGES = {
     "tarifs": ("pricing", "pricing"), "pricing": ("pricing", "pricing"),
     "projets": ("projects", "portfolio"), "portfolio": ("projects", "portfolio"), "realisations": ("projects", "portfolio"),
     "fonctionnalites": ("features", "features"), "features": ("features", "features"),
+    # //// Neoffice — the legal pages are pages like the others (2026-09-15): a shop that carries
+    # //// neither its terms nor its privacy policy cannot trade — no payment provider and no ad
+    # //// network accepts it — so they are planned, written and linked in the footer like the rest.
+    "conditions generales": ("terms-conditions", "legal"), "conditions generales de vente": ("terms-conditions", "legal"),
+    "cgv": ("terms-conditions", "legal"), "cgu": ("terms-conditions", "legal"),
+    "terms": ("terms-conditions", "legal"), "terms conditions": ("terms-conditions", "legal"),
+    "terms and conditions": ("terms-conditions", "legal"), "agb": ("terms-conditions", "legal"),
+    "politique de confidentialite": ("privacy-policy", "legal"), "confidentialite": ("privacy-policy", "legal"),
+    "privacy": ("privacy-policy", "legal"), "privacy policy": ("privacy-policy", "legal"),
+    "datenschutz": ("privacy-policy", "legal"),
+    "mentions legales": ("legal-notice", "legal"), "legal notice": ("legal-notice", "legal"),
+    "impressum": ("legal-notice", "legal"),
 }
 
 # a section asking for proof, figures, prices or people is filled from the brief or left out: asked
@@ -72,6 +84,15 @@ SECTION_PLANS = {
     "features": ["an intro", "the features as an alternating rows layout with icons", "a comparison, or figures the brief gives", "a CTA"],
     "one_page": ["hero", "services", "about", "proof the brief gives (none when it gives none)", "contact details and form", "final CTA"],
     "generic": ["an intro", "the page's content in two or three sections", "a CTA"],
+    # //// Neoffice — a legal page is read, not looked at (2026-09-15): no hero, no photograph, no
+    # //// CTA band. Headings and paragraphs, numbered clauses, and the merchant's own details from
+    # //// BUSINESS DATA — never a company number, a jurisdiction or a provider nobody gave.
+    "legal": [
+        "an intro: what this document covers and the date it takes effect",
+        "the clauses, each one a heading and its paragraphs, numbered, in the order the law of the "
+        "site's country reads them",
+        "who to write to: the details from BUSINESS DATA, verbatim",
+    ],
 }
 
 # //// Neoffice ▼▼▼ — an image-led site: the photographs carry the page and the copy steps
@@ -530,7 +551,9 @@ CATEGORY_LIST = re.compile(
     r"(?:segments?|categories|collections|departments|univers|rayons|sections)\b[^:(.\n]{0,30}[:：(]\s*([^.\n)]+)",
     re.I,
 )
-PAGE_PHOTO_COUNT = {"about": 2, "contact": 1, "shop": 3, "portfolio": 4, "services": 3}
+# //// Neoffice — "legal": 0 (2026-09-15): terms and a privacy policy are read, and a
+# //// photograph on them spends one of the client's pictures to decorate small print.
+PAGE_PHOTO_COUNT = {"about": 2, "contact": 1, "shop": 3, "portfolio": 4, "services": 3, "legal": 0}
 
 # a business whose contact details nobody verified gets none written: asked for "clearly
 # generic placeholders the client will replace", the model wrote a real Zurich street and a
@@ -1096,6 +1119,20 @@ def page_brief_text(site: dict, brief, page: dict, handles: dict, contact_prompt
             if page["type"] != "accueil"
             else ""
         ),
+        (
+            # //// Neoffice — a legal page is written, not designed (2026-09-15). The model wrote
+            # //// marketing copy when given no rule, and a made-up company number on a legal page
+            # //// is worse than no page at all.
+            "LEGAL PAGE: write the real document, in full, in plain prose — headings and numbered "
+            "clauses, no photograph, no icon, no button, no coloured band. Use ONLY the details "
+            "BUSINESS DATA gives. Everything the law requires that nobody gave you — company "
+            "registration and VAT number, share capital, the payment providers, the host, the court "
+            "and the country whose law applies, the delivery and return windows — is written as a "
+            "visible blank in square brackets for the merchant to fill in, in their language "
+            f"(for example '[{'à compléter' if language == 'French' else 'to be completed'}: …]'). "
+            "Never invent one. Close with the date of the last update."
+            if page["type"] == "legal" else ""
+        ),
         f"SECTIONS, in order, with real copy written in {language}:\n{sections}",
         (
             # the client's categories by name: without them the category wall came out with no
@@ -1396,6 +1433,35 @@ def legal_pages(profile: str | None) -> list[tuple[str, str]]:
     return found
 
 
+def _is_legal_route(route: str) -> bool:
+    """Whether a route is one of the site's legal pages (terms, privacy, legal notice)."""
+    bare = str(route or "").strip("/").lower()
+    return any(bare in known for known in LEGAL_ROUTES.values())
+
+
+LEGAL_PLANNED = {
+    "terms": ("terms-conditions", "Terms & Conditions"),
+    "privacy": ("privacy-policy", "Privacy Policy"),
+}
+
+
+def plan_legal_pages(pages: list[dict], profile: str | None, site_type: str, lang: str = "fr") -> list[dict]:
+    """The legal pages a shop must have and does not: neither already planned nor already on
+    the site. A showcase site is left alone — it is the shop that cannot trade without them."""
+    if site_type not in ("ecommerce", "ecommerce_search") and not (profile and _profile_sells(profile)):
+        return []
+    planned = {str(p.get("route") or "").strip("/").lower() for p in pages}
+    already = {route.strip("/") for route, _ in legal_pages(profile)}
+    out: list[dict] = []
+    for kind in ("terms", "privacy"):
+        known = LEGAL_ROUTES[kind]
+        if any(route in known for route in planned | already):
+            continue
+        route, title = LEGAL_PLANNED[kind]
+        out.append({"title": _(title, lang=lang), "route": route, "type": "legal"})
+    return out
+
+
 def missing_legal_pages(profile: str | None) -> list[str]:
     """Which of the legal pages a shop needs it does not have."""
     have = {route.strip("/") for route, _ in legal_pages(profile)}
@@ -1439,6 +1505,11 @@ def apply_navigation(config, created: list[dict], site_type: str, description: s
         # //// "/home" and "/index" are now skipped instead of relabelled.
         if route in seen or route in ("/", "/home", "/index"):
             continue
+        # //// Neoffice — the legal pages belong to the footer, not the menu (2026-09-15): nobody
+        # //// puts their terms between Brands and Contact, and the footer's Legal column already
+        # //// names them (legal_pages).
+        if _is_legal_route(route):
+            continue
         seen.add(route)
         # //// Neoffice — see the block marker above: no more Home relabelling
         config.append("menu_items", {"label": page["title"], "url": route, "is_external": False, "open_in_new_tab": False})
@@ -1458,16 +1529,13 @@ def apply_navigation(config, created: list[dict], site_type: str, description: s
         config.footer_links = []
         for page in created:
             home = page["route"] in ("/", "/home", "/index")
+            # //// Neoffice — the legal pages are not navigation (2026-09-15): the chrome puts them
+            # //// on their own row at the very bottom, quieter and lower than the site's pages
+            # //// (hf_utils/header_footer.py::_legal_links). Listed here they would sit between
+            # //// Brands and Contact, and on a Centered footer in the same single row as them.
+            if _is_legal_route(page["route"]):
+                continue
             config.append("footer_links", {"column_name": _("Navigation", lang=lang), "label": _("Home", lang=lang) if home else page["title"], "url": "/" if home else page["route"]})
-    # //// Neoffice — a shop's footer carries its legal pages (2026-09-15): an online shop without its
-    # //// terms and its privacy policy is refused by the ad platforms and by the payment providers.
-    # //// The pages the site has are linked, whoever wrote them; the ones missing are named in the
-    # //// build's summary (missing_legal_pages).
-    if hasattr(config, "footer_links") and _profile_sells(profile):
-        linked = {str(getattr(row, "url", "") or "") for row in (config.footer_links or [])}
-        for route, label in legal_pages(profile):
-            if route not in linked:
-                config.append("footer_links", {"column_name": _("Legal", lang=lang), "label": label, "url": route})
     config.save(ignore_permissions=True)
     # //// Neoffice — the home is known by what it was planned as, not only by the route it got
     # //// (2026-09-15): a home written beside one that was kept takes a hashed route ("home-b059"),
@@ -1541,6 +1609,11 @@ def build_site(ctx, spec: dict) -> str:
     primary = (spec.get("primary_color") or "").strip() or None
     secondary = (spec.get("secondary_color") or "").strip() or None
     logo_image = clean_logo(spec.get("logo_image"))
+    # //// Neoffice — a shop is built with its legal pages (2026-09-15): the first storefront the
+    # //// pipeline produced had neither terms nor a privacy policy, and a shop without them cannot
+    # //// trade. They are planned here, written by the page loop like any other page, and the
+    # //// footer links whichever ones exist (legal_pages).
+    pages += plan_legal_pages(pages, profile, site_type, lang_code)
     job_id = f"site_gen_{frappe.generate_hash(length=10)}"
     total = len(pages)
 

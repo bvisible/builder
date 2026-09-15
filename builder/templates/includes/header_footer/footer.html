@@ -189,6 +189,19 @@
 		<div class="site-footer__custom">{{ footer_html | safe }}</div>
 		{%- endif -%}
 
+		{# //// Neoffice — the legal row (2026-09-15): terms, privacy and the legal notice,
+		   //// under everything else, on every footer template. A site that has these pages must
+		   //// let a visitor reach them from any page; a shop that does not carry them cannot
+		   //// trade. Found by route, and skipped when the client already placed them in a
+		   //// column of their own (hf_utils/header_footer.py::_legal_links). #}
+		{%- if legal_links -%}
+		<nav class="site-footer__legal" aria-label="{{ _('Legal') }}">
+			{%- for link in legal_links -%}
+			<a href="{{ link.url }}" class="site-footer__legal-link">{{ link.label }}</a>
+			{%- endfor -%}
+		</nav>
+		{%- endif -%}
+
 		<div class="site-footer__bottom">
 			<div class="site-footer__copyright-row">
 				<p class="site-footer__copyright">{{ copyright_text }}</p>

@@ -532,6 +532,82 @@ class TestShopIncludes(unittest.TestCase):
 			self.assertEqual([("/terms-conditions", "Terms & Conditions")], legal_pages("A Storefront"))
 			self.assertEqual(["privacy"], missing_legal_pages("A Storefront"))
 
+	# //// Neoffice — added tests (2026-09-15): a shop is built WITH its legal pages, they are
+	# //// written as prose, and they stay out of the menu.
+	def test_a_shop_is_planned_with_the_legal_pages_it_lacks(self):
+		from builder.site_ai.nora.site_builder import plan_legal_pages
+
+		planned = [{"title": "Home", "route": "home", "type": "accueil"}]
+		with patch("builder.site_ai.nora.site_builder.legal_pages", return_value=[("/terms-conditions", "CGV")]):
+			added = plan_legal_pages(planned, "A Storefront", "ecommerce", "en")
+		self.assertEqual([("privacy-policy", "legal")], [(p["route"], p["type"]) for p in added])
+
+		# already in the plan: not planned twice
+		planned = [{"title": "Home", "route": "home", "type": "accueil"}, {"title": "CGU", "route": "cgu", "type": "legal"}]
+		with patch("builder.site_ai.nora.site_builder.legal_pages", return_value=[]):
+			added = plan_legal_pages(planned, "A Storefront", "ecommerce", "en")
+		self.assertEqual(["privacy-policy"], [p["route"] for p in added])
+
+		# a showcase site is left alone
+		with patch("builder.site_ai.nora.site_builder._profile_sells", return_value=False), patch(
+			"builder.site_ai.nora.site_builder.legal_pages", return_value=[]
+		):
+			self.assertEqual([], plan_legal_pages([], "A Showcase", "vitrine", "en"))
+
+	def test_a_legal_title_is_recognised_as_a_legal_page(self):
+		from builder.site_ai.nora.site_builder import normalise_pages
+
+		pages = normalise_pages(["Accueil", "Conditions générales de vente", "Politique de confidentialité"], "ecommerce")
+		self.assertEqual(
+			[("home", "accueil"), ("terms-conditions", "legal"), ("privacy-policy", "legal")],
+			[(p["route"], p["type"]) for p in pages],
+		)
+
+	def test_a_legal_page_is_prose_with_no_photograph_and_no_cta(self):
+		from builder.site_ai.nora.site_builder import PAGE_PHOTO_COUNT, page_sections
+
+		plan = page_sections({"title": "CGV", "route": "terms-conditions", "type": "legal"}, minimal=True, sells=True)
+		self.assertTrue(any("clauses" in s for s in plan))
+		self.assertFalse(any("CTA" in s or "photograph" in s for s in plan))
+		self.assertEqual(0, PAGE_PHOTO_COUNT["legal"])
+
+	def test_the_legal_pages_stay_out_of_the_menu(self):
+		from unittest.mock import MagicMock
+
+		from builder.site_ai.nora.site_builder import apply_navigation
+
+		config = MagicMock()
+		config.get.return_value = None
+		config.menu_items = []
+		config.footer_links = []
+
+		def append(field, row):
+			if field == "menu_items":
+				config.menu_items.append(type("Row", (), row))
+			elif field == "footer_links":
+				config.footer_links.append(type("Row", (), row))
+
+		config.append.side_effect = append
+		created = [
+			{"name": "p1", "title": "Home", "route": "/"},
+			{"name": "p2", "title": "About", "route": "/about"},
+			{"name": "p3", "title": "CGV", "route": "/terms-conditions"},
+			{"name": "p4", "title": "Confidentialité", "route": "/privacy-policy"},
+		]
+		with patch("builder.site_ai.nora.site_builder._other_business", return_value=False), patch(
+			"builder.site_ai.nora.site_builder._webshop_installed", return_value=True
+		), patch("builder.site_ai.nora.site_builder._profile_sells", return_value=True), patch(
+			"builder.site_ai.nora.site_builder.legal_pages", return_value=[]
+		), patch("builder.site_ai.nora.site_builder.frappe") as mock_frappe:
+			mock_frappe.get_installed_apps.return_value = ["frappe", "builder", "webshop"]
+			apply_navigation(config, created, "ecommerce", "boardsport store", "A Storefront", "en")
+		urls = [row.url for row in config.menu_items]
+		self.assertEqual(["/", "/all-products", "/about"], urls)
+		# and not in the footer's navigation column either: the chrome puts them lower
+		columns = {str(getattr(row, "column_name", "")) for row in config.footer_links}
+		self.assertEqual({"Navigation"}, columns)
+		self.assertNotIn("/terms-conditions", [str(getattr(row, "url", "")) for row in config.footer_links])
+
 	# //// Neoffice — added test (2026-09-15): a B2C storefront of the instance's own business gets
 	# //// the shop in its menu whatever the site type the model chose (see _profile_sells).
 	def test_a_b2c_storefront_gets_the_shop_entry(self):

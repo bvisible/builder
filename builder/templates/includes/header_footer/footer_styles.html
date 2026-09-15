@@ -282,6 +282,36 @@
 	justify-content: center;
 }
 
+/* //// Neoffice — the legal row (2026-09-15): under the footer's content, above the copyright
+   //// bar, quiet but legible. A shop's terms and privacy policy live here (see footer.html). */
+.site-footer__legal {
+	display: flex;
+	flex-wrap: wrap;
+	align-items: center;
+	justify-content: center;
+	gap: 8px 20px;
+	padding-top: 24px;
+}
+
+.site-footer__legal-link {
+	font-size: 0.8125rem;
+	color: var(--footer-text-muted);
+	text-decoration: none;
+	transition: color var(--transition, 0.2s ease);
+}
+
+.site-footer__legal-link:hover,
+.site-footer__legal-link:focus-visible {
+	color: var(--footer-text);
+	text-decoration: underline;
+}
+
+/* the row that follows already draws the rule: two lines apart would read as a table */
+.site-footer__legal + .site-footer__bottom {
+	padding-top: 16px;
+	border-top: none;
+}
+
 /* Bottom bar */
 .site-footer__bottom {
 	display: flex;

@@ -42,3 +42,37 @@ class TestLegacyChrome(unittest.TestCase):
 		self.assertEqual(title, "Legacy chrome Jinja render error")
 		self.assertIn("Component navbar: request", message)
 		self.assertIn("Traceback", message)
+
+
+# //// Neoffice — added tests (2026-09-15): the footer's legal row. A site that HAS a privacy
+# //// policy must let a visitor reach it from every page, and a shop without its terms in the
+# //// footer is refused by the payment providers.
+class TestFooterLegalRow(unittest.TestCase):
+	def _links(self, rows, columns=None, profile="A Storefront"):
+		from builder.hf_utils import header_footer
+
+		config = frappe._dict({"website_profile": profile})
+		with (
+			patch.object(header_footer.frappe.db, "exists", side_effect=lambda dt, name=None: dt == "DocType" and name == "Builder Page"),
+			patch.object(header_footer.frappe, "get_all", return_value=rows),
+		):
+			return header_footer._legal_links(config, columns or {})
+
+	def test_the_legal_pages_are_found_by_route_and_ordered(self):
+		rows = [
+			{"route": "privacy-policy", "page_title": "Politique de confidentialité"},
+			{"route": "home", "page_title": "Accueil"},
+			{"route": "terms-conditions", "page_title": "Conditions générales"},
+		]
+		self.assertEqual(
+			[("/terms-conditions", "Conditions générales"), ("/privacy-policy", "Politique de confidentialité")],
+			[(row["url"], row["label"]) for row in self._links(rows)],
+		)
+
+	def test_a_page_the_client_already_placed_is_not_repeated(self):
+		rows = [{"route": "terms-conditions", "page_title": "CGV"}, {"route": "privacy-policy", "page_title": "Confidentialité"}]
+		columns = {"Legal": [frappe._dict({"url": "/terms-conditions", "label": "CGV"})]}
+		self.assertEqual(["/privacy-policy"], [row["url"] for row in self._links(rows, columns)])
+
+	def test_a_site_without_legal_pages_gets_no_row(self):
+		self.assertEqual([], self._links([{"route": "home", "page_title": "Accueil"}]))

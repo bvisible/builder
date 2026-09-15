@@ -138,6 +138,58 @@ def render_header(config=None) -> str:
 # //// decorator only opened an HTTP door. Worse, `config` is a parameter: over HTTP a
 # //// caller passed a string where a Document was expected and got a 500 out of the
 # //// public site. No caller anywhere in the fork reaches these over HTTP.
+# //// Neoffice ▼▼▼ — added (2026-09-15): the legal links of the footer's bottom bar.
+# //// A site that HAS a privacy policy must let a visitor reach it from every page — that is
+# //// the law, not a shop's nicety — and an e-commerce site without its terms in the footer
+# //// is refused by every payment provider and every ad network. So the footer finds them
+# //// itself, from the routes the pages already use, and shows them beside the copyright:
+# //// nothing to configure for the common case, and a client who wants them elsewhere puts
+# //// them in a footer column, where they are found already placed and not repeated below.
+LEGAL_FOOTER_ROUTES = (
+	# terms
+	"terms", "terms-conditions", "terms-and-conditions", "cgv", "cgu",
+	"conditions-generales", "conditions-generales-de-vente", "agb",
+	# privacy
+	"privacy", "privacy-policy", "politique-de-confidentialite", "confidentialite", "datenschutz",
+	# the legal notice
+	"legal", "legal-notice", "mentions-legales", "impressum",
+	# a shop's shipping and returns, when the site has such a page
+	"shipping", "livraison", "returns", "retours", "widerrufsrecht",
+)
+
+
+def _legal_pages_of_site(profile: str | None) -> list[dict]:
+	"""The site's published legal pages, as {label, url}, in the order the routes are listed."""
+	found: dict[str, str] = {}
+	for doctype, title_field in (("Builder Page", "page_title"), ("Web Page", "title")):
+		if not frappe.db.exists("DocType", doctype):
+			continue
+		filters = {"published": 1}
+		# a Builder Page belongs to one site of the instance; a Web Page is the instance's own
+		if profile and doctype == "Builder Page":
+			filters["neo_website_profile"] = profile
+		try:
+			rows = frappe.get_all(doctype, filters=filters, fields=["route", title_field])
+		except Exception:
+			continue
+		for row in rows:
+			route = str(row.get("route") or "").strip("/").lower()
+			if route in LEGAL_FOOTER_ROUTES and route not in found:
+				found[route] = row.get(title_field) or route
+	return [{"label": found[route], "url": f"/{route}"} for route in LEGAL_FOOTER_ROUTES if route in found]
+
+
+def _legal_links(config, footer_columns: dict) -> list[dict]:
+	"""The legal links to add under the footer, minus the ones the client already placed."""
+	profile = config.get("website_profile") or getattr(frappe.local, "website_profile", None)
+	placed = set()
+	for links in (footer_columns or {}).values():
+		for link in links or []:
+			url = link.get("url") if isinstance(link, dict) else getattr(link, "url", "")
+			placed.add(str(url or "").strip("/").lower())
+	return [row for row in _legal_pages_of_site(profile) if row["url"].strip("/") not in placed]
+
+
 def render_footer(config=None) -> str:
 	"""
 	Render the footer HTML from configuration.
@@ -196,6 +248,9 @@ def render_footer(config=None) -> str:
 			# hard-coded in a template (see config.get_powered_by)
 			"powered_by": get_powered_by(),
 			"footer_columns": footer_columns,
+			# //// Neoffice — see _legal_links above: the terms and the privacy policy, beside
+			# //// the copyright, on every footer template.
+			"legal_links": _legal_links(config, footer_columns),
 			# an embed the client already has — a newsletter form, a booking
 			# widget. Rendered as-is: it is their code, not ours to sanitise
 			# into uselessness.
