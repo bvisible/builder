@@ -115,7 +115,7 @@ class LiteLLMProvider(BaseProvider):
             stream=False,
         )
 
-    def generate_structured(self, prompt, schema: type[T], system_prompt=None, temperature=None, images=None, **kwargs) -> T:
+    def generate_structured(self, prompt, schema: type[T], system_prompt=None, temperature=None, images=None, max_tokens=None, **kwargs) -> T:
         """JSON mode with the full schema in the system prompt (the recipe the direct
         OpenAI-compatible provider used, which Moonshot answers reliably), pydantic
         validation, and one repair pass before the call counts as failed (the
@@ -134,10 +134,16 @@ class LiteLLMProvider(BaseProvider):
         # a thinking model (Kimi K2.7) spends its reasoning inside max_tokens: at the
         # default 16k the design brief came back EMPTY ("Invalid JSON: EOF") whenever the
         # reasoning ran long, about one call in two (neoffice-maintenance #296)
+        # //// Neoffice — but the ceiling is the CALLER's to set (2026-09-15). 40 000 was applied to
+        # //// every structured call, including a page critique whose answer is a line and a handful
+        # //// of issues: a thinking model bills its reasoning as output, and that much room is an
+        # //// invitation to spend it. The brief still asks for the full ceiling, because its answer
+        # //// really is long; a short answer asks for a short ceiling.
+        ceiling = max_tokens or max(self.max_tokens or 0, STRUCTURED_MAX_TOKENS)
         raw = llm.complete(
             self._resolve_model(),
             self._format_messages(prompt, enhanced_system, images),
-            self._params(temperature, max(self.max_tokens or 0, STRUCTURED_MAX_TOKENS), json_mode=True),
+            self._params(temperature, ceiling, json_mode=True),
             stream=False,
         )
         text = _strip_fences(raw)

@@ -51,6 +51,10 @@ def _critique_provider(which: str = "auto"):
     ), cfg.model
 
 
+# //// Neoffice — room for the reasoning plus a short JSON, not the brief's 40 000 (2026-09-15)
+CRITIQUE_MAX_TOKENS = 8000
+
+
 def critique_screenshot(screenshot_url: str, which: str = "auto", model: str | None = None, context: str = ""):
     """Critique a page screenshot. Returns (PageCritique, model_label). `model` names a
     vision-capable registry model to use instead of the nora/kimi choice (the site build
@@ -67,11 +71,15 @@ def critique_screenshot(screenshot_url: str, which: str = "auto", model: str | N
     )
     if context:
         prompt += "\n\nContext: " + context.strip()
+    # //// Neoffice — a short answer asks for a short ceiling (2026-09-15): a critique is a line
+    # //// and a handful of issues, and this model bills its reasoning as output. Every structured
+    # //// call used to ask for 40 000 tokens of room, the figure the design brief needs.
     critique = llm.generate_structured(
         prompt=prompt,
         schema=PageCritique,
         system_prompt=_CRITIQUE_SYSTEM,
         images=[screenshot_url],
+        max_tokens=CRITIQUE_MAX_TOKENS,
         think=False,
     )
     ai_log("info", "Page critique done", model=label,

@@ -87,3 +87,28 @@ class TestTheCaptureIsDropped(unittest.TestCase):
 			visual_check._drop_capture(None)
 		get_all.assert_called_once_with("File", filters={"file_url": "/files/shot.png"}, pluck="name")
 		delete.assert_called_once_with("File", "f1", ignore_permissions=True, delete_permanently=True)
+
+
+# //// Neoffice — added tests (2026-09-15): a short answer asks for a short ceiling. Every
+# //// structured call used to ask for 40 000 tokens of room, and this model bills its reasoning.
+class TestCritiqueCeiling(unittest.TestCase):
+	def test_the_critique_asks_for_its_own_ceiling(self):
+		from unittest.mock import MagicMock, patch
+
+		from builder.site_ai.ingestion import visual_critique
+
+		provider = MagicMock()
+		with patch.object(visual_critique, "get_provider", return_value=provider):
+			visual_critique.critique_screenshot("data:image/jpeg;base64,x", model="kimi")
+		self.assertEqual(
+			visual_critique.CRITIQUE_MAX_TOKENS,
+			provider.generate_structured.call_args.kwargs["max_tokens"],
+		)
+		self.assertLess(visual_critique.CRITIQUE_MAX_TOKENS, 40000)
+
+	def test_a_caller_that_names_no_ceiling_keeps_the_full_one(self):
+		from builder.site_ai.providers.litellm_provider import STRUCTURED_MAX_TOKENS
+
+		# the design brief's answer really is long: it keeps the room it needs
+		self.assertEqual(40000, STRUCTURED_MAX_TOKENS)
+
