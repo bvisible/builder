@@ -629,3 +629,60 @@ class TestOnePhotoOnce(unittest.TestCase):
 		blocks = self.page("/files/a.jpg", "/files/b.jpg")
 		self.assertEqual([], one_photo_once(blocks, ["/files/a.jpg", "/files/b.jpg", "/files/c.jpg"]))
 		self.assertEqual(["/files/a.jpg", "/files/b.jpg"], self.shown(blocks))
+
+
+# //// Neoffice — added tests (2026-09-15): the emblem is an ornament or it is nothing.
+class TestDropSmallMarks(unittest.TestCase):
+	def page(self, *sizes):
+		return [{
+			"element": "div",
+			"children": [
+				{"element": "div", "children": [
+					{"element": "img", "attributes": {"src": "/files/emblem.png"}, "baseStyles": ({"width": s} if s else {})},
+					{"element": "h2", "innerHTML": "Dealer lineup"},
+				]}
+				for s in sizes
+			],
+		}]
+
+	def marks(self, blocks):
+		found = []
+
+		def walk(b):
+			if b.get("element") == "img":
+				found.append((b.get("attributes") or {}).get("src"))
+			for c in b.get("children") or []:
+				walk(c)
+
+		for b in blocks:
+			walk(b)
+		return found
+
+	def test_a_bullet_sized_emblem_is_removed(self):
+		from builder.site_ai.nora.layout import drop_small_marks
+
+		blocks = self.page("32px")
+		self.assertEqual(1, len(drop_small_marks(blocks, "/files/emblem.png")))
+		self.assertEqual([], self.marks(blocks))
+
+	def test_an_emblem_with_no_declared_size_is_removed(self):
+		from builder.site_ai.nora.layout import drop_small_marks
+
+		blocks = self.page(None)
+		self.assertEqual(1, len(drop_small_marks(blocks, "/files/emblem.png")))
+		self.assertEqual([], self.marks(blocks))
+
+	def test_an_emblem_drawn_as_an_ornament_stays(self):
+		from builder.site_ai.nora.layout import drop_small_marks
+
+		blocks = self.page("420px")
+		self.assertEqual([], drop_small_marks(blocks, "/files/emblem.png"))
+		self.assertEqual(["/files/emblem.png"], self.marks(blocks))
+
+	def test_another_picture_is_never_touched(self):
+		from builder.site_ai.nora.layout import drop_small_marks
+
+		blocks = [{"element": "div", "children": [{"element": "img", "attributes": {"src": "/files/photo.jpg"}, "baseStyles": {"width": "40px"}}]}]
+		self.assertEqual([], drop_small_marks(blocks, "/files/emblem.png"))
+		self.assertEqual(["/files/photo.jpg"], self.marks(blocks))
+

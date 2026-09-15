@@ -806,3 +806,48 @@ def _photos_of(block: dict) -> list[str]:
         found.append(m.group(2))
     return found
 # //// Neoffice ▲▲▲
+
+
+# //// Neoffice ▼▼▼ — added (2026-09-15): the emblem is an ornament or it is nothing.
+MARK_MIN_PX = 200
+
+
+def drop_small_marks(blocks: list, mark: str) -> list[str]:
+    """Removes the site's emblem where it was drawn small: a bullet, an icon beside a heading.
+
+    The page brief offers the mark as a background layer, at least 280px across. Offered that,
+    the model put a 30px copy of it in front of every section title, where it reads as a stray
+    favicon (2026-09-15). A picture whose declared size is under MARK_MIN_PX, or which declares
+    none at all, is not an ornament: it goes. One kept large enough stays. Returns one line per
+    removal."""
+    if not mark:
+        return []
+    removed: list[str] = []
+
+    def size(block: dict) -> float:
+        styles = {**(block.get("baseStyles") or {}), **(block.get("attributes") or {})}
+        found = 0.0
+        for key in ("width", "height", "maxWidth", "minWidth"):
+            m = re.match(r"^\s*(\d+(?:\.\d+)?)\s*(px)?\s*$", str(styles.get(key) or ""))
+            if m:
+                found = max(found, float(m.group(1)))
+        return found
+
+    def walk(parent: dict) -> None:
+        kids = [c for c in parent.get("children") or [] if isinstance(c, dict)]
+        kept = []
+        for child in kids:
+            src = str((child.get("attributes") or {}).get("src") or "")
+            if child.get("element") == "img" and src == mark and size(child) < MARK_MIN_PX:
+                removed.append(f"the emblem drawn at {int(size(child)) or 'no'}px was removed")
+                continue
+            kept.append(child)
+            walk(child)
+        if len(kept) != len(kids):
+            parent["children"] = kept
+
+    for block in blocks or []:
+        if isinstance(block, dict):
+            walk(block)
+    return removed
+# //// Neoffice ▲▲▲

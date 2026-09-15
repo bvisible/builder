@@ -1253,10 +1253,11 @@ def page_brief_text(site: dict, brief, page: dict, handles: dict, contact_prompt
             # //// own, and inventing another one for the page is how a photo collage ended up
             # //// looking like a lifebuoy. Once per page at most, quiet, and never in the chrome's
             # //// place — the header already carries the logo.
-            f"THE BRAND'S MARK: the IMAGE at {site['mark']} — the site's own emblem. You MAY place that image ONCE on "
-            "this page as a large quiet ornament: behind a band at low opacity, or oversized and cropped by the "
-            "section's edge. It is the image file and nothing else: never a letter, a digit or a shape copied out of "
-            "it, never a logo in the page (the header already shows it), never over copy, never on the hero, and never "
+            f"THE BRAND'S MARK: the IMAGE at {site['mark']} — the site's own emblem. You MAY place it ONCE on this "
+            "page as a BACKGROUND ornament: a layer behind one section's copy, at least 280px across and at most 0.12 "
+            "opacity, or oversized and cropped by that section's edge. It is the image file and nothing else: never a "
+            "letter, a digit or a shape copied out of it. It is never an inline picture beside a heading, never a "
+            "bullet or an icon, never a logo in the page (the header already shows it), never on the hero, and never "
             "in more than one section. Leave it out when nothing on this page calls for it."
             if site.get("mark") and page["type"] not in TEXT_BY_NATURE else ""
         ),
@@ -2151,6 +2152,14 @@ def build_site(ctx, spec: dict) -> str:
                     swapped = one_photo_once(blocks, photos)
                     if swapped:
                         ai_log("info", "Repeated photographs replaced", page=page["title"], edits=swapped)
+                    # //// Neoffice — and the emblem is an ornament or nothing (layout.drop_small_marks): offered
+                    # //// as a quiet background layer, it came back as a 30px bullet beside a heading (2026-09-15)
+                    if site.get("mark"):
+                        from builder.site_ai.nora.layout import drop_small_marks
+
+                        dropped_marks = drop_small_marks(blocks, site["mark"])
+                        if dropped_marks:
+                            ai_log("info", "Emblem used as a bullet removed", page=page["title"], edits=dropped_marks)
                     # //// Neoffice — and a site whose mark is a circle of segments shows them in that
                     # //// shape: one circle, one part per category (layout.category_wheel). The brief
                     # //// picks it; every other site keeps its tiles.
