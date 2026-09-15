@@ -2545,7 +2545,7 @@ def build_site(ctx, spec: dict) -> str:
     if _sells_here:
         still_missing = missing_legal_pages(profile)
         if still_missing:
-            names = {"terms": "terms and conditions", "privacy": "a privacy policy"}
+            names = {"terms": "terms and conditions", "privacy": "privacy policy"}
             lines.append(
                 "This shop still has no " + " and no ".join(names[k] for k in still_missing)
                 + ": no payment provider and no ad network accepts a shop without them. Offer to write them."
