@@ -65,18 +65,32 @@ def about_us_rows(field: str) -> bool:
 	return bool(frappe.get_cached_doc("About Us Settings").get(field))
 
 
-def shop_has_pictured(doctype: str, image_field: str, filters: dict | None = None) -> bool:
-	"""Whether the shop has a published record of `doctype` carrying a picture.
+# what a carousel fetches, and how many of them must carry a picture for it to be worth drawing
+CAROUSEL_FETCH = 8
+CAROUSEL_MIN_PICTURED = 3
 
-	//// Neoffice — added 2026-09-15: the carousels are offered with hide_without_image, so a
-	shop whose articles have no photograph draws an empty strip under its heading. Before that
-	switch it drew grey squares with the initials of each name ("VW", "VS", "VD") across a
-	home. A picture is what a carousel shows: without one it has nothing."""
+
+def shop_has_pictured(doctype: str, image_field: str, filters: dict | None = None, among: int = 0) -> bool:
+	"""Whether the shop has enough pictured records of `doctype` for a carousel to show something.
+
+	//// Neoffice — added 2026-09-15: the carousels are offered with hide_without_image, so a shop
+	whose articles have no photograph draws an empty strip under its heading. Before that switch it
+	drew grey squares with the initials of each name ("VW", "VS", "VD") across a home.
+
+	//// Neoffice — `among` added the same day: asking "does ANY article have a picture?" was the
+	wrong question. A catalogue of 380 articles had 9 pictured, none of them among the eight newest
+	— which is exactly the set the carousel fetches (sort_by creation desc, carousel_limit) — so the
+	check passed and the home still drew "Our products" over an empty strip. Asked of the same set
+	the carousel will fetch, and of at least CAROUSEL_MIN_PICTURED of them, the answer matches what
+	a visitor will see."""
 	if not frappe.db.exists("DocType", doctype):
 		return False
 	conditions = dict(filters or {})
-	conditions[image_field] = ("is", "set")
-	return bool(frappe.db.count(doctype, conditions))
+	if not among:
+		conditions[image_field] = ("is", "set")
+		return bool(frappe.db.count(doctype, conditions))
+	rows = frappe.get_all(doctype, filters=conditions, fields=[image_field], order_by="creation desc", limit=among)
+	return sum(1 for row in rows if row.get(image_field)) >= min(CAROUSEL_MIN_PICTURED, among)
 
 
 # include file name -> whether it has something to show on the site of `profile`
@@ -86,7 +100,7 @@ DATA_CHECKS = {
 	"team_grid.html": lambda profile: about_us_rows("team_members"),
 	"company_timeline.html": lambda profile: about_us_rows("company_history"),
 	# //// Neoffice — the carousels show pictures (see shop_has_pictured)
-	"product_carousel.html": lambda profile: shop_has_pictured("Website Item", "website_image", {"published": 1}),
+	"product_carousel.html": lambda profile: shop_has_pictured("Website Item", "website_image", {"published": 1}, among=CAROUSEL_FETCH),
 	"brand_carousel.html": lambda profile: shop_has_pictured("Brand", "image"),
 }
 

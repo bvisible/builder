@@ -316,18 +316,35 @@ class TestMapTemplate(unittest.TestCase):
 # //// Neoffice — added tests (2026-09-15): a carousel shows pictures, so a shop whose articles
 # //// carry none has nothing to show and is not offered the include.
 class TestCarouselsNeedPictures(unittest.TestCase):
-	def test_a_shop_with_pictured_articles_has_something_to_show(self):
+	def newest(self, pictured, total=8):
+		return [{"website_image": "/files/p.jpg" if i < pictured else None} for i in range(total)]
+
+	def test_a_shop_whose_newest_articles_are_pictured_has_something_to_show(self):
 		from builder.empty_includes import include_has_data
 
-		with patch("frappe.db.exists", return_value=True), patch("frappe.db.count", return_value=12) as count:
+		with patch("frappe.db.exists", return_value=True), patch("frappe.get_all", return_value=self.newest(5)) as get_all:
 			self.assertIs(True, include_has_data("webshop/templates/includes/product_carousel.html"))
-		self.assertEqual(({"published": 1, "website_image": ("is", "set")},), count.call_args.args[1:])
+		self.assertEqual({"published": 1}, get_all.call_args.kwargs["filters"])
+		self.assertEqual(8, get_all.call_args.kwargs["limit"])
 
-	def test_a_shop_whose_articles_have_no_picture_has_nothing_to_show(self):
+	# //// Neoffice — the question the check asks is the question the carousel asks (2026-09-15): a
+	# //// catalogue of 380 articles had 9 pictured, none among the eight the carousel fetches, and
+	# //// the home drew "Our products" over an empty strip.
+	def test_pictures_outside_what_the_carousel_fetches_do_not_count(self):
+		from builder.empty_includes import include_has_data
+
+		with patch("frappe.db.exists", return_value=True), patch("frappe.get_all", return_value=self.newest(0)):
+			self.assertIs(False, include_has_data("webshop/templates/includes/product_carousel.html"))
+		# two pictured of eight is a strip of two: not worth a heading
+		with patch("frappe.db.exists", return_value=True), patch("frappe.get_all", return_value=self.newest(2)):
+			self.assertIs(False, include_has_data("webshop/templates/includes/product_carousel.html"))
+		with patch("frappe.db.exists", return_value=True), patch("frappe.get_all", return_value=self.newest(3)):
+			self.assertIs(True, include_has_data("webshop/templates/includes/product_carousel.html"))
+
+	def test_a_shop_whose_brands_have_no_logo_has_nothing_to_show(self):
 		from builder.empty_includes import include_has_data
 
 		with patch("frappe.db.exists", return_value=True), patch("frappe.db.count", return_value=0):
-			self.assertIs(False, include_has_data("webshop/templates/includes/product_carousel.html"))
 			self.assertIs(False, include_has_data("webshop/templates/includes/brand_carousel.html"))
 
 	def test_without_the_shop_app_there_is_nothing_to_show(self):
