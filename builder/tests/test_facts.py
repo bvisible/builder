@@ -156,9 +156,19 @@ class TestSiteIdentity(unittest.TestCase):
 		from builder.api import site_identity
 
 		config = frappe_dict(business_name="Atelier Nord Sàrl", business_address="Lausanne, Switzerland")
+		# //// Neoffice — a site that names itself and gives no line of its own publishes NONE
+		# //// (2026-09-15): the company's switchboard belongs to another business.
 		self.assertEqual(
 			site_identity(config),
-			{"company_name": "Atelier Nord Sàrl", "address": "Lausanne, Switzerland"},
+			{"company_name": "Atelier Nord Sàrl", "address": "Lausanne, Switzerland", "phone": "", "email": ""},
+		)
+		# with its own line, it publishes it
+		own = frappe_dict(business_name="Atelier Nord Sàrl", business_address="Lausanne, Switzerland",
+		                  business_phone="+41 21 000 00 00", business_email="bonjour@atelier-nord.test")
+		self.assertEqual(
+			site_identity(own),
+			{"company_name": "Atelier Nord Sàrl", "address": "Lausanne, Switzerland",
+			 "phone": "+41 21 000 00 00", "email": "bonjour@atelier-nord.test"},
 		)
 		# empty settings leave the company's own data in place
 		self.assertEqual(site_identity(frappe_dict(business_name="", business_address="  ")), {})
