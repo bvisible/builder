@@ -569,3 +569,63 @@ class TestCategoryWheel(unittest.TestCase):
 		self.assertEqual(1, category_wheel(page, photos))
 		self.assertIn("water.jpg", page[0]["children"][2]["baseStyles"]["backgroundImage"])
 
+
+# //// Neoffice — added tests (2026-09-15): one photograph, one place on a page.
+class TestOnePhotoOnce(unittest.TestCase):
+	def page(self, *urls):
+		return [{
+			"element": "div",
+			"children": [
+				{"element": "section", "children": [{"element": "img", "attributes": {"src": url}}]}
+				for url in urls
+			],
+		}]
+
+	def shown(self, blocks):
+		found = []
+
+		def walk(b):
+			if b.get("element") == "img":
+				found.append((b.get("attributes") or {}).get("src"))
+			for c in b.get("children") or []:
+				walk(c)
+
+		for b in blocks:
+			walk(b)
+		return found
+
+	def test_a_photograph_shown_twice_takes_an_unused_one(self):
+		from builder.site_ai.nora.layout import one_photo_once
+
+		blocks = self.page("/files/a.jpg", "/files/b.jpg", "/files/a.jpg")
+		swaps = one_photo_once(blocks, ["/files/a.jpg", "/files/b.jpg", "/files/c.jpg"])
+		self.assertEqual(1, len(swaps))
+		self.assertEqual(["/files/a.jpg", "/files/b.jpg", "/files/c.jpg"], self.shown(blocks))
+
+	def test_with_nothing_left_the_repeat_stays(self):
+		from builder.site_ai.nora.layout import one_photo_once
+
+		blocks = self.page("/files/a.jpg", "/files/a.jpg")
+		self.assertEqual([], one_photo_once(blocks, ["/files/a.jpg"]))
+		self.assertEqual(["/files/a.jpg", "/files/a.jpg"], self.shown(blocks))
+
+	def test_a_background_photograph_counts_too(self):
+		from builder.site_ai.nora.layout import one_photo_once
+
+		blocks = [{
+			"element": "div",
+			"children": [
+				{"element": "section", "baseStyles": {"backgroundImage": "url('/files/a.jpg')"}},
+				{"element": "section", "baseStyles": {"backgroundImage": "url('/files/a.jpg')"}},
+			],
+		}]
+		one_photo_once(blocks, ["/files/a.jpg", "/files/b.jpg"])
+		backgrounds = [c["baseStyles"]["backgroundImage"] for c in blocks[0]["children"]]
+		self.assertEqual(["url('/files/a.jpg')", "url('/files/b.jpg')"], backgrounds)
+
+	def test_a_page_that_repeats_nothing_is_left_alone(self):
+		from builder.site_ai.nora.layout import one_photo_once
+
+		blocks = self.page("/files/a.jpg", "/files/b.jpg")
+		self.assertEqual([], one_photo_once(blocks, ["/files/a.jpg", "/files/b.jpg", "/files/c.jpg"]))
+		self.assertEqual(["/files/a.jpg", "/files/b.jpg"], self.shown(blocks))

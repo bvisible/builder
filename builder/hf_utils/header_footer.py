@@ -251,6 +251,9 @@ def render_footer(config=None) -> str:
 			# //// Neoffice — see _legal_links above: the terms and the privacy policy, beside
 			# //// the copyright, on every footer template.
 			"legal_links": _legal_links(config, footer_columns),
+			# //// Neoffice — how tall the mark stands in the footer (2026-09-15): a centred
+			# //// footer opens on it, and it inherited the header's 36px, lost above the text.
+			"logo_height": config.get("footer_logo_height") or "Medium",
 			# an embed the client already has — a newsletter form, a booking
 			# widget. Rendered as-is: it is their code, not ours to sanitise
 			# into uselessness.

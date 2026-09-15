@@ -311,3 +311,35 @@ class TestMapTemplate(unittest.TestCase):
 		self.assertIn(
 			"q=Elm%20Road", self.render(address="Elm Road", site_map_address=lambda: "Main Street 1")
 		)
+
+
+# //// Neoffice — added tests (2026-09-15): a carousel shows pictures, so a shop whose articles
+# //// carry none has nothing to show and is not offered the include.
+class TestCarouselsNeedPictures(unittest.TestCase):
+	def test_a_shop_with_pictured_articles_has_something_to_show(self):
+		from builder.empty_includes import include_has_data
+
+		with patch("frappe.db.exists", return_value=True), patch("frappe.db.count", return_value=12) as count:
+			self.assertIs(True, include_has_data("webshop/templates/includes/product_carousel.html"))
+		self.assertEqual(({"published": 1, "website_image": ("is", "set")},), count.call_args.args[1:])
+
+	def test_a_shop_whose_articles_have_no_picture_has_nothing_to_show(self):
+		from builder.empty_includes import include_has_data
+
+		with patch("frappe.db.exists", return_value=True), patch("frappe.db.count", return_value=0):
+			self.assertIs(False, include_has_data("webshop/templates/includes/product_carousel.html"))
+			self.assertIs(False, include_has_data("webshop/templates/includes/brand_carousel.html"))
+
+	def test_without_the_shop_app_there_is_nothing_to_show(self):
+		from builder.empty_includes import include_has_data
+
+		with patch("frappe.db.exists", return_value=False):
+			self.assertIs(False, include_has_data("webshop/templates/includes/product_carousel.html"))
+
+	def test_the_generator_offers_the_carousel_with_the_picture_switch(self):
+		from builder.site_ai.nora.site_builder import PAGE_INCLUDES
+
+		for page_type in ("accueil", "shop"):
+			for tag, _purpose in PAGE_INCLUDES[page_type]:
+				if "carousel" in tag:
+					self.assertIn("hide_without_image = true", tag)

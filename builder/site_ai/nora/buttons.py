@@ -157,7 +157,11 @@ def settle_rendered_variants(blocks: list, palette: dict) -> int:
     repair_button_variants, without its design choices (one main action per group, the variant
     over a photograph): the page keeps the variant its author chose, and a theme that changes
     after the page was written (a retheme, a new rule for what the buttons paint) is judged at
-    each render. A button over a photograph keeps its variant. Returns how many changed."""
+    each render. A FILLED button over a photograph keeps its variant — the fill carries it —
+    but an outline over one reads on no picture, so it takes the design system's own backing
+    here too: that is legibility, not a design choice, and a page written before the rule, or
+    edited by hand since, must not keep a grey ghost on a grey photograph. Returns how many
+    changed."""
     primary, secondary = rendered_buttons(palette)
     painted = {"u-btn--primary": primary, "u-btn--secondary": secondary}
     changed = 0
@@ -181,7 +185,13 @@ def settle_rendered_variants(blocks: list, palette: dict) -> int:
         bg = _background(block, palette, bg)
         row = [child for child in block.get("children") or [] if isinstance(child, dict)]
         for child in row:
-            if "u-btn" in (child.get("classes") or []) and not _over_photo(child, photo) and settle(child, row, bg):
+            classes = child.get("classes") or []
+            if "u-btn" in classes and _over_photo(child, photo):
+                # //// Neoffice — an outline over a photograph reads on none of it (2026-09-15)
+                if {"u-btn--outline", "u-btn--ghost"} & set(classes):
+                    child["classes"] = ["u-btn--on-image" if c in ("u-btn--outline", "u-btn--ghost") else c for c in classes]
+                    changed += 1
+            elif "u-btn" in classes and settle(child, row, bg):
                 changed += 1
             walk(child, bg, photo)
 

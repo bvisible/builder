@@ -10417,3 +10417,11 @@ msgstr "Politique de confidentialité"
 #: builder/templates/includes/header_footer/footer.html
 msgid "Legal"
 msgstr "Mentions légales"
+
+#: builder/builder/doctype/website_header_footer_config/website_header_footer_config.json
+msgid "Footer Logo Size"
+msgstr "Taille du logo du pied de page"
+
+#: builder/builder/doctype/website_header_footer_config/website_header_footer_config.json
+msgid "How tall the mark stands in the footer. A centred footer opens on it, so Large suits it."
+msgstr "Hauteur de la marque dans le pied de page. Un pied centré s’ouvre dessus : « Large » lui convient."

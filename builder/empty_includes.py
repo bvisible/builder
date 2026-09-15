@@ -65,12 +65,29 @@ def about_us_rows(field: str) -> bool:
 	return bool(frappe.get_cached_doc("About Us Settings").get(field))
 
 
+def shop_has_pictured(doctype: str, image_field: str, filters: dict | None = None) -> bool:
+	"""Whether the shop has a published record of `doctype` carrying a picture.
+
+	//// Neoffice — added 2026-09-15: the carousels are offered with hide_without_image, so a
+	shop whose articles have no photograph draws an empty strip under its heading. Before that
+	switch it drew grey squares with the initials of each name ("VW", "VS", "VD") across a
+	home. A picture is what a carousel shows: without one it has nothing."""
+	if not frappe.db.exists("DocType", doctype):
+		return False
+	conditions = dict(filters or {})
+	conditions[image_field] = ("is", "set")
+	return bool(frappe.db.count(doctype, conditions))
+
+
 # include file name -> whether it has something to show on the site of `profile`
 DATA_CHECKS = {
 	"google_map.html": lambda profile: site_has_address(profile),
 	"opening_hours.html": lambda profile: opening_hours_configured(),
 	"team_grid.html": lambda profile: about_us_rows("team_members"),
 	"company_timeline.html": lambda profile: about_us_rows("company_history"),
+	# //// Neoffice — the carousels show pictures (see shop_has_pictured)
+	"product_carousel.html": lambda profile: shop_has_pictured("Website Item", "website_image", {"published": 1}),
+	"brand_carousel.html": lambda profile: shop_has_pictured("Brand", "image"),
 }
 
 

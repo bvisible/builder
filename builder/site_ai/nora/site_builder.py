@@ -749,13 +749,16 @@ PAGE_INCLUDES = {
     # //// Neoffice — the carousel titles were written in French in the code (2026-09-15): the tag is
     # //// canonicalised by repair_includes, so a site in English or German got "Nos produits" over its
     # //// products whatever the model wrote. {0} is filled with the title in the SITE's language.
+    # //// Neoffice — hide_without_image (2026-09-15): a shop whose articles have no photograph
+    # //// showed four grey squares reading "VW", "VS", "VD", "BT" on its home. The carousel's own
+    # //// switch keeps the pictured ones; with none at all the include is not offered (DATA_CHECKS).
     "accueil": [
-        ("{%- set carousel_title = \"{0}\" -%}{%- set carousel_limit = 8 -%}{% include \"webshop/templates/includes/product_carousel.html\" %}", "a carousel of real products (title of your choice)"),
-        ("{%- set carousel_title = \"{1}\" -%}{% include \"webshop/templates/includes/brand_carousel.html\" %}", "the brands carried"),
+        ("{%- set carousel_title = \"{0}\" -%}{%- set carousel_limit = 8 -%}{%- set hide_without_image = true -%}{% include \"webshop/templates/includes/product_carousel.html\" %}", "a carousel of real products (title of your choice)"),
+        ("{%- set carousel_title = \"{1}\" -%}{%- set hide_without_image = true -%}{% include \"webshop/templates/includes/brand_carousel.html\" %}", "the brands carried"),
     ],
     "shop": [
-        ("{%- set carousel_title = \"{0}\" -%}{%- set carousel_limit = 8 -%}{% include \"webshop/templates/includes/product_carousel.html\" %}", "a carousel of real products"),
-        ("{%- set show_discounted_only = true -%}{% include \"webshop/templates/includes/product_carousel.html\" %}", "the products on sale"),
+        ("{%- set carousel_title = \"{0}\" -%}{%- set carousel_limit = 8 -%}{%- set hide_without_image = true -%}{% include \"webshop/templates/includes/product_carousel.html\" %}", "a carousel of real products"),
+        ("{%- set show_discounted_only = true -%}{%- set hide_without_image = true -%}{% include \"webshop/templates/includes/product_carousel.html\" %}", "the products on sale"),
     ],
     "one_page": [
         ("{% include 'builder/templates/includes/contact_form.html' %}", "a working contact form, in the contact section"),
@@ -2118,6 +2121,14 @@ def build_site(ctx, spec: dict) -> str:
                     completed = complete_tile_photos(blocks, site.get("category_photos") or {})
                     if completed:
                         ai_log("info", "Category tiles given their photographs", page=page["title"], edits=completed)
+                    # //// Neoffice — and no photograph twice on one page (layout.one_photo_once): a home
+                    # //// opened on a skateboarder and showed the same skateboarder again three sections
+                    # //// down, beside its statement (2026-09-15)
+                    from builder.site_ai.nora.layout import one_photo_once
+
+                    swapped = one_photo_once(blocks, photos)
+                    if swapped:
+                        ai_log("info", "Repeated photographs replaced", page=page["title"], edits=swapped)
                     # //// Neoffice — and a site whose mark is a circle of segments shows them in that
                     # //// shape: one circle, one part per category (layout.category_wheel). The brief
                     # //// picks it; every other site keeps its tiles.

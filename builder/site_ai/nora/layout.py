@@ -747,3 +747,62 @@ def _clear_around_the_wheel(blocks: list, wheel: dict, labels: set) -> None:
 			kept.append(child)
 		parent["children"] = kept
 
+
+
+# //// Neoffice ▼▼▼ — added (2026-09-15): one photograph, one place on a page.
+def one_photo_once(blocks: list, photos: list[str]) -> list[str]:
+    """A client photograph shown twice on the same page takes an unused one instead.
+
+    The brief says each photograph is used at most once; a home opened on a skateboarder and
+    showed the same skateboarder again, three sections down, beside its two-column statement
+    (2026-09-15). Walked in reading order: the first showing keeps the picture, and a later one
+    takes the first photograph of the page's own list that nothing shows yet. With none left the
+    repeat stays — a duplicate reads better than an empty frame. Returns one line per swap."""
+    spare = [url for url in (photos or []) if url]
+    seen: set[str] = set()
+    swaps: list[str] = []
+
+    def replace(block: dict, old: str, new: str) -> None:
+        if block.get("element") == "img":
+            attributes = block.setdefault("attributes", {})
+            if str(attributes.get("src") or "") == old:
+                attributes["src"] = new
+        styles = block.get("baseStyles") or {}
+        background = str(styles.get("backgroundImage") or "")
+        if old in background:
+            styles["backgroundImage"] = background.replace(old, new)
+            block["baseStyles"] = styles
+
+    def walk(block) -> None:
+        if not isinstance(block, dict):
+            return
+        for url in _photos_of(block):
+            if url not in seen:
+                seen.add(url)
+                continue
+            fresh = next((u for u in spare if u not in seen), None)
+            if not fresh:
+                continue
+            replace(block, url, fresh)
+            seen.add(fresh)
+            swaps.append(f"a photograph shown twice replaced by {fresh.rsplit('/', 1)[-1]}")
+        for child in block.get("children") or []:
+            walk(child)
+
+    for block in blocks or []:
+        walk(block)
+    return swaps
+
+
+def _photos_of(block: dict) -> list[str]:
+    """The photographs this block itself shows (not its children's)."""
+    found = []
+    if block.get("element") == "img":
+        src = str((block.get("attributes") or {}).get("src") or "")
+        if src and not src.startswith("data:"):
+            found.append(src)
+    m = URL_IN_BACKGROUND.search(str((block.get("baseStyles") or {}).get("backgroundImage") or ""))
+    if m and not m.group(2).startswith("data:"):
+        found.append(m.group(2))
+    return found
+# //// Neoffice ▲▲▲

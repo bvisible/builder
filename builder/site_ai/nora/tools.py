@@ -100,7 +100,7 @@ generate_site = Tool(
 # These two tools let the assistant read and change it by dialogue, per profile.
 CHROME_READ_FIELDS = (
     "header_layout", "header_style", "sticky_header", "header_height", "logo_type", "logo_text", "show_cta", "cta_text",
-    "cta_url", "cta_style", "search_type", "show_user", "show_wishlist", "show_cart", "footer_template",
+    "cta_url", "cta_style", "search_type", "show_user", "show_wishlist", "show_cart", "footer_template", "footer_logo_height",
     "footer_menu_source", "footer_description", "copyright_text", "show_social_links", "facebook_url", "instagram_url",
     "linkedin_url", "youtube_url", "twitter_url", "show_newsletter", "newsletter_title", "show_opening_hours",
     "opening_hours_display", "show_breadcrumbs", "breadcrumb_position", "page_header_template", "menu_items",

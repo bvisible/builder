@@ -112,6 +112,21 @@ class TestRenderedVariants(unittest.TestCase):
 		self.assertEqual(settle_rendered_variants([hero], PALETTE), 0)
 		self.assertEqual(hero["children"][0]["classes"], ["u-btn", "u-btn--primary"])
 
+	# //// Neoffice — added test (2026-09-15): an outline over a photograph reads on no picture,
+	# //// so the render gives it the design system's own backing, whatever the stored page says.
+	def test_an_outline_over_a_photograph_takes_the_backing_at_render(self):
+		hero = self.band(button("Contact us", "u-btn--outline"), backgroundImage="url(/files/hero.jpg)")
+		self.assertEqual(settle_rendered_variants([hero], PALETTE), 1)
+		self.assertEqual(hero["children"][0]["classes"], ["u-btn", "u-btn--on-image"])
+		# and a section already scrimmed by the build is a photograph too
+		veiled = self.band(button("Contact us", "u-btn--ghost"))
+		veiled["classes"] = ["u-over-image"]
+		self.assertEqual(settle_rendered_variants([veiled], PALETTE), 1)
+		self.assertEqual(veiled["children"][0]["classes"], ["u-btn", "u-btn--on-image"])
+		# one that already carries the backing is left alone
+		done = self.band(button("Contact us", "u-btn--on-image"), backgroundImage="url(/files/hero.jpg)")
+		self.assertEqual(settle_rendered_variants([done], PALETTE), 0)
+
 	def test_the_render_leaves_the_stored_page_alone(self):
 		stored = json.dumps([self.band(button("Contactez-nous", "u-btn--primary"))])
 		with patch.object(buttons, "_render_palette", return_value=PALETTE):

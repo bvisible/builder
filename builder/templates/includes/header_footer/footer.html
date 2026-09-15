@@ -4,7 +4,7 @@
 {# Footer Template for Website Header Footer Config #}
 {%- from "builder/templates/includes/header_footer/macros.html" import render_logo, render_social_link -%}
 
-<footer class="site-footer site-footer--{{ template | lower }}">
+<footer class="site-footer site-footer--{{ template | lower }} site-footer--mark-{{ (logo_height or 'Medium') | lower }}">
 	<div class="site-footer__container">
 		{%- if template == "Extended" -%}
 		{# Extended footer: Logo + description + multiple columns + newsletter #}

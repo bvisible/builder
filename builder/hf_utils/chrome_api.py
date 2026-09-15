@@ -67,6 +67,8 @@ SIMPLE_FIELDS = (
 	"footer_bg_color",
 	"footer_text_color",
 	"show_footer_logo",
+	# //// Neoffice — how tall the mark stands in the footer (see footer_styles.html)
+	"footer_logo_height",
 	"footer_description",
 	"copyright_text",
 	"show_social_links",

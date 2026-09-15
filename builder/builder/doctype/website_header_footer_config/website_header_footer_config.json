@@ -62,6 +62,7 @@
   "footer_logo_text",
   "column_break_footer_logo",
   "footer_logo_image",
+  "footer_logo_height",
   "footer_content_section",
   "footer_description",
   "copyright_text",
@@ -511,6 +512,15 @@
    "fieldname": "footer_logo_image",
    "fieldtype": "Attach Image",
    "label": "Footer Logo Image"
+  },
+  {
+   "default": "Medium",
+   "depends_on": "eval:doc.show_footer_logo",
+   "description": "How tall the mark stands in the footer. A centred footer opens on it, so Large suits it.",
+   "fieldname": "footer_logo_height",
+   "fieldtype": "Select",
+   "label": "Footer Logo Size",
+   "options": "Small\nMedium\nLarge"
   },
   {
    "fieldname": "footer_content_section",
