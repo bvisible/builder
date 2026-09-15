@@ -1849,6 +1849,19 @@ def build_site(ctx, spec: dict) -> str:
                     completed = complete_tile_photos(blocks, site.get("category_photos") or {})
                     if completed:
                         ai_log("info", "Category tiles given their photographs", page=page["title"], edits=completed)
+                    # //// Neoffice — and a site whose mark is a circle of segments shows them in that
+                    # //// shape: one circle, one part per category (layout.category_wheel). The brief
+                    # //// picks it; every other site keeps its tiles.
+                    if page["type"] == "accueil" and str(getattr(brief, "category_showcase", "") or "") == "Wheel":
+                        from builder.site_ai.nora.layout import category_wheel
+
+                        mark = ""
+                        try:
+                            mark = str(config.get("logo_image") or "") if hasattr(config, "get") else ""
+                        except Exception:
+                            mark = ""
+                        if category_wheel(blocks, site.get("category_photos") or {}, hub_image=mark):
+                            ai_log("info", "Categories drawn as a circle of parts", page=page["title"])
                     variants = repair_button_variants(blocks, palette)
                     if variants:
                         ai_log("info", "Button variants repaired", page=page["title"], edits=variants)

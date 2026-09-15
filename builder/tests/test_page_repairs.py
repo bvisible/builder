@@ -10,6 +10,7 @@ from builder.site_ai.nora.contrast import repair_contrast, repair_opaque_overlay
 from builder.site_ai.nora.facts import drop_placeholders
 from builder.site_ai.nora.layout import (
 	balance_grids,
+	category_wheel,
 	complete_tile_photos,
 	fill_last_phone_row,
 	phone_columns,
@@ -402,3 +403,78 @@ class TestFreshVariant(unittest.TestCase):
 		self.assertIs(doc, current)
 		self.assertEqual(reads, 1)
 		cleared.assert_not_called()
+
+
+class TestCategoryWheel(unittest.TestCase):
+	"""A brand whose mark is a circle of segments shows its categories in that shape: one circle, one
+	part per category, each on its own photograph (2026-09-15)."""
+
+	NAMES = ["Snow", "Street", "Water", "Outdoor", "Home"]
+
+	def tiles(self, count=5, photos=True):
+		return box(
+			*[
+				box(
+					{"element": "a", "attributes": {"href": f"/{name.lower()}"}, "baseStyles": {}, "children": [
+						text("h3", name, fontFamily="'Archivo', sans-serif"),
+					]},
+					backgroundImage=f"url(/files/{name.lower()}.jpg)" if photos else "",
+				)
+				for name in self.NAMES[:count]
+			],
+			display="grid",
+			gridTemplateColumns="repeat(5, 1fr)",
+		)
+
+	def test_the_tiles_become_one_circle_cut_into_parts(self):
+		page = [self.tiles()]
+		self.assertEqual(1, category_wheel(page, {}))
+		wheel = page[0]
+		self.assertEqual("50%", wheel["baseStyles"]["borderRadius"])
+		self.assertEqual("1", wheel["baseStyles"]["aspectRatio"])
+		self.assertNotIn("display", wheel["baseStyles"])
+		self.assertNotIn("gridTemplateColumns", wheel["baseStyles"])
+		parts = wheel["children"]
+		self.assertEqual(5, len(parts))
+		self.assertEqual(self.NAMES, [p["children"][0]["innerHTML"] for p in parts])
+		self.assertTrue(all(p["baseStyles"]["clipPath"].startswith("polygon(50% 50%") for p in parts))
+		# each part keeps its own photograph, its link and the face of its words
+		self.assertIn("snow.jpg", parts[0]["baseStyles"]["backgroundImage"])
+		self.assertEqual("/snow", parts[0]["attributes"]["href"])
+		self.assertEqual("'Archivo', sans-serif", parts[0]["children"][0]["baseStyles"]["fontFamily"])
+
+	def test_the_first_part_opens_at_the_top_and_they_share_the_circle(self):
+		page = [self.tiles()]
+		category_wheel(page, {})
+		firsts = []
+		for part in page[0]["children"]:
+			point = part["baseStyles"]["clipPath"].split(", ")[1]
+			x, y = (float(v.rstrip("%")) for v in point.split())
+			firsts.append((x, y))
+		# the first part starts just past twelve o'clock, and the five starts are evenly spread
+		self.assertAlmostEqual(50.0, firsts[0][0], delta=3)
+		self.assertLess(firsts[0][1], 50)
+		self.assertEqual(5, len({(round(x), round(y)) for x, y in firsts}))
+
+	def test_a_grid_it_cannot_draw_is_left_alone(self):
+		flat = [self.tiles(photos=False)]
+		self.assertEqual(0, category_wheel(flat, {}))
+		self.assertEqual("grid", flat[0]["baseStyles"]["display"])
+		pair = [self.tiles(count=2)]
+		self.assertEqual(0, category_wheel(pair, {}))
+		self.assertEqual("grid", pair[0]["baseStyles"]["display"])
+
+	def test_the_mark_goes_in_the_middle_when_the_site_has_one(self):
+		page = [self.tiles()]
+		category_wheel(page, {}, hub_image="/files/mark.png")
+		hub = page[0]["children"][-1]
+		self.assertEqual("wheel-hub", hub["blockName"])
+		self.assertEqual("/files/mark.png", hub["children"][0]["attributes"]["src"])
+		self.assertEqual(6, len(page[0]["children"]))
+
+	def test_a_tile_without_a_photograph_takes_its_category_one(self):
+		page = [self.tiles(photos=False)]
+		photos = {name: f"/files/{name.lower()}.jpg" for name in self.NAMES}
+		self.assertEqual(1, category_wheel(page, photos))
+		self.assertIn("water.jpg", page[0]["children"][2]["baseStyles"]["backgroundImage"])
+

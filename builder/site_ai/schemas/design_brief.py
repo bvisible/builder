@@ -545,6 +545,18 @@ class DesignBrief(BaseModel):
             "one click from home."
         )
     )
+    category_showcase: Literal["Tiles", "Wheel"] = Field(
+        default="Tiles",
+        description=(
+            "How the home shows the site's categories. Tiles is the answer "
+            "almost everywhere: a grid of photographs, one per category. Wheel "
+            "draws ONE circle cut into as many parts, each part on its own "
+            "photograph, with the site's mark in the middle — choose it only "
+            "when the brand's own mark is a circle of segments (a wheel, a "
+            "rosette, a pie, a compass) and the site has three to six "
+            "categories with a photograph each, so the home echoes the logo."
+        )
+    )
     breadcrumb_position: Literal["Below the title", "Above the title"] = Field(
         default="Below the title",
         description=(

@@ -11,6 +11,7 @@ forgotten child across the row is what the author meant.
 Pure functions over the block tree."""
 
 import copy
+import math
 import re
 import unicodedata
 import uuid
@@ -478,4 +479,166 @@ def fill_last_phone_row(blocks: list) -> int:
         kids[-1]["mobileStyles"] = last
         edits += 1
     return edits
+
+
+# //// Neoffice — the categories as one circle cut into parts (2026-09-15). A brand whose mark is a
+# //// circle of segments — a wheel, a rosette, a pie — can show its categories in the shape of that
+# //// mark: one circle, one part per category, each part on its own photograph, the mark in the
+# //// middle. It is a way of showing three to six categories, not a drawing for one site: the brief
+# //// picks it (design_brief.category_showcase) and every other site keeps its tiles.
+WHEEL_GAP = 1.6      # the white day between two parts, in degrees
+WHEEL_REACH = 75     # how far a part reaches before the circle clips it
+WHEEL_MIN, WHEEL_MAX = 3, 6
+
+
+def _wheel_point(index: float, count: int, reach: float) -> tuple[float, float]:
+	"""A point at `reach` percent from the middle, in the direction of part `index`."""
+	angle = math.radians(-90 + index * (360 / count))
+	return 50 + reach * math.cos(angle), 50 + reach * math.sin(angle)
+
+
+def _wheel_slice_path(index: int, count: int) -> str:
+	"""The clip-path of one part, drawn from the middle of the circle out along its arc."""
+	step = 360 / count
+	start, end = -90 + index * step + WHEEL_GAP, -90 + (index + 1) * step - WHEEL_GAP
+	points = ["50% 50%"]
+	steps = max(2, int((end - start) / 6))
+	for k in range(steps + 1):
+		angle = math.radians(start + (end - start) * k / steps)
+		points.append(f"{50 + WHEEL_REACH * math.cos(angle):.2f}% {50 + WHEEL_REACH * math.sin(angle):.2f}%")
+	return "polygon(" + ", ".join(points) + ")"
+
+
+def _tile_link(tile: dict) -> str:
+	"""Where a tile leads: its own href, else the first link it carries."""
+	for block in _walk([tile]):
+		href = str((block.get("attributes") or {}).get("href") or "")
+		if href:
+			return href
+	return ""
+
+
+def _tile_label(tile: dict) -> tuple[str, dict]:
+	"""The words a tile shows and the styles they are set in: its first text, empty when it has none."""
+	texts = _texts(tile)
+	if not texts:
+		return "", {}
+	return str(texts[0].get("innerHTML") or ""), dict(texts[0].get("baseStyles") or {})
+
+
+def _wheel_parts(tiles: list, names: dict) -> list | None:
+	"""(label, label styles, photograph, link) for each tile, or None when one of them has no
+	photograph or nothing to say — a circle of parts needs every part."""
+	parts = []
+	for tile in tiles:
+		name = _tile_category(tile, names) if names else None
+		photo = _tile_photo(tile) or (names.get(name) if name else None)
+		label, styles = _tile_label(tile)
+		if not photo or not _plain(label):
+			return None
+		parts.append((label, styles, photo, _tile_link(tile)))
+	return parts
+
+
+def _wheel_children(parts: list, hub_image: str) -> list:
+	"""The parts of the circle, and the mark in the middle when the site has one."""
+	count = len(parts)
+	children = []
+	for index, (label, styles, photo, href) in enumerate(parts):
+		frame_x, frame_y = _wheel_point(index + 0.5, count, 26)
+		label_x, label_y = _wheel_point(index + 0.5, count, 33)
+		children.append({
+			"blockId": uuid.uuid4().hex[:10],
+			"element": "a",
+			"blockName": "wheel-part",
+			"attributes": {"href": href} if href else {},
+			"baseStyles": {
+				"position": "absolute", "top": "0", "left": "0", "right": "0", "bottom": "0",
+				"borderRadius": "50%", "clipPath": _wheel_slice_path(index, count),
+				"backgroundImage": f"url({photo})", "backgroundSize": "cover",
+				# each photograph is framed towards its own part, not towards the middle of the picture
+				"backgroundPosition": f"{frame_x:.0f}% {frame_y:.0f}%",
+				"textDecoration": "none",
+				# the veil the words are read on, without a layer of its own
+				"boxShadow": "inset 0 0 0 9999px rgba(0, 0, 0, 0.32)",
+			},
+			"children": [{
+				"blockId": uuid.uuid4().hex[:10],
+				"element": "span",
+				"blockName": "wheel-label",
+				"innerHTML": label,
+				"baseStyles": {
+					"position": "absolute", "left": f"{label_x:.2f}%", "top": f"{label_y:.2f}%",
+					"transform": "translate(-50%, -50%)", "color": "#ffffff",
+					"fontFamily": styles.get("fontFamily") or "inherit",
+					"fontWeight": styles.get("fontWeight") or "700",
+					"fontSize": "clamp(0.72rem, 0.5rem + 1.1vw, 1rem)",
+					"letterSpacing": "0.1em", "textTransform": "uppercase", "whiteSpace": "nowrap",
+					"textShadow": "0 2px 14px rgba(0, 0, 0, 0.7)", "pointerEvents": "none",
+				},
+				"children": [],
+			}],
+		})
+	if hub_image:
+		children.append({
+			"blockId": uuid.uuid4().hex[:10],
+			"element": "div",
+			"blockName": "wheel-hub",
+			"baseStyles": {
+				"position": "absolute", "left": "50%", "top": "50%", "width": "31%", "aspectRatio": "1",
+				"transform": "translate(-50%, -50%)", "borderRadius": "50%", "background": "#ffffff",
+				"display": "grid", "placeItems": "center", "boxShadow": "0 8px 28px rgba(0, 0, 0, 0.22)",
+			},
+			"children": [{
+				"blockId": uuid.uuid4().hex[:10],
+				"element": "img",
+				"blockName": "wheel-mark",
+				"attributes": {"src": hub_image, "alt": "", "loading": "lazy"},
+				"baseStyles": {"width": "74%", "height": "auto", "display": "block"},
+				"children": [],
+			}],
+		})
+	return children
+
+
+def _wheel_container(grid: dict) -> None:
+	"""The grid becomes the circle: its rows and columns go, its box turns round."""
+	base = grid.setdefault("baseStyles", {})
+	for key in ("display", "gridAutoFlow", "alignItems", "justifyItems", *GRID_STYLE_KEYS):
+		base.pop(key, None)
+	for field in ("mobileStyles", "tabletStyles", "rawStyles"):
+		styles = grid.get(field) or {}
+		for key in ("display", "gridAutoFlow", *GRID_STYLE_KEYS):
+			styles.pop(key, None)
+	grid["classes"] = [c for c in (grid.get("classes") or []) if not c.startswith("u-grid")]
+	base.update({
+		"position": "relative", "width": "min(560px, 100%)", "aspectRatio": "1",
+		"marginLeft": "auto", "marginRight": "auto", "borderRadius": "50%",
+		"overflow": "hidden", "background": "#ffffff",
+	})
+
+
+def category_wheel(blocks: list, category_photos: dict, hub_image: str = "") -> int:
+	"""The grid of category tiles, drawn as one circle cut into as many parts, each on its own
+	photograph. The words and the links of the tiles are kept. One grid per page — the one whose tiles
+	are all named after a category, else the first that can be drawn. Returns 1 when one was turned."""
+	names = {_plain(name): url for name, url in (category_photos or {}).items() if _plain(name)}
+	candidates = []
+	for grid in _walk(blocks):
+		if not _is_grid(grid):
+			continue
+		tiles = [c for c in grid.get("children") or [] if isinstance(c, dict)]
+		if not (WHEEL_MIN <= len(tiles) <= WHEEL_MAX):
+			continue
+		parts = _wheel_parts(tiles, names)
+		if parts is None:
+			continue
+		named = bool(names) and all(_tile_category(t, names) for t in tiles)
+		candidates.append((named, grid, parts))
+	if not candidates:
+		return 0
+	_named, grid, parts = next((c for c in candidates if c[0]), candidates[0])
+	grid["children"] = _wheel_children(parts, hub_image)
+	_wheel_container(grid)
+	return 1
 
