@@ -2406,7 +2406,9 @@ def build_site(ctx, spec: dict) -> str:
         use_host = host_page if (host_reusable and page["route"] == "home") else None
         name, route = _write_page(page, blocks, data_script, profile, use_host, _describe(blocks))
         planned_photos[name] = (page_photos, page_notes)
-        created.append({"name": name, "title": page["title"], "route": f"/{route}", "planned": page["route"]})
+        # //// Neoffice — "type" travels with the page (2026-09-15): the reviewer needs it to know
+        # //// that the bracketed blanks of a legal page are deliberate (visual_check.LEGAL_CONTEXT).
+        created.append({"name": name, "title": page["title"], "route": f"/{route}", "planned": page["route"], "type": page["type"]})
         # //// Neoffice — the ceiling, checked between pages (builder/ai/meter.py, 2026-09-15): the
         # //// build finishes what it has rather than dying, and says so in its summary.
         if (over := meter.over_budget()) and not over_budget_at:
@@ -2657,6 +2659,23 @@ def build_site(ctx, spec: dict) -> str:
             "No contact details are verified for this business, so the site shows none, only the contact form. "
             "Ask the client for the address, phone and e-mail to show, then add them."
         )
+    # //// Neoffice — the blanks a legal page still carries, named in the summary (2026-09-15): the
+    # //// reviewer once erased them and the list of what the merchant must supply went with them.
+    # //// On the page they are honest; in the summary they are actionable.
+    for item in created:
+        if str(item.get("type") or "") != "legal":
+            continue
+        try:
+            blocks, _script = stored_page(item["name"])
+            blanks = sorted({b.strip() for b in re.findall(r"\[[^\]\[]{3,90}\]", json.dumps(blocks, ensure_ascii=False))})
+        except Exception:
+            blanks = []
+        if blanks:
+            lines.append(
+                f"'{item['title']}' leaves {len(blanks)} blank(s) only the merchant can fill: "
+                + "; ".join(b[:70] for b in blanks[:6])
+            )
+
     # //// Neoffice ▼▼▼ — what a shop still needs from its owner (2026-09-15). The build can write
     # //// the legal pages and place the product row, but it cannot invent the merchant's own phone
     # //// number, nor photograph their articles: those are asked for here, in the summary the

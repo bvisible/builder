@@ -118,6 +118,16 @@ REVIEW_CONTEXT = (
     "photo would be are deliberate: ignore them, judge the layout, the copy and the typography of THIS page."
 )
 
+# //// Neoffice — what is deliberate on a legal page (2026-09-15). The reviewer read the bracketed
+# //// blanks of a privacy policy as "unfinished placeholders", called the page unprofessional and
+# //// spent a revision erasing them — undoing the rule that put them there, which exists so the
+# //// model states nothing nobody gave it, and losing the merchant's list of what to fill in.
+LEGAL_CONTEXT = (
+    " This page is a LEGAL document (terms, privacy policy, legal notice). Text in square brackets — "
+    "'[to be completed: …]' — is DELIBERATE: it marks what only the merchant can supply, and it must "
+    "stay. Do not report it, and do not judge the page unfinished because of it."
+)
+
 
 # the web server may be restarting when a page's turn comes (a deployment, a restart by
 # another hand): a refused connection is waited out, not taken for the page's failure; two
@@ -216,7 +226,8 @@ def review_page(page: dict, profile: str | None, model: str, site_name: str = ""
         critique, label = critique_screenshot(
             _readable_data_url(shot) or shot["file_url"],
             model=model,
-            context=REVIEW_CONTEXT.format(site_name=site_name, activity=activity[:160]),
+            context=REVIEW_CONTEXT.format(site_name=site_name, activity=activity[:160])
+            + (LEGAL_CONTEXT if str(page.get("type") or "") == "legal" else ""),
         )
         report["professional"] = bool(critique.looks_professional)
         report["overall"] = (critique.overall or "")[:200]

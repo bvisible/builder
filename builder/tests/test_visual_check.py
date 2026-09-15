@@ -112,3 +112,36 @@ class TestCritiqueCeiling(unittest.TestCase):
 		# the design brief's answer really is long: it keeps the room it needs
 		self.assertEqual(40000, STRUCTURED_MAX_TOKENS)
 
+
+# //// Neoffice — added tests (2026-09-15): the reviewer is told what is deliberate on a legal page.
+# //// It read the bracketed blanks of a privacy policy as unfinished work, called the page
+# //// unprofessional and spent a revision erasing them — undoing the rule that put them there.
+class TestLegalPageContext(unittest.TestCase):
+	def _context_for(self, page_type):
+		from unittest.mock import MagicMock, patch
+
+		seen = {}
+
+		def critique(url, model=None, context=""):
+			seen["context"] = context
+			return SimpleNamespace(looks_professional=True, overall="fine", issues=[]), "kimi"
+
+		page = {"name": "p1", "title": "Terms", "route": "/terms-conditions", "type": page_type}
+		with (
+			patch.object(visual_check, "_screenshot", return_value={"success": True, "file_url": "/files/x.png"}),
+			patch.object(visual_check, "_drop_capture"),
+			patch("builder.site_ai.ingestion.visual_critique.critique_screenshot", side_effect=critique),
+			patch.object(visual_check.frappe.db, "commit"),
+			patch.object(visual_check, "_readable_data_url", return_value=None),
+		):
+			visual_check.review_page(page, "A Storefront", "kimi", site_name="A Shop", activity="a shop")
+		return seen.get("context", "")
+
+	def test_a_legal_page_says_its_blanks_are_deliberate(self):
+		context = self._context_for("legal")
+		self.assertIn("DELIBERATE", context)
+		self.assertIn("[to be completed", context)
+
+	def test_any_other_page_is_not_told_about_blanks(self):
+		self.assertNotIn("DELIBERATE", self._context_for("accueil"))
+
