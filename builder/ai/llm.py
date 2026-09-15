@@ -6,6 +6,7 @@ loop and tools talk to LLMs exclusively through the functions defined here.
 
 import json
 import logging
+# //// Neoffice — for _loggable, which names a picture by its weight instead of logging its bytes
 import re
 
 import frappe
@@ -196,6 +197,8 @@ def complete(model: str, messages: list, params: dict, *, stream: bool, api_key:
 	model, overrides, api_key = route(model, api_key)
 	patch_messages_for_provider(model, messages)
 	params = patch_params_for_provider(model, params)
+	# //// Neoffice — _loggable: a vision prompt carries its pictures as base64, and logging those
+	# //// bytes left megabytes of rotated log per build (2026-09-15)
 	logger.info(
 		f"LLM | model={model} stream={stream} params={params}\n"
 		+ "\n".join(f"[{m['role']}] {_loggable(m['content'])}" for m in messages)
