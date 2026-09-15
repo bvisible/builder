@@ -257,6 +257,21 @@ a:where(:not(.u-btn)) {
 a:where(:not(.u-btn)):hover {
 	color: var(--link-hover);
 }
+
+/* //// Neoffice — a link inside the scrim reads on the scrim (2026-09-15). The rule above is
+   //// chosen against the PAGE's background, which is not what a link laid over a photograph sits
+   //// on: a hero's "Shop now" came out near-black on a grey picture while the heading beside it,
+   //// which inherits, read white. Same :where() weight as the rule it narrows, so a component
+   //// rule still outranks both. */
+.u-over-image :where(a:not(.u-btn)) {
+	color: inherit;
+	text-decoration-color: color-mix(in srgb, currentColor 55%, transparent);
+}
+
+.u-over-image :where(a:not(.u-btn)):hover {
+	color: inherit;
+	text-decoration-color: currentColor;
+}
 /* //// Neoffice ▲▲▲ */
 
 /* Button primary colors */
