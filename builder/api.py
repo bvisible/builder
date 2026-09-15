@@ -1137,11 +1137,15 @@ def site_identity(config) -> dict:
 		return str((config.get(name) if config is not None and hasattr(config, "get") else "") or "").strip()
 
 	identity = {}
+	# //// Neoffice — business_phone and business_email added beside the name and the address
+	# //// (2026-09-15): the site publishes its own line when it gives one.
 	for name, key in (("business_name", "company_name"), ("business_address", "address"),
 	                  ("business_phone", "phone"), ("business_email", "email")):
 		value = field(name)
 		if value:
 			identity[key] = value
+	# //// Neoffice — and a site that names itself and gives no line of its own publishes NONE:
+	# //// the company's switchboard belongs to another business (see the docstring).
 	if field("business_name"):
 		for name, key in (("business_phone", "phone"), ("business_email", "email")):
 			if not field(name):
