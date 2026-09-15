@@ -205,6 +205,13 @@ def complete(model: str, messages: list, params: dict, *, stream: bool, api_key:
 	)
 	if not stream:
 		content = resp.choices[0].message.content or ""
+		# //// Neoffice — every non-streamed call is counted here (builder/ai/meter.py, 2026-09-15):
+		# //// this is the one place they all pass through, so it is the one place that can answer
+		# //// "what did that build cost?". Streamed calls are added by their reader, which is the
+		# //// only one that sees the final usage chunk.
+		from builder.ai import meter
+
+		meter.add(model, getattr(resp, "usage", None))
 		logger.info(f"LLM response | length={len(content)}\n{content}")
 		return content
 	return resp

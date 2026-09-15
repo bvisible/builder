@@ -139,7 +139,7 @@ def _screenshot(url: str, title: str) -> dict:
     for attempt in range(SERVER_RETRIES + 1):
         try:
             # //// Neoffice — see the block marker above: header threaded into the capture
-            shot = capture_website_screenshot(url, full_page=True, static_roots=roots, headers=headers)
+            shot = capture_website_screenshot(url, full_page=True, static_roots=roots, headers=headers, for_review=True)
             if shot.get("success"):
                 return shot
             error = str(shot.get("error") or "screenshot failed")
@@ -151,7 +151,7 @@ def _screenshot(url: str, title: str) -> dict:
         time.sleep(SERVER_RETRY_SECONDS)
     ai_log("warning", "Full-page screenshot failed, viewport only", page=title, error=error[:120])
     # //// Neoffice — see the block marker above: header threaded into the viewport fallback too
-    return capture_website_screenshot(url, full_page=False, static_roots=roots, headers=headers)
+    return capture_website_screenshot(url, full_page=False, static_roots=roots, headers=headers, for_review=True)
 
 
 def review_page(page: dict, profile: str | None, model: str, site_name: str = "", activity: str = "") -> dict:

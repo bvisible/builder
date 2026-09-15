@@ -260,6 +260,9 @@ class WebsiteScreenshotter:
         static_roots: Optional[dict] = None,
         # //// Neoffice — capture_and_save takes headers too, for the same loopback site-name header (0445cc94 "fix(visual-check): the loopback render names its site by header, not by host")
         headers: Optional[dict] = None,
+        # //// Neoffice — for_review: the picture is going into a model's prompt, not onto a
+        # //// screen. See _for_a_model_to_read (2026-09-15).
+        for_review: bool = False,
     ) -> dict:
         """
         Capture screenshot and save to Frappe File.
@@ -282,13 +285,17 @@ class WebsiteScreenshotter:
         from urllib.parse import urlparse
         parsed = urlparse(url)
         domain = parsed.netloc.replace(".", "_")
-        filename = f"inspiration_{domain}_{frappe.generate_hash(length=6)}.png"
+        # //// Neoffice — a picture bound for a model's prompt is shrunk first (2026-09-15)
+        content, suffix = result["screenshot"], "png"
+        if for_review:
+            content, suffix = _for_a_model_to_read(result["screenshot"])
+        filename = f"inspiration_{domain}_{frappe.generate_hash(length=6)}.{suffix}"
 
         # Save to Frappe File
         file_doc = frappe.get_doc({
             "doctype": "File",
             "file_name": filename,
-            "content": result["screenshot"],
+            "content": content,
             "is_private": 0,
         })
         file_doc.save(ignore_permissions=True)
@@ -305,7 +312,7 @@ class WebsiteScreenshotter:
 
 
 # //// Neoffice — module-level helper takes headers too, for the loopback site-name header (0445cc94 "fix(visual-check): the loopback render names its site by header, not by host")
-def capture_website_screenshot(url: str, full_page: bool = True, static_roots: Optional[dict] = None, headers: Optional[dict] = None) -> dict:
+def capture_website_screenshot(url: str, full_page: bool = True, static_roots: Optional[dict] = None, headers: Optional[dict] = None, for_review: bool = False) -> dict:
     """
     Convenience function to capture a website screenshot.
 
@@ -318,4 +325,46 @@ def capture_website_screenshot(url: str, full_page: bool = True, static_roots: O
     """
     screenshotter = WebsiteScreenshotter()
     # //// Neoffice — pass headers through to capture_and_save (0445cc94 "fix(visual-check): the loopback render names its site by header, not by host")
-    return screenshotter.capture_and_save(url, full_page=full_page, static_roots=static_roots, headers=headers)
+    # //// Neoffice — for_review threaded through: see _for_a_model_to_read (2026-09-15)
+    return screenshotter.capture_and_save(url, full_page=full_page, static_roots=static_roots, headers=headers, for_review=for_review)
+
+
+
+# //// Neoffice ▼▼▼ — added (2026-09-15): a screenshot bound for a model's prompt is not a
+# //// screenshot bound for a screen.
+#
+# The visual check captured the page as a FULL-PAGE, LOSSLESS PNG at 1440 px wide — six
+# thousand pixels tall on a photographic home — and handed it to the vision model as it was.
+# Measured on one day's logs: the review calls carried 613 k tokens of input against 109 k for
+# every page the models WROTE. Reading a page cost six times writing it, and the largest single
+# prompt was 672 kB. A model asked "does this look professional?" does not need lossless pixels:
+# it needs to see the composition. So the picture is scaled to REVIEW_WIDTH, capped at
+# REVIEW_MAX_HEIGHT, and re-encoded as JPEG.
+REVIEW_WIDTH = 900
+REVIEW_MAX_HEIGHT = 3600
+REVIEW_QUALITY = 68
+
+
+def _for_a_model_to_read(png_bytes: bytes) -> tuple[bytes, str]:
+    """(bytes, extension) of the picture to put in a prompt. The original on any failure:
+    a review on a heavy picture beats no review at all."""
+    try:
+        import io
+
+        from PIL import Image
+
+        image = Image.open(io.BytesIO(png_bytes))
+        image = image.convert("RGB")
+        if image.width > REVIEW_WIDTH:
+            height = round(image.height * REVIEW_WIDTH / image.width)
+            image = image.resize((REVIEW_WIDTH, height), Image.LANCZOS)
+        if image.height > REVIEW_MAX_HEIGHT:
+            # the top of a page is what a visitor judges; the tail is cropped rather than
+            # squashed, which would make every section unreadable
+            image = image.crop((0, 0, image.width, REVIEW_MAX_HEIGHT))
+        out = io.BytesIO()
+        image.save(out, format="JPEG", quality=REVIEW_QUALITY, optimize=True)
+        return out.getvalue(), "jpg"
+    except Exception:
+        return png_bytes, "png"
+# //// Neoffice ▲▲▲

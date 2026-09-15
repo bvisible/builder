@@ -1399,6 +1399,14 @@ def _stream_text(ctx, model: str, messages: list, params: dict) -> str:
                 ctx.record_usage(chunk, model=model)
             except Exception:
                 pass
+            # //// Neoffice — and into the build's own tally (builder/ai/meter.py, 2026-09-15): the
+            # //// agent's ctx counts a chat turn, and a scripted build has no ctx worth the name.
+            try:
+                from builder.ai import meter
+
+                meter.add(model, getattr(chunk, "usage", None))
+            except Exception:
+                pass
             delta, reasoning = _delta_parts(chunk)
             thought += len(reasoning)
             if delta:
@@ -1733,6 +1741,10 @@ def build_site(ctx, spec: dict) -> str:
         or (profile and _profile_sells(profile) and _webshop_installed() and not _other_business(profile, site_name))
     )
     job_id = f"site_gen_{frappe.generate_hash(length=10)}"
+    # //// Neoffice — what this build spends, counted from here (builder/ai/meter.py, 2026-09-15)
+    from builder.ai import meter
+
+    meter.start()
 
     # 1. the site's existing pages
     classes = classify_existing_pages(profile)
@@ -2037,6 +2049,8 @@ def build_site(ctx, spec: dict) -> str:
             "lang": lang_code}
     site["sells"] = _sells_here
     created, failed, cancelled = [], [], False
+    # //// Neoffice — what the reviewer already read, and the page's state when it did (2026-09-15)
+    reviewed_already: dict[str, dict] = {}
 
     # //// Neoffice — image generation was switched off (the pictures were not good enough):
     # //// gates the neutral-SVG fallback below (65d8f360 "fix(nora): cards never stack in a column, and photo slots without photos are plain blocks")
@@ -2052,7 +2066,8 @@ def build_site(ctx, spec: dict) -> str:
         blocks, data_script, error = [], "", None
         for attempt in range(2):
             try:
-                raw = _stream_text(ctx, page_model, messages, llm.TASK_PARAMS["complex"])
+                with meter.kind(meter.WRITING):
+                    raw = _stream_text(ctx, page_model, messages, llm.TASK_PARAMS["complex"])
                 blocks, data_script = expand_page_yaml(BlockCodec.strip_fences(raw))
                 if blocks:
                     # //// Neoffice — new call: repairs includes to the offered tag or drops them (2d78d71d "fix(nora): includes written as offered, routes honoured but home, and the build's routes stated as final")
@@ -2340,8 +2355,13 @@ def build_site(ctx, spec: dict) -> str:
         # //// that follow are told what was seen. The final pass stays for what this one cannot see
         # //// yet: the pictures are generated after the pages.
         if visual_check.enabled() and not ctx.is_cancelled():
-            look = visual_check.review_page(created[-1], profile, page_model, site_name=site_name, activity=activity)
+            with meter.kind(meter.READING):
+                look = visual_check.review_page(created[-1], profile, page_model, site_name=site_name, activity=activity)
             seen = look.get("issues") or []
+            # //// Neoffice — the report is kept, with the page's state when it was read (2026-09-15):
+            # //// the final pass used to screenshot and re-read EVERY page, doubling the most
+            # //// expensive call of the whole build for pages nothing had touched since.
+            reviewed_already[name] = {"report": look, "modified": str(frappe.db.get_value("Builder Page", name, "modified") or "")}
             if seen:
                 site.setdefault("seen_before", []).extend(f"{page['title']}: {i['problem']}" for i in seen[:3])
             # a page the reviewer calls unprofessional, or that collected more than one point, is
@@ -2357,6 +2377,8 @@ def build_site(ctx, spec: dict) -> str:
                 if fixed:
                     _write_page(page, fixed, fixed_script, profile, name, _describe(fixed))
                     site["headlines_by_route"][page["route"]] = page_headlines(fixed, categories)
+                    # //// Neoffice — rewritten: what the reviewer read no longer describes it
+                    reviewed_already.pop(name, None)
                     ai_log("info", "Page fixed on the spot", page=page["title"], issues=len(seen))
                 else:
                     ai_log("warning", "The look found points but the fix failed", page=page["title"], error=fix_error)
@@ -2430,8 +2452,19 @@ def build_site(ctx, spec: dict) -> str:
                 for item in created:
                     if ctx.is_cancelled():
                         break
+                    # //// Neoffice — a page the reviewer already read, and that nothing has touched
+                    # //// since, is not screenshotted and read a second time (2026-09-15). The
+                    # //// reason this pass exists is that the generated pictures land AFTER the
+                    # //// pages are written — so it re-reads the pages that actually changed, and
+                    # //// reuses the report for the rest. Reading a page costs six times writing it.
+                    earlier_read = reviewed_already.get(item["name"])
+                    now = str(frappe.db.get_value("Builder Page", item["name"], "modified") or "")
+                    if earlier_read and earlier_read["modified"] == now:
+                        reviews.append(earlier_read["report"])
+                        continue
                     _progress(ctx, job_id, _("Visual check: {0}").format(item["title"]), 96, {"pages_created": created})
-                    reviews.append(visual_check.review_page(item, profile, page_model, site_name=site_name, activity=activity))
+                    with meter.kind(meter.READING):
+                        reviews.append(visual_check.review_page(item, profile, page_model, site_name=site_name, activity=activity))
             known = known_text(site, contact_prompt)
             earlier: list[str] = []
             for item in created:
@@ -2507,6 +2540,12 @@ def build_site(ctx, spec: dict) -> str:
         lines.append("Pages that failed (offer to retry them one by one with generate_page on their page): " + ", ".join(f"{f['title']} ({f['error']})" for f in failed))
     if cancelled:
         lines.append("The build was cancelled by the user before every page was written.")
+    # //// Neoffice — what it cost, in the summary the operator reads (2026-09-15): four full
+    # //// rebuilds emptied a prepaid balance in a day and nothing anywhere said where it went.
+    spent = meter.stop()
+    if line := meter.summary_line(spent):
+        lines.append(line)
+        ai_log("info", "Build spend", **{k: v for k, v in spent.items() if k != "by_kind"}, by_kind=spent.get("by_kind"))
     lines.append(f"Design tokens minted with prefix '{prefix}': " + ", ".join(handles.values()) + ".")
     # //// Neoffice — reports the neutral-SVG fallback when image generation is off, instead of
     # //// always claiming a background image job is filling the slots (65d8f360 "fix(nora): cards never stack in a column, and photo slots without photos are plain blocks")
