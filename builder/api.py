@@ -98,7 +98,10 @@ SITE_TYPE_HEADER_FOOTER_DEFAULTS = {
 		"show_user": True,
 		"show_wishlist": True,
 		"show_cart": True,
-		"footer_template": "Extended",
+		# //// Neoffice — a shop's footer is centred, the mark on top (2026-09-15): the columns of
+		# //// an Extended footer read as a site map on a site whose footer carries a brand and its
+		# //// legal pages.
+		"footer_template": "Centered",
 	},
 	"ecommerce_search": {
 		"header_style": "Classic",
@@ -108,7 +111,8 @@ SITE_TYPE_HEADER_FOOTER_DEFAULTS = {
 		"show_user": True,
 		"show_wishlist": True,
 		"show_cart": True,
-		"footer_template": "Extended",
+		# //// Neoffice — see the marker above: a shop's footer is centred
+		"footer_template": "Centered",
 	},
 	"saas": {
 		"header_style": "Floating",

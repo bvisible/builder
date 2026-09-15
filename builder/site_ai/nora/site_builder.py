@@ -86,6 +86,8 @@ SECTION_PLANS = {
 IMAGE_LED_PLANS = {
     "accueil": [
         "hero: one full-bleed photograph, the site's name or promise in two to five words over it, one button",
+        "who they are: a short introduction, a heading of a few words and two or three lines saying what the place "
+        "is and what it carries — a visitor who lands here must know what this is",
         "the categories, segments or collections the activity names, as photo tiles of unequal weight — one large "
         "beside smaller ones — each showing its name ON the photograph over a veil, never in a bar under it",
         "a two-column band: a statement of three to eight words in large type on one side, one photograph on the other",
@@ -935,7 +937,7 @@ def available_includes(page_type: str, site_type: str = "vitrine", profile: str 
     return out
 
 
-def page_sections(page: dict, minimal: bool, contact_verified: bool = True, others=(), brands=()) -> list[str]:
+def page_sections(page: dict, minimal: bool, contact_verified: bool = True, others=(), brands=(), sells: bool = False) -> list[str]:
     """The sections a page is planned with: the image-led plan on an image-led site, else the
     page type's own. Without verified contact details no section asks for them: asked for them
     anyway, the model made them up (see UNVERIFIED_CONTACT).
@@ -947,6 +949,15 @@ def page_sections(page: dict, minimal: bool, contact_verified: bool = True, othe
     plan = (IMAGE_LED_PLANS.get(page["type"]) or IMAGE_LED_PLANS["generic"]) if minimal else SECTION_PLANS.get(page["type"], SECTION_PLANS["generic"])
     if brands and brands_page(page):
         plan = BRAND_PLAN_IMAGE_LED if minimal else BRAND_PLAN
+    # //// Neoffice — a shop's home sells (2026-09-15): a site built to sell showed no product at
+    # //// all. The row comes from the shop's own include, never drawn by hand (PAGE_INCLUDES).
+    if sells and page["type"] in ("accueil", "shop"):
+        row = (
+            "a row of real products from the shop, with the product carousel include the INCLUDES section "
+            "offers, written exactly as offered (never a product drawn by hand)"
+        )
+        if not any("product carousel" in s for s in plan):
+            plan = plan[:2] + [row] + plan[2:]
     if not contact_verified:
         plan = [s for s in plan if not s.startswith(("the contact details", "how to find the place", "a CTA to call or write"))]
     others = set(others or ())
@@ -1032,7 +1043,7 @@ def page_brief_text(site: dict, brief, page: dict, handles: dict, contact_prompt
     others = list(site.get("page_types") or [])
     if page["type"] in others:
         others.remove(page["type"])
-    plan = page_sections(page, minimal, contact_verified=site.get("contact_verified", True), others=others, brands=site.get("brands") or ())
+    plan = page_sections(page, minimal, contact_verified=site.get("contact_verified", True), others=others, brands=site.get("brands") or (), sells=bool(site.get("sells")))
     sections = "\n".join(f"{i}. {s}" for i, s in enumerate(plan, 1))
     concept = getattr(brief, "design_concept", "") or ""
     signature = getattr(brief, "signature_element", "") or ""
@@ -1356,6 +1367,41 @@ def remember_site_language(profile: str | None, lang: str | None) -> bool:
     return True
 
 
+# //// Neoffice — the legal pages of a shop (2026-09-15): their routes, whatever language they were
+# //// written in. A storefront links every one it has in its footer, and the build says which are
+# //// missing.
+LEGAL_ROUTES = {
+    "terms": ("terms", "terms-conditions", "terms-and-conditions", "cgv", "cgu", "conditions-generales", "conditions-generales-de-vente", "agb"),
+    "privacy": ("privacy", "privacy-policy", "politique-de-confidentialite", "confidentialite", "datenschutz"),
+    "legal": ("legal", "legal-notice", "mentions-legales", "impressum"),
+}
+
+
+def legal_pages(profile: str | None) -> list[tuple[str, str]]:
+    """The site's legal pages, as (route, title), in the order a footer names them."""
+    try:
+        filters = {"published": 1}
+        if profile:
+            filters["neo_website_profile"] = profile
+        rows = frappe.get_all("Builder Page", filters=filters, fields=["route", "page_title"])
+    except Exception:
+        return []
+    found: list[tuple[str, str]] = []
+    for kind in ("terms", "privacy", "legal"):
+        for row in rows:
+            route = str(row.get("route") or "").strip("/").lower()
+            if route in LEGAL_ROUTES[kind] and not any(route == known.strip("/") for known, _ in found):
+                found.append((f"/{route}", row.get("page_title") or route))
+                break
+    return found
+
+
+def missing_legal_pages(profile: str | None) -> list[str]:
+    """Which of the legal pages a shop needs it does not have."""
+    have = {route.strip("/") for route, _ in legal_pages(profile)}
+    return [kind for kind in ("terms", "privacy") if not any(route in LEGAL_ROUTES[kind] for route in have)]
+
+
 def apply_navigation(config, created: list[dict], site_type: str, description: str, profile: str | None, lang: str = "fr", site_name: str = "") -> None:
     """Menu, footer and home page from the pages just built (the worker's step 5).
     Labels are translated into the site's language, not the operator's session."""
@@ -1375,6 +1421,14 @@ def apply_navigation(config, created: list[dict], site_type: str, description: s
         elif _profile_sells(profile) and _webshop_installed():
             # //// Neoffice — a B2C storefront of the same business sells too (see _profile_sells)
             config.append("menu_items", {"label": _("Shop", lang=lang), "url": "/all-products", "is_external": False, "open_in_new_tab": False})
+    # //// Neoffice — a shop's menu opens on the home (2026-09-15): the Shop entry came first, and a
+    # //// shop before the home is not a menu anyone writes. A showcase keeps its logo as the way
+    # //// home; a storefront names both, Home then Shop.
+    if config.menu_items and str(getattr(config.menu_items[0], "url", "") or "") == "/all-products":
+        shop = config.menu_items[0]
+        config.menu_items = []
+        config.append("menu_items", {"label": _("Home", lang=lang), "url": "/", "is_external": False, "open_in_new_tab": False})
+        config.append("menu_items", {"label": shop.label, "url": "/all-products", "is_external": False, "open_in_new_tab": False})
     seen = set()
     for page in created:
         route = page["route"]
@@ -1388,7 +1442,12 @@ def apply_navigation(config, created: list[dict], site_type: str, description: s
         seen.add(route)
         # //// Neoffice — see the block marker above: no more Home relabelling
         config.append("menu_items", {"label": page["title"], "url": route, "is_external": False, "open_in_new_tab": False})
+    # //// Neoffice — a mark chosen for the footer stays (2026-09-15): the build copied the header's
+    # //// over it at every rebuild, and a site whose footer carries another mark lost it each time.
+    own_mark = bool(config.get("footer_logo_image")) and config.get("footer_logo_image") != config.get("logo_image")
     for field, value in (("footer_logo_type", config.get("logo_type")), ("footer_logo_text", config.get("logo_text")), ("footer_logo_image", config.get("logo_image")), ("show_footer_logo", True), ("footer_menu_source", "Custom links")):
+        if own_mark and field in ("footer_logo_type", "footer_logo_image"):
+            continue
         if hasattr(config, field):
             config.set(field, value)
     if hasattr(config, "footer_description"):
@@ -1400,6 +1459,15 @@ def apply_navigation(config, created: list[dict], site_type: str, description: s
         for page in created:
             home = page["route"] in ("/", "/home", "/index")
             config.append("footer_links", {"column_name": _("Navigation", lang=lang), "label": _("Home", lang=lang) if home else page["title"], "url": "/" if home else page["route"]})
+    # //// Neoffice — a shop's footer carries its legal pages (2026-09-15): an online shop without its
+    # //// terms and its privacy policy is refused by the ad platforms and by the payment providers.
+    # //// The pages the site has are linked, whoever wrote them; the ones missing are named in the
+    # //// build's summary (missing_legal_pages).
+    if hasattr(config, "footer_links") and _profile_sells(profile):
+        linked = {str(getattr(row, "url", "") or "") for row in (config.footer_links or [])}
+        for route, label in legal_pages(profile):
+            if route not in linked:
+                config.append("footer_links", {"column_name": _("Legal", lang=lang), "label": label, "url": route})
     config.save(ignore_permissions=True)
     # //// Neoffice — the home is known by what it was planned as, not only by the route it got
     # //// (2026-09-15): a home written beside one that was kept takes a hashed route ("home-b059"),
@@ -1751,6 +1819,12 @@ def build_site(ctx, spec: dict) -> str:
     # //// Neoffice — the brands the brief names (see BRAND_PLAN)
     brands = [str(b).strip() for b in (spec.get("brands") or []) if str(b).strip()][:24]
     site = {"site_name": site_name, "activity": activity, "differentiators": spec.get("differentiators"), "site_type": site_type, "profile": profile, "inspiration": inspiration["notes"], "copy_density": copy_density, "categories": categories, "brands": brands, "page_types": [p["type"] for p in pages]}
+    # //// Neoffice — a site that sells says so to every page (2026-09-15): its home shows real
+    # //// products, taken from the shop, because the point of the site is to sell.
+    site["sells"] = bool(
+        site_type in ("ecommerce", "ecommerce_search")
+        or (profile and _profile_sells(profile) and _webshop_installed() and not _other_business(profile, site_name))
+    )
     created, failed, cancelled = [], [], False
 
     # //// Neoffice — image generation was switched off (the pictures were not good enough):

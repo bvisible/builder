@@ -482,6 +482,56 @@ class TestShopIncludes(unittest.TestCase):
 		self.assertNotIn("/all-products", build(secondary=True))
 		self.assertIn("/all-products", build(secondary=False))
 
+	# //// Neoffice — added tests (2026-09-15): a shop's menu opens on the home, its home shows real
+	# //// products, and its footer carries the legal pages.
+	def test_a_shop_menu_opens_on_the_home_then_the_shop(self):
+		from unittest.mock import MagicMock
+
+		from builder.site_ai.nora.site_builder import apply_navigation
+
+		created = [{"name": "p1", "title": "Home", "route": "/"}, {"name": "p2", "title": "About", "route": "/about"}]
+		config = MagicMock()
+		config.get.return_value = None
+		config.menu_items = []
+
+		def append(field, row):
+			# the code empties and refills config.menu_items itself: append where it looks
+			if field == "menu_items":
+				config.menu_items.append(type("Row", (), row))
+
+		config.append.side_effect = append
+		with patch("builder.site_ai.nora.site_builder._other_business", return_value=False), patch(
+			"builder.site_ai.nora.site_builder._profile_is_b2b", return_value=False
+		), patch("builder.site_ai.nora.site_builder._profile_sells", return_value=True), patch(
+			"builder.site_ai.nora.site_builder.legal_pages", return_value=[]
+		), patch("builder.site_ai.nora.site_builder.frappe") as mock_frappe:
+			mock_frappe.get_installed_apps.return_value = ["frappe", "builder", "webshop"]
+			apply_navigation(config, created, "ecommerce", "boardsport store", "A Storefront", "en")
+		urls = [row.url for row in config.menu_items]
+		self.assertEqual(["/", "/all-products"], urls[:2])
+		self.assertIn("/about", urls)
+
+	def test_a_home_that_sells_shows_real_products(self):
+		from builder.site_ai.nora.site_builder import page_sections
+
+		home = {"title": "Home", "route": "home", "type": "accueil"}
+		selling = page_sections(home, minimal=True, sells=True)
+		self.assertTrue(any("product carousel include" in s for s in selling))
+		self.assertTrue(any("who they are" in s for s in selling))
+		self.assertFalse(any("product carousel include" in s for s in page_sections(home, minimal=True, sells=False)))
+
+	def test_the_legal_pages_of_a_shop_are_found_and_the_missing_ones_named(self):
+		from builder.site_ai.nora.site_builder import legal_pages, missing_legal_pages
+
+		pages = [
+			{"route": "terms-conditions", "page_title": "Terms & Conditions"},
+			{"route": "home", "page_title": "Home"},
+		]
+		with patch("builder.site_ai.nora.site_builder.frappe") as mock_frappe:
+			mock_frappe.get_all.return_value = pages
+			self.assertEqual([("/terms-conditions", "Terms & Conditions")], legal_pages("A Storefront"))
+			self.assertEqual(["privacy"], missing_legal_pages("A Storefront"))
+
 	# //// Neoffice — added test (2026-09-15): a B2C storefront of the instance's own business gets
 	# //// the shop in its menu whatever the site type the model chose (see _profile_sells).
 	def test_a_b2c_storefront_gets_the_shop_entry(self):
