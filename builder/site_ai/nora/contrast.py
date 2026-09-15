@@ -15,6 +15,7 @@ reuse the luminance reading (palette_roles).
 
 from __future__ import annotations
 
+import copy
 import re
 
 HEX = re.compile(r"^#([0-9a-fA-F]{3,4}|[0-9a-fA-F]{6}|[0-9a-fA-F]{8})$")
@@ -430,3 +431,28 @@ def read_over_photos(blocks: list[dict], palette: dict[str, str]) -> list[str]:
         walk(block)
     return fixes
 # //// Neoffice ▲▲▲
+
+
+def scrim_ink_for_render(blocks):
+	"""The blocks a page renders, with dark copy inside a scrim given the reading ink.
+
+	//// Neoffice — added 2026-09-15, the render half of read_over_photos. The build repairs a
+	page as it writes it, but a page written before the rule — or edited by hand since — keeps a
+	black "Shop now" on a photograph for ever. `blocks` as stored (JSON text) or parsed; returned
+	untouched when nothing changes, and on any error: this runs on every page view and must never
+	be the reason a page fails."""
+	if not blocks or (isinstance(blocks, str) and "u-over-image" not in blocks):
+		return blocks
+	import frappe
+
+	try:
+		from builder.site_ai.nora.buttons import _render_palette
+
+		palette = _render_palette() or {}
+		data = frappe.parse_json(blocks) if isinstance(blocks, str) else copy.deepcopy(blocks)
+		listed = data if isinstance(data, list) else [data]
+		return data if read_over_photos(listed, palette) else blocks
+	except Exception:
+		frappe.log_error("Contrast: page rendered without the scrim check", frappe.get_traceback())
+		return blocks
+

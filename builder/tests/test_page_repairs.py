@@ -715,6 +715,29 @@ class TestReadOverPhotos(unittest.TestCase):
 		self.assertEqual([], read_over_photos(blocks, self.PALETTE))
 		self.assertEqual("#111111", card["children"][0]["baseStyles"]["color"])
 
+	# //// Neoffice — added test (2026-09-15): the render half, for pages written before the rule.
+	def test_the_render_gives_the_reading_ink_without_touching_the_stored_page(self):
+		import json
+		from unittest.mock import patch
+
+		from builder.site_ai.nora import buttons, contrast
+
+		stored = json.dumps([self.hero({"element": "a", "innerHTML": "Shop now", "baseStyles": {"color": "#000000"}})])
+		with patch.object(buttons, "_render_palette", return_value=self.PALETTE):
+			drawn = contrast.scrim_ink_for_render(stored)
+		self.assertEqual("#ffffff", drawn[0]["children"][0]["baseStyles"]["color"])
+		self.assertIn("#000000", stored)
+
+		# a page with no scrim at all never even parses
+		plain = json.dumps([{"element": "section", "children": []}])
+		with patch.object(buttons, "_render_palette", side_effect=AssertionError("not reached")):
+			self.assertIs(contrast.scrim_ink_for_render(plain), plain)
+
+		# and a failure renders the page as stored
+		with patch.object(buttons, "_render_palette", side_effect=RuntimeError("no theme")), patch("frappe.log_error") as log:
+			self.assertIs(contrast.scrim_ink_for_render(stored), stored)
+		log.assert_called_once()
+
 	def test_a_section_without_a_scrim_is_left_alone(self):
 		from builder.site_ai.nora.contrast import read_over_photos
 

@@ -591,6 +591,13 @@ class BuilderPage(WebsiteGenerator):
 		from builder.site_ai.nora.buttons import settle_for_render
 
 		blocks = settle_for_render(blocks)
+		# //// Neoffice — and copy inside the design system's scrim reads on it (2026-09-15,
+		# //// builder/site_ai/nora/contrast.py scrim_ink_for_render): a hero's heading was white and
+		# //// read while its "Shop now" link, written black, was invisible on the same photograph.
+		# //// The build repairs a page as it writes it; this covers the ones written before the rule.
+		from builder.site_ai.nora.contrast import scrim_ink_for_render
+
+		blocks = scrim_ink_for_render(blocks)
 		# //// Neoffice — a photo slot never filled (a page written before 2026-09-09, or one whose
 		# //// picture the image job is still drawing) is drawn as a plain block in the site's colours,
 		# //// not as the third party's grey placeholder with its caption across the hero
