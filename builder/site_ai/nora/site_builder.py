@@ -1206,7 +1206,9 @@ def page_brief_text(site: dict, brief, page: dict, handles: dict, contact_prompt
             "and the country whose law applies, the delivery and return windows — is written as a "
             "visible blank in square brackets for the merchant to fill in, in their language "
             f"(for example '[{'à compléter' if language == 'French' else 'to be completed'}: …]'). "
-            "Never invent one. Close with the date of the last update."
+            "Never invent one, and never leave a sentence hanging on a detail you do not have — "
+            "'the shop at is operated by' is worse than either choice: write the blank, or leave the "
+            "phrase out. Close with the date of the last update."
             if page["type"] == "legal" else ""
         ),
         f"SECTIONS, in order, with real copy written in {language}:\n{sections}",
