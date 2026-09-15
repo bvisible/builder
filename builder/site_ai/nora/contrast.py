@@ -373,3 +373,60 @@ def veil_copy_on_photos(blocks: list[dict]) -> list[str]:
         walk(block)
     return fixes
 
+
+
+# //// Neoffice ▼▼▼ — added (2026-09-15): copy inside a scrim reads on the scrim.
+SCRIM_INK = "#ffffff"
+SCRIM_MIN_RATIO = 3.0
+
+
+def read_over_photos(blocks: list[dict], palette: dict[str, str]) -> list[str]:
+    """Inside a section carrying the design system's scrim, dark copy takes the reading ink.
+
+    The scrim darkens the picture so white copy reads over it (veil_copy_on_photos). A hero
+    whose heading was white therefore read, while its "Shop now" link, written black, was
+    invisible on the photograph under it — repair_contrast could not see it either, because a
+    section wearing a photograph has no background colour to judge against (its picture is an
+    absolutely-positioned child). Judged against the scrim instead: any colour that would not
+    read on it takes SCRIM_INK. A block painting its own opaque background is a card sitting on
+    the picture and keeps its own colours. Returns one line per repair."""
+    ink = parse_color(SCRIM_INK, palette) or (255.0, 255.0, 255.0, 1.0)
+    # the scrim is a dark wash: judged against black, which is what the copy sits on at its worst
+    scrim = (0.0, 0.0, 0.0, 1.0)
+    fixes: list[str] = []
+
+    def paints_itself(block: dict) -> bool:
+        raw = str((block.get("baseStyles") or {}).get("backgroundColor") or (block.get("baseStyles") or {}).get("background") or "")
+        if not raw or raw.strip().lower() in ("transparent", "none", "inherit"):
+            return False
+        return "gradient" not in raw and not ("rgba(" in raw and not raw.strip().endswith(", 1)"))
+
+    def repair(block: dict) -> None:
+        if paints_itself(block) or _covering_picture(block) or _veil(block):
+            return
+        styles = block.get("baseStyles") or {}
+        colour = parse_color(styles.get("color"), palette)
+        if colour is not None and contrast(colour, scrim) < SCRIM_MIN_RATIO:
+            styles["color"] = SCRIM_INK
+            block["baseStyles"] = styles
+            text = re.sub(r"<[^>]+>", " ", str(block.get("innerHTML") or ""))
+            fixes.append(f"'{' '.join(text.split())[:40]}': dark copy on a scrim -> {SCRIM_INK}")
+        for child in block.get("children") or []:
+            if isinstance(child, dict):
+                repair(child)
+
+    def walk(block) -> None:
+        if not isinstance(block, dict):
+            return
+        if any(c.startswith(VEILED[0]) for c in _classes(block)):
+            for child in block.get("children") or []:
+                if isinstance(child, dict):
+                    repair(child)
+            return
+        for child in block.get("children") or []:
+            walk(child)
+
+    for block in blocks or []:
+        walk(block)
+    return fixes
+# //// Neoffice ▲▲▲

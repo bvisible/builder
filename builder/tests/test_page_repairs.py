@@ -686,3 +686,39 @@ class TestDropSmallMarks(unittest.TestCase):
 		self.assertEqual([], drop_small_marks(blocks, "/files/emblem.png"))
 		self.assertEqual(["/files/photo.jpg"], self.marks(blocks))
 
+
+# //// Neoffice — added tests (2026-09-15): copy inside a scrim reads on the scrim.
+class TestReadOverPhotos(unittest.TestCase):
+	PALETTE = {"x-primary": "#111111", "x-background": "#ffffff", "x-text": "#111111"}
+
+	def hero(self, *children):
+		return {"element": "section", "classes": ["u-over-image", "u-over-image--bottom"], "children": list(children)}
+
+	def test_dark_copy_on_a_scrim_takes_the_reading_ink(self):
+		from builder.site_ai.nora.contrast import read_over_photos
+
+		link = {"element": "a", "innerHTML": "Shop now", "baseStyles": {"color": "#000000"}}
+		title = {"element": "h1", "innerHTML": "The shop", "baseStyles": {"color": "#ffffff"}}
+		blocks = [self.hero(title, link)]
+		fixes = read_over_photos(blocks, self.PALETTE)
+		self.assertEqual(1, len(fixes))
+		self.assertEqual("#ffffff", link["baseStyles"]["color"])
+		self.assertEqual("#ffffff", title["baseStyles"]["color"])
+
+	def test_a_card_painting_its_own_background_keeps_its_colours(self):
+		from builder.site_ai.nora.contrast import read_over_photos
+
+		card = {"element": "div", "baseStyles": {"backgroundColor": "#ffffff"}, "children": [
+			{"element": "p", "innerHTML": "Читать", "baseStyles": {"color": "#111111"}},
+		]}
+		blocks = [self.hero(card)]
+		self.assertEqual([], read_over_photos(blocks, self.PALETTE))
+		self.assertEqual("#111111", card["children"][0]["baseStyles"]["color"])
+
+	def test_a_section_without_a_scrim_is_left_alone(self):
+		from builder.site_ai.nora.contrast import read_over_photos
+
+		plain = {"element": "section", "children": [{"element": "p", "innerHTML": "Hi", "baseStyles": {"color": "#000000"}}]}
+		self.assertEqual([], read_over_photos([plain], self.PALETTE))
+		self.assertEqual("#000000", plain["children"][0]["baseStyles"]["color"])
+

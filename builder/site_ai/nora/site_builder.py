@@ -2194,6 +2194,14 @@ def build_site(ctx, spec: dict) -> str:
                     scrimmed = veil_copy_on_photos(blocks)
                     if scrimmed:
                         ai_log("info", "Copy on photos given a scrim", page=page["title"], edits=scrimmed)
+                    # //// Neoffice — and copy inside a scrim reads on it (contrast.read_over_photos): a
+                    # //// hero's heading was white and read, its "Shop now" link black and invisible on
+                    # //// the same photograph (2026-09-15)
+                    from builder.site_ai.nora.contrast import read_over_photos
+
+                    on_scrim = read_over_photos(blocks, palette)
+                    if on_scrim:
+                        ai_log("info", "Dark copy on a scrim given the reading ink", page=page["title"], edits=on_scrim)
                     # //// Neoffice — and the tiles of one grid are alike: a category tile left flat beside
                     # //// photographed ones takes its category's photograph (layout.complete_tile_photos)
                     from builder.site_ai.nora.layout import complete_tile_photos
