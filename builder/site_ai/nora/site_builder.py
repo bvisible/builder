@@ -2438,6 +2438,35 @@ def build_site(ctx, spec: dict) -> str:
             "No contact details are verified for this business, so the site shows none, only the contact form. "
             "Ask the client for the address, phone and e-mail to show, then add them."
         )
+    # //// Neoffice ▼▼▼ — what a shop still needs from its owner (2026-09-15). The build can write
+    # //// the legal pages and place the product row, but it cannot invent the merchant's own phone
+    # //// number, nor photograph their articles: those are asked for here, in the summary the
+    # //// operator reads, instead of shipping silently without them.
+    if _sells_here:
+        still_missing = missing_legal_pages(profile)
+        if still_missing:
+            names = {"terms": "terms and conditions", "privacy": "a privacy policy"}
+            lines.append(
+                "This shop still has no " + " and no ".join(names[k] for k in still_missing)
+                + ": no payment provider and no ad network accepts a shop without them. Offer to write them."
+            )
+        try:
+            from builder.empty_includes import include_has_data
+
+            if include_has_data("webshop/templates/includes/product_carousel.html", profile) is False:
+                lines.append(
+                    "None of the shop's published articles carries a photograph, so no product row was placed: "
+                    "ask the client for product pictures, then the home can show what they sell."
+                )
+        except Exception:
+            pass
+    if contact_prompt != UNVERIFIED_CONTACT and str(getattr(config, "business_name", "") or "").strip():
+        if not contact_data.get("phone") or not contact_data.get("email"):
+            lines.append(
+                f"'{config.business_name}' publishes no phone or e-mail of its own, and the company's belong to "
+                "another business, so the site shows none: ask the client for the line this shop answers on."
+            )
+    # //// Neoffice ▲▲▲
     lines += visual_check.summary_lines(reviews, revised)
     rewritten = [r["title"] for r in reviews if r.get("facts") and r["name"] in revised]
     if rewritten:
