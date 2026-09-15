@@ -455,17 +455,32 @@ def mint_tokens(prefix: str, group: str, brief, primary: str, secondary: str) ->
     for key, ttype, value in spec:
         doc_id = f"{prefix}-{key}"
         label = f"{group} {key.replace('-', ' ').title()}"
-        if frappe.db.exists("Builder Token", doc_id):
-            doc = frappe.get_doc("Builder Token", doc_id)
-            doc.update({"type": ttype, "value": value, "token_name": label, "group": group})
-            doc.save(ignore_permissions=True)
-        else:
-            frappe.get_doc(
-                {"doctype": "Builder Token", "token_name": label, "type": ttype, "value": value, "group": group}
-            ).insert(ignore_permissions=True, set_name=doc_id)
+        _write_token(doc_id, label, ttype, value, group)
         handles[key] = f"var(--{doc_id})"
     frappe.db.commit()
     return handles
+
+
+# //// Neoffice — a token collision does not kill a build (2026-09-15). Two builds running at once on
+# //// the same instance — two operators, or one relaunched — write the same six token documents, and
+# //// the loser died on TimestampMismatchError in step 4, twenty-five minutes of work thrown away for
+# //// a colour that both were writing the same way. The write is retried on the fresh document.
+def _write_token(doc_id: str, label: str, ttype: str, value, group: str) -> None:
+    """Writes one Builder Token, retrying once on a concurrent write."""
+    fields = {"type": ttype, "value": value, "token_name": label, "group": group}
+    for attempt in (1, 2):
+        try:
+            if frappe.db.exists("Builder Token", doc_id):
+                doc = frappe.get_doc("Builder Token", doc_id)
+                doc.update(fields)
+                doc.save(ignore_permissions=True)
+            else:
+                frappe.get_doc({"doctype": "Builder Token", **fields}).insert(ignore_permissions=True, set_name=doc_id)
+            return
+        except (frappe.TimestampMismatchError, frappe.DuplicateEntryError):
+            if attempt == 2:
+                raise
+            frappe.db.rollback()
 
 
 # //// Neoffice ▼▼▼ — the site grid the chrome shares with the pages (2026-09-14). Header, footer and top

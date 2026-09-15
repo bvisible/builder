@@ -588,6 +588,43 @@ class TestShopIncludes(unittest.TestCase):
 		self.assertIn('carousel_title = "Fresh this week"', written)
 		self.assertIn("carousel_limit = 8", written)
 
+	# //// Neoffice — added test (2026-09-15): a token collision does not kill a build. Two builds at
+	# //// once on one instance write the same six token documents; the loser threw away 25 minutes.
+	def test_a_token_written_at_the_same_time_is_retried(self):
+		from builder.site_ai.nora import site_builder
+
+		calls = {"n": 0}
+
+		class Doc:
+			def update(self, fields):
+				pass
+
+			def save(self, **kwargs):
+				calls["n"] += 1
+				if calls["n"] == 1:
+					raise frappe.TimestampMismatchError("modified after you opened it")
+
+		with patch.object(site_builder.frappe.db, "exists", return_value=True), patch.object(
+			site_builder.frappe, "get_doc", return_value=Doc()
+		), patch.object(site_builder.frappe.db, "rollback"):
+			site_builder._write_token("t5b-primary", "A Shop Primary", "Color", "#111111", "A Shop")
+		self.assertEqual(2, calls["n"])
+
+		# a second collision is a real problem and is raised
+		calls["n"] = 0
+
+		class Always(Doc):
+			def save(self, **kwargs):
+				calls["n"] += 1
+				raise frappe.TimestampMismatchError("modified after you opened it")
+
+		with patch.object(site_builder.frappe.db, "exists", return_value=True), patch.object(
+			site_builder.frappe, "get_doc", return_value=Always()
+		), patch.object(site_builder.frappe.db, "rollback"):
+			with self.assertRaises(frappe.TimestampMismatchError):
+				site_builder._write_token("t5b-primary", "A Shop Primary", "Color", "#111111", "A Shop")
+		self.assertEqual(2, calls["n"])
+
 	# //// Neoffice — added test (2026-09-15): the About page looks for the people, not for whatever
 	# //// is left. "about about" matched nothing and it opened on a workshop scene.
 	def test_the_about_page_looks_for_the_people(self):
