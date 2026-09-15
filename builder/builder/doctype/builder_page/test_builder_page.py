@@ -268,7 +268,10 @@ class TestBuilderPage(FrappeTestCase):
 			content = get_response_content("/dynamic-values-test")
 			self.assertTrue("John Doe" in get_html_for(content, "tag", "h1"))
 			self.assertTrue("color: red;padding: 20px;" in get_html_for(content, "tag", "h2"))
-			self.assertTrue('href="https://example.com"' in get_html_for(content, "tag", "a"))
+			# //// Neoffice — every link of the page, not the first one: a page that opens on its own
+			# //// title now carries the breadcrumb trail under that title, so the first anchor inside
+			# //// div.builder-page-content is the trail's Home link (place_page_crumbs, 2026-09-14).
+			self.assertIn('href="https://example.com"', " ".join(get_html_for(content, "tag", "a", list_all=True)))
 			self.assertEqual("admin", get_html_for(content, "attribute", "data-role"))
 		finally:
 			page.delete()
@@ -301,7 +304,10 @@ class TestBuilderPage(FrappeTestCase):
 		try:
 			content = get_response_content("/dotted-keys-fallback-test")
 			self.assertEqual("Fallback title", get_html_for(content, "tag", "h1", only_content=True))
-			self.assertIn('href="/fallback"', get_html_for(content, "tag", "a"))
+			# //// Neoffice — every link of the page, not the first one: a page that opens on its own
+			# //// title now carries the breadcrumb trail under that title, so the first anchor inside
+			# //// div.builder-page-content is the trail's Home link (place_page_crumbs, 2026-09-14).
+			self.assertIn('href="/fallback"', " ".join(get_html_for(content, "tag", "a", list_all=True)))
 			self.assertNotIn("Only with hero", content)
 		finally:
 			page.delete()
@@ -323,7 +329,10 @@ class TestBuilderPage(FrappeTestCase):
 		try:
 			content = get_response_content("/dotted-keys-test")
 			self.assertEqual("Real title", get_html_for(content, "tag", "h1", only_content=True))
-			self.assertIn('href="https://example.com"', get_html_for(content, "tag", "a"))
+			# //// Neoffice — every link of the page, not the first one: a page that opens on its own
+			# //// title now carries the breadcrumb trail under that title, so the first anchor inside
+			# //// div.builder-page-content is the trail's Home link (place_page_crumbs, 2026-09-14).
+			self.assertIn('href="https://example.com"', " ".join(get_html_for(content, "tag", "a", list_all=True)))
 			self.assertIn("Only with hero", content)
 		finally:
 			page.delete()
@@ -2050,6 +2059,22 @@ class TestBuilderPageSiteChrome(FrappeTestCase):
 		).insert()
 		cls.content = get_response_content("/site-chrome-test")
 		cls.addClassCleanup(cls.page.delete)
+		# //// Neoffice — a second page, opening on its content: since 2026-09-14 the band steps aside
+		# //// above a page that carries its own h1, so only a page without one still gets the band —
+		# //// and the scoping test needs the chrome to print a title of its own.
+		banded = Block(element="div", originalElement="body")
+		banded.attach_children(Block(element="h2", innerHTML="The Page Own Section"))
+		cls.banded_page = frappe.get_doc(
+			{
+				"doctype": "Builder Page",
+				"page_title": "Site Chrome Band",
+				"published": 1,
+				"route": "/site-chrome-band",
+				"blocks": banded.as_json(wrap_in_array=True),
+			}
+		).insert()
+		cls.banded_content = get_response_content("/site-chrome-band")
+		cls.addClassCleanup(cls.banded_page.delete)
 
 	def test_page_blocks_are_wrapped_in_builder_page_content(self):
 		"""The anchor get_html_for relies on (36cbdc0b)."""
@@ -2061,10 +2086,27 @@ class TestBuilderPageSiteChrome(FrappeTestCase):
 		self.assertIsNotNone(soup.select_one("header.site-header"))
 
 	def test_opening_band_prints_the_page_title(self):
-		soup = page_content_soup(self.content, whole_document=True)
+		"""A page that opens on its content gets the band, and the band carries the page title."""
+		# //// Neoffice — read on the banded page since 2026-09-14: the band steps aside above a page
+		# //// that carries its own h1 (page_header._opens_with_own_title), so only a page opening on
+		# //// its content still has one.
+		soup = page_content_soup(self.banded_content, whole_document=True)
 		band = soup.select_one("section.site-page-header")
 		self.assertIsNotNone(band)
-		self.assertIn("Site Chrome Test", band.get_text())
+		self.assertIn("Site Chrome Band", band.get_text())
+
+	# //// Neoffice — added test (no upstream equivalent): the page's own opening wins over the band
+	# //// (page_header._opens_with_own_title), and the trail then sits inside that opening, under the
+	# //// title (place_page_crumbs). Both landed 2026-09-14.
+	def test_a_page_with_its_own_title_carries_the_trail_under_it(self):
+		soup = page_content_soup(self.content, whole_document=True)
+		self.assertIsNone(soup.select_one("section.site-page-header"))
+		self.assertIsNotNone(soup.select_one("nav.site-page-crumbs"))
+		self.assertEqual(1, len(soup.select("h1")))
+		# the trail belongs to the title: it follows it in the markup
+		self.assertLess(
+			self.content.index("The Page Own Heading"), self.content.index("site-page-crumbs")
+		)
 
 	def test_scoping_is_load_bearing(self):
 		"""Un-scoped, the first h1 is the band's title, not the page's own."""
@@ -2073,7 +2115,11 @@ class TestBuilderPageSiteChrome(FrappeTestCase):
 		self.assertEqual(
 			"The Page Own Heading", get_html_for(self.content, "tag", "h1", only_content=True)
 		)
+		# //// Neoffice — read on the banded page since 2026-09-14: the band no longer draws above a
+		# //// page that has its own h1, so the chrome's own title is only there to be confused with
+		# //// the page's on a page that opens on its content.
+		self.assertEqual("", get_html_for(self.banded_content, "tag", "h1", only_content=True))
 		self.assertEqual(
-			"Site Chrome Test",
-			get_html_for(self.content, "tag", "h1", only_content=True, whole_document=True),
+			"Site Chrome Band",
+			get_html_for(self.banded_content, "tag", "h1", only_content=True, whole_document=True),
 		)

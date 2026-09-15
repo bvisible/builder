@@ -1,3 +1,6 @@
+# //// Neoffice — Pulse identify ships with frappe v16 and our fork runs v15 (see HAS_PULSE below):
+# //// the two tests that patch it are skipped there, and one test covers what v15 does instead.
+import unittest
 from unittest.mock import patch
 
 import frappe
@@ -8,6 +11,15 @@ from builder.utils import count_blocks
 
 CAPTURE = "builder.builder.doctype.builder_page.builder_page.capture"
 IDENTIFY = "frappe.utils.telemetry.pulse.client.identify"
+# //// Neoffice — Pulse identify ships with frappe v16 and our fork runs v15, where
+# //// builder.api.identify_persona returns on the ImportError it guards. Patching a module that does
+# //// not exist raised AttributeError, and these two tests errored on every CI run (2026-09-15).
+try:
+	import frappe.utils.telemetry.pulse.client  # noqa: F401
+
+	HAS_PULSE = True
+except ImportError:
+	HAS_PULSE = False
 
 ROOT = {"element": "div"}
 ROOT_WITH_CHILD = {"element": "div", "children": [{"element": "p"}]}
@@ -98,6 +110,13 @@ class TestPageLifecycleEvents(FrappeTestCase):
 
 
 class TestIdentifyPersona(FrappeTestCase):
+	# //// Neoffice — on a bench without Pulse, the answers go nowhere and nothing may break.
+	def test_without_pulse_the_answers_are_dropped_quietly(self):
+		if HAS_PULSE:
+			self.skipTest("this bench has Pulse identify")
+		self.assertIsNone(identify_persona(role="designer", use_case="portfolio", source="search"))
+
+	@unittest.skipUnless(HAS_PULSE, "Pulse identify ships with frappe v16")
 	def test_sends_the_answers_to_the_site_profile(self):
 		with patch(IDENTIFY) as identify:
 			identify_persona(role="designer", use_case="portfolio", source="search")
@@ -106,6 +125,8 @@ class TestIdentifyPersona(FrappeTestCase):
 			{"builder_role": "designer", "builder_use_case": "portfolio", "builder_source": "search"}
 		)
 
+	# //// Neoffice — skipped without Pulse, see the header.
+	@unittest.skipUnless(HAS_PULSE, "Pulse identify ships with frappe v16")
 	def test_a_skipped_survey_is_not_sent(self):
 		with patch(IDENTIFY) as identify:
 			identify_persona()
