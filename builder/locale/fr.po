@@ -10397,3 +10397,23 @@ msgstr "Bouton de compte"
 #: frontend/src/components/Settings/GlobalTheme.vue
 msgid "Show the cart to"
 msgstr "Afficher le panier pour"
+
+#: builder/site_ai/nora/site_builder.py
+msgid "Our products"
+msgstr "Nos produits"
+
+#: builder/site_ai/nora/site_builder.py
+msgid "Our brands"
+msgstr "Nos marques"
+
+#: builder/site_ai/nora/site_builder.py
+msgid "Terms & Conditions"
+msgstr "Conditions générales de vente"
+
+#: builder/site_ai/nora/site_builder.py
+msgid "Privacy Policy"
+msgstr "Politique de confidentialité"
+
+#: builder/templates/includes/header_footer/footer.html
+msgid "Legal"
+msgstr "Mentions légales"

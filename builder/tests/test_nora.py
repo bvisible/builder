@@ -532,6 +532,44 @@ class TestShopIncludes(unittest.TestCase):
 			self.assertEqual([("/terms-conditions", "Terms & Conditions")], legal_pages("A Storefront"))
 			self.assertEqual(["privacy"], missing_legal_pages("A Storefront"))
 
+	# //// Neoffice — added tests (2026-09-15): the carousel titles follow the site's language, and
+	# //// the title the page chose survives the canonicalisation of its include.
+	def test_the_carousel_title_is_written_in_the_site_language(self):
+		from builder.site_ai.nora.site_builder import available_includes
+
+		with patch("builder.site_ai.nora.site_builder.frappe") as mock_frappe, patch(
+			"builder.site_ai.nora.site_builder._other_business", return_value=False
+		), patch("builder.empty_includes.include_has_data", return_value=True):
+			mock_frappe.get_installed_apps.return_value = ["frappe", "builder", "webshop"]
+			english = [t for t, _ in available_includes("accueil", "ecommerce", None, "", lang="en")]
+		self.assertTrue(any('carousel_title = "Our products"' in t for t in english))
+		self.assertFalse(any("Nos produits" in t for t in english))
+
+	def test_a_storefront_of_the_house_keeps_its_product_carousel(self):
+		from builder.site_ai.nora.site_builder import available_includes
+
+		def offered(sells):
+			with patch("builder.site_ai.nora.site_builder.frappe") as mock_frappe, patch(
+				"builder.site_ai.nora.site_builder._other_business", return_value=False
+			), patch("builder.site_ai.nora.site_builder._profile_is_b2b", return_value=False), patch(
+				"builder.site_ai.nora.site_builder._profile_sells", return_value=sells
+			), patch("builder.empty_includes.include_has_data", return_value=True):
+				mock_frappe.get_installed_apps.return_value = ["frappe", "builder", "webshop"]
+				return [t for t, _ in available_includes("accueil", "vitrine", "A Storefront", "", lang="en")]
+
+		self.assertTrue(any("product_carousel" in t for t in offered(True)))
+		self.assertFalse(any("product_carousel" in t for t in offered(False)))
+
+	def test_the_title_the_page_chose_survives_the_include_repair(self):
+		from builder.site_ai.nora.site_builder import repair_includes
+
+		offered = '{%- set carousel_title = "Our products" -%}{%- set carousel_limit = 8 -%}{% include "webshop/templates/includes/product_carousel.html" %}'
+		blocks = [{"children": [{"innerHTML": '{%- set carousel_title = "Fresh this week" -%}{% include "webshop/templates/includes/product_carousel.html" %}'}]}]
+		repair_includes(blocks, [(offered, "a carousel")])
+		written = blocks[0]["children"][0]["innerHTML"]
+		self.assertIn('carousel_title = "Fresh this week"', written)
+		self.assertIn("carousel_limit = 8", written)
+
 	# //// Neoffice — added test (2026-09-15): a site may reuse its own emblem as an ornament.
 	def test_the_brand_mark_is_offered_to_the_page_as_an_ornament(self):
 		from builder.site_ai.nora.site_builder import page_brief_text

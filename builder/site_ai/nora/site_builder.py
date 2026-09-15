@@ -746,12 +746,15 @@ PAGE_INCLUDES = {
         ("{% include 'builder/templates/includes/company_timeline.html' %}", "the company's timeline"),
         ("{% include 'webshop/templates/includes/opening_hours.html' %}", "the shop's opening hours, live"),
     ],
+    # //// Neoffice — the carousel titles were written in French in the code (2026-09-15): the tag is
+    # //// canonicalised by repair_includes, so a site in English or German got "Nos produits" over its
+    # //// products whatever the model wrote. {0} is filled with the title in the SITE's language.
     "accueil": [
-        ("{%- set carousel_title = \"Nos produits\" -%}{%- set carousel_limit = 8 -%}{% include \"webshop/templates/includes/product_carousel.html\" %}", "a carousel of real products (title of your choice)"),
-        ("{%- set carousel_title = \"Nos marques\" -%}{% include \"webshop/templates/includes/brand_carousel.html\" %}", "the brands carried"),
+        ("{%- set carousel_title = \"{0}\" -%}{%- set carousel_limit = 8 -%}{% include \"webshop/templates/includes/product_carousel.html\" %}", "a carousel of real products (title of your choice)"),
+        ("{%- set carousel_title = \"{1}\" -%}{% include \"webshop/templates/includes/brand_carousel.html\" %}", "the brands carried"),
     ],
     "shop": [
-        ("{%- set carousel_title = \"Nos produits\" -%}{%- set carousel_limit = 8 -%}{% include \"webshop/templates/includes/product_carousel.html\" %}", "a carousel of real products"),
+        ("{%- set carousel_title = \"{0}\" -%}{%- set carousel_limit = 8 -%}{% include \"webshop/templates/includes/product_carousel.html\" %}", "a carousel of real products"),
         ("{%- set show_discounted_only = true -%}{% include \"webshop/templates/includes/product_carousel.html\" %}", "the products on sale"),
     ],
     "one_page": [
@@ -764,6 +767,8 @@ PAGE_INCLUDES = {
 # //// Neoffice ▼▼▼ — new: an include a page carries must be the one the brief offered, written exactly as offered; the model wrote the shop's opening hours with builder's path instead of webshop's and the Contact page of a reseller site answered 417 for a template it could not find (2d78d71d "fix(nora): includes written as offered, routes honoured but home, and the build's routes stated as final")
 INCLUDE_TAG = re.compile(r"\{%-?\s*include\s+['\"]([^'\"]+)['\"]\s*-?%\}")
 ALWAYS_ALLOWED_INCLUDES = ("{% include 'builder/templates/includes/contact_form.html' %}",)
+# //// Neoffice — the carousel title the page chose, kept through the canonicalisation below
+CAROUSEL_TITLE = re.compile(r"set\s+carousel_title\s*=\s*(['\"])(?:(?!\1).)*\1")
 
 
 def repair_includes(blocks: list, allowed: list[tuple[str, str]]) -> tuple[int, int]:
@@ -793,6 +798,12 @@ def repair_includes(blocks: list, allowed: list[tuple[str, str]]) -> tuple[int, 
             if not tag:
                 removed += 1
                 continue
+            # //// Neoffice — the title the page chose is kept (2026-09-15): the brief offers the
+            # //// carousel with "title of your choice", and canonicalising the whole tag put the
+            # //// default back over every title the model wrote.
+            chosen = CAROUSEL_TITLE.search(html)
+            if chosen and CAROUSEL_TITLE.search(tag):
+                tag = CAROUSEL_TITLE.sub(lambda _m: chosen.group(0), tag, count=1)
             if html.strip() != tag:
                 child["innerHTML"] = tag
                 rewritten += 1
@@ -923,7 +934,7 @@ def _account_request_route() -> str | None:
         return None
 
 
-def available_includes(page_type: str, site_type: str = "vitrine", profile: str | None = None, site_name: str = "") -> list[tuple[str, str]]:
+def available_includes(page_type: str, site_type: str = "vitrine", profile: str | None = None, site_name: str = "", lang: str = "fr") -> list[tuple[str, str]]:
     """The includes of this page type whose app is installed on the bench (an include of
     an absent app turns the whole page into a 500 at render time), minus every include
     that would show another business's data — the team, the timeline, the map of the
@@ -939,8 +950,11 @@ def available_includes(page_type: str, site_type: str = "vitrine", profile: str 
     except Exception:
         installed = {"builder"}
     shop_data = not _other_business(profile, site_name)
+    # //// Neoffice — the carousel titles in the SITE's language, not the code's (2026-09-15)
+    titles = (_("Our products", lang=lang), _("Our brands", lang=lang))
     out = []
     for tag, purpose in PAGE_INCLUDES.get(page_type, []):
+        tag = tag.replace("{0}", titles[0]).replace("{1}", titles[1])
         path = re.search(r"include\s+['\"]([^'\"]+)['\"]", tag)
         app = path.group(1).split("/", 1)[0] if path else ""
         if app not in installed and app != "templates":
@@ -949,7 +963,10 @@ def available_includes(page_type: str, site_type: str = "vitrine", profile: str 
             continue
         # //// Neoffice — "and not _profile_is_b2b(profile)" added (5efa79d1): a B2B profile is
         # //// a shop window whatever its site type, so it keeps the product carousels too.
-        if app == "webshop" and "carousel" in tag and site_type != "ecommerce" and not _profile_is_b2b(profile):
+        # //// Neoffice — "_profile_sells" added (2026-09-15): a storefront of the instance's own
+        # //// business keeps its product carousels whatever the site type the model chose, and the
+        # //// home's plan asks for exactly this include (page_sections, sells=True).
+        if app == "webshop" and "carousel" in tag and site_type not in ("ecommerce", "ecommerce_search") and not _profile_is_b2b(profile) and not _profile_sells(profile):
             continue
         # an include with nothing to show is an empty section on the page: a map without an
         # address, a week without hours, a team or a timeline with no one in it (a reseller
@@ -1079,7 +1096,7 @@ def page_brief_text(site: dict, brief, page: dict, handles: dict, contact_prompt
     # the client's own photographs come with what each shows and what it is for (photos_for_page)
     notes = photo_notes or []
     photo_lines = "\n".join(f"{i}. {u}" + (f"  ({notes[i - 1]})" if i - 1 < len(notes) else "") for i, u in enumerate(photos, 1))
-    includes = available_includes(page["type"], site.get("site_type") or "vitrine", site.get("profile"), site.get("site_name") or "")
+    includes = available_includes(page["type"], site.get("site_type") or "vitrine", site.get("profile"), site.get("site_name") or "", lang=site.get("lang") or "fr")
     page_role = (
         "the HOME page: open with the hero" if is_home
         else "an INTERIOR page: the site renders a title band with the page title above the content, so start directly with the first content section, no hero banner and no repeated page title"
@@ -1918,7 +1935,9 @@ def build_site(ctx, spec: dict) -> str:
     site = {"site_name": site_name, "activity": activity, "differentiators": spec.get("differentiators"), "site_type": site_type, "profile": profile, "inspiration": inspiration["notes"], "copy_density": copy_density, "categories": categories, "brands": brands, "page_types": [p["type"] for p in pages],
             # //// Neoffice — the brand's own mark, offered to the pages as an ornament (2026-09-15):
             # //// the footer's emblem when the client gave one, else the header's logo.
-            "mark": footer_logo_image or logo_image or ""}
+            "mark": footer_logo_image or logo_image or "",
+            # //// Neoffice — the site's language reaches the includes too (2026-09-15)
+            "lang": lang_code}
     # //// Neoffice — a site that sells says so to every page (2026-09-15): its home shows real
     # //// products, taken from the shop, because the point of the site is to sell.
     site["sells"] = bool(
@@ -1947,7 +1966,7 @@ def build_site(ctx, spec: dict) -> str:
                     # //// Neoffice — new call: repairs includes to the offered tag or drops them (2d78d71d "fix(nora): includes written as offered, routes honoured but home, and the build's routes stated as final")
                     # an include is one the brief offered, written as offered (a wrong
                     # path is a 417 at render time): see repair_includes
-                    fixed, dropped = repair_includes(blocks, available_includes(page["type"], site["site_type"], site["profile"], site["site_name"]))
+                    fixed, dropped = repair_includes(blocks, available_includes(page["type"], site["site_type"], site["profile"], site["site_name"], lang=site.get("lang") or "fr"))
                     if fixed or dropped:
                         ai_log("info", "Includes repaired", page=page["title"], rewritten=fixed, removed=dropped)
                     # the page's own accent joins the design system (accent.py): minted
