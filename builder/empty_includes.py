@@ -24,9 +24,15 @@ import re
 
 import frappe
 
-# a block whose whole text is one include tag; a tag after parameters set for it is the
-# author's own composition and is left alone
-BARE_INCLUDE = re.compile(r"^\s*\{%-?\s*include\s+['\"]([^'\"]+)['\"]\s*-?%\}\s*$")
+# a block whose whole text is one include tag, optionally preceded by the {% set %} parameters
+# that configure it. The parameters are a composition choice — a title, a limit — but what the
+# include has to SHOW is not, and a block that is nothing but an include has nothing else to say.
+# //// Neoffice — the {% set %} prefix was added 2026-09-15: the generator offers the shop's
+# //// carousels with their title and their limit set, so the old bare-only rule left every one of
+# //// them in place, and a home kept "Our products" over an empty strip.
+BARE_INCLUDE = re.compile(
+	r"^\s*(?:\{%-?\s*set\s+[^%]*?-?%\}\s*)*\{%-?\s*include\s+['\"]([^'\"]+)['\"]\s*-?%\}\s*$"
+)
 
 # a heading group announces what follows it: a kicker, a title, a one-line lede. A longer
 # text says something of its own and stays when the include under it goes.

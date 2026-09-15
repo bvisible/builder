@@ -341,6 +341,20 @@ class TestCarouselsNeedPictures(unittest.TestCase):
 		with patch("frappe.db.exists", return_value=True), patch("frappe.get_all", return_value=self.newest(3)):
 			self.assertIs(True, include_has_data("webshop/templates/includes/product_carousel.html"))
 
+	# //// Neoffice — added test (2026-09-15): the render prunes a carousel written with its
+	# //// parameters, not only a bare include. The generator always offers them with a title.
+	def test_a_configured_include_with_nothing_to_show_is_pruned_at_render(self):
+		from builder.empty_includes import BARE_INCLUDE
+
+		configured = (
+			'{%- set carousel_title = "Our products" -%}{%- set carousel_limit = 8 -%}'
+			'{%- set hide_without_image = true -%}{% include "webshop/templates/includes/product_carousel.html" %}'
+		)
+		self.assertEqual("webshop/templates/includes/product_carousel.html", BARE_INCLUDE.match(configured).group(1))
+		# a tag inside a sentence is the author's own composition and stays
+		self.assertIsNone(BARE_INCLUDE.match('Nos nouveautés {% include "webshop/templates/includes/product_carousel.html" %}'))
+		self.assertIsNone(BARE_INCLUDE.match('{% include "a/b.html" %} and more'))
+
 	def test_a_shop_whose_brands_have_no_logo_has_nothing_to_show(self):
 		from builder.empty_includes import include_has_data
 
