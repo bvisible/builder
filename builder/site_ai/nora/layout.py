@@ -642,6 +642,9 @@ def _wheel_container(grid: dict) -> None:
 		for key in ("display", "gridAutoFlow", *GRID_STYLE_KEYS):
 			styles.pop(key, None)
 	grid["classes"] = [c for c in (grid.get("classes") or []) if not c.startswith("u-grid")]
+	# the parts are drawn one by one: nothing is cloned over rows any more
+	grid.pop("isRepeaterBlock", None)
+	grid.pop("dataKey", None)
 	base.update({
 		"position": "relative", "width": "min(560px, 100%)", "aspectRatio": "1",
 		"marginLeft": "auto", "marginRight": "auto", "borderRadius": "50%",
@@ -661,15 +664,18 @@ def category_wheel(blocks: list, category_photos: dict, hub_image: str = "", dat
 			continue
 		tiles = [c for c in grid.get("children") or [] if isinstance(c, dict)]
 		parts, named = None, False
-		if WHEEL_MIN <= len(tiles) <= WHEEL_MAX:
+		# one template cloned over the page's rows: the rows are the parts. The repeater may BE the
+		# grid — unwrap_grid_wrappers hands it the columns so its clones are the items — or sit in it.
+		holder = grid if _is_repeater(grid) else (tiles[0] if len(tiles) == 1 and tiles and _is_repeater(tiles[0]) else None)
+		if holder is not None:
+			rows = (data_rows or {}).get(str((holder.get("dataKey") or {}).get("key") or ""))
+			template = tiles[0] if holder is grid and tiles else holder
+			if rows and WHEEL_MIN <= len(rows) <= WHEEL_MAX:
+				parts = _rows_parts(rows, names, template)
+				named = True
+		elif WHEEL_MIN <= len(tiles) <= WHEEL_MAX:
 			parts = _wheel_parts(tiles, names)
 			named = bool(names) and all(_tile_category(t, names) for t in tiles)
-		elif len(tiles) == 1 and _is_repeater(tiles[0]):
-			# one template cloned over the page's rows: the rows are the parts
-			rows = (data_rows or {}).get(str((tiles[0].get("dataKey") or {}).get("key") or ""))
-			if rows and WHEEL_MIN <= len(rows) <= WHEEL_MAX:
-				parts = _rows_parts(rows, names, tiles[0])
-				named = True
 		if parts is None:
 			continue
 		candidates.append((named, grid, parts))

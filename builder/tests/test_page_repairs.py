@@ -494,6 +494,27 @@ class TestCategoryWheel(unittest.TestCase):
 		# the words keep the face the template gave them
 		self.assertEqual("'Archivo', sans-serif", parts[0]["children"][0]["baseStyles"]["fontFamily"])
 
+	def test_the_repeater_may_be_the_grid_itself(self):
+		"""unwrap_grid_wrappers hands the columns to the repeater, so its clones are the grid items:
+		the page the wheel was written for is built that way."""
+		grid = box(
+			box(text("h3", "Category"), position="relative"),
+			display="grid",
+			gridTemplateColumns="repeat(5, minmax(0, 1fr))",
+		)
+		grid["isRepeaterBlock"] = 1
+		grid["dataKey"] = {"key": "categories", "property": "innerHTML", "type": "key"}
+		page = [grid]
+		rows = repeater_rows('data.categories = [' + ", ".join(
+			'{"title": "%s", "url": "/brands#%s", "photo": "/files/%s.jpg"}' % (n, n.lower(), n.lower())
+			for n in self.NAMES
+		) + ']')
+		self.assertEqual(1, category_wheel(page, {}, data_rows=rows))
+		self.assertEqual(self.NAMES, [p["children"][0]["innerHTML"] for p in page[0]["children"]])
+		# the circle is drawn part by part, so the binding goes with the rows
+		self.assertNotIn("dataKey", page[0])
+		self.assertNotIn("isRepeaterBlock", page[0])
+
 	def test_a_repeater_of_the_wrong_size_is_left_alone(self):
 		template = box(text("h3", "Category"), position="relative")
 		template["isRepeaterBlock"] = 1
