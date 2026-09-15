@@ -1653,13 +1653,7 @@ def build_site(ctx, spec: dict) -> str:
         site_type in ("ecommerce", "ecommerce_search")
         or (profile and _profile_sells(profile) and _webshop_installed() and not _other_business(profile, site_name))
     )
-    # //// Neoffice — a shop is built with its legal pages (2026-09-15): the first storefront the
-    # //// pipeline produced had neither terms nor a privacy policy, and a shop without them cannot
-    # //// trade. They are planned here, written by the page loop like any other page, and the
-    # //// footer links whichever ones exist (legal_pages).
-    pages += plan_legal_pages(pages, profile, site_type, lang_code)
     job_id = f"site_gen_{frappe.generate_hash(length=10)}"
-    total = len(pages)
 
     # 1. the site's existing pages
     classes = classify_existing_pages(profile)
@@ -1684,8 +1678,6 @@ def build_site(ctx, spec: dict) -> str:
         )
     # the build is real from here on: the confirmation round trip above must leave neither
     # a "running" job behind (get_site_generation_status) nor a START line without an end
-    _update_generation_status(job_id, {"status": "running", "progress": 0, "total_pages": total, "current_step": "Starting", "pages_created": [], "error": None, "site_name": site_name, "started_at": now()})
-    ai_log("info", "=== NORA SITE BUILD STARTED ===", job_id=job_id, site_name=site_name, profile=profile, lang=lang_code, replace=replace_existing, pages=[p["title"] for p in pages])
     to_delete = pages_to_replace(classes, replace_existing)
     host_reusable = host_page and (host_is_blank or host_page in to_delete)
     to_delete = [n for n in to_delete if n != host_page]
@@ -1697,6 +1689,15 @@ def build_site(ctx, spec: dict) -> str:
             frappe.db.delete("Dynamic Link", {"link_doctype": "Builder Page", "link_name": name})
             frappe.delete_doc("Builder Page", name, ignore_permissions=True, force=True)
     frappe.db.commit()
+    # //// Neoffice — a shop is built with its legal pages (2026-09-15): the first storefront the
+    # //// pipeline produced had neither terms nor a privacy policy, and a shop without them cannot
+    # //// trade. Planned AFTER the pages being replaced are gone — a terms page the build is about
+    # //// to delete is not a terms page the site has — then written by the page loop like any
+    # //// other, and linked in the footer by the chrome (hf_utils/header_footer.py::_legal_links).
+    pages += plan_legal_pages(pages, profile, site_type, lang_code)
+    total = len(pages)
+    _update_generation_status(job_id, {"status": "running", "progress": 0, "total_pages": total, "current_step": "Starting", "pages_created": [], "error": None, "site_name": site_name, "started_at": now()})
+    ai_log("info", "=== NORA SITE BUILD STARTED ===", job_id=job_id, site_name=site_name, profile=profile, lang=lang_code, replace=replace_existing, pages=[p["title"] for p in pages])
 
     # 2. the chrome basics
     config = _get_site_chrome_config(profile)

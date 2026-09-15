@@ -650,6 +650,12 @@ class TestShopIncludes(unittest.TestCase):
 		):
 			self.assertEqual([], plan_legal_pages([], "A Showcase", "vitrine", "en"))
 
+		# a site with neither gets both, home first untouched
+		planned = [{"title": "Home", "route": "home", "type": "accueil"}]
+		with patch("builder.site_ai.nora.site_builder.legal_pages", return_value=[]):
+			added = plan_legal_pages(planned, "A Storefront", "ecommerce", "en")
+		self.assertEqual(["terms-conditions", "privacy-policy"], [p["route"] for p in added])
+
 	def test_a_legal_title_is_recognised_as_a_legal_page(self):
 		from builder.site_ai.nora.site_builder import normalise_pages
 
