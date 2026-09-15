@@ -953,11 +953,23 @@ def available_includes(page_type: str, site_type: str = "vitrine", profile: str 
     except Exception:
         installed = {"builder"}
     shop_data = not _other_business(profile, site_name)
-    # //// Neoffice — the carousel titles in the SITE's language, not the code's (2026-09-15)
-    titles = (_("Our products", lang=lang), _("Our brands", lang=lang))
+    # //// Neoffice — the carousel titles in the SITE's language, not the code's (2026-09-15).
+    # //// Translated lazily and defensively: frappe's loader imports every app named in apps.txt
+    # //// to read its catalogue, so on a bench carrying a stale entry _() raises ModuleNotFoundError
+    # //// — and listing the includes of a page must not depend on that.
+    def title(key: str) -> str:
+        try:
+            return _(key, lang=lang)
+        except Exception:
+            return key
+
+    titles = None
     out = []
     for tag, purpose in PAGE_INCLUDES.get(page_type, []):
-        tag = tag.replace("{0}", titles[0]).replace("{1}", titles[1])
+        if "{0}" in tag or "{1}" in tag:
+            if titles is None:
+                titles = (title("Our products"), title("Our brands"))
+            tag = tag.replace("{0}", titles[0]).replace("{1}", titles[1])
         path = re.search(r"include\s+['\"]([^'\"]+)['\"]", tag)
         app = path.group(1).split("/", 1)[0] if path else ""
         if app not in installed and app != "templates":

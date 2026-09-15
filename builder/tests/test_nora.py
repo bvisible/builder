@@ -778,23 +778,42 @@ class TestShopIncludes(unittest.TestCase):
 		self.assertNotIn("/", [url for _, url in build(b2b=True)])
 		self.assertEqual([url for _, url in build(b2b=False)], ["/espace-revendeurs"])
 
+	# //// Neoffice — "shop_has_pictured" patched (2026-09-15): these tests are about the site type
+	# //// and the profile, not about the catalogue. On a bare test site no article has a picture,
+	# //// so the carousels would be withheld for a reason these two are not measuring.
 	def test_a_b2b_profile_gets_the_product_carousels(self):
 		with patch("builder.site_ai.nora.site_builder._other_business", return_value=False), patch(
 			"builder.site_ai.nora.site_builder._profile_is_b2b", return_value=True
-		), patch("frappe.get_installed_apps", return_value=["frappe", "builder", "webshop"]):
+		), patch("builder.empty_includes.shop_has_pictured", return_value=True), patch(
+			"frappe.get_installed_apps", return_value=["frappe", "builder", "webshop"]
+		):
 			offered = [t for t, _ in available_includes("accueil", "vitrine_user", "Espace B2B")]
 		self.assertTrue(offered and all("carousel" in t for t in offered))
 
 	def test_carousels_need_an_ecommerce_site(self):
 		with patch("builder.site_ai.nora.site_builder._other_business", return_value=False), patch(
-			"frappe.get_installed_apps", return_value=["frappe", "builder", "webshop"]
-		), patch("builder.empty_includes.opening_hours_configured", return_value=True):
+			"builder.empty_includes.shop_has_pictured", return_value=True
+		), patch("frappe.get_installed_apps", return_value=["frappe", "builder", "webshop"]), patch(
+			"builder.empty_includes.opening_hours_configured", return_value=True
+		):
 			vitrine = [t for t, _ in available_includes("accueil", "vitrine", None)]
 			shop = [t for t, _ in available_includes("accueil", "ecommerce", None)]
 			hours = [t for t, _ in available_includes("contact", "vitrine", None)]
 		self.assertEqual(vitrine, [])
 		self.assertTrue(all("carousel" in t for t in shop) and shop)
 		self.assertTrue(any("opening_hours" in t for t in hours))
+
+	# //// Neoffice — added test (2026-09-15): listing a page's includes must not depend on
+	# //// frappe's translation loader, which imports every app named in apps.txt.
+	def test_the_includes_are_listed_even_when_translation_fails(self):
+		with patch("builder.site_ai.nora.site_builder._other_business", return_value=False), patch(
+			"builder.empty_includes.shop_has_pictured", return_value=True
+		), patch("frappe.get_installed_apps", return_value=["frappe", "builder", "webshop"]), patch(
+			"builder.site_ai.nora.site_builder._", side_effect=ModuleNotFoundError("No module named 'webshop'")
+		):
+			offered = [t for t, _ in available_includes("accueil", "ecommerce", None, "", lang="en")]
+		self.assertTrue(offered and all("carousel" in t for t in offered))
+		self.assertTrue(any('carousel_title = "Our products"' in t for t in offered))
 
 
 class TestBriefCall(unittest.TestCase):
