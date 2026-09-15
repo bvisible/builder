@@ -1643,6 +1643,13 @@ def build_site(ctx, spec: dict) -> str:
     secondary = (spec.get("secondary_color") or "").strip() or None
     logo_image = clean_logo(spec.get("logo_image"))
     footer_logo_image = clean_logo(spec.get("footer_logo_image"))
+    # //// Neoffice — a site that sells says so to every page (2026-09-15): its home shows real
+    # //// products taken from the shop, and its footer is the centred one. Read here, before the
+    # //// chrome step, which runs long before the pages.
+    _sells_here = bool(
+        site_type in ("ecommerce", "ecommerce_search")
+        or (profile and _profile_sells(profile) and _webshop_installed() and not _other_business(profile, site_name))
+    )
     # //// Neoffice — a shop is built with its legal pages (2026-09-15): the first storefront the
     # //// pipeline produced had neither terms nor a privacy policy, and a shop without them cannot
     # //// trade. They are planned here, written by the page loop like any other page, and the
@@ -1891,6 +1898,11 @@ def build_site(ctx, spec: dict) -> str:
     try:
         apply_brief_site_chrome(brief, website_profile=profile)
         config = _get_site_chrome_config(profile)
+        # //// Neoffice — a shop closes on a centred footer (2026-09-15): the brief picked the rich
+        # //// multi-column one and a storefront's footer became a directory, with the terms buried
+        # //// in a column. A shop's foot is its mark, one row of links, and the legal row under it.
+        if _sells_here and hasattr(config, "footer_template") and config.get("footer_template") in ("Standard", "Extended"):
+            config.footer_template = "Centered"
         if getattr(brief, "heading_font", None):
             config.heading_font = brief.heading_font
             config.body_font = brief.body_font or "Inter"
@@ -1938,12 +1950,7 @@ def build_site(ctx, spec: dict) -> str:
             "mark": footer_logo_image or logo_image or "",
             # //// Neoffice — the site's language reaches the includes too (2026-09-15)
             "lang": lang_code}
-    # //// Neoffice — a site that sells says so to every page (2026-09-15): its home shows real
-    # //// products, taken from the shop, because the point of the site is to sell.
-    site["sells"] = bool(
-        site_type in ("ecommerce", "ecommerce_search")
-        or (profile and _profile_sells(profile) and _webshop_installed() and not _other_business(profile, site_name))
-    )
+    site["sells"] = _sells_here
     created, failed, cancelled = [], [], False
 
     # //// Neoffice — image generation was switched off (the pictures were not good enough):

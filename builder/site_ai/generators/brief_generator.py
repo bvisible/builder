@@ -420,7 +420,9 @@ The site's locked header/footer take their design from YOUR brief:
   cta_shape (Pill = soft/refined, Rounded, Square = editorial/brutalist),
   cta_size (Small = discreet; Medium = bolder).
 - footer_template (Minimal one line / Standard columns / Extended rich
-  columns + newsletter / Centered logo + one row of links, for few links)
+  columns + newsletter / Centered logo + one row of links, for few links).
+  A site that SELLS takes Centered: the mark on top, one row of links, the
+  legal row under it. A shop's footer is not a directory.
   + footer_bg_color /
   footer_text_color: often a deep field of the palette (dark footer) or the
   surface tone — text MUST contrast with it.

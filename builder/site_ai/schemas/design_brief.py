@@ -572,7 +572,10 @@ class DesignBrief(BaseModel):
         description=(
             "Footer density — Minimal (one line), Standard (columns), Extended "
             "(rich columns + newsletter), Centered (logo, one row of links, "
-            "social underneath — for sites with few links)"
+            "social underneath — for sites with few links). A site that SELLS "
+            "closes on Centered: its mark on top, one row of links, and the "
+            "legal row under it, where a buyer looks for it — the rich "
+            "multi-column footer is a directory, and it buries the terms."
         )
     )
     footer_bg_color: str = Field(
