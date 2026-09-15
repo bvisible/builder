@@ -443,6 +443,8 @@ class TestCategoryWheel(unittest.TestCase):
 		self.assertIn("snow.jpg", parts[0]["baseStyles"]["backgroundImage"])
 		self.assertEqual("/snow", parts[0]["attributes"]["href"])
 		self.assertEqual("'Archivo', sans-serif", parts[0]["children"][0]["baseStyles"]["fontFamily"])
+		# the Builder lets a text block paint its children with its own picture: the words say no
+		self.assertEqual("none", parts[0]["children"][0]["baseStyles"]["backgroundImage"])
 
 	def test_the_first_part_opens_at_the_top_and_they_share_the_circle(self):
 		page = [self.tiles()]

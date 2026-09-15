@@ -608,6 +608,10 @@ def _wheel_children(parts: list, hub_image: str) -> list:
 					"fontSize": "clamp(0.72rem, 0.5rem + 1.1vw, 1rem)",
 					"letterSpacing": "0.1em", "textTransform": "uppercase", "whiteSpace": "nowrap",
 					"textShadow": "0 2px 14px rgba(0, 0, 0, 0.7)", "pointerEvents": "none",
+					# the Builder paints text with its block's picture (`.__text_block__ > *` inherits
+					# background-image, for lettering cut out of a photograph): the words of a part
+					# would carry the part's photograph as a dark patch behind them (2026-09-15)
+					"backgroundImage": "none", "backgroundClip": "border-box",
 				},
 				"children": [],
 			}],
