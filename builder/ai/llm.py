@@ -6,6 +6,7 @@ loop and tools talk to LLMs exclusively through the functions defined here.
 
 import json
 import logging
+import re
 
 import frappe
 import litellm
@@ -171,6 +172,19 @@ def provider_api_key(info: dict) -> str | None:
 		return None
 
 
+# //// Neoffice ▼▼▼ — an image is logged by its weight, not by its bytes (2026-09-15). Every call
+# //// wrote the full prompt to disk, and a vision prompt carries its pictures as base64: one day's
+# //// builds left 2.9 MB of rotated log, most of it a picture nobody will ever read from a text
+# //// file. The size stays, because that is the part worth reading.
+_BASE64_IMAGE = re.compile(r"data:(image/[a-z+]+);base64,([A-Za-z0-9+/=]+)")
+
+
+def _loggable(content) -> str:
+	"""The message as it goes to the log: pictures named by their weight."""
+	text = str(content)
+	return _BASE64_IMAGE.sub(lambda m: f"data:{m.group(1)};base64,<{len(m.group(2)) // 1024} kB elided>", text)
+
+
 def complete(model: str, messages: list, params: dict, *, stream: bool, api_key: str | None = None):
 	"""Plain completion. Returns the response iterator when streaming, else the
 	text content. Transient failures are retried by litellm (and, for streaming
@@ -184,7 +198,7 @@ def complete(model: str, messages: list, params: dict, *, stream: bool, api_key:
 	params = patch_params_for_provider(model, params)
 	logger.info(
 		f"LLM | model={model} stream={stream} params={params}\n"
-		+ "\n".join(f"[{m['role']}] {m['content']!s}" for m in messages)
+		+ "\n".join(f"[{m['role']}] {_loggable(m['content'])}" for m in messages)
 	)
 	resp = litellm.completion(
 		model=model,

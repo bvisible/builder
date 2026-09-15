@@ -74,3 +74,21 @@ class TestMeter(unittest.TestCase):
 		with patch.dict(frappe.conf, {"nora_build_token_budget": 500}):
 			self.assertEqual(200, meter.over_budget())
 
+	# //// Neoffice — added 2026-09-15: a picture is logged by its weight, not by its bytes.
+	def test_a_picture_is_logged_by_its_weight(self):
+		from builder.ai.llm import _loggable
+
+		content = [
+			{"type": "text", "text": "Review this page screenshot"},
+			{"type": "image_url", "image_url": {"url": "data:image/jpeg;base64," + "A" * 230000}},
+		]
+		line = _loggable(content)
+		self.assertIn("Review this page screenshot", line)
+		self.assertIn("<224 kB elided>", line)
+		self.assertLess(len(line), 400)
+
+	def test_a_message_without_a_picture_is_logged_whole(self):
+		from builder.ai.llm import _loggable
+
+		self.assertEqual("Build this page now: the hero", _loggable("Build this page now: the hero"))
+
