@@ -1231,6 +1231,8 @@ BRIEF_CHROME_FIELDS = (
 	"header_style",
 	"cta_style", "cta_shape", "cta_size",
 	"footer_template", "footer_bg_color", "footer_text_color",
+	# //// Neoffice — which side of the title the trail sits on (page_header.BELOW_TITLE)
+	"breadcrumb_position",
 )
 
 

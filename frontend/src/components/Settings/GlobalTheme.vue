@@ -515,6 +515,16 @@
 					:description="__('Always in the page for search engines: this only shows or hides it.')"
 					:modelValue="!!state.show_breadcrumbs"
 					@update:modelValue="(v: boolean) => (state.show_breadcrumbs = v ? 1 : 0)" />
+				<!-- //// Neoffice — which side of the title the trail sits on. Under it by default, on
+				     //// every page: the band's presets and the trail a page carries in its own top. -->
+				<FormControl
+					v-if="state.show_breadcrumbs"
+					type="select"
+					size="sm"
+					:label="__('Breadcrumb position')"
+					:options="options.breadcrumb_position"
+					:modelValue="state.breadcrumb_position"
+					@update:modelValue="(v: string) => (state.breadcrumb_position = v)" />
 				<!-- //// Neoffice — a top page designed in the Builder (page_header.render_component_band):
 				     //// choose the site's component, start from one, or open it in the canvas -->
 				<template v-if="state.page_header_template === 'Builder'">

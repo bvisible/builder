@@ -545,6 +545,16 @@ class DesignBrief(BaseModel):
             "one click from home."
         )
     )
+    breadcrumb_position: Literal["Below the title", "Above the title"] = Field(
+        default="Below the title",
+        description=(
+            "Which side of the page title the trail sits on. Below the title is "
+            "the answer on nearly every site: the trail names where that title "
+            "sits, and a visitor reads the title first. Above the title suits a "
+            "deep catalogue or a documentation site, where the trail is a "
+            "navigation bar people use before they read anything."
+        )
+    )
     footer_template: Literal["Minimal", "Standard", "Extended", "Centered"] = Field(
         default="Standard",
         description=(

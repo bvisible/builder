@@ -43,6 +43,14 @@ from frappe.utils import escape_html
 TEMPLATES = ("Minimal", "Standard", "Centered", "Split", "None", "Builder")
 BACKGROUNDS = ("None", "Tinted", "Solid", "Image")
 
+# //// Neoffice — where the trail sits in a page top (2026-09-15). A trail belongs under the title it
+# //// names, so that is the default everywhere: the band's presets, the trail a page carries in its own
+# //// top, and the component a site starts from. A site — or the model that writes its brief — may set
+# //// it above instead.
+BELOW_TITLE = "Below the title"
+ABOVE_TITLE = "Above the title"
+BREADCRUMB_POSITIONS = (BELOW_TITLE, ABOVE_TITLE)
+
 DEFAULTS = {
 	"page_header_template": "Standard",
 	"page_header_background": "None",
@@ -50,8 +58,14 @@ DEFAULTS = {
 	"page_header_image": "",
 	"page_header_excluded_routes": "",
 	"show_breadcrumbs": 1,
+	"breadcrumb_position": BELOW_TITLE,
 	"page_header_component": "",
 }
+
+
+def _trail_below(config: dict) -> bool:
+	"""Whether the trail goes under the title, which is the default."""
+	return (config.get("breadcrumb_position") or BELOW_TITLE) != ABOVE_TITLE
 
 # Fills that put the title over something dark enough to need light text.
 _DARK_BACKGROUNDS = ("Image", "Solid")
@@ -70,7 +84,7 @@ _DARK_BACKGROUNDS = ("Image", "Solid")
 # //// Neoffice — the inner column sits on the site grid with the header and the footer
 # //// (theme_variables.html, --container-*), at their thresholds: 24px then 16px without the grid tokens.
 _CSS = (
-	"<style>.site-page-header{border-bottom:1px solid var(--footer-border,rgba(0,0,0,0.08))}.site-page-header__inner{max-width:var(--container-width,1280px);margin:0 auto;padding:44px var(--container-padding,24px) 36px;font-family:var(--sph-body-font,inherit)}.site-page-header__crumbs{display:flex;flex-wrap:wrap;align-items:center;gap:6px;font-size:0.8125rem;color:var(--text-muted,var(--muted-color,#6b7280));margin-bottom:12px}.site-page-header__crumbs a{color:inherit;text-decoration:none}.site-page-header__crumbs a:hover{color:var(--primary-color,#111)}.site-page-header__sep{opacity:0.5}.site-page-header__title{font-size:clamp(1.9rem,1.2rem + 2.2vw,3rem);font-weight:var(--sph-heading-weight,700);font-family:var(--sph-heading-font,var(--heading-font,inherit));line-height:1.15;margin:0}.site-page-header__subtitle{max-width:62ch;margin:10px 0 0;color:var(--text-muted,var(--muted-color,#6b7280));line-height:1.6}.site-page-header--minimal .site-page-header__inner{padding-top:32px;padding-bottom:24px}.site-page-header--centered .site-page-header__inner{text-align:center}.site-page-header--centered .site-page-header__crumbs{justify-content:center}.site-page-header--centered .site-page-header__subtitle{margin-left:auto;margin-right:auto}.site-page-header__split{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:32px;align-items:end}.site-page-header__split .site-page-header__subtitle{margin-top:0}@media (max-width:768px){.site-page-header__split{grid-template-columns:1fr;gap:12px}}.site-page-header--bg-image .site-page-header__inner,.site-page-header--bg-solid .site-page-header__inner{padding-top:72px;padding-bottom:64px}.site-page-header--on-dark{border-bottom-color:transparent}.site-page-header--on-dark .site-page-header__title{color:#fff}.site-page-header--on-dark .site-page-header__subtitle,.site-page-header--on-dark .site-page-header__crumbs{color:rgba(255,255,255,0.82)}.site-page-header--on-dark .site-page-header__crumbs a:hover{color:#fff}.site-page-header--bg-tinted{border-bottom-color:transparent}@media (max-width:768px){.site-page-header .site-page-header__inner{padding-left:var(--container-padding-tablet,16px);padding-right:var(--container-padding-tablet,16px)}}@media (max-width:576px){.site-page-header .site-page-header__inner{padding-left:var(--container-padding-phone,16px);padding-right:var(--container-padding-phone,16px)}}</style>"
+	"<style>.site-page-header{border-bottom:1px solid var(--footer-border,rgba(0,0,0,0.08))}.site-page-header__inner{max-width:var(--container-width,1280px);margin:0 auto;padding:44px var(--container-padding,24px) 36px;font-family:var(--sph-body-font,inherit)}.site-page-header__crumbs{display:flex;flex-wrap:wrap;align-items:center;gap:6px;font-size:0.8125rem;color:var(--text-muted,var(--muted-color,#6b7280));margin-bottom:12px}.site-page-header--trail-below .site-page-header__crumbs{margin-bottom:0;margin-top:12px}.site-page-header__crumbs a{color:inherit;text-decoration:none}.site-page-header__crumbs a:hover{color:var(--primary-color,#111)}.site-page-header__sep{opacity:0.5}.site-page-header__title{font-size:clamp(1.9rem,1.2rem + 2.2vw,3rem);font-weight:var(--sph-heading-weight,700);font-family:var(--sph-heading-font,var(--heading-font,inherit));line-height:1.15;margin:0}.site-page-header__subtitle{max-width:62ch;margin:10px 0 0;color:var(--text-muted,var(--muted-color,#6b7280));line-height:1.6}.site-page-header--minimal .site-page-header__inner{padding-top:32px;padding-bottom:24px}.site-page-header--centered .site-page-header__inner{text-align:center}.site-page-header--centered .site-page-header__crumbs{justify-content:center}.site-page-header--centered .site-page-header__subtitle{margin-left:auto;margin-right:auto}.site-page-header__split{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:32px;align-items:end}.site-page-header__split .site-page-header__subtitle{margin-top:0}@media (max-width:768px){.site-page-header__split{grid-template-columns:1fr;gap:12px}}.site-page-header--bg-image .site-page-header__inner,.site-page-header--bg-solid .site-page-header__inner{padding-top:72px;padding-bottom:64px}.site-page-header--on-dark{border-bottom-color:transparent}.site-page-header--on-dark .site-page-header__title{color:#fff}.site-page-header--on-dark .site-page-header__subtitle,.site-page-header--on-dark .site-page-header__crumbs{color:rgba(255,255,255,0.82)}.site-page-header--on-dark .site-page-header__crumbs a:hover{color:#fff}.site-page-header--bg-tinted{border-bottom-color:transparent}@media (max-width:768px){.site-page-header .site-page-header__inner{padding-left:var(--container-padding-tablet,16px);padding-right:var(--container-padding-tablet,16px)}}@media (max-width:576px){.site-page-header .site-page-header__inner{padding-left:var(--container-padding-phone,16px);padding-right:var(--container-padding-phone,16px)}}</style>"
 )
 
 
@@ -323,6 +337,8 @@ def _band_parts(context) -> tuple[str, str]:
 			"template": template,
 			"background": background,
 			"fill": _fill(background, config),
+			# //// Neoffice — the trail's side of the title (see BELOW_TITLE)
+			"crumbs_below": _trail_below(config),
 			"on_dark": background in _DARK_BACKGROUNDS,
 			# custom properties already checked by _page_fonts
 			"fonts": context.get("page_fonts") or "",
@@ -763,11 +779,12 @@ _CRUMBS_CSS = (
 	"font-family:var(--sph-body-font,inherit);font-size:.8125rem;font-weight:400;line-height:1.5;"
 	"letter-spacing:normal;text-transform:none}.site-page-crumbs a{color:inherit;"
 	"text-decoration:none}.site-page-crumbs a:hover{text-decoration:underline}"
-	".site-page-crumbs__sep{opacity:.6}</style>"
+	".site-page-crumbs__sep{opacity:.6}.site-page-crumbs--above{margin:0 0 .5em}</style>"
 )
 # a title set to the centre or the right keeps its trail under it
 _CRUMBS_ALIGN = {"center": "center", "right": "flex-end", "end": "flex-end"}
 _TITLE_END = re.compile(r"</h1\s*>", re.I)
+_TITLE_START = re.compile(r"<h1\b", re.I)
 # an element with nothing inside: the rule drawn under a title, a thin box or an hr
 _EMPTY_ELEMENT = re.compile(r"\s*(?:<hr\b[^>]*>|<(div|span)\b[^>]*>\s*</\1\s*>)", re.I)
 _RULE_HEIGHT = re.compile(r"^\s*(\d+(?:\.\d+)?)px\s*$")
@@ -849,6 +866,12 @@ def _crumbs_style(title, line) -> str:
 	return (f"color:{colour};" if colour else "") + (f"justify-content:{align};" if align else "")
 
 
+def _before_title(content: str) -> int:
+	"""Where a trail set above the title goes: at the start of the title's own element."""
+	start = _TITLE_START.search(content)
+	return start.start() if start else -1
+
+
 def _after_title(content: str, rules: int) -> int:
 	"""Where the trail goes in a page's markup: after its first h1 and the `rules` empty elements right
 	under it; -1 when the markup has no h1."""
@@ -887,7 +910,8 @@ def place_page_crumbs(content: str, doc) -> str:
 	if not _opens_with_own_title(blocks):
 		return content
 	heading, rules, line = _title_and_rules(blocks)
-	at = _after_title(content, rules)
+	below = _trail_below(config)
+	at = _after_title(content, rules) if below else _before_title(content)
 	if at < 0:
 		return content
 	# the page closes its trail on the title the band would print (see _band_parts)
@@ -903,7 +927,8 @@ def place_page_crumbs(content: str, doc) -> str:
 	style = _crumbs_style(heading, line) + _page_fonts(blocks)
 	style_attr = f' style="{style}"' if style else ""
 	label = escape_html(_("Breadcrumb"))
-	nav = f'<nav class="site-page-crumbs" aria-label="{label}"{style_attr}>{links}{current}</nav>'
+	side = "" if below else " site-page-crumbs--above"
+	nav = f'<nav class="site-page-crumbs{side}" aria-label="{label}"{style_attr}>{links}{current}</nav>'
 	return content[:at] + _CRUMBS_CSS + nav + content[at:]
 
 
@@ -976,14 +1001,15 @@ def default_band_block(prefix: str = "") -> dict:
 				"paddingRight": "var(--container-padding-phone, 16px)",
 			},
 			"children": [
-				{"blockId": uid(), "element": "nav", "blockName": "trail", "innerHTML": trail,
-				 "attributes": {"aria-label": "Breadcrumb"},
-				 "baseStyles": {**text, "fontSize": "13px", "opacity": "0.7"}, "children": []},
 				{"blockId": uid(), "element": "h1", "blockName": "title", "innerHTML": "Page title",
 				 "baseStyles": {"margin": "0", "fontSize": "clamp(2rem, 1.2rem + 2.4vw, 3.2rem)", "lineHeight": "1.1",
 				                "color": token("text", "#111111"), "fontFamily": token("font-heading", "inherit")},
 				 "dynamicValues": [{"key": "page_title", "property": "innerHTML", "type": "key", "comesFrom": "dataScript"}],
 				 "children": []},
+				# //// Neoffice — under the title, the default side of a trail (BELOW_TITLE)
+				{"blockId": uid(), "element": "nav", "blockName": "trail", "innerHTML": trail,
+				 "attributes": {"aria-label": "Breadcrumb"},
+				 "baseStyles": {**text, "fontSize": "13px", "opacity": "0.7"}, "children": []},
 				{"blockId": uid(), "element": "p", "blockName": "subtitle", "innerHTML": "One line under the title.",
 				 "baseStyles": {**text, "margin": "0", "maxWidth": "62ch", "fontSize": "17px", "lineHeight": "1.6", "opacity": "0.8"},
 				 "dynamicValues": [{"key": "page_subtitle", "property": "innerHTML", "type": "key", "comesFrom": "dataScript"}],

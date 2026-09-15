@@ -99,7 +99,8 @@ CHROME_READ_FIELDS = (
     "cta_url", "cta_style", "search_type", "show_user", "show_wishlist", "show_cart", "footer_template",
     "footer_menu_source", "footer_description", "copyright_text", "show_social_links", "facebook_url", "instagram_url",
     "linkedin_url", "youtube_url", "twitter_url", "show_newsletter", "newsletter_title", "show_opening_hours",
-    "opening_hours_display", "show_breadcrumbs", "page_header_template", "menu_items", "footer_links",
+    "opening_hours_display", "show_breadcrumbs", "breadcrumb_position", "page_header_template", "menu_items",
+    "footer_links",
 )
 
 

@@ -62,8 +62,15 @@ def trail_of(html):
 
 def nav_of(html):
 	"""The trail a page draws under its own title, or None."""
-	found = re.search(r'<nav class="site-page-crumbs".*?</nav>', html, re.S)
+	found = re.search(r'<nav class="site-page-crumbs[^"]*".*?</nav>', html, re.S)
 	return found.group(0) if found else None
+
+
+def band_classes(html):
+	"""The classes the band's section wears. Read from the tag, never from the stylesheet it
+	carries: that names every class the band can ever wear."""
+	found = re.search(r'<section class="([^"]+)"', html)
+	return found.group(1).split() if found else []
 
 
 def component_reader(block_json):
@@ -388,6 +395,37 @@ class TestPageTop(unittest.TestCase):
 		self.assertIn("&lt;script&gt;", nav)
 		leaking = page(section(text("h1", "T", color="red;background:url(//x.test/a.png)")))
 		self.assertNotIn("url(", nav_of(self.placed(leaking, content="<h1>T</h1>", title="T", route="t")))
+
+	def test_the_trail_sits_under_the_title_on_both_sides_of_the_chrome(self):
+		"""A trail belongs under the title it names, in the band as in a page's own top. A site may set
+		it above: a deep catalogue uses the trail before it reads the title (2026-09-15)."""
+		band = self.band(CONTENT_FIRST)
+		self.assertIn("site-page-header--trail-below", band_classes(band))
+		self.assertLess(
+			band.index('<h1 class="site-page-header__title"'), band.index('<nav class="site-page-header__crumbs"')
+		)
+		page = self.placed(OWN_TOP)
+		self.assertLess(page.index("<h1"), page.index('<nav class="site-page-crumbs"'))
+
+	def test_a_site_can_put_the_trail_above_the_title(self):
+		band = self.band(CONTENT_FIRST, breadcrumb_position=page_header.ABOVE_TITLE)
+		self.assertNotIn("site-page-header--trail-below", band_classes(band))
+		self.assertLess(
+			band.index('<nav class="site-page-header__crumbs"'), band.index('<h1 class="site-page-header__title"')
+		)
+		page = self.placed(OWN_TOP, breadcrumb_position=page_header.ABOVE_TITLE)
+		self.assertIn('<nav class="site-page-crumbs site-page-crumbs--above"', page)
+		self.assertLess(page.index('<nav class="site-page-crumbs'), page.index("<h1"))
+		# the page keeps its own opening whichever side the trail is on
+		self.assertEqual(1, page.count("<h1"))
+
+	def test_the_starting_component_opens_on_the_title(self):
+		"""The component a site starts from follows the same order: title, trail, subtitle."""
+		import json as _json
+
+		flat = _json.dumps(page_header.default_band_block("xx"))
+		self.assertLess(flat.index('"blockName": "title"'), flat.index('"blockName": "trail"'))
+		self.assertLess(flat.index('"blockName": "trail"'), flat.index('"blockName": "subtitle"'))
 
 	def test_the_404_draws_no_trail(self):
 		"""A wrong address read "Home > Shop > Page not found": frappe's web.html drew the shop's breadcrumb

@@ -56,6 +56,8 @@ SIMPLE_FIELDS = (
 	"page_header_image",
 	"page_header_excluded_routes",
 	"show_breadcrumbs",
+	# //// Neoffice — which side of the title the trail sits on (page_header.BELOW_TITLE)
+	"breadcrumb_position",
 	"blog_layout",
 	"blog_post_layout",
 	"blog_allow_comments",
@@ -107,6 +109,7 @@ OPTION_FIELDS = (
 	"cta_style",
 	"cta_audience",
 	"cart_audience",
+	"breadcrumb_position",
 	"search_type",
 	"footer_template",
 	"footer_menu_source",

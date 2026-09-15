@@ -97,6 +97,7 @@
   "page_header_image",
   "page_header_excluded_routes",
   "show_breadcrumbs",
+  "breadcrumb_position",
   "blog_section",
   "blog_layout",
   "blog_post_layout",
@@ -1006,6 +1007,15 @@
    "fieldtype": "Check",
    "label": "Breadcrumbs",
    "default": "1"
+  },
+  {
+   "fieldname": "breadcrumb_position",
+   "fieldtype": "Select",
+   "label": "Breadcrumb Position",
+   "options": "Below the title\nAbove the title",
+   "default": "Below the title",
+   "depends_on": "show_breadcrumbs",
+   "description": "Where the trail sits in the page top. A page that opens on its own title carries it there too."
   },
   {
    "fieldname": "ai_brief",
