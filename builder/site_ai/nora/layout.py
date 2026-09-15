@@ -652,7 +652,8 @@ def _wheel_container(grid: dict) -> None:
 	grid.pop("isRepeaterBlock", None)
 	grid.pop("dataKey", None)
 	base.update({
-		"position": "relative", "width": "min(560px, 100%)", "aspectRatio": "1",
+		# the circle is the piece of the section, not a medallion in a corner
+		"position": "relative", "width": "min(720px, 100%)", "aspectRatio": "1",
 		"marginLeft": "auto", "marginRight": "auto", "borderRadius": "50%",
 		"overflow": "hidden", "background": "#ffffff",
 	})
@@ -688,7 +689,61 @@ def category_wheel(blocks: list, category_photos: dict, hub_image: str = "", dat
 	if not candidates:
 		return 0
 	_named, grid, parts = next((c for c in candidates if c[0]), candidates[0])
+	labels = {_plain(label) for label, _styles, _photo, _url in parts}
 	grid["children"] = _wheel_children(parts, hub_image)
 	_wheel_container(grid)
+	_clear_around_the_wheel(blocks, grid, labels)
 	return 1
+
+
+def _decoration(block: dict) -> bool:
+	"""A box drawn for the eye alone and as large as the circle: no words, no picture, no children."""
+	if block.get("children") or _plain(block.get("innerHTML") or "") or _tile_photo(block):
+		return False
+	styles = block.get("baseStyles") or {}
+	sizes = [str(styles.get(key) or "") for key in ("width", "height", "minHeight")]
+	return any(re.match(r"^\s*([3-9]\d{2}|\d{4,})px", value) or re.match(r"^\s*([4-9]\d|100)v[wh]", value) for value in sizes)
+
+
+def _clear_around_the_wheel(blocks: list, wheel: dict, labels: set) -> None:
+	"""What the circle now says, said a second time beside it, goes.
+
+	A page that composes the categories itself draws the same idea twice: a large empty circle
+	behind, a ring of the category names around it, and the tiles this pass turns into the circle
+	(2026-09-15). The names are on the parts, and the circle is the drawing: the decoration and the
+	ring of names are removed from the section the wheel sits in."""
+	parents = {}
+	stack = [(b, None) for b in blocks if isinstance(b, dict)]
+	while stack:
+		node, parent = stack.pop()
+		parents[id(node)] = parent
+		for child in node.get("children") or []:
+			if isinstance(child, dict):
+				stack.append((child, node))
+	section, node = None, wheel
+	while node is not None:
+		parent = parents.get(id(node))
+		if parent is not None and str(parent.get("element") or "").lower() == "section":
+			section = parent
+			break
+		node = parent
+	section = section or parents.get(id(wheel))
+	if section is None:
+		return
+	inside = {id(block) for block in _walk([wheel])}
+	for parent in _walk([section]):
+		# the parts of the circle carry the names: nothing is cleared inside it
+		if id(parent) in inside:
+			continue
+		kept = []
+		for child in parent.get("children") or []:
+			if not isinstance(child, dict) or child is wheel or any(wheel is b for b in _walk([child])):
+				kept.append(child)
+				continue
+			words = {_plain(t["innerHTML"]) for t in _texts(child)}
+			ring = bool(words) and words <= labels and not _tile_photo(child)
+			if _decoration(child) or ring:
+				continue
+			kept.append(child)
+		parent["children"] = kept
 

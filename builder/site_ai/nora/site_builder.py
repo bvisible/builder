@@ -1401,7 +1401,14 @@ def apply_navigation(config, created: list[dict], site_type: str, description: s
             home = page["route"] in ("/", "/home", "/index")
             config.append("footer_links", {"column_name": _("Navigation", lang=lang), "label": _("Home", lang=lang) if home else page["title"], "url": "/" if home else page["route"]})
     config.save(ignore_permissions=True)
-    home_name = next((p["name"] for p in created if p["route"] in ("/", "/home", "/index")), None)
+    # //// Neoffice — the home is known by what it was planned as, not only by the route it got
+    # //// (2026-09-15): a home written beside one that was kept takes a hashed route ("home-b059"),
+    # //// which matched none of these, so the profile was never told its home page and the site
+    # //// served the instance's default page at its root.
+    home_name = next(
+        (p["name"] for p in created if p["route"] in ("/", "/home", "/index") or str(p.get("planned") or "") in ("", "home", "index")),
+        None,
+    )
     if profile and frappe.db.exists("DocType", "Website Profile"):
         if home_name:
             frappe.db.set_value("Website Profile", profile, "home_page", home_name)

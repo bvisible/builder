@@ -470,6 +470,32 @@ class TestCategoryWheel(unittest.TestCase):
 		self.assertLess(x, 50)
 		self.assertGreater(y, 50)
 
+	def test_what_the_circle_says_is_not_said_twice_beside_it(self):
+		"""A page that composes the categories itself draws a large empty circle and a ring of the
+		names around it; the tiles become the circle, and those two go (2026-09-15)."""
+		section = {
+			"element": "section",
+			"baseStyles": {},
+			"children": [
+				box(baseStyles=None, width="640px", height="640px") if False else {"element": "div", "baseStyles": {"width": "640px", "height": "640px"}, "children": []},
+				box(
+					box(*[text("span", name) for name in self.NAMES]),
+					self.tiles(),
+				),
+			],
+		}
+		page = [section]
+		self.assertEqual(1, category_wheel(page, {}))
+		kept = section["children"]
+		# the decoration is gone, the inner box stays because the circle is inside it
+		self.assertEqual(1, len(kept))
+		inner = kept[0]
+		self.assertEqual(1, len(inner["children"]))
+		wheel = inner["children"][0]
+		self.assertEqual("50%", wheel["baseStyles"]["borderRadius"])
+		self.assertEqual("min(720px, 100%)", wheel["baseStyles"]["width"])
+		self.assertEqual(self.NAMES, [p["children"][0]["innerHTML"] for p in wheel["children"]])
+
 	def test_a_grid_it_cannot_draw_is_left_alone(self):
 		flat = [self.tiles(photos=False)]
 		self.assertEqual(0, category_wheel(flat, {}))
