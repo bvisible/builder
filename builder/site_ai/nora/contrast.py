@@ -382,36 +382,56 @@ SCRIM_MIN_RATIO = 3.0
 
 
 def read_over_photos(blocks: list[dict], palette: dict[str, str]) -> list[str]:
-    """Inside a section carrying the design system's scrim, dark copy takes the reading ink.
+    """Inside a section carrying the design system's scrim, copy reads on the scrim.
 
     The scrim darkens the picture so white copy reads over it (veil_copy_on_photos). A hero
-    whose heading was white therefore read, while its "Shop now" link, written black, was
-    invisible on the photograph under it — repair_contrast could not see it either, because a
-    section wearing a photograph has no background colour to judge against (its picture is an
-    absolutely-positioned child). Judged against the scrim instead: any colour that would not
-    read on it takes SCRIM_INK. A block painting its own opaque background is a card sitting on
-    the picture and keeps its own colours. Returns one line per repair."""
-    ink = parse_color(SCRIM_INK, palette) or (255.0, 255.0, 255.0, 1.0)
+    whose heading was written white therefore read, while its "Shop now" link, which declared no
+    colour at all, inherited the page's near-black ink and was invisible on the photograph under
+    it (2026-09-15). repair_contrast could not see either of them: a section wearing a photograph
+    has no background colour to judge against, its picture being an absolutely-positioned child.
+
+    So the SECTION is given the reading ink, and everything in it inherits — except a block that
+    paints its own opaque background, which is a card sitting on the picture: that one is given a
+    colour that reads on its own fill instead, and is not walked into. A block that declares a
+    colour of its own keeps it when it reads on the scrim, and takes the ink when it does not.
+    Returns one line per repair."""
     # the scrim is a dark wash: judged against black, which is what the copy sits on at its worst
     scrim = (0.0, 0.0, 0.0, 1.0)
     fixes: list[str] = []
 
-    def paints_itself(block: dict) -> bool:
-        raw = str((block.get("baseStyles") or {}).get("backgroundColor") or (block.get("baseStyles") or {}).get("background") or "")
-        if not raw or raw.strip().lower() in ("transparent", "none", "inherit"):
-            return False
-        return "gradient" not in raw and not ("rgba(" in raw and not raw.strip().endswith(", 1)"))
+    def label(block: dict) -> str:
+        text = re.sub(r"<[^>]+>", " ", str(block.get("innerHTML") or ""))
+        return " ".join(text.split())[:40] or (block.get("element") or "block")
+
+    def own_background(block: dict) -> Color | None:
+        styles = block.get("baseStyles") or {}
+        raw = str(styles.get("backgroundColor") or styles.get("background") or "")
+        if not raw or raw.strip().lower() in ("transparent", "none", "inherit") or "gradient" in raw:
+            return None
+        colour = parse_color(raw, palette)
+        return colour if colour is not None and (len(colour) < 4 or colour[3] >= 0.9) else None
+
+    def set_ink(block: dict, value: str, why: str) -> None:
+        styles = block.get("baseStyles") or {}
+        if str(styles.get("color") or "") == value:
+            return
+        styles["color"] = value
+        block["baseStyles"] = styles
+        fixes.append(f"'{label(block)}': {why} -> {value}")
 
     def repair(block: dict) -> None:
-        if paints_itself(block) or _covering_picture(block) or _veil(block):
+        if _covering_picture(block) or _veil(block):
             return
-        styles = block.get("baseStyles") or {}
-        colour = parse_color(styles.get("color"), palette)
+        background = own_background(block)
+        if background is not None:
+            # a card sitting on the picture: it reads on its own fill, not on the scrim
+            if not (block.get("baseStyles") or {}).get("color"):
+                handle, _colour = best_text(background, palette)
+                set_ink(block, handle, "a card on a photograph takes a colour that reads on itself")
+            return
+        colour = parse_color((block.get("baseStyles") or {}).get("color"), palette)
         if colour is not None and contrast(colour, scrim) < SCRIM_MIN_RATIO:
-            styles["color"] = SCRIM_INK
-            block["baseStyles"] = styles
-            text = re.sub(r"<[^>]+>", " ", str(block.get("innerHTML") or ""))
-            fixes.append(f"'{' '.join(text.split())[:40]}': dark copy on a scrim -> {SCRIM_INK}")
+            set_ink(block, SCRIM_INK, "dark copy on a scrim")
         for child in block.get("children") or []:
             if isinstance(child, dict):
                 repair(child)
@@ -420,6 +440,9 @@ def read_over_photos(blocks: list[dict], palette: dict[str, str]) -> list[str]:
         if not isinstance(block, dict):
             return
         if any(c.startswith(VEILED[0]) for c in _classes(block)):
+            colour = parse_color((block.get("baseStyles") or {}).get("color"), palette)
+            if colour is None or contrast(colour, scrim) < SCRIM_MIN_RATIO:
+                set_ink(block, SCRIM_INK, "copy inside a scrim inherits the page's ink")
             for child in block.get("children") or []:
                 if isinstance(child, dict):
                     repair(child)
@@ -430,7 +453,6 @@ def read_over_photos(blocks: list[dict], palette: dict[str, str]) -> list[str]:
     for block in blocks or []:
         walk(block)
     return fixes
-# //// Neoffice ▲▲▲
 
 
 def scrim_ink_for_render(blocks):

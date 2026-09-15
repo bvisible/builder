@@ -700,19 +700,33 @@ class TestReadOverPhotos(unittest.TestCase):
 		link = {"element": "a", "innerHTML": "Shop now", "baseStyles": {"color": "#000000"}}
 		title = {"element": "h1", "innerHTML": "The shop", "baseStyles": {"color": "#ffffff"}}
 		blocks = [self.hero(title, link)]
-		fixes = read_over_photos(blocks, self.PALETTE)
-		self.assertEqual(1, len(fixes))
+		read_over_photos(blocks, self.PALETTE)
 		self.assertEqual("#ffffff", link["baseStyles"]["color"])
 		self.assertEqual("#ffffff", title["baseStyles"]["color"])
 
-	def test_a_card_painting_its_own_background_keeps_its_colours(self):
+	# //// Neoffice — the link that was actually invisible declared NO colour at all (2026-09-15):
+	# //// it inherited the page's near-black ink. The section carries the ink so everything in it
+	# //// inherits the right one.
+	def test_copy_that_declares_no_colour_stops_inheriting_the_page_ink(self):
+		from builder.site_ai.nora.contrast import read_over_photos
+
+		link = {"element": "a", "innerHTML": "Shop now"}
+		section = self.hero({"element": "div", "children": [link]})
+		fixes = read_over_photos([section], self.PALETTE)
+		self.assertEqual(1, len(fixes))
+		self.assertEqual("#ffffff", section["baseStyles"]["color"])
+		self.assertNotIn("color", link.get("baseStyles") or {})
+
+	def test_a_card_painting_its_own_background_reads_on_its_own_fill(self):
 		from builder.site_ai.nora.contrast import read_over_photos
 
 		card = {"element": "div", "baseStyles": {"backgroundColor": "#ffffff"}, "children": [
-			{"element": "p", "innerHTML": "Читать", "baseStyles": {"color": "#111111"}},
+			{"element": "p", "innerHTML": "Une carte", "baseStyles": {"color": "#111111"}},
 		]}
 		blocks = [self.hero(card)]
-		self.assertEqual([], read_over_photos(blocks, self.PALETTE))
+		read_over_photos(blocks, self.PALETTE)
+		# the card takes a colour that reads on white, and its own copy is left alone
+		self.assertIn("color", card["baseStyles"])
 		self.assertEqual("#111111", card["children"][0]["baseStyles"]["color"])
 
 	# //// Neoffice — added test (2026-09-15): the render half, for pages written before the rule.
@@ -744,4 +758,11 @@ class TestReadOverPhotos(unittest.TestCase):
 		plain = {"element": "section", "children": [{"element": "p", "innerHTML": "Hi", "baseStyles": {"color": "#000000"}}]}
 		self.assertEqual([], read_over_photos([plain], self.PALETTE))
 		self.assertEqual("#000000", plain["children"][0]["baseStyles"]["color"])
+
+	def test_a_scrim_already_carrying_the_ink_is_not_repaired_twice(self):
+		from builder.site_ai.nora.contrast import read_over_photos
+
+		section = self.hero({"element": "a", "innerHTML": "Shop now"})
+		section["baseStyles"] = {"color": "#ffffff"}
+		self.assertEqual([], read_over_photos([section], self.PALETTE))
 
