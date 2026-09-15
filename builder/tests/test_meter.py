@@ -58,3 +58,19 @@ class TestMeter(unittest.TestCase):
 
 	def test_an_empty_span_gives_no_summary_line(self):
 		self.assertEqual("", meter.summary_line(meter.read()))
+
+	def test_the_ceiling_answers_only_when_a_budget_is_set(self):
+		from unittest.mock import patch
+
+		import frappe
+
+		meter.start()
+		with meter.kind(meter.WRITING):
+			meter.add("kimi", usage(600000, 100000))
+		with patch.dict(frappe.conf, {"nora_build_token_budget": 0}):
+			self.assertEqual(0, meter.over_budget())
+		with patch.dict(frappe.conf, {"nora_build_token_budget": 1000}):
+			self.assertEqual(0, meter.over_budget())
+		with patch.dict(frappe.conf, {"nora_build_token_budget": 500}):
+			self.assertEqual(200, meter.over_budget())
+

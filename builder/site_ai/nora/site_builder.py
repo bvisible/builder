@@ -2051,6 +2051,8 @@ def build_site(ctx, spec: dict) -> str:
     created, failed, cancelled = [], [], False
     # //// Neoffice — what the reviewer already read, and the page's state when it did (2026-09-15)
     reviewed_already: dict[str, dict] = {}
+    # //// Neoffice — the page at which the token budget was passed, if it was (meter.over_budget)
+    over_budget_at = ""
 
     # //// Neoffice — image generation was switched off (the pictures were not good enough):
     # //// gates the neutral-SVG fallback below (65d8f360 "fix(nora): cards never stack in a column, and photo slots without photos are plain blocks")
@@ -2325,6 +2327,12 @@ def build_site(ctx, spec: dict) -> str:
         if ctx.is_cancelled():
             cancelled = True
             break
+        # //// Neoffice — the token ceiling stops the build BEFORE the next page, not in the middle
+        # //// of one (meter.over_budget, 2026-09-15): what is written stays, the chrome and the menu
+        # //// are still set below, and the summary names the page it stopped at.
+        if over_budget_at:
+            failed.append({"title": page["title"], "error": "the build's token budget was passed"})
+            continue
         _progress(ctx, job_id, _("Writing page {0} of {1}: {2}").format(idx + 1, total, page["title"]), 10 + int(80 * idx / max(total, 1)), {"current_page": page["title"], "pages_created": created})
         page_photos, page_notes = photos_for_page(page, client_photos, photos_used, categories, copy_density == "minimal", listing=page["route"] == lister_route)
         blocks, data_script, error = write_page(page, page_photos or placeholder_photos(page, activity, categories, listing=page["route"] == lister_route), notes=page_notes or None)
@@ -2340,6 +2348,11 @@ def build_site(ctx, spec: dict) -> str:
         name, route = _write_page(page, blocks, data_script, profile, use_host, _describe(blocks))
         planned_photos[name] = (page_photos, page_notes)
         created.append({"name": name, "title": page["title"], "route": f"/{route}", "planned": page["route"]})
+        # //// Neoffice — the ceiling, checked between pages (builder/ai/meter.py, 2026-09-15): the
+        # //// build finishes what it has rather than dying, and says so in its summary.
+        if (over := meter.over_budget()) and not over_budget_at:
+            over_budget_at = page["title"]
+            ai_log("warning", "Token budget passed", page=page["title"], over_by_k=over)
         ai_log("info", "Page written", page=page["title"], name=name, route=route, model=page_model)
         # //// Neoffice — the root follows the new home at once (see point_home_at): the old one was
         # //// deleted at the start of the build, and until this was set the site served the
@@ -2543,6 +2556,11 @@ def build_site(ctx, spec: dict) -> str:
     # //// Neoffice — what it cost, in the summary the operator reads (2026-09-15): four full
     # //// rebuilds emptied a prepaid balance in a day and nothing anywhere said where it went.
     spent = meter.stop()
+    if over_budget_at:
+        lines.append(
+            f"The build stopped writing new pages after '{over_budget_at}': it passed the token budget set "
+            "for this site (nora_build_token_budget in site_config). Raise it, or build the rest in a second run."
+        )
     if line := meter.summary_line(spent):
         lines.append(line)
         ai_log("info", "Build spend", **{k: v for k, v in spent.items() if k != "by_kind"}, by_kind=spent.get("by_kind"))

@@ -101,3 +101,25 @@ def summary_line(span: dict) -> str:
 		f"This build made {span['calls']} model call(s): {k(span['prompt'])} tokens in, "
 		f"{k(span['completion'])} out" + (f" ({detail})." if detail else ".")
 	)
+
+
+# //// Neoffice — a ceiling, because a counter that only reports is a counter you read after the
+# //// fact. `nora_build_token_budget` in site_config, in thousands of tokens; 0 or absent means no
+# //// ceiling. The build checks it between pages and stops writing new ones, finishing what it has
+# //// rather than dying: a site with four good pages beats a crash at page five.
+def over_budget() -> int:
+	"""How many thousand tokens the open span is over its budget, 0 while inside it."""
+	span = _span()
+	if not span:
+		return 0
+	try:
+		import frappe
+
+		budget = int(frappe.utils.cint(frappe.conf.get("nora_build_token_budget") or 0))
+	except Exception:
+		return 0
+	if budget <= 0:
+		return 0
+	spent = round((span["prompt"] + span["completion"]) / 1000)
+	return max(0, spent - budget)
+
