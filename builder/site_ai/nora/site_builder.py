@@ -1760,7 +1760,9 @@ def build_site(ctx, spec: dict) -> str:
     config.cta_text, config.cta_url = cta
     if primary and hasattr(config, "cta_button_color"):
         config.cta_button_color = primary
-    config.menu_items = []
+    # //// Neoffice — the menu is NOT emptied here (2026-09-15): a rebuild takes twenty-five
+    # //// minutes, and for all of them the live site showed a header with no menu at all.
+    # //// apply_navigation replaces it in one go at the end, when the new pages exist.
     config.save(ignore_permissions=True)
     frappe.db.commit()
 
