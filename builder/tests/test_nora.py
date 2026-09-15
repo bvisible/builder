@@ -532,6 +532,41 @@ class TestShopIncludes(unittest.TestCase):
 			self.assertEqual([("/terms-conditions", "Terms & Conditions")], legal_pages("A Storefront"))
 			self.assertEqual(["privacy"], missing_legal_pages("A Storefront"))
 
+	# //// Neoffice — added test (2026-09-15): the footer keeps a mark of its own.
+	def test_a_footer_mark_of_its_own_survives_a_rebuild(self):
+		from unittest.mock import MagicMock
+
+		from builder.site_ai.nora.site_builder import apply_navigation
+
+		created = [{"name": "p1", "title": "Home", "route": "/"}]
+
+		def build(footer_mark):
+			config = MagicMock()
+			stored = {"logo_type": "Image", "logo_image": "/files/wordmark.png", "logo_text": "A Shop", "footer_logo_image": footer_mark}
+			config.get.side_effect = stored.get
+			config.set.side_effect = lambda field, value: stored.__setitem__(field, value)
+			config.menu_items = []
+			config.footer_links = []
+			config.append.side_effect = lambda field, row: None
+			with patch("builder.site_ai.nora.site_builder._other_business", return_value=False), patch(
+				"builder.site_ai.nora.site_builder._profile_is_b2b", return_value=False
+			), patch("builder.site_ai.nora.site_builder._profile_sells", return_value=True), patch(
+				"builder.site_ai.nora.site_builder.legal_pages", return_value=[]
+			), patch("builder.site_ai.nora.site_builder.frappe") as mock_frappe:
+				mock_frappe.get_installed_apps.return_value = ["frappe", "builder", "webshop"]
+				apply_navigation(config, created, "ecommerce", "a shop", "A Storefront", "en")
+			return stored
+
+		# a mark chosen for the footer is left alone
+		self.assertEqual("/files/emblem.png", build("/files/emblem.png")["footer_logo_image"])
+		# without one, the footer wears the header's
+		self.assertEqual("/files/wordmark.png", build(None)["footer_logo_image"])
+
+	def test_the_build_takes_a_second_mark_for_the_footer(self):
+		from builder.site_ai.nora.tools import generate_site
+
+		self.assertIn("footer_logo_image", generate_site.parameters["properties"])
+
 	# //// Neoffice — added tests (2026-09-15): a shop is built WITH its legal pages, they are
 	# //// written as prose, and they stay out of the menu.
 	def test_a_shop_is_planned_with_the_legal_pages_it_lacks(self):

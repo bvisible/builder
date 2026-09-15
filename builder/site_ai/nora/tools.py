@@ -58,6 +58,10 @@ generate_site = Tool(
             "secondary_color": {"type": "string", "description": "Hex colour, optional."},
             "style_direction": {"type": "string", "description": "The layout direction the user picked, in a few words (e.g. 'editorial grid, calm', 'bold poster')."},
             "logo_image": {"type": "string", "description": "Site file URL of the uploaded logo (/files/...), if any."},
+            # //// Neoffice — the footer's own mark (2026-09-15): brands hand out two files, the
+            # //// wordmark for the header and an emblem or a monochrome version for the foot. The
+            # //// build used to copy the header's over the footer at every rebuild.
+            "footer_logo_image": {"type": "string", "description": "Site file URL of a SECOND mark for the footer, when the client has one (an emblem, a monogram, a monochrome version). Leave it out and the footer reuses the header's."},
             # //// Neoffice — inspiration bounds widened from 3 to 8 (a screenshot and a colour
             # //// count are cheap), and two new fields: `photos` for the client's own pictures
             # //// to place in the pages, `palette_mode` for an explicit "no colour" direction

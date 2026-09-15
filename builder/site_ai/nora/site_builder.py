@@ -1613,6 +1613,7 @@ def build_site(ctx, spec: dict) -> str:
     primary = (spec.get("primary_color") or "").strip() or None
     secondary = (spec.get("secondary_color") or "").strip() or None
     logo_image = clean_logo(spec.get("logo_image"))
+    footer_logo_image = clean_logo(spec.get("footer_logo_image"))
     # //// Neoffice — a shop is built with its legal pages (2026-09-15): the first storefront the
     # //// pipeline produced had neither terms nor a privacy policy, and a shop without them cannot
     # //// trade. They are planned here, written by the page loop like any other page, and the
@@ -1691,6 +1692,13 @@ def build_site(ctx, spec: dict) -> str:
     config.logo_text = site_name
     if hasattr(config, "footer_logo_text"):
         config.footer_logo_text = site_name
+    # //// Neoffice — the footer's own mark (2026-09-15): a brand hands out two files, the wordmark
+    # //// for the header and an emblem or a monochrome version for the foot. Set here, apply_navigation
+    # //// leaves it alone (own_mark) instead of copying the header's over it at every rebuild.
+    if footer_logo_image and hasattr(config, "footer_logo_image"):
+        config.footer_logo_type = "Image"
+        config.footer_logo_image = footer_logo_image
+        config.show_footer_logo = True
     # the newsletter strings the Variant still carries as English defaults go blank:
     # footer.html translates an empty field in the visitor's language ("Subscribe to
     # our newsletter" sat on the French B2C footer, 2026-09-08)
