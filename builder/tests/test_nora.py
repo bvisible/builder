@@ -470,6 +470,30 @@ class TestShopIncludes(unittest.TestCase):
 		self.assertNotIn("/all-products", build(secondary=True))
 		self.assertIn("/all-products", build(secondary=False))
 
+	# //// Neoffice — added test (2026-09-15): a B2C storefront of the instance's own business gets
+	# //// the shop in its menu whatever the site type the model chose (see _profile_sells).
+	def test_a_b2c_storefront_gets_the_shop_entry(self):
+		from unittest.mock import MagicMock
+
+		from builder.site_ai.nora.site_builder import apply_navigation
+
+		created = [{"name": "p1", "title": "Home", "route": "/"}, {"name": "p2", "title": "About", "route": "/about"}]
+
+		def build(sells):
+			config = MagicMock()
+			config.get.return_value = None
+			with patch("builder.site_ai.nora.site_builder._other_business", return_value=False), patch(
+				"builder.site_ai.nora.site_builder._profile_is_b2b", return_value=False
+			), patch("builder.site_ai.nora.site_builder._profile_sells", return_value=sells), patch(
+				"builder.site_ai.nora.site_builder.frappe"
+			) as mock_frappe:
+				mock_frappe.get_installed_apps.return_value = ["frappe", "builder", "webshop"]
+				apply_navigation(config, created, "vitrine", "boardsport store", "A Storefront", "en")
+			return [(c.args[1]["label"], c.args[1]["url"]) for c in config.append.call_args_list if c.args[0] == "menu_items"]
+
+		self.assertEqual("/all-products", build(sells=True)[0][1])
+		self.assertNotIn("/all-products", [url for _, url in build(sells=False)])
+
 	# //// Neoffice — added test (5efa79d1 "feat(nora): a B2B site is a shop window, and
 	# //// frappe's pages read on a dark site"): covers apply_navigation's new Catalogue
 	# //// branch for a B2B or login-gated profile.

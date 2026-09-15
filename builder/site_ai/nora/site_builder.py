@@ -79,17 +79,40 @@ SECTION_PLANS = {
 # //// consume through the image" still got the standard plan above: value propositions
 # //// with icons, testimonials, an about teaser, every one of them a paragraph
 # //// (2026-09-10). These plans build the same pages out of pictures.
+# //// Neoffice — few words is not few shapes (2026-09-15). These plans were a stack of full-bleed
+# //// photographs with a black bar under each name, on every page: "c'est comme si on n'avait jamais
+# //// travaillé sur une cohérence graphique". The copy stays minimal; the composition comes back —
+# //// tiles of unequal weight, a two-column band, a quiet strip — and a name sits ON its photograph.
 IMAGE_LED_PLANS = {
     "accueil": [
         "hero: one full-bleed photograph, the site's name or promise in two to five words over it, one button",
-        "the categories, segments or collections the activity names, one full-bleed photo tile each, its name only (one or two words) as the link",
-        "one wide photograph with a single short line (at most twelve words)",
+        "the categories, segments or collections the activity names, as photo tiles of unequal weight — one large "
+        "beside smaller ones — each showing its name ON the photograph over a veil, never in a bar under it",
+        "a two-column band: a statement of three to eight words in large type on one side, one photograph on the other",
+        "the brands the brief names, as one quiet row of their names (no such section when it names none)",
+        "one wide photograph with a single short line over it (at most twelve words)",
         "a closing band: one line and one button",
     ],
-    "shop": ["the collections as full-bleed photo tiles, their name only", "a strip of products", "one line and a button"],
-    "about": ["one large photograph and three short lines on who they are", "a strip of photographs", "one line and a button"],
+    "shop": [
+        "the collections as photo tiles of unequal weight, each name ON its photograph",
+        "a strip of products",
+        "a two-column band: one short line beside one photograph",
+        "one line and a button",
+    ],
+    "about": [
+        "one large photograph of the people, with the name or one short line over it",
+        "two columns: three short lines on who they are on one side, one photograph on the other",
+        "the categories or segments the brief names, one photo tile each, the name ON the photograph",
+        "a quiet strip: the brands the brief names, or three short facts it gives (nothing invented; none given: no such section)",
+        "one line and a button",
+    ],
     "contact": ["the contact details from BUSINESS DATA, verbatim, with no introduction", "a contact form: name, email, message, one submit button"],
-    "generic": ["one large photograph with the page's point in one line", "the content as photo tiles with short captions", "one line and a button"],
+    "generic": [
+        "one large photograph with the page's point in one line over it",
+        "the content as photo tiles with short captions, each caption ON its photograph",
+        "a two-column band: one short line beside one photograph",
+        "one line and a button",
+    ],
 }
 # //// Neoffice — a brands page shows the brands the brief names (2026-09-14): given inside the
 # //// activity, they never reached an image-led brands page, which laid out the site's segments
@@ -102,8 +125,10 @@ BRAND_PLAN = [
     "a CTA",
 ]
 BRAND_PLAN_IMAGE_LED = [
-    "the brands the brief names, one after the other: the brand's name as a large title and one short line",
-    "the categories the brief names, one full-bleed photo tile each, its name only (none named: no such section)",
+    "the brands the brief names, as a grid of cards, two or three to a row: the brand's name as the card's title, "
+    "one short line under it, and its logo when the brief gives one",
+    "one wide photograph with a single short line over it",
+    "the categories the brief names, one photo tile each, the name ON the photograph (none named: no such section)",
     "one line and a button",
 ]
 
@@ -835,6 +860,21 @@ def _profile_is_b2b(profile: str | None) -> bool:
     return kind == "B2B" or bool(gated)
 
 
+# //// Neoffice — a storefront shows what a storefront has (2026-09-15). A B2C site of the instance's
+# //// own business was built with no shop in its menu, no cart and no account: only an "ecommerce"
+# //// site type or a B2B profile got them, and the model had chosen another type. The profile's kind
+# //// says it — B2B or B2C is a storefront, whatever the type the model picked.
+def _profile_sells(profile: str | None) -> bool:
+    """Whether the profile is a storefront: a site whose visitors browse a catalogue and order."""
+    if not profile:
+        return False
+    try:
+        kind, gated = frappe.db.get_value("Website Profile", profile, ["site_kind", "b2b_only"]) or (None, 0)
+    except Exception:
+        return False
+    return kind in ("B2B", "B2C") or bool(gated)
+
+
 def _webshop_installed() -> bool:
     try:
         return "webshop" in frappe.get_installed_apps()
@@ -1078,6 +1118,11 @@ def page_brief_text(site: dict, brief, page: dict, handles: dict, contact_prompt
             "COPY: minimal, the photographs carry the page. Headlines of two to five words, at most one line of twelve "
             "words under a heading, NO paragraph, no list of features, no testimonials, no grid of icons, no band of "
             "figures. When in doubt, cut the text and enlarge the photograph."
+            "\nCOMPOSITION: few words is not few shapes. No two sections in a row have the same shape — a full-bleed "
+            "photograph, then a two-column band (words on one side, one photograph on the other), then tiles of unequal "
+            "weight, then a quiet strip. A name or a caption over a photograph sits ON it, over a veil, never in a bar "
+            "under it. Vary the height: a tall section, then a short one. The page must read as one composition, not as "
+            "a pile of pictures."
             if minimal else ""
         ),
         (
@@ -1320,6 +1365,9 @@ def apply_navigation(config, created: list[dict], site_type: str, description: s
         elif _profile_is_b2b(profile) and _webshop_installed():
             # a B2B site is a shop window whatever its site type (see _profile_is_b2b)
             config.append("menu_items", {"label": _("Catalogue", lang=lang), "url": "/all-products", "is_external": False, "open_in_new_tab": False})
+        elif _profile_sells(profile) and _webshop_installed():
+            # //// Neoffice — a B2C storefront of the same business sells too (see _profile_sells)
+            config.append("menu_items", {"label": _("Shop", lang=lang), "url": "/all-products", "is_external": False, "open_in_new_tab": False})
     seen = set()
     for page in created:
         route = page["route"]
@@ -1463,6 +1511,13 @@ def build_site(ctx, spec: dict) -> str:
     # //// as the menu's Catalogue entry, kept in one place.
     if profile and hasattr(config, "show_user") and _profile_is_b2b(profile):
         config.show_user = True
+    # //// Neoffice — and a storefront of the instance's own business carries the cart and the
+    # //// account, whatever the site type the model chose (see _profile_sells). On a B2B site the
+    # //// cart still waits for the sign-in: that is the cart's audience, not its absence.
+    if profile and _profile_sells(profile) and _webshop_installed() and not _other_business(profile, site_name):
+        for field in ("show_user", "show_cart"):
+            if hasattr(config, field):
+                setattr(config, field, True)
     if logo_image:
         config.logo_type = "Image"
         config.logo_image = logo_image
