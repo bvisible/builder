@@ -69,6 +69,8 @@
   "copyright_text",
   "business_name",
   "business_address",
+  "business_phone",
+  "business_email",
   "social_section",
   "show_social_links",
   "facebook_url",
@@ -545,6 +547,20 @@
    "fieldname": "business_address",
    "fieldtype": "Data",
    "label": "Address Shown on the Site"
+  },
+  {
+   "description": "The phone this site publishes, when the business it shows is not the company's. Left empty on a site that shows another legal name, nothing is published rather than the company's own line.",
+   "fieldname": "business_phone",
+   "fieldtype": "Data",
+   "label": "Business Phone",
+   "options": "Phone"
+  },
+  {
+   "description": "The e-mail this site publishes, when the business it shows is not the company's.",
+   "fieldname": "business_email",
+   "fieldtype": "Data",
+   "label": "Business Email",
+   "options": "Email"
   },
   {
    "fieldname": "social_section",

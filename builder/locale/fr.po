@@ -10425,3 +10425,19 @@ msgstr "Taille du logo du pied de page"
 #: builder/builder/doctype/website_header_footer_config/website_header_footer_config.json
 msgid "How tall the mark stands in the footer. A centred footer opens on it, so Large suits it."
 msgstr "Hauteur de la marque dans le pied de page. Un pied centré s’ouvre dessus : « Large » lui convient."
+
+#: builder/builder/doctype/website_header_footer_config/website_header_footer_config.json
+msgid "Business Phone"
+msgstr "Téléphone de l’entreprise"
+
+#: builder/builder/doctype/website_header_footer_config/website_header_footer_config.json
+msgid "Business Email"
+msgstr "E-mail de l’entreprise"
+
+#: builder/builder/doctype/website_header_footer_config/website_header_footer_config.json
+msgid "The phone this site publishes, when the business it shows is not the company's. Left empty on a site that shows another legal name, nothing is published rather than the company's own line."
+msgstr "Le téléphone que ce site publie, lorsque l’entreprise qu’il présente n’est pas la société. Laissé vide sur un site portant une autre raison sociale, rien n’est publié plutôt que la ligne de la société."
+
+#: builder/builder/doctype/website_header_footer_config/website_header_footer_config.json
+msgid "The e-mail this site publishes, when the business it shows is not the company's."
+msgstr "L’e-mail que ce site publie, lorsque l’entreprise qu’il présente n’est pas la société."

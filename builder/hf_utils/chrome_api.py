@@ -69,6 +69,11 @@ SIMPLE_FIELDS = (
 	"show_footer_logo",
 	# //// Neoffice — how tall the mark stands in the footer (see footer_styles.html)
 	"footer_logo_height",
+	# //// Neoffice — what the site publishes about itself when it is not the company (api.site_identity)
+	"business_name",
+	"business_address",
+	"business_phone",
+	"business_email",
 	"footer_description",
 	"copyright_text",
 	"show_social_links",

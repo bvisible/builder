@@ -1112,6 +1112,10 @@ def get_site_contact_context(website_profile=None) -> dict:  # //// Neoffice mul
 		# //// without a pickup address to publish (a consumer site asked for its new legal name
 		# //// and its town alone, 2026-09-14). The company record is never renamed for a site.
 		data.update(site_identity(config))
+		# //// Neoffice — a key the site blanked is not "empty", it is absent: every reader tests
+		# //// `data.get(key)`, and a phone left as "" would still read as a field that exists.
+		for key in [k for k, v in data.items() if v == ""]:
+			del data[key]
 	except Exception:
 		pass
 
@@ -1120,13 +1124,28 @@ def get_site_contact_context(website_profile=None) -> dict:  # //// Neoffice mul
 
 # //// Neoffice — added helper (see the marker in get_site_contact_context)
 def site_identity(config) -> dict:
-	"""The business name and address a site's chrome settings give, to show instead of the
-	company's: only the ones that are filled."""
+	"""What a site publishes about itself, to show instead of the company's: the name, the
+	address, the phone and the e-mail its chrome settings give.
+
+	//// Neoffice — the phone and the e-mail joined the name and the address (2026-09-15). A
+	consumer shop run under another legal name carried its own name and its own town and, under
+	them, the parent company's switchboard and office address book. Those belong to another
+	business: a site that names itself publishes its own line or none at all. So the key is
+	blanked rather than left to the company's when this site is another legal entity
+	(business_name filled) and gives no line of its own."""
+	def field(name: str) -> str:
+		return str((config.get(name) if config is not None and hasattr(config, "get") else "") or "").strip()
+
 	identity = {}
-	for field, key in (("business_name", "company_name"), ("business_address", "address")):
-		value = str((config.get(field) if config is not None and hasattr(config, "get") else "") or "").strip()
+	for name, key in (("business_name", "company_name"), ("business_address", "address"),
+	                  ("business_phone", "phone"), ("business_email", "email")):
+		value = field(name)
 		if value:
 			identity[key] = value
+	if field("business_name"):
+		for name, key in (("business_phone", "phone"), ("business_email", "email")):
+			if not field(name):
+				identity[key] = ""
 	return identity
 
 
