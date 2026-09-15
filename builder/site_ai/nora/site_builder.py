@@ -2530,8 +2530,11 @@ def build_site(ctx, spec: dict) -> str:
                     # //// pages are written — so it re-reads the pages that actually changed, and
                     # //// reuses the report for the rest. Reading a page costs six times writing it.
                     earlier_read = reviewed_already.get(item["name"])
-                    now = str(frappe.db.get_value("Builder Page", item["name"], "modified") or "")
-                    if earlier_read and earlier_read["modified"] == now:
+                    # //// Neoffice — NOT named `now`: frappe.utils.now is imported at module level,
+                    # //// and a local of that name shadows it for the WHOLE function — the build
+                    # //// died on UnboundLocalError at its first status update (2026-09-15).
+                    last_change = str(frappe.db.get_value("Builder Page", item["name"], "modified") or "")
+                    if earlier_read and earlier_read["modified"] == last_change:
                         reviews.append(earlier_read["report"])
                         continue
                     _progress(ctx, job_id, _("Visual check: {0}").format(item["title"]), 96, {"pages_created": created})
