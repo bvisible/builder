@@ -10441,3 +10441,11 @@ msgstr "Le téléphone que ce site publie, lorsque l’entreprise qu’il prése
 #: builder/builder/doctype/website_header_footer_config/website_header_footer_config.json
 msgid "The e-mail this site publishes, when the business it shows is not the company's."
 msgstr "L’e-mail que ce site publie, lorsque l’entreprise qu’il présente n’est pas la société."
+
+#: builder/builder/doctype/website_header_footer_config/website_header_footer_config.json
+msgid "Business Website"
+msgstr "Site web de l’entreprise"
+
+#: builder/builder/doctype/website_header_footer_config/website_header_footer_config.json
+msgid "The website this site names as the business's own. Left empty on a site under another legal name, none is published rather than the company's."
+msgstr "Le site web que ce site présente comme celui de l’entreprise. Laissé vide sur un site portant une autre raison sociale, aucun n’est publié plutôt que celui de la société."

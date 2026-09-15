@@ -160,15 +160,16 @@ class TestSiteIdentity(unittest.TestCase):
 		# //// (2026-09-15): the company's switchboard belongs to another business.
 		self.assertEqual(
 			site_identity(config),
-			{"company_name": "Atelier Nord Sàrl", "address": "Lausanne, Switzerland", "phone": "", "email": ""},
+			{"company_name": "Atelier Nord Sàrl", "address": "Lausanne, Switzerland", "phone": "", "email": "", "website": ""},
 		)
 		# with its own line, it publishes it
 		own = frappe_dict(business_name="Atelier Nord Sàrl", business_address="Lausanne, Switzerland",
-		                  business_phone="+41 21 000 00 00", business_email="bonjour@atelier-nord.test")
+		                  business_phone="+41 21 000 00 00", business_email="bonjour@atelier-nord.test",
+		                  business_website="https://atelier-nord.test")
 		self.assertEqual(
 			site_identity(own),
 			{"company_name": "Atelier Nord Sàrl", "address": "Lausanne, Switzerland",
-			 "phone": "+41 21 000 00 00", "email": "bonjour@atelier-nord.test"},
+			 "phone": "+41 21 000 00 00", "email": "bonjour@atelier-nord.test", "website": "https://atelier-nord.test"},
 		)
 		# empty settings leave the company's own data in place
 		self.assertEqual(site_identity(frappe_dict(business_name="", business_address="  ")), {})

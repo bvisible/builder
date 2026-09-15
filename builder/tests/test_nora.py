@@ -537,14 +537,16 @@ class TestShopIncludes(unittest.TestCase):
 	def test_a_site_under_another_name_never_shows_the_company_line(self):
 		from builder.api import site_identity
 
-		own = frappe._dict({"business_name": "A Shop Sàrl", "business_address": "A town", "business_phone": "+41 00 000 00 00", "business_email": "hello@a-shop.test"})
+		own = frappe._dict({"business_name": "A Shop Sàrl", "business_address": "A town", "business_phone": "+41 00 000 00 00",
+		                    "business_email": "hello@a-shop.test", "business_website": "https://a-shop.test"})
 		self.assertEqual(
-			{"company_name": "A Shop Sàrl", "address": "A town", "phone": "+41 00 000 00 00", "email": "hello@a-shop.test"},
+			{"company_name": "A Shop Sàrl", "address": "A town", "phone": "+41 00 000 00 00",
+			 "email": "hello@a-shop.test", "website": "https://a-shop.test"},
 			site_identity(own),
 		)
 		# named, but with no line of its own: the company's is blanked, not inherited
 		named = frappe._dict({"business_name": "A Shop Sàrl", "business_address": "A town"})
-		self.assertEqual({"company_name": "A Shop Sàrl", "address": "A town", "phone": "", "email": ""}, site_identity(named))
+		self.assertEqual({"company_name": "A Shop Sàrl", "address": "A town", "phone": "", "email": "", "website": ""}, site_identity(named))
 		# a site that is the company itself keeps everything the company gives
 		self.assertEqual({}, site_identity(frappe._dict({})))
 

@@ -74,6 +74,7 @@ SIMPLE_FIELDS = (
 	"business_address",
 	"business_phone",
 	"business_email",
+	"business_website",
 	"footer_description",
 	"copyright_text",
 	"show_social_links",

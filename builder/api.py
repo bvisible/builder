@@ -1140,14 +1140,18 @@ def site_identity(config) -> dict:
 	# //// Neoffice — business_phone and business_email added beside the name and the address
 	# //// (2026-09-15): the site publishes its own line when it gives one.
 	for name, key in (("business_name", "company_name"), ("business_address", "address"),
-	                  ("business_phone", "phone"), ("business_email", "email")):
+	                  ("business_phone", "phone"), ("business_email", "email"),
+	                  ("business_website", "website")):
 		value = field(name)
 		if value:
 			identity[key] = value
 	# //// Neoffice — and a site that names itself and gives no line of its own publishes NONE:
-	# //// the company's switchboard belongs to another business (see the docstring).
+	# //// the company's switchboard, mailbox and address belong to another business (see the
+	# //// docstring). The contact page of a consumer shop printed the parent agency's telephone,
+	# //// its office mailbox and its corporate address, under the shop's own name.
 	if field("business_name"):
-		for name, key in (("business_phone", "phone"), ("business_email", "email")):
+		for name, key in (("business_phone", "phone"), ("business_email", "email"),
+		                  ("business_website", "website")):
 			if not field(name):
 				identity[key] = ""
 	return identity

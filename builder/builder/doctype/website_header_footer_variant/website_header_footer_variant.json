@@ -71,6 +71,7 @@
   "business_address",
   "business_phone",
   "business_email",
+  "business_website",
   "social_section",
   "show_social_links",
   "facebook_url",
@@ -561,6 +562,12 @@
    "fieldtype": "Data",
    "label": "Business Email",
    "options": "Email"
+  },
+  {
+   "description": "The website this site names as the business's own. Left empty on a site under another legal name, none is published rather than the company's.",
+   "fieldname": "business_website",
+   "fieldtype": "Data",
+   "label": "Business Website"
   },
   {
    "fieldname": "social_section",
