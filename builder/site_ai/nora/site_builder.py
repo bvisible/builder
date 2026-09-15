@@ -1558,6 +1558,29 @@ def missing_legal_pages(profile: str | None) -> list[str]:
     return [kind for kind in ("terms", "privacy") if not any(route in LEGAL_ROUTES[kind] for route in have)]
 
 
+# //// Neoffice ▼▼▼ — the site's root points at the new home as soon as it exists (2026-09-15).
+# //// A rebuild deletes the old pages first, and the profile was only told its home page at the very
+# //// end: for the twenty-five minutes in between, the root of a live site served the instance's own
+# //// welcome screen — "Bienvenue sur Neoffice", with a sign-in button, to the client's visitors.
+def point_home_at(profile: str | None, page_name: str) -> None:
+    """Tells the site which page is its home, now rather than at the end of the build."""
+    if not page_name:
+        return
+    try:
+        if profile and frappe.db.exists("DocType", "Website Profile"):
+            frappe.db.set_value("Website Profile", profile, "home_page", page_name)
+            frappe.cache.delete_value("nt_website_profiles_by_host")
+            frappe.cache.delete_value("website_page")
+        else:
+            frappe.db.set_value("Website Settings", "Website Settings", "home_page", "home")
+            frappe.db.set_value("Builder Settings", "Builder Settings", "home_page", "home")
+        frappe.db.commit()
+    except Exception:
+        # the end of the build sets it again: a failure here is not worth losing the build over
+        pass
+# //// Neoffice ▲▲▲
+
+
 def apply_navigation(config, created: list[dict], site_type: str, description: str, profile: str | None, lang: str = "fr", site_name: str = "") -> None:
     """Menu, footer and home page from the pages just built (the worker's step 5).
     Labels are translated into the site's language, not the operator's session."""
@@ -2293,6 +2316,11 @@ def build_site(ctx, spec: dict) -> str:
         planned_photos[name] = (page_photos, page_notes)
         created.append({"name": name, "title": page["title"], "route": f"/{route}", "planned": page["route"]})
         ai_log("info", "Page written", page=page["title"], name=name, route=route, model=page_model)
+        # //// Neoffice — the root follows the new home at once (see point_home_at): the old one was
+        # //// deleted at the start of the build, and until this was set the site served the
+        # //// instance's own welcome screen to its visitors.
+        if page["route"] in ("home", "index") or f"/{route}" in ("/", "/home", "/index"):
+            point_home_at(profile, name)
         # the next pages are told the headlines this one took (page_headlines)
         site.setdefault("headlines_by_route", {})[page["route"]] = page_headlines(blocks, categories)
         # //// Neoffice — the page is looked at as soon as it is written (2026-09-15). The model saw

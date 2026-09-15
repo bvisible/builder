@@ -588,6 +588,28 @@ class TestShopIncludes(unittest.TestCase):
 		self.assertIn('carousel_title = "Fresh this week"', written)
 		self.assertIn("carousel_limit = 8", written)
 
+	# //// Neoffice — added test (2026-09-15): the root follows the new home at once. A rebuild
+	# //// deletes the old pages first, and the site served the instance's welcome screen meanwhile.
+	def test_the_root_points_at_the_new_home_as_soon_as_it_exists(self):
+		from builder.site_ai.nora import site_builder
+
+		with patch.object(site_builder.frappe.db, "exists", return_value=True), patch.object(
+			site_builder.frappe.db, "set_value"
+		) as set_value, patch.object(site_builder.frappe.db, "commit"), patch.object(
+			site_builder.frappe.cache, "delete_value"
+		):
+			site_builder.point_home_at("A Storefront", "page-abc")
+		set_value.assert_called_once_with("Website Profile", "A Storefront", "home_page", "page-abc")
+
+		# without a page there is nothing to point at
+		with patch.object(site_builder.frappe.db, "set_value") as set_value:
+			site_builder.point_home_at("A Storefront", "")
+		set_value.assert_not_called()
+
+		# and a failure here never costs the build: the end of it sets the home again
+		with patch.object(site_builder.frappe.db, "exists", side_effect=RuntimeError("no doctype")):
+			site_builder.point_home_at("A Storefront", "page-abc")
+
 	# //// Neoffice — added test (2026-09-15): a token collision does not kill a build. Two builds at
 	# //// once on one instance write the same six token documents; the loser threw away 25 minutes.
 	def test_a_token_written_at_the_same_time_is_retried(self):
