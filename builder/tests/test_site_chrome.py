@@ -76,3 +76,24 @@ class TestFooterLegalRow(unittest.TestCase):
 
 	def test_a_site_without_legal_pages_gets_no_row(self):
 		self.assertEqual([], self._links([{"route": "home", "page_title": "Accueil"}]))
+
+	def test_a_client_site_never_links_the_hosts_own_web_pages(self):
+		"""Web Page is instance-wide: on a multi-site instance the host's terms would end up at
+		the foot of every client site, under their name."""
+		from builder.hf_utils import header_footer
+
+		seen = []
+
+		def get_all(doctype, **kwargs):
+			seen.append(doctype)
+			return [{"route": "terms-conditions", "page_title": "CGV", "title": "CGV"}]
+
+		with (
+			patch.object(header_footer.frappe.db, "exists", return_value=True),
+			patch.object(header_footer.frappe, "get_all", side_effect=get_all),
+		):
+			header_footer._legal_links(frappe._dict({"website_profile": "A Storefront"}), {})
+			self.assertEqual(["Builder Page"], seen)
+			seen.clear()
+			header_footer._legal_links(frappe._dict({}), {})
+			self.assertEqual(["Builder Page", "Web Page"], seen)

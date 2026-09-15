@@ -161,11 +161,14 @@ LEGAL_FOOTER_ROUTES = (
 def _legal_pages_of_site(profile: str | None) -> list[dict]:
 	"""The site's published legal pages, as {label, url}, in the order the routes are listed."""
 	found: dict[str, str] = {}
-	for doctype, title_field in (("Builder Page", "page_title"), ("Web Page", "title")):
+	# a Builder Page belongs to one site of the instance; a Web Page is instance-wide, so on a
+	# multi-site instance the host's own terms would otherwise be linked at the foot of every
+	# client site — a different company's document under their name
+	sources = [("Builder Page", "page_title")] if profile else [("Builder Page", "page_title"), ("Web Page", "title")]
+	for doctype, title_field in sources:
 		if not frappe.db.exists("DocType", doctype):
 			continue
 		filters = {"published": 1}
-		# a Builder Page belongs to one site of the instance; a Web Page is the instance's own
 		if profile and doctype == "Builder Page":
 			filters["neo_website_profile"] = profile
 		try:
