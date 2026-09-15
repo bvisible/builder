@@ -532,6 +532,29 @@ class TestShopIncludes(unittest.TestCase):
 			self.assertEqual([("/terms-conditions", "Terms & Conditions")], legal_pages("A Storefront"))
 			self.assertEqual(["privacy"], missing_legal_pages("A Storefront"))
 
+	# //// Neoffice — added test (2026-09-15): a site may reuse its own emblem as an ornament.
+	def test_the_brand_mark_is_offered_to_the_page_as_an_ornament(self):
+		from builder.site_ai.nora.site_builder import page_brief_text
+
+		def brief_for(mark):
+			site = {"site_name": "A Shop", "activity": "a shop", "site_type": "ecommerce", "mark": mark}
+			return page_brief_text(
+				site,
+				frappe._dict({}),
+				{"title": "Home", "route": "home", "type": "accueil"},
+				{"primary": "p", "secondary": "s", "background": "b", "text": "t", "font-heading": "fh", "font-body": "fb"},
+				"",
+				"a grid",
+				"French",
+				[],
+				("Contact", "/contact"),
+			)
+
+		with_mark = brief_for("/files/emblem.png")
+		self.assertIn("THE BRAND'S MARK: /files/emblem.png", with_mark)
+		self.assertIn("ONCE on this page", with_mark)
+		self.assertNotIn("THE BRAND'S MARK", brief_for(""))
+
 	# //// Neoffice — added test (2026-09-15): the footer keeps a mark of its own.
 	def test_a_footer_mark_of_its_own_survives_a_rebuild(self):
 		from unittest.mock import MagicMock

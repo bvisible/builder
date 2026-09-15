@@ -1210,6 +1210,18 @@ def page_brief_text(site: dict, brief, page: dict, handles: dict, contact_prompt
             f"or none does):\n{photo_lines}"
         ),
         (
+            # //// Neoffice — the brand's own mark as an ornament (2026-09-15): a site whose emblem
+            # //// is a shape (a monogram, a circle of parts, a numeral) has a graphic device of its
+            # //// own, and inventing another one for the page is how a photo collage ended up
+            # //// looking like a lifebuoy. Once per page at most, quiet, and never in the chrome's
+            # //// place — the header already carries the logo.
+            f"THE BRAND'S MARK: {site['mark']} — the site's own emblem. You MAY use it ONCE on this page as a large "
+            "quiet ornament: behind a band at low opacity, or oversized and cropped by the section's edge. Never as a "
+            "logo in the page (the header already shows it), never over copy, never more than once, and never on the "
+            "hero. Leave it out when nothing on this page calls for it."
+            if site.get("mark") else ""
+        ),
+        (
             f"ACCENT: {handles['accent']} is the site's signature accent (kickers, badges, one highlight per section, "
             "sparingly); use it instead of inventing another bright colour, and no other raw hex."
             if handles.get("accent") else ""
@@ -1903,7 +1915,10 @@ def build_site(ctx, spec: dict) -> str:
     page_model = _page_model(ctx)
     # //// Neoffice — the brands the brief names (see BRAND_PLAN)
     brands = [str(b).strip() for b in (spec.get("brands") or []) if str(b).strip()][:24]
-    site = {"site_name": site_name, "activity": activity, "differentiators": spec.get("differentiators"), "site_type": site_type, "profile": profile, "inspiration": inspiration["notes"], "copy_density": copy_density, "categories": categories, "brands": brands, "page_types": [p["type"] for p in pages]}
+    site = {"site_name": site_name, "activity": activity, "differentiators": spec.get("differentiators"), "site_type": site_type, "profile": profile, "inspiration": inspiration["notes"], "copy_density": copy_density, "categories": categories, "brands": brands, "page_types": [p["type"] for p in pages],
+            # //// Neoffice — the brand's own mark, offered to the pages as an ornament (2026-09-15):
+            # //// the footer's emblem when the client gave one, else the header's logo.
+            "mark": footer_logo_image or logo_image or ""}
     # //// Neoffice — a site that sells says so to every page (2026-09-15): its home shows real
     # //// products, taken from the shop, because the point of the site is to sell.
     site["sells"] = bool(
