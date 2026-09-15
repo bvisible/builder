@@ -1595,9 +1595,41 @@ def point_home_at(profile: str | None, page_name: str) -> None:
 # //// Neoffice ▲▲▲
 
 
+# //// Neoffice ▼▼▼ — the menu is made of the site's pages, not of this run's (2026-09-15).
+# //// apply_navigation rebuilt the menu from `created` alone, so a build of ONE page left a site
+# //// with a one-entry menu. That is why every fix, however small, meant regenerating the whole
+# //// site: four full rebuilds in a day, each one paying again for five pages nobody had asked to
+# //// change. A run now writes the menu from what the site HAS — the pages it just built, plus the
+# //// published ones it left alone, in the order they were created.
+def site_pages_for_menu(created: list[dict], profile: str | None) -> list[dict]:
+    """The site's pages as the menu should name them: the ones just built, then the published
+    ones this run did not touch. On any failure, just what was built — a menu of this run's
+    pages beats no menu."""
+    built = {p["name"] for p in created}
+    out = list(created)
+    try:
+        filters = {"published": 1, "is_template": 0}
+        if profile and frappe.db.has_column("Builder Page", "neo_website_profile"):
+            filters["neo_website_profile"] = profile
+        rows = frappe.get_all("Builder Page", filters=filters, fields=["name", "page_title", "route"], order_by="creation")
+    except Exception:
+        return out
+    seen_routes = {str(p.get("route") or "").strip("/") for p in created}
+    for row in rows:
+        route = str(row.get("route") or "").strip("/")
+        if row["name"] in built or route in seen_routes:
+            continue
+        seen_routes.add(route)
+        out.append({"name": row["name"], "title": row.get("page_title") or route, "route": f"/{route}", "planned": route})
+    return out
+# //// Neoffice ▲▲▲
+
+
 def apply_navigation(config, created: list[dict], site_type: str, description: str, profile: str | None, lang: str = "fr", site_name: str = "") -> None:
-    """Menu, footer and home page from the pages just built (the worker's step 5).
-    Labels are translated into the site's language, not the operator's session."""
+    """Menu, footer and home page from the pages the SITE has (site_pages_for_menu), which is
+    the pages this run built plus the published ones it left alone. Labels are translated into
+    the site's language, not the operator's session."""
+    created = site_pages_for_menu(created, profile)
     config.menu_items = []
     # /all-products is the instance's catalogue: on another business's profile it would
     # be someone else's shop in this site's menu (the florist listed the bakery)

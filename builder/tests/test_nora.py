@@ -588,6 +588,44 @@ class TestShopIncludes(unittest.TestCase):
 		self.assertIn('carousel_title = "Fresh this week"', written)
 		self.assertIn("carousel_limit = 8", written)
 
+	# //// Neoffice — added tests (2026-09-15): a run of one page keeps the site's whole menu.
+	def test_the_menu_is_made_of_the_sites_pages_not_the_runs(self):
+		from builder.site_ai.nora.site_builder import site_pages_for_menu
+
+		built = [{"name": "p9", "title": "Privacy Policy", "route": "/privacy-policy", "planned": "privacy-policy"}]
+		published = [
+			{"name": "p1", "page_title": "Home", "route": "home"},
+			{"name": "p2", "page_title": "Brands", "route": "brands"},
+			{"name": "p9", "page_title": "Privacy Policy", "route": "privacy-policy"},
+		]
+		with patch("builder.site_ai.nora.site_builder.frappe") as mock_frappe:
+			mock_frappe.db.has_column.return_value = True
+			mock_frappe.get_all.return_value = published
+			pages = site_pages_for_menu(built, "A Storefront")
+		# the page just built comes first, the ones left alone follow, none twice
+		self.assertEqual(["/privacy-policy", "/home", "/brands"], [p["route"] for p in pages])
+
+	def test_a_page_the_run_rebuilt_is_not_listed_twice(self):
+		from builder.site_ai.nora.site_builder import site_pages_for_menu
+
+		built = [{"name": "new", "title": "Home", "route": "/home", "planned": "home"}]
+		# the old page is gone from the table but another row carries the same route
+		published = [{"name": "old", "page_title": "Home", "route": "home"}]
+		with patch("builder.site_ai.nora.site_builder.frappe") as mock_frappe:
+			mock_frappe.db.has_column.return_value = True
+			mock_frappe.get_all.return_value = published
+			pages = site_pages_for_menu(built, "A Storefront")
+		self.assertEqual(1, len(pages))
+		self.assertEqual("new", pages[0]["name"])
+
+	def test_a_database_failure_leaves_the_run_its_own_menu(self):
+		from builder.site_ai.nora.site_builder import site_pages_for_menu
+
+		built = [{"name": "p1", "title": "Home", "route": "/home", "planned": "home"}]
+		with patch("builder.site_ai.nora.site_builder.frappe") as mock_frappe:
+			mock_frappe.db.has_column.side_effect = RuntimeError("no column")
+			self.assertEqual(built, site_pages_for_menu(built, "A Storefront"))
+
 	# //// Neoffice — added tests (2026-09-15): what a build spends is measured and bounded.
 	def test_a_rebuild_reuses_the_brief_it_already_wrote(self):
 		from builder.site_ai.nora.tools import generate_site
