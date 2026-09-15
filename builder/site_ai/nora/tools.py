@@ -79,6 +79,9 @@ generate_site = Tool(
             "palette_mode": {"type": "string", "enum": ["auto", "monochrome"], "description": "'monochrome' when the client wants NO colour: black, white and greys only, the photographs carrying the page. Default 'auto', which also turns monochrome by itself when every inspiration site read has no colour."},
             "copy_density": {"type": "string", "enum": ["auto", "standard", "minimal"], "description": "'minimal' when the photographs must carry the site and the copy step back: headlines of a few words, a line at most under each, no paragraphs. Default 'auto', which turns minimal by itself when the brief or the chosen direction asks for little text ('less is more', 'through the image')."},
             "website_profile": {"type": "string", "description": "The Website Profile (site) to build for; the open page's profile when omitted."},
+            # //// Neoffice — a rebuild reuses the brief it already wrote (2026-09-15): it is the
+            # //// build's most expensive call, and rebuilding pages is not rethinking the design.
+            "reuse_brief": {"type": "boolean", "description": "Default true: a site that already has a design brief reuses it, so a rebuild changes the pages without re-deciding the art direction (and without re-reading every reference site, the costliest call of a build). Pass false ONLY when the user asks to change the site's look."},
             # //// Neoffice — the language is required: the recap step listed every field but this
             # //// one, and the default filled in (the instance's, else French) wrote a site asked
             # //// for in English in French (2026-09-11).

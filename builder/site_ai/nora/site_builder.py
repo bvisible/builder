@@ -1539,6 +1539,10 @@ def _is_legal_route(route: str) -> bool:
     return any(bare in known for known in LEGAL_ROUTES.values())
 
 
+class BriefAlreadyWritten(Exception):
+    """//// Neoffice — the site's design brief was reused, so this build does not write one."""
+
+
 LEGAL_PLANNED = {
     "terms": ("terms-conditions", "Terms & Conditions"),
     "privacy": ("privacy-policy", "Privacy Policy"),
@@ -1951,7 +1955,28 @@ def build_site(ctx, spec: dict) -> str:
     _progress(ctx, job_id, _("Writing the design brief"), 8)
     settings = get_ai_settings()
     brief = None
+    # //// Neoffice ▼▼▼ — a rebuild reuses the brief it already wrote (2026-09-15). The brief is the
+    # //// single most expensive call of a build: it carries the logo and three inspiration
+    # //// screenshots, measured at 618 kB of pictures per call, and it is written from the same
+    # //// inputs every time. Rebuilding a site to change its pages re-read the same six reference
+    # //// sites and re-decided the same art direction, for nothing. Pass reuse_brief=False to make
+    # //// it think again — that is what changing the direction means.
+    if spec.get("reuse_brief", True):
+        try:
+            stored = _get_site_chrome_config(profile).get("ai_brief")
+            if stored:
+                from builder.site_ai.schemas.design_brief import DesignBrief
+
+                brief = DesignBrief.model_validate_json(stored)
+                ai_log("info", "Design brief reused", profile=profile, tone=getattr(brief, "site_tone", ""))
+                _progress(ctx, job_id, _("Reusing this site's design brief"), 9)
+        except Exception as e:
+            brief = None
+            ai_log("info", "Stored design brief unusable, writing a new one", error=str(e)[:160])
+    # //// Neoffice ▲▲▲
     try:
+        if brief is not None:
+            raise BriefAlreadyWritten
         logo_url = (frappe.utils.get_url() + logo_image) if logo_image and logo_image.startswith("/") else logo_image
         # the page model: the same Kimi as the chat on its highspeed serving, so the brief's
         # minute of reasoning becomes seconds
@@ -1968,6 +1993,8 @@ def build_site(ctx, spec: dict) -> str:
             inspiration_images=inspiration["images"] or None,
         )
         ai_log("info", "Design brief ready", tone=brief.site_tone, valid=validation.is_valid)
+    except BriefAlreadyWritten:
+        pass
     except Exception as e:
         ai_log("warning", "Design brief failed, using defaults", error=str(e)[:200])
         frappe.log_error("Nora site build: design brief failed", frappe.get_traceback())

@@ -588,6 +588,40 @@ class TestShopIncludes(unittest.TestCase):
 		self.assertIn('carousel_title = "Fresh this week"', written)
 		self.assertIn("carousel_limit = 8", written)
 
+	# //// Neoffice — added tests (2026-09-15): what a build spends is measured and bounded.
+	def test_a_rebuild_reuses_the_brief_it_already_wrote(self):
+		from builder.site_ai.nora.tools import generate_site
+
+		field = generate_site.parameters["properties"]["reuse_brief"]
+		self.assertEqual("boolean", field["type"])
+		self.assertIn("Default true", field["description"])
+
+	def test_the_reviewer_is_handed_a_picture_it_can_read(self):
+		from builder.site_ai.nora import visual_check
+
+		# a full-page capture is TALLER than it is wide: sized on the longest side it would
+		# reach the model as an unreadable ribbon
+		from PIL import Image
+		import io
+
+		tall = Image.new("RGB", (1440, 4219), "white")
+		buf = io.BytesIO()
+		tall.save(buf, format="PNG")
+		url = visual_check._readable_data_url({"screenshot": buf.getvalue()})
+		self.assertTrue(url.startswith("data:image/jpeg;base64,"))
+
+		import base64
+
+		sized = Image.open(io.BytesIO(base64.b64decode(url.split(",", 1)[1])))
+		self.assertEqual(visual_check.READ_WIDTH, sized.width)
+		self.assertLessEqual(sized.height, visual_check.READ_MAX_HEIGHT)
+
+	def test_a_capture_that_cannot_be_sized_falls_back_to_the_file(self):
+		from builder.site_ai.nora import visual_check
+
+		self.assertIsNone(visual_check._readable_data_url({}))
+		self.assertIsNone(visual_check._readable_data_url({"screenshot": b"not an image"}))
+
 	# //// Neoffice — added test (2026-09-15): the root follows the new home at once. A rebuild
 	# //// deletes the old pages first, and the site served the instance's welcome screen meanwhile.
 	def test_the_root_points_at_the_new_home_as_soon_as_it_exists(self):

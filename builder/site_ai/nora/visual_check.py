@@ -139,7 +139,7 @@ def _screenshot(url: str, title: str) -> dict:
     for attempt in range(SERVER_RETRIES + 1):
         try:
             # //// Neoffice — see the block marker above: header threaded into the capture
-            shot = capture_website_screenshot(url, full_page=True, static_roots=roots, headers=headers, for_review=True)
+            shot = capture_website_screenshot(url, full_page=True, static_roots=roots, headers=headers)
             if shot.get("success"):
                 return shot
             error = str(shot.get("error") or "screenshot failed")
@@ -151,7 +151,46 @@ def _screenshot(url: str, title: str) -> dict:
         time.sleep(SERVER_RETRY_SECONDS)
     ai_log("warning", "Full-page screenshot failed, viewport only", page=title, error=error[:120])
     # //// Neoffice — see the block marker above: header threaded into the viewport fallback too
-    return capture_website_screenshot(url, full_page=False, static_roots=roots, headers=headers, for_review=True)
+    return capture_website_screenshot(url, full_page=False, static_roots=roots, headers=headers)
+
+
+# //// Neoffice ▼▼▼ — the screenshot, sized for a model to READ (2026-09-15). Wide enough that a
+# //// heading and a button are legible, tall enough to show the composition, and light enough not
+# //// to cost more than writing the page did. Measured on a real home: 2 105 kB of lossless PNG
+# //// against 166 kB here.
+READ_WIDTH = 900
+READ_MAX_HEIGHT = 3600
+READ_QUALITY = 68
+
+
+def _readable_data_url(shot: dict) -> str | None:
+    """The capture as a data URL a vision model can actually read, or None to fall back to the
+    file. Never raises: a review on the plain file beats no review."""
+    raw = (shot or {}).get("screenshot")
+    if not raw:
+        return None
+    try:
+        import base64
+        import io
+
+        from PIL import Image
+
+        image = Image.open(io.BytesIO(raw)).convert("RGB")
+        if image.width > READ_WIDTH:
+            image = image.resize((READ_WIDTH, round(image.height * READ_WIDTH / image.width)), Image.LANCZOS)
+        if image.height > READ_MAX_HEIGHT:
+            # the top of a page is what a visitor judges; the tail is cropped rather than
+            # squashed, which would make every section unreadable
+            image = image.crop((0, 0, image.width, READ_MAX_HEIGHT))
+        out = io.BytesIO()
+        image.save(out, format="JPEG", quality=READ_QUALITY, optimize=True)
+        data = out.getvalue()
+        ai_log("info", "Review picture sized", kb=len(data) // 1024, width=image.width, height=image.height)
+        return "data:image/jpeg;base64," + base64.b64encode(data).decode("ascii")
+    except Exception as e:
+        ai_log("warning", "Review picture not sized, sending the file", error=str(e)[:120])
+        return None
+# //// Neoffice ▲▲▲
 
 
 def review_page(page: dict, profile: str | None, model: str, site_name: str = "", activity: str = "") -> dict:
@@ -168,7 +207,17 @@ def review_page(page: dict, profile: str | None, model: str, site_name: str = ""
         if not shot.get("success"):
             report["error"] = "screenshot failed"
             return report
-        critique, label = critique_screenshot(shot["file_url"], model=model, context=REVIEW_CONTEXT.format(site_name=site_name, activity=activity[:160]))
+        # //// Neoffice — the picture is handed over already sized for reading, as a data URL
+        # //// (2026-09-15). Two reasons. The provider's generic downscaler caps the LONGEST side at
+        # //// 1280 px, and on a full-page capture that side is the HEIGHT: a 1440 x 4219 page
+        # //// reached the model 437 px wide, a ribbon in which no text is legible — the review was
+        # //// paying for a picture it could not read. And a data URL passes through
+        # //// _image_to_data_url untouched, so what we sized is what is sent.
+        critique, label = critique_screenshot(
+            _readable_data_url(shot) or shot["file_url"],
+            model=model,
+            context=REVIEW_CONTEXT.format(site_name=site_name, activity=activity[:160]),
+        )
         report["professional"] = bool(critique.looks_professional)
         report["overall"] = (critique.overall or "")[:200]
         report["issues"] = actionable(critique)
