@@ -969,6 +969,10 @@ def page_sections(page: dict, minimal: bool, contact_verified: bool = True, othe
     gives the prices. The two FAQs of a site answered the same question two ways (a session of
     45 minutes on one page, of 60 on the other), and its services page listed packages its
     pricing page did not have (2026-09-13)."""
+    # //// Neoffice — a page that is text by nature is never image-led (2026-09-15), wherever it is
+    # //// planned from: an image-led legal page came back as a photograph and a button.
+    if page["type"] in TEXT_BY_NATURE:
+        minimal = False
     plan = (IMAGE_LED_PLANS.get(page["type"]) or IMAGE_LED_PLANS["generic"]) if minimal else SECTION_PLANS.get(page["type"], SECTION_PLANS["generic"])
     if brands and brands_page(page):
         plan = BRAND_PLAN_IMAGE_LED if minimal else BRAND_PLAN
