@@ -457,6 +457,17 @@ class TestCategoryWheel(unittest.TestCase):
 		self.assertLess(firsts[0][1], 50)
 		self.assertEqual(5, len({(round(x), round(y)) for x, y in firsts}))
 
+	def test_each_photograph_is_pushed_towards_the_middle_of_the_circle(self):
+		"""Framed towards its own part, the top one showed the sky of its photograph: the picture is
+		pushed the other way, so its middle lands inside the part (2026-09-15)."""
+		page = [self.tiles()]
+		category_wheel(page, {})
+		first = page[0]["children"][0]["baseStyles"]["backgroundPosition"]
+		x, y = (float(v.rstrip("%")) for v in first.split())
+		# the first part points up and to the right, so its picture is pushed down and to the left
+		self.assertLess(x, 50)
+		self.assertGreater(y, 50)
+
 	def test_a_grid_it_cannot_draw_is_left_alone(self):
 		flat = [self.tiles(photos=False)]
 		self.assertEqual(0, category_wheel(flat, {}))

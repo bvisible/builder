@@ -576,7 +576,9 @@ def _wheel_children(parts: list, hub_image: str) -> list:
 	count = len(parts)
 	children = []
 	for index, (label, styles, photo, href) in enumerate(parts):
-		frame_x, frame_y = _wheel_point(index + 0.5, count, 26)
+		# the picture is pushed the other way, so its middle — where the subject is — lands inside the
+		# part: framed towards the part, the top one showed the sky of its photograph (2026-09-15)
+		frame_x, frame_y = _wheel_point(index + 0.5, count, -26)
 		label_x, label_y = _wheel_point(index + 0.5, count, 33)
 		children.append({
 			"blockId": uuid.uuid4().hex[:10],
