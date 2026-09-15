@@ -93,6 +93,10 @@ SECTION_PLANS = {
         "site's country reads them",
         "who to write to: the details from BUSINESS DATA, verbatim",
     ],
+    # //// Neoffice — a legal page is one column of reading (2026-09-15): written with the site's
+    # //// two-column habit, the first one came out with its clauses squeezed into the left third
+    # //// of the screen and the right half empty, and a numeral of the logo stamped over every
+    # //// heading. The plan above is the content; this is its shape.
 }
 
 # //// Neoffice ▼▼▼ — an image-led site: the photographs carry the page and the copy steps
@@ -1160,7 +1164,9 @@ def page_brief_text(site: dict, brief, page: dict, handles: dict, contact_prompt
             # //// marketing copy when given no rule, and a made-up company number on a legal page
             # //// is worse than no page at all.
             "LEGAL PAGE: write the real document, in full, in plain prose — headings and numbered "
-            "clauses, no photograph, no icon, no button, no coloured band. Use ONLY the details "
+            "clauses, ONE column of reading across the page's full width (never a two-column band, "
+            "never a narrow column beside an empty half), no photograph, no icon, no ornament, no "
+            "button, no coloured band, and no marker of any kind before a heading. Use ONLY the details "
             "BUSINESS DATA gives. Everything the law requires that nobody gave you — company "
             "registration and VAT number, share capital, the payment providers, the host, the court "
             "and the country whose law applies, the delivery and return windows — is written as a "
@@ -1247,11 +1253,12 @@ def page_brief_text(site: dict, brief, page: dict, handles: dict, contact_prompt
             # //// own, and inventing another one for the page is how a photo collage ended up
             # //// looking like a lifebuoy. Once per page at most, quiet, and never in the chrome's
             # //// place — the header already carries the logo.
-            f"THE BRAND'S MARK: {site['mark']} — the site's own emblem. You MAY use it ONCE on this page as a large "
-            "quiet ornament: behind a band at low opacity, or oversized and cropped by the section's edge. Never as a "
-            "logo in the page (the header already shows it), never over copy, never more than once, and never on the "
-            "hero. Leave it out when nothing on this page calls for it."
-            if site.get("mark") else ""
+            f"THE BRAND'S MARK: the IMAGE at {site['mark']} — the site's own emblem. You MAY place that image ONCE on "
+            "this page as a large quiet ornament: behind a band at low opacity, or oversized and cropped by the "
+            "section's edge. It is the image file and nothing else: never a letter, a digit or a shape copied out of "
+            "it, never a logo in the page (the header already shows it), never over copy, never on the hero, and never "
+            "in more than one section. Leave it out when nothing on this page calls for it."
+            if site.get("mark") and page["type"] not in TEXT_BY_NATURE else ""
         ),
         (
             f"ACCENT: {handles['accent']} is the site's signature accent (kickers, badges, one highlight per section, "

@@ -605,9 +605,31 @@ class TestShopIncludes(unittest.TestCase):
 			)
 
 		with_mark = brief_for("/files/emblem.png")
-		self.assertIn("THE BRAND'S MARK: /files/emblem.png", with_mark)
+		self.assertIn("the IMAGE at /files/emblem.png", with_mark)
 		self.assertIn("ONCE on this page", with_mark)
+		self.assertIn("never a letter, a digit", with_mark)
 		self.assertNotIn("THE BRAND'S MARK", brief_for(""))
+
+	# //// Neoffice — added test (2026-09-15): a page that is text by nature gets no ornament. Given
+	# //// one, the model stamped a numeral of the logo over every heading of the terms page.
+	def test_a_legal_page_is_offered_no_ornament_and_one_column(self):
+		from builder.site_ai.nora.site_builder import page_brief_text
+
+		site = {"site_name": "A Shop", "activity": "a shop", "site_type": "ecommerce", "mark": "/files/emblem.png"}
+		brief = page_brief_text(
+			site,
+			frappe._dict({}),
+			{"title": "Terms", "route": "terms-conditions", "type": "legal"},
+			{"primary": "p", "secondary": "s", "background": "b", "text": "t", "font-heading": "fh", "font-body": "fb"},
+			"",
+			"a grid",
+			"English",
+			[],
+			("Contact", "/contact"),
+		)
+		self.assertNotIn("THE BRAND'S MARK", brief)
+		self.assertIn("ONE column of reading", brief)
+		self.assertIn("no marker of any kind before a heading", brief)
 
 	# //// Neoffice — added test (2026-09-15): the footer keeps a mark of its own.
 	def test_a_footer_mark_of_its_own_survives_a_rebuild(self):
