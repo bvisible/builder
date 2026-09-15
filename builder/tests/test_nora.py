@@ -586,6 +586,22 @@ class TestShopIncludes(unittest.TestCase):
 		self.assertIn('carousel_title = "Fresh this week"', written)
 		self.assertIn("carousel_limit = 8", written)
 
+	# //// Neoffice — added test (2026-09-15): the About page looks for the people, not for whatever
+	# //// is left. "about about" matched nothing and it opened on a workshop scene.
+	def test_the_about_page_looks_for_the_people(self):
+		from builder.site_ai.nora.site_builder import photos_for_page
+
+		def photo(url, shows, words):
+			return {"url": url, "shows": shows, "words": set(words), "text": shows.lower(),
+			        "has_text": False, "landscape": True, "quality": "high"}
+
+		library = [
+			photo("/files/studio.jpg", "a pottery workshop", {"studio", "pottery", "home"}),
+			photo("/files/crew.jpg", "the crew in front of the shop", {"crew", "shop", "wall"}),
+		]
+		urls, _notes = photos_for_page({"title": "About", "route": "about", "type": "about"}, library, {}, [], minimal=True)
+		self.assertEqual("/files/crew.jpg", urls[0])
+
 	# //// Neoffice — added test (2026-09-15): a site may reuse its own emblem as an ornament.
 	def test_the_brand_mark_is_offered_to_the_page_as_an_ornament(self):
 		from builder.site_ai.nora.site_builder import page_brief_text

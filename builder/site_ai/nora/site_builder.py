@@ -559,6 +559,20 @@ CATEGORY_LIST = re.compile(
 # //// photograph on them spends one of the client's pictures to decorate small print.
 PAGE_PHOTO_COUNT = {"about": 2, "contact": 1, "shop": 3, "portfolio": 4, "services": 3, "legal": 0}
 
+# //// Neoffice ▼▼▼ — what each page is looking for in a photograph (2026-09-15). The page type and
+# //// the title alone matched nothing in what the vision read of the client's pictures ("about
+# //// about"), so a page took whatever was left: a workshop scene opened the page about the people
+# //// who run the shop. These words are matched against what each photograph shows.
+PAGE_PHOTO_WORDS = {
+    "about": ("team", "crew", "people", "staff", "portrait", "workshop", "shop", "store"),
+    "contact": ("shop", "store", "front", "entrance", "counter", "building", "street"),
+    "team": ("team", "crew", "people", "staff", "portrait"),
+    "services": ("work", "hands", "tool", "detail", "workshop"),
+    "shop": ("product", "shelf", "rack", "display", "shop", "store"),
+    "testimonials": ("people", "customer", "portrait"),
+}
+# //// Neoffice ▲▲▲
+
 # a business whose contact details nobody verified gets none written: asked for "clearly
 # generic placeholders the client will replace", the model wrote a real Zurich street and a
 # plausible phone number, a different one at each build, on a contact page published at once
@@ -689,7 +703,12 @@ def photos_for_page(page: dict, library: list[dict], used: dict, categories: lis
     elif tiles:
         picks = [(take(landscape=True), "the first photograph of the page"), *tiles]
     else:
+        # //// Neoffice — the page's own subject, in words (2026-09-15): "about about" matched nothing
+        # //// in what the vision read, so the About page took whatever was left — a workshop scene,
+        # //// on a page about the people who run the shop. PAGE_PHOTO_WORDS says what each page is
+        # //// looking for; the title and the type stay in the list, they sometimes carry it.
         wanted = [w for w in re.split(r"[^a-z0-9]+", f"{page['title']} {page['type']}".lower()) if len(w) > 2]
+        wanted += list(PAGE_PHOTO_WORDS.get(page["type"], ()))
         picks = [(take(wanted), "the first photograph of the page" if i == 0 else "a photograph") for i in range(PAGE_PHOTO_COUNT.get(page["type"], 2))]
     urls, notes = [], []
     for photo, role in picks:
