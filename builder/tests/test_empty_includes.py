@@ -183,8 +183,16 @@ class TestPruneEmptyIncludes(unittest.TestCase):
 		)
 		self.assertEqual(page, before)
 
-	def test_an_include_written_with_parameters_stays(self):
+	# //// Neoffice — the rule changed on 2026-09-15: the parameters an include is configured with
+	# //// are a composition choice, but what it has to SHOW is not. The generator always offers the
+	# //// shop's carousels with a title and a limit set, so the old rule left every empty one in
+	# //// place and a home kept "Our products" over an empty strip.
+	def test_an_include_written_with_parameters_goes_when_it_has_nothing_to_show(self):
 		page = [box(box(text("p", "Hours"), include('{%- set display = "compact" -%}' + HOURS)))]
+		self.assertEqual(prune_empty_includes(page, nothing), 1)
+
+	def test_an_include_inside_a_sentence_is_the_authors_own_and_stays(self):
+		page = [box(box(text("p", "Hours"), include("Our latest " + HOURS)))]
 		before = copy.deepcopy(page)
 		self.assertEqual(prune_empty_includes(page, nothing), 0)
 		self.assertEqual(page, before)
