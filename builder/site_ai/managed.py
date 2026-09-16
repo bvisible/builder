@@ -109,7 +109,10 @@ def managed_models() -> list[dict]:
         coherent = [DEFAULTS["model"]]
     # Kimi K2.7 reads images (verified 2026-09-08 on both servings: a generated photo
     # described in 6 s): the brief's logo analysis runs on it, no separate vision row needed
-    return [{"model_id": model_id, "label": model_id, "supports_vision": 1 if model_id.lower().startswith("kimi-k2.7") else 0} for model_id in coherent]
+    # //// Neoffice — and so does K3 (Moonshot's 2026-07 flagship is multimodal): registered without
+    # //// the flag, it was handed the logo and the screenshots with the pictures silently dropped
+    # //// (_format_messages keeps images for vision models only), 2026-09-16.
+    return [{"model_id": model_id, "label": model_id, "supports_vision": 1 if model_id.lower().startswith(("kimi-k2.7", "kimi-k3")) else 0} for model_id in coherent]
 
 
 def _served_by(base_url: str | None, model_id: str) -> bool:

@@ -21,7 +21,14 @@ from builder.site_ai.logging import ai_log
 CHROME_AREAS = ("header", "footer", "nav", "logo", "menu")
 IMAGE_WAIT_SECONDS = 360
 IMAGE_POLL_SECONDS = 10
+# //// Neoffice — the number of times a page is rewritten on what the look found before the
+# //// build gives up on it (2026-09-16). It used to be ONE rewrite, unread: the reviewer refused
+# //// a page, the page was rewritten once, nobody looked again, and the build published it. Now
+# //// every rewrite is looked at again, and a page still refused after these is HELD, not
+# //// published (see refused / site_builder's page loop).
 MAX_REVISIONS = 3
+# //// Neoffice — the phone width the review also looks at (2026-09-16)
+PHONE_WIDTH = 375
 
 
 def enabled() -> bool:
@@ -98,14 +105,130 @@ def actionable(critique) -> list[dict]:
     return out
 
 
-def revision_instructions(issues: list[dict]) -> str:
-    """What the page writer gets on the revision pass."""
+def revision_instructions(issues: list[dict], gate: list[dict] | None = None) -> str:
+    """What the page writer gets on the revision pass: the measured facts first (they are not
+    opinions), then the designer's points."""
     lines = [
-        "REVISION (the page was checked against its brief and a designer reviewed a screenshot of it; fix exactly "
-        "these points and keep everything else, the structure, the copy and the photos included):"
+        "REVISION (the page was rendered, measured in the browser at 1440, 768 and 375 px, and a designer reviewed "
+        "its screenshots; fix exactly these points and keep everything else, the structure, the copy and the photos "
+        "included):"
     ]
+    # //// Neoffice — the gate's findings lead (2026-09-16): a number the browser measured beats a
+    # //// sentence a model wrote, and the writer must not argue with it.
+    lines += [f"- [measured, {g['severity']}] at {g.get('width')}px, {g['where']}: {g['detail']}" for g in (gate or [])]
     lines += [f"- [{i['severity']}] {i['area']}: {i['problem']} -> {i['fix']}" for i in issues]
     return "\n".join(lines)
+
+
+# //// Neoffice ▼▼▼ — the reviewer's authority (2026-09-16). Three things were missing on the day a
+# //// client's B2B site shipped with three pages its own reviewer had called unprofessional:
+# //// a judge that is not the writer, a measured gate before the model's opinion, and a verdict
+# //// that decides what is published. They live here.
+def judge_model(page_model: str) -> str:
+    """The model that READS the pages: never the one that wrote them when a stronger reader is
+    registered. `nora_review_model` in site_config names it; otherwise the strongest managed
+    Kimi that reads images (K3), else the page model itself.
+
+    A model judging its own work is the softest judge there is (self-preference, and mostly
+    judge uncertainty: it does not see what it did not think of). The reading costs a fraction
+    of the writing — 22 k in / 32 k out for a whole site — so the best reader is affordable."""
+    from builder.ai.models import ModelRegistry
+
+    def usable(name: str | None) -> bool:
+        if not name:
+            return False
+        try:
+            info = ModelRegistry.find(name)
+            return bool(info) and bool(ModelRegistry.supports_vision(name))
+        except Exception:
+            return False
+
+    try:
+        wanted = str(frappe.conf.get("nora_review_model") or "").strip()
+    except Exception:
+        wanted = ""
+    for candidate in (wanted, f"managed/{wanted}" if wanted and "/" not in wanted else "", "managed/kimi-k3"):
+        if candidate and candidate != page_model and usable(candidate):
+            return candidate
+    return page_model
+
+
+def dedupe_findings(measured: dict) -> list[dict]:
+    """The gate's findings across the widths, each reported once (the widest screen it was seen
+    on first, so a defect of every width reads as one), with the width it was seen at."""
+    seen, out = set(), []
+    for width in sorted((measured.get("widths") or {}).keys(), reverse=True):
+        for finding in (measured["widths"][width] or {}).get("findings") or []:
+            key = (finding.get("kind"), finding.get("where"))
+            if key in seen:
+                continue
+            seen.add(key)
+            out.append({**finding, "width": width})
+    return out
+
+
+def contract_findings(measured: dict, is_home: bool) -> tuple[list[dict], list[dict]]:
+    """What the facts of the rendered page say against the site's own rules: (page findings,
+    chrome findings). The page's: an interior page opens under the site's title band, never with
+    an h1 of its own, and never with both. The chrome's: the header carries a logo. The chrome's
+    findings are the BUILD's to act on, not the page writer's."""
+    widths = measured.get("widths") or {}
+    if not widths:
+        return [], []
+    facts = (widths[max(widths.keys())] or {}).get("facts") or {}
+    page, chrome = [], []
+    if not is_home and facts:
+        if not facts.get("band"):
+            page.append({"kind": "band-missing", "severity": "high", "width": facts.get("width"), "where": "top of the page",
+                         "detail": "the site's title band is missing: the page opens with an h1 of its own, and the band steps aside for it. "
+                                   "Remove that h1 (the band shows the page title); the page starts with its first content section"})
+        elif int(facts.get("body_h1") or 0) > 0:
+            page.append({"kind": "double-title", "severity": "high", "width": facts.get("width"), "where": "top of the page",
+                         "detail": "the page repeats its title: the site's band shows it, and the page carries another h1. Remove the page's h1"})
+    if facts and not facts.get("header_logo") and not (facts.get("header_text") or "").strip():
+        chrome.append({"kind": "logo-missing", "severity": "high", "width": facts.get("width"), "where": "header", "detail": "the header shows neither a logo nor the site's name"})
+    return page, chrome
+
+
+def points_to_fix(report: dict) -> list[dict]:
+    """The reviewer's actionable points, as the revision reads them."""
+    return list(report.get("issues") or [])
+
+
+def accepted(report: dict) -> bool:
+    """Whether the page passes: read, called professional, nothing measured against it and
+    nothing actionable left. A page that could not be read is not accepted — it is unknown."""
+    if report.get("error"):
+        return False
+    if report.get("professional") is not True:
+        return False
+    if any(g.get("severity") == "high" for g in report.get("gate") or []):
+        return False
+    return not report.get("issues")
+
+
+def refused(report: dict) -> bool:
+    """Whether the page is REFUSED — not merely imperfect: the designer called it unprofessional,
+    or the browser measured it broken (something sticks out, a text is starved, a component is
+    empty, a picture is missing, the band is gone), or it could not be rendered at all."""
+    if report.get("http_error"):
+        return True
+    if report.get("professional") is False:
+        return True
+    return any(g.get("severity") == "high" for g in report.get("gate") or [])
+
+
+def why_refused(report: dict) -> str:
+    """The refusal in one line, for the journal and the summary."""
+    parts = []
+    if report.get("http_error"):
+        parts.append(f"the page answered {report['http_error']}")
+    if report.get("professional") is False:
+        parts.append("the designer: " + (report.get("overall") or "not professional")[:160])
+    for g in [g for g in report.get("gate") or [] if g.get("severity") == "high"][:3]:
+        parts.append(f"measured at {g.get('width')}px: {g['where']} — {g['detail'][:110]}")
+    return "; ".join(parts) or "refused"
+# //// Neoffice ▲▲▲
 
 
 # //// Neoffice — tells the vision critic that a plain colour block where a photo would be is
@@ -204,42 +327,98 @@ def _readable_data_url(shot: dict) -> str | None:
 
 
 def review_page(page: dict, profile: str | None, model: str, site_name: str = "", activity: str = "") -> dict:
-    """Screenshot one page and read it. Never raises: a page that cannot be reviewed
-    is reported as such."""
+    """Measure one page in the browser, screenshot it on a desktop and on a phone, and have the
+    judge read it. Never raises: a page that cannot be reviewed is reported as such."""
     from builder.site_ai.ingestion.visual_critique import critique_screenshot
 
-    report = {"name": page["name"], "title": page["title"], "route": page["route"], "professional": None, "issues": [], "error": None, "overall": ""}
+    report = {"name": page["name"], "title": page["title"], "route": page["route"], "professional": None, "issues": [], "error": None, "overall": "", "gate": [], "chrome": [], "http_error": None}
     url = loopback_page_url(page["route"], profile)
-    shot = None
+    shot, phone = None, None
+    # //// Neoffice — the measured gate runs first (2026-09-16, see screenshotter.LAYOUT_PROBE): a
+    # //// page that answers an error, sticks out of the screen, starves a text or shows an empty
+    # //// component is refused on the measure — the judge's opinion is asked all the same, so the
+    # //// revision gets both.
+    try:
+        is_home = str(page.get("route") or "").strip("/") in ("", "home", "index")
+        measured = measure_page(url)
+        status = measured.get("status")
+        if status and int(status) >= 400:
+            report["http_error"] = int(status)
+        findings = dedupe_findings(measured)
+        page_rules, chrome_rules = contract_findings(measured, is_home)
+        report["gate"] = findings + page_rules
+        report["chrome"] = chrome_rules
+        if measured.get("error"):
+            ai_log("warning", "Layout not measured", page=page["title"], error=measured["error"][:120])
+        elif report["gate"] or report["chrome"] or report["http_error"]:
+            ai_log("info", "Layout measured", page=page["title"], status=status,
+                   findings=[f"{g['kind']}@{g.get('width')} {g['where'][:50]}" for g in report["gate"]][:8],
+                   chrome=[c["kind"] for c in report["chrome"]])
+        else:
+            ai_log("info", "Layout measured", page=page["title"], status=status, findings=[])
+    except Exception as e:
+        ai_log("warning", "Layout gate failed", page=page["title"], error=str(e)[:160])
+    if report["http_error"]:
+        report["error"] = f"the page answered HTTP {report['http_error']}"
+        ai_log("warning", "Visual check refused on HTTP status", page=page["title"], status=report["http_error"])
+        return report
     try:
         shot = _screenshot(url, page["title"])
         frappe.db.commit()  # the screenshot File must be visible to the model's read
         if not shot.get("success"):
             report["error"] = "screenshot failed"
             return report
+        # //// Neoffice — the phone view, best effort (2026-09-16): its absence never blocks the review
+        try:
+            phone = capture_phone(url)
+        except Exception as e:
+            ai_log("warning", "Phone capture failed", page=page["title"], error=str(e)[:120])
         # //// Neoffice — the picture is handed over already sized for reading, as a data URL
         # //// (2026-09-15). Two reasons. The provider's generic downscaler caps the LONGEST side at
         # //// 1280 px, and on a full-page capture that side is the HEIGHT: a 1440 x 4219 page
         # //// reached the model 437 px wide, a ribbon in which no text is legible — the review was
         # //// paying for a picture it could not read. And a data URL passes through
         # //// _image_to_data_url untouched, so what we sized is what is sent.
+        phone_picture = _readable_data_url(phone) if phone and phone.get("success") else None
         critique, label = critique_screenshot(
             _readable_data_url(shot) or shot["file_url"],
             model=model,
             context=REVIEW_CONTEXT.format(site_name=site_name, activity=activity[:160])
             + (LEGAL_CONTEXT if str(page.get("type") or "") == "legal" else ""),
+            extra_images=[phone_picture] if phone_picture else None,
         )
         report["professional"] = bool(critique.looks_professional)
         report["overall"] = (critique.overall or "")[:200]
         report["issues"] = actionable(critique)
         report["all_issues"] = len(critique.issues or [])
         ai_log("info", "Visual check", page=page["title"], professional=report["professional"], issues=report["all_issues"], actionable=len(report["issues"]), model=label)
+        # //// Neoffice — the judge's WORDS go to the journal (2026-09-16). It kept `issues=3` and
+        # //// never a sentence: nobody could read what the reviewer had seen, so nobody could
+        # //// tell a judge that was right from one that was not.
+        ai_log("info", "Reviewer words", page=page["title"], overall=report["overall"],
+               issues=[f"[{i.severity}] {i.area}: {i.problem} -> {i.fix}"[:220] for i in (critique.issues or [])][:8])
     except Exception as e:
         report["error"] = str(e)[:200]
         ai_log("warning", "Visual check failed", page=page["title"], error=report["error"])
     finally:
         _drop_capture(shot)
+        _drop_capture(phone)
     return report
+
+
+def capture_phone(url: str) -> dict:
+    """The page as a phone shows it (PHONE_WIDTH), full length, for the judge's second picture."""
+    from builder.site_ai.inspiration.screenshotter import capture_website_screenshot
+
+    return capture_website_screenshot(url, full_page=True, static_roots=static_roots(), headers=loopback_headers(), viewport_width=PHONE_WIDTH)
+
+
+def measure_page(url: str) -> dict:
+    """The page measured in the browser at the three widths (screenshotter.measure_layout),
+    served from disk and named by header like every loopback render."""
+    from builder.site_ai.inspiration.screenshotter import measure_layout
+
+    return measure_layout(url, static_roots=static_roots(), headers=loopback_headers())
 
 
 def _drop_capture(shot: dict | None) -> None:
@@ -257,22 +436,39 @@ def _drop_capture(shot: dict | None) -> None:
         ai_log("warning", "Screenshot not removed", url=url, error=str(e)[:120])
 
 
-def summary_lines(reviews: list[dict], revised: dict[str, int]) -> list[str]:
+def summary_lines(reviews: list[dict], revised: dict[str, int], held: list[dict] | None = None) -> list[str]:
     """The lines the tool returns, for the assistant to relay."""
-    if not reviews:
+    if not reviews and not held:
         return []
-    lines = ["Visual check (each page rendered and reviewed by the vision model):"]
+    lines = ["Visual check (each page measured in the browser at three widths, then its desktop and phone screenshots reviewed by the judge):"]
+    held_names = {h["name"] for h in (held or [])}
     for r in reviews:
+        if r["name"] in held_names:
+            continue
         if r.get("error"):
             lines.append(f"- {r['title']}: not reviewed ({r['error']})")
             continue
         verdict = "looks professional" if r["professional"] else "needs work"
         fixed = revised.get(r["name"])
         detail = "; ".join(f"{i['area']}: {i['problem'][:70]}" for i in r["issues"][:3])
+        measured = "; ".join(f"{g['where'][:40]}: {g['detail'][:60]}" for g in (r.get("gate") or [])[:2])
+        if measured:
+            detail = (detail + "; " if detail else "") + "measured: " + measured
         if fixed:
             lines.append(f"- {r['title']}: {verdict}; {fixed} point(s) fixed in a revision pass ({detail})")
-        elif r["issues"]:
+        elif r["issues"] or measured:
             lines.append(f"- {r['title']}: {verdict}; left as is ({detail})")
         else:
             lines.append(f"- {r['title']}: {verdict}")
+    # //// Neoffice — the pages the build refused (2026-09-16): said plainly, with the judge's words,
+    # //// and handed to the user as a question — never published as if they had passed.
+    for h in held or []:
+        state = "published but flagged (the site needs it)" if h.get("essential") else "NOT published and NOT in the menu"
+        lines.append(f"- {h['title']}: REFUSED after {h.get('attempts', 1)} look(s), {state}: {h.get('why', '')[:300]}")
+    if held:
+        lines.append(
+            "Ask the user, with ONE present_ui choices card, what to do with each refused page: rebuild it with a different "
+            "direction (call generate_site with scope='pages', that page alone, and their words), publish it as it is, or "
+            "leave it for them to finish in the editor. Do not decide for them, and do not publish a refused page yourself."
+        )
     return lines

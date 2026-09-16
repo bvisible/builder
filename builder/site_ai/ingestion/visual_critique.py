@@ -55,7 +55,7 @@ def _critique_provider(which: str = "auto"):
 CRITIQUE_MAX_TOKENS = 8000
 
 
-def critique_screenshot(screenshot_url: str, which: str = "auto", model: str | None = None, context: str = ""):
+def critique_screenshot(screenshot_url: str, which: str = "auto", model: str | None = None, context: str = "", extra_images: list[str] | None = None):
     """Critique a page screenshot. Returns (PageCritique, model_label). `model` names a
     vision-capable registry model to use instead of the nora/kimi choice (the site build
     reviews with its page model, Kimi K2.7 reads images since 2026-09-08); `context` is
@@ -69,6 +69,13 @@ def critique_screenshot(screenshot_url: str, which: str = "auto", model: str | N
         "whether it looks professional, and the concrete visible problems "
         "(area, severity, problem, fix), most important first."
     )
+    # //// Neoffice — the phone view travels with the desktop one (2026-09-16): what breaks first
+    # //// breaks at 375 px, and a review that never saw it passed a title wrapped letter by letter.
+    if extra_images:
+        prompt += (
+            f"\n\nThere are {1 + len(extra_images)} pictures: the page on a desktop screen first, then the SAME page "
+            "on a phone (375 px wide). Judge both: a page that breaks on the phone is not professional."
+        )
     if context:
         prompt += "\n\nContext: " + context.strip()
     # //// Neoffice — a short answer asks for a short ceiling (2026-09-15): a critique is a line
@@ -78,7 +85,7 @@ def critique_screenshot(screenshot_url: str, which: str = "auto", model: str | N
         prompt=prompt,
         schema=PageCritique,
         system_prompt=_CRITIQUE_SYSTEM,
-        images=[screenshot_url],
+        images=[screenshot_url, *(extra_images or [])],
         max_tokens=CRITIQUE_MAX_TOKENS,
         think=False,
     )

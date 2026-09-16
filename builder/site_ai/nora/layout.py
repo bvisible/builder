@@ -165,6 +165,25 @@ def strip_title_band(blocks: list, title: str) -> int:
     return removed
 
 
+# //// Neoffice ▼▼▼ — an interior page never brings its own top (2026-09-16). The site draws a
+# //// title band above every page but the home (page_header.py), and steps aside when the page's
+# //// first section carries an h1 — which the model wrote on five pages out of six despite the
+# //// brief, so five page tops differed and the sixth had the band: "les top pages ne sont pas
+# //// designées et semblables". strip_title_band above only drops an h1 that REPEATS the title;
+# //// this one settles the rest: a leading h1 that says something else becomes the section's h2
+# //// (its styles kept), and any other h1 on the page too — a page has one h1, the band's.
+def interior_top(blocks: list, title: str) -> int:
+    """Demote every h1 of an interior page to h2 (styles and text kept), after strip_title_band
+    has dropped the one that repeated the page title. Returns the number of blocks changed."""
+    changed = 0
+    for block in _walk(blocks):
+        if block.get("element") == "h1":
+            block["element"] = "h2"
+            changed += 1
+    return changed
+# //// Neoffice ▲▲▲
+
+
 # //// Neoffice ▼▼▼ — the trust section of a reseller site's home listed its four reasons as
 # //// rows: a card repeater or a card wrapper without a grid now gets u-grid and a
 # //// column count (65d8f360 "fix(nora): cards never stack in a column, and photo slots without photos are plain blocks")

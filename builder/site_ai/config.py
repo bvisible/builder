@@ -164,6 +164,9 @@ def get_ai_settings() -> AIConfig:
         ai_default_theme
         ai_default_site_type
         ai_output_language
+        nora_review_model      //// Neoffice (2026-09-16): the model that READS the built pages
+                               (visual_check.judge_model); never the writer when another reader exists
+        nora_reasoning_effort  //// Neoffice (2026-09-16): low / high / max for Kimi K3 (llm.reasoning_effort)
 
     The upstream `ai_api_key` of Builder Settings is read as a last resort for
     the key (a self-hosted site that typed it there before the provider rows).

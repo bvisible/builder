@@ -64,12 +64,16 @@ class TestTheCaptureIsDropped(unittest.TestCase):
 		shot = {"success": True, "file_url": "/files/shot.png"}
 		with (
 			patch.object(visual_check, "_screenshot", return_value=shot),
+			# //// Neoffice — the measured gate and the phone capture are the browser's, not this test's (2026-09-16)
+			patch.object(visual_check, "measure_page", return_value={"status": 200, "widths": {}}),
+			patch.object(visual_check, "capture_phone", return_value=None),
 			patch.object(visual_check.frappe.db, "commit"),
 			patch("builder.site_ai.ingestion.visual_critique.critique_screenshot", **critique),
 			patch.object(visual_check, "_drop_capture") as drop,
 		):
 			report = visual_check.review_page(page, None, "model")
-		drop.assert_called_once_with(shot)
+		# //// Neoffice — the desktop capture is dropped, and so is the phone's (None here)
+		drop.assert_any_call(shot)
 		return report
 
 	def test_after_the_critique_and_after_a_failure(self):
@@ -122,13 +126,16 @@ class TestLegalPageContext(unittest.TestCase):
 
 		seen = {}
 
-		def critique(url, model=None, context=""):
+		# //// Neoffice — extra_images: the judge also gets the phone capture (2026-09-16)
+		def critique(url, model=None, context="", extra_images=None):
 			seen["context"] = context
 			return SimpleNamespace(looks_professional=True, overall="fine", issues=[]), "kimi"
 
 		page = {"name": "p1", "title": "Terms", "route": "/terms-conditions", "type": page_type}
 		with (
 			patch.object(visual_check, "_screenshot", return_value={"success": True, "file_url": "/files/x.png"}),
+			patch.object(visual_check, "measure_page", return_value={"status": 200, "widths": {}}),
+			patch.object(visual_check, "capture_phone", return_value=None),
 			patch.object(visual_check, "_drop_capture"),
 			patch("builder.site_ai.ingestion.visual_critique.critique_screenshot", side_effect=critique),
 			patch.object(visual_check.frappe.db, "commit"),
@@ -144,4 +151,55 @@ class TestLegalPageContext(unittest.TestCase):
 
 	def test_any_other_page_is_not_told_about_blanks(self):
 		self.assertNotIn("DELIBERATE", self._context_for("accueil"))
+
+
+# //// Neoffice — added tests (2026-09-16): the measured gate runs before the judge, and decides.
+class TestTheGateBeforeTheJudge(unittest.TestCase):
+	def setUp(self):
+		logging = patch.object(visual_check, "ai_log")
+		logging.start()
+		self.addCleanup(logging.stop)
+
+	def review(self, measured, page=None, critique=None):
+		page = page or {"name": "p1", "title": "About", "route": "/about", "type": "about"}
+		read = critique or SimpleNamespace(looks_professional=True, overall="fine", issues=[])
+		with (
+			patch.object(visual_check, "measure_page", return_value=measured),
+			patch.object(visual_check, "_screenshot", return_value={"success": True, "file_url": "/files/x.png"}),
+			patch.object(visual_check, "capture_phone", return_value={"success": True, "file_url": "/files/phone.png"}),
+			patch.object(visual_check, "_readable_data_url", return_value="data:image/jpeg;base64,x"),
+			patch.object(visual_check, "_drop_capture"),
+			patch.object(visual_check.frappe.db, "commit"),
+			patch("builder.site_ai.ingestion.visual_critique.critique_screenshot", return_value=(read, "judge")) as judge,
+		):
+			report = visual_check.review_page(page, "A Site", "judge")
+		return report, judge
+
+	def test_a_page_that_answers_an_error_is_refused_without_asking_the_judge(self):
+		report, judge = self.review({"status": 417, "widths": {}})
+		self.assertEqual(report["http_error"], 417)
+		self.assertTrue(visual_check.refused(report))
+		judge.assert_not_called()
+
+	def test_what_the_browser_measured_refuses_a_page_the_judge_liked(self):
+		measured = {"status": 200, "widths": {1440: {"findings": [{"kind": "sticks-out", "severity": "high", "where": 'div "mark"', "detail": "spans -120px to 40px"}], "facts": {"band": True, "body_h1": 0, "header_logo": True, "width": 1440}}}}
+		report, judge = self.review(measured)
+		self.assertTrue(report["professional"])
+		self.assertEqual([g["kind"] for g in report["gate"]], ["sticks-out"])
+		self.assertTrue(visual_check.refused(report))
+		self.assertFalse(visual_check.accepted(report))
+		# the judge saw both pictures
+		self.assertEqual(judge.call_args.kwargs["extra_images"], ["data:image/jpeg;base64,x"])
+
+	def test_an_interior_page_without_its_band_is_refused(self):
+		measured = {"status": 200, "widths": {1440: {"findings": [], "facts": {"band": False, "body_h1": 1, "header_logo": True, "width": 1440}}}}
+		report, _judge = self.review(measured)
+		self.assertEqual([g["kind"] for g in report["gate"]], ["band-missing"])
+		self.assertTrue(visual_check.refused(report))
+
+	def test_a_clean_measure_and_a_happy_judge_is_an_accepted_page(self):
+		measured = {"status": 200, "widths": {1440: {"findings": [], "facts": {"band": True, "body_h1": 0, "header_logo": True, "width": 1440}}}}
+		report, _judge = self.review(measured)
+		self.assertTrue(visual_check.accepted(report))
+		self.assertEqual(report["chrome"], [])
 

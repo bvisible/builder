@@ -1079,6 +1079,14 @@ def page_brief_text(site: dict, brief, page: dict, handles: dict, contact_prompt
     if page["type"] in others:
         others.remove(page["type"])
     plan = page_sections(page, minimal, contact_verified=site.get("contact_verified", True), others=others, brands=site.get("brands") or (), sells=bool(site.get("sells")))
+    # //// Neoffice — the site plan's sections for this page, when a plan was written (site_plan.py,
+    # //// 2026-09-16): the static list above is the fallback, not the design.
+    from builder.site_ai.nora import site_plan as planner
+
+    planned = planner.page_of(site.get("plan"), page["route"])
+    if planned:
+        plan = planner.section_lines(planned)
+    contract = planner.contract_lines(site.get("plan"), is_home)
     sections = "\n".join(f"{i}. {s}" for i, s in enumerate(plan, 1))
     concept = getattr(brief, "design_concept", "") or ""
     signature = getattr(brief, "signature_element", "") or ""
@@ -1095,6 +1103,9 @@ def page_brief_text(site: dict, brief, page: dict, handles: dict, contact_prompt
     lines = [
         f"DESIGN DIRECTION: {concept or 'a distinctive direction that fits the brand'} (tone: {tone or 'professional'}; hero style: {hero or 'free'}).",
         f"LAYOUT SYSTEM: {layout_system}. SIGNATURE MOVE: {signature or 'choose one that fits the system'}. Keep the SAME system and move on every page of this site.",
+        # //// Neoffice — the plan's site-wide contract, when there is a plan (site_plan.contract_lines)
+        *contract,
+        (f"PAGE NOTES from the plan: {planned.notes}" if planned and planned.notes else ""),
         # //// Neoffice — the grid the header, the band and the footer share (site_grid_line)
         site_grid_line(handles),
         ("INSPIRATION (what the client likes; echo the palette and the mood, never copy): " + " | ".join(site["inspiration"])) if site.get("inspiration") else "",
@@ -1269,6 +1280,21 @@ def page_brief_text(site: dict, brief, page: dict, handles: dict, contact_prompt
     return "\n".join(line for line in lines if line)
 
 
+def keeps_own_logo(logo_type, logo_image, host_logo) -> bool:
+    """//// Neoffice — whether a profile's chrome carries a logo of its OWN: an image that is not
+    the host site's (a new Variant is bootstrapped from the host's Single, logo included, and that
+    inherited logo is the one a build must NOT keep). 2026-09-16."""
+    return bool(logo_image) and str(logo_type or "") == "Image" and str(logo_image) != str(host_logo or "")
+
+
+def _host_logo() -> str | None:
+    """The host site's own logo (the Single's), the one a profile's Variant inherits."""
+    try:
+        return frappe.db.get_single_value("Website Header Footer Config", "logo_image")
+    except Exception:
+        return None
+
+
 def _progress(ctx, job_id: str, message: str, progress: int, extra: dict | None = None) -> None:
     from builder.api import _update_generation_status
 
@@ -1282,7 +1308,9 @@ def _progress(ctx, job_id: str, message: str, progress: int, extra: dict | None 
 PAGE_STREAM_MAX_CHARS = 80_000  # a page of YAML is 10 to 20 k characters; beyond this the model is looping
 # a page after a long think still needs its 60 to 120 s of YAML: the ceiling sits above
 # the thinking budget plus that, not at the old 480 s that cut streams mid-page
-PAGE_STREAM_MAX_SECONDS = 600
+# //// Neoffice — 900 since K3 writes the pages (2026-09-16): at reasoning_effort "high" its first
+# //// line came after 187 s on a four-section page and the page took 244 s; a home is longer.
+PAGE_STREAM_MAX_SECONDS = 900
 # a stream that has sent nothing at all after this long is a stalled connection, not
 # a slow page: the Contact page of the B2C regeneration waited the full 480 s twice
 # for nothing before the retry
@@ -1293,7 +1321,11 @@ PAGE_STREAM_FIRST_CHUNK_SECONDS = 90
 # stream is alive; it only has to end within this budget. 300 s cut two healthy pages
 # of the B2B regeneration at 42 k and 52 k characters of reasoning (they finished on
 # the retry in about six minutes); 420 s covers what was measured.
-PAGE_STREAM_THINKING_SECONDS = 420
+# //// Neoffice — 660 for the same reason (K3 "high": 187 s measured, a home thinks longer); the
+# //// limit exists to catch a stall, not to hurry a model that was asked to think.
+PAGE_STREAM_THINKING_SECONDS = 660
+# //// Neoffice — how much of the previous version a revision carries back to the writer
+PREVIOUS_YAML_MAX_CHARS = 60_000
 
 
 def _delta_parts(chunk) -> tuple[str, str]:
@@ -1827,10 +1859,14 @@ def build_site(ctx, spec: dict) -> str:
         # //// tool with the page and nothing else: no logo in the arguments meant "this site has
         # //// no logo", and the branch below wiped the client's wordmark out of the header.
         pass
-    elif profile:
+    elif profile and not keeps_own_logo(config.get("logo_type"), config.get("logo_image"), _host_logo()):
         # a profile's Variant is bootstrapped from the main site's Single, logo
         # included: without an upload the new site shows its own name, not the
         # host's logo (on the Single, logo-default.png IS the client's logo)
+        # //// Neoffice — but a logo the site ALREADY HAS of its own is kept (2026-09-16): a full
+        # //// rebuild asked without a logo in its arguments wiped the client's uploaded wordmark
+        # //// out of the header while the footer kept its own. keeps_own_logo tells the host's
+        # //// inherited logo (wiped, as before) from the client's (kept).
         config.logo_type = "Text"
         config.logo_image = None
     else:
@@ -2107,7 +2143,35 @@ def build_site(ctx, spec: dict) -> str:
             # //// Neoffice — the site's language reaches the includes too (2026-09-15)
             "lang": lang_code}
     site["sells"] = _sells_here
+    # //// Neoffice ▼▼▼ — the site plan (site_plan.py, 2026-09-16): every page's sections decided
+    # //// once, by the model that thinks best, from the brief and the client's material — logo,
+    # //// references, their photographs and what the vision read in them, categories, brands —
+    # //// with the geometry of the signature move and what every interior page opens with. The
+    # //// pages are then executed from it. Without a plan the static plans apply, as before.
+    from builder.site_ai.nora import site_plan as planner
+
+    site["plan"] = None
+    if not building_part and spec.get("plan_site", True) and not ctx.is_cancelled():
+        _progress(ctx, job_id, _("Planning the site"), 9)
+        try:
+            includes_by_route = {
+                p["route"]: [f"{c.path} — {c.shows}" for c in available_includes(p["type"], site_type, profile, site_name, lang=lang_code)]
+                for p in pages
+            }
+            plan_logo = (frappe.utils.get_url() + logo_image) if logo_image and logo_image.startswith("/") else logo_image
+            with meter.kind(meter.WRITING):
+                site["plan"] = planner.plan_site(
+                    page_model, site, brief, pages, includes_by_route, client_photos, language,
+                    logo_image=plan_logo, inspiration_images=inspiration["images"], background_mode=background_mode,
+                )
+        except Exception as e:
+            ai_log("warning", "Site plan step failed, the static plans apply", error=str(e)[:200])
+    # //// Neoffice ▲▲▲
     created, failed, cancelled = [], [], False
+    # //// Neoffice — what the look decided (2026-09-16): the pages it refused, how many looks each
+    # //// page took, what it measured on the chrome, and how many passed at first look
+    held, looked, chrome_findings, first_look_accepted = [], {}, [], 0
+    judge = visual_check.judge_model(page_model)
     # //// Neoffice — what the reviewer already read, and the page's state when it did (2026-09-15)
     reviewed_already: dict[str, dict] = {}
     # //// Neoffice — the page at which the token budget was passed, if it was (meter.over_budget)
@@ -2119,6 +2183,19 @@ def build_site(ctx, spec: dict) -> str:
 
     def write_page(page: dict, photos: list[str], revision: str | None = None, notes: list[str] | None = None) -> tuple[list, str, str | None]:
         """One page through the writer and the mechanical passes: (blocks, data_script, error)."""
+        # //// Neoffice — a revision REWRITES the page it revises (2026-09-16). It used to be a fresh
+        # //// page from the same brief plus "fix these points and keep everything else" — with
+        # //// nothing to keep, since the writer never saw what it had written: the second version
+        # //// had other defects (Contact: 3 points, then 4). The previous YAML now travels with the
+        # //// points, and the writer reproduces it, changing only what the points require.
+        previous = (site.get("last_yaml") or {}).get(page["route"])
+        if revision and previous:
+            revision = (
+                revision
+                + "\nPREVIOUS VERSION of this page, in YAML. Reproduce it and change ONLY what the points above "
+                "require: the structure, the copy and the photographs stay as they are.\n"
+                + previous[:PREVIOUS_YAML_MAX_CHARS]
+            )
         brief_text = page_brief_text(site, brief, page, handles, contact_prompt, layout_system, language, photos, cta, palette=palette, revision=revision, photo_notes=notes)
         messages = [
             {"role": "system", "content": Prompts.GENERATION_YAML},
@@ -2131,6 +2208,8 @@ def build_site(ctx, spec: dict) -> str:
                     raw = _stream_text(ctx, page_model, messages, llm.TASK_PARAMS["complex"])
                 blocks, data_script = expand_page_yaml(BlockCodec.strip_fences(raw))
                 if blocks:
+                    # //// Neoffice — kept for the revision (see the top of write_page)
+                    site.setdefault("last_yaml", {})[page["route"]] = BlockCodec.strip_fences(raw)
                     # //// Neoffice — new call: repairs includes to the offered tag or drops them (2d78d71d "fix(nora): includes written as offered, routes honoured but home, and the build's routes stated as final")
                     # an include is one the brief offered, written as offered (a wrong
                     # path is a 417 at render time): see repair_includes
@@ -2349,6 +2428,14 @@ def build_site(ctx, spec: dict) -> str:
                         stripped = strip_title_band(blocks, page["title"])
                         if stripped:
                             ai_log("info", "Repeated title dropped", page=page["title"], edits=stripped)
+                        # //// Neoffice — and no h1 of its own at all (layout.interior_top, 2026-09-16):
+                        # //// the band steps aside for a leading h1, and five page tops out of six
+                        # //// came out without it
+                        from builder.site_ai.nora.layout import interior_top
+
+                        demoted = interior_top(blocks, page["title"])
+                        if demoted:
+                            ai_log("info", "Interior page h1 demoted", page=page["title"], edits=demoted)
                     # nor the type scale: see typography.py (a 210 px paragraph at 11vw)
                     capped = cap_font_sizes(blocks)
                     if capped:
@@ -2432,33 +2519,56 @@ def build_site(ctx, spec: dict) -> str:
         # //// that follow are told what was seen. The final pass stays for what this one cannot see
         # //// yet: the pictures are generated after the pages.
         if visual_check.enabled() and not ctx.is_cancelled():
-            with meter.kind(meter.READING):
-                look = visual_check.review_page(created[-1], profile, page_model, site_name=site_name, activity=activity)
-            seen = look.get("issues") or []
-            # //// Neoffice — the report is kept, with the page's state when it was read (2026-09-15):
-            # //// the final pass used to screenshot and re-read EVERY page, doubling the most
-            # //// expensive call of the whole build for pages nothing had touched since.
-            reviewed_already[name] = {"report": look, "modified": str(frappe.db.get_value("Builder Page", name, "modified") or "")}
-            if seen:
-                site.setdefault("seen_before", []).extend(f"{page['title']}: {i['problem']}" for i in seen[:3])
-            # a page the reviewer calls unprofessional, or that collected more than one point, is
-            # rewritten here rather than at the end, while its brief and its photographs are at hand
-            if seen and (look.get("professional") is False or len(seen) > 1):
-                _progress(ctx, job_id, _("Fixing {0} after looking at it").format(page["title"]), 10 + int(80 * idx / max(total, 1)), {"pages_created": created})
-                fixed, fixed_script, fix_error = write_page(
-                    page,
-                    page_photos or placeholder_photos(page, activity, categories, listing=page["route"] == lister_route),
-                    notes=page_notes or None,
-                    revision=visual_check.revision_instructions(seen),
-                )
-                if fixed:
-                    _write_page(page, fixed, fixed_script, profile, name, _describe(fixed))
-                    site["headlines_by_route"][page["route"]] = page_headlines(fixed, categories)
-                    # //// Neoffice — rewritten: what the reviewer read no longer describes it
-                    reviewed_already.pop(name, None)
-                    ai_log("info", "Page fixed on the spot", page=page["title"], issues=len(seen))
-                else:
+            # //// Neoffice ▼▼▼ — the look has authority (2026-09-16). It used to be: one look, one
+            # //// unread rewrite, publish. Three pages of a site went live with the judge's own
+            # //// "not professional" on them. Now: measure and look; if refused or not clean,
+            # //// rewrite on the points (the previous version in hand) and look AGAIN, up to
+            # //// MAX_REVISIONS times; a page still refused at the end is HELD — not published,
+            # //// not in the menu — and the user is asked. The judge is not the writer
+            # //// (visual_check.judge_model).
+            look, attempts = None, 0
+            page_pictures = page_photos or placeholder_photos(page, activity, categories, listing=page["route"] == lister_route)
+            for attempt in range(visual_check.MAX_REVISIONS + 1):
+                if ctx.is_cancelled():
+                    break
+                with meter.kind(meter.READING):
+                    look = visual_check.review_page(created[-1], profile, judge, site_name=site_name, activity=activity)
+                attempts += 1
+                # the report is kept, with the page's state when it was read: the final pass
+                # re-reads only what changed since (the pictures land after the pages)
+                reviewed_already[name] = {"report": look, "modified": str(frappe.db.get_value("Builder Page", name, "modified") or "")}
+                seen = visual_check.points_to_fix(look)
+                if seen:
+                    site.setdefault("seen_before", []).extend(f"{page['title']}: {i['problem']}" for i in seen[:3])
+                for finding in look.get("chrome") or []:
+                    if finding not in chrome_findings:
+                        chrome_findings.append(finding)
+                if visual_check.accepted(look):
+                    if attempt == 0:
+                        first_look_accepted += 1
+                    break
+                if look.get("error") and not look.get("http_error"):
+                    # a page that could not be read is not rewritten on nothing
+                    break
+                if attempt == visual_check.MAX_REVISIONS:
+                    break
+                _progress(ctx, job_id, _("Fixing {0} after looking at it ({1}/{2})").format(page["title"], attempt + 1, visual_check.MAX_REVISIONS), 10 + int(80 * idx / max(total, 1)), {"pages_created": created})
+                fixed, fixed_script, fix_error = write_page(page, page_pictures, notes=page_notes or None, revision=visual_check.revision_instructions(seen, look.get("gate")))
+                if not fixed:
                     ai_log("warning", "The look found points but the fix failed", page=page["title"], error=fix_error)
+                    break
+                _write_page(page, fixed, fixed_script, profile, name, _describe(fixed))
+                site["headlines_by_route"][page["route"]] = page_headlines(fixed, categories)
+                reviewed_already.pop(name, None)
+                ai_log("info", "Page revised after the look", page=page["title"], attempt=attempt + 1, points=len(seen), measured=len(look.get("gate") or []))
+            if look is not None:
+                looked[name] = attempts
+                if visual_check.refused(look):
+                    essential = page["route"] in ("home", "index") or f"/{route}".rstrip("/") == (cta[1] or "").rstrip("/")
+                    why = visual_check.why_refused(look)
+                    held.append({"name": name, "title": page["title"], "route": f"/{route}", "attempts": attempts, "why": why, "essential": essential})
+                    ai_log("warning", "Page refused after its revisions", page=page["title"], attempts=attempts, essential=essential, why=why[:300])
+            # //// Neoffice ▲▲▲
         if use_host:
             try:
                 # _write_page has committed: an after_commit emit would wait for the
@@ -2482,9 +2592,22 @@ def build_site(ctx, spec: dict) -> str:
             config.cta_url = moved[config.cta_url]
         ai_log("warning", "Pages written beside kept pages holding their routes", moved=moved, links=sum(len(v) for v in repointed.values()))
 
+    # //// Neoffice — a refused page is not published and not in the menu (2026-09-16), unless the
+    # //// site cannot stand without it (the home, the page the call to action leads to): those stay
+    # //// up, flagged, and the user is asked. Nothing the judge refused goes live in silence.
+    hidden = {h["name"] for h in held if not h["essential"]}
+    for h in held:
+        if h["name"] not in hidden:
+            continue
+        try:
+            frappe.db.set_value("Builder Page", h["name"], "published", 0, update_modified=False)
+            frappe.db.commit()
+        except Exception as e:
+            ai_log("warning", "Refused page not unpublished", page=h["title"], error=str(e)[:120])
+    shown = [p for p in created if p["name"] not in hidden]
     # 6. menu, footer, home
     _progress(ctx, job_id, _("Menu, footer and home page"), 92, {"pages_created": created})
-    apply_navigation(config, created, site_type, activity, profile, lang_code, site_name=site_name)
+    apply_navigation(config, shown, site_type, activity, profile, lang_code, site_name=site_name)
 
     # 7. the images: the client's own photographs first, drawings only for what is left
     # //// Neoffice ▼▼▼ — a client who supplies photographs wants THEM on the page, and a
@@ -2529,6 +2652,9 @@ def build_site(ctx, spec: dict) -> str:
                 for item in created:
                     if ctx.is_cancelled():
                         break
+                    # //// Neoffice — a page the look refused and unpublished is not read again here
+                    if item["name"] in hidden:
+                        continue
                     # //// Neoffice — a page the reviewer already read, and that nothing has touched
                     # //// since, is not screenshotted and read a second time (2026-09-15). The
                     # //// reason this pass exists is that the generated pictures land AFTER the
@@ -2544,7 +2670,8 @@ def build_site(ctx, spec: dict) -> str:
                         continue
                     _progress(ctx, job_id, _("Visual check: {0}").format(item["title"]), 96, {"pages_created": created})
                     with meter.kind(meter.READING):
-                        reviews.append(visual_check.review_page(item, profile, page_model, site_name=site_name, activity=activity))
+                        # //// Neoffice — read by the judge, not the writer (2026-09-16)
+                        reviews.append(visual_check.review_page(item, profile, judge, site_name=site_name, activity=activity))
             known = known_text(site, contact_prompt)
             earlier: list[str] = []
             for item in created:
@@ -2569,8 +2696,9 @@ def build_site(ctx, spec: dict) -> str:
             # every page stating made-up facts is revised; the designer's points take the places
             # left: the pages that failed the first glance first, then the ones with most defects
             ranked = sorted(
-                [r for r in reviews if r["issues"] and r["name"] in by_name],
-                key=lambda r: (r["professional"] is not False, -len(r["issues"])),
+                # //// Neoffice — a measured point counts like a seen one, and a hidden page is left alone (2026-09-16)
+                [r for r in reviews if (r["issues"] or r.get("gate")) and r["name"] in by_name and r["name"] not in hidden],
+                key=lambda r: (r["professional"] is not False, -len(r["issues"]) - len(r.get("gate") or [])),
             )
             todo = [r for r in ranked if r.get("facts")] + [r for r in ranked if not r.get("facts")][: visual_check.MAX_REVISIONS]
             for r in todo:
@@ -2583,7 +2711,7 @@ def build_site(ctx, spec: dict) -> str:
                 # carries besides (the client's own included, not only the drawn ones)
                 planned, planned_notes = planned_photos.get(r["name"], ([], []))
                 photos, notes = revision_photos(planned, planned_notes, stored.get("blocks"), stored.get("page_data_script"))
-                blocks, data_script, error = write_page(page, photos or placeholder_photos(page, activity, categories, listing=page["route"] == lister_route), notes=notes, revision=visual_check.revision_instructions(r["issues"]))
+                blocks, data_script, error = write_page(page, photos or placeholder_photos(page, activity, categories, listing=page["route"] == lister_route), notes=notes, revision=visual_check.revision_instructions(r["issues"], r.get("gate")))
                 if not blocks:
                     ai_log("warning", "Revision pass failed", page=r["title"], error=error)
                     continue
@@ -2610,6 +2738,8 @@ def build_site(ctx, spec: dict) -> str:
         "status": "completed", "progress": 100, "total_pages": total, "current_step": "Completed", "current_page": None,
         "pages_created": created, "remaining_image_slots": pending, "image_job_id": image_job, "error": None,
         "site_name": site_name, "completed_at": now(), "duration_seconds": duration,
+        # //// Neoffice — what the look refused, for the panel (2026-09-16)
+        "held": [{"title": h["title"], "route": h["route"], "why": h["why"][:200]} for h in held],
     })
     ai_log("info", "=== NORA SITE BUILD COMPLETED ===", job_id=job_id, pages=len(created), failed=len(failed), duration=duration)
     lines = [f"DONE in {duration // 60} min {duration % 60} s. Site '{site_name}'" + (f" on profile '{profile}'" if profile else "") + ":"]
@@ -2708,7 +2838,19 @@ def build_site(ctx, spec: dict) -> str:
                 "another business, so the site shows none: ask the client for the line this shop answers on."
             )
     # //// Neoffice ▲▲▲
-    lines += visual_check.summary_lines(reviews, revised)
+    # //// Neoffice — the quality line (2026-09-16): the one number that says whether the writing
+    # //// improves, build after build — how many pages passed at first look.
+    if looked:
+        lines.append(
+            f"Quality: {first_look_accepted} of {len(looked)} page(s) accepted at first look, "
+            f"{max(0, len(looked) - first_look_accepted - len(held))} after a revision, {len(held)} refused."
+        )
+    if chrome_findings:
+        lines.append(
+            "Measured on the site's chrome, not on a page: " + "; ".join(f"{c['where']}: {c['detail']}" for c in chrome_findings[:3])
+            + ". The header and footer are set in Settings > Theme: tell the user (a logo is uploaded there), do not rewrite a page for it."
+        )
+    lines += visual_check.summary_lines(reviews, revised, held)
     rewritten = [r["title"] for r in reviews if r.get("facts") and r["name"] in revised]
     if rewritten:
         lines.append(

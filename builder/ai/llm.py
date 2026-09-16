@@ -114,11 +114,30 @@ def provider_kwargs(model: str) -> dict:
 	return {}
 
 
+def reasoning_effort() -> str:
+	"""//// Neoffice — how hard Kimi K3 thinks, from site_config `nora_reasoning_effort`
+	(low / high / max). Measured on one page brief (2026-09-16): at its default "max" K3
+	thought for 465 s before its first line and wrote the page in 550 s; at "high" 187 s and
+	244 s, for the same four sections and fewer defects than the fast K2.7; at "low" 48 s but
+	a thin page. "high" is the default: the site is built once, and it is built to be right."""
+	try:
+		value = str(frappe.conf.get("nora_reasoning_effort") or "").strip().lower()
+	except Exception:
+		value = ""
+	return value if value in ("low", "high", "max") else "high"
+
+
 def patch_params_for_provider(model: str, params: dict) -> dict:
 	"""Moonshot's Kimi rejects every temperature but 1, so coerce it instead of
 	failing the whole turn over a tuning knob."""
 	if "kimi" in model and params.get("temperature") not in (None, 1):
-		return {**params, "temperature": 1}
+		params = {**params, "temperature": 1}
+	# //// Neoffice — K3's thinking is set per request (`reasoning_effort`, see reasoning_effort()
+	# //// above); K2.x's `thinking` parameter is refused by K3, so nothing else is sent.
+	if "kimi-k3" in model:
+		extra = dict(params.get("extra_body") or {})
+		extra.setdefault("reasoning_effort", reasoning_effort())
+		params = {**params, "extra_body": extra}
 	return params
 
 

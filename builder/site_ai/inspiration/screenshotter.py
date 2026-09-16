@@ -305,7 +305,7 @@ class WebsiteScreenshotter:
 
 
 # //// Neoffice — module-level helper takes headers too, for the loopback site-name header (0445cc94 "fix(visual-check): the loopback render names its site by header, not by host")
-def capture_website_screenshot(url: str, full_page: bool = True, static_roots: Optional[dict] = None, headers: Optional[dict] = None) -> dict:
+def capture_website_screenshot(url: str, full_page: bool = True, static_roots: Optional[dict] = None, headers: Optional[dict] = None, viewport_width: Optional[int] = None) -> dict:
     """
     Convenience function to capture a website screenshot.
 
@@ -316,8 +316,180 @@ def capture_website_screenshot(url: str, full_page: bool = True, static_roots: O
     Returns:
         dict with capture result
     """
-    screenshotter = WebsiteScreenshotter()
+    # //// Neoffice — viewport_width: the review also looks at the page on a phone (2026-09-16).
+    # //// A review that only ever saw the 1440 px capture shipped a contact page whose title
+    # //// wrapped letter by letter on a narrow column: what breaks first breaks on the phone.
+    screenshotter = WebsiteScreenshotter(viewport_width=viewport_width) if viewport_width else WebsiteScreenshotter()
     # //// Neoffice — pass headers through to capture_and_save (0445cc94 "fix(visual-check): the loopback render names its site by header, not by host")
     return screenshotter.capture_and_save(url, full_page=full_page, static_roots=static_roots, headers=headers)
+
+
+# //// Neoffice ▼▼▼ — the measured look at a rendered page (2026-09-16). A vision model reading a
+# //// screenshot misses what a ruler catches: a heading wrapped letter by letter in a 90 px column,
+# //// an ornament 120 px outside the page, a carousel with nothing in it, a picture that never
+# //// loaded, the site's title band missing because the page opened with its own h1. None of
+# //// these is a matter of taste: each is a number the browser already knows. So they are read
+# //// off the rendered page, at three widths, before any model is asked its opinion — for the
+# //// price of a page load, no tokens at all — and what they find goes into the revision as
+# //// facts, and into the verdict as a refusal when the page is broken.
+LAYOUT_PROBE = """
+() => {
+  const vw = window.innerWidth;
+  const out = [];
+  const text = (el) => ((el && (el.innerText || el.textContent)) || '').trim().replace(/\s+/g, ' ').slice(0, 60);
+  const visible = (el) => {
+    const r = el.getBoundingClientRect();
+    const s = getComputedStyle(el);
+    return r.width > 0 && r.height > 0 && s.visibility !== 'hidden' && s.display !== 'none' && s.opacity !== '0';
+  };
+  const chrome = (el) => !!el.closest('header, footer, nav, .site-page-header, .navbar, #navbar, [data-chrome]');
+  const clipped = (el) => {
+    for (let p = el.parentElement; p && p !== document.documentElement; p = p.parentElement) {
+      const s = getComputedStyle(p);
+      if (/hidden|clip|auto|scroll/.test(s.overflow + ' ' + s.overflowX)) return true;
+    }
+    return false;
+  };
+  const where = (el) => el.tagName.toLowerCase() + (text(el) ? ' "' + text(el) + '"' : (el.className && typeof el.className === 'string' ? ' .' + el.className.trim().split(/\s+/)[0] : ''));
+  const body = document.body;
+
+  // 1. the page is wider than the screen: a horizontal scrollbar for the visitor
+  const sw = Math.max(document.documentElement.scrollWidth, body.scrollWidth);
+  if (sw > vw + 2) out.push({kind: 'overflow', severity: 'high', where: 'page', detail: 'the page is ' + sw + 'px wide on a ' + vw + 'px screen: something sticks out and the visitor gets a horizontal scrollbar'});
+
+  // 2. what sticks out of the screen with nothing to clip it
+  let stuck = 0;
+  for (const el of body.querySelectorAll('section *, main *')) {
+    if (stuck >= 4) break;
+    if (chrome(el) || !visible(el)) continue;
+    const r = el.getBoundingClientRect();
+    if ((r.right > vw + 2 || r.left < -2) && !clipped(el)) {
+      stuck++;
+      out.push({kind: 'sticks-out', severity: 'high', where: where(el), detail: 'spans ' + Math.round(r.left) + 'px to ' + Math.round(r.right) + 'px on a ' + vw + 'px screen, outside the page; an ornament that bleeds must sit inside a section with overflow hidden, and nothing else may leave the page'});
+    }
+  }
+
+  // 3. a text starved of width: a heading wrapped letter by letter, a paragraph in a sliver
+  let starved = 0;
+  for (const el of body.querySelectorAll('h1, h2, h3, p, li, a, span, td')) {
+    if (starved >= 6) break;
+    if (chrome(el) || !visible(el)) continue;
+    const t = text(el);
+    if (t.length < 12) continue;
+    if ([...el.children].some(c => /^(h1|h2|h3|p|div|ul|ol|section|table)$/i.test(c.tagName))) continue;
+    const r = el.getBoundingClientRect();
+    const s = getComputedStyle(el);
+    const lh = parseFloat(s.lineHeight) || (parseFloat(s.fontSize) || 16) * 1.3;
+    const lines = r.height / lh;
+    const heading = /^h[1-3]$/i.test(el.tagName);
+    if ((heading && r.width < 200 && lines > 2.5) || (!heading && r.width < 130 && lines > 4)) {
+      starved++;
+      out.push({kind: 'starved-text', severity: 'high', where: where(el), detail: Math.round(r.width) + 'px wide, wrapped on ' + Math.round(lines) + ' lines: its column is starved (a grid track of minmax(0, 1fr) or a fixed narrow width); give the text a real minimum width, or stack the columns at this screen size'});
+    }
+  }
+
+  // 4. a live component with nothing to show
+  const seen = new Set();
+  for (const el of body.querySelectorAll('[class*="carousel"], [class*="listing"], [class*="-grid"], [class*="products"], [class*="brands"]')) {
+    if (chrome(el) || !visible(el) || seen.has(el)) continue;
+    if ([...seen].some(p => p.contains(el))) continue;
+    seen.add(el);
+    const t = text(el);
+    if (!el.querySelector('img, a, .card, li') && (/aucun|no .* (available|found)|nothing|vide|empty/i.test(t) || t.length < 3)) {
+      out.push({kind: 'empty-component', severity: 'high', where: where(el), detail: 'shows nothing (no item, no picture' + (t ? ', reads "' + t + '"' : '') + '): a heading over an empty block; drop the section or give the component the parameters that fill it'});
+    }
+  }
+
+  // 5. a picture that never loaded
+  let broken = 0;
+  for (const img of body.querySelectorAll('img')) {
+    if (broken >= 4 || chrome(img)) continue;
+    const src = img.getAttribute('src') || '';
+    if (img.complete && img.naturalWidth === 0 && /^\/(files|assets)\//.test(src)) {
+      broken++;
+      out.push({kind: 'broken-image', severity: 'high', where: 'img ' + src.slice(0, 80), detail: 'the picture did not load: the file is missing or the path is wrong'});
+    }
+  }
+
+  // 6. a section with nothing in it
+  for (const sec of body.querySelectorAll('section')) {
+    if (chrome(sec) || !visible(sec)) continue;
+    const r = sec.getBoundingClientRect();
+    if (r.height < 24 && !text(sec) && !sec.querySelector('img, svg')) out.push({kind: 'empty-section', severity: 'medium', where: 'section', detail: 'an empty section of ' + Math.round(r.height) + 'px: nothing in it, remove it'});
+  }
+
+  // what the page is made of, for the rules the caller knows (the route, the site)
+  const band = document.querySelector('.site-page-header');
+  const bodyH1 = [...body.querySelectorAll('h1')].filter(h => !chrome(h)).length;
+  const headerLogo = !!document.querySelector('header img, header svg, .navbar-brand img, .site-header img, [class*="logo"] img');
+  const headerText = text(document.querySelector('header [class*="logo"], .navbar-brand, .site-header [class*="brand"]'));
+  return {findings: out, facts: {band: !!band, body_h1: bodyH1, header_logo: headerLogo, header_text: headerText, width: vw, height: Math.max(document.documentElement.scrollHeight, body.scrollHeight)}};
+}
+"""
+
+MEASURE_WIDTHS = (1440, 768, 375)
+
+
+async def _measure_async(url: str, widths=MEASURE_WIDTHS, static_roots: Optional[dict] = None, headers: Optional[dict] = None, timeout: int = 30000) -> dict:
+    """The page loaded once per width, and LAYOUT_PROBE run on it. Returns
+    {"status": <http status>, "widths": {width: {"findings": [...], "facts": {...}}}}."""
+    from playwright.async_api import async_playwright
+
+    result: dict = {"status": None, "widths": {}}
+    async with async_playwright() as p:
+        browser = await p.chromium.launch(headless=True)
+        try:
+            page = await browser.new_page(viewport={"width": widths[0], "height": 900})
+            if headers:
+                await page.set_extra_http_headers({str(k): str(v) for k, v in headers.items()})
+            if static_roots:
+
+                async def serve_static(route, request):
+                    target = static_file_for(request.url, static_roots)
+                    if target is None:
+                        await route.continue_()
+                    elif target == "":
+                        await route.fulfill(status=404, body=b"")
+                    else:
+                        await route.fulfill(path=target)
+
+                await page.route("**/*", serve_static)
+            response = await page.goto(url, timeout=timeout, wait_until="domcontentloaded")
+            result["status"] = response.status if response else None
+            try:
+                await page.wait_for_load_state("load", timeout=8000)
+            except Exception:
+                pass
+            # the pages scroll inside <body>: let the document grow so the measures see the
+            # whole page, as the capture does (see capture_async)
+            try:
+                await page.add_style_tag(content="html,body{height:auto!important;max-height:none!important;overflow:visible!important}")
+            except Exception:
+                pass
+            for width in widths:
+                try:
+                    await page.set_viewport_size({"width": int(width), "height": 900})
+                    await page.wait_for_timeout(400)
+                    result["widths"][int(width)] = await page.evaluate(LAYOUT_PROBE)
+                except Exception as e:
+                    result["widths"][int(width)] = {"findings": [], "facts": {}, "error": str(e)[:160]}
+        finally:
+            await browser.close()
+    return result
+
+
+def measure_layout(url: str, widths=MEASURE_WIDTHS, static_roots: Optional[dict] = None, headers: Optional[dict] = None) -> dict:
+    """Synchronous wrapper of _measure_async. Never raises: a page that cannot be measured
+    reports the error, and the caller decides what an unmeasured page is worth."""
+    try:
+        try:
+            loop = asyncio.get_event_loop()
+        except RuntimeError:
+            loop = asyncio.new_event_loop()
+            asyncio.set_event_loop(loop)
+        return loop.run_until_complete(_measure_async(url, widths, static_roots, headers))
+    except Exception as e:
+        return {"status": None, "widths": {}, "error": str(e)[:200]}
+# //// Neoffice ▲▲▲
 
 
