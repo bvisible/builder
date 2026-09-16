@@ -673,6 +673,40 @@ class TestShopIncludes(unittest.TestCase):
 		# the page just built comes first, the ones left alone follow, none twice
 		self.assertEqual(["/privacy-policy", "/home", "/brands"], [p["route"] for p in pages])
 
+	# //// Neoffice — added test (2026-09-16): rebuilding one page must not reorder the menu.
+	# //// Without this, redoing the Contact page moved Contact to the third entry of a menu the
+	# //// user had twice asked to read Home, Shop, Brands, About, Contact.
+	def test_rebuilding_one_page_keeps_the_menu_in_its_order(self):
+		from builder.site_ai.nora.site_builder import site_pages_for_menu
+
+		built = [{"name": "p4", "title": "Contact", "route": "/contact", "planned": "contact"}]
+		published = [
+			{"name": "p1", "page_title": "Home", "route": "home"},
+			{"name": "p2", "page_title": "Brands", "route": "brands"},
+			{"name": "p3", "page_title": "About", "route": "about"},
+			{"name": "p4", "page_title": "Contact", "route": "contact"},
+		]
+		order = ["", "all-products", "brands", "about", "contact"]
+		with patch("builder.site_ai.nora.site_builder.frappe") as mock_frappe:
+			mock_frappe.db.has_column.return_value = True
+			mock_frappe.get_all.return_value = published
+			pages = site_pages_for_menu(built, "A Storefront", order)
+		self.assertEqual(["/home", "/brands", "/about", "/contact"], [p["route"] for p in pages])
+
+	def test_a_page_the_menu_does_not_know_yet_goes_to_the_end(self):
+		from builder.site_ai.nora.site_builder import site_pages_for_menu
+
+		built = [{"name": "p9", "title": "Privacy", "route": "/privacy-policy", "planned": "privacy-policy"}]
+		published = [
+			{"name": "p1", "page_title": "Home", "route": "home"},
+			{"name": "p9", "page_title": "Privacy", "route": "privacy-policy"},
+		]
+		with patch("builder.site_ai.nora.site_builder.frappe") as mock_frappe:
+			mock_frappe.db.has_column.return_value = True
+			mock_frappe.get_all.return_value = published
+			pages = site_pages_for_menu(built, "A Storefront", ["", "brands"])
+		self.assertEqual(["/home", "/privacy-policy"], [p["route"] for p in pages])
+
 	def test_a_page_the_run_rebuilt_is_not_listed_twice(self):
 		from builder.site_ai.nora.site_builder import site_pages_for_menu
 
