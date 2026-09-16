@@ -234,12 +234,12 @@ def clean_tag(text: str) -> str | None:
 	if not component:
 		return None
 	declared = {p["name"] for p in component.params}
-	kept = [
-		f"{{%- set {name} = {value} -%}}"
-		for name, value in SET_PARAM.findall(text)
-		if name in declared
-	]
-	return "".join(kept) + f'{{% include "{component.path}" %}}'
+	given = SET_PARAM.findall(text)
+	kept = [f"{{%- set {name} = {value} -%}}" for name, value in given if name in declared]
+	# //// Neoffice — a tag that already means what it should is left exactly as it is: rewriting
+	# //// it to change a quote style is churn, and it inflates the count the build reports.
+	nothing_changed = len(kept) == len(given) and found.group(1) == component.path
+	return text.strip() if nothing_changed else "".join(kept) + f'{{% include "{component.path}" %}}'
 
 
 def prompt_block(components: list[Component]) -> str:
