@@ -4,6 +4,8 @@ import AssetsTab from "@/components/LeftPanelTabs/AssetsTab.vue";
 import BlocksTab from "@/components/LeftPanelTabs/BlocksTab.vue";
 import CodeTab from "@/components/LeftPanelTabs/CodeTab.vue";
 import LayersTab from "@/components/LeftPanelTabs/LayersTab.vue";
+//// Neoffice — see the Site blocks tab below.
+import SiteBlocksPanel from "@/components/SiteBlocksPanel.vue";
 import useBuilderStore from "@/stores/builderStore";
 import { createRegistry, type RegistryItem } from "@/utils/createRegistry";
 import type { Component } from "vue";
@@ -81,6 +83,18 @@ leftPanelTabs.register({
 	shortcut: { key: "v", ctrl: true, shift: true },
 	action: () => (builderStore.showTokenManager = !builderStore.showTokenManager),
 	isActive: () => builderStore.showTokenManager,
+});
+
+//// Neoffice — the site's live blocks (builder/site_ai/components.py, 2026-09-15). NOT the
+//// Components tab above, which holds blocks a user designed: these are provided by the apps and
+//// they draw the site's own data — its products, its brands, its hours, its posts.
+leftPanelTabs.register({
+	name: "SiteBlocks",
+	label: __("Site blocks"),
+	icon: "lucide-layout-template",
+	component: SiteBlocksPanel,
+	shortcut: { key: "b", ctrl: true, shift: true },
+	lazy: true,
 });
 
 leftPanelTabs.register({

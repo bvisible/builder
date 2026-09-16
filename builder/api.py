@@ -236,6 +236,61 @@ OPTIONAL_PAGES_BY_SITE_TYPE = {
 # AI GENERATION API (Creative AI with full freedom)
 # =============================================================================
 
+
+# //// Neoffice ▼▼▼ — the component catalogue, for the editor's panel (2026-09-15).
+# //// The generator reads the same catalogue (site_ai/components.py); this is the other half of
+# //// the promise made when it was written — that a person could drop a products carousel or a
+# //// blog listing themselves, and set what it takes, instead of only the assistant being able to.
+@frappe.whitelist()
+@builder_role_required()
+def get_site_components(website_profile: str | None = None) -> list[dict]:
+	"""The components this site can place on a page, with their parameters.
+
+	Each one carries what it shows, the pages it suits, the parameters it takes (name, meaning,
+	default) and the tag to insert. A component with nothing to show on this site — a products
+	carousel with no pictured product, a team with nobody in it — is reported as such rather than
+	hidden: the panel says why it is greyed out, which is the answer the user needs."""
+	from builder.site_ai import components
+
+	out = []
+	for component in components.catalogue():
+		has = components.has_data(component, website_profile)
+		out.append(
+			{
+				"label": component.label,
+				"path": component.path,
+				"app": component.app,
+				"shows": component.shows,
+				"pages": list(component.pages),
+				"params": [dict(p) for p in component.params],
+				"tag": component.tag(),
+				"note": component.note,
+				# None when the component declares no check: nothing to say about it
+				"has_data": has,
+			}
+		)
+	return sorted(out, key=lambda c: (c["app"], c["label"]))
+
+
+@frappe.whitelist()
+@builder_role_required()
+def render_component_tag(path: str, values: str | dict | None = None) -> str:
+	"""The tag for one catalogued component with the values the user chose.
+
+	Built here rather than in the browser so the catalogue stays the only thing that decides
+	which parameters exist: a value for a parameter the component does not declare is dropped,
+	the same way it is when a generated page carries one."""
+	from builder.site_ai import components
+
+	component = next((c for c in components.catalogue() if c.path == path), None)
+	if not component:
+		frappe.throw(_("Unknown component: {0}").format(path))
+	if isinstance(values, str):
+		values = json.loads(values or "{}")
+	return component.tag(values or {})
+# //// Neoffice ▲▲▲
+
+
 @frappe.whitelist()
 # //// Neoffice — builder role required: this was a bare @frappe.whitelist(), so ANY
 # //// authenticated user (a portal customer included) could call it. See require_builder_role.
