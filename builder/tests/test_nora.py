@@ -424,6 +424,61 @@ class TestAccent(unittest.TestCase):
 		self.assertIn("ACCENT: var(--nt2-accent)", page_brief_text(site, FakeBrief(), page, handles, "", "bento", "French", [], ("CTA", "/")))
 
 
+# //// Neoffice ▼▼▼ — added tests (2026-09-16): a decorative mark stays inside its section.
+class TestTheMarkStaysInside(unittest.TestCase):
+	"""A live About page laid the site's logo as a 560px background layer at 8% opacity with
+	right:-112px: a fifth of the glyph was sliced off by the section's overflow:hidden and the
+	rest lay across the column. The device is right, the placement is not."""
+
+	MARK = "/files/tla-logo.png"
+
+	def watermark(self, **styles):
+		base = {"position": "absolute", "backgroundImage": f'url("{self.MARK}")', "width": "560px", "height": "560px"}
+		base.update(styles)
+		return {"element": "div", "baseStyles": base}
+
+	def test_a_mark_bleeding_out_of_its_section_is_pulled_back(self):
+		from builder.site_ai.nora.layout import settle_bleeding_marks
+
+		block = self.watermark(right="-112px", top="-40px")
+		moved = settle_bleeding_marks([{"children": [block]}], self.MARK)
+		self.assertEqual("0px", block["baseStyles"]["right"])
+		self.assertEqual("0px", block["baseStyles"]["top"])
+		self.assertEqual(1, len(moved))
+		self.assertIn("-112px", moved[0])
+
+	def test_a_mark_already_inside_is_left_alone(self):
+		from builder.site_ai.nora.layout import settle_bleeding_marks
+
+		block = self.watermark(right="24px")
+		self.assertEqual([], settle_bleeding_marks([{"children": [block]}], self.MARK))
+		self.assertEqual("24px", block["baseStyles"]["right"])
+
+	def test_a_photograph_that_bleeds_on_purpose_is_not_touched(self):
+		"""Only the MARK is pulled back: a full-bleed photograph is a deliberate composition."""
+		from builder.site_ai.nora.layout import settle_bleeding_marks
+
+		photo = {"element": "div", "baseStyles": {"position": "absolute", "backgroundImage": 'url("/files/hero.jpg")', "left": "-80px"}}
+		self.assertEqual([], settle_bleeding_marks([{"children": [photo]}], self.MARK))
+		self.assertEqual("-80px", photo["baseStyles"]["left"])
+
+	def test_a_mark_laid_in_flow_is_not_touched(self):
+		"""Only an ABSOLUTELY positioned layer is a watermark; in flow it is a real element."""
+		from builder.site_ai.nora.layout import settle_bleeding_marks
+
+		block = self.watermark(position="relative", right="-112px")
+		self.assertEqual([], settle_bleeding_marks([{"children": [block]}], self.MARK))
+		self.assertEqual("-112px", block["baseStyles"]["right"])
+
+	def test_the_pass_reaches_a_mark_nested_deep_in_the_page(self):
+		from builder.site_ai.nora.layout import settle_bleeding_marks
+
+		block = self.watermark(left="-200px")
+		page = [{"children": [{"children": [{"children": [block]}]}]}]
+		self.assertEqual(1, len(settle_bleeding_marks(page, self.MARK)))
+		self.assertEqual("0px", block["baseStyles"]["left"])
+
+
 # //// Neoffice ▼▼▼ — added tests (2026-09-16): light or dark ground is the CLIENT's answer.
 # //// Left to the brief, a B2B distributor came out with a near-black hero and a near-black
 # //// call-to-action nobody had asked for, and the only way to change it was for an operator to

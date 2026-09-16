@@ -2298,9 +2298,12 @@ def build_site(ctx, spec: dict) -> str:
                     # //// Neoffice — and the emblem is an ornament or nothing (layout.drop_small_marks): offered
                     # //// as a quiet background layer, it came back as a 30px bullet beside a heading (2026-09-15)
                     if site.get("mark"):
-                        from builder.site_ai.nora.layout import drop_small_marks
+                        from builder.site_ai.nora.layout import drop_small_marks, settle_bleeding_marks
 
                         dropped_marks = drop_small_marks(blocks, site["mark"])
+                        # //// Neoffice — and a mark laid as a background layer stays INSIDE its
+                        # //// section: right:-112px sliced a fifth of the glyph off (2026-09-16)
+                        dropped_marks += settle_bleeding_marks(blocks, site["mark"])
                         if dropped_marks:
                             ai_log("info", "Emblem used as a bullet removed", page=page["title"], edits=dropped_marks)
                     # //// Neoffice — and a site whose mark is a circle of segments shows them in that

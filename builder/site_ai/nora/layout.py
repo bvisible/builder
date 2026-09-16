@@ -850,4 +850,54 @@ def drop_small_marks(blocks: list, mark: str) -> list[str]:
         if isinstance(block, dict):
             walk(block)
     return removed
+
+
+# //// Neoffice — a watermark that bleeds out of its section reads as a mistake, not a device.
+# //// Measured on a live About page (2026-09-16): the model laid the site's logo as a 560px
+# //// background layer at 8% opacity with right:-112px, so a fifth of the glyph was sliced off by
+# //// the section's overflow:hidden and the rest lay across the column where the breadcrumb sits.
+# //// The intent is right — a large, faint mark is a real editorial device — the placement is not.
+# //// Pulling every negative offset back to 0 keeps the mark whole and inside its own section.
+BLEED_SIDES = ("left", "right", "top", "bottom")
+
+
+def settle_bleeding_marks(blocks: list, mark: str) -> list[str]:
+    """Pulls a decorative copy of the site's mark back inside its section.
+
+    Only touches an ABSOLUTELY positioned block whose background image is the mark: a photograph
+    that bleeds on purpose, and anything the page positions in flow, are left alone. Returns one
+    line per block moved."""
+    if not mark:
+        return []
+    moved: list[str] = []
+
+    def is_watermark(block: dict) -> bool:
+        styles = block.get("baseStyles") or {}
+        if str(styles.get("position") or "").strip().lower() != "absolute":
+            return False
+        return mark in str(styles.get("backgroundImage") or "")
+
+    def walk(node) -> None:
+        if isinstance(node, list):
+            for child in node:
+                walk(child)
+            return
+        if not isinstance(node, dict):
+            return
+        styles = node.get("baseStyles") or {}
+        if is_watermark(node):
+            pulled = []
+            for side in BLEED_SIDES:
+                found = re.match(r"^\s*(-\d+(?:\.\d+)?)\s*(px)?\s*$", str(styles.get(side) or ""))
+                if found:
+                    styles[side] = "0px"
+                    pulled.append(f"{side} {found.group(1)}px")
+            if pulled:
+                node["baseStyles"] = styles
+                moved.append("the emblem laid over the page was pulled back inside its section (" + ", ".join(pulled) + ")")
+        for child in node.get("children") or []:
+            walk(child)
+
+    walk(blocks)
+    return moved
 # //// Neoffice ▲▲▲
