@@ -1777,6 +1777,9 @@ def build_site(ctx, spec: dict) -> str:
     secondary = (spec.get("secondary_color") or "").strip() or None
     logo_image = clean_logo(spec.get("logo_image"))
     footer_logo_image = clean_logo(spec.get("footer_logo_image"))
+    # //// Neoffice — a run that writes only the pages it names, leaving the rest of the site — and
+    # //// the rest of its chrome — alone (2026-09-15). Read here: the chrome step needs it too.
+    building_part = str(spec.get("scope") or "site") == "pages"
     # //// Neoffice — a site that sells says so to every page (2026-09-15): its home shows real
     # //// products taken from the shop, and its footer is the centred one. Read here, before the
     # //// chrome step, which runs long before the pages.
@@ -1802,7 +1805,7 @@ def build_site(ctx, spec: dict) -> str:
             host_is_blank = False
     protected = [p for p in classes["protected"] if p["name"] != host_page or not host_is_blank]
     # //// Neoffice — a partial build is only asked about the pages it would actually replace
-    if str(spec.get("scope") or "site") == "pages":
+    if building_part:
         wanted = {str(p["route"]).strip("/") for p in pages}
         protected = [p for p in protected if str(p.get("route") or "").strip("/") in wanted]
     if replace_existing == "auto" and protected:
@@ -1817,8 +1820,6 @@ def build_site(ctx, spec: dict) -> str:
         )
     # the build is real from here on: the confirmation round trip above must leave neither
     # a "running" job behind (get_site_generation_status) nor a START line without an end
-    # //// Neoffice — a partial build replaces only what it writes (see pages_to_replace)
-    building_part = str(spec.get("scope") or "site") == "pages"
     to_delete = pages_to_replace(
         classes,
         replace_existing,
@@ -1846,9 +1847,13 @@ def build_site(ctx, spec: dict) -> str:
 
     # 2. the chrome basics
     config = _get_site_chrome_config(profile)
-    for key, value in SITE_TYPE_HEADER_FOOTER_DEFAULTS.get(site_type, SITE_TYPE_HEADER_FOOTER_DEFAULTS["vitrine"]).items():
-        if hasattr(config, key):
-            setattr(config, key, value)
+    # //// Neoffice — the site-type defaults are for a site being BUILT (2026-09-15): re-applied by
+    # //// a run that only writes a page, they undo every chrome choice made since — the footer
+    # //// template, the search, the account entry — none of which that run was asked about.
+    if not building_part:
+        for key, value in SITE_TYPE_HEADER_FOOTER_DEFAULTS.get(site_type, SITE_TYPE_HEADER_FOOTER_DEFAULTS["vitrine"]).items():
+            if hasattr(config, key):
+                setattr(config, key, value)
     # a B2B or login-gated profile needs the account entry in its header whatever the
     # site type: its visitors sign in for their tariff and the cart (the catalogue itself
     # stays open, at the public price)
@@ -1866,6 +1871,12 @@ def build_site(ctx, spec: dict) -> str:
     if logo_image:
         config.logo_type = "Image"
         config.logo_image = logo_image
+    elif building_part:
+        # //// Neoffice — a run that writes part of a site never clears the chrome it was not
+        # //// given (2026-09-15). Asked from the chat to redo one page, the assistant calls the
+        # //// tool with the page and nothing else: no logo in the arguments meant "this site has
+        # //// no logo", and the branch below wiped the client's wordmark out of the header.
+        pass
     elif profile:
         # a profile's Variant is bootstrapped from the main site's Single, logo
         # included: without an upload the new site shows its own name, not the

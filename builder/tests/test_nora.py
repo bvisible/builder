@@ -613,6 +613,23 @@ class TestShopIncludes(unittest.TestCase):
 		# and "keep everything" still keeps everything
 		self.assertEqual([], pages_to_replace(classes, "none", routes={"privacy-policy"}))
 
+	# //// Neoffice — added test (2026-09-15): a partial run never clears chrome it was not given.
+	# //// Driven from the chat, the assistant calls the tool with the page and nothing else: no
+	# //// logo in the arguments meant "this site has no logo", and the header lost its wordmark.
+	def test_a_partial_run_keeps_a_logo_it_was_not_given(self):
+		import inspect
+
+		from builder.site_ai.nora import site_builder
+
+		source = inspect.getsource(site_builder.build_site)
+		# the branch that clears the logo is reached only when the whole site is being built
+		self.assertIn("elif building_part:", source)
+		clearing = source.index('config.logo_type = "Text"')
+		guard = source.index("elif building_part:")
+		self.assertLess(guard, clearing)
+		# and the site-type defaults are not re-applied by a run that only writes a page
+		self.assertIn("if not building_part:", source)
+
 	def test_the_tool_offers_the_partial_scope(self):
 		from builder.site_ai.nora.tools import generate_site
 
