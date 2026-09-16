@@ -169,13 +169,16 @@ markers.** At a merge, rebuild rather than resolve.
   durable record, and the *Artifact* table below is what the checker reads to
   skip the file (since 2026-09-13; before that it reported the file at every push).
 - `frontend/components.d.ts` — written by `unplugin-vue-components`. Its
-  divergence is nothing but the list of the `.vue` components we added; each of
-  the 9 lines carries a one-line marker, but a local `vite` run rewrites them.
+  divergence is nothing but the list of the `.vue` components we added.
+  Markers were written into it once; a local `vite` run wiped every one of them,
+  which is the whole reason the artifact table exists — so it is named there now
+  rather than carrying comments a build deletes (2026-09-16).
   **Regenerate this file at the merge; never resolve it by hand.**
 
 | Artifact | Why it carries no marker |
 |---|---|
 | `builder/www/_builder.html` | the SPA shell vite rewrites from `frontend/index.html` at every build: a marker written in it is gone at the next one (`4d66cb31`) |
+| `frontend/components.d.ts` | written by `unplugin-vue-components` at every build: its only divergence is the list of the `.vue` files we added, and a marker written in it is wiped by the next `vite` run (2026-09-16) |
 
 ### Binaries and translations (no comment syntax, not flagged by the checker)
 
