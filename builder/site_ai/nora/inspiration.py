@@ -137,12 +137,44 @@ def _analyse(file_url: str) -> dict:
         return {}
 
 
+# //// Neoffice — a reference read once is not read again (2026-09-16). Every rebuild
+# //// re-screenshotted the same six sites and recorded them again: 46 files and 36 MB of the same
+# //// half-dozen references sat in one client instance's public files, and each capture cost a
+# //// browser launch and a colour analysis for an answer already on disk.
+def _recorded_screenshot(url: str) -> dict | None:
+    """The screenshot and the analysis a previous build already took of this URL, when its file
+    is still on disk. None when there is nothing to reuse."""
+    try:
+        if not frappe.db.exists("DocType", "Builder Site Inspiration"):
+            return None
+        rows = frappe.get_all(
+            "Builder Site Inspiration",
+            filters={"url": url, "source_type": "URL", "screenshot": ("is", "set")},
+            fields=["screenshot", "analysis"],
+            order_by="creation desc",
+            limit=1,
+        )
+        if not rows:
+            return None
+        file_url = rows[0].screenshot
+        if not frappe.db.exists("File", {"file_url": file_url}):
+            return None
+        return {"file_url": file_url, "analysis": json.loads(rows[0].analysis or "{}") or None}
+    except Exception:
+        return None
+
+
 def read_url(url: str) -> dict:
     """A site the client likes: its above-the-fold look as a screenshot, and the colours."""
     from builder.site_ai.inspiration.screenshotter import capture_website_screenshot
     from builder.site_ai.inspiration.site_extractor import assert_public_http_url
 
     url = assert_public_http_url(url)
+    # //// Neoffice — see _recorded_screenshot: the same reference is not captured twice
+    if kept := _recorded_screenshot(url):
+        analysis = kept["analysis"] or _analyse(kept["file_url"])
+        ai_log("info", "Inspiration reused", url=url, screenshot=kept["file_url"])
+        return {"kind": "URL", "source": url, "image": kept["file_url"], "analysis": analysis, "title": "", "reused": True}
     shot = capture_website_screenshot(url, full_page=False)
     if not shot.get("success") or not shot.get("file_url"):
         raise RuntimeError(str(shot.get("error") or "screenshot failed"))
@@ -198,7 +230,9 @@ def gather(urls: list[str], images: list[str], record: bool = True) -> dict:
             failed.append(f"{image} ({str(e)[:80]})")
     if record:
         for item in found:
-            _record(item)
+            # //// Neoffice — a source reused from a previous build already has its row
+            if not item.get("reused"):
+                _record(item)
     notes = []
     for item in found:
         label = item["source"] if item["kind"] == "URL" else "picture"

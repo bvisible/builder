@@ -673,6 +673,45 @@ class TestShopIncludes(unittest.TestCase):
 		# the page just built comes first, the ones left alone follow, none twice
 		self.assertEqual(["/privacy-policy", "/home", "/brands"], [p["route"] for p in pages])
 
+	# //// Neoffice — added tests (2026-09-16): a reference read once is not read again. Every
+	# //// rebuild re-screenshotted the same six sites: 46 files and 36 MB of the same half-dozen
+	# //// references in one client instance's public files.
+	def test_a_reference_already_captured_is_reused(self):
+		from builder.site_ai.nora import inspiration
+
+		row = frappe._dict({"screenshot": "/files/inspiration_x.png", "analysis": '{"palette": ["#111111"]}'})
+		with patch.object(inspiration.frappe.db, "exists", return_value=True), patch.object(
+			inspiration.frappe, "get_all", return_value=[row]
+		), patch("builder.site_ai.inspiration.screenshotter.capture_website_screenshot") as capture, patch(
+			"builder.site_ai.inspiration.site_extractor.assert_public_http_url", side_effect=lambda u: u
+		):
+			found = inspiration.read_url("https://example.test/")
+		capture.assert_not_called()
+		self.assertEqual("/files/inspiration_x.png", found["image"])
+		self.assertEqual(["#111111"], found["analysis"]["palette"])
+		self.assertTrue(found["reused"])
+
+	def test_a_reference_whose_file_is_gone_is_captured_again(self):
+		from builder.site_ai.nora import inspiration
+
+		row = frappe._dict({"screenshot": "/files/gone.png", "analysis": "{}"})
+
+		def exists(doctype, name=None):
+			# the row is there, its File is not
+			return doctype != "File"
+
+		with patch.object(inspiration.frappe.db, "exists", side_effect=exists), patch.object(
+			inspiration.frappe, "get_all", return_value=[row]
+		), patch(
+			"builder.site_ai.inspiration.screenshotter.capture_website_screenshot",
+			return_value={"success": True, "file_url": "/files/fresh.png", "title": "T"},
+		), patch("builder.site_ai.nora.inspiration._analyse", return_value={"palette": []}), patch(
+			"builder.site_ai.inspiration.site_extractor.assert_public_http_url", side_effect=lambda u: u
+		):
+			found = inspiration.read_url("https://example.test/")
+		self.assertEqual("/files/fresh.png", found["image"])
+		self.assertNotIn("reused", found)
+
 	# //// Neoffice — added test (2026-09-16): rebuilding one page must not reorder the menu.
 	# //// Without this, redoing the Contact page moved Contact to the third entry of a menu the
 	# //// user had twice asked to read Home, Shop, Brands, About, Contact.
