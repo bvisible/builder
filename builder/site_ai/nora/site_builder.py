@@ -2170,7 +2170,7 @@ def build_site(ctx, spec: dict) -> str:
     created, failed, cancelled = [], [], False
     # //// Neoffice — what the look decided (2026-09-16): the pages it refused, how many looks each
     # //// page took, what it measured on the chrome, and how many passed at first look
-    held, looked, chrome_findings, first_look_accepted = [], {}, [], 0
+    held, looked, chrome_findings, first_look_accepted, accepted_later = [], {}, [], 0, 0
     judge = visual_check.judge_model(page_model)
     # //// Neoffice — what the reviewer already read, and the page's state when it did (2026-09-15)
     reviewed_already: dict[str, dict] = {}
@@ -2546,6 +2546,8 @@ def build_site(ctx, spec: dict) -> str:
                 if visual_check.accepted(look):
                     if attempt == 0:
                         first_look_accepted += 1
+                    else:
+                        accepted_later += 1
                     break
                 if look.get("error") and not look.get("http_error"):
                     # a page that could not be read is not rewritten on nothing
@@ -2841,9 +2843,12 @@ def build_site(ctx, spec: dict) -> str:
     # //// Neoffice — the quality line (2026-09-16): the one number that says whether the writing
     # //// improves, build after build — how many pages passed at first look.
     if looked:
+        # a page the look could not read (the judge down, the render failing) is none of the
+        # three: it is said as such, never counted as revised
+        unread = max(0, len(looked) - first_look_accepted - accepted_later - len(held))
         lines.append(
             f"Quality: {first_look_accepted} of {len(looked)} page(s) accepted at first look, "
-            f"{max(0, len(looked) - first_look_accepted - len(held))} after a revision, {len(held)} refused."
+            f"{accepted_later} after a revision, {len(held)} refused" + (f", {unread} not read (the look failed)." if unread else ".")
         )
     if chrome_findings:
         lines.append(
