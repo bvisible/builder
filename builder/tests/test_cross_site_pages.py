@@ -63,3 +63,51 @@ class TestCrossSitePages(unittest.TestCase):
 		source = inspect.getsource(module.BuilderPage.get_context)
 		body = [line.strip() for line in source.split("\n") if line.strip() and not line.strip().startswith(("#", '"""', "def "))]
 		self.assertEqual("self._refuse_another_sites_page()", body[0])
+
+
+class TestTheRouteIsClaimedNotDropped(unittest.TestCase):
+	"""Refusing by DECLINING is what opened the hole: frappe then offers the route to its own
+	DocumentPage, which serves the page anyway. Our renderer has to claim it and answer 404."""
+
+	def renderer(self, path="a-propos"):
+		return module.BuilderPageRenderer(path=path, http_status_code=None)
+
+	def can_render(self, mine_exists, other_exists, profile="Site B"):
+		with patch.object(module, "find_page_with_path", return_value="page-1" if mine_exists else None), patch.object(
+			module, "_current_site_profile", return_value=profile
+		), patch.object(module, "_route_of_another_site", return_value=other_exists), patch.object(
+			module, "get_web_pages_with_dynamic_routes", return_value=[]
+		):
+			page = self.renderer()
+			with patch.object(module.BuilderPageRenderer, "validate_access"):
+				return page.can_render(), getattr(page, "belongs_to_another_site", False)
+
+	def test_another_sites_route_is_claimed_so_frappe_never_offers_it_elsewhere(self):
+		claimed, refused = self.can_render(mine_exists=False, other_exists=True)
+		self.assertTrue(claimed, "declining hands the route to frappe's DocumentPage")
+		self.assertTrue(refused)
+
+	def test_a_route_nobody_has_is_left_alone(self):
+		claimed, refused = self.can_render(mine_exists=False, other_exists=False)
+		self.assertFalse(claimed)
+		self.assertFalse(refused)
+
+	def test_the_sites_own_page_is_rendered_not_refused(self):
+		claimed, refused = self.can_render(mine_exists=True, other_exists=True)
+		self.assertTrue(claimed)
+		self.assertFalse(refused)
+
+	def test_a_claimed_route_renders_the_404_page(self):
+		page = self.renderer()
+		page.belongs_to_another_site = True
+		with patch("frappe.website.page_renderers.not_found_page.NotFoundPage") as not_found:
+			not_found.return_value.render.return_value = "404 response"
+			self.assertEqual("404 response", page.render())
+		not_found.assert_called_once_with("a-propos")
+
+	def test_the_question_is_only_asked_of_a_site_that_has_one(self):
+		# no profile resolved (editor, build render, single-site instance): nothing is refused
+		with patch.object(module, "_page_has_site_field", return_value=True):
+			self.assertFalse(module._route_of_another_site("a-propos", None))
+		with patch.object(module, "_page_has_site_field", return_value=False):
+			self.assertFalse(module._route_of_another_site("a-propos", "Site B"))

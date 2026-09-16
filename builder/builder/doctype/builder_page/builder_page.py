@@ -83,6 +83,18 @@ class BuilderPageRenderer(DocumentPage):
 			self.validate_access()
 			return True
 
+		# //// Neoffice multi-site — claim a route that belongs to ANOTHER site of this instance
+		# //// and answer 404 ourselves (2026-09-16). Declining used to hand the route straight to
+		# //// frappe's DocumentPage, which found the very same Builder Page by route and served
+		# //// it, 200: every site on the instance served every other site's pages. Custom
+		# //// renderers are tried before DocumentPage, so claiming it here is what actually
+		# //// closes that door — and it is also the only way to return a REAL 404. Raising
+		# //// PageDoesNotExistError during render lands in upstream's handle_exception, which
+		# //// passes the request's own status through: the not-found page came back as 200.
+		if _route_of_another_site(self.path, _current_site_profile()):
+			self.belongs_to_another_site = True
+			return True
+
 		# //// Neoffice multi-site: dynamic routes resolved against the request's Website
 		# //// Profile — a page tagged for another profile must not answer here (c3f2a043).
 		for d in get_web_pages_with_dynamic_routes(_current_site_profile()):
@@ -96,6 +108,14 @@ class BuilderPageRenderer(DocumentPage):
 				return False
 
 		return False
+
+	def render(self):
+		# //// Neoffice multi-site — a route claimed above only to be refused (see can_render).
+		if getattr(self, "belongs_to_another_site", False):
+			from frappe.website.page_renderers.not_found_page import NotFoundPage
+
+			return NotFoundPage(self.path).render()
+		return super().render()
 
 	def validate_access(self):
 		if self.docname:
@@ -1957,6 +1977,25 @@ def _current_site_profile():
 def _page_has_site_field():
 	try:
 		return frappe.db.has_column("Builder Page", "neo_website_profile")
+	except Exception:
+		return False
+
+
+def _route_of_another_site(route, website_profile):
+	"""Whether a published Builder Page on this route belongs to a DIFFERENT site.
+
+	//// Neoffice — only ever asked once find_page_with_path has already come up empty, so
+	//// this site has neither its own page on that route nor an untagged one. `!=` leaves the
+	//// untagged pages out, which is what we want: those serve everywhere by design."""
+	if not website_profile or not _page_has_site_field():
+		return False
+	try:
+		return bool(
+			frappe.db.exists(
+				"Builder Page",
+				{"route": route, "published": 1, "neo_website_profile": ("!=", website_profile)},
+			)
+		)
 	except Exception:
 		return False
 
