@@ -520,6 +520,38 @@ class TestComponentCatalogue(unittest.TestCase):
 		):
 			self.assertEqual(components.for_page("accueil"), [])
 
+	# //// Neoffice — added test (2026-09-16): the declaration must match the template it describes.
+	# //// The bridge declared seven parameters for the products carousel while the template reads
+	# //// thirteen — carousel_brand and carousel_item_group among them, so "only this brand" stayed
+	# //// unreachable even after the catalogue was supposed to have made it reachable. A catalogue
+	# //// that does not match its templates is a catalogue that lies to the generator AND to the
+	# //// person in the editor, so this reads the templates that are actually on this bench.
+	def test_every_declared_parameter_is_read_by_its_template(self):
+		import os
+
+		import frappe
+
+		from builder.site_ai import components
+
+		checked = 0
+		for component in components.catalogue():
+			app, _, inside = component.path.partition("/")
+			try:
+				file = frappe.get_app_path(app, *inside.split("/"))
+			except Exception:
+				continue
+			if not os.path.exists(file):
+				continue
+			source = open(file, encoding="utf-8").read()
+			checked += 1
+			for param in component.params:
+				self.assertIn(
+					param["name"],
+					source,
+					f"{component.path} does not read the parameter {param['name']} the catalogue offers",
+				)
+		self.assertTrue(checked, "no component template was found to check the catalogue against")
+
 	def test_the_catalogue_holds_only_installed_apps_and_a_declaration_beats_the_bridge(self):
 		from builder.site_ai import components
 

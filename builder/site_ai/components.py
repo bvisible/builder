@@ -107,9 +107,12 @@ BRIDGE: list[Component] = [
 			{"name": "carousel_limit", "type": "int", "default": 8, "about": "how many products"},
 			{"name": "carousel_sort_by", "type": "str", "default": "creation", "about": "creation, modified, item_name or standard_rate"},
 			{"name": "carousel_sort_order", "type": "str", "default": "desc", "about": "desc or asc"},
+			{"name": "carousel_brand", "type": "str", "default": "", "about": "only the products of that brand, by its exact name"},
+			{"name": "carousel_item_group", "type": "str", "default": "", "about": "only the products of that category, by its exact name"},
 			{"name": "show_discounted_only", "type": "bool", "default": False, "about": "only the products on sale"},
 			{"name": "hide_without_image", "type": "bool", "default": True, "about": "leave out a product with no photograph"},
 			{"name": "view_more_link", "type": "str", "default": "", "about": "where the 'View more' button goes, e.g. /all-products"},
+			{"name": "view_more_text", "type": "str", "default": "View More", "about": "what that button reads, in the site's language"},
 		],
 		needs_shop=True,
 		note="Two of them on one page is two rows of the same shop: give the second a different sort or show_discounted_only.",
@@ -124,8 +127,11 @@ BRIDGE: list[Component] = [
 		params=[
 			{"name": "carousel_title", "type": "str", "default": "", "about": "the heading over the row"},
 			{"name": "carousel_limit", "type": "int", "default": 0, "about": "how many brands, 0 for all"},
+			{"name": "carousel_sort_by", "type": "str", "default": "brand_name", "about": "brand_name or product_count"},
 			{"name": "show_product_count", "type": "bool", "default": False, "about": "show how many products each brand has"},
 			{"name": "hide_without_image", "type": "bool", "default": True, "about": "leave out a brand with no logo"},
+			{"name": "view_more_link", "type": "str", "default": "", "about": "where the 'View more' button goes"},
+			{"name": "view_more_text", "type": "str", "default": "View More", "about": "what that button reads, in the site's language"},
 		],
 		needs_shop=True,
 	),
@@ -136,7 +142,7 @@ BRIDGE: list[Component] = [
 		pages=("contact", "about", "one_page"),
 		app="webshop",
 		data_check="builder.empty_includes.opening_hours_configured",
-		params=[{"name": "display", "type": "str", "default": "compact", "about": "compact or full for the whole week"}],
+		params=[{"name": "display", "type": "str", "default": "full", "about": "full for the whole week, compact for the state and today only"}],
 	),
 ]
 
