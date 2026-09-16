@@ -516,9 +516,9 @@ class TestShopIncludes(unittest.TestCase):
 
 		home = {"title": "Home", "route": "home", "type": "accueil"}
 		selling = page_sections(home, minimal=True, sells=True)
-		self.assertTrue(any("product carousel include" in s for s in selling))
+		self.assertTrue(any("products carousel the COMPONENTS section offers" in s for s in selling))
 		self.assertTrue(any("who they are" in s for s in selling))
-		self.assertFalse(any("product carousel include" in s for s in page_sections(home, minimal=True, sells=False)))
+		self.assertFalse(any("products carousel" in s for s in page_sections(home, minimal=True, sells=False)))
 
 	def test_the_legal_pages_of_a_shop_are_found_and_the_missing_ones_named(self):
 		from builder.site_ai.nora.site_builder import legal_pages, missing_legal_pages
@@ -559,9 +559,13 @@ class TestShopIncludes(unittest.TestCase):
 			"builder.site_ai.nora.site_builder._other_business", return_value=False
 		), patch("builder.empty_includes.include_has_data", return_value=True):
 			mock_frappe.get_installed_apps.return_value = ["frappe", "builder", "webshop"]
-			english = [c.tag() for c in available_includes("accueil", "ecommerce", None, "", lang="en")]
-		self.assertTrue(any('carousel_title = "Our products"' in t for t in english))
-		self.assertFalse(any("Nos produits" in t for t in english))
+			offered = available_includes("accueil", "ecommerce", None, "", lang="en")
+		carousel = next(c for c in offered if "product_carousel" in c.path)
+		# the heading is the page's to write, in the site's language — not a string frozen in code
+		title = next(p for p in carousel.params if p["name"] == "carousel_title")
+		self.assertIn("site's language", title["about"])
+		self.assertNotIn("Nos produits", carousel.tag())
+		self.assertIn("carousel_title", carousel.describes())
 
 	def test_a_storefront_of_the_house_keeps_its_product_carousel(self):
 		from builder.site_ai.nora.site_builder import available_includes
@@ -1019,7 +1023,9 @@ class TestShopIncludes(unittest.TestCase):
 			"frappe.get_installed_apps", return_value=["frappe", "builder", "webshop"]
 		):
 			offered = [c.tag() for c in available_includes("accueil", "vitrine_user", "Espace B2B")]
-		self.assertTrue(offered and all("carousel" in t for t in offered))
+		# a B2B space is a shop window whatever its site type: it keeps the shop's carousels
+		self.assertTrue(any("product_carousel" in t for t in offered))
+		self.assertTrue(any("brand_carousel" in t for t in offered))
 
 	def test_carousels_need_an_ecommerce_site(self):
 		with patch("builder.site_ai.nora.site_builder._other_business", return_value=False), patch(
@@ -1030,21 +1036,22 @@ class TestShopIncludes(unittest.TestCase):
 			vitrine = [c.tag() for c in available_includes("accueil", "vitrine", None)]
 			shop = [c.tag() for c in available_includes("accueil", "ecommerce", None)]
 			hours = [c.tag() for c in available_includes("contact", "vitrine", None)]
-		self.assertEqual(vitrine, [])
-		self.assertTrue(all("carousel" in t for t in shop) and shop)
+		# a showcase gets no carousel; what else it is offered is not this test's business
+		self.assertEqual([], [t for t in vitrine if "carousel" in t])
+		self.assertTrue(any("carousel" in t for t in shop))
 		self.assertTrue(any("opening_hours" in t for t in hours))
 
-	# //// Neoffice — added test (2026-09-15): listing a page's includes must not depend on
-	# //// frappe's translation loader, which imports every app named in apps.txt.
-	def test_the_includes_are_listed_even_when_translation_fails(self):
+	# //// Neoffice — the catalogue replaced the translated tag strings (2026-09-15): listing what
+	# //// a page may carry no longer calls _() at all, so frappe's translation loader — which
+	# //// imports every app named in apps.txt — can no longer take the listing down with it.
+	def test_listing_the_components_never_calls_the_translation_loader(self):
 		with patch("builder.site_ai.nora.site_builder._other_business", return_value=False), patch(
 			"builder.empty_includes.shop_has_pictured", return_value=True
 		), patch("frappe.get_installed_apps", return_value=["frappe", "builder", "webshop"]), patch(
 			"builder.site_ai.nora.site_builder._", side_effect=ModuleNotFoundError("No module named 'webshop'")
 		):
 			offered = [c.tag() for c in available_includes("accueil", "ecommerce", None, "", lang="en")]
-		self.assertTrue(offered and all("carousel" in t for t in offered))
-		self.assertTrue(any('carousel_title = "Our products"' in t for t in offered))
+		self.assertTrue(any("product_carousel" in t for t in offered))
 
 
 class TestBriefCall(unittest.TestCase):

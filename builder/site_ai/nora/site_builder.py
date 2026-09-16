@@ -953,8 +953,10 @@ def available_includes(page_type: str, site_type: str = "vitrine", profile: str 
         # carried the host's employees and milestones, 2026-09-08)
         if not shop_data and "contact_form" not in component.path:
             return False
-        # the shop's own components need a site that sells (see _profile_sells)
-        return not (component.app == "webshop" and not sells)
+        # a component that only makes sense on a site that sells says so itself: the products
+        # carousel does, the shop's opening hours do not — they are about the premises, and they
+        # belong on the contact page of a plain showcase too
+        return not (component.needs_shop and not sells)
 
     return components.for_page(page_type, profile, allow=allowed)
 

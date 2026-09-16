@@ -43,7 +43,7 @@ INCLUDE_PATH = re.compile(r"\{%-?\s*include\s+['\"]([^'\"]+)['\"]\s*-?%\}")
 class Component:
 	"""One component of the catalogue."""
 
-	def __init__(self, path, label, shows, pages=(), app="", params=(), data_check="", required=False, note=""):
+	def __init__(self, path, label, shows, pages=(), app="", params=(), data_check="", required=False, note="", needs_shop=False):
 		self.path = path
 		self.label = label
 		self.shows = shows
@@ -53,6 +53,11 @@ class Component:
 		self.data_check = data_check
 		self.required = required
 		self.note = note
+		# //// Neoffice — whether this component only makes sense on a site that SELLS. It is the
+		# //// component's own answer, not its app's: webshop owns the products carousel, which
+		# //// needs a shop, AND the opening hours, which are about the premises and belong on the
+		# //// contact page of a plain showcase too (they were lost that way, 2026-09-15).
+		self.needs_shop = bool(needs_shop)
 
 	@property
 	def file(self) -> str:
@@ -106,6 +111,7 @@ BRIDGE: list[Component] = [
 			{"name": "hide_without_image", "type": "bool", "default": True, "about": "leave out a product with no photograph"},
 			{"name": "view_more_link", "type": "str", "default": "", "about": "where the 'View more' button goes, e.g. /all-products"},
 		],
+		needs_shop=True,
 		note="Two of them on one page is two rows of the same shop: give the second a different sort or show_discounted_only.",
 	),
 	Component(
@@ -121,6 +127,7 @@ BRIDGE: list[Component] = [
 			{"name": "show_product_count", "type": "bool", "default": False, "about": "show how many products each brand has"},
 			{"name": "hide_without_image", "type": "bool", "default": True, "about": "leave out a brand with no logo"},
 		],
+		needs_shop=True,
 	),
 	Component(
 		path="webshop/templates/includes/opening_hours.html",
@@ -155,6 +162,7 @@ def _from_hooks() -> list[Component]:
 				data_check=entry.get("data_check") or "",
 				required=bool(entry.get("required")),
 				note=entry.get("note") or "",
+				needs_shop=bool(entry.get("needs_shop")),
 			)
 		)
 	return out

@@ -177,7 +177,11 @@ class TestBesideKeptPages(unittest.TestCase):
 			):
 				return " ".join(c.tag() for c in site_builder.available_includes("about"))
 
-		self.assertEqual(offered(set()), "")
+		# with About Us Settings empty, neither of the two is offered — what else the page may
+		# carry (its blog posts, its contact details) is not this test's business
+		empty = offered(set())
+		self.assertNotIn("team_grid", empty)
+		self.assertNotIn("company_timeline", empty)
 		self.assertIn("team_grid", offered({"team_members"}))
 		self.assertNotIn("company_timeline", offered({"team_members"}))
 		both = offered({"team_members", "company_history"})
