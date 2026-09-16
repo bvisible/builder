@@ -32,6 +32,33 @@ NUDGE = (
 )
 
 
+# //// Neoffice ▼▼▼ — a question announced is not a question asked (2026-09-16).
+# //// Twice in one session the model answered "Avant de reconstruire le site, je te pose les
+# //// questions essentielles." and ended the turn, calling nothing: no card, nothing to tap, the
+# //// build stalled until a human nudged it. The playbook already forbids writing a card as prose
+# //// — this is the other failure, announcing one and stopping. The words are the tell, so the
+# //// loop sends the answer back once, exactly as it does for a build claimed but never run.
+QUESTION_ANNOUNCED = re.compile(
+	r"\b(?:je\s+(?:te|vous)\s+pose|je\s+vais\s+(?:te|vous)\s+poser|voici\s+(?:les|mes|la)\s+(?:questions?|carte))"
+	r"|\b(?:quelques|les)\s+questions?\s+(?:essentielles|suivantes|ci-dessous)"
+	r"|\b(?:here\s+are|I'?ll\s+ask|let\s+me\s+ask|I\s+will\s+ask)\b[^.?!\n]{0,40}\bquestions?\b"
+	r"|\bich\s+stelle\s+(?:dir|Ihnen)\b",
+	re.IGNORECASE,
+)
+
+NUDGE_QUESTION = (
+	"You announced a question and then ended the turn without asking it: no card was shown, the user has "
+	"nothing to tap, and the site cannot move on. A question reaches the user ONLY through a present_ui "
+	"call. Call present_ui now with the card you just described — the announcement and the card belong to "
+	"the same turn."
+)
+
+
+def announced_question_not_asked(answer: str) -> bool:
+	"""Whether the answer says a question is coming. The caller knows no tool ran."""
+	return bool(answer and QUESTION_ANNOUNCED.search(answer))
+
+
 def unrun_build_claim(prompt: str, answer: str) -> bool:
 	"""Whether the user asked for a build and the answer says one is done. The caller knows
 	whether a tool ran; this reads the words only."""

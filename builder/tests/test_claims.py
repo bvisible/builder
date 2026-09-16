@@ -141,3 +141,55 @@ class TestRecapNamesTheSite(unittest.TestCase):
 		question = [{"kind": "choices", "options": [{"label": "Oui"}]}, {"kind": "actions", "buttons": [{"label": "Continuer"}]}]
 		self.assertEqual(recap_names_the_site(list(question), "", "Nora Test"), question)
 		self.assertEqual(recap_names_the_site(self.recap(), "", None), self.recap())
+
+
+# //// Neoffice ▼▼▼ — added tests (2026-09-16): a question announced is not a question asked.
+class TestAnnouncedQuestionNotAsked(unittest.TestCase):
+	"""Twice in one session the model answered "Avant de reconstruire le site, je te pose les
+	questions essentielles." and ended the turn calling nothing: no card, nothing to tap, the
+	build stalled until a human nudged it."""
+
+	def announced(self, text):
+		from builder.site_ai.nora.claims import announced_question_not_asked
+
+		return announced_question_not_asked(text)
+
+	def test_the_sentence_that_stalled_two_builds_is_caught(self):
+		self.assertTrue(self.announced("D'accord. Avant de reconstruire tout le site, je te pose les questions essentielles."))
+
+	def test_the_other_ways_of_announcing_are_caught(self):
+		for text in (
+			"Je vais te poser quelques questions avant de commencer.",
+			"Voici les questions pour cadrer le site :",
+			"Voici la carte pour l'étape 3.",
+			"Before we start, here are the questions I need answered.",
+			"I'll ask you a few questions first.",
+		):
+			self.assertTrue(self.announced(text), text)
+
+	def test_an_answer_that_asks_nothing_is_left_alone(self):
+		for text in (
+			"Le site est reconstruit : cinq pages, menu à jour.",
+			"J'ai corrigé le hero et publié la page.",
+			"Quelle palette préfères-tu ?",
+			"",
+		):
+			self.assertFalse(self.announced(text), text)
+
+	def test_the_nudge_names_the_tool_the_model_must_call(self):
+		from builder.site_ai.nora.claims import NUDGE_QUESTION
+
+		self.assertIn("present_ui", NUDGE_QUESTION)
+		self.assertIn("same turn", NUDGE_QUESTION)
+
+	def test_the_loop_sends_it_back_once_and_only_when_nothing_ran(self):
+		"""Same contract as the unrun build claim: once per turn, and never when a tool ran."""
+		from builder.ai.agent.loop import AgentRunner
+
+		self.assertTrue(hasattr(AgentRunner, "send_back_unasked_question"))
+		import inspect
+
+		src = inspect.getsource(AgentRunner.send_back_unasked_question)
+		self.assertIn("question_sent_back", src)
+		self.assertIn("self.tool_steps()", src)
+		self.assertIn("self.applied_operations", src)

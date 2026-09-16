@@ -1222,6 +1222,24 @@ class AgentRunner:
 		messages.append({"role": "user", "content": NUDGE})
 		return True
 
+	# //// Neoffice — added method: see claims.announced_question_not_asked
+	def send_back_unasked_question(self, messages: list[dict], text: str) -> bool:
+		"""When the answer announces a question, no tool ran in this turn and no card was shown,
+		take the answer off the chat and ask the model again with that fact. Once per turn."""
+		from builder.site_ai.nora.claims import NUDGE_QUESTION, announced_question_not_asked
+
+		if getattr(self, "question_sent_back", False) or self.tool_steps() or self.applied_operations:
+			return False
+		if not announced_question_not_asked(text):
+			return False
+		self.question_sent_back = True
+		logger.warning("Agent announced a question and asked none; asking again")
+		self.live_text = ""
+		self.emit("stream", chunk="", replace=True)
+		messages.append({"role": "assistant", "content": text})
+		messages.append({"role": "user", "content": NUDGE_QUESTION})
+		return True
+
 	def flush_pending_images(self, messages: list[dict]) -> None:
 		"""Images a tool captured this round (preview_page screenshots) ride a
 		follow-up user message — appended only after every role:"tool" result,
@@ -1329,6 +1347,10 @@ class AgentRunner:
 					# //// Neoffice — a build said done when no tool ran goes back to the model once
 					# //// (send_back_unrun_claim, builder/site_ai/nora/claims.py)
 					if summary_text and self.send_back_unrun_claim(messages, summary_text):
+						continue
+					# //// Neoffice — and a question ANNOUNCED but never asked goes back the same way:
+					# //// "je te pose les questions" with no present_ui leaves nothing to tap.
+					if summary_text and self.send_back_unasked_question(messages, summary_text):
 						continue
 					self.stop_reason = "model_finished"
 					break
