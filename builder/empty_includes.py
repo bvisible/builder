@@ -99,15 +99,49 @@ def shop_has_pictured(doctype: str, image_field: str, filters: dict | None = Non
 	return sum(1 for row in rows if row.get(image_field)) >= min(CAROUSEL_MIN_PICTURED, among)
 
 
+# //// Neoffice ▼▼▼ — named checks, so the component catalogue can point at them by name
+# //// (site_ai/components.py, data_check). Each takes the profile and ignores it when the record
+# //// it reads is instance-wide.
+def has_pictured_products(profile=None) -> bool:
+	"""Whether the products a carousel fetches carry photographs (see shop_has_pictured)."""
+	return shop_has_pictured("Website Item", "website_image", {"published": 1}, among=CAROUSEL_FETCH)
+
+
+def has_pictured_brands(profile=None) -> bool:
+	return shop_has_pictured("Brand", "image")
+
+
+def has_team_members(profile=None) -> bool:
+	return about_us_rows("team_members")
+
+
+def has_company_history(profile=None) -> bool:
+	return about_us_rows("company_history")
+
+
+def has_blog_posts(profile=None) -> bool:
+	"""Whether the site has a published blog post for the listing to list."""
+	if not frappe.db.exists("DocType", "Blog Post"):
+		return False
+	try:
+		return bool(frappe.db.count("Blog Post", {"published": 1}))
+	except Exception:
+		return False
+# //// Neoffice ▲▲▲
+
+
 # include file name -> whether it has something to show on the site of `profile`
 DATA_CHECKS = {
-	"google_map.html": lambda profile: site_has_address(profile),
+	# //// Neoffice — the same named checks the component catalogue points at, so a component
+	# //// and the renderer's pruning can never disagree about what "nothing to show" means
+	"google_map.html": site_has_address,
 	"opening_hours.html": lambda profile: opening_hours_configured(),
-	"team_grid.html": lambda profile: about_us_rows("team_members"),
-	"company_timeline.html": lambda profile: about_us_rows("company_history"),
-	# //// Neoffice — the carousels show pictures (see shop_has_pictured)
-	"product_carousel.html": lambda profile: shop_has_pictured("Website Item", "website_image", {"published": 1}, among=CAROUSEL_FETCH),
-	"brand_carousel.html": lambda profile: shop_has_pictured("Brand", "image"),
+	"team_grid.html": has_team_members,
+	"company_timeline.html": has_company_history,
+	"product_carousel.html": has_pictured_products,
+	"brand_carousel.html": has_pictured_brands,
+	"blog_listing.html": has_blog_posts,
+	"contact_info.html": site_has_address,
 }
 
 

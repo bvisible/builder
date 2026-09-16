@@ -779,82 +779,48 @@ def revision_photos(planned: list[str], planned_notes: list[str], blocks_json: s
 # Builder renderer runs Jinja on block content, so the widget appears at render.
 # an include listed here is REQUIRED on its page: the model wrote its own <form> on the
 # Contact page of the B2B regeneration, five inputs that post nowhere
-REQUIRED_INCLUDES = {"{% include 'builder/templates/includes/contact_form.html' %}"}
-
-PAGE_INCLUDES = {
-    "contact": [
-        ("{% include 'builder/templates/includes/contact_form.html' %}", "a working contact form, sent to the site's inbox"),
-        ("{% include 'builder/templates/includes/google_map.html' %}", "a map of the address"),
-        ("{% include 'webshop/templates/includes/opening_hours.html' %}", "the shop's opening hours, live, holidays included"),
-    ],
-    "about": [
-        ("{% include 'builder/templates/includes/team_grid.html' %}", "the team"),
-        ("{% include 'builder/templates/includes/company_timeline.html' %}", "the company's timeline"),
-        ("{% include 'webshop/templates/includes/opening_hours.html' %}", "the shop's opening hours, live"),
-    ],
-    # //// Neoffice — the carousel titles were written in French in the code (2026-09-15): the tag is
-    # //// canonicalised by repair_includes, so a site in English or German got "Nos produits" over its
-    # //// products whatever the model wrote. {0} is filled with the title in the SITE's language.
-    # //// Neoffice — hide_without_image (2026-09-15): a shop whose articles have no photograph
-    # //// showed four grey squares reading "VW", "VS", "VD", "BT" on its home. The carousel's own
-    # //// switch keeps the pictured ones; with none at all the include is not offered (DATA_CHECKS).
-    "accueil": [
-        ("{%- set carousel_title = \"{0}\" -%}{%- set carousel_limit = 8 -%}{%- set hide_without_image = true -%}{% include \"webshop/templates/includes/product_carousel.html\" %}", "a carousel of real products (title of your choice)"),
-        ("{%- set carousel_title = \"{1}\" -%}{%- set hide_without_image = true -%}{% include \"webshop/templates/includes/brand_carousel.html\" %}", "the brands carried"),
-    ],
-    "shop": [
-        ("{%- set carousel_title = \"{0}\" -%}{%- set carousel_limit = 8 -%}{%- set hide_without_image = true -%}{% include \"webshop/templates/includes/product_carousel.html\" %}", "a carousel of real products"),
-        ("{%- set show_discounted_only = true -%}{%- set hide_without_image = true -%}{% include \"webshop/templates/includes/product_carousel.html\" %}", "the products on sale"),
-    ],
-    "one_page": [
-        ("{% include 'builder/templates/includes/contact_form.html' %}", "a working contact form, in the contact section"),
-        ("{% include 'webshop/templates/includes/opening_hours.html' %}", "the shop's opening hours, live"),
-    ],
-}
-
-
+# //// Neoffice — PAGE_INCLUDES, REQUIRED_INCLUDES and CAROUSEL_TITLE lived here until 2026-09-15:
+# //// seven frozen tag strings that were the generator's whole knowledge of what a page could
+# //// carry. They are the component catalogue now (builder/site_ai/components.py), declared by
+# //// each app in its own hooks.py, with the parameters each component takes.
 # //// Neoffice ▼▼▼ — new: an include a page carries must be the one the brief offered, written exactly as offered; the model wrote the shop's opening hours with builder's path instead of webshop's and the Contact page of a reseller site answered 417 for a template it could not find (2d78d71d "fix(nora): includes written as offered, routes honoured but home, and the build's routes stated as final")
 INCLUDE_TAG = re.compile(r"\{%-?\s*include\s+['\"]([^'\"]+)['\"]\s*-?%\}")
 ALWAYS_ALLOWED_INCLUDES = ("{% include 'builder/templates/includes/contact_form.html' %}",)
-# //// Neoffice — the carousel title the page chose, kept through the canonicalisation below
-CAROUSEL_TITLE = re.compile(r"set\s+carousel_title\s*=\s*(['\"])(?:(?!\1).)*\1")
 
 
-def repair_includes(blocks: list, allowed: list[tuple[str, str]]) -> tuple[int, int]:
-    """An include a page may carry is one the brief offered, written as offered. The
-    model wrote the shop's opening hours with builder's path instead of webshop's and
-    the Contact page of a reseller site answered 417 (a template it could not find,
-    2026-09-09). A tag whose file name was offered is rewritten to the offered tag; any
-    other include block is removed. Returns (rewritten, removed)."""
+def repair_includes(blocks: list, allowed) -> tuple[int, int]:
+    """A page keeps a component it was offered, with the parameters it chose; anything else goes.
+
+    //// Neoffice — rewritten 2026-09-15. This used to rewrite every include back to the exact
+    string the brief offered, which is how a generator told "title of your choice" got its title
+    replaced at every build, and why no parameter of any component was reachable. It now asks the
+    catalogue: a tag whose component was offered to this page is kept, minus the parameters that
+    component does not declare; a tag for a component this page was not offered is removed, which
+    is the rule that mattered — the Contact page of a reseller site answered 417 for a template it
+    could not find (2026-09-09). Returns (rewritten, removed)."""
+    from builder.site_ai import components as catalogue
     from builder.site_ai.nora.layout import _walk
 
-    canon = {}
-    for tag, _purpose in list(allowed) + [(t, "") for t in ALWAYS_ALLOWED_INCLUDES]:
-        m = INCLUDE_TAG.search(tag)
-        if m:
-            canon[m.group(1).rsplit("/", 1)[-1]] = tag
+    offered = {c.file for c in allowed} | {t.rsplit("/", 1)[-1] for t in ALWAYS_ALLOWED_INCLUDES}
     rewritten = removed = 0
     for block in _walk(blocks):
         kids = [c for c in (block.get("children") or []) if isinstance(c, dict)]
         kept = []
         for child in kids:
             html = child.get("innerHTML") if isinstance(child.get("innerHTML"), str) else ""
-            m = INCLUDE_TAG.search(html) if html and "include" in html else None
-            if not m:
+            found = INCLUDE_TAG.search(html) if html and "include" in html else None
+            if not found:
                 kept.append(child)
                 continue
-            tag = canon.get(m.group(1).rsplit("/", 1)[-1])
-            if not tag:
+            if found.group(1).rsplit("/", 1)[-1] not in offered:
                 removed += 1
                 continue
-            # //// Neoffice — the title the page chose is kept (2026-09-15): the brief offers the
-            # //// carousel with "title of your choice", and canonicalising the whole tag put the
-            # //// default back over every title the model wrote.
-            chosen = CAROUSEL_TITLE.search(html)
-            if chosen and CAROUSEL_TITLE.search(tag):
-                tag = CAROUSEL_TITLE.sub(lambda _m: chosen.group(0), tag, count=1)
-            if html.strip() != tag:
-                child["innerHTML"] = tag
+            clean = catalogue.clean_tag(html)
+            if clean is None:
+                # catalogued nowhere but always allowed (the contact form): keep it as offered
+                clean = next((t for t in ALWAYS_ALLOWED_INCLUDES if found.group(1).rsplit("/", 1)[-1] in t), html)
+            if html.strip() != clean:
+                child["innerHTML"] = clean
                 rewritten += 1
             kept.append(child)
         if len(kept) != len(block.get("children") or []):
@@ -863,27 +829,11 @@ def repair_includes(blocks: list, allowed: list[tuple[str, str]]) -> tuple[int, 
 # //// Neoffice ▲▲▲
 
 
-def includes_block(includes: list[tuple[str, str]]) -> str:
-    """The brief's INCLUDES block: the required includes as an order (the contact form
-    IS the form, the model must not write its own), then the optional ones."""
-    if not includes:
-        return ""
-    required = [(t, p) for t, p in includes if t in REQUIRED_INCLUDES]
-    optional = [(t, p) for t, p in includes if t not in REQUIRED_INCLUDES]
-    lines = []
-    if required:
-        lines.append(
-            "INCLUDES REQUIRED on this page (each one as the `text` of its own plain div block, copied exactly, "
-            "never inside a grid or flex row; do NOT write a <form> of your own, this include IS the working form):"
-        )
-        lines += [f"- {t} \u2014 {p}" for t, p in required]
-    if optional:
-        lines.append(
-            ("INCLUDES available (optional, same rule: " if required else "INCLUDES (optional, ")
-            + "each one as the `text` of its own plain div block, copied exactly, never inside a grid or flex row):"
-        )
-        lines += [f"- {t} \u2014 {p}" for t, p in optional]
-    return "\n".join(lines)
+def components_prompt(components) -> str:
+    """The COMPONENTS section of a page brief, written from the catalogue."""
+    from builder.site_ai import components as catalogue
+
+    return catalogue.prompt_block(components)
 
 
 def _business_key(name: str) -> str:
@@ -983,59 +933,30 @@ def _account_request_route() -> str | None:
         return None
 
 
-def available_includes(page_type: str, site_type: str = "vitrine", profile: str | None = None, site_name: str = "", lang: str = "fr") -> list[tuple[str, str]]:
-    """The includes of this page type whose app is installed on the bench (an include of
-    an absent app turns the whole page into a 500 at render time), minus every include
-    that would show another business's data — the team, the timeline, the map of the
-    address, the hours, the products: only the contact form is left to a site built for
-    a business other than the instance's (the About page of the B2C test site carried
-    the host's employees and milestones, 2026-09-08) — the product and brand carousels
-    only on an e-commerce site, and no include with nothing to show on this site
-    (builder.empty_includes.include_has_data)."""
-    from builder.empty_includes import include_has_data
+def available_includes(page_type: str, site_type: str = "vitrine", profile: str | None = None, site_name: str = "", lang: str = "fr"):
+    """The components this page may carry, from the catalogue (site_ai/components.py).
 
-    try:
-        installed = set(frappe.get_installed_apps())
-    except Exception:
-        installed = {"builder"}
+    //// Neoffice — rewritten 2026-09-15. This used to read PAGE_INCLUDES, a dict of seven frozen
+    tag strings: the generator could not learn that a component existed unless it was listed here,
+    and could not vary a single parameter, because repair_includes rewrote its tag back. The
+    catalogue answers both — it is declared by each app, it carries the parameters, and it is what
+    the prompt is written from. The rules that stay here are the ones about THIS site rather than
+    about the component: whose data it would show, and which sites may show a shop at all."""
+    from builder.site_ai import components
+
     shop_data = not _other_business(profile, site_name)
-    # //// Neoffice — the carousel titles in the SITE's language, not the code's (2026-09-15).
-    # //// Translated lazily and defensively: frappe's loader imports every app named in apps.txt
-    # //// to read its catalogue, so on a bench carrying a stale entry _() raises ModuleNotFoundError
-    # //// — and listing the includes of a page must not depend on that.
-    def title(key: str) -> str:
-        try:
-            return _(key, lang=lang)
-        except Exception:
-            return key
+    sells = site_type in ("ecommerce", "ecommerce_search") or _profile_is_b2b(profile) or _profile_sells(profile)
 
-    titles = None
-    out = []
-    for tag, purpose in PAGE_INCLUDES.get(page_type, []):
-        if "{0}" in tag or "{1}" in tag:
-            if titles is None:
-                titles = (title("Our products"), title("Our brands"))
-            tag = tag.replace("{0}", titles[0]).replace("{1}", titles[1])
-        path = re.search(r"include\s+['\"]([^'\"]+)['\"]", tag)
-        app = path.group(1).split("/", 1)[0] if path else ""
-        if app not in installed and app != "templates":
-            continue
-        if not shop_data and "contact_form" not in tag:
-            continue
-        # //// Neoffice — "and not _profile_is_b2b(profile)" added (5efa79d1): a B2B profile is
-        # //// a shop window whatever its site type, so it keeps the product carousels too.
-        # //// Neoffice — "_profile_sells" added (2026-09-15): a storefront of the instance's own
-        # //// business keeps its product carousels whatever the site type the model chose, and the
-        # //// home's plan asks for exactly this include (page_sections, sells=True).
-        if app == "webshop" and "carousel" in tag and site_type not in ("ecommerce", "ecommerce_search") and not _profile_is_b2b(profile) and not _profile_sells(profile):
-            continue
-        # an include with nothing to show is an empty section on the page: a map without an
-        # address, a week without hours, a team or a timeline with no one in it (a reseller
-        # site's contact and about pages, 2026-09-13). The renderer drops one all the same.
-        if path and include_has_data(path.group(1), profile) is False:
-            continue
-        out.append((tag, purpose))
-    return out
+    def allowed(component) -> bool:
+        # a site built for ANOTHER business must not show this instance's shop, its team or its
+        # hours: only its own contact form is left to it (the About page of a B2C test site
+        # carried the host's employees and milestones, 2026-09-08)
+        if not shop_data and "contact_form" not in component.path:
+            return False
+        # the shop's own components need a site that sells (see _profile_sells)
+        return not (component.app == "webshop" and not sells)
+
+    return components.for_page(page_type, profile, allow=allowed)
 
 
 def page_sections(page: dict, minimal: bool, contact_verified: bool = True, others=(), brands=(), sells: bool = False) -> list[str]:
@@ -1058,8 +979,8 @@ def page_sections(page: dict, minimal: bool, contact_verified: bool = True, othe
     # //// all. The row comes from the shop's own include, never drawn by hand (PAGE_INCLUDES).
     if sells and page["type"] in ("accueil", "shop"):
         row = (
-            "a row of real products from the shop, with the product carousel include the INCLUDES section "
-            "offers, written exactly as offered (never a product drawn by hand)"
+            "a row of real products from the shop, with the products carousel the COMPONENTS section offers "
+            "(never a product drawn by hand); give it the title and the number of products this page wants"
         )
         if not any("product carousel" in s for s in plan):
             plan = plan[:2] + [row] + plan[2:]
@@ -1317,7 +1238,7 @@ def page_brief_text(site: dict, brief, page: dict, handles: dict, contact_prompt
             else ""
         ),
         "CLASS CONTRACT: " + CLASS_CONTRACT,
-        includes_block(includes),
+        components_prompt(includes),
         (
             "RULES: no header, navigation or footer sections (the site chrome is rendered around the page); no lorem; "
             f"business data verbatim; spell the brand name exactly '{site['site_name']}'; every text in {language}; "

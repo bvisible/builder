@@ -207,6 +207,74 @@ doc_events = {
 # //// in Redis starts with builder_ai_ (locks.py, loop.py cancel_key, artifact.py stream_buffer_key).
 persistent_cache_keys = ["builder_ai_*"]
 
+# //// Neoffice ▼▼▼ — the page components this app offers (builder/site_ai/components.py, 2026-09-15).
+# //// An app OWNS its components: it knows what they show and what they take. The generator's
+# //// prompt, the include validator and (next) the editor's component panel all read this, instead
+# //// of the frozen list of seven tag strings they read before — which is how blog_listing.html,
+# //// a block that documents its own six parameters and calls itself "reusable by the generator",
+# //// went a year without ever being offered to it.
+website_components = [
+	{
+		"path": "builder/templates/includes/contact_form.html",
+		"label": "Contact form",
+		"shows": "a working contact form, sent to the site's inbox",
+		"pages": ["contact", "one_page"],
+		"required": True,
+		"note": "Never write a <form> of your own beside it: this include IS the form.",
+	},
+	{
+		"path": "builder/templates/includes/google_map.html",
+		"label": "Map of the address",
+		"shows": "a map of the business address",
+		"pages": ["contact", "one_page"],
+		"data_check": "builder.empty_includes.site_has_address",
+		"params": [
+			{"name": "height", "type": "str", "default": "400px", "about": "how tall the map stands"},
+			{"name": "zoom", "type": "int", "default": 15, "about": "1 the world, 20 a street corner"},
+			{"name": "type", "type": "str", "default": "roadmap", "about": "roadmap or satellite"},
+			{"name": "map_address", "type": "str", "default": "", "about": "another address than the business's"},
+		],
+	},
+	{
+		"path": "builder/templates/includes/team_grid.html",
+		"label": "The team",
+		"shows": "the team, from About Us Settings, with their photographs",
+		"pages": ["about", "team"],
+		"data_check": "builder.empty_includes.has_team_members",
+	},
+	{
+		"path": "builder/templates/includes/company_timeline.html",
+		"label": "The company's timeline",
+		"shows": "the company's milestones, from About Us Settings",
+		"pages": ["about"],
+		"data_check": "builder.empty_includes.has_company_history",
+	},
+	{
+		# //// never offered to the generator before today, though it says it is meant to be
+		"path": "builder/templates/includes/blog_listing.html",
+		"label": "Blog posts",
+		"shows": "the site's published blog posts, listed, each linking to its article",
+		"pages": ["accueil", "blog", "about", "one_page"],
+		"data_check": "builder.empty_includes.has_blog_posts",
+		"params": [
+			{"name": "blog_title", "type": "str", "default": "", "about": "the heading over the list"},
+			{"name": "blog_limit", "type": "int", "default": 6, "about": "how many posts"},
+			{"name": "blog_category", "type": "str", "default": "", "about": "one Blog Category, empty for all"},
+			{"name": "blog_sort_by", "type": "str", "default": "published_on", "about": "published_on, creation or title"},
+			{"name": "blog_layout", "type": "str", "default": "grid", "about": "grid or list"},
+			{"name": "view_more_link", "type": "str", "default": "", "about": "where the 'View more' button goes"},
+		],
+	},
+	{
+		"path": "builder/templates/includes/contact_info.html",
+		"label": "Contact details",
+		"shows": "the business's address, phone and e-mail, as the site publishes them",
+		"pages": ["contact", "about", "one_page"],
+		"data_check": "builder.empty_includes.site_has_address",
+	},
+]
+# //// Neoffice ▲▲▲
+
 scheduler_events = {
 	"cron": {
 		"*/10 * * * *": [

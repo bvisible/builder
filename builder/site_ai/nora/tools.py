@@ -140,17 +140,24 @@ def run_get_site_chrome(ctx, args: dict) -> str:
 
     from builder.hf_utils.chrome_api import get_chrome_settings
     from builder.site_ai.nora.prompts import page_profile
-    from builder.site_ai.nora.site_builder import PAGE_INCLUDES, available_includes
+    from builder.site_ai import components as catalogue
+    from builder.site_ai.nora.site_builder import available_includes
 
     profile = page_profile(ctx.page_id) or None
     settings = get_chrome_settings(profile)
     chrome = {k: settings.get(k) for k in CHROME_READ_FIELDS if k in settings}
     site_name = settings.get("logo_text") or ""
+    # //// Neoffice — read from the catalogue (site_ai/components.py, 2026-09-15): the page types
+    # //// are the ones the components declare themselves for, and each one is reported with the
+    # //// parameters it takes, so the assistant can answer "what can I put on this page?".
     includes = {}
-    for page_type in PAGE_INCLUDES:
+    for page_type in sorted({page for component in catalogue.catalogue() for page in component.pages}):
         offered = available_includes(page_type, "ecommerce" if page_type in ("accueil", "shop") else "vitrine", profile, site_name)
         if offered:
-            includes[page_type] = [{"include": tag, "purpose": purpose} for tag, purpose in offered]
+            includes[page_type] = [
+                {"include": c.tag(), "label": c.label, "purpose": c.shows, "params": list(c.params)}
+                for c in offered
+            ]
     return json.dumps({"profile": profile or "main site", "chrome": chrome, "options": settings.get("_options", {}), "page_includes": includes}, ensure_ascii=False)
 
 

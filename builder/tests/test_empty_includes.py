@@ -375,10 +375,13 @@ class TestCarouselsNeedPictures(unittest.TestCase):
 		with patch("frappe.db.exists", return_value=False):
 			self.assertIs(False, include_has_data("webshop/templates/includes/product_carousel.html"))
 
-	def test_the_generator_offers_the_carousel_with_the_picture_switch(self):
-		from builder.site_ai.nora.site_builder import PAGE_INCLUDES
+	# //// Neoffice — the frozen list became the catalogue (site_ai/components.py, 2026-09-15)
+	def test_the_carousels_leave_out_a_product_with_no_picture_by_default(self):
+		from builder.site_ai import components
 
-		for page_type in ("accueil", "shop"):
-			for tag, _purpose in PAGE_INCLUDES[page_type]:
-				if "carousel" in tag:
-					self.assertIn("hide_without_image = true", tag)
+		for component in components.BRIDGE:
+			if "carousel" not in component.path:
+				continue
+			switch = next((p for p in component.params if p["name"] == "hide_without_image"), None)
+			self.assertIsNotNone(switch, component.path)
+			self.assertTrue(switch["default"], component.path)
