@@ -10449,3 +10449,43 @@ msgstr "Site web de l’entreprise"
 #: builder/builder/doctype/website_header_footer_config/website_header_footer_config.json
 msgid "The website this site names as the business's own. Left empty on a site under another legal name, none is published rather than the company's."
 msgstr "Le site web que ce site présente comme celui de l’entreprise. Laissé vide sur un site portant une autre raison sociale, aucun n’est publié plutôt que celui de la société."
+
+#: frontend/src/components/LeftPanelTabs/index.ts
+msgid "Site blocks"
+msgstr "Blocs du site"
+
+#: frontend/src/components/SiteBlocksPanel.vue
+msgid "Blocks that show this site's own data. Pick one, set what it needs, and it lands on the page."
+msgstr "Des blocs qui affichent les données du site. Choisissez-en un, réglez ce qu’il lui faut, il se pose sur la page."
+
+#: frontend/src/components/SiteBlocksPanel.vue
+msgid "No block is available on this site yet."
+msgstr "Aucun bloc n’est disponible sur ce site pour l’instant."
+
+#: frontend/src/components/SiteBlocksPanel.vue
+msgid "nothing to show yet"
+msgstr "rien à afficher pour l’instant"
+
+#: frontend/src/components/SiteBlocksPanel.vue
+msgid "This block has nothing to show on this site yet — it will stay empty until it does."
+msgstr "Ce bloc n’a encore rien à afficher sur ce site : il restera vide tant que ce sera le cas."
+
+#: frontend/src/components/SiteBlocksPanel.vue
+msgid "Add to the page"
+msgstr "Ajouter à la page"
+
+#: frontend/src/components/SiteBlocksPanel.vue
+msgid "{0} added to the page."
+msgstr "{0} ajouté à la page."
+
+#: frontend/src/components/SiteBlocksPanel.vue
+msgid "The block could not be added."
+msgstr "Le bloc n’a pas pu être ajouté."
+
+#: frontend/src/components/SiteBlocksPanel.vue
+msgid "The components could not be loaded."
+msgstr "Les blocs n’ont pas pu être chargés."
+
+#: frontend/src/components/SiteBlocksPanel.vue
+msgid "Open a page first."
+msgstr "Ouvrez d’abord une page."
