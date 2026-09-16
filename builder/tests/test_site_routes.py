@@ -154,7 +154,7 @@ class TestBesideKeptPages(unittest.TestCase):
 				patch("builder.empty_includes.site_has_address", return_value=address),
 				patch("builder.empty_includes.opening_hours_configured", return_value=hours),
 			):
-				return " ".join(tag for tag, _ in site_builder.available_includes("contact"))
+				return " ".join(c.tag() for c in site_builder.available_includes("contact"))
 
 		self.assertNotIn("google_map", offered(address=False, hours=True))
 		self.assertNotIn("opening_hours", offered(address=True, hours=False))
@@ -175,7 +175,7 @@ class TestBesideKeptPages(unittest.TestCase):
 				patch.object(site_builder.frappe, "get_installed_apps", return_value=["frappe", "builder"]),
 				patch("builder.empty_includes.about_us_rows", side_effect=lambda field: field in rows),
 			):
-				return " ".join(tag for tag, _ in site_builder.available_includes("about"))
+				return " ".join(c.tag() for c in site_builder.available_includes("about"))
 
 		self.assertEqual(offered(set()), "")
 		self.assertIn("team_grid", offered({"team_members"}))

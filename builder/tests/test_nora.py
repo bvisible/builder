@@ -459,7 +459,7 @@ class TestShopIncludes(unittest.TestCase):
 
 	def test_another_business_gets_no_shop_include(self):
 		with patch("builder.site_ai.nora.site_builder._other_business", return_value=True):
-			tags = [t for t, _ in available_includes("contact", "ecommerce", "Nora Test 2", "Acme Industrie SA")]
+			tags = [c.tag() for c in available_includes("contact", "ecommerce", "Nora Test 2", "Acme Industrie SA")]
 		self.assertTrue(any("contact_form" in t for t in tags))
 		self.assertFalse(any("webshop/" in t for t in tags))
 
@@ -559,7 +559,7 @@ class TestShopIncludes(unittest.TestCase):
 			"builder.site_ai.nora.site_builder._other_business", return_value=False
 		), patch("builder.empty_includes.include_has_data", return_value=True):
 			mock_frappe.get_installed_apps.return_value = ["frappe", "builder", "webshop"]
-			english = [t for t, _ in available_includes("accueil", "ecommerce", None, "", lang="en")]
+			english = [c.tag() for c in available_includes("accueil", "ecommerce", None, "", lang="en")]
 		self.assertTrue(any('carousel_title = "Our products"' in t for t in english))
 		self.assertFalse(any("Nos produits" in t for t in english))
 
@@ -573,7 +573,7 @@ class TestShopIncludes(unittest.TestCase):
 				"builder.site_ai.nora.site_builder._profile_sells", return_value=sells
 			), patch("builder.empty_includes.include_has_data", return_value=True):
 				mock_frappe.get_installed_apps.return_value = ["frappe", "builder", "webshop"]
-				return [t for t, _ in available_includes("accueil", "vitrine", "A Storefront", "", lang="en")]
+				return [c.tag() for c in available_includes("accueil", "vitrine", "A Storefront", "", lang="en")]
 
 		self.assertTrue(any("product_carousel" in t for t in offered(True)))
 		self.assertFalse(any("product_carousel" in t for t in offered(False)))
@@ -581,12 +581,17 @@ class TestShopIncludes(unittest.TestCase):
 	def test_the_title_the_page_chose_survives_the_include_repair(self):
 		from builder.site_ai.nora.site_builder import repair_includes
 
-		offered = '{%- set carousel_title = "Our products" -%}{%- set carousel_limit = 8 -%}{% include "webshop/templates/includes/product_carousel.html" %}'
-		blocks = [{"children": [{"innerHTML": '{%- set carousel_title = "Fresh this week" -%}{% include "webshop/templates/includes/product_carousel.html" %}'}]}]
-		repair_includes(blocks, [(offered, "a carousel")])
+		from builder.site_ai import components
+
+		carousel = components.by_file("product_carousel.html")
+		blocks = [{"children": [{"innerHTML": '{%- set carousel_title = "Fresh this week" -%}{%- set carousel_limit = 12 -%}{%- set nonsense = 3 -%}{% include "webshop/templates/includes/product_carousel.html" %}'}]}]
+		repair_includes(blocks, [carousel])
 		written = blocks[0]["children"][0]["innerHTML"]
+		# the page's own choices are kept — that is the point of declaring the parameters
 		self.assertIn('carousel_title = "Fresh this week"', written)
-		self.assertIn("carousel_limit = 8", written)
+		self.assertIn("carousel_limit = 12", written)
+		# and a parameter the component does not declare is dropped, not passed through
+		self.assertNotIn("nonsense", written)
 
 	# //// Neoffice — added tests (2026-09-15): a run that writes part of a site replaces only
 	# //// what it writes. Without this, rebuilding one page deleted every other AI page — with the
@@ -1013,7 +1018,7 @@ class TestShopIncludes(unittest.TestCase):
 		), patch("builder.empty_includes.shop_has_pictured", return_value=True), patch(
 			"frappe.get_installed_apps", return_value=["frappe", "builder", "webshop"]
 		):
-			offered = [t for t, _ in available_includes("accueil", "vitrine_user", "Espace B2B")]
+			offered = [c.tag() for c in available_includes("accueil", "vitrine_user", "Espace B2B")]
 		self.assertTrue(offered and all("carousel" in t for t in offered))
 
 	def test_carousels_need_an_ecommerce_site(self):
@@ -1022,9 +1027,9 @@ class TestShopIncludes(unittest.TestCase):
 		), patch("frappe.get_installed_apps", return_value=["frappe", "builder", "webshop"]), patch(
 			"builder.empty_includes.opening_hours_configured", return_value=True
 		):
-			vitrine = [t for t, _ in available_includes("accueil", "vitrine", None)]
-			shop = [t for t, _ in available_includes("accueil", "ecommerce", None)]
-			hours = [t for t, _ in available_includes("contact", "vitrine", None)]
+			vitrine = [c.tag() for c in available_includes("accueil", "vitrine", None)]
+			shop = [c.tag() for c in available_includes("accueil", "ecommerce", None)]
+			hours = [c.tag() for c in available_includes("contact", "vitrine", None)]
 		self.assertEqual(vitrine, [])
 		self.assertTrue(all("carousel" in t for t in shop) and shop)
 		self.assertTrue(any("opening_hours" in t for t in hours))
@@ -1037,7 +1042,7 @@ class TestShopIncludes(unittest.TestCase):
 		), patch("frappe.get_installed_apps", return_value=["frappe", "builder", "webshop"]), patch(
 			"builder.site_ai.nora.site_builder._", side_effect=ModuleNotFoundError("No module named 'webshop'")
 		):
-			offered = [t for t, _ in available_includes("accueil", "ecommerce", None, "", lang="en")]
+			offered = [c.tag() for c in available_includes("accueil", "ecommerce", None, "", lang="en")]
 		self.assertTrue(offered and all("carousel" in t for t in offered))
 		self.assertTrue(any('carousel_title = "Our products"' in t for t in offered))
 
@@ -1347,8 +1352,8 @@ class TestRenderFidelity(unittest.TestCase):
 		with patch("builder.site_ai.nora.site_builder._other_business", return_value=True), patch(
 			"frappe.get_installed_apps", return_value=["frappe", "builder", "webshop"]
 		):
-			about = [t for t, _ in available_includes("about", "vitrine", "Nora Test", "Lilas & Co")]
-			contact = [t for t, _ in available_includes("contact", "ecommerce", "Nora Test", "Lilas & Co")]
+			about = [c.tag() for c in available_includes("about", "vitrine", "Nora Test", "Lilas & Co")]
+			contact = [c.tag() for c in available_includes("contact", "ecommerce", "Nora Test", "Lilas & Co")]
 		self.assertEqual(about, [])
 		self.assertEqual(len(contact), 1)
 		self.assertIn("contact_form", contact[0])
@@ -1428,10 +1433,9 @@ class TestFirstClientRun(unittest.TestCase):
 	def test_includes_are_written_as_offered_or_dropped(self):
 		from builder.site_ai.nora.site_builder import repair_includes
 
-		offered = [
-			("{% include 'builder/templates/includes/google_map.html' %}", "a map"),
-			("{% include 'webshop/templates/includes/opening_hours.html' %}", "the hours"),
-		]
+		from builder.site_ai import components
+
+		offered = [components.by_file("google_map.html"), components.by_file("opening_hours.html")]
 		wrong = {"element": "div", "innerHTML": "{% include 'builder/templates/includes/opening_hours.html' %}"}
 		right = {"element": "div", "innerHTML": "{% include 'builder/templates/includes/google_map.html' %}"}
 		form = {"element": "div", "innerHTML": "{% include 'builder/templates/includes/contact_form.html' %}"}
@@ -1439,7 +1443,8 @@ class TestFirstClientRun(unittest.TestCase):
 		text = {"element": "p", "innerHTML": "Nous incluons tout le monde."}
 		section = {"element": "section", "children": [wrong, right, form, alien, text]}
 		self.assertEqual(repair_includes([{"element": "div", "children": [section]}], offered), (1, 1))
-		self.assertEqual(wrong["innerHTML"], "{% include 'webshop/templates/includes/opening_hours.html' %}")
+		# the wrong path is corrected to the one the catalogue holds for that file
+		self.assertEqual(wrong["innerHTML"], '{% include "webshop/templates/includes/opening_hours.html" %}')
 		self.assertEqual(section["children"], [wrong, right, form, text])
 
 	def test_a_proposed_route_is_honoured_except_for_home(self):
