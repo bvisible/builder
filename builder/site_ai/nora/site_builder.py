@@ -805,7 +805,10 @@ def repair_includes(blocks: list, allowed) -> tuple[int, int]:
     # //// tag: that kept the trailing quote ("contact_form.html' %}") and the form was removed
     # //// from every page as an include nobody had offered.
     always = {m.group(1).rsplit("/", 1)[-1] for t in ALWAYS_ALLOWED_INCLUDES if (m := INCLUDE_TAG.search(t))}
-    offered = {c.file for c in allowed} | always
+    # //// Neoffice — a component the catalogue no longer holds (its app was uninstalled between
+    # //// the offer and the write) comes through as None: it is simply not offered, and it must
+    # //// not take the page write down with an AttributeError.
+    offered = {c.file for c in allowed if c is not None} | always
     rewritten = removed = 0
     for block in _walk(blocks):
         kids = [c for c in (block.get("children") or []) if isinstance(c, dict)]

@@ -121,8 +121,6 @@ class TestPageBrief(unittest.TestCase):
 		self.assertIn("COMPONENTS REQUIRED", text)
 		self.assertIn("the include IS the working block", text)
 		self.assertIn("Never write a <form> of your own beside it", text)
-		# and a component that takes parameters says so, with what each one means
-		self.assertIn("parameters", text)
 		about = page_brief_text(site, FakeBrief(), {"title": "À propos", "route": "about", "type": "about"}, handles, "", "bento", "French", [], ("CTA", "/"))
 		self.assertNotIn("COMPONENTS REQUIRED", about)
 
@@ -426,6 +424,125 @@ class TestAccent(unittest.TestCase):
 		self.assertIn("ACCENT: var(--nt2-accent)", page_brief_text(site, FakeBrief(), page, handles, "", "bento", "French", [], ("CTA", "/")))
 
 
+# //// Neoffice — the CI's bench has no webshop, and these tests are about the RULES, not about
+# //// what a given bench happens to have installed: they declare the apps they need.
+def with_apps(*apps):
+	return patch("builder.site_ai.components.frappe.get_installed_apps", return_value=list(apps))
+
+
+# //// Neoffice ▼▼▼ — added tests (2026-09-16): the catalogue itself, on components these tests
+# //// declare. Everything else that reads the catalogue depends on what the bench has installed;
+# //// this class must not, because it is testing the RULES — what a tag may carry, what the prompt
+# //// says about it, and what a page's tag is allowed to keep.
+class TestComponentCatalogue(unittest.TestCase):
+	"""The catalogue: what a component offers, what it accepts, and what it refuses."""
+
+	def sample(self, **kw):
+		from builder.site_ai.components import Component
+
+		fields = dict(
+			path="demo/templates/includes/thing.html",
+			label="Thing",
+			shows="the thing",
+			pages=("accueil", "contact"),
+			app="demo",
+			params=[
+				{"name": "limit", "type": "int", "default": 8, "about": "how many"},
+				{"name": "title", "type": "str", "default": "", "about": "the heading"},
+				{"name": "only_new", "type": "bool", "default": False, "about": "the new ones only"},
+			],
+		)
+		fields.update(kw)
+		return Component(**fields)
+
+	def test_a_tag_carries_the_declared_parameters_and_nothing_else(self):
+		tag = self.sample().tag({"limit": 12, "title": 'The "best" ones', "only_new": True, "nonsense": 3})
+		self.assertIn("{%- set limit = 12 -%}", tag)
+		# a string is quoted, and a quote inside it cannot end the Jinja string early
+		self.assertIn("{%- set title = \"The 'best' ones\" -%}", tag)
+		self.assertIn("{%- set only_new = true -%}", tag)
+		self.assertNotIn("nonsense", tag)
+		self.assertTrue(tag.endswith('{% include "demo/templates/includes/thing.html" %}'))
+
+	def test_the_prompt_line_says_what_the_component_takes(self):
+		line = self.sample(note="Only one per page.").describes()
+		self.assertIn('{% include "demo/templates/includes/thing.html" %}', line)
+		self.assertIn("the thing", line)
+		self.assertIn("parameters", line)
+		for name in ("limit", "title", "only_new"):
+			self.assertIn(name, line)
+		self.assertIn("default 8", line)
+		self.assertIn("Only one per page.", line)
+		# a component with no parameter says nothing about parameters
+		self.assertNotIn("parameters", self.sample(params=()).describes())
+
+	def test_a_required_component_is_ordered_and_an_optional_one_offered(self):
+		from builder.site_ai.components import prompt_block
+
+		block = prompt_block([self.sample(required=True), self.sample(path="demo/templates/includes/other.html", label="Other")])
+		self.assertIn("COMPONENTS REQUIRED", block)
+		self.assertIn("COMPONENTS available (optional", block)
+		self.assertEqual(prompt_block([]), "")
+
+	def test_a_page_tag_keeps_what_is_declared_and_loses_what_is_not(self):
+		from builder.site_ai import components
+
+		with patch.object(components, "catalogue", return_value=[self.sample()]):
+			kept = components.clean_tag('{%- set limit = 12 -%}{%- set nonsense = 3 -%}{% include "demo/templates/includes/thing.html" %}')
+			self.assertEqual(kept, '{%- set limit = 12 -%}{% include "demo/templates/includes/thing.html" %}')
+			# a tag that is already right is returned untouched, not rewritten
+			exact = '{%- set limit = 12 -%}{% include "demo/templates/includes/thing.html" %}'
+			self.assertEqual(components.clean_tag(exact), exact)
+			# the file is catalogued under another app's path: the catalogue's path wins
+			self.assertEqual(
+				components.clean_tag("{% include 'wrong/place/thing.html' %}"),
+				'{% include "demo/templates/includes/thing.html" %}',
+			)
+			# and an include the catalogue does not hold is not a component at all
+			self.assertIsNone(components.clean_tag("{% include 'demo/templates/includes/unknown.html' %}"))
+			self.assertIsNone(components.clean_tag("Nous incluons tout le monde."))
+
+	def test_a_page_is_offered_only_what_suits_it_has_data_and_is_allowed(self):
+		from builder.site_ai import components
+
+		thing = self.sample()
+		with patch.object(components, "catalogue", return_value=[thing]), patch.object(
+			components, "has_data", return_value=None
+		):
+			self.assertEqual(components.for_page("accueil"), [thing])
+			# a page the component does not suit
+			self.assertEqual(components.for_page("legal"), [])
+			# the caller's own rule, asked about each one
+			self.assertEqual(components.for_page("accueil", allow=lambda c: False), [])
+		# nothing to show yet: not offered
+		with patch.object(components, "catalogue", return_value=[thing]), patch.object(
+			components, "has_data", return_value=False
+		):
+			self.assertEqual(components.for_page("accueil"), [])
+
+	def test_the_catalogue_holds_only_installed_apps_and_a_declaration_beats_the_bridge(self):
+		from builder.site_ai import components
+
+		declared = {
+			"path": "webshop/templates/includes/product_carousel.html",
+			"label": "Declared by the app itself",
+			"shows": "its own products",
+			"app": "webshop",
+		}
+		with patch.object(components.frappe, "get_hooks", return_value=[declared]), patch.object(
+			components.frappe, "get_installed_apps", return_value=["frappe", "builder", "webshop"]
+		):
+			carousel = components.by_file("product_carousel.html")
+			self.assertEqual(carousel.label, "Declared by the app itself")
+			self.assertEqual(len([c for c in components.catalogue() if c.file == "product_carousel.html"]), 1)
+		# and with the app gone, so is everything it owns — the site must not offer a shop it has not got
+		with patch.object(components.frappe, "get_hooks", return_value=[]), patch.object(
+			components.frappe, "get_installed_apps", return_value=["frappe", "builder"]
+		):
+			self.assertIsNone(components.by_file("product_carousel.html"))
+			self.assertEqual([c for c in components.catalogue() if c.app == "webshop"], [])
+
+
 class TestShopIncludes(unittest.TestCase):
 	"""The shop's includes show instance-wide data: never on another business's profile
 	(a second storefront of the same company keeps them), and the carousels only on an
@@ -559,10 +676,9 @@ class TestShopIncludes(unittest.TestCase):
 	def test_the_carousel_title_is_written_in_the_site_language(self):
 		from builder.site_ai.nora.site_builder import available_includes
 
-		with patch("builder.site_ai.nora.site_builder.frappe") as mock_frappe, patch(
+		with with_apps("frappe", "builder", "webshop"), patch(
 			"builder.site_ai.nora.site_builder._other_business", return_value=False
-		), patch("builder.empty_includes.include_has_data", return_value=True):
-			mock_frappe.get_installed_apps.return_value = ["frappe", "builder", "webshop"]
+		), patch("builder.site_ai.components.has_data", return_value=True):
 			offered = available_includes("accueil", "ecommerce", None, "", lang="en")
 		carousel = next(c for c in offered if "product_carousel" in c.path)
 		# the heading is the page's to write, in the site's language — not a string frozen in code
@@ -575,12 +691,11 @@ class TestShopIncludes(unittest.TestCase):
 		from builder.site_ai.nora.site_builder import available_includes
 
 		def offered(sells):
-			with patch("builder.site_ai.nora.site_builder.frappe") as mock_frappe, patch(
+			with with_apps("frappe", "builder", "webshop"), patch(
 				"builder.site_ai.nora.site_builder._other_business", return_value=False
 			), patch("builder.site_ai.nora.site_builder._profile_is_b2b", return_value=False), patch(
 				"builder.site_ai.nora.site_builder._profile_sells", return_value=sells
-			), patch("builder.empty_includes.include_has_data", return_value=True):
-				mock_frappe.get_installed_apps.return_value = ["frappe", "builder", "webshop"]
+			), patch("builder.site_ai.components.has_data", return_value=True):
 				return [c.tag() for c in available_includes("accueil", "vitrine", "A Storefront", "", lang="en")]
 
 		self.assertTrue(any("product_carousel" in t for t in offered(True)))
@@ -591,9 +706,10 @@ class TestShopIncludes(unittest.TestCase):
 
 		from builder.site_ai import components
 
-		carousel = components.by_file("product_carousel.html")
+		carousel = next(c for c in components.BRIDGE if "product_carousel" in c.path)
 		blocks = [{"children": [{"innerHTML": '{%- set carousel_title = "Fresh this week" -%}{%- set carousel_limit = 12 -%}{%- set nonsense = 3 -%}{% include "webshop/templates/includes/product_carousel.html" %}'}]}]
-		repair_includes(blocks, [carousel])
+		with with_apps("frappe", "builder", "webshop"):
+			repair_includes(blocks, [carousel])
 		written = blocks[0]["children"][0]["innerHTML"]
 		# the page's own choices are kept — that is the point of declaring the parameters
 		self.assertIn('carousel_title = "Fresh this week"', written)
@@ -1519,14 +1635,19 @@ class TestFirstClientRun(unittest.TestCase):
 
 		from builder.site_ai import components
 
-		offered = [components.by_file("google_map.html"), components.by_file("opening_hours.html")]
 		wrong = {"element": "div", "innerHTML": "{% include 'builder/templates/includes/opening_hours.html' %}"}
 		right = {"element": "div", "innerHTML": "{% include 'builder/templates/includes/google_map.html' %}"}
 		form = {"element": "div", "innerHTML": "{% include 'builder/templates/includes/contact_form.html' %}"}
 		alien = {"element": "div", "innerHTML": "{% include 'builder/templates/includes/team_grid.html' %}"}
 		text = {"element": "p", "innerHTML": "Nous incluons tout le monde."}
 		section = {"element": "section", "children": [wrong, right, form, alien, text]}
-		self.assertEqual(repair_includes([{"element": "div", "children": [section]}], offered), (1, 1))
+		# //// Neoffice — the whole body runs under the patch: repair_includes reads the catalogue
+		# //// again for every tag it meets, so offering a component outside it and repairing inside
+		# //// would test two different catalogues.
+		with with_apps("frappe", "builder", "webshop"):
+			offered = [components.by_file("google_map.html"), components.by_file("opening_hours.html")]
+			self.assertTrue(all(offered), "the catalogue must hold both for this test to mean anything")
+			self.assertEqual(repair_includes([{"element": "div", "children": [section]}], offered), (1, 1))
 		# the wrong path is corrected to the one the catalogue holds for that file
 		self.assertEqual(wrong["innerHTML"], '{% include "webshop/templates/includes/opening_hours.html" %}')
 		self.assertEqual(section["children"], [wrong, right, form, text])
