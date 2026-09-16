@@ -171,15 +171,79 @@ def _bare_buttons(text: str) -> str:
     return text[: m.start(1)] + "[buttons: " + ", ".join(labels) + "]"
 
 
+# //// Neoffice ▼▼▼ — a question followed by a plain bullet list (2026-09-16). The bracketed and
+# //// brace shapes above are what the models write when they half-remember the tool; this is what
+# //// they write when they forget it entirely — ordinary markdown. Seen live on the page question:
+# ////     Quelles pages veux-tu sur le site ? (plusieurs choix possibles)
+# ////     - Accueil — vitrine avec le carrousel de marques
+# ////     - Nos marques — présentation de 9 marques distribuées
+# //// The user sees a list they cannot tick and the build stalls. Read as a choices group.
+BULLET = re.compile(r"^[ \t]*[-*•–][ \t]+(.{2,120})$")
+# a label and its explanation, separated by an em/en dash or a colon
+OPTION_SPLIT = re.compile(r"\s+[—–]\s+|:\s+")
+MULTI_HINT = re.compile(r"plusieurs choix|choix multiples|multi[- ]?select|select all|mehrere", re.IGNORECASE)
+# a bullet that is really a fact, not an option: it names a route or a URL
+NOT_AN_OPTION = re.compile(r"https?://|(?:^|\s)/[a-z0-9\-/]+")
+
+
+def _bullet_choices(text: str) -> dict | None:
+    """A question line followed by at least three option bullets, as a choices card.
+
+    Deliberately narrow: without the question mark this is a report, and turning a summary's
+    bullet list into a card would put a control under a sentence that asked nothing."""
+    lines = [line.rstrip() for line in (text or "").split("\n")]
+    # //// the first bullet, then the nearest question above it: the question line often trails a
+    # //// parenthesis ("… ? (plusieurs choix possibles)"), so it is not enough to end on "?"
+    first_bullet = next((i for i, line in enumerate(lines) if BULLET.match(line)), None)
+    if first_bullet is None:
+        return None
+    question_at = next(
+        (i for i in range(first_bullet - 1, -1, -1) if "?" in lines[i] and lines[i].strip()),
+        None,
+    )
+    if question_at is None:
+        return None
+    options = []
+    for line in lines[first_bullet:]:
+        if not line.strip():
+            if options:
+                break
+            continue
+        found = BULLET.match(line)
+        if not found:
+            break
+        body = found.group(1).strip()
+        if NOT_AN_OPTION.search(body):
+            return None
+        parts = OPTION_SPLIT.split(body, maxsplit=1)
+        option = {"label": parts[0].strip()}
+        if len(parts) > 1 and parts[1].strip():
+            option["description"] = parts[1].strip()
+        options.append(option)
+    if len(options) < 3:
+        return None
+    question = lines[question_at].strip()
+    return {
+        "text": question,
+        "ui": [
+            {"kind": "choices", "label": question, "multi": bool(MULTI_HINT.search(text or "")), "options": options},
+            {"kind": "actions", "buttons": [{"label": "Continue"}]},
+        ],
+    }
+# //// Neoffice ▲▲▲
+
+
 def parse_card(text: str) -> dict | None:
-    """The present_ui arguments for a card written as text (JSON, braces or brackets), or
-    None when the text carries no card."""
+    """The present_ui arguments for a card written as text (JSON, braces or brackets, or a
+    question followed by a bullet list), or None when the text carries no card."""
     card = _json_card(text or "")
     if card:
         return card
     lead, groups = _split_groups(_braces_to_brackets(_bare_buttons(text or "")))
     if not groups:
-        return None
+        # //// Neoffice — no bracket, no brace: the plain markdown a model writes when it
+        # //// forgets the tool altogether (see _bullet_choices)
+        return _bullet_choices(text or "")
     ui: list[dict] = []
     has_control = False
     for kind, multi, body in groups:

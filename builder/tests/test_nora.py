@@ -424,6 +424,58 @@ class TestAccent(unittest.TestCase):
 		self.assertIn("ACCENT: var(--nt2-accent)", page_brief_text(site, FakeBrief(), page, handles, "", "bento", "French", [], ("CTA", "/")))
 
 
+# //// Neoffice ▼▼▼ — added tests (2026-09-16): a question written as plain markdown.
+class TestAQuestionWrittenAsABulletList(unittest.TestCase):
+	"""The bracketed and brace shapes cards.py already reads are what the models write when they
+	half-remember present_ui. This is what they write when they forget it entirely — ordinary
+	markdown. Seen live: the page question came as a bullet list the user could not tick, and the
+	build stalled until someone typed the answer."""
+
+	PAGES = (
+		"Quelles pages veux-tu sur le site ? (plusieurs choix possibles)\n\n"
+		"- Accueil — vitrine avec le carrousel de marques\n"
+		"- Nos marques — présentation des marques distribuées\n"
+		"- Notre offre — pourquoi travailler avec nous\n"
+		"- Contact — coordonnées et demande de compte"
+	)
+
+	def card(self, text):
+		from builder.site_ai.nora.cards import parse_card
+
+		return parse_card(text)
+
+	def test_the_list_the_user_could_not_tick_becomes_a_real_card(self):
+		card = self.card(self.PAGES)
+		self.assertIsNotNone(card)
+		group = card["ui"][0]
+		self.assertEqual("choices", group["kind"])
+		self.assertEqual(4, len(group["options"]))
+		self.assertEqual("Accueil", group["options"][0]["label"])
+		self.assertEqual("vitrine avec le carrousel de marques", group["options"][0]["description"])
+		self.assertEqual("actions", card["ui"][1]["kind"])
+
+	def test_plusieurs_choix_possibles_makes_it_multi_select(self):
+		self.assertTrue(self.card(self.PAGES)["ui"][0]["multi"])
+		single = self.PAGES.replace(" (plusieurs choix possibles)", "")
+		self.assertFalse(self.card(single)["ui"][0]["multi"])
+
+	def test_a_report_is_not_a_question(self):
+		"""Without this the model's own summary would grow a control under it."""
+		self.assertIsNone(self.card("Voici ce qui est en place :\n\n- Accueil\n- À propos\n- Contact"))
+
+	def test_a_list_of_routes_is_a_fact_not_an_option(self):
+		self.assertIsNone(self.card("Quelles pages existent ?\n\n- Accueil : /\n- À propos : /a-propos\n- Contact : /contact"))
+
+	def test_two_bullets_are_not_a_choice_worth_a_card(self):
+		self.assertIsNone(self.card("Tu préfères quoi ?\n\n- Clair\n- Foncé"))
+
+	def test_the_bracketed_shape_still_wins(self):
+		"""The explicit syntax keeps its own parser: the bullet reader is the last resort."""
+		card = self.card("Choisis :\n[choices: Clair, Foncé]\n[buttons: Continuer]")
+		self.assertIsNotNone(card)
+		self.assertEqual("choices", card["ui"][0]["kind"])
+
+
 # //// Neoffice ▼▼▼ — added tests (2026-09-16): a decorative mark stays inside its section.
 class TestTheMarkStaysInside(unittest.TestCase):
 	"""A live About page laid the site's logo as a 560px background layer at 8% opacity with
