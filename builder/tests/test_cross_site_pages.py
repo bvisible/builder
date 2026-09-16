@@ -26,11 +26,14 @@ class TestCrossSitePages(unittest.TestCase):
 		doc.neo_website_profile = profile
 		return doc
 
-	def refusal(self, page_profile, current_profile, has_field=True):
+	def refusal(self, page_profile, current_profile, has_field=True, for_preview=None):
 		"""Whether the page refuses to render under that profile."""
+		from types import SimpleNamespace
+
+		request = SimpleNamespace(for_preview=for_preview)
 		with patch.object(module, "_page_has_site_field", return_value=has_field), patch.object(
 			module, "_current_site_profile", return_value=current_profile
-		):
+		), patch.object(frappe.local, "request", request, create=True):
 			try:
 				self.page(page_profile)._refuse_another_sites_page()
 			except frappe.PageDoesNotExistError:
@@ -54,6 +57,13 @@ class TestCrossSitePages(unittest.TestCase):
 
 	def test_an_instance_without_the_field_is_untouched(self):
 		self.assertFalse(self.refusal("Site A", "Site B", has_field=False))
+
+	def test_an_editors_preview_is_not_a_visitors_request(self):
+		"""get_page_preview_html renders a page BY NAME for someone who holds read permission on
+		it, from whichever domain the editor is open on. Refusing there broke the editor."""
+		self.assertFalse(self.refusal("Site A", "Site B", for_preview=True))
+		# and it is still refused for anyone actually browsing that domain
+		self.assertTrue(self.refusal("Site A", "Site B", for_preview=None))
 
 	def test_the_guard_runs_before_anything_else_in_get_context(self):
 		"""It has to be the first thing: get_context reads page data and deletes context keys,

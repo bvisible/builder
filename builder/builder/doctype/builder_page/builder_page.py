@@ -571,6 +571,13 @@ class BuilderPage(WebsiteGenerator):
 		//// Profile at all."""
 		if not _page_has_site_field():
 			return
+		# //// Neoffice — an editor's preview is not a visitor's request. get_page_preview_html
+		# //// renders a page BY NAME for someone who already holds read permission on it, from
+		# //// whichever domain the editor happens to be open on — so the profile of that domain
+		# //// says nothing about what may be previewed. Without this, previewing any page of
+		# //// another site of the instance answered 404 (measured, and it broke the editor).
+		if getattr(getattr(frappe.local, "request", None), "for_preview", None):
+			return
 		mine = self.get("neo_website_profile")
 		here = _current_site_profile()
 		if mine and here and mine != here:
