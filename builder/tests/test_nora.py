@@ -119,7 +119,7 @@ class TestPageBrief(unittest.TestCase):
 		self.assertEqual(available_includes("generic"), [])
 		# the contact form is an order, not an option: the model wrote its own inert <form>
 		self.assertIn("COMPONENTS REQUIRED", text)
-		self.assertIn("this include IS the working block", text)
+		self.assertIn("the include IS the working block", text)
 		self.assertIn("Never write a <form> of your own beside it", text)
 		# and a component that takes parameters says so, with what each one means
 		self.assertIn("parameters", text)
