@@ -103,6 +103,12 @@ class LiteLLMProvider(BaseProvider):
         }
         if json_mode:
             params["response_format"] = {"type": "json_object"}
+        # //// Neoffice — the provider's timeout reaches the call (2026-09-16). It was stored and
+        # //// never sent: every non-streamed call ran on llm.complete's 120 s, and the site plan —
+        # //// a thinking model's minutes of reasoning before one JSON answer — timed out twice in
+        # //// a row and fell back to the static plans. A caller that asks for 900 s gets 900 s.
+        if self.timeout:
+            params["timeout"] = int(self.timeout)
         return params
 
     def generate(self, prompt, system_prompt=None, temperature=None, max_tokens=None, images=None, **kwargs) -> str:

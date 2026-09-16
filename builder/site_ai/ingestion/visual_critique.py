@@ -20,7 +20,9 @@ from builder.site_ai.schemas.page_critique import PageCritique
 from builder.site_ai.logging import ai_log
 
 
-CRITIQUE_TIMEOUT = 120
+# //// Neoffice — 300 (2026-09-16): the judge thinks before it answers (K3 at "high" read a page in ~50 s;
+# //// a long page with two pictures may take twice that), and the timeout now reaches the call
+CRITIQUE_TIMEOUT = 300
 
 _CRITIQUE_SYSTEM = (
     "You are a senior web designer doing a final review of a SCREENSHOT of a "

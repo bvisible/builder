@@ -250,3 +250,30 @@ class TestTheSummary(unittest.TestCase):
 		held = [{"name": "p1", "title": "Accueil", "route": "/", "attempts": 4, "why": "measured", "essential": True}]
 		lines = visual_check.summary_lines([], {}, held)
 		self.assertTrue(any("published but flagged" in line for line in lines))
+
+
+class TestTheCallersTimeout(unittest.TestCase):
+	"""A non-streamed call to a thinking model takes minutes: the provider's timeout must reach
+	litellm instead of the 120 s that cut the site plan twice."""
+
+	def test_the_provider_sends_its_timeout(self):
+		from builder.site_ai.providers.litellm_provider import LiteLLMProvider
+
+		provider = LiteLLMProvider(model="managed/kimi-k3", timeout=900)
+		self.assertEqual(provider._params()["timeout"], 900)
+
+	def test_complete_hands_it_to_litellm_and_keeps_120_by_default(self):
+		from unittest.mock import MagicMock
+
+		from builder.ai import llm
+
+		answer = MagicMock()
+		answer.choices = [MagicMock(message=MagicMock(content="ok"))]
+		answer.usage = None
+		with patch.object(llm.litellm, "completion", return_value=answer) as call, patch.object(llm, "route", return_value=("openai/x", {}, "k")):
+			llm.complete("openai/x", [{"role": "user", "content": "hi"}], {"timeout": 900, "max_tokens": 10}, stream=False)
+			self.assertEqual(call.call_args.kwargs["timeout"], 900)
+			self.assertNotIn("timeout", {k: v for k, v in call.call_args.kwargs.items() if k == "params"})
+			llm.complete("openai/x", [{"role": "user", "content": "hi"}], {"max_tokens": 10}, stream=False)
+			self.assertEqual(call.call_args.kwargs["timeout"], 120)
+

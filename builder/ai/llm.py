@@ -216,10 +216,14 @@ def complete(model: str, messages: list, params: dict, *, stream: bool, api_key:
 	model, overrides, api_key = route(model, api_key)
 	patch_messages_for_provider(model, messages)
 	params = patch_params_for_provider(model, params)
+	# //// Neoffice — a caller's own timeout wins (2026-09-16): a non-streamed call to a thinking
+	# //// model (the site plan, the design brief) is minutes of reasoning before one answer, and
+	# //// 120 s cut it every time. The provider passes what it was configured with (litellm_provider._params).
+	timeout = int(params.pop("timeout", 0) or 0) or 120
 	# //// Neoffice — _loggable: a vision prompt carries its pictures as base64, and logging those
 	# //// bytes left megabytes of rotated log per build (2026-09-15)
 	logger.info(
-		f"LLM | model={model} stream={stream} params={params}\n"
+		f"LLM | model={model} stream={stream} params={params} timeout={timeout}\n"
 		+ "\n".join(f"[{m['role']}] {_loggable(m['content'])}" for m in messages)
 	)
 	resp = litellm.completion(
@@ -231,7 +235,7 @@ def complete(model: str, messages: list, params: dict, *, stream: bool, api_key:
 		# Read timeout (max stall between bytes, not total duration): a wedged
 		# provider connection otherwise blocks the worker forever — the loop only
 		# checks cancellation between chunks, so a silent stall is uncancellable.
-		timeout=120,
+		timeout=timeout,
 		# Emit a final usage chunk while streaming so the loop can tally tokens per
 		# turn (dropped automatically for providers that don't support it).
 		**({"stream_options": {"include_usage": True}} if stream else {}),
@@ -270,6 +274,8 @@ def complete_with_tools(
 	model, overrides, api_key = route(model, api_key)
 	patch_messages_for_provider(model, messages)
 	params = patch_params_for_provider(model, params)
+	# //// Neoffice — see complete(): a caller's timeout wins (2026-09-16)
+	timeout = int(params.pop("timeout", 0) or 0) or 120
 	logger.info(
 		f"LLM tools | model={model} stream={stream} tools={[t['function']['name'] for t in tools]}\n"
 		+ "\n".join(f"[{m['role']}] {m['content']}" for m in messages)
@@ -281,7 +287,7 @@ def complete_with_tools(
 		stream=stream,
 		api_key=api_key,
 		num_retries=1,
-		timeout=120,  # see complete() — a stalled connection must fail, not wedge the turn
+		timeout=timeout,  # //// Neoffice — the caller's, see above  # see complete() — a stalled connection must fail, not wedge the turn
 		# Final usage chunk while streaming — see complete().
 		**({"stream_options": {"include_usage": True}} if stream else {}),
 		**provider_kwargs(model),
