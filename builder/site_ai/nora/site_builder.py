@@ -801,7 +801,11 @@ def repair_includes(blocks: list, allowed) -> tuple[int, int]:
     from builder.site_ai import components as catalogue
     from builder.site_ai.nora.layout import _walk
 
-    offered = {c.file for c in allowed} | {t.rsplit("/", 1)[-1] for t in ALWAYS_ALLOWED_INCLUDES}
+    # //// Neoffice — the file name comes from the include's PATH, not from rsplit on the whole
+    # //// tag: that kept the trailing quote ("contact_form.html' %}") and the form was removed
+    # //// from every page as an include nobody had offered.
+    always = {m.group(1).rsplit("/", 1)[-1] for t in ALWAYS_ALLOWED_INCLUDES if (m := INCLUDE_TAG.search(t))}
+    offered = {c.file for c in allowed} | always
     rewritten = removed = 0
     for block in _walk(blocks):
         kids = [c for c in (block.get("children") or []) if isinstance(c, dict)]
@@ -818,7 +822,7 @@ def repair_includes(blocks: list, allowed) -> tuple[int, int]:
             clean = catalogue.clean_tag(html)
             if clean is None:
                 # catalogued nowhere but always allowed (the contact form): keep it as offered
-                clean = next((t for t in ALWAYS_ALLOWED_INCLUDES if found.group(1).rsplit("/", 1)[-1] in t), html)
+                clean = next((t for t in ALWAYS_ALLOWED_INCLUDES if found.group(1) in t), html)
             if html.strip() != clean:
                 child["innerHTML"] = clean
                 rewritten += 1

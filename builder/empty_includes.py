@@ -134,14 +134,17 @@ def has_blog_posts(profile=None) -> bool:
 DATA_CHECKS = {
 	# //// Neoffice — the same named checks the component catalogue points at, so a component
 	# //// and the renderer's pruning can never disagree about what "nothing to show" means
-	"google_map.html": site_has_address,
+	# //// Neoffice — the checks are called through a lambda, not bound here: naming the function
+	# //// object in the dict freezes the one that existed at import, so a later override — or a
+	# //// test that patches the module — silently does not apply.
+	"google_map.html": lambda profile: site_has_address(profile),
 	"opening_hours.html": lambda profile: opening_hours_configured(),
-	"team_grid.html": has_team_members,
-	"company_timeline.html": has_company_history,
-	"product_carousel.html": has_pictured_products,
-	"brand_carousel.html": has_pictured_brands,
-	"blog_listing.html": has_blog_posts,
-	"contact_info.html": site_has_address,
+	"team_grid.html": lambda profile: has_team_members(profile),
+	"company_timeline.html": lambda profile: has_company_history(profile),
+	"product_carousel.html": lambda profile: has_pictured_products(profile),
+	"brand_carousel.html": lambda profile: has_pictured_brands(profile),
+	"blog_listing.html": lambda profile: has_blog_posts(profile),
+	"contact_info.html": lambda profile: site_has_address(profile),
 }
 
 

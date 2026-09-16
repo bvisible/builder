@@ -111,16 +111,20 @@ class TestPageBrief(unittest.TestCase):
 		site = {"site_name": "X", "activity": "Y"}
 		handles = {k: "var(--x)" for k in ("primary", "secondary", "background", "text", "font-heading", "font-body")}
 		text = page_brief_text(site, FakeBrief(), {"title": "Contact", "route": "contact", "type": "contact"}, handles, "", "bento", "French", [], ("CTA", "/"))
-		self.assertIn("INCLUDES", text)
+		# //// Neoffice — the frozen INCLUDES list became the COMPONENTS catalogue (2026-09-15)
+		self.assertIn("COMPONENTS", text)
 		self.assertIn("builder/templates/includes/contact_form.html", text)
 		self.assertIn("`text` of its own plain div block", text)
-		self.assertTrue(all(tag.startswith("{%") for tag, _ in available_includes("contact")))
+		self.assertTrue(all(c.tag().startswith("{%") for c in available_includes("contact")))
 		self.assertEqual(available_includes("generic"), [])
 		# the contact form is an order, not an option: the model wrote its own inert <form>
-		self.assertIn("INCLUDES REQUIRED", text)
-		self.assertIn("do NOT write a <form> of your own", text)
+		self.assertIn("COMPONENTS REQUIRED", text)
+		self.assertIn("this include IS the working block", text)
+		self.assertIn("Never write a <form> of your own beside it", text)
+		# and a component that takes parameters says so, with what each one means
+		self.assertIn("parameters", text)
 		about = page_brief_text(site, FakeBrief(), {"title": "À propos", "route": "about", "type": "about"}, handles, "", "bento", "French", [], ("CTA", "/"))
-		self.assertNotIn("INCLUDES REQUIRED", about)
+		self.assertNotIn("COMPONENTS REQUIRED", about)
 
 	# //// Neoffice — added test (2026-09-15): the pages already written are looked at, and what the
 	# //// reviewer saw travels to the next page's brief (build_site's page loop).
