@@ -1920,6 +1920,27 @@ def build_site(ctx, spec: dict) -> str:
             "no accent, no tinted background, no coloured button, and never a colour taken from the inspirations "
             "or from the logo. Contrast comes from the photographs, the type and the empty space."
         )
+    # //// Neoffice ▼▼▼ — light or dark GROUND is a question for the client, not a taste of the
+    # //// model (2026-09-16). Left to the brief, a B2B distributor came out with a near-black
+    # //// hero and a near-black call-to-action, and the only way to change it was for an operator
+    # //// to say so afterwards — which is exactly what must not be needed. Nora now asks it in the
+    # //// recap card and passes the answer here. "auto" keeps the old behaviour: the brief decides.
+    background_mode = (spec.get("background_mode") or "auto").strip().lower()
+    if background_mode not in ("light", "dark"):
+        background_mode = "auto"
+    background_prompt = ""
+    if background_mode == "light":
+        background_prompt = (
+            " GROUND: light, everywhere. Every section's background is white or an off-white, and the ink is dark. "
+            "No section — hero, call-to-action or band — may carry a dark or saturated fill. A PHOTOGRAPH may be dark, "
+            "and a scrim over a photograph is allowed for legibility; the section behind it stays light. "
+            "The accent colour belongs to buttons, rules and small marks, never to a whole section."
+        )
+    elif background_mode == "dark":
+        background_prompt = (
+            " GROUND: dark, everywhere. Every section's background is a deep near-black or the palette's darkest tone, "
+            "and the ink is light. Keep one lighter surface for cards or forms so the page has depth."
+        )
     # //// Neoffice ▼▼▼ — "less text" is a direction too (IMAGE_LED_PLANS), given as
     # //// copy_density or read off the brief's own words and the direction it chose
     copy_density = (spec.get("copy_density") or "auto").strip().lower()
@@ -1930,7 +1951,7 @@ def build_site(ctx, spec: dict) -> str:
         if copy_density == "minimal" else ""
     )
     # //// Neoffice ▲▲▲
-    prompt = f"{site_name}: {activity}. {spec.get('differentiators') or ''} Style: {spec.get('style_direction') or ''}{contact_prompt}{inspiration_prompt}{monochrome_prompt}{density_prompt}"
+    prompt = f"{site_name}: {activity}. {spec.get('differentiators') or ''} Style: {spec.get('style_direction') or ''}{contact_prompt}{inspiration_prompt}{monochrome_prompt}{background_prompt}{density_prompt}"
 
     # the client's own photographs, read into the session's library so the pages can be
     # laid out with them (placed at step 7, after the pages exist)

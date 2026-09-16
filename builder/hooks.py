@@ -230,9 +230,15 @@ website_components = [
 		"data_check": "builder.empty_includes.site_has_address",
 		"params": [
 			{"name": "height", "type": "str", "default": "400px", "about": "how tall the map stands"},
-			{"name": "zoom", "type": "int", "default": 15, "about": "1 the world, 20 a street corner"},
-			{"name": "type", "type": "str", "default": "roadmap", "about": "roadmap or satellite"},
-			{"name": "map_address", "type": "str", "default": "", "about": "another address than the business's"},
+			{"name": "zoom", "type": "int", "default": 16, "about": "1 the world, 20 a street corner"},
+			# //// Neoffice — the template writes this straight into Google's &t= (2026-09-16): it takes
+			# //// Google's own codes, not English words. "roadmap" produced an invalid t=roadmap.
+			{"name": "type", "type": "str", "default": "m", "about": "m map, k satellite, h hybrid, p terrain"},
+			# //// Neoffice — the template reads `address`, not `map_address` (2026-09-16). The old name
+			# //// set a variable nobody read, so a chosen address silently fell back to the site's own.
+			# //// It passed the "declared parameter exists in the template" test because the string
+			# //// map_address does appear there — as the template's own local variable.
+			{"name": "address", "type": "str", "default": "", "about": "another address than the business's"},
 		],
 	},
 	{

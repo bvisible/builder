@@ -126,7 +126,11 @@ BRIDGE: list[Component] = [
 		data_check="builder.empty_includes.has_pictured_brands",
 		params=[
 			{"name": "carousel_title", "type": "str", "default": "", "about": "the heading over the row"},
-			{"name": "carousel_limit", "type": "int", "default": 0, "about": "how many brands, 0 for all"},
+			# //// Neoffice — 0 is NOT "all" (2026-09-16). The template slices `sorted_brands[:carousel_limit|default(20)]`
+			# //// and Jinja's default() only fires on an UNDEFINED variable, never on 0 — so 0 draws an empty strip.
+			# //// The catalogue said "0 for all", the generator passed 0, and a home page announced "Nos univers
+			# //// produits" over "Aucune marque disponible". Describe what the template does, not what would be nice.
+			{"name": "carousel_limit", "type": "int", "default": 20, "about": "how many brands at most; leave it out for the default, never 0 — 0 draws none"},
 			{"name": "carousel_sort_by", "type": "str", "default": "brand_name", "about": "brand_name or product_count"},
 			{"name": "show_product_count", "type": "bool", "default": False, "about": "show how many products each brand has"},
 			{"name": "hide_without_image", "type": "bool", "default": True, "about": "leave out a brand with no logo"},

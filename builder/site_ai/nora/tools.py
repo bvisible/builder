@@ -77,6 +77,9 @@ generate_site = Tool(
             # //// never reached the brands page, which laid out the site's segments instead (2026-09-14)
             "brands": {"type": "array", "items": {"type": "string"}, "description": "The brands the business carries, makes or represents, by name, in the user's words: a brands page lists them. Pass every one the user named; none when the user named none."},
             "palette_mode": {"type": "string", "enum": ["auto", "monochrome"], "description": "'monochrome' when the client wants NO colour: black, white and greys only, the photographs carrying the page. Default 'auto', which also turns monochrome by itself when every inspiration site read has no colour."},
+            # //// Neoffice — the client's answer, not the model's taste (2026-09-16): left to the
+            # //// brief, a site came out with a near-black hero nobody had asked for.
+            "background_mode": {"type": "string", "enum": ["auto", "light", "dark"], "description": "The GROUND of every section. 'light' = white or off-white sections with dark ink everywhere (a photograph may still be dark); 'dark' = deep near-black sections with light ink. Ask the client — this is the single choice that decides how the whole site reads. Default 'auto' leaves it to the design brief."},
             "copy_density": {"type": "string", "enum": ["auto", "standard", "minimal"], "description": "'minimal' when the photographs must carry the site and the copy step back: headlines of a few words, a line at most under each, no paragraphs. Default 'auto', which turns minimal by itself when the brief or the chosen direction asks for little text ('less is more', 'through the image')."},
             "website_profile": {"type": "string", "description": "The Website Profile (site) to build for; the open page's profile when omitted."},
             # //// Neoffice — a rebuild reuses the brief it already wrote (2026-09-15): it is the

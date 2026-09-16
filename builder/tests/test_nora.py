@@ -424,6 +424,38 @@ class TestAccent(unittest.TestCase):
 		self.assertIn("ACCENT: var(--nt2-accent)", page_brief_text(site, FakeBrief(), page, handles, "", "bento", "French", [], ("CTA", "/")))
 
 
+# //// Neoffice ▼▼▼ — added tests (2026-09-16): light or dark ground is the CLIENT's answer.
+# //// Left to the brief, a B2B distributor came out with a near-black hero and a near-black
+# //// call-to-action nobody had asked for, and the only way to change it was for an operator to
+# //// say so afterwards — one page at a time. The question now lives in the playbook, the answer
+# //// travels as background_mode, and the build turns it into an instruction the brief must obey.
+class TestTheGroundIsAsked(unittest.TestCase):
+	def test_the_tool_accepts_the_three_answers(self):
+		from builder.site_ai.nora.tools import generate_site
+
+		field = generate_site.parameters["properties"].get("background_mode")
+		self.assertIsNotNone(field, "generate_site does not accept background_mode")
+		self.assertEqual(["auto", "light", "dark"], field["enum"])
+		# the description has to say what each one paints, or the model guesses
+		self.assertIn("light", field["description"].lower())
+		self.assertIn("dark", field["description"].lower())
+
+	def test_the_playbook_asks_the_question_instead_of_deciding(self):
+		from builder.site_ai.nora.prompts import site_playbook
+
+		text = site_playbook(None)
+		self.assertIn("background_mode", text)
+		self.assertIn("Background", text)
+		# and it must be an actual card question, not a line the model may skip
+		self.assertIn("FOUR groups in one card", text)
+
+	def test_the_answer_reaches_generate_site_in_the_recap(self):
+		from builder.site_ai.nora.prompts import site_playbook
+
+		recap = site_playbook(None).split("5. The recap")[1]
+		self.assertIn("background_mode", recap)
+
+
 # //// Neoffice — the CI's bench has no webshop, and these tests are about the RULES, not about
 # //// what a given bench happens to have installed: they declare the apps they need.
 def with_apps(*apps):
@@ -551,6 +583,48 @@ class TestComponentCatalogue(unittest.TestCase):
 					f"{component.path} does not read the parameter {param['name']} the catalogue offers",
 				)
 		self.assertTrue(checked, "no component template was found to check the catalogue against")
+
+	# //// Neoffice — added test (2026-09-16): a declared DEFAULT must be the one the template
+	# //// actually applies. The previous test proves a parameter exists in its template; it says
+	# //// nothing about what the template does with it. The brands carousel was declared
+	# //// "default 0, 0 for all" while the template slices `[:carousel_limit|default(20)]` —
+	# //// and Jinja's default() fires only on an UNDEFINED variable, never on 0. The generator
+	# //// passed 0 in good faith and a live home page announced its brands over "Aucune marque
+	# //// disponible". A catalogue that describes what would be nice instead of what the template
+	# //// does is worse than no catalogue: it is confidently wrong.
+	def test_a_declared_default_matches_the_one_the_template_applies(self):
+		import os
+		import re
+
+		import frappe
+
+		from builder.site_ai import components
+
+		JINJA_DEFAULT = "{name}\\s*\\|\\s*default\\(\\s*([^)]+?)\\s*\\)"
+		checked = 0
+		for component in components.catalogue():
+			app, _, inside = component.path.partition("/")
+			try:
+				file = frappe.get_app_path(app, *inside.split("/"))
+			except Exception:
+				continue
+			if not os.path.exists(file):
+				continue
+			source = open(file, encoding="utf-8").read()
+			for param in component.params:
+				found = re.search(JINJA_DEFAULT.format(name=re.escape(param["name"])), source)
+				if not found:
+					continue
+				written = found.group(1).strip().strip("\'\"")
+				declared = param.get("default")
+				checked += 1
+				self.assertEqual(
+					str(declared).lower(),
+					written.lower(),
+					f"{component.path}: the catalogue offers {param['name']} with default "
+					f"{declared!r}, but the template applies default({written}) — one of the two lies",
+				)
+		self.assertTrue(checked, "no parameter had a |default() in its template to check against")
 
 	def test_the_catalogue_holds_only_installed_apps_and_a_declaration_beats_the_bridge(self):
 		from builder.site_ai import components
