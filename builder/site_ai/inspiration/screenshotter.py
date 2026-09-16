@@ -357,16 +357,40 @@ LAYOUT_PROBE = """
   const sw = Math.max(document.documentElement.scrollWidth, body.scrollWidth);
   if (sw > vw + 2) out.push({kind: 'overflow', severity: 'high', where: 'page', detail: 'the page is ' + sw + 'px wide on a ' + vw + 'px screen: something sticks out and the visitor gets a horizontal scrollbar'});
 
-  // 2. what sticks out of the screen with nothing to clip it
-  let stuck = 0;
-  for (const el of body.querySelectorAll('section *, main *')) {
-    if (stuck >= 4) break;
+  // 2. what sticks out of the screen: with nothing to clip it, anything; clipped, only what
+  // carries content (a tile with a caption cut at the edge is a defect, a bleeding ornament
+  // inside an overflow-hidden section is a choice)
+  // the nearest ancestor that clips, and whether it scrolls instead of hiding
+  const clipper = (el) => {
+    for (let p = el.parentElement; p && p !== document.documentElement; p = p.parentElement) {
+      const s = getComputedStyle(p);
+      const o = s.overflowX + ' ' + s.overflow;
+      if (/hidden|clip/.test(o)) return {el: p, scrolls: false};
+      if (/auto|scroll/.test(o)) return {el: p, scrolls: true};
+    }
+    return null;
+  };
+  let stuck = 0, cut = 0;
+  const reported = [];
+  for (const el of body.querySelectorAll('*')) {
+    if (stuck >= 4 && cut >= 4) break;
     if (chrome(el) || !visible(el)) continue;
     const r = el.getBoundingClientRect();
-    if ((r.right > vw + 2 || r.left < -2) && !clipped(el)) {
-      stuck++;
+    if (reported.some(p => p.contains(el))) continue;
+    const c = clipper(el);
+    if (!c) {
+      if (!(r.right > vw + 8 || r.left < -8) || stuck >= 4) continue;
+      stuck++; reported.push(el);
       out.push({kind: 'sticks-out', severity: 'high', where: where(el), detail: 'spans ' + Math.round(r.left) + 'px to ' + Math.round(r.right) + 'px on a ' + vw + 'px screen, outside the page; an ornament that bleeds must sit inside a section with overflow hidden, and nothing else may leave the page'});
+      continue;
     }
+    // clipped: a defect only when CONTENT is cut by the clipping box (a tile with its caption
+    // cut at the container's edge, seen on a home 2026-09-16); a bleeding ornament is a choice
+    const box = c.el.getBoundingClientRect();
+    if (!(r.right > box.right + 8 || r.left < box.left - 8)) continue;
+    if (text(el).length < 3 || r.width < 80 || cut >= 4) continue;
+    cut++; reported.push(el);
+    out.push({kind: 'content-cut', severity: c.scrolls ? 'medium' : 'high', where: where(el), detail: 'spans ' + Math.round(r.left) + 'px to ' + Math.round(r.right) + 'px but its container ends at ' + Math.round(box.right) + 'px' + (c.scrolls ? ' and only scrolls sideways: the visitor sees it cut unless they scroll' : ': it is cut at the edge') + ' — a row wider than its container (fixed tile widths, a grid that does not wrap); make the row fit or wrap'});
   }
 
   // 3. a text starved of width: a heading wrapped letter by letter, a paragraph in a sliver
@@ -382,9 +406,13 @@ LAYOUT_PROBE = """
     const lh = parseFloat(s.lineHeight) || (parseFloat(s.fontSize) || 16) * 1.3;
     const lines = r.height / lh;
     const heading = /^h[1-3]$/i.test(el.tagName);
-    if ((heading && r.width < 200 && lines > 2.5) || (!heading && r.width < 130 && lines > 4)) {
+    // a heading is starved when its column holds fewer than ~7 of its own characters per
+    // line: a 90px display headline in a 200px track wraps word by word (seen on a home,
+    // 2026-09-16), and 200px is plenty for a 20px h3
+    const fs = parseFloat(s.fontSize) || 16;
+    if ((heading && r.width < Math.max(200, fs * 7) && lines > 2.5) || (!heading && r.width < 130 && lines > 4)) {
       starved++;
-      out.push({kind: 'starved-text', severity: 'high', where: where(el), detail: Math.round(r.width) + 'px wide, wrapped on ' + Math.round(lines) + ' lines: its column is starved (a grid track of minmax(0, 1fr) or a fixed narrow width); give the text a real minimum width, or stack the columns at this screen size'});
+      out.push({kind: 'starved-text', severity: 'high', where: where(el), detail: Math.round(r.width) + 'px wide for a ' + Math.round(fs) + 'px type, wrapped on ' + Math.round(lines) + ' lines: its column is starved (a grid track of minmax(0, 1fr) or a fixed narrow width); give the text a real minimum width, or stack the columns at this screen size'});
     }
   }
 
@@ -408,6 +436,50 @@ LAYOUT_PROBE = """
     if (img.complete && img.naturalWidth === 0 && /^\/(files|assets)\//.test(src)) {
       broken++;
       out.push({kind: 'broken-image', severity: 'high', where: 'img ' + src.slice(0, 80), detail: 'the picture did not load: the file is missing or the path is wrong'});
+    }
+  }
+
+  // 5b. a photograph rendered as a thumbnail: its box collapsed (a 30px picture where a hero photo was meant, 2026-09-16)
+  let tiny = 0;
+  for (const img of body.querySelectorAll('img')) {
+    if (tiny >= 3 || chrome(img) || !visible(img)) continue;
+    const r = img.getBoundingClientRect();
+    if (img.naturalWidth >= 400 && r.width < 64 && r.height < 64) {
+      tiny++;
+      out.push({kind: 'collapsed-image', severity: 'high', where: 'img ' + (img.getAttribute('src') || '').slice(0, 80), detail: 'a ' + img.naturalWidth + 'px photograph rendered ' + Math.round(r.width) + 'px wide: its box collapsed (no width, no height, or a flex child with no basis); give the picture its size'});
+    }
+  }
+
+  // 5c. text unreadable on the solid background behind it (a photograph or a gradient behind
+  // it is left to the judge: the probe cannot know what a picture paints)
+  const rgba = (v) => { const m = (v || '').match(/rgba?\(([^)]+)\)/); if (!m) return null; const p = m[1].split(',').map(x => parseFloat(x)); return {r: p[0], g: p[1], b: p[2], a: p.length > 3 ? p[3] : 1}; };
+  const lum = (c) => { const f = (x) => { x /= 255; return x <= 0.03928 ? x / 12.92 : Math.pow((x + 0.055) / 1.055, 2.4); }; return 0.2126 * f(c.r) + 0.7152 * f(c.g) + 0.0722 * f(c.b); };
+  const ground = (el) => {
+    for (let p = el; p && p !== document.documentElement; p = p.parentElement) {
+      const s = getComputedStyle(p);
+      if (s.backgroundImage && s.backgroundImage !== 'none') return null;
+      const c = rgba(s.backgroundColor);
+      if (c && c.a > 0.9) return c;
+    }
+    return {r: 255, g: 255, b: 255, a: 1};
+  };
+  let faint = 0;
+  for (const el of body.querySelectorAll('h1, h2, h3, p, a, li, span')) {
+    if (faint >= 4 || chrome(el) || !visible(el)) continue;
+    const t = text(el);
+    if (t.length < 3 || [...el.children].some(c => /^(h1|h2|h3|p|div|ul|ol|section)$/i.test(c.tagName))) continue;
+    const s = getComputedStyle(el);
+    const ink = rgba(s.color); const back = ground(el);
+    if (!ink || !back || ink.a < 0.5) continue;
+    const l1 = lum(ink), l2 = lum(back);
+    const ratio = (Math.max(l1, l2) + 0.05) / (Math.min(l1, l2) + 0.05);
+    const fs = parseFloat(s.fontSize) || 16;
+    const large = fs >= 24 || (fs >= 19 && parseInt(s.fontWeight, 10) >= 700);
+    if (ratio < (large ? 3 : 4.5)) {
+      faint++;
+      // below 2.5:1 the text is invisible (white on white): refused; above it, a colour
+      // that fails the accessibility ratio (an accent word on white): a point to fix
+      out.push({kind: 'unreadable-text', severity: ratio < 2.5 ? 'high' : 'medium', where: where(el), detail: 'contrast ' + ratio.toFixed(1) + ':1 between ' + s.color + ' and the background ' + `rgb(${back.r}, ${back.g}, ${back.b})` + ' (needs ' + (large ? '3' : '4.5') + ':1): ' + (ratio < 2.5 ? 'the text cannot be read; use the text token on this ground' : 'hard to read; darken the colour or enlarge the text')});
     }
   }
 
