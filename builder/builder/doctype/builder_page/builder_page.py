@@ -542,7 +542,29 @@ class BuilderPage(WebsiteGenerator):
 				outdated.append({"component_id": component_id, "version": version})
 		return outdated
 
+	def _refuse_another_sites_page(self):
+		"""404 a page that belongs to another site of this instance.
+
+		//// Neoffice — untagged pages still serve everywhere, which is the rule this instance
+		//// already relies on, and nothing is refused when no profile is resolved: that is the
+		//// editor, the build's own server-side render, and every instance with no Website
+		//// Profile at all."""
+		if not _page_has_site_field():
+			return
+		mine = self.get("neo_website_profile")
+		here = _current_site_profile()
+		if mine and here and mine != here:
+			raise frappe.PageDoesNotExistError
+
 	def get_context(self, context):
+		# //// Neoffice multi-site — the guard of last resort (2026-09-16). BuilderPageRenderer
+		# //// already refuses a page tagged for ANOTHER site, but frappe tries its renderers in
+		# //// turn: when ours declines, upstream's DocumentPage picks the very same Builder Page
+		# //// up by route and serves it. Measured on a two-site instance — one site's domain
+		# //// answered the other's /a-propos and /nos-marques, 200, with no canonical, because
+		# //// the render never went through our renderer at all. A check that one renderer makes
+		# //// is not isolation; this one lives where every renderer has to pass.
+		self._refuse_another_sites_page()
 		# delete default favicon
 		del context.favicon
 		context.disable_indexing = self.disable_indexing
