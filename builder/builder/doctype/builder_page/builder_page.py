@@ -91,7 +91,9 @@ class BuilderPageRenderer(DocumentPage):
 		# //// closes that door — and it is also the only way to return a REAL 404. Raising
 		# //// PageDoesNotExistError during render lands in upstream's handle_exception, which
 		# //// passes the request's own status through: the not-found page came back as 200.
-		if _route_of_another_site(self.path, _current_site_profile()):
+		if _route_of_another_site(self.path, _current_site_profile()) and not _served_before_document_page(
+			self.path, self.http_status_code
+		):
 			self.belongs_to_another_site = True
 			return True
 
@@ -1984,6 +1986,24 @@ def _current_site_profile():
 def _page_has_site_field():
 	try:
 		return frappe.db.has_column("Builder Page", "neo_website_profile")
+	except Exception:
+		return False
+
+
+def _served_before_document_page(path, http_status_code=None):
+	"""Whether a renderer that runs BEFORE frappe's DocumentPage would serve this path.
+
+	//// Neoffice — claiming a route (see can_render) puts us ahead of the whole chain, so it
+	//// must only take what DocumentPage would otherwise have taken. The renderers ahead of it
+	//// are StaticPage and WebFormPage: a file or a web form on this site keeps its path, even
+	//// when another site of the instance happens to have a Builder Page on the same route.
+	//// Everything AFTER DocumentPage (TemplatePage, ListPage, PrintPage) was already shadowed
+	//// by the leak we are closing, so nothing there changes."""
+	try:
+		from frappe.website.page_renderers.static_page import StaticPage
+		from frappe.website.page_renderers.web_form import WebFormPage
+
+		return any(renderer(path, http_status_code).can_render() for renderer in (StaticPage, WebFormPage))
 	except Exception:
 		return False
 

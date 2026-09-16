@@ -82,12 +82,12 @@ class TestTheRouteIsClaimedNotDropped(unittest.TestCase):
 	def renderer(self, path="a-propos"):
 		return module.BuilderPageRenderer(path=path, http_status_code=None)
 
-	def can_render(self, mine_exists, other_exists, profile="Site B"):
+	def can_render(self, mine_exists, other_exists, profile="Site B", served_earlier=False):
 		with patch.object(module, "find_page_with_path", return_value="page-1" if mine_exists else None), patch.object(
 			module, "_current_site_profile", return_value=profile
 		), patch.object(module, "_route_of_another_site", return_value=other_exists), patch.object(
-			module, "get_web_pages_with_dynamic_routes", return_value=[]
-		):
+			module, "_served_before_document_page", return_value=served_earlier
+		), patch.object(module, "get_web_pages_with_dynamic_routes", return_value=[]):
 			page = self.renderer()
 			with patch.object(module.BuilderPageRenderer, "validate_access"):
 				return page.can_render(), getattr(page, "belongs_to_another_site", False)
@@ -105,6 +105,14 @@ class TestTheRouteIsClaimedNotDropped(unittest.TestCase):
 	def test_the_sites_own_page_is_rendered_not_refused(self):
 		claimed, refused = self.can_render(mine_exists=True, other_exists=True)
 		self.assertTrue(claimed)
+		self.assertFalse(refused)
+
+	def test_a_file_or_web_form_of_this_site_keeps_its_path(self):
+		"""Claiming puts us ahead of the WHOLE chain, so it must only take what DocumentPage
+		would otherwise have taken: a static file or a web form on this site still wins, even
+		when another site of the instance has a Builder Page on the same route."""
+		claimed, refused = self.can_render(mine_exists=False, other_exists=True, served_earlier=True)
+		self.assertFalse(claimed)
 		self.assertFalse(refused)
 
 	def test_a_claimed_route_renders_the_404_page(self):
