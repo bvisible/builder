@@ -1565,9 +1565,16 @@ def site_pages_for_menu(created: list[dict], profile: str | None, order: list[st
     if not order:
         return out
     # the order the menu already had; a route it does not know goes to the end, in the order
-    # the pages were created
-    known = {str(route or "").strip("/"): rank for rank, route in enumerate(order)}
-    return sorted(out, key=lambda p: known.get(str(p["route"]).strip("/"), len(known) + out.index(p)))
+    # the pages were created.
+    # //// Neoffice — the home answers to three spellings: the menu names it "/" (an empty key
+    # //// once stripped), the page's route is "home" or "index". Keyed on the raw string alone,
+    # //// the home matched nothing and went to the END of its own menu.
+    def key(route: str) -> str:
+        bare = str(route or "").strip("/").lower()
+        return "" if bare in ("", "home", "index") else bare
+
+    known = {key(route): rank for rank, route in enumerate(order)}
+    return sorted(out, key=lambda p: known.get(key(p["route"]), len(known) + out.index(p)))
 # //// Neoffice ▲▲▲
 
 
