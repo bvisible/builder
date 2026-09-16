@@ -1235,7 +1235,10 @@ def classify_existing_pages(website_profile=None) -> dict:
 		"Builder Page",
 		filters=filters,
 		fields=[
-			"name", "page_title", "project_folder",
+			# //// Neoffice — "route" added (2026-09-15): a build that writes only part of a site
+			# //// replaces only the routes it writes (site_builder.pages_to_replace), and it needs
+			# //// the route to tell them apart.
+			"name", "page_title", "route", "project_folder",
 			"ai_generated_at", "ai_blocks_hash", "blocks", "draft_blocks",
 		],
 	)
@@ -1243,7 +1246,8 @@ def classify_existing_pages(website_profile=None) -> dict:
 	for p in pages:
 		if (p.project_folder or "").startswith("Hub Inbox"):
 			continue
-		info = {"name": p.name, "title": p.page_title}
+		# //// Neoffice — the route travels with the page (see the fields marker above)
+		info = {"name": p.name, "title": p.page_title, "route": p.route}
 		current = _blocks_fingerprint(p.draft_blocks or p.blocks)
 		if p.ai_generated_at and p.ai_blocks_hash and current == p.ai_blocks_hash:
 			untouched.append(info)

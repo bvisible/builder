@@ -588,6 +588,44 @@ class TestShopIncludes(unittest.TestCase):
 		self.assertIn('carousel_title = "Fresh this week"', written)
 		self.assertIn("carousel_limit = 8", written)
 
+	# //// Neoffice — added tests (2026-09-15): a run that writes part of a site replaces only
+	# //// what it writes. Without this, rebuilding one page deleted every other AI page — with the
+	# //// DEFAULT setting, and without a word.
+	def test_a_partial_build_replaces_only_the_routes_it_writes(self):
+		from builder.site_ai.nora.site_builder import pages_to_replace
+
+		classes = {
+			"untouched": [
+				{"name": "p1", "title": "Home", "route": "home"},
+				{"name": "p2", "title": "About", "route": "about"},
+				{"name": "p3", "title": "Privacy", "route": "privacy-policy"},
+			],
+			"protected": [{"name": "p4", "title": "Terms", "route": "terms-conditions"}],
+		}
+		# a whole-site build replaces everything it is allowed to, as before
+		self.assertEqual(["p1", "p2", "p3"], pages_to_replace(classes, "auto"))
+		self.assertEqual(["p1", "p2", "p3", "p4"], pages_to_replace(classes, "force"))
+		# a build of one page replaces that page and nothing else
+		self.assertEqual(["p3"], pages_to_replace(classes, "auto", routes={"privacy-policy"}))
+		self.assertEqual(["p4"], pages_to_replace(classes, "force", routes={"terms-conditions"}))
+		# a page the site does not have yet replaces nothing
+		self.assertEqual([], pages_to_replace(classes, "auto", routes={"shipping"}))
+		# and "keep everything" still keeps everything
+		self.assertEqual([], pages_to_replace(classes, "none", routes={"privacy-policy"}))
+
+	def test_the_tool_offers_the_partial_scope(self):
+		from builder.site_ai.nora.tools import generate_site
+
+		field = generate_site.parameters["properties"]["scope"]
+		self.assertEqual(["site", "pages"], field["enum"])
+
+	def test_the_playbook_tells_the_assistant_how_to_redo_one_page(self):
+		from builder.site_ai.nora.prompts import site_playbook
+
+		text = site_playbook(None) if callable(site_playbook) else str(site_playbook)
+		self.assertIn("scope='pages'", text)
+		self.assertIn("do NOT rebuild the site", text)
+
 	# //// Neoffice — added tests (2026-09-15): a run of one page keeps the site's whole menu.
 	def test_the_menu_is_made_of_the_sites_pages_not_the_runs(self):
 		from builder.site_ai.nora.site_builder import site_pages_for_menu

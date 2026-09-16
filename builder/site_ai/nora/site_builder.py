@@ -256,20 +256,28 @@ def pages_by_name(pages: list[dict], created: list[dict]) -> list[dict]:
     return out
 
 
-def pages_to_replace(classes: dict, replace_existing: str) -> list[str]:
+def pages_to_replace(classes: dict, replace_existing: str, routes: set[str] | None = None) -> list[str]:
     """The existing pages a build replaces: the untouched AI pages unless the user keeps
     everything ('none'), the hand-made ones too only when they said so ('force').
 
     'keep_edited' is what "keep them" means after a CONFIRM_NEEDED: the hand-made pages
     stay and the rest goes as usual. Answered with 'none', a question about one page kept
     the whole previous site beside the new one: two home pages, the new pages' routes
-    suffixed, their calls to action on the old contact page (2026-09-11)."""
+    suffixed, their calls to action on the old contact page (2026-09-11).
+
+    //// Neoffice — `routes` added 2026-09-15: a build of ONE page asked to replace what it
+    replaces, and got back every AI page of the site. Rebuilding a privacy policy would have
+    deleted the home, the brands, the about and the contact to write it — with the default
+    setting, and without a word. When the build writes only part of the site (scope="pages"),
+    it replaces only the routes it writes; the rest is not its business."""
     if replace_existing == "none":
         return []
-    names = [p["name"] for p in classes.get("untouched") or []]
+    pages = list(classes.get("untouched") or [])
     if replace_existing == "force":
-        names += [p["name"] for p in classes.get("protected") or []]
-    return names
+        pages += list(classes.get("protected") or [])
+    if routes is not None:
+        pages = [p for p in pages if str(p.get("route") or "").strip("/") in routes]
+    return [p["name"] for p in pages]
 
 
 def moved_routes(created: list[dict]) -> dict[str, str]:
@@ -1793,6 +1801,10 @@ def build_site(ctx, spec: dict) -> str:
         except Exception:
             host_is_blank = False
     protected = [p for p in classes["protected"] if p["name"] != host_page or not host_is_blank]
+    # //// Neoffice — a partial build is only asked about the pages it would actually replace
+    if str(spec.get("scope") or "site") == "pages":
+        wanted = {str(p["route"]).strip("/") for p in pages}
+        protected = [p for p in protected if str(p.get("route") or "").strip("/") in wanted]
     if replace_existing == "auto" and protected:
         names = ", ".join(f"'{p['title']}'" for p in protected[:6])
         ai_log("info", "Site build needs confirmation", site_name=site_name, profile=profile, protected=len(protected))
@@ -1805,7 +1817,13 @@ def build_site(ctx, spec: dict) -> str:
         )
     # the build is real from here on: the confirmation round trip above must leave neither
     # a "running" job behind (get_site_generation_status) nor a START line without an end
-    to_delete = pages_to_replace(classes, replace_existing)
+    # //// Neoffice — a partial build replaces only what it writes (see pages_to_replace)
+    building_part = str(spec.get("scope") or "site") == "pages"
+    to_delete = pages_to_replace(
+        classes,
+        replace_existing,
+        routes={str(p["route"]).strip("/") for p in pages} if building_part else None,
+    )
     host_reusable = host_page and (host_is_blank or host_page in to_delete)
     to_delete = [n for n in to_delete if n != host_page]
     _progress(ctx, job_id, _("Preparing the site"), 3)

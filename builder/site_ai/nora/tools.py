@@ -81,6 +81,9 @@ generate_site = Tool(
             "website_profile": {"type": "string", "description": "The Website Profile (site) to build for; the open page's profile when omitted."},
             # //// Neoffice — a rebuild reuses the brief it already wrote (2026-09-15): it is the
             # //// build's most expensive call, and rebuilding pages is not rethinking the design.
+            # //// Neoffice — scope (2026-09-15): a run that writes part of a site must not replace
+            # //// the rest of it. Without this, rebuilding one page deleted every other AI page.
+            "scope": {"type": "string", "enum": ["site", "pages"], "description": "'site' (default) builds or rebuilds the WHOLE site. 'pages' writes ONLY the pages listed and leaves every other page of the site alone — its menu, its footer and its home are kept. Use 'pages' whenever the user asks for one page to be added or redone on a site that already exists: it costs a fraction of a full rebuild."},
             "reuse_brief": {"type": "boolean", "description": "Default true: a site that already has a design brief reuses it, so a rebuild changes the pages without re-deciding the art direction (and without re-reading every reference site, the costliest call of a build). Pass false ONLY when the user asks to change the site's look."},
             # //// Neoffice — the language is required: the recap step listed every field but this
             # //// one, and the default filled in (the instance's, else French) wrote a site asked
