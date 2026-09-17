@@ -129,8 +129,11 @@ def run(
 		run_agent_job,
 		queue="default",
 		# //// Neoffice — a whole-site build (generate_site) runs inside the turn and needs far more
-		# //// than upstream's 600 s; the ceiling is configurable per site.
-		timeout=frappe.utils.cint(frappe.conf.get("builder_agent_job_timeout")) or 3600,
+		# //// than upstream's 600 s; the ceiling is configurable per site. Four hours since
+		# //// 2026-09-17: a site built under the gate (a thinking writer, up to three looked-at
+		# //// revisions per page) takes ninety minutes and more, and a client's rebuild was killed
+		# //// by the job's own ceiling at page five, its old pages already deleted.
+		timeout=frappe.utils.cint(frappe.conf.get("builder_agent_job_timeout")) or 14400,
 		prompt=prompt,
 		model=resolved_model,
 		api_key=api_key,
