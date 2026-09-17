@@ -1260,7 +1260,14 @@ def page_brief_text(site: dict, brief, page: dict, handles: dict, contact_prompt
         "CLASS CONTRACT: " + CLASS_CONTRACT,
         components_prompt(includes),
         (
-            "RULES: no header, navigation or footer sections (the site chrome is rendered around the page); no lorem; "
+            # //// Neoffice — two rules the look kept finding broken (2026-09-17): a brand marquee that
+            # //// reads as empty at rest, and a heading promising "three reasons" over a repeater whose
+            # //// data never came. What a page shows must be there when it renders.
+            "RULES: everything reads at rest: no marquee, no auto-scrolling strip, nothing that only appears on hover, on "
+            "scroll or after a script; a brand row is a static row of names or logos. No section is a heading over "
+            "nothing: a repeat block carries its `items` inline unless the brief names a live data key, and the content "
+            "a heading announces is written in full under it. "
+            "No header, navigation or footer sections (the site chrome is rendered around the page); no lorem; "
             f"business data verbatim; spell the brand name exactly '{site['site_name']}'; every text in {language}; "
             "no em dashes; mobile-first m_style on every grid; font sizes in rem or clamp(), never a bare vw "
             "(h1 at most 4.5rem, h2 3.25rem, body text 1.35rem on desktop). A repeat block carries the grid classes "

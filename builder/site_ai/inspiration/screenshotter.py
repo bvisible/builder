@@ -491,11 +491,17 @@ LAYOUT_PROBE = r"""
     }
   }
 
-  // 6. a section with nothing in it
+  // 6. a section with nothing in it — or nothing but its heading (a title promising "three
+  // reasons" over a void: a repeater whose data never came, seen 2026-09-17)
   for (const sec of body.querySelectorAll('section')) {
     if (chrome(sec) || !visible(sec)) continue;
     const r = sec.getBoundingClientRect();
-    if (r.height < 24 && !text(sec) && !sec.querySelector('img, svg')) out.push({kind: 'empty-section', severity: 'medium', where: 'section', detail: 'an empty section of ' + Math.round(r.height) + 'px: nothing in it, remove it'});
+    if (r.height < 24 && !text(sec) && !sec.querySelector('img, svg, video, iframe, form')) { out.push({kind: 'empty-section', severity: 'medium', where: 'section', detail: 'an empty section of ' + Math.round(r.height) + 'px: nothing in it, remove it'}); continue; }
+    const heads = [...sec.querySelectorAll('h1, h2, h3')].filter(visible);
+    if (!heads.length || sec.querySelector('img, svg, video, iframe, form, table, [class*="carousel"]')) continue;
+    const headText = heads.map(h => text(h)).join(' ');
+    const rest = ((sec.innerText || '').replace(/\s+/g, ' ').trim()).length - headText.length;
+    if (rest < 40) out.push({kind: 'heading-over-nothing', severity: 'high', where: 'section "' + text(heads[0]) + '"', detail: 'the section is its heading and nothing else (' + Math.max(0, rest) + ' characters under it): the content it announces never rendered — a repeater without data, or a section left unwritten; write the content inline or drop the section'});
   }
 
   // what the page is made of, for the rules the caller knows (the route, the site)

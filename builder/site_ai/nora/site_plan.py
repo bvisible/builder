@@ -151,6 +151,8 @@ def plan_prompt(site: dict, brief, pages: list[dict], includes_by_route: dict[st
         "- The signature move is ONE device, described as CSS, inside its section: never a shape, a mark or a layer that leaves the section or the page.",
         "- Only facts the material gives. A section that would need a fact nobody gave (a price, a figure, a review, an opening hour) is not planned.",
         "- Copy is written in the site's language, in the client's words for categories and brands.",
+        "- Everything reads at rest: no marquee, no auto-scrolling strip, no content that only appears on hover or on scroll. A brand row is a static row of names or logos.",
+        "- No section is a heading over nothing: each section carries the content it announces, written in full.",
     ]
     return "\n".join(lines)
 
