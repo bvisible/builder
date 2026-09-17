@@ -21,7 +21,14 @@ BUILD_ASKED = re.compile(
 BUILD_CLAIMED = re.compile(
 	r"\b(?:is|are|was|were|has been|have been)\s+(?:now\s+)?(?:re)?(?:built|published|live|online)\b"
 	r"|\b(?:est|sont|a été|ont été)\s+(?:maintenant\s+)?(?:re)?(?:construit|publié|en ligne)"
-	r"|\bist\s+(?:jetzt\s+)?(?:neu\s+)?(?:gebaut|veröffentlicht|online)",
+	r"|\bist\s+(?:jetzt\s+)?(?:neu\s+)?(?:gebaut|veröffentlicht|online)"
+	# //// Neoffice — a build said LAUNCHED is a claim too (2026-09-17): "J'ai relancé la
+	# //// reconstruction complète du site. Le processus est en cours." took six seconds and
+	# //// called nothing; the words below are the tell of a build announced, not run.
+	r"|\bj'?ai\s+(?:re)?lanc[ée]\b|\bje\s+(?:re)?lance\b|\b(?:le\s+)?processus\s+est\s+en\s+cours\b"
+	r"|\b(?:re)?construction\s+(?:est\s+)?en\s+cours\b"
+	r"|\bI(?:'ve|\s+have)?\s+(?:re)?(?:launched|started|kicked off)\b[^.?!\n]{0,40}\b(?:build|rebuild|site)\b"
+	r"|\b(?:the\s+)?(?:re)?build\s+(?:is|has been)\s+(?:launched|started|running|under\s+way)\b",
 	re.IGNORECASE,
 )
 

@@ -18,6 +18,10 @@ class TestUnrunBuildClaim(unittest.TestCase):
 			unrun_build_claim("Reconstruis le site, s'il te plaît.", "Le site est reconstruit et publié.")
 		)
 
+	def test_a_build_said_launched_is_a_claim(self):
+		self.assertTrue(unrun_build_claim("Relance la reconstruction complète du site.", "J'ai relancé la reconstruction complète du site avec le même brief. Le processus est en cours."))
+		self.assertTrue(unrun_build_claim("Rebuild the site.", "I've launched the rebuild of the site; it is running now."))
+
 	def test_a_question_about_an_earlier_build_is_not_a_request(self):
 		self.assertFalse(
 			unrun_build_claim("What did you do yesterday?", "The site was built with four pages.")
