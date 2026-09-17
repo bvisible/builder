@@ -340,6 +340,15 @@ def _covering_picture(block: dict) -> bool:
     return _shows_picture(block) and styles.get("position") == "absolute" and (_spans_parent(styles) or bool(styles.get("objectFit")))
 
 
+def _has_covering_picture(block: dict, depth: int = 0) -> bool:
+    """Whether the block, or a descendant, lays a picture across it: a scrim makes sense over that."""
+    if depth > 8 or not isinstance(block, dict):
+        return False
+    if _shows_picture(block):
+        return True
+    return any(_covering_picture(c) or _has_covering_picture(c, depth + 1) for c in block.get("children") or [] if isinstance(c, dict))
+
+
 def _veil(block: dict) -> bool:
     """An absolute layer with a translucent or gradient fill: a scrim the model drew itself."""
     styles = block.get("baseStyles") or {}
@@ -436,10 +445,35 @@ def read_over_photos(blocks: list[dict], palette: dict[str, str]) -> list[str]:
             if isinstance(child, dict):
                 repair(child)
 
+    def unveil(block: dict) -> None:
+        # //// Neoffice — a veil with no picture under it is no veil (2026-09-17): a brands page
+        # //// carried u-over-image on a section that showed no photograph, so this very rule
+        # //// painted its heading white on the page's light ground, at write time and again at
+        # //// every render — and the measured repair could never win against it. The classes go,
+        # //// and the white ink they earned goes with them.
+        block["classes"] = [c for c in _classes(block) if not c.startswith(VEILED[0])]
+        fixes.append(f"'{label(block)}': a veil with no picture under it is removed")
+
+        def clear(node: dict) -> None:
+            styles = node.get("baseStyles") or {}
+            if str(styles.get("color") or "").strip().lower() in (SCRIM_INK, "#fff", "white"):
+                styles.pop("color", None)
+                node["baseStyles"] = styles
+            for child in node.get("children") or []:
+                if isinstance(child, dict) and not own_background(child):
+                    clear(child)
+
+        clear(block)
+
     def walk(block) -> None:
         if not isinstance(block, dict):
             return
         if any(c.startswith(VEILED[0]) for c in _classes(block)):
+            if not _has_covering_picture(block):
+                unveil(block)
+                for child in block.get("children") or []:
+                    walk(child)
+                return
             colour = parse_color((block.get("baseStyles") or {}).get("color"), palette)
             if colour is None or contrast(colour, scrim) < SCRIM_MIN_RATIO:
                 set_ink(block, SCRIM_INK, "copy inside a scrim inherits the page's ink")

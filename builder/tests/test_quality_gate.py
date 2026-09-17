@@ -375,3 +375,28 @@ class TestWhatCountsAsChrome(unittest.TestCase):
 		])
 		self.assertEqual([i["area"] for i in visual_check.actionable(critique)], ["Brand logos section"])
 
+
+class TestAVeilNeedsAPicture(unittest.TestCase):
+	def test_a_veiled_section_without_a_picture_loses_its_veil_and_its_white_ink(self):
+		from builder.site_ai.nora.contrast import read_over_photos
+
+		blocks = [{"element": "section", "classes": ["u-over-image", "u-over-image--bottom"], "baseStyles": {"backgroundColor": "var(--t-background)", "color": "#ffffff"}, "children": [
+			{"element": "div", "baseStyles": {"color": "#ffffff"}, "children": [{"element": "h2", "innerHTML": "Ces marques dans votre magasin", "baseStyles": {"color": "#ffffff"}}]},
+		]}]
+		fixes = read_over_photos(blocks, {"t-background": "#ffffff", "t-text": "#111111"})
+		self.assertTrue(any("no picture" in f for f in fixes))
+		self.assertEqual(blocks[0]["classes"], [])
+		self.assertNotIn("color", blocks[0]["baseStyles"])
+		self.assertNotIn("color", blocks[0]["children"][0]["children"][0]["baseStyles"])
+
+	def test_a_veiled_section_with_a_picture_keeps_its_white_ink(self):
+		from builder.site_ai.nora.contrast import read_over_photos
+
+		blocks = [{"element": "section", "classes": ["u-over-image"], "baseStyles": {"position": "relative", "color": "#ffffff"}, "children": [
+			{"element": "img", "baseStyles": {"position": "absolute", "inset": "0", "objectFit": "cover"}},
+			{"element": "h2", "innerHTML": "Titre", "baseStyles": {"color": "#111111"}},
+		]}]
+		read_over_photos(blocks, {})
+		self.assertEqual(blocks[0]["classes"], ["u-over-image"])
+		self.assertEqual(blocks[0]["children"][1]["baseStyles"]["color"], "#ffffff")
+
