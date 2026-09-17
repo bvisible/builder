@@ -2572,6 +2572,20 @@ def build_site(ctx, spec: dict) -> str:
                     # //// Neoffice — the page's own headlines: the render must show them (2026-09-17)
                     look = visual_check.review_page(created[-1], profile, judge, site_name=site_name, activity=activity, expect=site["headlines_by_route"].get(page["route"]) or [page["title"]])
                 attempts += 1
+                # //// Neoffice — a measured contrast is repaired on the spot and looked at again,
+                # //// without a model call (contrast.repair_measured_contrast, 2026-09-17)
+                if any(g.get("kind") == "unreadable-text" for g in look.get("gate") or []) and not look.get("error"):
+                    from builder.site_ai.nora.contrast import repair_measured_contrast
+
+                    stored_blocks, stored_script = stored_page(name)
+                    measured_fixes = repair_measured_contrast(stored_blocks, look.get("gate") or [], palette)
+                    if measured_fixes:
+                        _write_page(page, stored_blocks, stored_script, profile, name, _describe(stored_blocks))
+                        # the previous YAML stays the revision's anchor: a colour set here is
+                        # measured and set again if the writer loses it
+                        ai_log("info", "Measured contrast repaired", page=page["title"], fixes=measured_fixes[:4])
+                        with meter.kind(meter.READING):
+                            look = visual_check.review_page(created[-1], profile, judge, site_name=site_name, activity=activity, expect=site["headlines_by_route"].get(page["route"]) or [page["title"]])
                 # the report is kept, with the page's state when it was read: the final pass
                 # re-reads only what changed since (the pictures land after the pages)
                 reviewed_already[name] = {"report": look, "modified": str(frappe.db.get_value("Builder Page", name, "modified") or "")}

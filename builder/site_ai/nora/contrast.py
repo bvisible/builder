@@ -478,3 +478,61 @@ def scrim_ink_for_render(blocks):
 		frappe.log_error("Contrast: page rendered without the scrim check", frappe.get_traceback())
 		return blocks
 
+
+# //// Neoffice ▼▼▼ — what the browser measured is repaired here, not sent back to the writer
+# //// (2026-09-17). On a brands page the writer fixed a washed-out heading and lost the button
+# //// under it, then fixed the button and lost the heading: two model calls for a colour the
+# //// gate had already measured. A measured contrast finding names the element and the ground
+# //// it sits on; the block is found by its text and given an ink that reads on that ground.
+MEASURED_GROUND = re.compile(r"background rgb\((\d+),\s*(\d+),\s*(\d+)\)")
+MEASURED_WHERE = re.compile(r'^\s*([a-z0-9]+)\s+"(.+)"\s*$', re.S)
+
+
+def _plain_text(block: dict) -> str:
+    html = block.get("innerHTML")
+    if not isinstance(html, str) or "<svg" in html:
+        return ""
+    return re.sub(r"\s+", " ", re.sub(r"<[^>]+>", " ", html)).strip().lower()
+
+
+def repair_measured_contrast(blocks: list[dict], findings: list[dict], palette: dict[str, str], minimum: float = MIN_RATIO) -> list[str]:
+    """Give every block the gate measured unreadable an ink that reads on the ground it was
+    measured on. `findings` are the gate's (kind, where, detail); the block is found by the
+    text the probe quoted. Returns one line per edit."""
+    fixes: list[str] = []
+    targets = []
+    for finding in findings or []:
+        if finding.get("kind") != "unreadable-text":
+            continue
+        ground = MEASURED_GROUND.search(finding.get("detail") or "")
+        named = MEASURED_WHERE.match(finding.get("where") or "")
+        if not ground or not named:
+            continue
+        bg = (float(ground.group(1)), float(ground.group(2)), float(ground.group(3)), 1.0)
+        targets.append((named.group(1).lower(), re.sub(r"\s+", " ", named.group(2)).strip().lower(), bg))
+    if not targets:
+        return fixes
+
+    def walk(block: dict, depth: int = 0) -> None:
+        if depth > 24 or not isinstance(block, dict):
+            return
+        text = _plain_text(block)
+        if text:
+            for tag, wanted, bg in targets:
+                if block.get("element", "").lower() != tag or not text.startswith(wanted[:60]):
+                    continue
+                styles = block.setdefault("baseStyles", {})
+                current = parse_color(styles.get("color"), palette)
+                if current and contrast(composite(current, bg), bg) >= minimum:
+                    continue
+                handle, ink = best_text(bg, palette, minimum)
+                styles["color"] = handle
+                fixes.append(f"{tag} '{wanted[:40]}' given {handle} on rgb({int(bg[0])}, {int(bg[1])}, {int(bg[2])})")
+        for child in block.get("children") or []:
+            walk(child, depth + 1)
+
+    for block in blocks:
+        walk(block)
+    return fixes
+# //// Neoffice ▲▲▲
+

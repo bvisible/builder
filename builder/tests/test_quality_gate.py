@@ -284,3 +284,28 @@ class TestTheCallersTimeout(unittest.TestCase):
 			llm.complete("openai/x", [{"role": "user", "content": "hi"}], {"max_tokens": 10}, stream=False)
 			self.assertEqual(call.call_args.kwargs["timeout"], 120)
 
+
+class TestMeasuredContrastIsRepaired(unittest.TestCase):
+	"""A colour the browser measured unreadable is fixed on the block, not sent back to the writer."""
+
+	def test_the_block_named_by_the_probe_gets_an_ink_that_reads(self):
+		from builder.site_ai.nora.contrast import repair_measured_contrast
+
+		blocks = [{"element": "section", "baseStyles": {"backgroundColor": "#ffffff"}, "children": [
+			{"element": "h2", "innerHTML": "CES MARQUES, <b>À VOS TARIFS</b>", "baseStyles": {"color": "#ffffff"}},
+			{"element": "p", "innerHTML": "Un texte lisible", "baseStyles": {"color": "#222222"}},
+		]}]
+		findings = [{"kind": "unreadable-text", "severity": "high", "width": 1440, "where": 'h2 "CES MARQUES, À VOS TARIFS"', "detail": "contrast 1.0:1 between rgb(255, 255, 255) and the background rgb(255, 255, 255) (needs 3:1): the text cannot be read"}]
+		palette = {"t-text": "#1b1a17", "t-background": "#ffffff", "t-primary": "#1d3a6e"}
+		fixes = repair_measured_contrast(blocks, findings, palette)
+		self.assertEqual(len(fixes), 1)
+		self.assertNotEqual(blocks[0]["children"][0]["baseStyles"]["color"], "#ffffff")
+		self.assertEqual(blocks[0]["children"][1]["baseStyles"]["color"], "#222222")
+
+	def test_nothing_measured_nothing_touched(self):
+		from builder.site_ai.nora.contrast import repair_measured_contrast
+
+		blocks = [{"element": "h2", "innerHTML": "Titre", "baseStyles": {"color": "#ffffff"}}]
+		self.assertEqual(repair_measured_contrast(blocks, [{"kind": "starved-text", "where": 'h2 "Titre"', "detail": "x"}], {}), [])
+		self.assertEqual(blocks[0]["baseStyles"]["color"], "#ffffff")
+
