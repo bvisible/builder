@@ -121,6 +121,12 @@ def repair_button_variants(blocks: list, palette: dict) -> list[str]:
         if photo and "u-btn" in classes and {"u-btn--outline", "u-btn--ghost"} & set(classes):
             block["classes"] = classes = ["u-btn--on-image" if c in ("u-btn--outline", "u-btn--ghost") else c for c in classes]
             edits.append(f"'{_text(block)}': an outline button over a photograph -> u-btn--on-image")
+        # //// Neoffice — and the reverse (2026-09-17): a u-btn--on-image is white ink for a
+        # //// photograph, and the writer put one on the page's cream ground ("Demander un compte",
+        # //// 1.1:1, measured on a client's home). Off a picture it takes the primary variant.
+        if not photo and "u-btn--on-image" in classes:
+            block["classes"] = classes = ["u-btn--primary" if c == "u-btn--on-image" else c for c in classes]
+            edits.append(f"'{_text(block)}': an on-image button with no picture under it -> u-btn--primary")
         for variant, colour, other, other_name in (("u-btn--primary", primary, secondary, "u-btn--secondary"), ("u-btn--secondary", secondary, primary, "u-btn--primary")):
             if variant in classes and colour is not None and bg is not None and contrast(colour, bg) < BUTTON_MIN_RATIO:
                 new = other_name if other is not None and contrast(other, bg) >= BUTTON_MIN_RATIO else "u-btn--outline"

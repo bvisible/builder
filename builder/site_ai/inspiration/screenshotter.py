@@ -389,8 +389,8 @@ LAYOUT_PROBE = r"""
     const box = c.el.getBoundingClientRect();
     if (!(r.right > box.right + 8 || r.left < box.left - 8)) continue;
     if (text(el).length < 3 || r.width < 80 || cut >= 4) continue;
-    // a row that is BUILT to scroll (the shop's carousels) is not cut: scrolling is its nature
-    if (c.scrolls && c.el.closest('[class*="carousel"], [class*="slider"], [class*="scroller"]')) continue;
+    // a carousel hides its off-screen slides by design, whether it scrolls or slides: not cut
+    if (c.el.closest('[class*="carousel"], [class*="slider"], [class*="scroller"], [class*="marquee"]')) continue;
     cut++; reported.push(el);
     out.push({kind: 'content-cut', severity: c.scrolls ? 'medium' : 'high', where: where(el), detail: 'spans ' + Math.round(r.left) + 'px to ' + Math.round(r.right) + 'px but its container ends at ' + Math.round(box.right) + 'px' + (c.scrolls ? ' and only scrolls sideways: the visitor sees it cut unless they scroll' : ': it is cut at the edge') + ' — a row wider than its container (fixed tile widths, a grid that does not wrap); make the row fit or wrap'});
   }

@@ -400,3 +400,16 @@ class TestAVeilNeedsAPicture(unittest.TestCase):
 		self.assertEqual(blocks[0]["classes"], ["u-over-image"])
 		self.assertEqual(blocks[0]["children"][1]["baseStyles"]["color"], "#ffffff")
 
+
+class TestAnOnImageButtonNeedsAPicture(unittest.TestCase):
+	def test_off_a_picture_the_on_image_button_becomes_primary(self):
+		from builder.site_ai.nora.buttons import repair_button_variants
+
+		blocks = [{"element": "section", "baseStyles": {"backgroundColor": "#faf7f2"}, "children": [
+			{"element": "a", "innerHTML": "Demander un compte", "classes": ["u-btn", "u-btn--on-image"], "attributes": {"href": "/compte"}},
+		]}]
+		edits = repair_button_variants(blocks, {"t-primary": "#e85d2b", "t-secondary": "#1e293b", "t-background": "#faf7f2", "t-text": "#1e293b"})
+		self.assertTrue(any("no picture under it" in e for e in edits))
+		self.assertIn("u-btn--primary", blocks[0]["children"][0]["classes"])
+		self.assertNotIn("u-btn--on-image", blocks[0]["children"][0]["classes"])
+
