@@ -63,3 +63,27 @@ def unrun_build_claim(prompt: str, answer: str) -> bool:
 	"""Whether the user asked for a build and the answer says one is done. The caller knows
 	whether a tool ran; this reads the words only."""
 	return bool(prompt and answer and BUILD_ASKED.search(prompt) and BUILD_CLAIMED.search(answer))
+
+
+# //// Neoffice ▼▼▼ — a tool call written as TEXT (2026-09-17). Asked to rebuild a site, the chat
+# //// model printed the arguments of generate_site as a JSON block ("site_name": …, "pages": […],
+# //// "replace_existing": "force") and ended its turn: nothing ran, and the user read a wall of
+# //// JSON where a build should have started. The loop sends that answer back once.
+TOOL_ARGUMENT_KEYS = ("site_name", "pages", "website_profile", "replace_existing", "logo_image", "site_type", "activity")
+
+NUDGE_CALL = (
+	"You wrote the tool's arguments as text and ended the turn: nothing ran. A tool runs ONLY when you call it. "
+	"Call generate_site now, with exactly the arguments you just wrote, and say nothing else until it answers."
+)
+
+
+def tool_call_written_as_text(answer: str) -> bool:
+	"""Whether the answer is (or carries) a JSON object of generate_site arguments instead of a
+	call. The caller knows no tool ran."""
+	if not answer or "{" not in answer:
+		return False
+	body = answer.lower()
+	quoted = sum(1 for key in TOOL_ARGUMENT_KEYS if f'"{key}"' in body)
+	return quoted >= 3
+# //// Neoffice ▲▲▲
+

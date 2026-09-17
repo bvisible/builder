@@ -1240,6 +1240,23 @@ class AgentRunner:
 		messages.append({"role": "user", "content": NUDGE_QUESTION})
 		return True
 
+	def send_back_tool_call_in_text(self, messages: list[dict], text: str) -> bool:
+		"""//// Neoffice — the tool's arguments written as text, no tool run: back to the model once
+		(claims.tool_call_written_as_text, 2026-09-17)."""
+		from builder.site_ai.nora.claims import NUDGE_CALL, tool_call_written_as_text
+
+		if getattr(self, "call_sent_back", False) or self.tool_steps() or self.applied_operations:
+			return False
+		if not tool_call_written_as_text(text):
+			return False
+		self.call_sent_back = True
+		logger.warning("Agent wrote a tool call as text; asking it to call the tool")
+		self.live_text = ""
+		self.emit("stream", chunk="", replace=True)
+		messages.append({"role": "assistant", "content": text})
+		messages.append({"role": "user", "content": NUDGE_CALL})
+		return True
+
 	def flush_pending_images(self, messages: list[dict]) -> None:
 		"""Images a tool captured this round (preview_page screenshots) ride a
 		follow-up user message — appended only after every role:"tool" result,
@@ -1351,6 +1368,9 @@ class AgentRunner:
 					# //// Neoffice — and a question ANNOUNCED but never asked goes back the same way:
 					# //// "je te pose les questions" with no present_ui leaves nothing to tap.
 					if summary_text and self.send_back_unasked_question(messages, summary_text):
+						continue
+					# //// Neoffice — and a tool call written as text, nothing run, goes back too
+					if summary_text and self.send_back_tool_call_in_text(messages, summary_text):
 						continue
 					self.stop_reason = "model_finished"
 					break

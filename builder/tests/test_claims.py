@@ -193,3 +193,19 @@ class TestAnnouncedQuestionNotAsked(unittest.TestCase):
 		self.assertIn("question_sent_back", src)
 		self.assertIn("self.tool_steps()", src)
 		self.assertIn("self.applied_operations", src)
+
+
+# //// Neoffice — added (2026-09-17): a tool call written as text is sent back.
+class TestAToolCallWrittenAsText(unittest.TestCase):
+	def test_the_arguments_of_generate_site_as_a_json_block_are_not_a_call(self):
+		from builder.site_ai.nora.claims import tool_call_written_as_text
+
+		text = '{\n"site_name": "Atelier Nord",\n"activity": "a workshop",\n"pages": [{"title": "Home", "route": "home"}],\n"website_profile": "Nora Test",\n"replace_existing": "force",\n"scope": "site"\n}'
+		self.assertTrue(tool_call_written_as_text(text))
+
+	def test_a_sentence_naming_the_site_is_not(self):
+		from builder.site_ai.nora.claims import tool_call_written_as_text
+
+		self.assertFalse(tool_call_written_as_text("The site name is Atelier Nord and it has four pages."))
+		self.assertFalse(tool_call_written_as_text(""))
+
