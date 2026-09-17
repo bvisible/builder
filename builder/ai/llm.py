@@ -235,6 +235,7 @@ def complete(model: str, messages: list, params: dict, *, stream: bool, api_key:
 		# Read timeout (max stall between bytes, not total duration): a wedged
 		# provider connection otherwise blocks the worker forever — the loop only
 		# checks cancellation between chunks, so a silent stall is uncancellable.
+		# //// Neoffice — the caller's timeout when it gave one, 120 s otherwise (see above)
 		timeout=timeout,
 		# Emit a final usage chunk while streaming so the loop can tally tokens per
 		# turn (dropped automatically for providers that don't support it).
