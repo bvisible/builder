@@ -167,7 +167,7 @@ def dedupe_findings(measured: dict) -> list[dict]:
     return out
 
 
-def contract_findings(measured: dict, is_home: bool) -> tuple[list[dict], list[dict]]:
+def contract_findings(measured: dict, is_home: bool, background_mode: str = "auto") -> tuple[list[dict], list[dict]]:
     """What the facts of the rendered page say against the site's own rules: (page findings,
     chrome findings). The page's: an interior page opens under the site's title band, never with
     an h1 of its own, and never with both. The chrome's: the header carries a logo. The chrome's
@@ -187,6 +187,13 @@ def contract_findings(measured: dict, is_home: bool) -> tuple[list[dict], list[d
                          "detail": "the page repeats its title: the site's band shows it, and the page carries another h1. Remove the page's h1"})
     if facts and not facts.get("header_logo") and not (facts.get("header_text") or "").strip():
         chrome.append({"kind": "logo-missing", "severity": "high", "width": facts.get("width"), "where": "header", "detail": "the header shows neither a logo nor the site's name"})
+    # //// Neoffice — the ground the client asked for is measured (2026-09-17): "fond clair partout"
+    # //// was in the brief and in the plan, and a revision still came back "sombre et stylisée".
+    if background_mode == "light":
+        for dark in (facts.get("dark_sections") or [])[:3]:
+            page.append({"kind": "dark-ground", "severity": "high", "width": facts.get("width"), "where": dark.get("where") or "section",
+                         "detail": f"a section painted dark ({dark.get('height')}px tall) on a site whose ground must be LIGHT everywhere: "
+                                   "give it a white or off-white background and dark ink; the accent goes to rules, buttons and small marks"})
     return page, chrome
 
 
@@ -416,7 +423,7 @@ def review_page(page: dict, profile: str | None, model: str, site_name: str = ""
         if status and int(status) >= 400:
             report["http_error"] = int(status)
         findings = dedupe_findings(measured)
-        page_rules, chrome_rules = contract_findings(measured, is_home)
+        page_rules, chrome_rules = contract_findings(measured, is_home, str(page.get("background_mode") or "auto"))
         report["gate"] = findings + page_rules
         report["chrome"] = chrome_rules
         if measured.get("error"):

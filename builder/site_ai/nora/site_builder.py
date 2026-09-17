@@ -1103,6 +1103,17 @@ def page_brief_text(site: dict, brief, page: dict, handles: dict, contact_prompt
     lines = [
         f"DESIGN DIRECTION: {concept or 'a distinctive direction that fits the brand'} (tone: {tone or 'professional'}; hero style: {hero or 'free'}).",
         f"LAYOUT SYSTEM: {layout_system}. SIGNATURE MOVE: {signature or 'choose one that fits the system'}. Keep the SAME system and move on every page of this site.",
+        # //// Neoffice — the ground the client chose, said to the writer on every page and every
+        # //// revision (2026-09-17): it was in the brief and the plan, and a revision drifted dark.
+        (
+            "GROUND: LIGHT, everywhere on this page. Every section's background is white or an off-white and the ink is dark; "
+            "no section, band or call-to-action carries a dark or saturated fill. A photograph may be dark, with a scrim for "
+            "legibility; the section behind it stays light. The accent belongs to rules, buttons and small marks."
+            if site.get("background_mode") == "light"
+            else "GROUND: DARK, everywhere on this page: deep backgrounds, light ink, one lighter surface for cards or forms."
+            if site.get("background_mode") == "dark"
+            else ""
+        ),
         # //// Neoffice — the plan's site-wide contract, when there is a plan (site_plan.contract_lines)
         *contract,
         (f"PAGE NOTES from the plan: {planned.notes}" if planned and planned.notes else ""),
@@ -2167,7 +2178,9 @@ def build_site(ctx, spec: dict) -> str:
             # //// the footer's emblem when the client gave one, else the header's logo.
             "mark": footer_logo_image or logo_image or "",
             # //// Neoffice — the site's language reaches the includes too (2026-09-15)
-            "lang": lang_code}
+            "lang": lang_code,
+            # //// Neoffice — and the ground the client chose reaches every page brief (2026-09-17)
+            "background_mode": background_mode}
     site["sells"] = _sells_here
     # //// Neoffice ▼▼▼ — the site plan (site_plan.py, 2026-09-16): every page's sections decided
     # //// once, by the model that thinks best, from the brief and the client's material — logo,
@@ -2541,7 +2554,8 @@ def build_site(ctx, spec: dict) -> str:
         planned_photos[name] = (page_photos, page_notes)
         # //// Neoffice — "type" travels with the page (2026-09-15): the reviewer needs it to know
         # //// that the bracketed blanks of a legal page are deliberate (visual_check.LEGAL_CONTEXT).
-        created.append({"name": name, "title": page["title"], "route": f"/{route}", "planned": page["route"], "type": page["type"]})
+        # //// Neoffice — the ground travels with the page (2026-09-17): the look measures it
+        created.append({"name": name, "title": page["title"], "route": f"/{route}", "planned": page["route"], "type": page["type"], "background_mode": background_mode})
         # //// Neoffice — the ceiling, checked between pages (builder/ai/meter.py, 2026-09-15): the
         # //// build finishes what it has rather than dying, and says so in its summary.
         if (over := meter.over_budget()) and not over_budget_at:

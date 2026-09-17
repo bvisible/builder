@@ -322,3 +322,33 @@ class TestLinksToAHeldPage(unittest.TestCase):
 		self.assertEqual(repoint_links(blocks, ["/nos-marques"], "/"), 2)
 		self.assertEqual([c["attributes"]["href"] for c in blocks[0]["children"]], ["/", "/", "/contact"])
 
+
+class TestTheGroundIsMeasured(unittest.TestCase):
+	def test_a_dark_section_on_a_light_site_is_a_measured_break(self):
+		m = {"widths": {1440: {"findings": [], "facts": {"band": True, "body_h1": 0, "header_logo": True, "width": 1440, "dark_sections": [{"where": 'section "Prêt à équiper votre shop ?"', "height": 420}]}}}}
+		page, _chrome = visual_check.contract_findings(m, is_home=False, background_mode="light")
+		self.assertEqual([p["kind"] for p in page], ["dark-ground"])
+		page, _chrome = visual_check.contract_findings(m, is_home=False, background_mode="auto")
+		self.assertEqual(page, [])
+
+	def test_the_page_brief_repeats_the_ground_on_every_page(self):
+		site = {"site_name": "Atelier Test", "activity": "a workshop", "site_type": "vitrine", "profile": None, "page_types": ["accueil"], "background_mode": "light"}
+		page = {"title": "Accueil", "route": "home", "type": "accueil"}
+		handles = {"primary": "var(--t-primary)", "secondary": "var(--t-secondary)", "background": "var(--t-background)", "text": "var(--t-text)", "font-heading": "var(--t-font-heading)", "font-body": "var(--t-font-body)"}
+		with patch("builder.site_ai.nora.site_builder.available_includes", return_value=[]):
+			text = page_brief_text(site, FakeBrief(), page, handles, "", "classic-centered", "French", [], ("Contact", "/contact"))
+		self.assertIn("GROUND: LIGHT, everywhere on this page", text)
+
+
+class TestMeasuredContrastFindsTheBlockByItsText(unittest.TestCase):
+	def test_a_kicker_written_as_a_span_inside_a_p_is_found(self):
+		from builder.site_ai.nora.contrast import repair_measured_contrast
+
+		blocks = [{"element": "section", "baseStyles": {"backgroundColor": "#ffffff"}, "children": [
+			{"element": "p", "innerHTML": "<span>ACTUALITÉS</span>", "baseStyles": {"color": "#fafafa"}},
+		]}]
+		findings = [{"kind": "unreadable-text", "severity": "high", "width": 1440, "where": 'span "ACTUALITÉS"', "detail": "contrast 1.0:1 between rgb(250, 250, 250) and the background rgb(255, 255, 255) (needs 4.5:1): the text cannot be read"}]
+		fixes = repair_measured_contrast(blocks, findings, {"t-text": "#1b1a17", "t-background": "#ffffff"})
+		self.assertEqual(len(fixes), 1)
+		self.assertNotEqual(blocks[0]["children"][0]["baseStyles"]["color"], "#fafafa")
+

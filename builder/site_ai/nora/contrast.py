@@ -519,7 +519,10 @@ def repair_measured_contrast(blocks: list[dict], findings: list[dict], palette: 
         text = _plain_text(block)
         if text:
             for tag, wanted, bg in targets:
-                if block.get("element", "").lower() != tag or not text.startswith(wanted[:60]):
+                # //// the probe names the element it measured (a span inside a p): the block that
+                # //// carries that text is the one to colour, whatever its tag — a kicker written as
+                # //// <p><span>ACTUALITÉS</span></p> was never found by tag (2026-09-17)
+                if not text.startswith(wanted[:60]) or (block.get("children") and len(text) > len(wanted) + 40):
                     continue
                 styles = block.setdefault("baseStyles", {})
                 current = parse_color(styles.get("color"), palette)

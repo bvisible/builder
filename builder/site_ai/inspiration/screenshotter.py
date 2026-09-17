@@ -389,6 +389,8 @@ LAYOUT_PROBE = r"""
     const box = c.el.getBoundingClientRect();
     if (!(r.right > box.right + 8 || r.left < box.left - 8)) continue;
     if (text(el).length < 3 || r.width < 80 || cut >= 4) continue;
+    // a row that is BUILT to scroll (the shop's carousels) is not cut: scrolling is its nature
+    if (c.scrolls && c.el.closest('[class*="carousel"], [class*="slider"], [class*="scroller"]')) continue;
     cut++; reported.push(el);
     out.push({kind: 'content-cut', severity: c.scrolls ? 'medium' : 'high', where: where(el), detail: 'spans ' + Math.round(r.left) + 'px to ' + Math.round(r.right) + 'px but its container ends at ' + Math.round(box.right) + 'px' + (c.scrolls ? ' and only scrolls sideways: the visitor sees it cut unless they scroll' : ': it is cut at the edge') + ' — a row wider than its container (fixed tile widths, a grid that does not wrap); make the row fit or wrap'});
   }
@@ -506,13 +508,22 @@ LAYOUT_PROBE = r"""
     if (rest < 40 && r.height > 24) out.push({kind: 'heading-over-nothing', severity: 'high', where: 'section "' + (heads.length ? text(heads[0]) : all.slice(0, 40)) + '"', detail: 'the section is ' + (heads.length ? 'its heading' : 'a label') + ' and nothing else (' + Math.max(0, rest) + ' characters under it, ' + Math.round(r.height) + 'px tall): the content it announces never rendered — a repeater without data, or a section left unwritten; write the content inline or drop the section'});
   }
 
+  // the ground of the page: sections painted dark, for a site that asked for a light ground
+  const dark = [];
+  for (const sec of body.querySelectorAll('section')) {
+    if (chrome(sec) || !visible(sec)) continue;
+    const r = sec.getBoundingClientRect();
+    if (r.height < 160) continue;
+    const c = rgba(getComputedStyle(sec).backgroundColor);
+    if (c && c.a > 0.9 && lum(c) < 0.12) dark.push({where: 'section "' + (text(sec.querySelector('h1, h2, h3')) || text(sec)).slice(0, 40) + '"', height: Math.round(r.height)});
+  }
   // what the page is made of, for the rules the caller knows (the route, the site)
   const band = document.querySelector('.site-page-header');
   const bodyH1 = [...body.querySelectorAll('h1')].filter(h => !chrome(h)).length;
   const headerLogo = !!document.querySelector('header img, header svg, .navbar-brand img, .site-header img, [class*="logo"] img');
   const headerText = text(document.querySelector('header [class*="logo"], .navbar-brand, .site-header [class*="brand"]'));
   const sample = ((body.innerText || '')).replace(/\s+/g, ' ').slice(0, 6000);
-  return {findings: out, facts: {band: !!band, body_h1: bodyH1, header_logo: headerLogo, header_text: headerText, width: vw, height: Math.max(document.documentElement.scrollHeight, body.scrollHeight), title: document.title, text_sample: sample}};
+  return {findings: out, facts: {band: !!band, body_h1: bodyH1, header_logo: headerLogo, header_text: headerText, width: vw, height: Math.max(document.documentElement.scrollHeight, body.scrollHeight), title: document.title, text_sample: sample, dark_sections: dark}};
 }
 """
 
