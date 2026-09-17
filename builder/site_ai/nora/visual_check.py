@@ -18,7 +18,10 @@ import frappe
 
 from builder.site_ai.logging import ai_log
 
-CHROME_AREAS = ("header", "footer", "nav", "logo", "menu")
+# //// Neoffice — "logo" alone is no longer a chrome word (2026-09-17): the judge's high point on a
+# //// page's "Brand logos section" was dropped as chrome, and the page kept its sparse logo strip.
+# //// The chrome is the header, the footer, the navigation — and the site's own logo in them.
+CHROME_AREAS = ("header", "footer", "nav", "menu", "site logo", "header logo", "navbar")
 IMAGE_WAIT_SECONDS = 360
 IMAGE_POLL_SECONDS = 10
 # //// Neoffice — the number of times a page is rewritten on what the look found before the

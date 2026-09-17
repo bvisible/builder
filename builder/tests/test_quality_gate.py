@@ -362,3 +362,16 @@ class TestAListingNeedsEnoughToList(unittest.TestCase):
 			self.assertFalse(empty_includes.has_blog_posts())
 		with patch.object(empty_includes.frappe.db, "exists", return_value=True), patch.object(empty_includes.frappe.db, "count", return_value=empty_includes.LISTING_MIN_POSTS):
 			self.assertTrue(empty_includes.has_blog_posts())
+
+
+class TestWhatCountsAsChrome(unittest.TestCase):
+	def test_a_brand_logos_section_of_the_page_is_actionable_the_header_logo_is_not(self):
+		from types import SimpleNamespace as NS
+
+		critique = NS(issues=[
+			NS(area="Brand logos section", severity="high", problem="sparse", fix="show all nine"),
+			NS(area="Header logo", severity="high", problem="missing", fix="upload one"),
+			NS(area="footer", severity="medium", problem="faint", fix="darken"),
+		])
+		self.assertEqual([i["area"] for i in visual_check.actionable(critique)], ["Brand logos section"])
+
