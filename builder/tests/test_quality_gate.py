@@ -309,3 +309,16 @@ class TestMeasuredContrastIsRepaired(unittest.TestCase):
 		self.assertEqual(repair_measured_contrast(blocks, [{"kind": "starved-text", "where": 'h2 "Titre"', "detail": "x"}], {}), [])
 		self.assertEqual(blocks[0]["baseStyles"]["color"], "#ffffff")
 
+
+class TestLinksToAHeldPage(unittest.TestCase):
+	def test_every_link_to_a_held_route_goes_to_the_target_fragment_included(self):
+		from builder.site_ai.nora.buttons import repoint_links
+
+		blocks = [{"element": "div", "children": [
+			{"element": "a", "attributes": {"href": "/nos-marques#snow"}},
+			{"element": "a", "attributes": {"href": "/nos-marques"}},
+			{"element": "a", "attributes": {"href": "/contact"}},
+		]}]
+		self.assertEqual(repoint_links(blocks, ["/nos-marques"], "/"), 2)
+		self.assertEqual([c["attributes"]["href"] for c in blocks[0]["children"]], ["/", "/", "/contact"])
+

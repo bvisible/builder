@@ -1287,6 +1287,12 @@ def page_brief_text(site: dict, brief, page: dict, handles: dict, contact_prompt
     return "\n".join(line for line in lines if line)
 
 
+def by_route_page(pages: list[dict], created: dict) -> dict:
+    """The planned page a created entry was written from (its title, route and type)."""
+    planned = created.get("planned") or str(created.get("route") or "").strip("/")
+    return next((p for p in pages if p["route"] == planned), {"title": created.get("title"), "route": planned, "type": created.get("type") or "generic"})
+
+
 def keeps_own_logo(logo_type, logo_image, host_logo) -> bool:
     """//// Neoffice — whether a profile's chrome carries a logo of its OWN: an image that is not
     the host site's (a new Variant is bootstrapped from the host's Single, logo included, and that
@@ -2661,6 +2667,22 @@ def build_site(ctx, spec: dict) -> str:
         except Exception as e:
             ai_log("warning", "Refused page not unpublished", page=h["title"], error=str(e)[:120])
     shown = [p for p in created if p["name"] not in hidden]
+    # //// Neoffice — a link to a held page would be a dead link (2026-09-17): a home's category tile
+    # //// pointed at /nos-marques#snow while that page was held. Those links go to the home until
+    # //// the page is rebuilt, and the summary says so.
+    if hidden:
+        from builder.site_ai.nora.buttons import repoint_links
+
+        held_routes = [h["route"] for h in held if h["name"] in hidden]
+        for p in shown:
+            try:
+                stored_blocks, stored_script = stored_page(p["name"])
+                moved_links = repoint_links(stored_blocks, held_routes, "/")
+                if moved_links:
+                    _write_page(by_route_page(pages, p), stored_blocks, stored_script, profile, p["name"], _describe(stored_blocks))
+                    ai_log("info", "Links to a held page repointed", page=p["title"], edits=moved_links)
+            except Exception as e:
+                ai_log("warning", "Links to a held page not repointed", page=p["title"], error=str(e)[:160])
     # 6. menu, footer, home
     _progress(ctx, job_id, _("Menu, footer and home page"), 92, {"pages_created": created})
     apply_navigation(config, shown, site_type, activity, profile, lang_code, site_name=site_name)
@@ -2697,6 +2719,10 @@ def build_site(ctx, spec: dict) -> str:
     # vision model; the body defects come back as one revision pass (visual_check.py). A fact
     # the brief never gave (a price, a year, a testimonial) sends the page back too (facts.py)
     reviews, revised, facts_left = [], {}, {}
+
+    def item_for(name: str) -> dict:
+        return next(p for p in created if p["name"] == name)
+
     if created and not cancelled:
         try:
             by_name = {p["name"]: p for p in pages_by_name(pages, created)}
@@ -2751,9 +2777,21 @@ def build_site(ctx, spec: dict) -> str:
                     review["facts"] = len(found)
             # every page stating made-up facts is revised; the designer's points take the places
             # left: the pages that failed the first glance first, then the ones with most defects
+            # //// Neoffice — the final pass revises what is WORTH a rewrite (2026-09-17): a refusal, a
+            # //// high point, a measured break, an invented fact. The medium leftovers of a page the loop
+            # //// accepted are not chased again: the first full run rewrote three accepted pages here on
+            # //// their leftovers, after their last look, and shipped them unread.
+            def worth_a_rewrite(r):
+                return (
+                    r.get("facts")
+                    or r["professional"] is False
+                    or any(i.get("severity") == "high" for i in r["issues"])
+                    or any(g.get("severity") == "high" for g in r.get("gate") or [])
+                )
+
             ranked = sorted(
                 # //// Neoffice — a measured point counts like a seen one, and a hidden page is left alone (2026-09-16)
-                [r for r in reviews if (r["issues"] or r.get("gate")) and r["name"] in by_name and r["name"] not in hidden],
+                [r for r in reviews if worth_a_rewrite(r) and r["name"] in by_name and r["name"] not in hidden],
                 key=lambda r: (r["professional"] is not False, -len(r["issues"]) - len(r.get("gate") or [])),
             )
             todo = [r for r in ranked if r.get("facts")] + [r for r in ranked if not r.get("facts")][: visual_check.MAX_REVISIONS]
@@ -2774,6 +2812,19 @@ def build_site(ctx, spec: dict) -> str:
                 _write_page(page, blocks, data_script, profile, r["name"], _describe(blocks))
                 revised[r["name"]] = len(r["issues"])
                 ai_log("info", "Page revised after the visual check", page=r["title"], issues=len(r["issues"]))
+                # //// Neoffice — and looked at again (2026-09-17): a rewrite nobody reads is the fault
+                # //// this whole gate exists to end. A rewrite the look refuses is held like any other.
+                with meter.kind(meter.READING):
+                    again = visual_check.review_page(item_for(r["name"]), profile, judge, site_name=site_name, activity=activity, expect=page_headlines(blocks, categories) or [page["title"]])
+                r.update({k: again.get(k) for k in ("professional", "issues", "overall", "gate", "chrome", "error", "http_error", "all_issues")})
+                if visual_check.refused(again) and r["name"] not in {h["name"] for h in held}:
+                    essential = page["route"] in ("home", "index") or f"/{page['route']}".rstrip("/") == (cta[1] or "").rstrip("/")
+                    held.append({"name": r["name"], "title": r["title"], "route": item_for(r["name"])["route"], "attempts": looked.get(r["name"], 0) + 1, "why": visual_check.why_refused(again), "essential": essential})
+                    if not essential:
+                        hidden.add(r["name"])
+                        frappe.db.set_value("Builder Page", r["name"], "published", 0, update_modified=False)
+                        frappe.db.commit()
+                    ai_log("warning", "Page refused after the final revision", page=r["title"], essential=essential, why=visual_check.why_refused(again)[:300])
             # what the revision still left made up is said in the summary, not revised again
             for r in todo:
                 if r.get("facts") and r["name"] in revised:
@@ -2788,6 +2839,13 @@ def build_site(ctx, spec: dict) -> str:
                     ai_log("info", "Images re-queued after the revision pass", slots=len(slots))
         except Exception as e:
             ai_log("warning", "Visual check skipped", error=str(e)[:200])
+    # //// Neoffice — a page held by the final pass leaves the menu too (2026-09-17)
+    if any(h["name"] in hidden for h in held) and len([p for p in created if p["name"] not in hidden]) != len(shown):
+        shown = [p for p in created if p["name"] not in hidden]
+        try:
+            apply_navigation(config, shown, site_type, activity, profile, lang_code, site_name=site_name)
+        except Exception as e:
+            ai_log("warning", "Menu not rebuilt after the final pass", error=str(e)[:160])
 
     duration = int(time.time() - started)
     _update_generation_status(job_id, {

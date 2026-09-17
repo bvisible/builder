@@ -580,3 +580,33 @@ def _include_block(blocks: list, template: str) -> dict | None:
         if found is not None:
             return found
     return None
+
+
+# //// Neoffice ▼▼▼ — links to a page the build held (2026-09-17)
+def repoint_links(blocks: list, routes: list[str], target: str) -> int:
+    """Every href pointing at one of `routes` (with or without a fragment) now points at `target`.
+    Returns the number of links changed."""
+    wanted = {str(r).strip("/").lower() for r in routes if str(r).strip("/")}
+    if not wanted:
+        return 0
+    changed = 0
+
+    def walk(node, depth=0):
+        nonlocal changed
+        if depth > 24 or not isinstance(node, dict):
+            return
+        attrs = node.get("attributes")
+        if isinstance(attrs, dict):
+            href = str(attrs.get("href") or "")
+            path = href.split("#", 1)[0].split("?", 1)[0].strip("/").lower()
+            if path in wanted:
+                attrs["href"] = target
+                changed += 1
+        for child in node.get("children") or []:
+            walk(child, depth + 1)
+
+    for block in blocks:
+        walk(block)
+    return changed
+# //// Neoffice ▲▲▲
+
