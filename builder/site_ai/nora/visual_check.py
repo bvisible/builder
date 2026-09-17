@@ -326,9 +326,53 @@ def _readable_data_url(shot: dict) -> str | None:
 # //// Neoffice ▲▲▲
 
 
-def review_page(page: dict, profile: str | None, model: str, site_name: str = "", activity: str = "") -> dict:
+def _plain(text: str) -> str:
+    import re
+
+    return re.sub(r"\s+", " ", re.sub(r"<[^>]+>", " ", str(text or ""))).strip().lower()
+
+
+def rendered_the_page(measured: dict, expect: list[str] | None) -> bool | None:
+    """Whether the render is the page that was written: at least one of its own headlines is in
+    the text the browser saw. None when nothing is expected or nothing was measured."""
+    lines = [_plain(e) for e in (expect or []) if _plain(e)]
+    widths = measured.get("widths") or {}
+    if not lines or not widths:
+        return None
+    sample = _plain(((widths[max(widths.keys())] or {}).get("facts") or {}).get("text_sample") or "")
+    if not sample:
+        return None
+    return any(line[:80] in sample for line in lines)
+
+
+def forget_page_caches(route: str) -> None:
+    """Every cache that can hand the loopback render ANOTHER page than the one just written:
+    the route lookup (a deleted page's name, or an untagged fallback taken before this
+    profile's page existed, kept for an hour), and frappe's rendered-page cache."""
+    try:
+        from builder.builder.doctype.builder_page.builder_page import find_page_with_path
+
+        find_page_with_path.clear_cache()
+    except Exception:
+        pass
+    try:
+        from frappe.website.utils import clear_website_cache
+
+        clear_website_cache((route or "").strip("/") or "index")
+    except Exception:
+        pass
+    try:
+        frappe.cache.delete_value("website_page")
+    except Exception:
+        pass
+
+
+def review_page(page: dict, profile: str | None, model: str, site_name: str = "", activity: str = "", expect: list[str] | None = None) -> dict:
     """Measure one page in the browser, screenshot it on a desktop and on a phone, and have the
-    judge read it. Never raises: a page that cannot be reviewed is reported as such."""
+    judge read it. Never raises: a page that cannot be reviewed is reported as such.
+
+    `expect` names lines the page must show (its own headlines): the render is checked to be
+    THIS page before anyone judges it."""
     from builder.site_ai.ingestion.visual_critique import critique_screenshot
 
     report = {"name": page["name"], "title": page["title"], "route": page["route"], "professional": None, "issues": [], "error": None, "overall": "", "gate": [], "chrome": [], "http_error": None}
@@ -340,7 +384,24 @@ def review_page(page: dict, profile: str | None, model: str, site_name: str = ""
     # //// revision gets both.
     try:
         is_home = str(page.get("route") or "").strip("/") in ("", "home", "index")
+        # //// Neoffice — the render is checked to be the page we wrote (2026-09-17). A home written
+        # //// into a profile whose old home had just been deleted was measured and judged on the
+        # //// DEFAULT profile's home — a route lookup cached for an hour had answered with another
+        # //// page — and the judge refused it for "content of a completely different business".
+        # //// The caches are forgotten before the look, and a render that shows none of the page's
+        # //// own headlines is looked at once more, then reported unread rather than judged.
+        forget_page_caches(page["route"])
         measured = measure_page(url)
+        if rendered_the_page(measured, expect) is False:
+            ai_log("warning", "The render served another page, looking again", page=page["title"], route=page["route"],
+                   saw=(((measured.get("widths") or {}).get(1440) or {}).get("facts") or {}).get("title"))
+            forget_page_caches(page["route"])
+            time.sleep(2)
+            measured = measure_page(url)
+            if rendered_the_page(measured, expect) is False:
+                report["error"] = "the render served another page (a stale route cache): not judged"
+                ai_log("warning", "Visual check skipped: the render is not this page", page=page["title"], route=page["route"])
+                return report
         status = measured.get("status")
         if status and int(status) >= 400:
             report["http_error"] = int(status)

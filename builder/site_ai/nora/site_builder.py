@@ -1451,6 +1451,14 @@ def _write_page(page: dict, blocks: list, data_script: str, profile: str | None,
         {"route": route, "ai_generated_at": now(), "ai_blocks_hash": _blocks_fingerprint(stored_draft or stored_blocks)},
         update_modified=False,
     )
+    # //// Neoffice — db.set_value skips on_update, so the route cache is cleared here (2026-09-17):
+    # //// a suffixed route, or a page that replaced a deleted one, must be found at once
+    try:
+        from builder.builder.doctype.builder_page.builder_page import find_page_with_path
+
+        find_page_with_path.clear_cache()
+    except Exception:
+        pass
     frappe.db.commit()
     return name, route
 
@@ -1555,6 +1563,11 @@ def point_home_at(profile: str | None, page_name: str) -> None:
             frappe.db.set_value("Website Profile", profile, "home_page", page_name)
             frappe.cache.delete_value("nt_website_profiles_by_host")
             frappe.cache.delete_value("website_page")
+            # //// Neoffice — and the route lookup (2026-09-17): cached for an hour, it answered
+            # //// "home" for this profile with a page deleted at the start of the build
+            from builder.builder.doctype.builder_page.builder_page import find_page_with_path
+
+            find_page_with_path.clear_cache()
         else:
             frappe.db.set_value("Website Settings", "Website Settings", "home_page", "home")
             frappe.db.set_value("Builder Settings", "Builder Settings", "home_page", "home")
@@ -2152,20 +2165,37 @@ def build_site(ctx, spec: dict) -> str:
 
     site["plan"] = None
     if not building_part and spec.get("plan_site", True) and not ctx.is_cancelled():
-        _progress(ctx, job_id, _("Planning the site"), 9)
-        try:
-            includes_by_route = {
-                p["route"]: [f"{c.path} — {c.shows}" for c in available_includes(p["type"], site_type, profile, site_name, lang=lang_code)]
-                for p in pages
-            }
-            plan_logo = (frappe.utils.get_url() + logo_image) if logo_image and logo_image.startswith("/") else logo_image
-            with meter.kind(meter.WRITING):
-                site["plan"] = planner.plan_site(
-                    page_model, site, brief, pages, includes_by_route, client_photos, language,
-                    logo_image=plan_logo, inspiration_images=inspiration["images"], background_mode=background_mode,
-                )
-        except Exception as e:
-            ai_log("warning", "Site plan step failed, the static plans apply", error=str(e)[:200])
+        # //// Neoffice — a rebuild of the same pages reuses the plan it already has (2026-09-17),
+        # //// as it reuses the brief: six minutes of the strong model's thinking, kept 48 h. A
+        # //// changed page list, or reuse_brief=False, thinks again.
+        plan_key = f"nora_site_plan::{profile or site_name}"
+        wanted_routes = sorted(p["route"] for p in pages)
+        if spec.get("reuse_brief", True):
+            try:
+                kept = frappe.cache.get_value(plan_key)
+                stored = planner.from_json(kept) if kept else None
+                if stored and sorted((p.route or "").strip("/") for p in stored.pages) == wanted_routes:
+                    site["plan"] = stored
+                    ai_log("info", "Site plan reused", profile=profile, pages=len(stored.pages))
+            except Exception:
+                site["plan"] = None
+        if site["plan"] is None:
+            _progress(ctx, job_id, _("Planning the site"), 9)
+            try:
+                includes_by_route = {
+                    p["route"]: [f"{c.path} — {c.shows}" for c in available_includes(p["type"], site_type, profile, site_name, lang=lang_code)]
+                    for p in pages
+                }
+                plan_logo = (frappe.utils.get_url() + logo_image) if logo_image and logo_image.startswith("/") else logo_image
+                with meter.kind(meter.WRITING):
+                    site["plan"] = planner.plan_site(
+                        page_model, site, brief, pages, includes_by_route, client_photos, language,
+                        logo_image=plan_logo, inspiration_images=inspiration["images"], background_mode=background_mode,
+                    )
+                if site["plan"] is not None:
+                    frappe.cache.set_value(plan_key, planner.as_json(site["plan"]), expires_in_sec=48 * 3600)
+            except Exception as e:
+                ai_log("warning", "Site plan step failed, the static plans apply", error=str(e)[:200])
     # //// Neoffice ▲▲▲
     created, failed, cancelled = [], [], False
     # //// Neoffice — what the look decided (2026-09-16): the pages it refused, how many looks each
@@ -2532,7 +2562,8 @@ def build_site(ctx, spec: dict) -> str:
                 if ctx.is_cancelled():
                     break
                 with meter.kind(meter.READING):
-                    look = visual_check.review_page(created[-1], profile, judge, site_name=site_name, activity=activity)
+                    # //// Neoffice — the page's own headlines: the render must show them (2026-09-17)
+                    look = visual_check.review_page(created[-1], profile, judge, site_name=site_name, activity=activity, expect=site["headlines_by_route"].get(page["route"]) or [page["title"]])
                 attempts += 1
                 # the report is kept, with the page's state when it was read: the final pass
                 # re-reads only what changed since (the pictures land after the pages)

@@ -415,6 +415,10 @@ class BuilderPage(WebsiteGenerator):
 				delete_standard_dependency_if_unreferenced(doctype, identifier, app, delete_files)
 
 	def on_trash(self):
+		# //// Neoffice — a deleted page leaves the route lookup (2026-09-17). Upstream cleared it on
+		# //// save only: after a rebuild deleted a profile's home, find_page_with_path kept answering
+		# //// the deleted name for an hour, and the site's root fell through to another page.
+		self.clear_route_cache()
 		for session in frappe.get_all("Builder AI Session", filters={"page": self.name}, pluck="name"):
 			frappe.delete_doc("Builder AI Session", session, ignore_missing=True)
 

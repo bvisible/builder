@@ -332,7 +332,7 @@ def capture_website_screenshot(url: str, full_page: bool = True, static_roots: O
 # //// off the rendered page, at three widths, before any model is asked its opinion — for the
 # //// price of a page load, no tokens at all — and what they find goes into the revision as
 # //// facts, and into the verdict as a refusal when the page is broken.
-LAYOUT_PROBE = """
+LAYOUT_PROBE = r"""
 () => {
   const vw = window.innerWidth;
   const out = [];
@@ -460,15 +460,23 @@ LAYOUT_PROBE = """
       if (s.backgroundImage && s.backgroundImage !== 'none') return null;
       const c = rgba(s.backgroundColor);
       if (c && c.a > 0.9) return c;
+      // a veil (a translucent tint over a picture): what shows through is unknowable here
+      if (c && c.a > 0.15) return null;
     }
     return {r: 255, g: 255, b: 255, a: 1};
   };
+  // a label ON a photograph (the picture is a sibling under it, not an ancestor): the probe
+  // called "SNOW" over a snow photograph white-on-white (2026-09-17); a picture behind the
+  // text is the judge's to read
+  const pictures = [...body.querySelectorAll('img, video, svg')].filter(i => visible(i) && i.getBoundingClientRect().width > 80).map(i => i.getBoundingClientRect());
+  const onPicture = (r) => { const cx = (r.left + r.right) / 2, cy = (r.top + r.bottom) / 2; return pictures.some(b => cx >= b.left && cx <= b.right && cy >= b.top && cy <= b.bottom); };
   let faint = 0;
   for (const el of body.querySelectorAll('h1, h2, h3, p, a, li, span')) {
     if (faint >= 4 || chrome(el) || !visible(el)) continue;
     const t = text(el);
     if (t.length < 3 || [...el.children].some(c => /^(h1|h2|h3|p|div|ul|ol|section)$/i.test(c.tagName))) continue;
     const s = getComputedStyle(el);
+    if (onPicture(el.getBoundingClientRect())) continue;
     const ink = rgba(s.color); const back = ground(el);
     if (!ink || !back || ink.a < 0.5) continue;
     const l1 = lum(ink), l2 = lum(back);
@@ -495,7 +503,8 @@ LAYOUT_PROBE = """
   const bodyH1 = [...body.querySelectorAll('h1')].filter(h => !chrome(h)).length;
   const headerLogo = !!document.querySelector('header img, header svg, .navbar-brand img, .site-header img, [class*="logo"] img');
   const headerText = text(document.querySelector('header [class*="logo"], .navbar-brand, .site-header [class*="brand"]'));
-  return {findings: out, facts: {band: !!band, body_h1: bodyH1, header_logo: headerLogo, header_text: headerText, width: vw, height: Math.max(document.documentElement.scrollHeight, body.scrollHeight)}};
+  const sample = ((body.innerText || '')).replace(/\s+/g, ' ').slice(0, 6000);
+  return {findings: out, facts: {band: !!band, body_h1: bodyH1, header_logo: headerLogo, header_text: headerText, width: vw, height: Math.max(document.documentElement.scrollHeight, body.scrollHeight), title: document.title, text_sample: sample}};
 }
 """
 

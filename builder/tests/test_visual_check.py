@@ -203,3 +203,50 @@ class TestTheGateBeforeTheJudge(unittest.TestCase):
 		self.assertTrue(visual_check.accepted(report))
 		self.assertEqual(report["chrome"], [])
 
+
+# //// Neoffice — added tests (2026-09-17): the render must be the page that was written.
+class TestTheRenderIsThisPage(unittest.TestCase):
+	def setUp(self):
+		logging = patch.object(visual_check, "ai_log")
+		logging.start()
+		self.addCleanup(logging.stop)
+		sleeping = patch.object(visual_check.time, "sleep")
+		sleeping.start()
+		self.addCleanup(sleeping.stop)
+
+	def measured(self, text):
+		return {"status": 200, "widths": {1440: {"findings": [], "facts": {"band": True, "body_h1": 0, "header_logo": True, "width": 1440, "title": "Accueil", "text_sample": text}}}}
+
+	def test_a_render_showing_none_of_the_page_s_headlines_is_looked_at_again_then_left_unread(self):
+		with (
+			patch.object(visual_check, "forget_page_caches") as forget,
+			patch.object(visual_check, "measure_page", return_value=self.measured("Spécialiste en électricité et électroménager")) as measure,
+			patch.object(visual_check, "_screenshot") as shot,
+		):
+			report = visual_check.review_page({"name": "p1", "title": "Accueil", "route": "/home"}, "A Site", "judge", expect=["La glisse en stock, livrée en 48 h."])
+		self.assertEqual(measure.call_count, 2)
+		self.assertEqual(forget.call_count, 2)
+		shot.assert_not_called()
+		self.assertIn("another page", report["error"])
+		self.assertFalse(visual_check.accepted(report))
+		self.assertFalse(visual_check.refused(report))
+
+	def test_the_second_look_may_find_the_page(self):
+		read = SimpleNamespace(looks_professional=True, overall="fine", issues=[])
+		with (
+			patch.object(visual_check, "forget_page_caches"),
+			patch.object(visual_check, "measure_page", side_effect=[self.measured("another business"), self.measured("LA GLISSE EN STOCK, LIVRÉE EN 48 H. Northline")]),
+			patch.object(visual_check, "_screenshot", return_value={"success": True, "file_url": "/files/x.png"}),
+			patch.object(visual_check, "capture_phone", return_value=None),
+			patch.object(visual_check, "_readable_data_url", return_value=None),
+			patch.object(visual_check, "_drop_capture"),
+			patch.object(visual_check.frappe.db, "commit"),
+			patch("builder.site_ai.ingestion.visual_critique.critique_screenshot", return_value=(read, "judge")),
+		):
+			report = visual_check.review_page({"name": "p1", "title": "Accueil", "route": "/home"}, "A Site", "judge", expect=["La glisse en stock, livrée en 48 h."])
+		self.assertTrue(visual_check.accepted(report))
+
+	def test_nothing_expected_means_nothing_checked(self):
+		self.assertIsNone(visual_check.rendered_the_page(self.measured("anything"), []))
+		self.assertTrue(visual_check.rendered_the_page(self.measured("<h2>Nos <b>marques</b></h2> et plus"), ["Nos marques"]))
+
