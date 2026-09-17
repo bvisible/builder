@@ -352,3 +352,13 @@ class TestMeasuredContrastFindsTheBlockByItsText(unittest.TestCase):
 		self.assertEqual(len(fixes), 1)
 		self.assertNotEqual(blocks[0]["children"][0]["baseStyles"]["color"], "#fafafa")
 
+
+
+class TestAListingNeedsEnoughToList(unittest.TestCase):
+	def test_one_post_is_not_a_listing(self):
+		from builder import empty_includes
+
+		with patch.object(empty_includes.frappe.db, "exists", return_value=True), patch.object(empty_includes.frappe.db, "count", return_value=1):
+			self.assertFalse(empty_includes.has_blog_posts())
+		with patch.object(empty_includes.frappe.db, "exists", return_value=True), patch.object(empty_includes.frappe.db, "count", return_value=empty_includes.LISTING_MIN_POSTS):
+			self.assertTrue(empty_includes.has_blog_posts())

@@ -119,12 +119,18 @@ def has_company_history(profile=None) -> bool:
 	return about_us_rows("company_history")
 
 
+# //// Neoffice — a listing with ONE card is a hole (2026-09-17): a home showed "Actualités de
+# //// l'agence" over a single news card and a huge empty area, and the judge refused it. A
+# //// listing is offered when there is enough to list.
+LISTING_MIN_POSTS = 3
+
+
 def has_blog_posts(profile=None) -> bool:
-	"""Whether the site has a published blog post for the listing to list."""
+	"""Whether the site has enough published blog posts for a listing to look like one."""
 	if not frappe.db.exists("DocType", "Blog Post"):
 		return False
 	try:
-		return bool(frappe.db.count("Blog Post", {"published": 1}))
+		return int(frappe.db.count("Blog Post", {"published": 1}) or 0) >= LISTING_MIN_POSTS
 	except Exception:
 		return False
 # //// Neoffice ▲▲▲
