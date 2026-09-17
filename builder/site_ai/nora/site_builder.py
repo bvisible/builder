@@ -2574,7 +2574,9 @@ def build_site(ctx, spec: dict) -> str:
                 for finding in look.get("chrome") or []:
                     if finding not in chrome_findings:
                         chrome_findings.append(finding)
-                if visual_check.accepted(look):
+                # //// Neoffice — medium points are revised once, then the page is accepted if the
+                # //// judge calls it professional and nothing is measured against it (visual_check.accepted)
+                if visual_check.accepted(look, lenient=attempt >= 1):
                     if attempt == 0:
                         first_look_accepted += 1
                     else:

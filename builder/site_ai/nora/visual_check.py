@@ -195,16 +195,26 @@ def points_to_fix(report: dict) -> list[dict]:
     return list(report.get("issues") or [])
 
 
-def accepted(report: dict) -> bool:
-    """Whether the page passes: read, called professional, nothing measured against it and
-    nothing actionable left. A page that could not be read is not accepted — it is unknown."""
+def accepted(report: dict, lenient: bool = False) -> bool:
+    """Whether the page passes: read, called professional, nothing measured against it, no high
+    point left. A page that could not be read is not accepted — it is unknown.
+
+    //// Neoffice — `lenient` (2026-09-17): the judge's MEDIUM points are fixed once, not chased.
+    On the first full run a home went through three revisions on medium points that changed at
+    every look (a watermark cut, then tiles "unfinished", then pillars "redundant"): each pass
+    fixed the last look's taste and earned the next one's. A medium point blocks the first
+    verdict, so it is revised once; after that, a page the judge calls professional with no
+    high point and nothing measured against it is accepted, and the leftovers are said."""
     if report.get("error"):
         return False
     if report.get("professional") is not True:
         return False
     if any(g.get("severity") == "high" for g in report.get("gate") or []):
         return False
-    return not report.get("issues")
+    issues = report.get("issues") or []
+    if any(i.get("severity") == "high" for i in issues):
+        return False
+    return lenient or not issues
 
 
 def refused(report: dict) -> bool:

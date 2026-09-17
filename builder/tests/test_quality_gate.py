@@ -41,9 +41,16 @@ class TestTheVerdict(unittest.TestCase):
 		self.assertTrue(visual_check.refused(r))
 		self.assertIn("measured at 375px", visual_check.why_refused(r))
 
-	def test_a_medium_point_blocks_acceptance_but_does_not_refuse(self):
+	def test_a_medium_point_blocks_the_first_verdict_only(self):
 		r = report(issues=[{"area": "hero", "severity": "medium", "problem": "the kicker is faint", "fix": "darken it"}])
 		self.assertFalse(visual_check.accepted(r))
+		self.assertFalse(visual_check.refused(r))
+		# revised once: a professional page with medium leftovers is accepted, not chased
+		self.assertTrue(visual_check.accepted(r, lenient=True))
+
+	def test_a_high_point_blocks_acceptance_however_lenient(self):
+		r = report(issues=[{"area": "hero", "severity": "high", "problem": "the headline is cut", "fix": "wrap it"}])
+		self.assertFalse(visual_check.accepted(r, lenient=True))
 		self.assertFalse(visual_check.refused(r))
 
 	def test_a_page_that_answered_an_error_is_refused(self):
