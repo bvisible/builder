@@ -484,7 +484,11 @@ LAYOUT_PROBE = r"""
     const l1 = lum(ink), l2 = lum(back);
     const ratio = (Math.max(l1, l2) + 0.05) / (Math.min(l1, l2) + 0.05);
     const fs = parseFloat(s.fontSize) || 16;
-    const large = fs >= 24 || (fs >= 19 && parseInt(s.fontWeight, 10) >= 700);
+    // a button is a UI component: 3:1 is its bar (WCAG 1.4.11), and the design system paints
+    // its primary button at that bar on purpose (white on an orange primary reads 3.05:1,
+    // 2026-09-17); asking 4.5:1 of every button label made every orange site "unreadable"
+    const button = !!el.closest('.u-btn, button, [role="button"], a[class*="btn"]');
+    const large = button || fs >= 24 || (fs >= 19 && parseInt(s.fontWeight, 10) >= 700);
     if (ratio < (large ? 3 : 4.5)) {
       faint++;
       // below 2.5:1 the text is invisible (white on white): refused; above it, a colour
