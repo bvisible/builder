@@ -477,3 +477,19 @@ class TestCopyMeasuredOnAPhotoGetsTheScrim(unittest.TestCase):
 		self.assertTrue(any("scrim" in f for f in fixes))
 		self.assertIn("u-over-image", blocks[0]["classes"])
 
+
+class TestAPictureAtInsetZeroCovers(unittest.TestCase):
+	def test_an_integer_inset_of_zero_is_a_covering_picture(self):
+		from builder.site_ai.nora.contrast import _covering_picture, repair_measured_contrast
+
+		img = {"element": "img", "baseStyles": {"position": "absolute", "inset": 0, "width": "100%", "height": "100%", "objectFit": "cover"}, "dynamicValues": [{"key": "src", "property": "src", "type": "attribute"}]}
+		self.assertTrue(_covering_picture(img))
+		blocks = [{"element": "section", "children": [
+			{"element": "div", "children": [img]},
+			{"element": "div", "children": [{"element": "h1", "innerHTML": "Neuf marques.", "baseStyles": {"color": "#ffffff"}}]},
+		]}]
+		findings = [{"kind": "unreadable-on-photo", "severity": "high", "width": 1440, "where": 'h1 "Neuf marques."', "picture": "/files/ambiance-j0a2917.jpg", "detail": "contrast 1.5:1"}]
+		fixes = repair_measured_contrast(blocks, findings, {})
+		self.assertTrue(any("scrim" in f for f in fixes))
+		self.assertIn("u-over-image", blocks[0]["classes"])
+

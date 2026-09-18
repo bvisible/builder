@@ -282,10 +282,18 @@ def _shows_picture(block: dict) -> bool:
     return "url(" in f"{styles.get('backgroundImage') or ''}{styles.get('background') or ''}"
 
 
+def _offset(styles: dict, key: str) -> str:
+    """//// Neoffice — an offset as written, a bare 0 included (2026-09-18): `inset: 0` is the
+    integer 0 in the model's YAML, and `styles.get("inset") or ""` threw it away — a hero picture
+    at inset 0 was never "covering", so no scrim was ever placed under its headline."""
+    value = styles.get(key)
+    return "" if value is None else str(value).strip()
+
+
 def _spans_parent(styles: dict) -> bool:
-    if str(styles.get("inset") or "").strip() in ZERO:
+    if _offset(styles, "inset") in ZERO:
         return True
-    offsets = [str(styles.get(k) or "").strip() for k in ("top", "right", "bottom", "left")]
+    offsets = [_offset(styles, k) for k in ("top", "right", "bottom", "left")]
     if all(o in ZERO for o in offsets):
         return True
     return offsets[0] in ZERO and offsets[3] in ZERO and str(styles.get("width") or "") == "100%" and str(styles.get("height") or "") == "100%"
