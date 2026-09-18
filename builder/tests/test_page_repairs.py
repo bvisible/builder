@@ -111,6 +111,42 @@ class TestPlaceholders(unittest.TestCase):
 			self.assertEqual([], facts.drop_missing_pictures([strip]))
 		self.assertEqual(1, len(strip["children"]))
 
+	# //// Neoffice — added tests (2026-09-18): handed the exact list of the brands a business
+	# //// distributes, a writer published one of them with a single letter changed, in the very
+	# //// section that exists to name them.
+	def test_a_name_one_letter_off_is_put_right(self):
+		from builder.site_ai.nora.facts import spell_names_as_given
+
+		line = text("p", "Northwind, Solstice, Copper Ferm, Kestrel.")
+		edits = spell_names_as_given([box(line)], ["Northwind", "Solstice", "Copper Fern", "Kestrel"])
+		self.assertEqual(1, len(edits), edits)
+		self.assertIn("Copper Fern", line["innerHTML"])
+		self.assertNotIn("Copper Ferm", line["innerHTML"])
+
+	def test_a_name_given_exactly_is_left_alone(self):
+		from builder.site_ai.nora.facts import spell_names_as_given
+
+		line = text("p", "Copper Fern and Northwind ride with us.")
+		self.assertEqual([], spell_names_as_given([box(line)], ["Copper Fern", "Northwind"]))
+		self.assertEqual("Copper Fern and Northwind ride with us.", line["innerHTML"])
+
+	def test_an_ordinary_word_near_a_short_name_is_not_rewritten(self):
+		"""A short name is a typo only one letter away, never two."""
+		from builder.site_ai.nora.facts import spell_names_as_given
+
+		line = text("p", "Born under a Martian sky, ridden everywhere.")
+		self.assertEqual([], spell_names_as_given([box(line)], ["Marlin"]))
+		self.assertIn("Martian", line["innerHTML"])
+
+	def test_a_name_inside_a_tag_is_never_touched(self):
+		from builder.site_ai.nora.facts import spell_names_as_given
+
+		line = text("p", '<a href="/brands/copper-ferm" title="Copper Ferm">Copper Ferm</a>')
+		spell_names_as_given([box(line)], ["Copper Fern"])
+		self.assertIn('href="/brands/copper-ferm"', line["innerHTML"])
+		self.assertIn('title="Copper Ferm"', line["innerHTML"])
+		self.assertIn(">Copper Fern<", line["innerHTML"])
+
 	def test_jinja_and_footnotes_are_left_alone(self):
 		include = text("div", "{% include 'builder/templates/includes/contact_form.html' %} [x]")
 		note = text("p", "See the terms [1].")
@@ -419,6 +455,18 @@ class TestCategoryPhotoMap(unittest.TestCase):
 			{"Snow": "/files/snow.jpg", "Street": "/files/street.jpg", "Water": "/files/water.jpg"},
 		)
 		self.assertEqual(category_photo_map([], ["Snow"]), {})
+
+	# //// Neoffice — added test (2026-09-18): the tile of a category shows that category or nothing.
+	# //// max() always returns a photograph, so a SNOWBOARD tile was handed a brand's product shot
+	# //// of a pink plush toy and a SKATE tile a picture of a crowd; the judge read the published
+	# //// home and said the images do not match their labels.
+	def test_a_category_with_no_photograph_of_its_own_gets_none(self):
+		library = [self.photo("/files/plush-toy.jpg", "product", "studio"), self.photo("/files/crowd.jpg", "crowd", "event")]
+		self.assertEqual({}, category_photo_map(library, ["Snowboard", "Skate"]))
+
+	def test_the_categories_that_do_have_one_still_get_it(self):
+		library = [self.photo("/files/snow.jpg", "snowboard", "snow"), self.photo("/files/plush-toy.jpg", "product", "studio")]
+		self.assertEqual({"Snowboard": "/files/snow.jpg"}, category_photo_map(library, ["Snowboard", "Skate"]))
 
 
 class TestBrandsPage(unittest.TestCase):

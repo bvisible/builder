@@ -675,24 +675,33 @@ def listing_page(pages: list[dict]) -> dict | None:
     return next((p for p in pages if p.get("type") == "shop" or LISTING_WORDS.search(f"{p.get('title', '')} {p.get('route', '')}")), None)
 
 
-def _best_photo(library: list[dict], used: dict, wanted=(), landscape=None, avoid=frozenset()) -> dict:
-    """The client's photograph that fits `wanted` best, counted as used."""
+def _best_photo(library: list[dict], used: dict, wanted=(), landscape=None, avoid=frozenset(), must_fit: bool = False) -> dict | None:
+    """The client's photograph that fits `wanted` best, counted as used.
+
+    //// Neoffice — `must_fit` (2026-09-18): nothing rather than anything. max() always returns a
+    photograph, even when not one in the library has a word in common with what was asked, so a
+    SNOWBOARD tile was given a brand's product shot of a pink plush toy and a SKATE tile a picture
+    of a crowd — the judge read the home and said the images do not match their labels. Where the
+    caller labels what it shows, a picture that is not about it is worse than no picture."""
     # a picture carrying text (a banner, an advert) goes nowhere while anything else is left
     pool = [p for p in library if not p["has_text"]] or library
     if landscape is not None:
         pool = [p for p in pool if p["landscape"] == landscape] or pool
 
-    def rank(p):
+    def fit_of(p):
         # the client's own filing (file name, tags, section) outweighs a word the vision
         # used in passing, and a photograph filed under another category steps back: a
         # painting "in street-art style" filed under Home won the Street tile over three
         # street photographs, on quality alone (2026-09-12). Filed under the category, a
         # photograph already shown still beats one that is not about it.
-        fit = sum(4 if w in p["words"] else 1 if w in p["text"] else 0 for w in wanted)
-        fit -= 2 * len(avoid & p["words"])
-        return fit + {"high": 1.0, "medium": 0.5}.get(p["quality"], 0) - 3 * used.get(p["url"], 0)
+        return sum(4 if w in p["words"] else 1 if w in p["text"] else 0 for w in wanted) - 2 * len(avoid & p["words"])
+
+    def rank(p):
+        return fit_of(p) + {"high": 1.0, "medium": 0.5}.get(p["quality"], 0) - 3 * used.get(p["url"], 0)
 
     best = max(pool, key=rank)
+    if must_fit and fit_of(best) <= 0:
+        return None
     used[best["url"]] = used.get(best["url"], 0) + 1
     return best
 
@@ -711,8 +720,8 @@ def photos_for_page(page: dict, library: list[dict], used: dict, categories: lis
 
     category_words = {w for name in categories for w in re.split(r"[^a-z0-9]+", name.lower()) if len(w) > 2}
 
-    def take(wanted=(), landscape=None, avoid=frozenset()) -> dict:
-        return _best_photo(library, used, wanted, landscape, avoid)
+    def take(wanted=(), landscape=None, avoid=frozenset(), must_fit: bool = False) -> dict | None:
+        return _best_photo(library, used, wanted, landscape, avoid, must_fit)
 
     # the category tiles choose first: each needs one precise photograph, the hero any good
     # one (served first, the hero took the only snow picture and the snow tile got the banner)
@@ -720,7 +729,9 @@ def photos_for_page(page: dict, library: list[dict], used: dict, categories: lis
     if categories and (page["type"] == "accueil" or listing):
         for name in categories:
             wanted = [w for w in re.split(r"[^a-z0-9]+", name.lower()) if len(w) > 2]
-            tiles.append((take(wanted, avoid=category_words - set(wanted)), f"the tile of '{name}'"))
+            # //// Neoffice — the tile of a category shows that category or nothing (2026-09-18):
+            # //// a SNOWBOARD tile was given a brand's pink plush toy, a SKATE tile a crowd
+            tiles.append((take(wanted, avoid=category_words - set(wanted), must_fit=True), f"the tile of '{name}'"))
     if page["type"] == "accueil":
         picks = [(take(landscape=True), "the hero, full bleed"), *tiles, (take(landscape=True), "a wide photograph")]
     elif tiles:
@@ -735,7 +746,7 @@ def photos_for_page(page: dict, library: list[dict], used: dict, categories: lis
         picks = [(take(wanted), "the first photograph of the page" if i == 0 else "a photograph") for i in range(PAGE_PHOTO_COUNT.get(page["type"], 2))]
     urls, notes = [], []
     for photo, role in picks:
-        if photo["url"] in urls:
+        if photo is None or photo["url"] in urls:
             continue
         urls.append(photo["url"])
         notes.append(f"{role}; it shows: {photo['shows']}" if photo["shows"] else role)
@@ -757,7 +768,10 @@ def category_photo_map(library: list[dict], categories: list[str]) -> dict[str, 
     mapping = {}
     for name in categories:
         wanted = [w for w in re.split(r"[^a-z0-9]+", name.lower()) if len(w) > 2]
-        mapping[name] = _best_photo(library, used, wanted, avoid=category_words - set(wanted))["url"]
+        # //// Neoffice — a tile is ABOUT its category or carries no photograph (2026-09-18)
+        chosen = _best_photo(library, used, wanted, avoid=category_words - set(wanted), must_fit=True)
+        if chosen:
+            mapping[name] = chosen["url"]
     return mapping
 
 
@@ -2398,6 +2412,14 @@ def build_site(ctx, spec: dict) -> str:
                     absent = drop_missing_pictures(blocks)
                     if absent:
                         ai_log("info", "Pictures with no file dropped", page=page["title"], edits=absent[:6])
+                    # //// Neoffice — and a partner's name is spelled the way the business gave it:
+                    # //// given the exact list of the brands a business distributes, a writer
+                    # //// published one of them a letter off (facts.spell_names_as_given)
+                    from builder.site_ai.nora.facts import spell_names_as_given
+
+                    respelled = spell_names_as_given(blocks, [*(site.get("brands") or []), *(site.get("categories") or [])])
+                    if respelled:
+                        ai_log("info", "Names spelled as the business gave them", page=page["title"], edits=respelled[:6])
                     # //// Neoffice — nor a contact detail the business data does not give: told to leave one
                     # //// out, the model wrote a plausible e-mail and website instead (facts.drop_invented_contacts)
                     from builder.site_ai.nora.facts import drop_invented_contacts

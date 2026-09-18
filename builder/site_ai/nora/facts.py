@@ -457,3 +457,82 @@ def drop_missing_pictures(blocks: list) -> list[str]:
         if isinstance(block, dict):
             clean(block)
     return edits
+
+# //// Neoffice — added 2026-09-18: a name the business gave is spelled the way the business gave
+# //// it. Handed the exact list of the nine brands it distributes, a writer published one of them
+# //// with a single letter changed — on a partner's name, in the section that exists to name them.
+# //// A near miss of a given name is a typo, not a choice.
+WORD = re.compile(r"[A-Za-zÀ-ÖØ-öø-ÿ][\wÀ-ÖØ-öø-ÿ'’-]*")
+
+
+def _distance(a: str, b: str, ceiling: int = 3) -> int:
+    """Levenshtein, stopped at `ceiling`: past it the two words are not the same name."""
+    if abs(len(a) - len(b)) > ceiling:
+        return ceiling + 1
+    previous = list(range(len(b) + 1))
+    for i, ca in enumerate(a, 1):
+        current = [i]
+        for j, cb in enumerate(b, 1):
+            current.append(min(previous[j] + 1, current[j - 1] + 1, previous[j - 1] + (ca != cb)))
+        if min(current) > ceiling:
+            return ceiling + 1
+        previous = current
+    return previous[-1]
+
+
+def _respell(chunk: str, given: list[str], lowered: set[str], edits: list[str]) -> str:
+    """One text chunk, with every near miss of a given name put right."""
+    tokens = list(WORD.finditer(chunk))
+    if not tokens:
+        return chunk
+    swaps = []
+    taken: set[int] = set()
+    for name in given:
+        count = len(name.split())
+        # a short name is a typo only one letter away; a long one may be two
+        limit = 1 if len(name) < 8 else 2
+        for i in range(len(tokens) - count + 1):
+            if taken & set(range(i, i + count)):
+                continue
+            start, end = tokens[i].start(), tokens[i + count - 1].end()
+            found = chunk[start:end]
+            if not found[:1].isupper() or found == name:
+                continue
+            low = found.lower()
+            if low == name.lower() or low in lowered:
+                continue
+            if _distance(low, name.lower(), limit) > limit:
+                continue
+            swaps.append((start, end, name, found))
+            taken.update(range(i, i + count))
+    for start, end, name, found in sorted(swaps, reverse=True):
+        chunk = chunk[:start] + name + chunk[end:]
+        edits.append(f"'{found}' spelled as the business gave it: '{name}'")
+    return chunk
+
+
+def spell_names_as_given(blocks: list, names: list[str]) -> list[str]:
+    """Puts every near miss of a name the business gave (its brands, its categories) back to the
+    spelling it was given, in the copy only — never inside a tag. Returns one line per edit."""
+    given = [n.strip() for n in dict.fromkeys(names or []) if len(n.strip()) >= 4]
+    if not given:
+        return []
+    lowered = {n.lower() for n in given}
+    edits: list[str] = []
+
+    def walk(block) -> None:
+        if not isinstance(block, dict):
+            return
+        html = block.get("innerHTML")
+        if isinstance(html, str) and html and "{%" not in html and "{{" not in html:
+            pieces = re.split(r"(<[^>]+>)", html)
+            rebuilt = [p if p.startswith("<") else _respell(p, given, lowered, edits) for p in pieces]
+            joined = "".join(rebuilt)
+            if joined != html:
+                block["innerHTML"] = joined
+        for child in block.get("children") or []:
+            walk(child)
+
+    for block in blocks or []:
+        walk(block)
+    return edits
