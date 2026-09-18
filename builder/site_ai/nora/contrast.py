@@ -552,12 +552,41 @@ def repair_measured_contrast(blocks: list[dict], findings: list[dict], palette: 
     if not targets:
         return fixes
 
+    INLINE_STYLE = re.compile(r'(<(?P<tag>[a-z][a-z0-9]*)\b[^>]*\bstyle="[^"]*?)color\s*:\s*[^;"]+', re.I)
+
+    def recolour_inline(block: dict, tag: str, wanted: str, ink: str) -> bool:
+        """//// Neoffice — a colour written INLINE in the block's html (2026-09-18): the writer
+        styled <a href="tel:…" style="color:#E85D2B"> by hand, and no block colour can reach
+        an inline style. The colour is rewritten in the html, on the tag that carries the text."""
+        html = block.get("innerHTML")
+        if not isinstance(html, str) or "style=" not in html:
+            return False
+        changed = False
+
+        def swap(m):
+            nonlocal changed
+            if m.group("tag").lower() != tag:
+                return m.group(0)
+            changed = True
+            return f"{m.group(1)}color: {ink}"
+
+        new_html = INLINE_STYLE.sub(swap, html)
+        if changed:
+            block["innerHTML"] = new_html
+        return changed
+
     def walk(block: dict, depth: int = 0) -> None:
         if depth > 24 or not isinstance(block, dict):
             return
         text = _plain_text(block)
         if text:
             for tag, wanted, bg in targets:
+                # an inline-styled element inside this block's html carries the text
+                if wanted[:60] in text and not text.startswith(wanted[:60]):
+                    handle, ink = best_text(bg, palette, minimum)
+                    if recolour_inline(block, tag, wanted, handle):
+                        fixes.append(f"{tag} '{wanted[:40]}' (inline style) given {handle} on rgb({int(bg[0])}, {int(bg[1])}, {int(bg[2])})")
+                    continue
                 # //// the probe names the element it measured (a span inside a p): the block that
                 # //// carries that text is the one to colour, whatever its tag — a kicker written as
                 # //// <p><span>ACTUALITÉS</span></p> was never found by tag (2026-09-17)

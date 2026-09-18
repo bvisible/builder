@@ -425,3 +425,15 @@ class TestATileWithItsOwnPictureGetsTheScrim(unittest.TestCase):
 		self.assertEqual(len(fixes), 1)
 		self.assertIn("u-over-image", blocks[0]["classes"])
 
+
+class TestAnInlineColourIsRepairedToo(unittest.TestCase):
+	def test_a_link_styled_inline_inside_a_paragraph_gets_a_readable_ink(self):
+		from builder.site_ai.nora.contrast import repair_measured_contrast
+
+		blocks = [{"element": "p", "innerHTML": 'Téléphone : <a href="tel:+41219888400" style="font-weight:600; color:#E85D2B">+41 21 988 84 00</a>', "baseStyles": {"color": "#1e293b"}}]
+		findings = [{"kind": "unreadable-text", "severity": "medium", "width": 1440, "where": 'a "+41 21 988 84 00"', "detail": "contrast 3.5:1 between rgb(232, 93, 43) and the background rgb(255, 255, 255) (needs 4.5:1): hard to read"}]
+		fixes = repair_measured_contrast(blocks, findings, {"t-text": "#1e293b", "t-background": "#ffffff", "t-primary": "#e85d2b"})
+		self.assertEqual(len(fixes), 1)
+		self.assertNotIn("#E85D2B", blocks[0]["innerHTML"])
+		self.assertIn('style="font-weight:600; color: ', blocks[0]["innerHTML"])
+
