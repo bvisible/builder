@@ -691,8 +691,17 @@ class TestDropSmallMarks(unittest.TestCase):
 class TestReadOverPhotos(unittest.TestCase):
 	PALETTE = {"x-primary": "#111111", "x-background": "#ffffff", "x-text": "#111111"}
 
+	# //// Neoffice — the hero carries its photograph (2026-09-18). A scrim with no picture under
+	# //// it is no scrim at all and is now stripped (read_over_photos.unveil), so a fixture without
+	# //// one stopped testing what these tests are about: copy laid OVER a photograph.
+	PICTURE = {"element": "img", "attributes": {"src": "/files/hero.jpg"}, "baseStyles": {"position": "absolute", "inset": "0", "objectFit": "cover"}}
+
 	def hero(self, *children):
-		return {"element": "section", "classes": ["u-over-image", "u-over-image--bottom"], "children": list(children)}
+		return {
+			"element": "section",
+			"classes": ["u-over-image", "u-over-image--bottom"],
+			"children": [dict(self.PICTURE, baseStyles=dict(self.PICTURE["baseStyles"])), *children],
+		}
 
 	def test_dark_copy_on_a_scrim_takes_the_reading_ink(self):
 		from builder.site_ai.nora.contrast import read_over_photos
@@ -739,7 +748,8 @@ class TestReadOverPhotos(unittest.TestCase):
 		stored = json.dumps([self.hero({"element": "a", "innerHTML": "Shop now", "baseStyles": {"color": "#000000"}})])
 		with patch.object(buttons, "_render_palette", return_value=self.PALETTE):
 			drawn = contrast.scrim_ink_for_render(stored)
-		self.assertEqual("#ffffff", drawn[0]["children"][0]["baseStyles"]["color"])
+		# children[0] is the photograph the hero lays under its copy; the link follows it
+		self.assertEqual("#ffffff", drawn[0]["children"][1]["baseStyles"]["color"])
 		self.assertIn("#000000", stored)
 
 		# a page with no scrim at all never even parses
@@ -751,6 +761,19 @@ class TestReadOverPhotos(unittest.TestCase):
 		with patch.object(buttons, "_render_palette", side_effect=RuntimeError("no theme")), patch("frappe.log_error") as log:
 			self.assertIs(contrast.scrim_ink_for_render(stored), stored)
 		log.assert_called_once()
+
+	# //// Neoffice — added test (2026-09-18): the rule the fixtures above had silently started to
+	# //// exercise. A veil painted over nothing whitened a brands heading on a light ground, at
+	# //// write time and at every render, and no measured repair could win against it.
+	def test_a_scrim_with_no_picture_under_it_is_stripped(self):
+		from builder.site_ai.nora.contrast import read_over_photos
+
+		title = {"element": "h2", "innerHTML": "Our brands", "baseStyles": {"color": "#ffffff"}}
+		section = {"element": "section", "classes": ["u-over-image", "u-over-image--bottom"], "children": [title]}
+		fixes = read_over_photos([section], self.PALETTE)
+		self.assertTrue(any("no picture under it" in f for f in fixes), fixes)
+		self.assertEqual([], [c for c in section["classes"] if c.startswith("u-over-image")])
+		self.assertNotIn("color", title.get("baseStyles") or {})
 
 	def test_a_section_without_a_scrim_is_left_alone(self):
 		from builder.site_ai.nora.contrast import read_over_photos
