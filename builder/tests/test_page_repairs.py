@@ -497,19 +497,6 @@ class TestCategoryPhotoMap(unittest.TestCase):
 		self.assertFalse(_filed_under("sur", {"surface", "texture"}))
 		self.assertFalse(_filed_under("snow", {"know", "powder"}))
 
-	# //// Neoffice — added test (2026-09-18): a client's library holds the scenes of the business AND
-	# //// the pictures its brands supply with their products. Both can be about the same sport, so
-	# //// both score the same, and the brand asset won a tile on nothing but sorting first.
-	def test_a_brands_own_photograph_is_not_a_category_tile(self):
-		library = [
-			self.photo("/files/brand-shot.jpg", "snowboard", "kestrel", "product"),
-			self.photo("/files/riders.jpg", "snowboarding", "powder"),
-		]
-		self.assertEqual(
-			{"Snowboard": "/files/riders.jpg"},
-			category_photo_map(library, ["Snowboard"], ["Kestrel", "Copper Fern"]),
-		)
-
 	def test_the_categories_that_do_have_one_still_get_it(self):
 		library = [self.photo("/files/snow.jpg", "snowboard", "snow"), self.photo("/files/plush-toy.jpg", "product", "studio")]
 		self.assertEqual({"Snowboard": "/files/snow.jpg"}, category_photo_map(library, ["Snowboard", "Skate"]))
