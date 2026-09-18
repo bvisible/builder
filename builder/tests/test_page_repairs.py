@@ -481,6 +481,22 @@ class TestCategoryPhotoMap(unittest.TestCase):
 		library = [self.photo("/files/plush-toy.jpg", "product", "studio"), self.photo("/files/crowd.jpg", "crowd", "event")]
 		self.assertEqual({}, category_photo_map(library, ["Snowboard", "Skate"]))
 
+	# //// Neoffice — added test (2026-09-18): the categories are nouns and the vision files gerunds.
+	# //// Matched on equality, four photographs of riders in powder scored zero for a Snowboard tile
+	# //// and it went to a product shot that merely mentioned the word in its description.
+	def test_a_gerund_in_the_photograph_answers_the_noun_of_the_category(self):
+		library = [self.photo("/files/powder.jpg", "snowboarding", "powder"), self.photo("/files/belts.jpg", "product", "studio")]
+		self.assertEqual({"Snowboard": "/files/powder.jpg"}, category_photo_map(library, ["Snowboard", "Skate"]))
+
+	def test_a_word_of_three_letters_never_stands_for_a_longer_one(self):
+		"""The filing match needs four letters: "sur" must not claim "surface"."""
+		from builder.site_ai.nora.site_builder import _filed_under
+
+		self.assertTrue(_filed_under("snowboard", {"snowboarding", "powder"}))
+		self.assertTrue(_filed_under("skateboarding", {"skate"}))
+		self.assertFalse(_filed_under("sur", {"surface", "texture"}))
+		self.assertFalse(_filed_under("snow", {"know", "powder"}))
+
 	def test_the_categories_that_do_have_one_still_get_it(self):
 		library = [self.photo("/files/snow.jpg", "snowboard", "snow"), self.photo("/files/plush-toy.jpg", "product", "studio")]
 		self.assertEqual({"Snowboard": "/files/snow.jpg"}, category_photo_map(library, ["Snowboard", "Skate"]))

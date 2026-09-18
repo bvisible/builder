@@ -675,6 +675,20 @@ def listing_page(pages: list[dict]) -> dict | None:
     return next((p for p in pages if p.get("type") == "shop" or LISTING_WORDS.search(f"{p.get('title', '')} {p.get('route', '')}")), None)
 
 
+# //// Neoffice — a category word and a photograph's word are the same word when one begins the
+# //// other (2026-09-18). The categories are nouns ("Snowboard") and the vision files verbs and
+# //// gerunds ("snowboarding", "skateboarding", "surfing"): matched on equality, four photographs
+# //// of riders in powder scored ZERO for the Snowboard tile, which went to a brand's product shot
+# //// that merely mentioned the word in its description. Four letters at least, so "sur" does not
+# //// catch "surface".
+def _filed_under(word: str, words) -> bool:
+    if word in words:
+        return True
+    if len(word) < 4:
+        return False
+    return any(len(other) >= 4 and (other.startswith(word) or word.startswith(other)) for other in words)
+
+
 def _best_photo(library: list[dict], used: dict, wanted=(), landscape=None, avoid=frozenset(), must_fit: bool = False) -> dict | None:
     """The client's photograph that fits `wanted` best, counted as used.
 
@@ -694,7 +708,7 @@ def _best_photo(library: list[dict], used: dict, wanted=(), landscape=None, avoi
         # painting "in street-art style" filed under Home won the Street tile over three
         # street photographs, on quality alone (2026-09-12). Filed under the category, a
         # photograph already shown still beats one that is not about it.
-        return sum(4 if w in p["words"] else 1 if w in p["text"] else 0 for w in wanted) - 2 * len(avoid & p["words"])
+        return sum(4 if _filed_under(w, p["words"]) else 1 if w in p["text"] else 0 for w in wanted) - 2 * len(avoid & p["words"])
 
     def rank(p):
         return fit_of(p) + {"high": 1.0, "medium": 0.5}.get(p["quality"], 0) - 3 * used.get(p["url"], 0)
