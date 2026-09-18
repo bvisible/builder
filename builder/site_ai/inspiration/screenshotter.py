@@ -474,11 +474,23 @@ LAYOUT_PROBE = r"""
   // text is the judge's to read
   const pictures = [...body.querySelectorAll('img, video, svg')].filter(i => visible(i) && i.getBoundingClientRect().width > 80).map(i => i.getBoundingClientRect());
   const onPicture = (r) => { const cx = (r.left + r.right) / 2, cy = (r.top + r.bottom) / 2; return pictures.some(b => cx >= b.left && cx <= b.right && cy >= b.top && cy <= b.bottom); };
+  // //// Neoffice — text painted by a CHILD is the child's to answer for (2026-09-18). A contact
+  // //// line written <p class="muted"><a href="tel:...">+41 ...</a></p> shows nothing in the p's
+  // //// own grey: every glyph is the link's black. The p was measured at 4.0:1 all the same and
+  // //// reported unreadable on three revisions in a row, with nothing there to repair. The p is
+  // //// skipped only when the elements carrying its text are ones this probe judges on their own.
+  const JUDGED = /^(h1|h2|h3|p|a|li|span)$/i;
+  const ownText = (el) => [...el.childNodes].filter(n => n.nodeType === 3).map(n => n.textContent).join(' ').trim();
+  const carriedByChildren = (el) => {
+    if (ownText(el).length >= 3) return false;
+    const speaking = [...el.children].filter(c => text(c).length >= 3);
+    return speaking.length > 0 && speaking.every(c => JUDGED.test(c.tagName));
+  };
   let faint = 0;
   for (const el of body.querySelectorAll('h1, h2, h3, p, a, li, span')) {
     if (faint >= 4 || chrome(el) || !visible(el)) continue;
     const t = text(el);
-    if (t.length < 3 || [...el.children].some(c => /^(h1|h2|h3|p|div|ul|ol|section)$/i.test(c.tagName))) continue;
+    if (t.length < 3 || carriedByChildren(el) || [...el.children].some(c => /^(h1|h2|h3|p|div|ul|ol|section)$/i.test(c.tagName))) continue;
     const s = getComputedStyle(el);
     if (onPicture(el.getBoundingClientRect())) continue;
     const ink = rgba(s.color); const back = ground(el);
