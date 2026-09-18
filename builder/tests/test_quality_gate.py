@@ -449,3 +449,18 @@ class TestAMeasuredButtonChangesItsVariant(unittest.TestCase):
 		self.assertEqual(blocks[0]["classes"], ["u-btn", "u-btn--primary"])
 		self.assertNotIn("color", blocks[0]["baseStyles"])
 
+
+class TestCopyMeasuredOnAPhotoGetsTheScrim(unittest.TestCase):
+	def test_the_headline_goes_white_and_its_section_takes_the_veil(self):
+		from builder.site_ai.nora.contrast import repair_measured_contrast
+
+		blocks = [{"element": "section", "baseStyles": {"position": "relative"}, "children": [
+			{"element": "img", "baseStyles": {"position": "absolute", "inset": "0", "objectFit": "cover"}},
+			{"element": "div", "children": [{"element": "h1", "innerHTML": "NEUF MARQUES. UN INTERLOCUTEUR SUISSE.", "baseStyles": {"color": "#1e293b"}}]},
+		]}]
+		findings = [{"kind": "unreadable-on-photo", "severity": "high", "width": 1440, "where": 'h1 "NEUF MARQUES. UN INTERLOCUTEUR SUISSE."', "detail": "contrast 2.1:1 between its ink rgb(30, 41, 59) and the photograph behind it (mean luminance 0.30)"}]
+		fixes = repair_measured_contrast(blocks, findings, {})
+		self.assertEqual(len(fixes), 1)
+		self.assertIn("u-over-image", blocks[0]["classes"])
+		self.assertEqual(blocks[0]["children"][1]["children"][0]["baseStyles"]["color"], "#ffffff")
+

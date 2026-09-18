@@ -540,15 +540,27 @@ def repair_measured_contrast(blocks: list[dict], findings: list[dict], palette: 
     text the probe quoted. Returns one line per edit."""
     fixes: list[str] = []
     targets = []
+    on_photo = []
     for finding in findings or []:
+        named = MEASURED_WHERE.match(finding.get("where") or "")
+        if not named:
+            continue
+        tag, wanted = named.group(1).lower(), re.sub(r"\s+", " ", named.group(2)).strip().lower()
+        # //// Neoffice — copy the pixels called unreadable ON a photograph (2026-09-18): the section
+        # //// takes the design system's scrim and the copy goes white, the way every headline on a
+        # //// picture is meant to sit; the writer was told twice and kept the composition.
+        if finding.get("kind") in ("unreadable-on-photo", "dark-on-photo"):
+            on_photo.append((tag, wanted))
+            continue
         if finding.get("kind") != "unreadable-text":
             continue
         ground = MEASURED_GROUND.search(finding.get("detail") or "")
-        named = MEASURED_WHERE.match(finding.get("where") or "")
-        if not ground or not named:
+        if not ground:
             continue
         bg = (float(ground.group(1)), float(ground.group(2)), float(ground.group(3)), 1.0)
-        targets.append((named.group(1).lower(), re.sub(r"\s+", " ", named.group(2)).strip().lower(), bg))
+        targets.append((tag, wanted, bg))
+    if on_photo:
+        fixes += _veil_measured_on_photo(blocks, on_photo)
     if not targets:
         return fixes
 
@@ -616,4 +628,33 @@ def repair_measured_contrast(blocks: list[dict], findings: list[dict], palette: 
         walk(block)
     return fixes
 # //// Neoffice ▲▲▲
+
+
+def _veil_measured_on_photo(blocks: list[dict], wanted: list[tuple[str, str]]) -> list[str]:
+    """The block named by the probe goes white, and the nearest ancestor that shows the picture
+    takes the scrim classes (u-over-image u-over-image--bottom). Returns one line per edit."""
+    fixes: list[str] = []
+
+    def walk(block: dict, ancestors: list[dict], depth: int = 0) -> None:
+        if depth > 24 or not isinstance(block, dict):
+            return
+        text = _plain_text(block)
+        if text:
+            for tag, want in wanted:
+                if not text.startswith(want[:60]):
+                    continue
+                styles = block.setdefault("baseStyles", {})
+                styles["color"] = SCRIM_INK
+                holder = next((a for a in reversed(ancestors) if _has_covering_picture(a)), None)
+                if holder is not None and not any(c.startswith(VEILED) for c in _classes(holder)):
+                    holder["classes"] = [*_classes(holder), "u-over-image", "u-over-image--bottom"]
+                    fixes.append(f"{tag} '{want[:40]}': white on a scrim (the section it sits on takes u-over-image)")
+                else:
+                    fixes.append(f"{tag} '{want[:40]}': white ink on the photograph")
+        for child in block.get("children") or []:
+            walk(child, [*ancestors, block], depth + 1)
+
+    for block in blocks:
+        walk(block, [])
+    return fixes
 
