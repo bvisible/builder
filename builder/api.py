@@ -1256,19 +1256,54 @@ def _get_site_chrome_config(website_profile=None):
 			single = frappe.get_single("Website Header Footer Config")
 			variant = frappe.new_doc("Website Header Footer Variant")
 			for f in variant.meta.fields:
-				if f.fieldtype in ("Section Break", "Column Break", "Tab Break", "HTML", "Table", "Table MultiSelect"):
+				# //// Neoffice — Table and Table MultiSelect were skipped here with the layout
+				# //// fieldtypes; that is what dropped the menu. They are copied below instead.
+				if f.fieldtype in ("Section Break", "Column Break", "Tab Break", "HTML"):
 					continue
 				if f.fieldname == "website_profile":
+					continue
+				# //// Neoffice — the child tables are copied too, row by row (2026-09-18). Skipping
+				# //// them dropped the MENU and the footer links: the bootstrap kept every colour,
+				# //// every font and every layout choice, then handed the site a header with
+				# //// nothing in it. Worse, this bootstrap runs on a plain READ — a single page
+				# //// rendered under a profile that had no variant yet was enough, and a live site
+				# //// lost its navigation with nobody touching it (found on the dev instance, whose
+				# //// variant was created by Guest on 2026-09-16 with zero rows).
+				if f.fieldtype in ("Table", "Table MultiSelect"):
+					for row in single.get(f.fieldname) or []:
+						try:
+							variant.append(f.fieldname, _child_row_values(row))
+						except Exception:
+							pass
 					continue
 				try:
 					variant.set(f.fieldname, single.get(f.fieldname))
 				except Exception:
 					pass
 			variant.website_profile = website_profile
-			variant.insert(ignore_permissions=True)
-			frappe.db.commit()
+			# //// Neoffice — a read must never 500 because it could not write: if the bootstrap
+			# //// fails (no write access, a read-only replica, a transaction already doomed), the
+			# //// caller gets the Single, which is exactly what this variant would have copied.
+			try:
+				variant.insert(ignore_permissions=True)
+				frappe.db.commit()
+			except Exception as e:
+				frappe.log_error("Site chrome variant could not be created", f"{website_profile}: {e}")
+				return single
 		return frappe.get_doc("Website Header Footer Variant", website_profile)
 	return frappe.get_single("Website Header Footer Config")
+
+
+# //// Neoffice — added function (no upstream equivalent): one child row, without the identity of
+# //// the row it was copied from. name/parent/idx belong to the source document; carrying them
+# //// over makes the copy fight the original for its primary key.
+def _child_row_values(row) -> dict:
+	skip = {"name", "owner", "creation", "modified", "modified_by", "parent", "parenttype", "parentfield", "idx", "docstatus", "doctype"}
+	try:
+		values = row.as_dict()
+	except Exception:
+		return {}
+	return {k: v for k, v in values.items() if k not in skip and v is not None}
 
 
 def classify_existing_pages(website_profile=None) -> dict:
