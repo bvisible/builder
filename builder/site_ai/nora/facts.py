@@ -480,11 +480,27 @@ def _distance(a: str, b: str, ceiling: int = 3) -> int:
     return previous[-1]
 
 
+def _protected(chunk: str, given: list[str]) -> list[tuple[int, int]]:
+    """Where the chunk already spells a given name exactly. Nothing inside is a misspelling.
+
+    //// Neoffice — 2026-09-18, found on a client site the same hour the rule shipped: the brands
+    included a two-word name whose SECOND word was also a category on its own, one letter apart in
+    the plural. The one-word category rewrote the inside of the brand, and five published pages
+    lost a partner's name. A span inside a name that is already right is never a near miss."""
+    spans = []
+    for name in sorted(given, key=len, reverse=True):
+        for found in re.finditer(re.escape(name), chunk, re.I):
+            spans.append((found.start(), found.end()))
+    return spans
+
+
 def _respell(chunk: str, given: list[str], lowered: set[str], edits: list[str]) -> str:
     """One text chunk, with every near miss of a given name put right."""
     tokens = list(WORD.finditer(chunk))
     if not tokens:
         return chunk
+    safe = _protected(chunk, given)
+    plurals = {f"{n}s" for n in lowered} | {f"{n}es" for n in lowered}
     swaps = []
     taken: set[int] = set()
     for name in given:
@@ -495,11 +511,17 @@ def _respell(chunk: str, given: list[str], lowered: set[str], edits: list[str]) 
             if taken & set(range(i, i + count)):
                 continue
             start, end = tokens[i].start(), tokens[i + count - 1].end()
+            if any(a <= start and end <= b for a, b in safe):
+                continue
             found = chunk[start:end]
             if not found[:1].isupper() or found == name:
                 continue
             low = found.lower()
             if low == name.lower() or low in lowered:
+                continue
+            # //// Neoffice — a plural is not a typo: a page naming the category in the plural is
+            # //// writing French, not misspelling the business's word (2026-09-18)
+            if low in plurals:
                 continue
             if _distance(low, name.lower(), limit) > limit:
                 continue

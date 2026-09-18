@@ -138,6 +138,23 @@ class TestPlaceholders(unittest.TestCase):
 		self.assertEqual([], spell_names_as_given([box(line)], ["Marlin"]))
 		self.assertIn("Martian", line["innerHTML"])
 
+	def test_a_word_inside_a_longer_given_name_is_never_rewritten(self):
+		"""Found on a live site the hour the rule shipped: a two-word brand whose second word is
+		also a category on its own, one letter apart in the plural. The category rewrote the inside
+		of the brand and five published pages lost a partner's name."""
+		from builder.site_ai.nora.facts import spell_names_as_given
+
+		line = text("p", "NORTH Kestrels · Copper Fern · Solstice")
+		self.assertEqual([], spell_names_as_given([box(line)], ["NORTH Kestrels", "Kestrel", "Copper Fern", "Solstice"]))
+		self.assertIn("NORTH Kestrels", line["innerHTML"])
+
+	def test_a_plural_of_a_given_name_is_left_alone(self):
+		from builder.site_ai.nora.facts import spell_names_as_given
+
+		line = text("p", "Kestrels, Solstices and everything between.")
+		self.assertEqual([], spell_names_as_given([box(line)], ["Kestrel", "Solstice"]))
+		self.assertIn("Kestrels", line["innerHTML"])
+
 	def test_a_name_inside_a_tag_is_never_touched(self):
 		from builder.site_ai.nora.facts import spell_names_as_given
 
