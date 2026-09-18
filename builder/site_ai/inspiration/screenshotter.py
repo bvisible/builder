@@ -563,9 +563,21 @@ async () => {
   // the picture behind an element: an <img> whose box covers the element's centre, or the
   // nearest ancestor painting a background image (drawn as cover, the common case)
   const imgs = [...document.body.querySelectorAll('img')].filter(i => visible(i) && i.getBoundingClientRect().width > 120);
+  // //// Neoffice — copy on its OWN ground is not copy on a photograph (2026-09-18). A hero button
+  // //// painted orange sits over the hero picture, and the probe judged its dark label against the
+  // //// photograph it covers: 1.0:1 against a picture the reader never sees through it, on a label
+  // //// that reads 4.2:1 on its own orange. An opaque fill between the copy and the picture ends
+  // //// the question — the solid-ground rule above is the one that judges that copy.
+  const ownGround = (el, stop) => {
+    for (let p = el; p && p !== stop && p !== document.documentElement; p = p.parentElement) {
+      const c = rgba(getComputedStyle(p).backgroundColor);
+      if (c && c.a > 0.9) return true;
+    }
+    return false;
+  };
   const behind = (el) => {
     const r = el.getBoundingClientRect(); const cx = (r.left + r.right) / 2, cy = (r.top + r.bottom) / 2;
-    for (const i of imgs) { const b = i.getBoundingClientRect(); if (cx >= b.left && cx <= b.right && cy >= b.top && cy <= b.bottom && !i.contains(el)) return {kind: 'img', el: i, box: b, src: i.currentSrc || i.src}; }
+    for (const i of imgs) { const b = i.getBoundingClientRect(); if (cx >= b.left && cx <= b.right && cy >= b.top && cy <= b.bottom && !i.contains(el)) return ownGround(el, i.parentElement) ? null : {kind: 'img', el: i, box: b, src: i.currentSrc || i.src}; }
     for (let p = el.parentElement; p && p !== document.documentElement; p = p.parentElement) {
       const s = getComputedStyle(p); const u = urlOf(s.backgroundImage);
       if (u) return {kind: 'bg', el: p, box: p.getBoundingClientRect(), src: u};
