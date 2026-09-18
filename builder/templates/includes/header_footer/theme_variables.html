@@ -655,6 +655,19 @@ a:where(:not(.u-btn)):hover {
 	);
 }
 
+/* The measured answer, placed by the repair and not by hand: when the copy over a photograph is
+   still measured unreadable WITH a scrim on, the gradient is not the problem — the picture under
+   the words is simply bright. This one washes the whole surface, deep enough that white copy
+   reads anywhere on it (a photograph of mean luminance 0.47 under this wash sits at 0.14, which
+   white reads at 5.5:1). It comes after the other variants so it wins when both are worn. */
+.u-over-image--deep::after {
+	background: linear-gradient(
+		to top,
+		rgba(0, 0, 0, 0.8) 0%,
+		rgba(0, 0, 0, 0.66) 100%
+	);
+}
+
 /* An outline button over a photograph is the single most common thing a
    generated hero gets wrong: the border disappears into whatever is behind
    it. This one carries its own frosted backing, so it reads on anything. */

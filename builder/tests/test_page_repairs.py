@@ -916,6 +916,26 @@ class TestReadOverPhotos(unittest.TestCase):
 		self.assertEqual([], [c for c in section["classes"] if c.startswith("u-over-image")])
 		self.assertNotIn("color", title.get("baseStyles") or {})
 
+	# //// Neoffice — added test (2026-09-18): a hero measured unreadable WITH its scrim on got the
+	# //// white ink it already had, and the same finding came back at every look.
+	def test_a_scrim_that_was_not_enough_is_deepened(self):
+		from builder.site_ai.nora.contrast import repair_measured_contrast
+
+		title = {"element": "h1", "innerHTML": "Neuf marques", "baseStyles": {"color": "#ffffff"}}
+		section = self.hero(title)
+		findings = [{
+			"kind": "unreadable-on-photo", "where": 'h1 "Neuf marques"', "picture": "/files/hero.jpg",
+			"detail": "contrast 2.4:1 between its ink rgb(255, 255, 255) and the photograph behind it (mean luminance 0.39)",
+		}]
+		fixes = repair_measured_contrast([section], findings, self.PALETTE)
+		self.assertTrue(any("deep" in f for f in fixes), fixes)
+		self.assertIn("u-over-image--deep", section["classes"])
+
+		# and a second pass has nothing left to add
+		again = repair_measured_contrast([section], findings, self.PALETTE)
+		self.assertFalse(any("deep" in f for f in again), again)
+		self.assertEqual(1, len([c for c in section["classes"] if c == "u-over-image--deep"]))
+
 	def test_a_section_without_a_scrim_is_left_alone(self):
 		from builder.site_ai.nora.contrast import read_over_photos
 

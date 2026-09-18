@@ -689,6 +689,13 @@ def _veil_measured_on_photo(blocks: list[dict], wanted: list[tuple[str, str, str
         if holder is not None and not any(c.startswith(VEILED) for c in _classes(holder)):
             holder["classes"] = [*_classes(holder), "u-over-image", "u-over-image--bottom"]
             fixes.append(f"{tag} '{want[:40]}': white on a scrim (the section holding it and its picture takes u-over-image)")
+        # //// Neoffice — the scrim DEEPENS when it was already there (2026-09-18). A hero measured
+        # //// unreadable with its scrim on got the ink it already had and the same finding came back
+        # //// at every look: the gradient was not the problem, the picture under the words was
+        # //// simply bright. u-over-image--deep washes the whole surface instead of fading out.
+        elif holder is not None and "u-over-image--deep" not in _classes(holder):
+            holder["classes"] = [*_classes(holder), "u-over-image--deep"]
+            fixes.append(f"{tag} '{want[:40]}': the scrim it already wore was not enough -> u-over-image--deep")
         else:
             fixes.append(f"{tag} '{want[:40]}': white ink on the photograph")
     return fixes
