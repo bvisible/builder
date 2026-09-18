@@ -574,6 +574,124 @@ async () => {
     return null;
   };
   const veiled = (el) => { for (let p = el; p && p !== document.documentElement; p = p.parentElement) { const s = getComputedStyle(p); const c = rgba(s.backgroundColor); if (c && c.a > 0.3 && c.a < 0.95) return c; if (/gradient/.test(s.backgroundImage || '')) return {r: 0, g: 0, b: 0, a: 0.5}; } return null; };
+  // //// Neoffice — the design system's scrim is painted by ::after (2026-09-18), and
+  // //// getComputedStyle(el) never sees a pseudo-element: a hero correctly veiled measured as
+  // //// though it wore nothing, so the gate refused a headline that reads. The gradient is read
+  // //// where the TEXT sits, not as an average: u-over-image--bottom is 0.6 at the bottom edge
+  // //// and gone by 60% up, so a headline at 40% from the bottom gets 0.17 of it, not 0.6.
+  const gradientAlphaAt = (decl, box, r) => {
+    const m = (decl || '').match(/linear-gradient\(([\s\S]+)\)\s*$/);
+    if (!m) return null;
+    const inside = m[1];
+    const head = inside.slice(0, inside.indexOf(',')).trim();
+    // the gradient's angle, CSS style: 0deg points up and grows clockwise
+    let angle = null;
+    const deg = head.match(/^(-?[\d.]+)deg$/);
+    if (deg) angle = parseFloat(deg[1]);
+    else if (/^to\s+top$/.test(head)) angle = 0;
+    else if (/^to\s+right$/.test(head)) angle = 90;
+    else if (/^to\s+bottom$/.test(head)) angle = 180;
+    else if (/^to\s+left$/.test(head)) angle = 270;
+    const body = angle === null ? inside : inside.slice(inside.indexOf(',') + 1);
+    if (angle === null) angle = 180;
+    const stops = [...body.matchAll(/(rgba?\([^)]+\)|#[0-9a-f]{3,8})\s*(?:([\d.]+)%)?/gi)]
+      .map((s) => {
+        const c = rgba(s[1]) || {r: 0, g: 0, b: 0, a: 1};
+        return {a: c.a, l: lum(c), at: s[2] === undefined ? null : parseFloat(s[2]) / 100};
+      });
+    if (stops.length < 2) return null;
+    // a stop with no position sits evenly between the ones that have theirs
+    if (stops[0].at === null) stops[0].at = 0;
+    if (stops[stops.length - 1].at === null) stops[stops.length - 1].at = 1;
+    for (let i = 1; i < stops.length - 1; i++) {
+      if (stops[i].at !== null) continue;
+      let j = i; while (j < stops.length && stops[j].at === null) j++;
+      const from = stops[i - 1].at, to = stops[j].at, span = j - i + 1;
+      for (let k = i; k < j; k++) stops[k].at = from + (to - from) * (k - i + 1) / span;
+    }
+    // where the text sits along the gradient line
+    const rad = (angle * Math.PI) / 180;
+    const sin = Math.sin(rad), cos = Math.cos(rad);
+    const cx = (r.left + r.right) / 2 - (box.left + box.right) / 2;
+    const cy = (r.top + r.bottom) / 2 - (box.top + box.bottom) / 2;
+    const length = Math.abs(box.width * sin) + Math.abs(box.height * cos);
+    let f = length ? 0.5 + (cx * sin - cy * cos) / length : 0.5;
+    f = Math.max(0, Math.min(1, f));
+    if (f <= stops[0].at) return stops[0];
+    for (let i = 0; i < stops.length - 1; i++) {
+      const a = stops[i], b = stops[i + 1];
+      if (f >= a.at && f <= b.at) {
+        const k = b.at === a.at ? 0 : (f - a.at) / (b.at - a.at);
+        return {a: a.a + (b.a - a.a) * k, l: a.l + (b.l - a.l) * k};
+      }
+    }
+    return stops[stops.length - 1];
+  };
+  // //// Neoffice — the veil over a photograph is a SIBLING, not an ancestor (2026-09-18). A hero
+  // //// lays its picture and its dark wash side by side under the copy, both absolute at inset 0,
+  // //// so walking the ancestors found nothing: a headline reading white at 5.5:1 over a 0.92
+  // //// black gradient was measured against the bare snow behind it and refused four times, on
+  // //// two sites. Every text-free layer covering the copy and painted after the picture counts.
+  const washes = [...document.body.querySelectorAll('div, span, section, i, figure')].filter((el) => {
+    const s = getComputedStyle(el);
+    if (s.position !== 'absolute' && s.position !== 'fixed') return false;
+    if ((el.textContent || '').trim() || !visible(el)) return false;
+    if (/gradient/.test(s.backgroundImage || '')) return true;
+    const c = rgba(s.backgroundColor);
+    return !!c && c.a > 0.02 && c.a < 0.98;
+  });
+  const coveredBy = (r, box) => r.left >= box.left - 2 && r.right <= box.right + 2 && r.top >= box.top - 2 && r.bottom <= box.bottom + 2;
+  const overlayVeils = (el, r, picture) => {
+    const found = [];
+    for (const wash of washes) {
+      // an ancestor's own background is veiled()'s to read: here only the layers laid beside the copy
+      if (wash === el || wash.contains(el)) continue;
+      const box = wash.getBoundingClientRect();
+      if (!box.width || !box.height || !coveredBy(r, box)) continue;
+      // painted after the picture, so it lies over it
+      if (picture && (wash.compareDocumentPosition(picture) & Node.DOCUMENT_POSITION_FOLLOWING)) continue;
+      const s = getComputedStyle(wash);
+      const image = s.backgroundImage && s.backgroundImage !== 'none' ? s.backgroundImage : '';
+      const stop = image ? gradientAlphaAt(image, box, r) : null;
+      if (stop && stop.a > 0.02) { found.push(stop); continue; }
+      const c = rgba(s.backgroundColor);
+      if (c && c.a > 0.02 && c.a < 0.98) found.push({a: c.a, l: lum(c)});
+    }
+    return found;
+  };
+  const pseudoVeil = (el, r) => {
+    for (let p = el; p && p !== document.documentElement; p = p.parentElement) {
+      for (const which of ['::after', '::before']) {
+        const s = getComputedStyle(p, which);
+        if (!s || s.content === 'none' || s.content === 'normal') continue;
+        const box = p.getBoundingClientRect();
+        if (!box.width || !box.height) continue;
+        const image = s.backgroundImage && s.backgroundImage !== 'none' ? s.backgroundImage : '';
+        const found = image ? gradientAlphaAt(image, box, r) : null;
+        if (found && found.a > 0.02) return found;
+        const c = rgba(s.backgroundColor);
+        if (c && c.a > 0.02 && c.a < 0.98) return {a: c.a, l: lum(c)};
+      }
+    }
+    return null;
+  };
+  // //// Neoffice — the photograph under the GLYPHS, not under the block (2026-09-18). A headline
+  // //// box spans its column: two short lines over the dark half of a picture were measured
+  // //// across the bright half they do not cover, and a hero that reads perfectly was refused
+  // //// four times. The line boxes are what the reader sees ink on.
+  const inkedBox = (el) => {
+    try {
+      const range = document.createRange();
+      range.selectNodeContents(el);
+      const rects = [...range.getClientRects()].filter((r) => r.width > 1 && r.height > 1);
+      if (!rects.length) return el.getBoundingClientRect();
+      const left = Math.min(...rects.map((r) => r.left)), right = Math.max(...rects.map((r) => r.right));
+      const top = Math.min(...rects.map((r) => r.top)), bottom = Math.max(...rects.map((r) => r.bottom));
+      return {left, right, top, bottom, width: right - left, height: bottom - top};
+    } catch (e) {
+      return el.getBoundingClientRect();
+    }
+  };
   const cache = {};
   let n = 0;
   for (const el of document.body.querySelectorAll('h1, h2, h3, p, a')) {
@@ -583,7 +701,7 @@ async () => {
     const pic = behind(el); if (!pic) continue;
     if (!/^https?:|^\//.test(pic.src) || (pic.src.startsWith('http') && new URL(pic.src).origin !== location.origin)) continue;
     const image = cache[pic.src] || (cache[pic.src] = await load(pic.src)); if (!image || !image.naturalWidth) continue;
-    const r = el.getBoundingClientRect(); const b = pic.box;
+    const r = inkedBox(el); const b = pic.box;
     // the picture as drawn: cover the box, centred — the crop under the text follows
     const scale = Math.max(b.width / image.naturalWidth, b.height / image.naturalHeight);
     const dw = image.naturalWidth * scale, dh = image.naturalHeight * scale;
@@ -602,6 +720,8 @@ async () => {
     if (mean === null) continue;
     // a veil between the picture and the text darkens or lightens what shows through
     const v = veiled(el); if (v) { const vl = lum(v); mean = mean * (1 - v.a) + vl * v.a; }
+    for (const wash of overlayVeils(el, r, pic.kind === 'img' ? pic.el : null)) { mean = mean * (1 - wash.a) + wash.l * wash.a; }
+    const pv = pseudoVeil(el, r); if (pv) { mean = mean * (1 - pv.a) + pv.l * pv.a; }
     const ink = rgba(getComputedStyle(el).color); if (!ink) continue;
     const li = lum(ink); const ratio = (Math.max(li, mean) + 0.05) / (Math.min(li, mean) + 0.05);
     const fs = parseFloat(getComputedStyle(el).fontSize) || 16; const large = fs >= 24;
