@@ -2390,6 +2390,14 @@ def build_site(ctx, spec: dict) -> str:
                     scrubbed = drop_placeholders(blocks)
                     if scrubbed:
                         ai_log("info", "Placeholders dropped", page=page["title"], edits=scrubbed[:6])
+                    # //// Neoffice — nor a picture whose file does not exist: shown a folder of
+                    # //// marque-<brand>.jpg the writer invented the one brand it was missing
+                    # //// (facts.drop_missing_pictures)
+                    from builder.site_ai.nora.facts import drop_missing_pictures
+
+                    absent = drop_missing_pictures(blocks)
+                    if absent:
+                        ai_log("info", "Pictures with no file dropped", page=page["title"], edits=absent[:6])
                     # //// Neoffice — nor a contact detail the business data does not give: told to leave one
                     # //// out, the model wrote a plausible e-mail and website instead (facts.drop_invented_contacts)
                     from builder.site_ai.nora.facts import drop_invented_contacts

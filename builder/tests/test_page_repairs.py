@@ -67,6 +67,50 @@ class TestPlaceholders(unittest.TestCase):
 		self.assertEqual([], page[0]["children"])
 		self.assertTrue(any("PAYMENTS" in e for e in edits), edits)
 
+	# //// Neoffice — added tests (2026-09-18): shown a folder of marque-<brand>.jpg files and nine
+	# //// brand names, the writer invented the path of the one it was missing, and a published home
+	# //// carried a broken frame among nine logos.
+	def test_a_picture_whose_file_is_not_there_is_dropped(self):
+		from unittest.mock import patch
+
+		from builder.site_ai.nora import facts
+
+		strip = box(
+			{"element": "img", "attributes": {"src": "/files/marque-real.jpg"}, "children": []},
+			{"element": "img", "attributes": {"src": "/files/marque-invented.jpg"}, "children": []},
+			{"element": "img", "attributes": {"src": "https://example.test/logo.png"}, "children": []},
+		)
+		with patch.object(facts, "_file_is_there", lambda url: "invented" not in url):
+			edits = facts.drop_missing_pictures([strip])
+		self.assertEqual(1, len(edits), edits)
+		self.assertEqual(
+			["/files/marque-real.jpg", "https://example.test/logo.png"],
+			[c["attributes"]["src"] for c in strip["children"]],
+		)
+
+	def test_a_picture_written_in_html_is_dropped_too(self):
+		from unittest.mock import patch
+
+		from builder.site_ai.nora import facts
+
+		line = text("div", 'Our brands <img src="/files/marque-invented.jpg" alt="x"> and more')
+		with patch.object(facts, "_file_is_there", lambda url: "invented" not in url):
+			edits = facts.drop_missing_pictures([box(line)])
+		self.assertEqual(1, len(edits), edits)
+		self.assertNotIn("<img", line["innerHTML"])
+		self.assertIn("Our brands", line["innerHTML"])
+
+	def test_a_doubt_never_drops_a_picture(self):
+		"""_file_is_there answers True when it cannot tell: a picture is never lost on a doubt."""
+		from unittest.mock import patch
+
+		from builder.site_ai.nora import facts
+
+		strip = box({"element": "img", "attributes": {"src": "/files/whatever.jpg"}, "children": []})
+		with patch("frappe.db.exists", side_effect=RuntimeError("no database here")):
+			self.assertEqual([], facts.drop_missing_pictures([strip]))
+		self.assertEqual(1, len(strip["children"]))
+
 	def test_jinja_and_footnotes_are_left_alone(self):
 		include = text("div", "{% include 'builder/templates/includes/contact_form.html' %} [x]")
 		note = text("p", "See the terms [1].")

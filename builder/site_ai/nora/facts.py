@@ -393,3 +393,67 @@ def drop_invented_contacts(blocks: list, known: str) -> list[str]:
             clean(block)
     return edits
 
+# //// Neoffice — added 2026-09-18: a local picture that does not exist is not a picture.
+# //// Shown nine brand names and a folder of files called marque-<brand>.jpg, the writer filled
+# //// the gap by inventing the one it lacked: <img src="/files/marque-west_snowboards.jpg"> for a
+# //// file nobody ever uploaded. It reached the published home as a broken frame, the gate saw it
+# //// (broken-image), and the only thing that could repair it was another model call. A path that
+# //// resolves to nothing is checked here instead, before the page is written.
+IMG_SRC = re.compile(r'<img\b[^>]*\bsrc="([^"]+)"[^>]*>', re.I)
+LOCAL_FILE = re.compile(r"^/(?:files|private/files)/")
+
+
+def _file_is_there(url: str) -> bool:
+    """Whether a /files path resolves on this site. Anything not local is left alone."""
+    if not LOCAL_FILE.match(url or ""):
+        return True
+    clean = (url or "").split("?")[0]
+    try:
+        import os
+
+        import frappe
+
+        if frappe.db.exists("File", {"file_url": clean}):
+            return True
+        if clean.startswith("/files/"):
+            return os.path.exists(frappe.get_site_path("public", "files", clean[len("/files/"):]))
+        return os.path.exists(frappe.get_site_path("private", "files", clean[len("/private/files/"):]))
+    except Exception:
+        # unknowable here: never drop a picture on a doubt
+        return True
+
+
+def drop_missing_pictures(blocks: list) -> list[str]:
+    """Takes out every <img> whose local file is not there, and the wrapper it leaves empty.
+    Returns one line per edit."""
+    edits: list[str] = []
+
+    def clean(parent: dict) -> None:
+        kids = parent.get("children")
+        if not isinstance(kids, list) or not kids:
+            return
+        kept: list = []
+        for child in kids:
+            if not isinstance(child, dict):
+                kept.append(child)
+                continue
+            src = ((child.get("attributes") or {}).get("src") or "").strip()
+            if str(child.get("element") or "").lower() == "img" and src and not _file_is_there(src):
+                edits.append(f"picture dropped, no such file: {src[:70]}")
+                continue
+            html = child.get("innerHTML")
+            if isinstance(html, str) and "<img" in html:
+                missing = [u for u in IMG_SRC.findall(html) if not _file_is_there(u)]
+                for url in missing:
+                    html = IMG_SRC.sub(lambda m: "" if m.group(1) == url else m.group(0), html)
+                    edits.append(f"picture dropped, no such file: {url[:70]}")
+                if missing:
+                    child["innerHTML"] = html
+            clean(child)
+            kept.append(child)
+        parent["children"] = kept
+
+    for block in blocks or []:
+        if isinstance(block, dict):
+            clean(block)
+    return edits
