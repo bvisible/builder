@@ -835,7 +835,7 @@ class TestReadOverPhotos(unittest.TestCase):
 	# //// Neoffice — the hero carries its photograph (2026-09-18). A scrim with no picture under
 	# //// it is no scrim at all and is now stripped (read_over_photos.unveil), so a fixture without
 	# //// one stopped testing what these tests are about: copy laid OVER a photograph.
-	PICTURE = {"element": "img", "attributes": {"src": "/files/hero.jpg"}, "baseStyles": {"position": "absolute", "inset": "0", "objectFit": "cover"}}
+	PICTURE = {"element": "img", "attributes": {"src": "/files/hero.jpg"}, "baseStyles": {"position": "absolute", "inset": "0", "objectFit": "cover", "zIndex": "1"}}
 
 	def hero(self, *children):
 		return {
@@ -930,6 +930,8 @@ class TestReadOverPhotos(unittest.TestCase):
 		fixes = repair_measured_contrast([section], findings, self.PALETTE)
 		self.assertTrue(any("deep" in f for f in fixes), fixes)
 		self.assertIn("u-over-image--deep", section["classes"])
+		# and the picture the scrim is for is put back under it
+		self.assertEqual("0", section["children"][0]["baseStyles"].get("zIndex"))
 
 		# and a second pass has nothing left to add
 		again = repair_measured_contrast([section], findings, self.PALETTE)

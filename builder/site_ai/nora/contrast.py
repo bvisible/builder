@@ -686,6 +686,18 @@ def _veil_measured_on_photo(blocks: list[dict], wanted: list[tuple[str, str, str
             holder = common[-1] if common else None
         if holder is None:
             holder = next((a for a in reversed(paths.get(id(block), [])) if _has_covering_picture(a)), None)
+        # //// Neoffice — the picture the scrim is for goes under it (2026-09-18): the design
+        # //// system lifts every child of a veiled section to z-index 1, and a writer that set the
+        # //// same on its photograph left the scrim painted behind the picture, doing nothing.
+        if shown is not None:
+            styles = shown.setdefault("baseStyles", {})
+            try:
+                lifted = int(str(styles.get("zIndex") or 0).strip() or 0) > 0
+            except ValueError:
+                lifted = False
+            if lifted:
+                styles["zIndex"] = "0"
+                fixes.append(f"{tag} '{want[:40]}': its photograph goes under the scrim (z-index 0)")
         if holder is not None and not any(c.startswith(VEILED) for c in _classes(holder)):
             holder["classes"] = [*_classes(holder), "u-over-image", "u-over-image--bottom"]
             fixes.append(f"{tag} '{want[:40]}': white on a scrim (the section holding it and its picture takes u-over-image)")

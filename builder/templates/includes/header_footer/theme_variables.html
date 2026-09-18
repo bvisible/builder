@@ -608,6 +608,19 @@ a:where(:not(.u-btn)):hover {
 	z-index: 1;
 }
 
+/* //// Neoffice — the PICTURE stays under the scrim (2026-09-18). The rule above lifts every
+   child to z-index 1, the photograph included, so the scrim at z-index 0 was painted behind the
+   picture it was meant to darken: a hero wore its scrim, computed it, and looked exactly as
+   bright as before. A covering picture is not content laid over the scrim, it is what the scrim
+   is for. Same zero specificity, written after, so it wins between the two and loses to anything
+   a block sets for itself. */
+:where(.u-over-image > img),
+:where(.u-over-image > picture),
+:where(.u-over-image > video),
+:where(.u-over-image > svg) {
+	z-index: 0;
+}
+
 /* The scrim comes after the children: a photograph laid in the section (z-index 0 or
    none) sits under it, the copy (z-index 1) over it. */
 .u-over-image::after {

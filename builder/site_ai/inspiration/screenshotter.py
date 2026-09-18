@@ -671,11 +671,17 @@ async () => {
     }
     return found;
   };
-  const pseudoVeil = (el, r) => {
+  // //// Neoffice — a scrim painted BEHIND the picture is no scrim (2026-09-18): the design system
+  // //// lifts every child of a veiled section to z-index 1, so a photograph carrying that z-index
+  // //// covers the ::after at z-index 0 and the hero looks exactly as bright as before. Credited
+  // //// blindly, the gate would call such a page readable and be wrong the other way round.
+  const depth = (value) => { const n = parseInt(value, 10); return Number.isFinite(n) ? n : 0; };
+  const pseudoVeil = (el, r, picture) => {
     for (let p = el; p && p !== document.documentElement; p = p.parentElement) {
       for (const which of ['::after', '::before']) {
         const s = getComputedStyle(p, which);
         if (!s || s.content === 'none' || s.content === 'normal') continue;
+        if (picture && p.contains(picture) && depth(getComputedStyle(picture).zIndex) > depth(s.zIndex)) continue;
         const box = p.getBoundingClientRect();
         if (!box.width || !box.height) continue;
         const image = s.backgroundImage && s.backgroundImage !== 'none' ? s.backgroundImage : '';
@@ -733,7 +739,7 @@ async () => {
     // a veil between the picture and the text darkens or lightens what shows through
     const v = veiled(el); if (v) { const vl = lum(v); mean = mean * (1 - v.a) + vl * v.a; }
     for (const wash of overlayVeils(el, r, pic.kind === 'img' ? pic.el : null)) { mean = mean * (1 - wash.a) + wash.l * wash.a; }
-    const pv = pseudoVeil(el, r); if (pv) { mean = mean * (1 - pv.a) + pv.l * pv.a; }
+    const pv = pseudoVeil(el, r, pic.kind === 'img' ? pic.el : null); if (pv) { mean = mean * (1 - pv.a) + pv.l * pv.a; }
     const ink = rgba(getComputedStyle(el).color); if (!ink) continue;
     const li = lum(ink); const ratio = (Math.max(li, mean) + 0.05) / (Math.min(li, mean) + 0.05);
     const fs = parseFloat(getComputedStyle(el).fontSize) || 16; const large = fs >= 24;
