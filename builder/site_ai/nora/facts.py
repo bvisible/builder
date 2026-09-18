@@ -236,11 +236,30 @@ def _is_label(block: dict) -> bool:
     )
 
 
+# //// Neoffice — a sentence that held a placeholder goes whole (2026-09-18). Cutting the
+# //// placeholder alone published "Payments are processed by" on a privacy page, and the reviewer
+# //// read it exactly as it was: a sentence trailing off. A sentence carrying a placeholder is
+# //// there to carry the value that was missing; without it there is nothing left to say. A line
+# //// with no sentence at all — "Atelier Nord Sàrl · [website] · Lausanne" — is a list, not a
+# //// sentence, and there only the placeholder and its separator go.
+TERMINATOR = re.compile(r"[.!?…]")
+SENTENCE_SPLIT = re.compile(r"(?<=[.!?…])(?=\s)")
+
+
 def _cut(html: str) -> str:
-    """The placeholder cut out of a longer text, with the separator that tied it to the rest."""
-    cut = re.sub(SEPARATOR + PLACEHOLDER.pattern, "", html)
-    cut = re.sub(PLACEHOLDER.pattern + SEPARATOR, "", cut)
-    return cut.strip()
+    """The placeholder cut out of a longer text: the whole sentence when it was written as one,
+    the placeholder and the separator that tied it to the rest when the line is a list."""
+    out = []
+    for piece in re.split(r"(<[^>]+>)", html):
+        if piece.startswith("<") or not PLACEHOLDER.search(piece):
+            out.append(piece)
+            continue
+        if TERMINATOR.search(piece):
+            out.append("".join(s for s in SENTENCE_SPLIT.split(piece) if not PLACEHOLDER.search(s)))
+            continue
+        cut = re.sub(SEPARATOR + PLACEHOLDER.pattern, "", piece)
+        out.append(re.sub(PLACEHOLDER.pattern + SEPARATOR, "", cut))
+    return "".join(out).strip()
 
 
 def drop_placeholders(blocks: list) -> list[str]:
@@ -269,6 +288,13 @@ def drop_placeholders(blocks: list) -> list[str]:
                     edits.append(f"'{text}' dropped")
                     continue
                 child["innerHTML"] = _cut(html)
+                # //// Neoffice — nothing left to show (2026-09-18): a block whose only sentence
+                # //// held the placeholder goes the way a bare placeholder does, label included.
+                if not _text_of(child):
+                    if kept and isinstance(kept[-1], dict) and _is_label(kept[-1]):
+                        edits.append(f"label '{_text_of(kept.pop())}' dropped with its placeholder")
+                    edits.append(f"'{text[:48]}' dropped with the sentence that held its placeholder")
+                    continue
                 edits.append(f"placeholder cut from '{text[:48]}'")
             if clean(child) and not _text_of(child):
                 edits.append("wrapper left empty dropped")

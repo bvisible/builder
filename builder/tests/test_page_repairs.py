@@ -51,6 +51,22 @@ class TestPlaceholders(unittest.TestCase):
 		drop_placeholders([box(line)])
 		self.assertEqual(line["innerHTML"], "Atelier Nord Sàrl · Lausanne")
 
+	# //// Neoffice — added tests (2026-09-18): the placeholder was cut and the sentence around it
+	# //// was published half-written. "Payments are processed by" reached a live privacy page.
+	def test_a_sentence_written_around_a_placeholder_goes_whole(self):
+		line = text("p", "We keep your data in Switzerland. Payments are processed by [payment processor]. You may ask for a copy at any time.")
+		drop_placeholders([box(line)])
+		self.assertEqual(
+			line["innerHTML"],
+			"We keep your data in Switzerland. You may ask for a copy at any time.",
+		)
+
+	def test_a_block_whose_only_sentence_held_the_placeholder_goes_with_its_label(self):
+		page = [box(text("p", "PAYMENTS"), text("p", "Payments are processed by [payment processor]."))]
+		edits = drop_placeholders(page)
+		self.assertEqual([], page[0]["children"])
+		self.assertTrue(any("PAYMENTS" in e for e in edits), edits)
+
 	def test_jinja_and_footnotes_are_left_alone(self):
 		include = text("div", "{% include 'builder/templates/includes/contact_form.html' %} [x]")
 		note = text("p", "See the terms [1].")
