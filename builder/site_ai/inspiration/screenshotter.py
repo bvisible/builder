@@ -446,7 +446,9 @@ LAYOUT_PROBE = r"""
   for (const img of body.querySelectorAll('img')) {
     if (tiny >= 3 || chrome(img) || !visible(img)) continue;
     const r = img.getBoundingClientRect();
-    if (img.naturalWidth >= 400 && r.width < 64 && r.height < 64) {
+    // a logo in a brand strip is small by design (nine brand marks in a row, 2026-09-17)
+    if (img.closest('[class*="logo"], [class*="brand"], [class*="partner"], [class*="client"]')) continue;
+    if (img.naturalWidth >= 400 && r.width < 48 && r.height < 48) {
       tiny++;
       out.push({kind: 'collapsed-image', severity: 'high', where: 'img ' + (img.getAttribute('src') || '').slice(0, 80), detail: 'a ' + img.naturalWidth + 'px photograph rendered ' + Math.round(r.width) + 'px wide: its box collapsed (no width, no height, or a flex child with no basis); give the picture its size'});
     }
