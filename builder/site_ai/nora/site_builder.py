@@ -772,18 +772,39 @@ def photos_for_page(page: dict, library: list[dict], used: dict, categories: lis
 # //// tiles drew four of them in flat grey beside one photograph. Every page that shows the categories
 # //// as tiles is now told each one's photograph (page_brief_text), and layout.complete_tile_photos
 # //// completes a grid the model still leaves half photographed.
-def category_photo_map(library: list[dict], categories: list[str]) -> dict[str, str]:
+# //// Neoffice — a photograph filed under a BRAND is not a category tile (2026-09-18). A client's
+# //// library holds both: the scenes of the business, and the pictures a brand supplies with its
+# //// products. Both can be about the same sport, so both score the same on the category's word,
+# //// and the brand asset won a tile on nothing more than sorting first — a child holding a toy
+# //// snowboard in a leopard snowsuit, on a B2B distribution home. The brands are given data, so
+# //// this needs no naming convention: a photograph the vision filed under one of the business's
+# //// own brands steps back when a tile is being chosen.
+def brand_words(brands) -> set[str]:
+    out = set()
+    for brand in brands or []:
+        for word in re.split(r"[^a-z0-9]+", str(brand).lower()):
+            if len(word) > 2:
+                out.add(word)
+                out.add(word.replace(" ", ""))
+        joined = re.sub(r"[^a-z0-9]+", "", str(brand).lower())
+        if len(joined) > 2:
+            out.add(joined)
+    return out
+
+
+def category_photo_map(library: list[dict], categories: list[str], brands=()) -> dict[str, str]:
     """The photograph of each category, chosen as the home's tiles are (_best_photo): filed under the
-    category first, a different one for each while the library allows."""
+    category first, a different one for each while the library allows, and never a brand's own."""
     if not library or not categories:
         return {}
     category_words = {w for name in categories for w in re.split(r"[^a-z0-9]+", name.lower()) if len(w) > 2}
+    marks = brand_words(brands)
     used: dict[str, int] = {}
     mapping = {}
     for name in categories:
         wanted = [w for w in re.split(r"[^a-z0-9]+", name.lower()) if len(w) > 2]
         # //// Neoffice — a tile is ABOUT its category or carries no photograph (2026-09-18)
-        chosen = _best_photo(library, used, wanted, avoid=category_words - set(wanted), must_fit=True)
+        chosen = _best_photo(library, used, wanted, avoid=(category_words - set(wanted)) | marks, must_fit=True)
         if chosen:
             mapping[name] = chosen["url"]
     return mapping
@@ -2077,10 +2098,13 @@ def build_site(ctx, spec: dict) -> str:
     categories = [str(c).strip() for c in (spec.get("categories") or []) if str(c).strip()][:8] or category_names(
         activity, spec.get("differentiators") or "", spec.get("style_direction") or ""
     )
+    # //// Neoffice — the brands the brief names (see BRAND_PLAN). Read here, with the categories:
+    # //// the category tiles are chosen just below and a brand's own photograph is not one.
+    brands = [str(b).strip() for b in (spec.get("brands") or []) if str(b).strip()][:24]
     ai_log("info", "Client photos ready", photos=len(client_photos), categories=categories)
     photos_used: dict[str, int] = {}
     # //// Neoffice — each category's photograph, for every page that shows the categories as tiles
-    category_photos = category_photo_map(client_photos, categories)
+    category_photos = category_photo_map(client_photos, categories, brands)
     # //// Neoffice ▲▲▲
     # announced when the brief is really written: said before the inspirations and the photos
     # were read, it left the panel on "Reading the inspirations" through the brief's minutes
@@ -2199,8 +2223,6 @@ def build_site(ctx, spec: dict) -> str:
     # 5. the pages, on upstream's page engine
     layout_system = choose_layout_system(spec.get("style_direction"), brief)
     page_model = _page_model(ctx)
-    # //// Neoffice — the brands the brief names (see BRAND_PLAN)
-    brands = [str(b).strip() for b in (spec.get("brands") or []) if str(b).strip()][:24]
     site = {"site_name": site_name, "activity": activity, "differentiators": spec.get("differentiators"), "site_type": site_type, "profile": profile, "inspiration": inspiration["notes"], "copy_density": copy_density, "categories": categories, "brands": brands, "page_types": [p["type"] for p in pages],
             # //// Neoffice — the brand's own mark, offered to the pages as an ornament (2026-09-15):
             # //// the footer's emblem when the client gave one, else the header's logo.
