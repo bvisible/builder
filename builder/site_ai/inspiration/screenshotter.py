@@ -533,6 +533,76 @@ LAYOUT_PROBE = r"""
 }
 """
 
+# //// Neoffice ▼▼▼ — text ON a photograph is judged by the pixels behind it (2026-09-18). A client's
+# //// hero set a near-black headline on a night-blue sky: the contrast probe skips text over a
+# //// picture (it cannot know what a picture paints), and the judge called the page professional.
+# //// This probe knows: it draws the part of the picture under each heading on a canvas and
+# //// reads its mean luminance — same-origin pictures only, which the site's own are.
+PHOTO_TEXT_PROBE = r"""
+async () => {
+  const out = [];
+  const text = (el) => ((el && (el.innerText || el.textContent)) || '').trim().replace(/\s+/g, ' ').slice(0, 60);
+  const visible = (el) => { const r = el.getBoundingClientRect(); const s = getComputedStyle(el); return r.width > 0 && r.height > 0 && s.visibility !== 'hidden' && s.display !== 'none' && s.opacity !== '0'; };
+  const chrome = (el) => !!el.closest('header, footer, nav, .site-page-header, .navbar');
+  const rgba = (v) => { const m = (v || '').match(/rgba?\(([^)]+)\)/); if (!m) return null; const p = m[1].split(',').map(x => parseFloat(x)); return {r: p[0], g: p[1], b: p[2], a: p.length > 3 ? p[3] : 1}; };
+  const lum = (c) => { const f = (x) => { x /= 255; return x <= 0.03928 ? x / 12.92 : Math.pow((x + 0.055) / 1.055, 2.4); }; return 0.2126 * f(c.r) + 0.7152 * f(c.g) + 0.0722 * f(c.b); };
+  const load = (src) => new Promise((res) => { const i = new Image(); i.onload = () => res(i); i.onerror = () => res(null); i.src = src; });
+  const urlOf = (v) => { const m = (v || '').match(/url\(["']?([^"')]+)["']?\)/); return m ? m[1] : null; };
+  // the picture behind an element: an <img> whose box covers the element's centre, or the
+  // nearest ancestor painting a background image (drawn as cover, the common case)
+  const imgs = [...document.body.querySelectorAll('img')].filter(i => visible(i) && i.getBoundingClientRect().width > 120);
+  const behind = (el) => {
+    const r = el.getBoundingClientRect(); const cx = (r.left + r.right) / 2, cy = (r.top + r.bottom) / 2;
+    for (const i of imgs) { const b = i.getBoundingClientRect(); if (cx >= b.left && cx <= b.right && cy >= b.top && cy <= b.bottom && !i.contains(el)) return {kind: 'img', el: i, box: b, src: i.currentSrc || i.src}; }
+    for (let p = el.parentElement; p && p !== document.documentElement; p = p.parentElement) {
+      const s = getComputedStyle(p); const u = urlOf(s.backgroundImage);
+      if (u) return {kind: 'bg', el: p, box: p.getBoundingClientRect(), src: u};
+      const c = rgba(s.backgroundColor); if (c && c.a > 0.9) return null;
+    }
+    return null;
+  };
+  const veiled = (el) => { for (let p = el; p && p !== document.documentElement; p = p.parentElement) { const s = getComputedStyle(p); const c = rgba(s.backgroundColor); if (c && c.a > 0.3 && c.a < 0.95) return c; if (/gradient/.test(s.backgroundImage || '')) return {r: 0, g: 0, b: 0, a: 0.5}; } return null; };
+  const cache = {};
+  let n = 0;
+  for (const el of document.body.querySelectorAll('h1, h2, h3, p, a')) {
+    if (n >= 4 || chrome(el) || !visible(el)) continue;
+    const t = text(el); if (t.length < 4) continue;
+    if ([...el.children].some(c => /^(h1|h2|h3|p|div|ul|ol|section)$/i.test(c.tagName))) continue;
+    const pic = behind(el); if (!pic) continue;
+    if (!/^https?:|^\//.test(pic.src) || (pic.src.startsWith('http') && new URL(pic.src).origin !== location.origin)) continue;
+    const image = cache[pic.src] || (cache[pic.src] = await load(pic.src)); if (!image || !image.naturalWidth) continue;
+    const r = el.getBoundingClientRect(); const b = pic.box;
+    // the picture as drawn: cover the box, centred — the crop under the text follows
+    const scale = Math.max(b.width / image.naturalWidth, b.height / image.naturalHeight);
+    const dw = image.naturalWidth * scale, dh = image.naturalHeight * scale;
+    const ox = b.left + (b.width - dw) / 2, oy = b.top + (b.height - dh) / 2;
+    const sx = Math.max(0, (r.left - ox) / scale), sy = Math.max(0, (r.top - oy) / scale);
+    const sw = Math.min(image.naturalWidth - sx, r.width / scale), sh = Math.min(image.naturalHeight - sy, r.height / scale);
+    if (sw <= 2 || sh <= 2) continue;
+    let mean;
+    try {
+      const c = document.createElement('canvas'); const w = 24, h = Math.max(2, Math.round(24 * sh / sw)); c.width = w; c.height = h;
+      const ctx = c.getContext('2d'); ctx.drawImage(image, sx, sy, sw, sh, 0, 0, w, h);
+      const d = ctx.getImageData(0, 0, w, h).data; let l = 0, k = 0;
+      for (let i = 0; i < d.length; i += 4) { l += lum({r: d[i], g: d[i + 1], b: d[i + 2]}); k++; }
+      mean = k ? l / k : null;
+    } catch (e) { continue; }
+    if (mean === null) continue;
+    // a veil between the picture and the text darkens or lightens what shows through
+    const v = veiled(el); if (v) { const vl = lum(v); mean = mean * (1 - v.a) + vl * v.a; }
+    const ink = rgba(getComputedStyle(el).color); if (!ink) continue;
+    const li = lum(ink); const ratio = (Math.max(li, mean) + 0.05) / (Math.min(li, mean) + 0.05);
+    const fs = parseFloat(getComputedStyle(el).fontSize) || 16; const large = fs >= 24;
+    if (ratio < (large ? 2.5 : 3.5)) {
+      n++;
+      out.push({kind: 'unreadable-on-photo', severity: ratio < 1.8 ? 'high' : 'medium', where: el.tagName.toLowerCase() + ' "' + t + '"', detail: 'contrast ' + ratio.toFixed(1) + ':1 between its ink ' + getComputedStyle(el).color + ' and the photograph behind it (mean luminance ' + mean.toFixed(2) + '): give the copy an ink that reads on this picture, or a darker scrim under it, or move it off the picture'});
+    }
+  }
+  return out;
+}
+"""
+# //// Neoffice ▲▲▲
+
 MEASURE_WIDTHS = (1440, 768, 375)
 
 
@@ -577,6 +647,13 @@ async def _measure_async(url: str, widths=MEASURE_WIDTHS, static_roots: Optional
                     await page.set_viewport_size({"width": int(width), "height": 900})
                     await page.wait_for_timeout(400)
                     result["widths"][int(width)] = await page.evaluate(LAYOUT_PROBE)
+                    # //// Neoffice — then the text laid on photographs, read from the pixels (PHOTO_TEXT_PROBE)
+                    try:
+                        extra = await page.evaluate(PHOTO_TEXT_PROBE)
+                        if extra:
+                            result["widths"][int(width)].setdefault("findings", []).extend(extra)
+                    except Exception as e:
+                        result["widths"][int(width)]["photo_error"] = str(e)[:160]
                 except Exception as e:
                     result["widths"][int(width)] = {"findings": [], "facts": {}, "error": str(e)[:160]}
         finally:

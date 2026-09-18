@@ -413,3 +413,15 @@ class TestAnOnImageButtonNeedsAPicture(unittest.TestCase):
 		self.assertIn("u-btn--primary", blocks[0]["children"][0]["classes"])
 		self.assertNotIn("u-btn--on-image", blocks[0]["children"][0]["classes"])
 
+
+class TestATileWithItsOwnPictureGetsTheScrim(unittest.TestCase):
+	def test_a_caption_on_a_background_image_tile_is_veiled(self):
+		from builder.site_ai.nora.contrast import veil_copy_on_photos
+
+		blocks = [{"element": "a", "baseStyles": {"backgroundImage": "url(/files/snow.jpg)", "backgroundSize": "cover"}, "children": [
+			{"element": "h3", "innerHTML": "SNOWBOARD", "baseStyles": {"color": "#ffffff"}},
+		]}]
+		fixes = veil_copy_on_photos(blocks)
+		self.assertEqual(len(fixes), 1)
+		self.assertIn("u-over-image", blocks[0]["classes"])
+

@@ -368,9 +368,14 @@ def veil_copy_on_photos(blocks: list[dict]) -> list[str]:
             return
         children = [c for c in block.get("children") or [] if isinstance(c, dict)]
         classes = _classes(block)
+        # //// Neoffice — a tile painting its picture as its OWN background counts too (2026-09-18):
+        # //// a home's category tiles carried their captions straight on bright photographs
+        # //// ("SNOWBOARD" white on a pale sky, 1.6:1 measured), with no scrim, because the
+        # //// picture was the tile's backgroundImage and not a child.
+        pictured = any(_covering_picture(c) for c in children) or (_shows_picture(block) and str(block.get("element") or "").lower() != "img")
         if (
             not any(c.startswith(VEILED) for c in classes)
-            and any(_covering_picture(c) for c in children)
+            and pictured
             and any(_has_text(c) and not _covering_picture(c) for c in children)
             and not any(_veil(c) for c in children)
         ):
