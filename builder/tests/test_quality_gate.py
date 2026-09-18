@@ -437,3 +437,15 @@ class TestAnInlineColourIsRepairedToo(unittest.TestCase):
 		self.assertNotIn("#E85D2B", blocks[0]["innerHTML"])
 		self.assertIn('style="font-weight:600; color: ', blocks[0]["innerHTML"])
 
+
+class TestAMeasuredButtonChangesItsVariant(unittest.TestCase):
+	def test_an_on_image_button_measured_on_white_becomes_primary(self):
+		from builder.site_ai.nora.contrast import repair_measured_contrast
+
+		blocks = [{"element": "a", "innerHTML": "Écrire à l’équipe", "classes": ["u-btn", "u-btn--on-image"], "baseStyles": {}}]
+		findings = [{"kind": "unreadable-text", "severity": "high", "width": 1440, "where": 'a "Écrire à l’équipe"', "detail": "contrast 1.0:1 between rgb(255, 255, 255) and the background rgb(255, 255, 255) (needs 3:1): the text cannot be read"}]
+		fixes = repair_measured_contrast(blocks, findings, {"t-text": "#1e293b", "t-background": "#ffffff"})
+		self.assertEqual(len(fixes), 1)
+		self.assertEqual(blocks[0]["classes"], ["u-btn", "u-btn--primary"])
+		self.assertNotIn("color", blocks[0]["baseStyles"])
+

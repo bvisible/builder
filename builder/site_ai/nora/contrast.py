@@ -592,6 +592,16 @@ def repair_measured_contrast(blocks: list[dict], findings: list[dict], palette: 
                 # //// <p><span>ACTUALITÉS</span></p> was never found by tag (2026-09-17)
                 if not text.startswith(wanted[:60]) or (block.get("children") and len(text) > len(wanted) + 40):
                     continue
+                # //// Neoffice — a BUTTON reads through its variant, not its colour (2026-09-18): the
+                # //// design system's class paints the label, and a block colour never wins against it.
+                # //// An on-image button measured on a light ground becomes the primary button; any
+                # //// other button variant is left to its own rule.
+                classes = list(block.get("classes") or [])
+                if "u-btn" in classes:
+                    if "u-btn--on-image" in classes and luminance(bg) > 0.4:
+                        block["classes"] = ["u-btn--primary" if c == "u-btn--on-image" else c for c in classes]
+                        fixes.append(f"{tag} '{wanted[:40]}': an on-image button measured on a light ground -> u-btn--primary")
+                    continue
                 styles = block.setdefault("baseStyles", {})
                 current = parse_color(styles.get("color"), palette)
                 if current and contrast(composite(current, bg), bg) >= minimum:
