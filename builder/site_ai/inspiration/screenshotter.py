@@ -595,7 +595,7 @@ async () => {
     const fs = parseFloat(getComputedStyle(el).fontSize) || 16; const large = fs >= 24;
     if (ratio < (large ? 2.5 : 3.5)) {
       n++;
-      out.push({kind: 'unreadable-on-photo', severity: ratio < 1.8 ? 'high' : 'medium', where: el.tagName.toLowerCase() + ' "' + t + '"', detail: 'contrast ' + ratio.toFixed(1) + ':1 between its ink ' + getComputedStyle(el).color + ' and the photograph behind it (mean luminance ' + mean.toFixed(2) + '): give the copy an ink that reads on this picture, or a darker scrim under it, or move it off the picture'});
+      out.push({kind: 'unreadable-on-photo', severity: ratio < 1.8 ? 'high' : 'medium', where: el.tagName.toLowerCase() + ' "' + t + '"', picture: pic.src.replace(location.origin, ''), detail: 'contrast ' + ratio.toFixed(1) + ':1 between its ink ' + getComputedStyle(el).color + ' and the photograph behind it (mean luminance ' + mean.toFixed(2) + '): give the copy an ink that reads on this picture, or a darker scrim under it, or move it off the picture'});
       continue;
     }
     // dark ink on a photograph that is not pale: the numbers pass and the eye does not (a navy
@@ -603,7 +603,7 @@ async () => {
     // white over a scrim unless the picture is pale.
     if (li < 0.2 && mean < 0.7 && (large || /^h[1-3]$/i.test(el.tagName))) {
       n++;
-      out.push({kind: 'dark-on-photo', severity: 'high', where: el.tagName.toLowerCase() + ' "' + t + '"', detail: 'dark ink ' + getComputedStyle(el).color + ' on a photograph of mean luminance ' + mean.toFixed(2) + ': a headline on a picture is white over a scrim (u-over-image), or the picture is pale; never dark type on a mid or dark photograph'});
+      out.push({kind: 'dark-on-photo', severity: 'high', where: el.tagName.toLowerCase() + ' "' + t + '"', picture: pic.src.replace(location.origin, ''), detail: 'dark ink ' + getComputedStyle(el).color + ' on a photograph of mean luminance ' + mean.toFixed(2) + ': a headline on a picture is white over a scrim (u-over-image), or the picture is pale; never dark type on a mid or dark photograph'});
     }
   }
   return out;

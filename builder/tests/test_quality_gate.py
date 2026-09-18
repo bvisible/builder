@@ -464,3 +464,16 @@ class TestCopyMeasuredOnAPhotoGetsTheScrim(unittest.TestCase):
 		self.assertIn("u-over-image", blocks[0]["classes"])
 		self.assertEqual(blocks[0]["children"][1]["children"][0]["baseStyles"]["color"], "#ffffff")
 
+	def test_the_picture_the_probe_read_names_the_section_to_veil(self):
+		from builder.site_ai.nora.contrast import repair_measured_contrast
+
+		# a two-column hero: the picture is a plain img in the second column, nothing "covers"
+		blocks = [{"element": "section", "children": [
+			{"element": "div", "children": [{"element": "h1", "innerHTML": "Neuf marques", "baseStyles": {"color": "#1e293b"}}]},
+			{"element": "div", "children": [{"element": "img", "attributes": {"src": "/files/hero-rider.jpg"}}]},
+		]}]
+		findings = [{"kind": "unreadable-on-photo", "severity": "high", "width": 1440, "where": 'h1 "Neuf marques"', "picture": "/files/hero-rider.jpg", "detail": "contrast 1.5:1"}]
+		fixes = repair_measured_contrast(blocks, findings, {})
+		self.assertTrue(any("scrim" in f for f in fixes))
+		self.assertIn("u-over-image", blocks[0]["classes"])
+

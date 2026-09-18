@@ -550,7 +550,7 @@ def repair_measured_contrast(blocks: list[dict], findings: list[dict], palette: 
         # //// takes the design system's scrim and the copy goes white, the way every headline on a
         # //// picture is meant to sit; the writer was told twice and kept the composition.
         if finding.get("kind") in ("unreadable-on-photo", "dark-on-photo"):
-            on_photo.append((tag, wanted))
+            on_photo.append((tag, wanted, str(finding.get("picture") or "")))
             continue
         if finding.get("kind") != "unreadable-text":
             continue
@@ -630,31 +630,58 @@ def repair_measured_contrast(blocks: list[dict], findings: list[dict], palette: 
 # //// Neoffice ▲▲▲
 
 
-def _veil_measured_on_photo(blocks: list[dict], wanted: list[tuple[str, str]]) -> list[str]:
-    """The block named by the probe goes white, and the nearest ancestor that shows the picture
-    takes the scrim classes (u-over-image u-over-image--bottom). Returns one line per edit."""
+def _shows_file(block: dict, picture: str) -> bool:
+    """Whether the block draws `picture` (an img src or a background url), by its file name."""
+    name = (picture or "").rsplit("/", 1)[-1].split("?", 1)[0]
+    if not name:
+        return False
+    styles = block.get("baseStyles") or {}
+    attrs = block.get("attributes") or {}
+    return name in str(attrs.get("src") or "") or name in str(styles.get("backgroundImage") or "") or name in str(styles.get("background") or "")
+
+
+def _veil_measured_on_photo(blocks: list[dict], wanted: list[tuple[str, str, str]]) -> list[str]:
+    """The block named by the probe goes white, and the section that holds both the text and the
+    picture the probe read takes the scrim classes (u-over-image u-over-image--bottom) — the
+    picture found by its file name, whatever shape the writer gave it (an img beside the text,
+    an absolute layer, a background). Returns one line per edit."""
     fixes: list[str] = []
+    paths: dict[int, list[dict]] = {}
+    texts: dict[str, dict] = {}
+    pictures: dict[str, dict] = {}
 
     def walk(block: dict, ancestors: list[dict], depth: int = 0) -> None:
         if depth > 24 or not isinstance(block, dict):
             return
+        paths[id(block)] = ancestors
         text = _plain_text(block)
-        if text:
-            for tag, want in wanted:
-                if not text.startswith(want[:60]):
-                    continue
-                styles = block.setdefault("baseStyles", {})
-                styles["color"] = SCRIM_INK
-                holder = next((a for a in reversed(ancestors) if _has_covering_picture(a)), None)
-                if holder is not None and not any(c.startswith(VEILED) for c in _classes(holder)):
-                    holder["classes"] = [*_classes(holder), "u-over-image", "u-over-image--bottom"]
-                    fixes.append(f"{tag} '{want[:40]}': white on a scrim (the section it sits on takes u-over-image)")
-                else:
-                    fixes.append(f"{tag} '{want[:40]}': white ink on the photograph")
+        for tag, want, picture in wanted:
+            if text and text.startswith(want[:60]) and want not in texts:
+                texts[want] = block
+            if picture and picture not in pictures and _shows_file(block, picture):
+                pictures[picture] = block
         for child in block.get("children") or []:
             walk(child, [*ancestors, block], depth + 1)
 
     for block in blocks:
         walk(block, [])
+    for tag, want, picture in wanted:
+        block = texts.get(want)
+        if block is None:
+            continue
+        block.setdefault("baseStyles", {})["color"] = SCRIM_INK
+        holder = None
+        shown = pictures.get(picture)
+        if shown is not None:
+            mine, theirs = paths.get(id(block), []), [*paths.get(id(shown), []), shown]
+            common = [a for a in mine if any(a is b for b in theirs)]
+            holder = common[-1] if common else None
+        if holder is None:
+            holder = next((a for a in reversed(paths.get(id(block), [])) if _has_covering_picture(a)), None)
+        if holder is not None and not any(c.startswith(VEILED) for c in _classes(holder)):
+            holder["classes"] = [*_classes(holder), "u-over-image", "u-over-image--bottom"]
+            fixes.append(f"{tag} '{want[:40]}': white on a scrim (the section holding it and its picture takes u-over-image)")
+        else:
+            fixes.append(f"{tag} '{want[:40]}': white ink on the photograph")
     return fixes
 
