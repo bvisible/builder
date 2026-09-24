@@ -19,16 +19,15 @@
 	<link rel="canonical" href="{{ canonical_url }}" />
 	{% endif %}
 	<title>{{title}}</title>
-	{# //// Neoffice — the favicon falls back to the Neoffice SVG, not to frappe_black/white.png. #}
-	{#-
-		Favicon priority (first non-empty wins):
-		1. `favicon_light` / `favicon_dark` — per-mode, set on Builder Page or Website Settings
-		2. `favicon` — single favicon on Website Settings
-		3. Neoffice default SVG (light + dark friendly)
-		Clients can override by setting `favicon` in Website Settings.
-	-#}
-	<link rel="icon" type="image/svg+xml" href="{{ favicon_light or favicon or '/assets/neoffice_theme/images/neoffice-favicon.svg' }}" media="(prefers-color-scheme: light)"/>
-	<link rel="icon" type="image/svg+xml" href="{{ favicon_dark or favicon or '/assets/neoffice_theme/images/neoffice-favicon.svg' }}" media="(prefers-color-scheme: dark)"/>
+	{#- //// Neoffice — REWRITTEN (2026-09-24, neoffice-maintenance#691 D27): the site's one icon,
+	    resolved by builder/site_icon.py (set_favicon) — the icon somebody chose, else a PNG drawn
+	    from the site's mark or initial, else Neoffice's. Upstream fell back to frappe_black/
+	    white.png; we had fallen back to Neoffice's SVG, typed image/svg+xml whatever the file
+	    was: Google reads no SVG favicon, and a client site wore Neoffice's mark. -#}
+	{%- set icon = site_icon or {} -%}
+	{%- set icon_href = icon.href or favicon or '/assets/neoffice_theme/images/neoffice_icon.png' -%}
+	<link rel="icon" href="{{ icon_href }}"{% if icon.type %} type="{{ icon.type }}"{% endif %}{% if icon.sizes %} sizes="{{ icon.sizes }}"{% endif %}/>
+	<link rel="apple-touch-icon" href="{{ icon_href }}"/>
 	{% block meta_block %}{% include "templates/includes/meta_block.html" %}{% endblock %}
 	<link rel="stylesheet" href="/assets/builder/reset.css?v=7" media="screen">
 	<style>

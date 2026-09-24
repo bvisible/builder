@@ -98,6 +98,8 @@ update_website_context = [
 	"builder.overrides.site_chrome.inject_site_chrome",
 	# the blog wears the site's design: our templates, chosen after the app's
 	"builder.blog_chrome.apply",
+	# //// Neoffice — every page of a site names the same icon, one Google reads (site_icon.py)
+	"builder.site_icon.apply",
 ]
 # A disabled plugin does not serve its public routes.
 before_request = ["builder.plugins.route_guard"]
@@ -362,7 +364,12 @@ website_route_rules = [
 ]
 
 website_path_resolver = "builder.builder.doctype.builder_page.builder_page.resolve_path"
-page_renderer = "builder.builder.doctype.builder_page.builder_page.BuilderPageRenderer"
+# //// Neoffice — a list: SiteIconRenderer answers /favicon.ico and /site-icon.png (site_icon.py),
+# //// first so the Builder page lookup never runs for them. Upstream: the Builder renderer alone.
+page_renderer = [
+	"builder.site_icon.SiteIconRenderer",
+	"builder.builder.doctype.builder_page.builder_page.BuilderPageRenderer",
+]
 
 get_web_pages_with_dynamic_routes = (
 	"builder.builder.doctype.builder_page.builder_page.get_web_pages_with_dynamic_routes"

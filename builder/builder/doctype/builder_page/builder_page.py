@@ -740,16 +740,18 @@ class BuilderPage(WebsiteGenerator):
 		context.metatags = metatags
 
 	def set_favicon(self, context):
-		if not context.get("favicon"):
-			context.favicon = self.favicon
-		if not context.get("favicon"):
-			context.favicon = frappe.get_cached_value("Builder Settings", "Builder Settings", "favicon")
-		# //// Neoffice — our webpage.html defaults the favicon to neoffice_theme's SVG; on a
-		# //// standalone bench that asset does not exist (3acfd7d6).
-		if not context.get("favicon") and "neoffice_theme" not in frappe.get_installed_apps():
-			# Standalone bench (no neoffice_theme): the template's Neoffice
-			# default SVG does not exist -- fall back to a builder-shipped asset.
-			context.favicon = "/assets/builder/frontend/builder_logo.png"
+		# //// Neoffice — REWRITTEN: one icon for the whole site (builder/site_icon.py, 2026-09-24,
+		# //// neoffice-maintenance#691 D27). Upstream took the page's favicon, then Builder
+		# //// Settings', and our template fell back to Neoffice's SVG — which Google does not read
+		# //// and which is not the client's. Website Settings' favicon, dropped by the `del
+		# //// context.favicon` of get_context, was what the shop's pages of the same domain wore.
+		# //// site_icon keeps upstream's order, then Website Settings', then an icon drawn from
+		# //// the site's mark or initial; the standalone-bench fallback (3acfd7d6) lives there.
+		from builder.site_icon import site_icon
+
+		icon = site_icon(context.get("favicon") or self.favicon)
+		context.site_icon = icon
+		context.favicon = icon.href or None
 
 	def set_language(self, context):
 		# Set page-specific language or fall back to default language from Builder Settings
