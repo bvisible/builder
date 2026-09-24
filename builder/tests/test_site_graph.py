@@ -28,6 +28,7 @@ def contribute(organization):
 	"""A `site_organization` hook, as another app declares one."""
 	organization["@type"] = "OnlineStore"
 	organization["vatID"] = "CHE-123.456.789 TVA"
+	return [{"@type": "Store", "parentOrganization": {"@id": organization["@id"]}}, "not a node"]
 
 
 def fail(organization):
@@ -94,10 +95,14 @@ class TestSiteGraph(unittest.TestCase):
 	def test_other_apps_complete_the_organization_and_a_failure_costs_only_their_share(self):
 		hooks = ["builder.tests.test_site_graph.fail", "builder.tests.test_site_graph.contribute"]
 		with patch("builder.site_graph.frappe.log_error") as logged:
-			organization = _graph(_Chrome(logo_text="Maison Test"), hooks=hooks)["@graph"][1]
+			graph = _graph(_Chrome(logo_text="Maison Test"), hooks=hooks)["@graph"]
+		organization = graph[1]
 		self.assertEqual(organization["@type"], "OnlineStore")
 		self.assertEqual(organization["vatID"], "CHE-123.456.789 TVA")
 		logged.assert_called_once()
+		# the node a contribution returns joins the graph; what is not a node does not
+		self.assertEqual(len(graph), 3)
+		self.assertEqual(graph[2]["parentOrganization"], {"@id": organization["@id"]})
 
 
 class TestSiteHome(unittest.TestCase):

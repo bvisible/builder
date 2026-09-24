@@ -9,8 +9,9 @@
 #
 # The chrome holds the identity: its logo, its business_* fields and social links, per site
 # through the Variant. An app that knows more adds it through the `site_organization` hook, a
-# function given the Organization node to complete: webshop types it an OnlineStore and
-# declares its return window and its free delivery.
+# function given the Organization node to complete, which may return nodes of its own: webshop
+# types it an OnlineStore, declares its return window and its free delivery, and adds its
+# physical store with its hours.
 import frappe
 
 SOCIAL_FIELDS = ("facebook_url", "instagram_url", "linkedin_url", "youtube_url", "twitter_url")
@@ -54,11 +55,17 @@ def site_graph(config=None) -> dict | None:
 	profiles = [config.get(field).strip() for field in SOCIAL_FIELDS if (config.get(field) or "").strip()]
 	if profiles:
 		organization["sameAs"] = profiles
+	# a contribution completes the Organization in place, and may return nodes of its own for
+	# the graph (webshop: its physical store, tied to the Organization by @id)
+	nodes = []
 	for method in frappe.get_hooks("site_organization") or []:
 		try:
-			frappe.get_attr(method)(organization)
+			added = frappe.get_attr(method)(organization)
 		except Exception:
 			frappe.log_error(f"Site organization: {method} failed", frappe.get_traceback())
+			continue
+		if isinstance(added, list | tuple):
+			nodes.extend(node for node in added if isinstance(node, dict))
 	website = {
 		"@type": "WebSite",
 		"@id": f"{base}/#website",
@@ -66,7 +73,7 @@ def site_graph(config=None) -> dict | None:
 		"name": name,
 		"publisher": {"@id": organization["@id"]},
 	}
-	return {"@context": "https://schema.org", "@graph": [website, organization]}
+	return {"@context": "https://schema.org", "@graph": [website, organization, *nodes]}
 
 
 def is_site_home(page) -> bool:
