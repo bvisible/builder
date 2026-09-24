@@ -29,15 +29,13 @@ def site_base() -> str:
 def site_graph(config=None) -> dict | None:
 	"""The WebSite and the Organization of the site being served, or None when the site has no
 	chrome (an offline site) or no name of its own."""
-	from builder.site_icon import site_name
-
 	if config is None:
 		from builder.hf_utils.header_footer import get_header_footer_config
 
 		config = get_header_footer_config()
 	if not config:
 		return None
-	name = site_name(config) or (config.get("business_name") or "").strip()
+	name = display_name(config)
 	if not name:
 		return None
 	base = site_base()
@@ -74,6 +72,16 @@ def site_graph(config=None) -> dict | None:
 		"publisher": {"@id": organization["@id"]},
 	}
 	return {"@context": "https://schema.org", "@graph": [website, organization, *nodes]}
+
+
+def display_name(config) -> str:
+	"""The one name the site goes by: the WebSite name of its home page, and what the pages
+	other apps render announce (webshop's og:site_name, title suffix and seller). Google
+	reads them together to pick the name it prints above the site's results: the header's
+	text, else Website Settings' name, else the business name."""
+	from builder.site_icon import site_name
+
+	return site_name(config) or (config.get("business_name") or "").strip()
 
 
 def is_site_home(page) -> bool:

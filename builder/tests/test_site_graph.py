@@ -83,6 +83,13 @@ class TestSiteGraph(unittest.TestCase):
 		self.assertEqual(_graph(_Chrome(business_name="Rives SA"))["@graph"][0]["name"], "Rives SA")
 		self.assertIsNone(_graph(_Chrome(logo_text="My Site")))
 
+	def test_one_name_for_the_home_page_and_the_other_apps(self):
+		# webshop's og:site_name, title suffix and seller read display_name: the WebSite's name
+		with patch("builder.site_icon._website_setting", return_value="Frappe"):
+			self.assertEqual(site_graph.display_name(_Chrome(logo_text="Maison Test")), "Maison Test")
+			self.assertEqual(site_graph.display_name(_Chrome(business_name="Rives SA")), "Rives SA")
+			self.assertEqual(site_graph.display_name(_Chrome()), "")
+
 	def test_a_site_without_chrome_declares_nothing(self):
 		# an offline site: get_header_footer_config answers None to a visitor
 		with patch("builder.hf_utils.header_footer.get_header_footer_config", return_value=None):
