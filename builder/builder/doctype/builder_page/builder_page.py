@@ -698,6 +698,8 @@ class BuilderPage(WebsiteGenerator):
 		self.set_style_and_script(context)
 		self.set_meta_tags(context=context, page_data=page_data)
 		self.set_favicon(context)
+		# //// Neoffice — the site's identity for search engines, on its home page (site_graph.py)
+		self.set_site_graph(context)
 		self.set_language(context)
 		context.page_data = clean_data(context.page_data)
 		# //// Neoffice — our templates/generators/webpage.html owns the document <body> (it wraps
@@ -752,6 +754,20 @@ class BuilderPage(WebsiteGenerator):
 		icon = site_icon(context.get("favicon") or self.favicon)
 		context.site_icon = icon
 		context.favicon = icon.href or None
+
+	# //// Neoffice — added method (2026-09-24, neoffice-maintenance#691 lot 1): the site's WebSite and
+	# //// Organization, declared once on its home page (builder/site_graph.py). A description of
+	# //// the site must never cost the page: logged, and the page renders without it.
+	def set_site_graph(self, context):
+		from builder.site_graph import is_site_home, site_graph
+
+		context.site_jsonld = None
+		if not is_site_home(self):
+			return
+		try:
+			context.site_jsonld = site_graph()
+		except Exception:
+			frappe.log_error("Site structured data failed", frappe.get_traceback())
 
 	def set_language(self, context):
 		# Set page-specific language or fall back to default language from Builder Settings

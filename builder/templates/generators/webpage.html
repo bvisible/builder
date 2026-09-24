@@ -28,6 +28,11 @@
 	{%- set icon_href = icon.href or favicon or '/assets/neoffice_theme/images/neoffice_icon.png' -%}
 	<link rel="icon" href="{{ icon_href }}"{% if icon.type %} type="{{ icon.type }}"{% endif %}{% if icon.sizes %} sizes="{{ icon.sizes }}"{% endif %}/>
 	<link rel="apple-touch-icon" href="{{ icon_href }}"/>
+	{#- //// Neoffice — the site's WebSite and Organization, on its home page only (builder/site_graph.py,
+	    2026-09-24, neoffice-maintenance#691 lot 1). -#}
+	{%- if site_jsonld %}
+	<script type="application/ld+json">{{ site_jsonld | tojson }}</script>
+	{%- endif %}
 	{% block meta_block %}{% include "templates/includes/meta_block.html" %}{% endblock %}
 	<link rel="stylesheet" href="/assets/builder/reset.css?v=7" media="screen">
 	<style>
