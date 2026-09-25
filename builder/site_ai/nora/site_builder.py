@@ -1678,6 +1678,22 @@ def site_pages_for_menu(created: list[dict], profile: str | None, order: list[st
 # //// Neoffice ▲▲▲
 
 
+def footer_blurb(text: str) -> str:
+    """The site's activity as a visitor reads it in the footer: its first paragraph, in plain words.
+
+    The activity a build receives is written for a model, and may carry a brief's scaffolding:
+    one arrived ending with the brief's own "## REAL BUSINESS DATA (use EXACTLY these values)"
+    section and its list of contact details, and the footer printed "## REAL BUSINESS DATA (u",
+    cut at 200 characters, on every page of the site (2026-09-18). What follows a blank line or
+    a heading is for the model, never for the footer; a heading or list marker is dropped."""
+    import re
+
+    text = (text or "").strip()
+    first = re.split(r"\n\s*\n|\n\s*#{1,6}\s", text, maxsplit=1)[0]
+    lines = [line.strip() for line in first.splitlines() if not re.match(r"\s*(#{1,6}\s|[-*•]\s)", line)]
+    return " ".join(line for line in lines if line)
+
+
 def apply_navigation(config, created: list[dict], site_type: str, description: str, profile: str | None, lang: str = "fr", site_name: str = "") -> None:
     """Menu, footer and home page from the pages the SITE has (site_pages_for_menu), which is
     the pages this run built plus the published ones it left alone. Labels are translated into
@@ -1738,7 +1754,7 @@ def apply_navigation(config, created: list[dict], site_type: str, description: s
     if hasattr(config, "footer_description"):
         from builder.api import _shorten_for_footer
 
-        config.footer_description = _shorten_for_footer(description)
+        config.footer_description = _shorten_for_footer(footer_blurb(description))
     if hasattr(config, "footer_links"):
         config.footer_links = []
         for page in created:

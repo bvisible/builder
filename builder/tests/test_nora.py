@@ -845,6 +845,20 @@ class TestShopIncludes(unittest.TestCase):
 		self.assertEqual(["/", "/all-products"], urls[:2])
 		self.assertIn("/about", urls)
 
+	def test_the_footer_never_prints_the_briefs_scaffolding(self):
+		"""An activity arrived ending with the brief's business-data section, and the footer
+		printed "## REAL BUSINESS DATA (u" on every page (2026-09-18)."""
+		from builder.site_ai.nora.site_builder import footer_blurb
+
+		activity = (
+			"Un site vitrine pour une fromagerie artisanale, vente directe au marché\n\n"
+			"## REAL BUSINESS DATA (use EXACTLY these values)\n- Company name: Fromagerie Test\n- Phone: 000"
+		)
+		self.assertEqual(footer_blurb(activity), "Un site vitrine pour une fromagerie artisanale, vente directe au marché")
+		self.assertEqual(footer_blurb("# Title\nA florist in Geneva."), "A florist in Geneva.")
+		self.assertEqual(footer_blurb("A florist in Geneva. Fresh flowers daily."), "A florist in Geneva. Fresh flowers daily.")
+		self.assertEqual(footer_blurb(""), "")
+
 	def test_a_home_that_sells_shows_real_products(self):
 		from builder.site_ai.nora.site_builder import page_sections
 
