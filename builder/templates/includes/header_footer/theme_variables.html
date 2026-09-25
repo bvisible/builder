@@ -8,9 +8,12 @@
 {%- if body_font != heading_font -%}
 	{%- set fonts_to_load = fonts_to_load + [body_font] -%}
 {%- endif -%}
-{%- for font in fonts_to_load -%}
-<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family={{ font | replace(' ', '+') }}:wght@400;500;600;700&display=swap">
-{%- endfor -%}
+{#- //// Neoffice — one request for both families, and both origins opened before it: this
+    sits in the page's body, and the font files come from a second origin the browser only learnt
+    of once the stylesheet had arrived. Two stylesheets and no preconnect before (2026-09-25). -#}
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family={{ fonts_to_load | map('replace', ' ', '+') | join(':wght@400;500;600;700&family=') }}:wght@400;500;600;700&display=swap">
 
 {#- The site's design system as Builder Tokens: when the AI build minted them, the six
     theme variables alias the token handles (the hex stays as the fallback), so editing a
