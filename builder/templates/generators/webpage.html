@@ -46,8 +46,8 @@
 	@media (prefers-color-scheme: dark) { :root:not([data-prefers-color-scheme="light"]):not([data-theme="light"]) { --builder-image-dim: brightness(0.85) contrast(1.05) } }
 	:root[data-prefers-color-scheme="dark"], :root[data-theme="dark"] { --builder-image-dim: brightness(0.85) contrast(1.05) }
 	</style>
-	<link rel="preconnect" href="https://fonts.googleapis.com">
-	<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+	{#- //// Neoffice — the two preconnects to Google are gone (SEO / GEO plan, D-10): font_urls now
+	    name the site's own copy of each stylesheet (builder/hosted_fonts.py). -#}
 	{% for font_url in font_urls %}
 	<link rel="stylesheet" href="{{ font_url }}" media="screen">
 	{% endfor %}

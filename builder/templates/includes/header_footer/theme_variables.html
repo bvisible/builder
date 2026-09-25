@@ -1,19 +1,13 @@
-{# //// Neoffice — added file (no upstream equivalent): the site's CSS custom properties and Google Fonts
-   //// links. builder/templates/includes/header_footer/** = the Neoffice site chrome (Website Header
+{# //// Neoffice — added file (no upstream equivalent): the site's CSS custom properties and the links
+   //// to its fonts. builder/templates/includes/header_footer/** = the Neoffice site chrome (Website Header
    //// Footer Config). First commit 5233329b 2026-02-02. #}
-{# Google Fonts for heading and body fonts #}
-{%- set heading_font = theme.heading_font if theme else 'Inter' -%}
-{%- set body_font = theme.body_font if theme else 'Inter' -%}
-{%- set fonts_to_load = [heading_font] -%}
-{%- if body_font != heading_font -%}
-	{%- set fonts_to_load = fonts_to_load + [body_font] -%}
-{%- endif -%}
-{#- //// Neoffice — one request for both families, and both origins opened before it: this
-    sits in the page's body, and the font files come from a second origin the browser only learnt
-    of once the stylesheet had arrived. Two stylesheets and no preconnect before (2026-09-25). -#}
-<link rel="preconnect" href="https://fonts.googleapis.com">
-<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family={{ fonts_to_load | map('replace', ' ', '+') | join(':wght@400;500;600;700&family=') }}:wght@400;500;600;700&display=swap">
+{#- //// Neoffice — the heading and body fonts from the site's own copy (SEO / GEO plan, D-10): the
+    link to fonts.googleapis.com handed every visitor's IP address to Google. One stylesheet for
+    both families, copied once by builder/hosted_fonts.py; get_theme_css passes its URL. No link
+    when the copy could not be made: the text falls back on the font stack. -#}
+{%- for url in font_stylesheets or [] %}
+<link rel="stylesheet" href="{{ url }}">
+{%- endfor %}
 
 {#- The site's design system as Builder Tokens: when the AI build minted them, the six
     theme variables alias the token handles (the hex stays as the fallback), so editing a

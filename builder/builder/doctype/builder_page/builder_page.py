@@ -673,7 +673,12 @@ class BuilderPage(WebsiteGenerator):
 		context.has_dual_mode_image = has_dual_mode_image
 
 		self.set_custom_font(context, fonts)
-		context.font_urls = get_google_font_urls(fonts)
+		# //// Neoffice — the site's own copy of each Google stylesheet (SEO / GEO plan, D-10): a page
+		# //// that linked fonts.googleapis.com handed every visitor's IP address to Google. The copy is
+		# //// made once, server side, by builder/hosted_fonts.py.
+		from builder.hosted_fonts import local_urls
+
+		context.font_urls = local_urls(get_google_font_urls(fonts))
 		context.__content = content
 		context.style = render_template(style, page_data)
 		context.editor_link = f"/{builder_path}/page/{self.name}"

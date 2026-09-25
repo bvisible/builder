@@ -353,11 +353,16 @@ def get_theme_css(config=None) -> str:
 	surface = str((theme or {}).get("background_color") or "#ffffff").strip()
 	surface_is_light = _is_light(surface)
 	surface_text = "#1f272e" if surface_is_light else "#f5f5f5"
+	# //// Neoffice — the chrome's two fonts from the site's own copy (SEO / GEO plan, D-10): the
+	# //// template linked fonts.googleapis.com, which handed every visitor's IP address to Google.
+	from builder.hosted_fonts import chrome_stylesheets
+
 	# //// Neoffice — see the block marker above: surface_is_light passed to the template
 	return frappe.render_template(
 		"builder/templates/includes/header_footer/theme_variables.html",
 		{
 			"theme": theme,
+			"font_stylesheets": chrome_stylesheets(theme),
 			"surface_text": surface_text,
 			"surface_is_light": surface_is_light,
 			# //// Neoffice — the label colour of the primary and secondary buttons, dark or

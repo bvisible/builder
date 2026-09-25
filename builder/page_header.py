@@ -945,6 +945,7 @@ def render_component_band(component, data: dict) -> str:
 	if not block:
 		return ""
 	from builder.builder.doctype.builder_page.builder_page import get_block_html, get_google_font_urls
+	from builder.hosted_fonts import local_urls
 
 	try:
 		html, style, fonts, _dual = get_block_html(frappe.parse_json(block))
@@ -953,8 +954,10 @@ def render_component_band(component, data: dict) -> str:
 	except Exception:
 		frappe.log_error("Top page component could not be drawn", frappe.get_traceback())
 		return ""
+	# the site's own copy of the band's fonts, never Google's (SEO / GEO plan, D-10)
 	links = "".join(
-		f'<link rel="stylesheet" href="{escape_html(url)}" media="screen">' for url in get_google_font_urls(fonts or {})
+		f'<link rel="stylesheet" href="{escape_html(url)}" media="screen">'
+		for url in local_urls(get_google_font_urls(fonts or {}))
 	)
 	return f'{links}{style}<section class="site-page-header site-page-header--builder">{body}</section>'
 
