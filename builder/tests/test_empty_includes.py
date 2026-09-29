@@ -369,6 +369,63 @@ class TestCarouselsNeedPictures(unittest.TestCase):
 		with patch("frappe.db.exists", return_value=True), patch("frappe.db.count", return_value=0):
 			self.assertIs(False, include_has_data("webshop/templates/includes/brand_carousel.html"))
 
+	# //// Neoffice — added tests (2026-09-29): the brand check asks which brands THIS site shows.
+	# //// It answered "yes" as soon as one brand of the instance had a logo, whatever the site.
+	def test_a_site_that_shows_no_brand_has_no_brand_carousel(self):
+		from builder.empty_includes import include_has_data
+
+		with patch("builder.empty_includes._offered_brands", return_value={}), patch(
+			"builder.empty_includes.shop_has_pictured", return_value=True
+		):
+			self.assertIs(False, include_has_data("webshop/templates/includes/brand_carousel.html"))
+
+	def test_only_the_public_logos_of_the_brands_the_site_shows_count(self):
+		from builder.empty_includes import include_has_data
+
+		with patch("builder.empty_includes._offered_brands", return_value={"Brand One": 3, "Brand Two": 1}), patch(
+			"frappe.db.count", return_value=1
+		) as count:
+			self.assertIs(True, include_has_data("webshop/templates/includes/brand_carousel.html", "Shop B"))
+		doctype, filters = count.call_args.args
+		self.assertEqual("Brand", doctype)
+		self.assertIn(["name", "in", ["Brand One", "Brand Two"]], filters)
+		self.assertIn(["image", "is", "set"], filters)
+		# a private file is a broken picture for a visitor
+		self.assertIn(["image", "not like", "%/private/%"], filters)
+		with patch("builder.empty_includes._offered_brands", return_value={"Brand One": 3}), patch("frappe.db.count", return_value=0):
+			self.assertIs(False, include_has_data("webshop/templates/includes/brand_carousel.html", "Shop B"))
+
+	def test_before_the_webshop_rule_the_old_question_stands(self):
+		from builder.empty_includes import include_has_data
+
+		with patch("builder.empty_includes._offered_brands", return_value=None), patch(
+			"builder.empty_includes.shop_has_pictured", return_value=True
+		) as pictured:
+			self.assertIs(True, include_has_data("webshop/templates/includes/brand_carousel.html"))
+		pictured.assert_called_once_with("Brand", "image")
+
+	def test_the_site_asked_about_is_set_for_the_call_and_restored(self):
+		try:
+			from webshop.webshop.product_data_engine import brand_pages  # noqa: F401
+			assert hasattr(brand_pages, "offered_brands")
+		except (ImportError, AssertionError):
+			self.skipTest("this webshop has no offered_brands yet")
+		import frappe
+
+		from builder.empty_includes import _offered_brands
+
+		seen = []
+		previous = getattr(frappe.local, "website_profile", None)
+		frappe.local.website_profile = "Site A"
+		try:
+			with patch("webshop.webshop.product_data_engine.brand_pages.offered_brands",
+			           side_effect=lambda: seen.append(frappe.local.website_profile) or {"Brand One": 1}):
+				self.assertEqual({"Brand One": 1}, _offered_brands("Site B"))
+			self.assertEqual(["Site B"], seen)
+			self.assertEqual("Site A", frappe.local.website_profile)
+		finally:
+			frappe.local.website_profile = previous
+
 	def test_without_the_shop_app_there_is_nothing_to_show(self):
 		from builder.empty_includes import include_has_data
 

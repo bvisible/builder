@@ -108,7 +108,44 @@ def has_pictured_products(profile=None) -> bool:
 
 
 def has_pictured_brands(profile=None) -> bool:
-	return shop_has_pictured("Brand", "image")
+	"""Whether the brand carousel has a logo to show on the site of `profile`.
+
+	//// Neoffice — asked of the brands THIS site shows (2026-09-29). It answered "yes" as soon as
+	//// one brand of the instance had an image, whatever the site: with two sites on one instance,
+	//// a site whose brands show nothing kept the carousel's heading over an empty strip. The rule
+	//// is webshop's (brand_pages.offered_brands, the carousel's own since webshop #35: a brand is
+	//// offered only when the site shows something of it). Before that webshop, the old
+	//// instance-wide question stands."""
+	offered = _offered_brands(profile)
+	if offered is None:
+		return shop_has_pictured("Brand", "image")
+	if not offered:
+		return False
+	# a logo filed as private is a broken picture for a visitor: webshop's include leaves it out
+	return bool(
+		frappe.db.count(
+			"Brand",
+			[["name", "in", sorted(offered)], ["image", "is", "set"], ["image", "not like", "%/private/%"]],
+		)
+	)
+
+
+def _offered_brands(profile=None):
+	"""{brand: count} of what the site of `profile` shows (webshop's rule), or None when the
+	installed webshop does not have that rule yet. The profile is the site being built or
+	browsed: set for the call, the request's own restored after."""
+	try:
+		from webshop.webshop.product_data_engine.brand_pages import offered_brands
+	except ImportError:
+		return None
+	if not profile or getattr(frappe.local, "website_profile", None) == profile:
+		return offered_brands()
+	previous = getattr(frappe.local, "website_profile", None)
+	frappe.local.website_profile = profile
+	try:
+		return offered_brands()
+	finally:
+		frappe.local.website_profile = previous
 
 
 def has_team_members(profile=None) -> bool:

@@ -1453,6 +1453,10 @@ class TestShopIncludes(unittest.TestCase):
 		with patch("builder.site_ai.nora.site_builder._other_business", return_value=False), patch(
 			"builder.site_ai.nora.site_builder._profile_is_b2b", return_value=True
 		), patch("builder.empty_includes.shop_has_pictured", return_value=True), patch(
+			# //// Neoffice — the brand check asks webshop which brands the site shows (2026-09-29):
+			# //// answered "no rule" here, so the patched shop_has_pictured decides, as before
+			"builder.empty_includes._offered_brands", return_value=None
+		), patch(
 			"frappe.get_installed_apps", return_value=["frappe", "builder", "webshop"]
 		):
 			offered = [c.tag() for c in available_includes("accueil", "vitrine_user", "Espace B2B")]
