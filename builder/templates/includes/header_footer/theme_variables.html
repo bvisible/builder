@@ -341,8 +341,8 @@ a:where(:not(.u-btn)):hover {
 }
 
 /* //// Neoffice — the label colour is the one that reads on the button (--primary-text,
-   //// --secondary-text: get_theme_css picks dark or white by contrast; white on The
-   //// League's pink read poorly), and an outline or ghost button is drawn in the text
+   //// --secondary-text: get_theme_css picks dark or white by contrast; white on a
+   //// reseller site's pink read poorly), and an outline or ghost button is drawn in the text
    //// colour of where it sits: in the primary colour it vanished on a section painted
    //// in that colour (2026-09-10). */
 .u-btn--primary {
@@ -565,6 +565,56 @@ a:where(:not(.u-btn)):hover {
 	outline: none;
 	border-color: var(--primary-color);
 	box-shadow: 0 0 0 3px color-mix(in srgb, var(--primary-color) 18%, transparent);
+}
+
+/* //// Neoffice — a FAQ as an accordion (2026-09-29): a .u-faq holds one <details> per question,
+   //// its <summary> the question, the answer after it. A shop asked for its questions folded, so
+   //// a visitor opens the one they came for. The browser's triangle (drawn differently by each
+   //// engine, and by Safari only through its own pseudo-element) gives way to a plus that turns
+   //// into a minus, in the question's colour; a rule separates the questions. The summary rules
+   //// weigh one element, not zero: frappe's bundle (Bootstrap's reboot) sets summary { display:
+   //// list-item }, which beat a :where() and left the plus stuck to the question. A block's own
+   //// class still outweighs them. */
+:where(.u-faq > details) {
+	border-top: 1px solid color-mix(in srgb, currentColor 18%, transparent);
+}
+
+:where(.u-faq > details:last-child) {
+	border-bottom: 1px solid color-mix(in srgb, currentColor 18%, transparent);
+}
+
+:where(.u-faq) summary {
+	display: flex;
+	align-items: baseline;
+	justify-content: space-between;
+	gap: 1rem;
+	padding: 1.25rem 0;
+	cursor: pointer;
+	list-style: none;
+}
+
+.u-faq summary::-webkit-details-marker {
+	display: none;
+}
+
+.u-faq summary::after {
+	content: "+";
+	flex: none;
+	font-weight: 400;
+	line-height: 1;
+}
+
+.u-faq details[open] > summary::after {
+	content: "\2212";
+}
+
+.u-faq summary:focus-visible {
+	outline: 2px solid currentColor;
+	outline-offset: 4px;
+}
+
+:where(.u-faq details) > :not(summary) {
+	margin: 0 0 1.25rem;
 }
 
 @media (prefers-reduced-motion: reduce) {

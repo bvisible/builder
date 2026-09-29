@@ -223,6 +223,14 @@ website_components = [
 		"pages": ["contact", "one_page"],
 		"required": True,
 		"note": "Never write a <form> of your own beside it: this include IS the form.",
+		# //// Neoffice — the form can wait in a window, carry the business's consent sentence and ask
+		# //// for the phone (2026-09-29, the header of contact_form.html says how).
+		"params": [
+			{"name": "contact_dialog", "type": "bool", "default": False, "about": "the form waits in a window its button opens; any link to #contact opens it too, from this page or another (/about#contact)"},
+			{"name": "contact_button_text", "type": "str", "default": "Contact us", "about": "what the button that opens the window reads, in the site's language; empty draws no button, for a page with its own link to #contact"},
+			{"name": "consent_text", "type": "str", "default": "", "about": "the business's own consent sentence, a box the visitor must tick before sending"},
+			{"name": "phone_required", "type": "bool", "default": False, "about": "the visitor must give a phone number"},
+		],
 	},
 	{
 		"path": "builder/templates/includes/google_map.html",

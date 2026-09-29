@@ -10299,6 +10299,10 @@ msgid "Contact from the website"
 msgstr "Contact depuis le site web"
 
 #: builder/templates/includes/contact_form.html
+msgid "Consent given"
+msgstr "Consentement donné"
+
+#: builder/templates/includes/contact_form.html
 msgid "Thank you, your message has been sent."
 msgstr "Merci, votre message a été envoyé."
 

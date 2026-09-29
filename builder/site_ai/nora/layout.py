@@ -223,8 +223,8 @@ def repeater_rows(data_script: str) -> dict:
 
 def grid_stacked_cards(blocks: list, data_counts: dict | None = None) -> int:
     """A repeater whose template is a card, or a plain wrapper holding two cards or
-    more, stacks them in one column when it carries no grid: the trust section of The
-    League's home listed its four reasons as rows (2026-09-09). They get u-grid and a
+    more, stacks them in one column when it carries no grid: the trust section of a
+    reseller site's home listed its four reasons as rows (2026-09-09). They get u-grid and a
     column count from the repeater's data (three when unknown) or the number of cards,
     between two and four. Returns the edit count."""
     edits = 0

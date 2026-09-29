@@ -201,7 +201,11 @@ CLASS_CONTRACT = (
     "cards ['u-card'] (add 'u-card--raised' or 'u-card--flat'), photos and media frames ['u-media'], form fields ['u-input'], "
     "a wrapper that puts text over a photo ['u-over-image'] (add --bottom, --diagonal or --soft), a set of 2 to 4 equal items "
     "(cards, stats, steps, logos) in a container ['u-grid', 'u-grid--3'] (--2, --3 or --4) with NO gridTemplateColumns of its own: "
-    "the site lays it out on every screen. These classes carry the site's corners, elevation, hover, motion and grids, so do not "
+    "the site lays it out on every screen. "
+    # //// Neoffice — the design system's accordion (theme_variables.html, .u-faq, 2026-09-29)
+    "Questions and answers fold: a container ['u-faq'] holding one `details` element per question, its first child a `summary` "
+    "with the question, the answer after it; the site draws the rules and the open/close marker. "
+    "These classes carry the site's corners, elevation, hover, motion and grids, so do not "
     "hand-write borderRadius, boxShadow, hover rules or the columns of such a set."
 )
 
@@ -334,8 +338,8 @@ def normalise_pages(pages: list, site_type: str) -> list[dict]:
         # page lost its "home" route and everything keyed on it (the host page, the
         # profile's home_page, the hero brief). Every other page keeps the route the
         # model proposed (the French "a-propos" over the canonical "about"): forced to
-        # the canonical one, the model "corrected" the routes after the build of The
-        # League and renamed the open page, the home, to a-propos (2026-09-09)
+        # the canonical one, the model "corrected" the routes after the build of a
+        # reseller site and renamed the open page, the home, to a-propos (2026-09-09)
         # //// Neoffice — see reasoning above; every page but home now keeps the model's proposed route instead of always falling back to the canonical one (2d78d71d "fix(nora): includes written as offered, routes honoured but home, and the build's routes stated as final")
         proposed = _slug(str(raw.get("route") or "").strip("/")) if raw.get("route") else ""
         route = "home" if known_route == "home" else (proposed or known_route or _slug(title))

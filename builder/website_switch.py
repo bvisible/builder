@@ -9,7 +9,7 @@ bare, deep links 404, the root goes to /app. Staff keeps everything: that IS the
 preview before going live. So does the server-side render of the site build: the
 visual check screenshots the pages through the loopback, naming the profile, and the
 theme flags that request (`frappe.local.flags.server_side_render`); before that flag
-the check reviewed the login page as the home of both League sites and revised the
+the check reviewed the login page as the home of both sites of an instance and revised the
 real home on that critique (2026-09-09).
 """
 

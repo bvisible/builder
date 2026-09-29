@@ -7,45 +7,87 @@
    //// sender, subject and message only, so the script at the bottom puts the name and the phone at the
    //// top of the message and says on the page whether it went. Without JavaScript the form still posts
    //// the address and the message. The subject was French written in the code: it is translated now. #}
-<div class="builder-contact-form">
+{# //// Neoffice — four optional parameters (2026-09-29), each a {%- set -%} written before the include:
+   ////   contact_dialog       the form waits in a window instead of standing on the page. A button opens
+   ////                        it, and so does any link to #contact: on this page (the page's own "Contact
+   ////                        us" button, a FAQ's "customer service") or from another one (/about#contact
+   ////                        opens that page with the window open).
+   ////   contact_button_text  what that button reads (default "Contact us"); "" draws no button, for a
+   ////                        page that already has its own link to #contact.
+   ////   consent_text         a box the visitor must tick before sending, in the business's own words;
+   ////                        the message carries the sentence the visitor agreed to.
+   ////   phone_required       the visitor must give a phone number.
+   //// A shop asked for its form behind a "Contact us" button, with its own consent wording and none of
+   //// its own details on display (2026-09-28). #}
+{%- set cf_dialog = contact_dialog is defined and contact_dialog -%}
+{%- set cf_button = contact_button_text if contact_button_text is defined else _("Contact us") -%}
+{%- set cf_title = cf_button or _("Contact us") -%}
+{%- set cf_consent = consent_text if consent_text is defined and consent_text else "" -%}
+{%- set cf_phone_required = phone_required is defined and phone_required -%}
+{#- a page may carry the form twice (a window and a contact section): the window's fields keep ids of their own -#}
+{%- set cf_id = "dialog_" if cf_dialog else "" -%}
+<div class="builder-contact-form{% if cf_dialog %} builder-contact-form--dialog{% endif %}">
+    {%- if cf_dialog %}
+    {%- if cf_button %}
+    <button type="button" class="u-btn u-btn--primary builder-contact-form__open" data-contact-open>{{ cf_button }}</button>
+    {%- endif %}
+    <dialog class="builder-contact-form__dialog" aria-labelledby="{{ cf_id }}contact_title">
+    <div class="builder-contact-form__panel">
+    <div class="builder-contact-form__bar">
+        <h2 class="builder-contact-form__title" id="{{ cf_id }}contact_title">{{ cf_title }}</h2>
+        <button type="button" class="builder-contact-form__close" data-contact-close aria-label="{{ _('Close') | e }}">&times;</button>
+    </div>
+    {%- endif %}
     <form action="/api/method/frappe.www.contact.send_message" method="POST" class="contact-form"
           data-sent="{{ _('Thank you, your message has been sent.') | e }}"
           data-failed="{{ _('Your message could not be sent. Please check your email address and try again.') | e }}"
           data-name-label="{{ _('Name') | e }}"
-          data-phone-label="{{ _('Phone') | e }}">
+          data-phone-label="{{ _('Phone') | e }}"
+          data-consent-label="{{ _('Consent given') | e }}">
         <input type="hidden" name="cmd" value="frappe.www.contact.send_message">
         <input type="hidden" name="subject" value="{{ _('Contact from the website') | e }}">
 
         <div class="form-row">
             <div class="form-group">
-                <label for="sender_name">{{ _("Name") }} <span class="required">*</span></label>
-                <input type="text" id="sender_name" name="full_name" required autocomplete="name"
+                <label for="{{ cf_id }}sender_name">{{ _("Name") }} <span class="required">*</span></label>
+                <input type="text" id="{{ cf_id }}sender_name" name="full_name" required autocomplete="name"
                        placeholder="{{ _('Your name') }}">
             </div>
             <div class="form-group">
-                <label for="sender_email">{{ _("Email") }} <span class="required">*</span></label>
-                <input type="email" id="sender_email" name="sender" required autocomplete="email"
+                <label for="{{ cf_id }}sender_email">{{ _("Email") }} <span class="required">*</span></label>
+                <input type="email" id="{{ cf_id }}sender_email" name="sender" required autocomplete="email"
                        placeholder="{{ _('your.email@example.com') }}">
             </div>
         </div>
 
         <div class="form-group">
-            <label for="contact_phone">{{ _("Phone") }}</label>
-            <input type="tel" id="contact_phone" name="phone" autocomplete="tel"
+            <label for="{{ cf_id }}contact_phone">{{ _("Phone") }}{% if cf_phone_required %} <span class="required">*</span>{% endif %}</label>
+            <input type="tel" id="{{ cf_id }}contact_phone" name="phone" autocomplete="tel"{% if cf_phone_required %} required{% endif %}
                    placeholder="{{ _('+41 XX XXX XX XX') }}">
         </div>
 
         <div class="form-group">
-            <label for="contact_message">{{ _("Message") }} <span class="required">*</span></label>
-            <textarea id="contact_message" name="message" rows="5" required
+            <label for="{{ cf_id }}contact_message">{{ _("Message") }} <span class="required">*</span></label>
+            <textarea id="{{ cf_id }}contact_message" name="message" rows="5" required
                       placeholder="{{ _('How can we help you?') }}"></textarea>
         </div>
+
+        {%- if cf_consent %}
+        <div class="form-group builder-contact-form__consent">
+            <input type="checkbox" id="{{ cf_id }}contact_consent" name="consent" value="{{ cf_consent | e }}" required>
+            <label for="{{ cf_id }}contact_consent">{{ cf_consent }}</label>
+        </div>
+        {%- endif %}
 
         <button type="submit" class="btn btn-primary">
             {{ _("Send Message") }}
         </button>
         <p class="builder-contact-form__status" role="status" aria-live="polite" hidden></p>
     </form>
+    {%- if cf_dialog %}
+    </div>
+    </dialog>
+    {%- endif %}
 </div>
 
 <style>
@@ -53,10 +95,14 @@
     max-width: 600px;
     margin: 0 auto;
 }
+/* //// Neoffice — margin reset: Bootstrap's .form-row (frappe's bundle) pulls the row 5px out on
+   each side, so the name and e-mail fields stuck out past the phone and the message. */
 .builder-contact-form .form-row {
     display: grid;
     grid-template-columns: 1fr 1fr;
     gap: 1rem;
+    margin-left: 0;
+    margin-right: 0;
 }
 @media (max-width: 576px) {
     .builder-contact-form .form-row {
@@ -143,6 +189,95 @@
     border-left: 3px solid #ef4444;
     padding-left: 0.75rem;
 }
+/* //// Neoffice — the consent box (consent_text): a real checkbox beside the business's sentence,
+   in the ink of the form, not a full-width field. frappe's bundle draws checkboxes itself
+   (appearance: none) and the field rule above rounded that drawing into an empty circle, read as
+   a radio button: the box gets the browser's own drawing back, tinted with the ink. Its size is
+   frappe's --checkbox-size, which the bundle forces on the width (!important): the height follows,
+   or the box is drawn 14px by 18px. */
+.builder-contact-form .builder-contact-form__consent {
+    display: flex;
+    align-items: flex-start;
+    gap: 0.75rem;
+}
+.builder-contact-form .builder-contact-form__consent input[type="checkbox"] {
+    -webkit-appearance: checkbox;
+    appearance: auto;
+    flex: none;
+    width: var(--checkbox-size, 1rem);
+    height: var(--checkbox-size, 1rem);
+    margin: 0.25rem 0 0;
+    padding: 0;
+    border-radius: 0;
+    accent-color: currentColor;
+    cursor: pointer;
+}
+.builder-contact-form .builder-contact-form__consent label {
+    margin: 0;
+    font-weight: 400;
+    font-size: 0.9375rem;
+    line-height: 1.5;
+    cursor: pointer;
+}
+/* //// Neoffice — the form in a window (contact_dialog). The wrapper only holds the button, which
+   stands where the page put it. The window draws its own ground and ink from the page's pair
+   (--background-color, --text-color, as the body does), so it reads the same over a light band
+   and a dark one: the form inside keeps taking its ink from where it sits, here the window. */
+.builder-contact-form.builder-contact-form--dialog {
+    max-width: none;
+    margin: 0;
+}
+.builder-contact-form__dialog {
+    width: min(100% - 2rem, 40rem);
+    max-height: calc(100dvh - 2rem);
+    padding: 0;
+    border: none;
+    border-radius: var(--radius-lg, 12px);
+    background: var(--background-color, #ffffff);
+    color: var(--text-color, #1f272e);
+    box-shadow: 0 24px 64px rgba(0, 0, 0, 0.28);
+    overflow: auto;
+    overscroll-behavior: contain;
+}
+.builder-contact-form__dialog::backdrop {
+    background: rgba(0, 0, 0, 0.55);
+}
+html:has(.builder-contact-form__dialog[open]) {
+    overflow: hidden;
+}
+.builder-contact-form__panel {
+    padding: clamp(1.25rem, 4vw, 2rem);
+}
+.builder-contact-form__bar {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 1rem;
+    margin-bottom: 1.5rem;
+}
+.builder-contact-form__title {
+    margin: 0;
+    font-family: var(--heading-font, inherit);
+    font-size: clamp(1.375rem, 3vw, 1.75rem);
+    line-height: 1.15;
+    color: inherit;
+}
+.builder-contact-form__close {
+    flex: none;
+    width: 2.5rem;
+    height: 2.5rem;
+    border: 1px solid color-mix(in srgb, currentColor 25%, transparent);
+    border-radius: 50%;
+    background: transparent;
+    color: inherit;
+    font-size: 1.5rem;
+    line-height: 1;
+    cursor: pointer;
+}
+.builder-contact-form__close:hover,
+.builder-contact-form__close:focus-visible {
+    border-color: currentColor;
+}
 </style>
 
 <script>
@@ -162,6 +297,9 @@
             var head = [];
             if (field("full_name")) head.push(form.dataset.nameLabel + ": " + field("full_name"));
             if (field("phone")) head.push(form.dataset.phoneLabel + ": " + field("phone"));
+            // //// Neoffice — the sentence the visitor ticked travels with the message (consent_text)
+            var consent = form.elements.namedItem("consent");
+            if (consent && consent.checked) head.push(form.dataset.consentLabel + ": " + consent.value);
             var body = new URLSearchParams({
                 sender: field("sender"),
                 subject: field("subject"),
@@ -187,5 +325,57 @@
                 });
         });
     });
+
+    // //// Neoffice — the form in a window (contact_dialog, see the marker at the top). The first
+    // //// window of the page answers #contact: its button, any link to #contact on the page, and a
+    // //// visit to the page's #contact from elsewhere. Closing it takes #contact off the address, so
+    // //// a reload does not open it again. Bound once, even when the include runs twice.
+    var dialog = document.querySelector(".builder-contact-form__dialog");
+    if (!dialog || dialog.hasAttribute("data-bound") || typeof dialog.showModal !== "function") return;
+    dialog.setAttribute("data-bound", "1");
+    var open = function () {
+        if (dialog.open) return;
+        var status = dialog.querySelector(".builder-contact-form__status");
+        if (status) status.hidden = true;
+        // the window focuses its first control, the close button: no keyboard springs up on a phone
+        dialog.showModal();
+    };
+    var isContactLink = function (link) {
+        if (!link || !link.getAttribute("href")) return false;
+        var url = new URL(link.getAttribute("href"), window.location.href);
+        return url.hash === "#contact" && url.origin === window.location.origin && url.pathname === window.location.pathname;
+    };
+    document.addEventListener("click", function (event) {
+        var target = event.target instanceof Element ? event.target : null;
+        if (!target) return;
+        if (target.closest("[data-contact-open]")) {
+            open();
+            return;
+        }
+        var link = target.closest("a[href]");
+        if (isContactLink(link)) {
+            event.preventDefault();
+            open();
+        }
+    }, true);
+    dialog.querySelector("[data-contact-close]").addEventListener("click", function () {
+        dialog.close();
+    });
+    // a click on the backdrop lands on the dialog itself, outside its panel
+    dialog.addEventListener("click", function (event) {
+        if (event.target === dialog) dialog.close();
+    });
+    dialog.addEventListener("close", function () {
+        if (window.location.hash === "#contact") {
+            history.replaceState(null, "", window.location.pathname + window.location.search);
+        }
+    });
+    window.addEventListener("hashchange", function () {
+        if (window.location.hash === "#contact") open();
+    });
+    if (window.location.hash === "#contact") {
+        if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", open);
+        else open();
+    }
 })();
 </script>
