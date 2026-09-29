@@ -321,7 +321,13 @@ a:where(:not(.u-btn)):hover {
  * secondary are the same navy, letting it win painted the label the exact
  * colour of its own background.
  */
-:where(.u-btn) {
+/* //// Neoffice — `button:where(.u-btn)` added (2026-09-29). The page reset (builder/reset.css,
+   //// Tailwind's preflight) sets button { padding: 0; font-size: 100%; font-weight: inherit;
+   //// line-height: inherit } at one element's weight, which beat :where(.u-btn): a <button> wearing
+   //// the class came out with its label touching its edges (the newsletter window's Subscribe).
+   //// The second selector weighs one element, wins by order, and still yields to a block's class. */
+:where(.u-btn),
+button:where(.u-btn) {
 	display: inline-flex;
 	align-items: center;
 	justify-content: center;

@@ -1957,7 +1957,14 @@ def subscribe_to_newsletter(email: str, email_group: str = None):
 				message = frappe.render_template(template.response_, {"email": email, "email_group": email_group})
 				frappe.sendmail(email, subject=template.subject, message=message)
 			except Exception:
-				pass  # Don't fail subscription if welcome email fails
+				# //// Neoffice — logged, no longer swallowed (2026-09-29). The subscription stands and the
+				# //// visitor still reads "check your inbox"; a welcome email that never left (in a shop,
+				# //// the welcome code) was invisible to everyone. The Error Log names the address, so the
+				# //// shop can send it by hand.
+				frappe.log_error(
+					"Newsletter welcome email not sent",
+					f"Email Group: {email_group}\nTemplate: {welcome_template}\nSubscriber: {email}\n\n{frappe.get_traceback()}",
+				)
 
 		return {
 			"success": True,

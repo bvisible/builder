@@ -490,4 +490,103 @@
 .site-footer__custom:first-child {
 	border-top: none;
 }
+
+/* //// Neoffice — the newsletter window (footer.html, newsletter_popup). It draws its ground and ink
+   //// from the page's pair (--background-color, --text-color), as the contact window does, so it
+   //// reads the same on a light site and a dark one; the button is the design system's. */
+.site-newsletter-popup {
+	width: min(100% - 2rem, 30rem);
+	max-height: calc(100dvh - 2rem);
+	padding: 0;
+	border: none;
+	border-radius: var(--radius-lg, 12px);
+	background: var(--background-color, #ffffff);
+	color: var(--text-color, #1f272e);
+	box-shadow: 0 24px 64px rgba(0, 0, 0, 0.28);
+	overflow: auto;
+}
+.site-newsletter-popup::backdrop {
+	background: rgba(0, 0, 0, 0.5);
+}
+.site-newsletter-popup__panel {
+	position: relative;
+	padding: clamp(1.5rem, 5vw, 2.25rem);
+}
+.site-newsletter-popup__close {
+	position: absolute;
+	top: 0.75rem;
+	right: 0.75rem;
+	width: 2.5rem;
+	height: 2.5rem;
+	border: 1px solid color-mix(in srgb, currentColor 25%, transparent);
+	border-radius: 50%;
+	background: transparent;
+	color: inherit;
+	font-size: 1.5rem;
+	line-height: 1;
+	cursor: pointer;
+}
+.site-newsletter-popup__close:hover,
+.site-newsletter-popup__close:focus-visible {
+	border-color: currentColor;
+}
+.site-newsletter-popup__title {
+	margin: 0 2.5rem 0.75rem 0;
+	font-family: var(--heading-font, inherit);
+	font-size: clamp(1.375rem, 4vw, 1.75rem);
+	line-height: 1.15;
+	color: inherit;
+}
+.site-newsletter-popup__text {
+	margin: 0 0 1.25rem;
+	line-height: 1.55;
+}
+.site-newsletter-popup__form {
+	display: flex;
+	gap: 0.5rem;
+}
+.site-newsletter-popup__form[hidden] {
+	display: none;
+}
+.site-newsletter-popup__input {
+	flex: 1 1 auto;
+	min-width: 0;
+	padding: 0.75rem 1rem;
+	border: 1px solid color-mix(in srgb, currentColor 30%, transparent);
+	border-radius: var(--radius, 8px);
+	background: transparent;
+	color: inherit;
+	font: inherit;
+}
+.site-newsletter-popup__input::placeholder {
+	color: inherit;
+	opacity: 0.55;
+}
+.site-newsletter-popup__input:focus {
+	outline: none;
+	border-color: currentColor;
+	box-shadow: 0 0 0 3px color-mix(in srgb, currentColor 18%, transparent);
+}
+.site-newsletter-popup__submit {
+	flex: none;
+}
+.site-newsletter-popup__consent {
+	margin: 0.75rem 0 0;
+	font-size: 0.8125rem;
+	line-height: 1.5;
+	opacity: 0.75;
+}
+.site-newsletter-popup__message {
+	margin: 1rem 0 0;
+	font-weight: 600;
+}
+.site-newsletter-popup__message.is-error {
+	border-left: 3px solid #ef4444;
+	padding-left: 0.75rem;
+}
+@media (max-width: 480px) {
+	.site-newsletter-popup__form {
+		flex-direction: column;
+	}
+}
 </style>

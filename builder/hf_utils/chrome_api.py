@@ -87,6 +87,13 @@ SIMPLE_FIELDS = (
 	"youtube_url",
 	"show_newsletter",
 	"newsletter_title",
+	# //// Neoffice — the newsletter window (footer.html, 2026-09-29)
+	"newsletter_popup",
+	"newsletter_popup_title",
+	"newsletter_popup_text",
+	"newsletter_popup_consent",
+	"newsletter_popup_success",
+	"newsletter_popup_delay",
 	# //// Neoffice — the footer's opening-hours block (webshop provides the block itself)
 	"show_opening_hours",
 	"opening_hours_display",

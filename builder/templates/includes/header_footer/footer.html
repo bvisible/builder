@@ -292,3 +292,100 @@
 })();
 </script>
 {%- endif -%}
+
+{# //// Neoffice — the newsletter window (2026-09-29): a first-time visitor is offered the newsletter
+   //// once, after a few seconds (newsletter_popup on the chrome config). A shop asked for a welcome
+   //// code for subscribers. It posts to builder.api.subscribe_to_newsletter, which takes the Email
+   //// Group from the site and sends that group's welcome email template at once: the code goes in
+   //// that template, never in the page. Closed, it stays closed for 30 days; subscribed, for good.
+   //// Never over the cart, the checkout, the login or an account page. #}
+{%- if config.get("newsletter_popup") and config.newsletter_email_group -%}
+<dialog class="site-newsletter-popup" aria-labelledby="site-newsletter-popup-title"
+        data-delay="{{ config.get('newsletter_popup_delay') if config.get('newsletter_popup_delay') is not none else 8 }}"
+        data-key="builder-newsletter-popup:{{ config.newsletter_email_group | e }}"
+        data-success="{{ (config.get('newsletter_popup_success') or '') | e }}">
+	<div class="site-newsletter-popup__panel">
+		<button type="button" class="site-newsletter-popup__close" aria-label="{{ _('Close') | e }}">&times;</button>
+		<h2 class="site-newsletter-popup__title" id="site-newsletter-popup-title">{{ config.get("newsletter_popup_title") or newsletter_title or _("Subscribe to our newsletter") }}</h2>
+		{%- if config.get("newsletter_popup_text") %}
+		<p class="site-newsletter-popup__text">{{ config.get("newsletter_popup_text") }}</p>
+		{%- endif %}
+		<form class="site-newsletter-popup__form" novalidate>
+			<input type="email" name="email" class="site-newsletter-popup__input" required autocomplete="email"
+			       aria-label="{{ _('Email') | e }}" placeholder="{{ newsletter_placeholder or _('Enter your email') }}">
+			<button type="submit" class="u-btn u-btn--primary site-newsletter-popup__submit">{{ _("Subscribe") }}</button>
+		</form>
+		{%- if config.get("newsletter_popup_consent") %}
+		<p class="site-newsletter-popup__consent">{{ config.get("newsletter_popup_consent") }}</p>
+		{%- endif %}
+		<p class="site-newsletter-popup__message" role="status" aria-live="polite" hidden></p>
+	</div>
+</dialog>
+<script>
+(function () {
+	var dialog = document.querySelector(".site-newsletter-popup");
+	if (!dialog || typeof dialog.showModal !== "function") return;
+	// never over a purchase, a sign-in or an account page
+	if (/^\/(cart|checkout|login|update-password|me|orders?|invoices?|payment|app)(\/|$)/.test(window.location.pathname)) return;
+	var key = dialog.dataset.key;
+	var MONTH = 30 * 24 * 3600 * 1000;
+	var read = function () {
+		try { return JSON.parse(window.localStorage.getItem(key) || "null"); } catch (e) { return null; }
+	};
+	var write = function (value) {
+		try { window.localStorage.setItem(key, JSON.stringify(value)); } catch (e) { /* private mode: shown again next visit */ }
+	};
+	var state = read();
+	if (state && (state.subscribed || Date.now() - (state.closed || 0) < MONTH)) return;
+	var form = dialog.querySelector("form");
+	var input = form.querySelector("input[type=email]");
+	var button = form.querySelector("button[type=submit]");
+	var message = dialog.querySelector(".site-newsletter-popup__message");
+	var subscribed = false;
+	var say = function (text, failed) {
+		message.textContent = text;
+		message.classList.toggle("is-error", !!failed);
+		message.hidden = false;
+	};
+	dialog.addEventListener("close", function () {
+		if (!subscribed) write({ closed: Date.now() });
+	});
+	dialog.querySelector(".site-newsletter-popup__close").addEventListener("click", function () { dialog.close(); });
+	// a click on the backdrop lands on the dialog itself, outside its panel
+	dialog.addEventListener("click", function (event) { if (event.target === dialog) dialog.close(); });
+	form.addEventListener("submit", function (event) {
+		event.preventDefault();
+		if (!input.checkValidity()) {
+			input.reportValidity();
+			return;
+		}
+		button.disabled = true;
+		var headers = { "Content-Type": "application/json", Accept: "application/json" };
+		if (window.frappe && window.frappe.csrf_token) headers["X-Frappe-CSRF-Token"] = window.frappe.csrf_token;
+		fetch("/api/method/builder.api.subscribe_to_newsletter", {
+			method: "POST", headers: headers, credentials: "same-origin",
+			body: JSON.stringify({ email: input.value.trim() })
+		})
+			.then(function (response) { return response.json().then(function (data) { return { ok: response.ok, data: data }; }); })
+			.then(function (result) {
+				var reply = result.data && result.data.message;
+				if (!result.ok || !reply || !reply.success) throw new Error("refused");
+				subscribed = true;
+				write({ subscribed: true });
+				form.hidden = true;
+				say(dialog.dataset.success || reply.message);
+			})
+			.catch(function () {
+				say({{ _("Failed to subscribe. Please try again.") | to_safe_json }}, true);
+			})
+			.finally(function () { button.disabled = false; });
+	});
+	var delay = Math.max(0, parseInt(dialog.dataset.delay, 10) || 0) * 1000;
+	window.setTimeout(function () {
+		// another window already open (the contact form, a cart drawer): wait for the next page
+		if (document.querySelector("dialog[open]")) return;
+		dialog.showModal();
+	}, delay);
+})();
+</script>
+{%- endif -%}

@@ -86,6 +86,12 @@
   "newsletter_title",
   "column_break_newsletter_1",
   "newsletter_placeholder",
+  "newsletter_popup",
+  "newsletter_popup_title",
+  "newsletter_popup_text",
+  "newsletter_popup_consent",
+  "newsletter_popup_success",
+  "newsletter_popup_delay",
   "opening_hours_section",
   "show_opening_hours",
   "opening_hours_display",
@@ -642,13 +648,13 @@
    "label": "Show Newsletter Signup"
   },
   {
-   "depends_on": "show_newsletter",
+   "depends_on": "eval:doc.show_newsletter || doc.newsletter_popup",
    "description": "Email Group where subscribers will be added",
    "fieldname": "newsletter_email_group",
    "fieldtype": "Link",
    "label": "Email Group",
    "options": "Email Group",
-   "mandatory_depends_on": "show_newsletter"
+   "mandatory_depends_on": "eval:doc.show_newsletter || doc.newsletter_popup"
   },
   {
    "depends_on": "show_newsletter",
@@ -665,6 +671,49 @@
    "fieldname": "newsletter_placeholder",
    "fieldtype": "Data",
    "label": "Newsletter Placeholder"
+  },
+  {
+   "default": "0",
+   "description": "A window that offers the newsletter to a first-time visitor, once, after a few seconds. It uses the Email Group above; the Email Group's welcome email template is sent at once, so a welcome code goes there.",
+   "fieldname": "newsletter_popup",
+   "fieldtype": "Check",
+   "label": "Newsletter Popup"
+  },
+  {
+   "depends_on": "newsletter_popup",
+   "description": "Leave empty to use the Newsletter Title.",
+   "fieldname": "newsletter_popup_title",
+   "fieldtype": "Data",
+   "label": "Popup Title"
+  },
+  {
+   "depends_on": "newsletter_popup",
+   "description": "The offer, in the site's language. Example: Subscribe and receive 15% off your first order.",
+   "fieldname": "newsletter_popup_text",
+   "fieldtype": "Small Text",
+   "label": "Popup Text"
+  },
+  {
+   "depends_on": "newsletter_popup",
+   "description": "The consent sentence shown under the field. Example: By subscribing, you agree to receive our newsletter.",
+   "fieldname": "newsletter_popup_consent",
+   "fieldtype": "Small Text",
+   "label": "Popup Consent"
+  },
+  {
+   "depends_on": "newsletter_popup",
+   "description": "What the visitor reads once subscribed. Example: Check your inbox, your code is on its way.",
+   "fieldname": "newsletter_popup_success",
+   "fieldtype": "Small Text",
+   "label": "Popup Success Message"
+  },
+  {
+   "default": "8",
+   "depends_on": "newsletter_popup",
+   "description": "Seconds on the site before the window opens.",
+   "fieldname": "newsletter_popup_delay",
+   "fieldtype": "Int",
+   "label": "Popup Delay"
   },
   {
    "fieldname": "opening_hours_section",
@@ -1080,7 +1129,7 @@
  "index_web_pages_for_search": 1,
  "issingle": 1,
  "links": [],
- "modified": "2026-09-29 08:37:31.735137",
+ "modified": "2026-09-29 09:49:06.644600",
  "modified_by": "Administrator",
  "module": "Builder",
  "name": "Website Header Footer Config",
