@@ -27,7 +27,8 @@
 {% include "builder/templates/includes/header_footer/components/cart_drawer.html" %}
 {%- endif -%}
 
-<header class="site-header site-header--{{ (header_style or "Classic") | lower }}{% if sticky %} site-header--sticky{% endif %}{% if icons.search_bar_full %} site-header--with-search-bar{% endif %}" data-layout="{{ layout }}" data-style="{{ header_style or "Classic" }}" data-scroll="{{ header_scroll or "Hide going down" }}">
+{# //// Neoffice — site-header--logo-<size>: the header logo size chosen on the chrome config (header_logo_height, 2026-09-29) #}
+<header class="site-header site-header--{{ (header_style or "Classic") | lower }}{% if sticky %} site-header--sticky{% endif %}{% if icons.search_bar_full %} site-header--with-search-bar{% endif %} site-header--logo-{{ (logo_height or 'Medium') | lower }}" data-layout="{{ layout }}" data-style="{{ header_style or "Classic" }}" data-scroll="{{ header_scroll or "Hide going down" }}">
 	<div class="site-header__container">
 		{%- if layout == "B" -%}
 		{# Layout B: [Menu] [Logo centered] [Icons/CTA] #}

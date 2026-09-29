@@ -240,6 +240,21 @@
 	object-fit: contain;
 }
 
+/* //// Neoffice — the header's logo has a size of its own (2026-09-29), chosen on the chrome config
+   //// (header_logo_height) as the footer's mark is. Medium is the 36px above. Large raises the width
+   //// cap with the height: a wordmark 6.7 times wider than tall asked for 48px reached only 42 under
+   //// the 280px cap, so the height alone changed almost nothing. The phone rules further down keep
+   //// their own caps, being written later at the same weight. */
+.site-header--logo-small .site-logo__image {
+	height: 28px;
+	max-width: 220px;
+}
+
+.site-header--logo-large .site-logo__image {
+	height: 48px;
+	max-width: 360px;
+}
+
 /* Navigation */
 .site-nav {
 	display: flex;

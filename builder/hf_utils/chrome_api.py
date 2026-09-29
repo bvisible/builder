@@ -31,6 +31,8 @@ SIMPLE_FIELDS = (
 	"logo_type",
 	"logo_text",
 	"logo_image",
+	# //// Neoffice — how tall the logo stands in the header (see header_styles.html)
+	"header_logo_height",
 	"show_cta",
 	"cta_text",
 	"cta_url",

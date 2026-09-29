@@ -29,6 +29,7 @@
   "logo_text",
   "column_break_logo_1",
   "logo_image",
+  "header_logo_height",
   "logo_default_info",
   "icons_section",
   "search_type",
@@ -302,6 +303,15 @@
    "fieldname": "logo_image",
    "fieldtype": "Attach Image",
    "label": "Logo Image"
+  },
+  {
+   "default": "Medium",
+   "depends_on": "eval:doc.logo_type==\"Image\"",
+   "description": "How tall the logo stands in the header. Large suits a wide wordmark that reads small at the default size.",
+   "fieldname": "header_logo_height",
+   "fieldtype": "Select",
+   "label": "Header Logo Size",
+   "options": "Small\nMedium\nLarge"
   },
   {
    "depends_on": "eval:doc.logo_type=='Image' && !doc.logo_image",
@@ -1064,7 +1074,7 @@
  "index_web_pages_for_search": 1,
  "issingle": 0,
  "links": [],
- "modified": "2026-09-14 13:30:00.000000",
+ "modified": "2026-09-29 08:37:31.735137",
  "modified_by": "Administrator",
  "module": "Builder",
  "name": "Website Header Footer Variant",

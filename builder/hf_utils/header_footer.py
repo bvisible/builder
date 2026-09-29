@@ -128,6 +128,10 @@ def render_header(config=None) -> str:
 			"sticky": config.sticky_header,
 			"header_style": config.get("header_style") or "Classic",
 			"header_scroll": config.get("header_scroll") or "Hide going down",
+			# //// Neoffice — how tall the logo stands in the header (2026-09-29): the footer's mark had a
+			# //// size of its own since 2026-09-15 and the header's did not, so a client asking for a
+			# //// bigger logo could only be answered in CSS. Medium is the 36px every site had.
+			"logo_height": config.get("header_logo_height") or "Medium",
 		}
 	)
 	return theme_css + header_html

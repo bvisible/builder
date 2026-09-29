@@ -129,6 +129,11 @@
 	line-height: 1.6;
 	color: var(--footer-text-muted);
 	margin: 0;
+	/* //// Neoffice — a description written on several lines keeps them (2026-09-29): a client sent a
+	   //// tagline, a paragraph and a closing line for the footer, and the field is a text area, yet the
+	   //// page ran them into one block. A description on one line, as the generator writes it, is
+	   //// unchanged. */
+	white-space: pre-line;
 }
 
 /* Footer columns */
