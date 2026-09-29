@@ -1224,7 +1224,13 @@ def page_brief_text(site: dict, brief, page: dict, handles: dict, contact_prompt
         ),
         (
             f"BRANDS the business carries, in the client's words: {', '.join(site['brands'])}. A page that names brands "
-            "names exactly these; never a brand of its own."
+            "names exactly these; never a brand of its own. "
+            # //// Neoffice — and never their NUMBER (2026-09-29). A shop's brands page opened on "Nine
+            # //// brands, one shelf" and closed on "All nine brands, one basket"; its client asked for both
+            # //// to go, because "brands change too fast", and a reseller home titled on the count read
+            # //// false the day one name left the list. A count ages in the copy, the names do not.
+            "Never count them in a headline or a sentence ('nine brands', 'neuf marques'): the roster changes "
+            "faster than the site does and the figure goes stale. Name them, or speak of the selection without a figure."
             if site.get("brands") else ""
         ),
         (

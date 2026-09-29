@@ -136,6 +136,19 @@ class TestPageBrief(unittest.TestCase):
 		# nothing seen yet: no such section
 		self.assertNotIn("SEEN BY THE REVIEWER", page_brief_text({"site_name": "X", "activity": "Y"}, FakeBrief(), page, handles, "", "bento", "English", [], ("CTA", "/")))
 
+	# //// Neoffice — added test (2026-09-29): the brands are named, never counted. A brands page opened
+	# //// on "Nine brands, one shelf" and its client asked for it to go: the roster changes too fast.
+	def test_the_brands_are_named_and_never_counted(self):
+		site = {"site_name": "X", "activity": "Y", "brands": ["Northwind", "Copper Fern"]}
+		handles = {k: "var(--x)" for k in ("primary", "secondary", "background", "text", "font-heading", "font-body")}
+		page = {"title": "Brands", "route": "brands", "type": "brands"}
+		text = page_brief_text(site, FakeBrief(), page, handles, "", "bento", "English", [], ("CTA", "/"))
+		self.assertIn("Northwind, Copper Fern", text)
+		self.assertIn("Never count them in a headline or a sentence", text)
+		# no brands given: no such rule, nothing to count
+		plain = page_brief_text({"site_name": "X", "activity": "Y"}, FakeBrief(), page, handles, "", "bento", "English", [], ("CTA", "/"))
+		self.assertNotIn("Never count them", plain)
+
 	def test_known_pages_keep_their_canonical_type(self):
 		pages = normalise_pages([{"title": "Contact", "type": "form"}, {"title": "Accueil", "route": "accueil", "type": "landing"}], "vitrine")
 		self.assertEqual([(p["route"], p["type"]) for p in pages], [("home", "accueil"), ("contact", "contact")])
