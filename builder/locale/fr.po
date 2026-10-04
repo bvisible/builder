@@ -1395,7 +1395,7 @@ msgid "Checkout"
 msgstr "Commander"
 
 #: builder/templates/includes/contact_page.html:423
-msgid "Choisir un sujet"
+msgid "Choose a topic"
 msgstr "Choisir un sujet"
 
 #: frontend/src/pages/PagePersonaSurvey.vue:12
@@ -2664,15 +2664,11 @@ msgid "Enter your email"
 msgstr "Entrez votre e-mail"
 
 #: builder/templates/includes/contact_page.html:456
-msgid "Envoi en cours..."
+msgid "Sending..."
 msgstr "Envoi en cours..."
 
-#: builder/templates/includes/contact_page.html:435
-msgid "Envoyer"
-msgstr "Envoyer"
-
 #: builder/templates/includes/contact_page.html:415
-msgid "Envoyez-nous un message"
+msgid "Send us a message"
 msgstr "Envoyez-nous un message"
 
 #. Label of a Small Text field in DocType 'Builder Content Asset'
@@ -4773,7 +4769,7 @@ msgid "Menu and theme are managed in {0}."
 msgstr "Le menu et le thème sont gérés dans {0}."
 
 #: builder/templates/includes/contact_page.html:472
-msgid "Merci ! Votre message a été envoyé avec succès."
+msgid "Thank you! Your message has been sent successfully."
 msgstr "Merci ! Votre message a été envoyé avec succès."
 
 #. Option for the 'Heading Font' (Select) field in DocType 'Website Header
@@ -5369,7 +5365,7 @@ msgid "Normal"
 msgstr "Normal"
 
 #: builder/templates/includes/contact_page.html:359
-msgid "Nos coordonnées"
+msgid "Our contact details"
 msgstr "Nos coordonnées"
 
 #: frontend/src/components/BlockPropertySections/StyleSection.ts:277
@@ -7917,7 +7913,7 @@ msgid "Suggested Slots"
 msgstr "Emplacements suggérés"
 
 #: builder/templates/includes/contact_page.html:431
-msgid "Sujet"
+msgid "Topic"
 msgstr "Sujet"
 
 #. Label of a Small Text field in DocType 'Builder Content Asset'
@@ -8723,7 +8719,7 @@ msgstr "Annuler l'action"
 
 #: builder/templates/includes/contact_page.html:476
 #: builder/templates/includes/contact_page.html:488
-msgid "Une erreur est survenue. Veuillez réessayer."
+msgid "An error occurred. Please try again."
 msgstr "Une erreur est survenue. Veuillez réessayer."
 
 #: frontend/src/components/Modals/TokenManager.vue:784
@@ -9099,16 +9095,12 @@ msgid "Visitor ID"
 msgstr "ID du visiteur"
 
 #: builder/templates/includes/contact_page.html:419
-msgid "Votre email"
+msgid "Your email"
 msgstr "Votre email"
 
 #: builder/templates/includes/contact_page.html:434
-msgid "Votre message"
+msgid "Your message"
 msgstr "Votre message"
-
-#: builder/templates/includes/contact_page.html:418
-msgid "Votre nom"
-msgstr "Votre nom"
 
 #: frontend/src/components/Modals/TokenManager.vue:1058
 msgid "WARNING: Updating will overwrite the existing values for the listed variables."

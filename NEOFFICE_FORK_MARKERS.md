@@ -310,3 +310,11 @@ Also worth knowing: `builder/patches.txt` — our 12 patches are appended after
 upstream's list and two are inserted at the top of `[post_model_sync]`. A merge
 must keep **both** sides; an entry whose module is missing kills `bench migrate`
 on the whole fleet.
+
+### English msgids instead of French source strings (2026-10-04)
+
+House rule: the source text of a translatable string is English; the French lives in the
+catalogue and the French screen is unchanged. JSON and `.po` files cannot carry a comment, so
+those edits are recorded here (the code edits are marked in place with `//// Neoffice`).
+
+- `builder/locale/fr.po` — 11 entries (the contact page block) renamed to their English msgid, or dropped when that msgid already existed with the same French. The template is marked in place.

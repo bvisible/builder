@@ -356,7 +356,8 @@
                 {% if contact.address_title -%}
                 <h3>{{ contact.address_title }}</h3>
                 {% else -%}
-                <h3>{{ _("Nos coordonnées") }}</h3>
+                {# //// Neoffice — msgid was French, now English (house rule); the French screen is unchanged, served by the translation catalogue. #}
+                <h3>{{ _("Our contact details") }}</h3>
                 {% endif -%}
 
                 {# Address #}
@@ -412,15 +413,16 @@
 
             {# === CONTACT FORM (always displayed) === #}
             <div class="contact-form-card">
-                <h3>{{ _("Envoyez-nous un message") }}</h3>
+                {# //// Neoffice — msgids were French, now English (house rule); the French screen is unchanged, served by the translation catalogue. #}
+                <h3>{{ _("Send us a message") }}</h3>
                 <div id="contact-message-{{ contact_theme }}" class="contact-message"></div>
                 <form id="contact-form-{{ contact_theme }}" onsubmit="sendContactMessage_{{ contact_theme | replace('-', '_') }}(event)">
-                    <input type="text" name="sender_name" placeholder="{{ _('Votre nom') }}" required>
-                    <input type="email" name="email" placeholder="{{ _('Votre email') }}" required>
+                    <input type="text" name="sender_name" placeholder="{{ _('Your name') }}" required>
+                    <input type="email" name="email" placeholder="{{ _('Your email') }}" required>
 
                     {% if contact.query_options -%}
                     <select name="subject" required>
-                        <option value="">{{ _("Choisir un sujet") }}</option>
+                        <option value="">{{ _("Choose a topic") }}</option>
                         {% for option in contact.query_options.split('\n') -%}
                         {% if option.strip() -%}
                         <option value="{{ option.strip() }}">{{ option.strip() }}</option>
@@ -428,11 +430,11 @@
                         {% endfor -%}
                     </select>
                     {% else -%}
-                    <input type="text" name="subject" placeholder="{{ _('Sujet') }}" required>
+                    <input type="text" name="subject" placeholder="{{ _('Topic') }}" required>
                     {% endif -%}
 
-                    <textarea name="message" placeholder="{{ _('Votre message') }}" required></textarea>
-                    <button type="submit">{{ _("Envoyer") }}</button>
+                    <textarea name="message" placeholder="{{ _('Your message') }}" required></textarea>
+                    <button type="submit">{{ _("Send") }}</button>
                 </form>
             </div>
 
@@ -453,7 +455,8 @@ function sendContactMessage_{{ contact_theme | replace('-', '_') }}(e) {
 
     // Disable button and show loading
     submitBtn.disabled = true;
-    submitBtn.innerText = {{ _("Envoi en cours...") | to_safe_json }};
+    {# //// Neoffice — msgids were French, now English (house rule); the French screen is unchanged, served by the translation catalogue. #}
+    submitBtn.innerText = {{ _("Sending...") | to_safe_json }};
 
     frappe.call({
         method: 'frappe.www.contact.send_message',
@@ -469,11 +472,11 @@ function sendContactMessage_{{ contact_theme | replace('-', '_') }}(e) {
 
             if (r.message === 'okay') {
                 messageDiv.className = 'contact-message success';
-                messageDiv.innerText = {{ _("Merci ! Votre message a été envoyé avec succès.") | to_safe_json }};
+                messageDiv.innerText = {{ _("Thank you! Your message has been sent successfully.") | to_safe_json }};
                 form.reset();
             } else {
                 messageDiv.className = 'contact-message error';
-                messageDiv.innerText = {{ _("Une erreur est survenue. Veuillez réessayer.") | to_safe_json }};
+                messageDiv.innerText = {{ _("An error occurred. Please try again.") | to_safe_json }};
             }
 
             // Hide message after 5 seconds
@@ -485,7 +488,7 @@ function sendContactMessage_{{ contact_theme | replace('-', '_') }}(e) {
             submitBtn.disabled = false;
             submitBtn.innerText = originalText;
             messageDiv.className = 'contact-message error';
-            messageDiv.innerText = {{ _("Une erreur est survenue. Veuillez réessayer.") | to_safe_json }};
+            messageDiv.innerText = {{ _("An error occurred. Please try again.") | to_safe_json }};
         }
     });
 }
