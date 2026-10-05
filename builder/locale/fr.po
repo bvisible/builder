@@ -7952,6 +7952,8 @@ msgstr "Synchroniser sur toutes les pages"
 msgid "Syncing component in all the pages..."
 msgstr "Synchronisation du composant sur toutes les pages..."
 
+# //// Neoffice — aligned on the desk: frappe's catalogue calls this role "Responsable Système" (the role list, the permission
+# //// manager), this app said "Gestionnaire du système" for the same role
 #. Name of a role
 #: builder/builder/doctype/block_template/block_template.json
 #: builder/builder/doctype/builder_ai_memory/builder_ai_memory.json
@@ -7976,7 +7978,7 @@ msgstr "Synchronisation du composant sur toutes les pages..."
 #: builder/builder/doctype/website_header_footer_variant/website_header_footer_variant.json
 #: builder/builder/doctype/website_plugin/website_plugin.json
 msgid "System Manager"
-msgstr "Gestionnaire du système"
+msgstr "Responsable Système"
 
 #: frontend/src/components/DashboardSidebar.vue:73
 msgid "System generated folder cannot be edited or deleted"
@@ -9156,6 +9158,8 @@ msgstr "Configuration en-tête et pied de page du site"
 msgid "Website Header Footer Variant"
 msgstr "Variante en-tête et pied de page du site"
 
+# //// Neoffice — aligned on the desk: frappe's catalogue calls this role "Responsable du Site Web", this app said
+# //// "Gestionnaire du site web" for the same role
 #. Name of a role
 #: builder/builder/doctype/block_template/block_template.json
 #: builder/builder/doctype/builder_ai_memory/builder_ai_memory.json
@@ -9180,7 +9184,7 @@ msgstr "Variante en-tête et pied de page du site"
 #: builder/builder/doctype/website_header_footer_variant/website_header_footer_variant.json
 #: builder/builder/doctype/website_plugin/website_plugin.json
 msgid "Website Manager"
-msgstr "Gestionnaire du site web"
+msgstr "Responsable du Site Web"
 
 #. Name of a DocType
 #: builder/builder/doctype/website_menu_item/website_menu_item.json
