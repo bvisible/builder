@@ -273,10 +273,13 @@ def get_site_components(website_profile: str | None = None) -> list[dict]:
 				"label": _(component.label),
 				"path": component.path,
 				"app": component.app,
+				# //// Neoffice — see the block marker above: shows text translated
 				"shows": _(component.shows) if component.shows else "",
 				"pages": list(component.pages),
+				# //// Neoffice — see the block marker above: params translated per-field
 				"params": [translate_param(p) for p in component.params],
 				"tag": component.tag(),
+				# //// Neoffice — see the block marker above: note text translated
 				"note": _(component.note) if component.note else "",
 				# None when the component declares no check: nothing to say about it
 				"has_data": has,
