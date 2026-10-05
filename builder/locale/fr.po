@@ -10221,9 +10221,6 @@ msgstr ""
 #~ msgid "sk-…"
 #~ msgstr "sk-…"
 
-#~ msgid "{0} image(s), {1} unused"
-#~ msgstr "{0} image(s), {1} non utilisée(s)"
-
 #~ msgid "Back to Home"
 #~ msgstr "De retour à la maison"
 
@@ -10513,7 +10510,7 @@ msgid "Pan canvas"
 msgstr "Déplacer le canevas"
 
 # //// Neoffice — wrapped in __() (MediaLibrary.vue) but only present as an obsolete (#~) entry, so it never compiled:
-# //// the Media window counter was English
+# //// the Media window counter was English. The obsolete copy is dropped: msgfmt refuses a duplicate of a live entry.
 msgid "{0} image(s), {1} unused"
 msgstr "{0} image(s), {1} non utilisée(s)"
 
