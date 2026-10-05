@@ -1278,6 +1278,8 @@ msgstr "Impossible de supprimer le bloc racine"
 msgid "Canonical URL"
 msgstr "URL canonique"
 
+# //// Neoffice — group title of the keyboard shortcuts window (useBuilderEvents.ts): left in English. Every other canvas entry
+# //// of this catalogue already says "canevas"
 #: frontend/src/utils/useBuilderEvents.ts:305
 #: frontend/src/utils/useBuilderEvents.ts:317
 #: frontend/src/utils/useBuilderEvents.ts:327
@@ -1287,7 +1289,7 @@ msgstr "URL canonique"
 #: frontend/src/utils/useBuilderEvents.ts:372
 #: frontend/src/utils/useBuilderEvents.ts:383
 msgid "Canvas"
-msgstr "Canvas"
+msgstr "Canevas"
 
 #. Label of a Section Break field in DocType 'Builder AI Model'
 #: builder/builder/doctype/builder_ai_model/builder_ai_model.json
@@ -4383,10 +4385,12 @@ msgstr "Laissez vide pour vous rabattre sur la clé OpenRouter des Réglages Bui
 msgid "Leave off unless the model accepts image input. Sending an image to a text-only model fails the whole turn."
 msgstr "Laissez désactivé sauf si le modèle accepte les images en entrée. Envoyer une image à un modèle purement textuel fait échouer tout l'échange."
 
+# //// Neoffice — "Parti" is the past participle of "partir" (gone), not a direction. Shown as the tooltip of the text-alignment
+# //// buttons (TypographySection.ts) and as the placeholder of the left offset field (BlockPositionHandler.vue)
 #: frontend/src/components/BlockPositionHandler.vue:31
 #: frontend/src/components/BlockPropertySections/TypographySection.ts:153
 msgid "Left"
-msgstr "Parti"
+msgstr "Gauche"
 
 #: frontend/src/components/Settings/GlobalTheme.vue:446
 msgid "Left empty, the site uses its own generated photograph"
@@ -6619,10 +6623,12 @@ msgstr "Nouvelle tentative pour {0}…"
 msgid "Rhythm"
 msgstr "Rythme"
 
+# //// Neoffice — "Droit" is the masculine adjective (straight, a legal right), not the direction. Same two places as "Left"
+# //// (the right offset field this time)
 #: frontend/src/components/BlockPositionHandler.vue:52
 #: frontend/src/components/BlockPropertySections/TypographySection.ts:165
 msgid "Right"
-msgstr "Droit"
+msgstr "Droite"
 
 #. Option for the 'Heading Font' (Select) field in DocType 'Website Header
 #. Footer Config'
@@ -10040,9 +10046,11 @@ msgstr "{0} page"
 msgid "{0} pages"
 msgstr "{0} pages"
 
+# //// Neoffice — word order (GlobalDomains.vue): the DNS record type comes after the noun. "{0} enregistrement" showed
+# //// "A enregistrement" and "CNAME enregistrement"
 #: frontend/src/components/Settings/GlobalDomains.vue:58
 msgid "{0} record"
-msgstr "{0} enregistrement"
+msgstr "Enregistrement {0}"
 
 #: frontend/src/components/AIChatModal.vue:275
 msgid "{0} reference(s)"
