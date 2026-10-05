@@ -318,3 +318,13 @@ catalogue and the French screen is unchanged. JSON and `.po` files cannot carry 
 those edits are recorded here (the code edits are marked in place with `//// Neoffice`).
 
 - `builder/locale/fr.po` — 11 entries (the contact page block) renamed to their English msgid, or dropped when that msgid already existed with the same French. The template is marked in place.
+
+### French catalogue entries that carry their own marker (2026-10-05)
+
+A `.po` file can carry a translator comment, so the entries added or changed to finish the French editor
+are marked in place: `grep -n '//// Neoffice' builder/locale/fr.po` lists them, each with its reason.
+Sixty-six entries, three kinds: strings wrapped in `__()` that the catalogue never had (or only as an
+obsolete `#~` entry), translations that were wrong (`Left`, `Right`, `{0} record`, the two role names),
+and the Site blocks panel's catalogue (`hooks.py` + the bridge of `site_ai/components.py`), which
+`builder.api.get_site_components` now passes through `_()`. At the upstream merge, keep ours for each of them.
+
