@@ -10541,3 +10541,253 @@ msgstr "Créer {0} nouveaux tokens et mettre à jour {1} token existant ?"
 # //// Neoffice — wrapped in __() (TokenManager.vue) but absent from the catalogue: the CSV import confirmation was English
 msgid "Create {0} new tokens and update {1} existing tokens?"
 msgstr "Créer {0} nouveaux tokens et mettre à jour {1} tokens existants ?"
+
+# //// Neoffice — the Site blocks panel's block name (hooks.py website_components); builder.api.get_site_components passes it through _(),
+# //// the panel shows it as the server sends it
+msgid "Blog posts"
+msgstr "Articles de blog"
+
+# //// Neoffice — the Site blocks panel's block name (hooks.py website_components); builder.api.get_site_components passes it through _(),
+# //// the panel shows it as the server sends it
+msgid "Contact details"
+msgstr "Coordonnées"
+
+# //// Neoffice — the Site blocks panel's block name (hooks.py website_components); builder.api.get_site_components passes it through _(),
+# //// the panel shows it as the server sends it
+msgid "Contact form"
+msgstr "Formulaire de contact"
+
+# //// Neoffice — the Site blocks panel's block name (hooks.py website_components); builder.api.get_site_components passes it through _(),
+# //// the panel shows it as the server sends it
+msgid "Map of the address"
+msgstr "Carte de l’adresse"
+
+# //// Neoffice — the Site blocks panel's block name (hooks.py website_components); builder.api.get_site_components passes it through _(),
+# //// the panel shows it as the server sends it
+msgid "The company's timeline"
+msgstr "La chronologie de l’entreprise"
+
+# //// Neoffice — the Site blocks panel's block name (hooks.py website_components); builder.api.get_site_components passes it through _(),
+# //// the panel shows it as the server sends it
+msgid "The team"
+msgstr "L’équipe"
+
+# //// Neoffice — the Site blocks panel's block name (site_ai/components.py BRIDGE); builder.api.get_site_components passes it through _(),
+# //// the panel shows it as the server sends it
+msgid "Brands carousel"
+msgstr "Carrousel des marques"
+
+# //// Neoffice — the Site blocks panel's block name (site_ai/components.py BRIDGE); builder.api.get_site_components passes it through _(),
+# //// the panel shows it as the server sends it
+msgid "Opening hours"
+msgstr "Horaires d’ouverture"
+
+# //// Neoffice — the Site blocks panel's block name (site_ai/components.py BRIDGE); builder.api.get_site_components passes it through _(),
+# //// the panel shows it as the server sends it
+msgid "Products carousel"
+msgstr "Carrousel de produits"
+
+# //// Neoffice — the Site blocks panel's description (hooks.py website_components); builder.api.get_site_components passes it through _(),
+# //// the panel shows it as the server sends it
+msgid "the site's published blog posts, listed, each linking to its article"
+msgstr "les articles de blog publiés du site, en liste, chacun renvoyant vers son article"
+
+# //// Neoffice — the Site blocks panel's description (hooks.py website_components); builder.api.get_site_components passes it through _(),
+# //// the panel shows it as the server sends it
+msgid "the business's address, phone and e-mail, as the site publishes them"
+msgstr "l’adresse, le téléphone et l’e-mail de l’entreprise, tels que le site les publie"
+
+# //// Neoffice — the Site blocks panel's description (hooks.py website_components); builder.api.get_site_components passes it through _(),
+# //// the panel shows it as the server sends it
+msgid "a working contact form, sent to the site's inbox"
+msgstr "un formulaire de contact fonctionnel, dont les messages arrivent dans la boîte de réception du site"
+
+# //// Neoffice — the Site blocks panel's description (hooks.py website_components); builder.api.get_site_components passes it through _(),
+# //// the panel shows it as the server sends it
+msgid "a map of the business address"
+msgstr "une carte de l’adresse de l’entreprise"
+
+# //// Neoffice — the Site blocks panel's description (hooks.py website_components); builder.api.get_site_components passes it through _(),
+# //// the panel shows it as the server sends it
+msgid "the company's milestones, from About Us Settings"
+msgstr "les étapes de l’histoire de l’entreprise, tirées des Paramétrages À Propos"
+
+# //// Neoffice — the Site blocks panel's description (hooks.py website_components); builder.api.get_site_components passes it through _(),
+# //// the panel shows it as the server sends it
+msgid "the team, from About Us Settings, with their photographs"
+msgstr "l’équipe, tirée des Paramétrages À Propos, avec leurs photos"
+
+# //// Neoffice — the Site blocks panel's description (site_ai/components.py BRIDGE); builder.api.get_site_components passes it through _(),
+# //// the panel shows it as the server sends it
+msgid "the brands the shop carries, with their logos"
+msgstr "les marques que la boutique propose, avec leurs logos"
+
+# //// Neoffice — the Site blocks panel's description (site_ai/components.py BRIDGE); builder.api.get_site_components passes it through _(),
+# //// the panel shows it as the server sends it
+msgid "the shop's opening hours, live, holidays included"
+msgstr "les horaires d’ouverture de la boutique, en direct, jours fériés compris"
+
+# //// Neoffice — the Site blocks panel's description (site_ai/components.py BRIDGE); builder.api.get_site_components passes it through _(),
+# //// the panel shows it as the server sends it
+msgid "a scrollable row of the shop's REAL products, with their pictures, prices and links — never a product drawn by hand"
+msgstr "une rangée défilante des VRAIS produits de la boutique, avec leurs photos, prix et liens — jamais un produit dessiné à la main"
+
+# //// Neoffice — the Site blocks panel's note (hooks.py website_components); builder.api.get_site_components passes it through _(),
+# //// the panel shows it as the server sends it
+msgid "Never write a <form> of your own beside it: this include IS the form."
+msgstr "N’ajoutez pas de <form> à côté : ce bloc est déjà le formulaire."
+
+# //// Neoffice — the Site blocks panel's note (site_ai/components.py BRIDGE); builder.api.get_site_components passes it through _(),
+# //// the panel shows it as the server sends it
+msgid "Two of them on one page is two rows of the same shop: give the second a different sort or show_discounted_only."
+msgstr "Deux carrousels sur une même page affichent deux fois la même boutique : donnez au second un autre tri, ou show_discounted_only."
+
+# //// Neoffice — the Site blocks panel's parameter meaning (hooks.py website_components); builder.api.get_site_components passes it through _(),
+# //// the panel shows it as the server sends it
+msgid "the heading over the list"
+msgstr "le titre au-dessus de la liste"
+
+# //// Neoffice — the Site blocks panel's parameter meaning (hooks.py website_components); builder.api.get_site_components passes it through _(),
+# //// the panel shows it as the server sends it
+msgid "how many posts"
+msgstr "combien d’articles"
+
+# //// Neoffice — the Site blocks panel's parameter meaning (hooks.py website_components); builder.api.get_site_components passes it through _(),
+# //// the panel shows it as the server sends it
+msgid "one Blog Category, empty for all"
+msgstr "une seule Catégorie du Blog, vide pour toutes"
+
+# //// Neoffice — the Site blocks panel's parameter meaning (hooks.py website_components); builder.api.get_site_components passes it through _(),
+# //// the panel shows it as the server sends it
+msgid "published_on, creation or title"
+msgstr "published_on, creation ou title"
+
+# //// Neoffice — the Site blocks panel's parameter meaning (hooks.py website_components); builder.api.get_site_components passes it through _(),
+# //// the panel shows it as the server sends it
+msgid "grid or list"
+msgstr "grid (grille) ou list (liste)"
+
+# //// Neoffice — the Site blocks panel's parameter meaning (hooks.py website_components and site_ai/components.py BRIDGE); builder.api.get_site_components passes it through _(),
+# //// the panel shows it as the server sends it
+msgid "where the 'View more' button goes"
+msgstr "où mène le bouton « Voir plus »"
+
+# //// Neoffice — the Site blocks panel's parameter meaning (hooks.py website_components); builder.api.get_site_components passes it through _(),
+# //// the panel shows it as the server sends it
+msgid "the form waits in a window its button opens; any link to #contact opens it too, from this page or another (/about#contact)"
+msgstr "le formulaire attend dans une fenêtre qu’ouvre son bouton ; tout lien vers #contact l’ouvre aussi, depuis cette page ou une autre (/about#contact)"
+
+# //// Neoffice — the Site blocks panel's parameter meaning (hooks.py website_components); builder.api.get_site_components passes it through _(),
+# //// the panel shows it as the server sends it
+msgid "what the button that opens the window reads, in the site's language; empty draws no button, for a page with its own link to #contact"
+msgstr "le texte du bouton qui ouvre la fenêtre, dans la langue du site ; vide, aucun bouton n’est dessiné (pour une page qui a son propre lien vers #contact)"
+
+# //// Neoffice — the Site blocks panel's parameter meaning (hooks.py website_components); builder.api.get_site_components passes it through _(),
+# //// the panel shows it as the server sends it
+msgid "the business's own consent sentence, a box the visitor must tick before sending"
+msgstr "la phrase de consentement propre à l’entreprise : une case que le visiteur doit cocher avant l’envoi"
+
+# //// Neoffice — the Site blocks panel's parameter meaning (hooks.py website_components); builder.api.get_site_components passes it through _(),
+# //// the panel shows it as the server sends it
+msgid "the visitor must give a phone number"
+msgstr "le visiteur doit indiquer un numéro de téléphone"
+
+# //// Neoffice — the Site blocks panel's parameter meaning (hooks.py website_components); builder.api.get_site_components passes it through _(),
+# //// the panel shows it as the server sends it
+msgid "how tall the map stands"
+msgstr "la hauteur de la carte"
+
+# //// Neoffice — the Site blocks panel's parameter meaning (hooks.py website_components); builder.api.get_site_components passes it through _(),
+# //// the panel shows it as the server sends it
+msgid "1 the world, 20 a street corner"
+msgstr "1 le monde entier, 20 un coin de rue"
+
+# //// Neoffice — the Site blocks panel's parameter meaning (hooks.py website_components); builder.api.get_site_components passes it through _(),
+# //// the panel shows it as the server sends it
+msgid "m map, k satellite, h hybrid, p terrain"
+msgstr "m carte, k satellite, h hybride, p relief"
+
+# //// Neoffice — the Site blocks panel's parameter meaning (hooks.py website_components); builder.api.get_site_components passes it through _(),
+# //// the panel shows it as the server sends it
+msgid "another address than the business's"
+msgstr "une autre adresse que celle de l’entreprise"
+
+# //// Neoffice — the Site blocks panel's parameter meaning (site_ai/components.py BRIDGE); builder.api.get_site_components passes it through _(),
+# //// the panel shows it as the server sends it
+msgid "the heading over the row"
+msgstr "le titre au-dessus de la rangée"
+
+# //// Neoffice — the Site blocks panel's parameter meaning (site_ai/components.py BRIDGE); builder.api.get_site_components passes it through _(),
+# //// the panel shows it as the server sends it
+msgid "how many brands at most; leave it out for the default, never 0 — 0 draws none"
+msgstr "combien de marques au maximum ; laissez vide pour la valeur par défaut, jamais 0 : 0 n’en affiche aucune"
+
+# //// Neoffice — the Site blocks panel's parameter meaning (site_ai/components.py BRIDGE); builder.api.get_site_components passes it through _(),
+# //// the panel shows it as the server sends it
+msgid "brand_name or product_count"
+msgstr "brand_name (nom) ou product_count (nombre de produits)"
+
+# //// Neoffice — the Site blocks panel's parameter meaning (site_ai/components.py BRIDGE); builder.api.get_site_components passes it through _(),
+# //// the panel shows it as the server sends it
+msgid "show how many products each brand has"
+msgstr "afficher le nombre de produits de chaque marque"
+
+# //// Neoffice — the Site blocks panel's parameter meaning (site_ai/components.py BRIDGE); builder.api.get_site_components passes it through _(),
+# //// the panel shows it as the server sends it
+msgid "leave out a brand with no logo"
+msgstr "omettre une marque sans logo"
+
+# //// Neoffice — the Site blocks panel's parameter meaning (site_ai/components.py BRIDGE); builder.api.get_site_components passes it through _(),
+# //// the panel shows it as the server sends it
+msgid "what that button reads, in the site's language"
+msgstr "le texte de ce bouton, dans la langue du site"
+
+# //// Neoffice — the Site blocks panel's parameter meaning (site_ai/components.py BRIDGE); builder.api.get_site_components passes it through _(),
+# //// the panel shows it as the server sends it
+msgid "full for the whole week, compact for the state and today only"
+msgstr "full pour toute la semaine, compact pour l’état et le jour même seulement"
+
+# //// Neoffice — the Site blocks panel's parameter meaning (site_ai/components.py BRIDGE); builder.api.get_site_components passes it through _(),
+# //// the panel shows it as the server sends it
+msgid "the heading over the row, in the site's language"
+msgstr "le titre au-dessus de la rangée, dans la langue du site"
+
+# //// Neoffice — the Site blocks panel's parameter meaning (site_ai/components.py BRIDGE); builder.api.get_site_components passes it through _(),
+# //// the panel shows it as the server sends it
+msgid "how many products"
+msgstr "combien de produits"
+
+# //// Neoffice — the Site blocks panel's parameter meaning (site_ai/components.py BRIDGE); builder.api.get_site_components passes it through _(),
+# //// the panel shows it as the server sends it
+msgid "creation, modified, item_name or standard_rate"
+msgstr "creation, modified, item_name ou standard_rate"
+
+# //// Neoffice — the Site blocks panel's parameter meaning (site_ai/components.py BRIDGE); builder.api.get_site_components passes it through _(),
+# //// the panel shows it as the server sends it
+msgid "desc or asc"
+msgstr "desc (décroissant) ou asc (croissant)"
+
+# //// Neoffice — the Site blocks panel's parameter meaning (site_ai/components.py BRIDGE); builder.api.get_site_components passes it through _(),
+# //// the panel shows it as the server sends it
+msgid "only the products of that brand, by its exact name"
+msgstr "seulement les produits de cette marque, par son nom exact"
+
+# //// Neoffice — the Site blocks panel's parameter meaning (site_ai/components.py BRIDGE); builder.api.get_site_components passes it through _(),
+# //// the panel shows it as the server sends it
+msgid "only the products of that category, by its exact name"
+msgstr "seulement les produits de cette catégorie, par son nom exact"
+
+# //// Neoffice — the Site blocks panel's parameter meaning (site_ai/components.py BRIDGE); builder.api.get_site_components passes it through _(),
+# //// the panel shows it as the server sends it
+msgid "only the products on sale"
+msgstr "seulement les produits en promotion"
+
+# //// Neoffice — the Site blocks panel's parameter meaning (site_ai/components.py BRIDGE); builder.api.get_site_components passes it through _(),
+# //// the panel shows it as the server sends it
+msgid "leave out a product with no photograph"
+msgstr "omettre un produit sans photo"
+
+# //// Neoffice — the Site blocks panel's parameter meaning (site_ai/components.py BRIDGE); builder.api.get_site_components passes it through _(),
+# //// the panel shows it as the server sends it
+msgid "where the 'View more' button goes, e.g. /all-products"
+msgstr "où mène le bouton « Voir plus », p. ex. /all-products"
