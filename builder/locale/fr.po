@@ -10485,3 +10485,47 @@ msgstr "Les blocs n’ont pas pu être chargés."
 #: frontend/src/components/SiteBlocksPanel.vue
 msgid "Open a page first."
 msgstr "Ouvrez d’abord une page."
+
+# //// Neoffice — wrapped in __() (useSiteCreation.ts) but absent from the catalogue: the first message that
+# //// "Create with AI" sends to the assistant went out in English
+msgid "I want to create a new website. Guide me step by step."
+msgstr "Je veux créer un nouveau site web. Guidez-moi pas à pas."
+
+# //// Neoffice — wrapped in __() (useSiteCreation.ts) but absent from the catalogue: the toast was English
+msgid "Could not start the site assistant"
+msgstr "L’assistant de site n’a pas pu démarrer"
+
+# //// Neoffice — wrapped in __() (useBuilderEvents.ts) but absent from the catalogue: a line of the keyboard shortcuts
+# //// window was English; same wording as the four "Pan canvas <direction>" entries
+msgid "Pan canvas"
+msgstr "Déplacer le canevas"
+
+# //// Neoffice — wrapped in __() (MediaLibrary.vue) but only present as an obsolete (#~) entry, so it never compiled:
+# //// the Media window counter was English
+msgid "{0} image(s), {1} unused"
+msgstr "{0} image(s), {1} non utilisée(s)"
+
+# //// Neoffice — wrapped in __() (SiteBlocksPanel.vue) but absent from the catalogue (only "Loading..." with three dots
+# //// existed): the Site blocks panel said Loading…
+msgid "Loading…"
+msgstr "Chargement…"
+
+# //// Neoffice — wrapped in __() (GlobalTheme.vue) but absent from the catalogue: help text under the page-top background colour
+msgid "Empty: a wash of the site's primary colour"
+msgstr "Vide : une teinte légère de la couleur principale du site"
+
+# //// Neoffice — wrapped in __() (TokenManager.vue) but absent from the catalogue: the CSV import confirmation was English
+msgid "Create {0} new token and update {1} existing token?"
+msgstr "Créer {0} nouveau token et mettre à jour {1} token existant ?"
+
+# //// Neoffice — wrapped in __() (TokenManager.vue) but absent from the catalogue: the CSV import confirmation was English
+msgid "Create {0} new token and update {1} existing tokens?"
+msgstr "Créer {0} nouveau token et mettre à jour {1} tokens existants ?"
+
+# //// Neoffice — wrapped in __() (TokenManager.vue) but absent from the catalogue: the CSV import confirmation was English
+msgid "Create {0} new tokens and update {1} existing token?"
+msgstr "Créer {0} nouveaux tokens et mettre à jour {1} token existant ?"
+
+# //// Neoffice — wrapped in __() (TokenManager.vue) but absent from the catalogue: the CSV import confirmation was English
+msgid "Create {0} new tokens and update {1} existing tokens?"
+msgstr "Créer {0} nouveaux tokens et mettre à jour {1} tokens existants ?"
