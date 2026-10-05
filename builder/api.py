@@ -241,6 +241,14 @@ OPTIONAL_PAGES_BY_SITE_TYPE = {
 # //// The generator reads the same catalogue (site_ai/components.py); this is the other half of
 # //// the promise made when it was written — that a person could drop a products carousel or a
 # //// blog listing themselves, and set what it takes, instead of only the assistant being able to.
+def translate_param(param: dict) -> dict:
+	"""A parameter as the panel shows it: its meaning translated, its name and default untouched."""
+	param = dict(param)
+	if param.get("about"):
+		param["about"] = _(param["about"])
+	return param
+
+
 @frappe.whitelist()
 @builder_role_required()
 def get_site_components(website_profile: str | None = None) -> list[dict]:
@@ -257,14 +265,19 @@ def get_site_components(website_profile: str | None = None) -> list[dict]:
 		has = components.has_data(component, website_profile)
 		out.append(
 			{
-				"label": component.label,
+				# //// Neoffice — the catalogue is written in English because the generator reads it as its
+				# //// prompt, and the panel shows these four fields exactly as they arrive: a French user
+				# //// saw "Contact form" and a sentence of English under it. What a person reads goes
+				# //// through _() here; the generator still reads the English. Names, paths, tags and
+				# //// defaults are identifiers and stay as declared.
+				"label": _(component.label),
 				"path": component.path,
 				"app": component.app,
-				"shows": component.shows,
+				"shows": _(component.shows) if component.shows else "",
 				"pages": list(component.pages),
-				"params": [dict(p) for p in component.params],
+				"params": [translate_param(p) for p in component.params],
 				"tag": component.tag(),
-				"note": component.note,
+				"note": _(component.note) if component.note else "",
 				# None when the component declares no check: nothing to say about it
 				"has_data": has,
 			}
