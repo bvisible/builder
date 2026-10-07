@@ -7,7 +7,8 @@ from babel.messages.extract import DEFAULT_KEYWORDS, extract_from_dir
 from frappe.gettext.translate import get_method_map
 from frappe.tests.utils import FrappeTestCase
 
-from builder.www._builder import get_boot
+# //// Neoffice — cockpit_catalogs: the catalogs the boot carries (test_boot_carries_only_builder_translations).
+from builder.www._builder import cockpit_catalogs, get_boot
 
 FRONTEND_SRC = os.path.join("frontend", "src")
 
@@ -72,4 +73,9 @@ class TestI18n(FrappeTestCase):
 		with patch("builder.www._builder.get_translations_from_apps", return_value={}) as from_apps:
 			get_boot()
 
-		from_apps.assert_called_once_with(frappe.local.lang, ["builder"])
+		# //// Neoffice — Builder's catalog plus the Neoffice cockpit's (frappe, neoffice_theme), Builder's
+		# //// last, and still never every app's: the cockpit around the editor translates its own words
+		# //// through this boot (see get_boot). Upstream asserted ["builder"] alone.
+		from_apps.assert_called_once_with(frappe.local.lang, cockpit_catalogs())
+		self.assertEqual(cockpit_catalogs()[-1], "builder")
+		self.assertLessEqual(set(cockpit_catalogs()), {"frappe", "neoffice_theme", "builder"})
