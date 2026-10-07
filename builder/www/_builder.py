@@ -39,7 +39,11 @@ def get_context(context):
 def get_boot() -> dict:
 	# only Builder's own catalog, the editor never looks up another app's strings
 	lang = frappe.local.lang
-	messages = get_translations_from_apps(lang, ["builder"])
+	# //// Neoffice — and the catalogs the Neoffice cockpit around the editor draws its own words from
+	# //// (neoffice_theme, frappe): the editor never looks them up, the cockpit does, through this same __.
+	# //// Without them « Search… », « Favorites », « Collapse menu » stayed English on /builder (07.10).
+	# //// Builder's own catalog comes last, so its words keep its translations.
+	messages = get_translations_from_apps(lang, cockpit_catalogs())
 	messages.update(get_user_translations(lang) or {})
 	# //// Neoffice — the assistant's name and what this instance allows (managed models, tools
 	# //// kept off, Users tab) ride the boot so a registry condition can read them at module load,
@@ -67,3 +71,10 @@ def _has_pulse() -> bool:
 		return importlib.util.find_spec("frappe.utils.telemetry.pulse") is not None
 	except (ImportError, ValueError, AttributeError):
 		return False
+
+
+# //// Neoffice — added function (see get_boot).
+def cockpit_catalogs() -> list:
+	"""The apps whose translations /builder carries: the cockpit's, then Builder's own."""
+	installed = set(frappe.get_installed_apps())
+	return [app for app in ("frappe", "neoffice_theme") if app in installed] + ["builder"]
