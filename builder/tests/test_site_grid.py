@@ -72,6 +72,18 @@ class TestChromeOnTheGrid(unittest.TestCase):
 		self.assertIn(".site-header:not([data-layout=\"B\"]) .site-header__left {\n\t\tflex: 0 1 auto;\n\t\tmin-width: 0;", phone)
 		self.assertIn("max-width: 100%;\n\t\tmax-height: 36px;", phone)
 
+	def test_on_a_phone_a_logo_without_a_size_of_its_own_still_shows(self):
+		"""An SVG logo with a viewBox and no width or height came out 0 x 0 on a phone: with its height
+		left to auto, the column that sizes itself on its content had nothing to size on (the hub's
+		login page, 2026-10-09). A definite height gives the image its width from its ratio."""
+		header = template("header_styles.html")
+		phone = header[header.index("on a phone the logo gives way") :]
+		image = phone[phone.index(".site-header .site-logo__image {") :]
+		image = image[: image.index("}")]
+		# a line of its own: « max-height: 36px; » holds the same words
+		self.assertRegex(image, r"(?m)^\s*height: 36px;$")
+		self.assertNotRegex(image, r"(?m)^\s*height: auto;$")
+
 	def test_the_designed_band_starts_on_the_grid(self):
 		"""The gutter sits on the column that carries the width, like the header's container: on the
 		outer section it put the band's text 24px left of the logo."""

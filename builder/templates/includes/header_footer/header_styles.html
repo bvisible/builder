@@ -722,7 +722,11 @@ html:not(.is-signed-in) .site-header [data-audience="signed-in"] {
 
 	.site-header .site-logo__image {
 		width: auto;
-		height: auto;
+		/* //// Neoffice — a definite height, not auto: an SVG logo with a viewBox and no width or height
+		   //// has no size of its own, and in this column that sizes itself on its content it came out
+		   //// 0 x 0 (the hub's login page, 2026-10-09). Its width now follows its ratio, a raster logo
+		   //// does as before, and a wider one still shrinks to the column (object-fit: contain). */
+		height: 36px;
 		min-width: 0;
 		max-width: 100%;
 		max-height: 36px;
