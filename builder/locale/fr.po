@@ -10788,3 +10788,19 @@ msgstr "omettre un produit sans photo"
 # //// the panel shows it as the server sends it
 msgid "where the 'View more' button goes, e.g. /all-products"
 msgstr "où mène le bouton « Voir plus », p. ex. /all-products"
+
+#: website contact form
+msgid "Step"
+msgstr "Étape"
+
+#: website contact form
+msgid "About you"
+msgstr "À propos de vous"
+
+#: website contact form
+msgid "Leave this field empty"
+msgstr "Laissez ce champ vide"
+
+#: website contact form
+msgid "Too many messages have been sent. Please try again later."
+msgstr "Trop de messages ont été envoyés. Veuillez réessayer plus tard."
