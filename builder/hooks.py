@@ -226,6 +226,8 @@ website_components = [
 		# //// Neoffice — the form can wait in a window, carry the business's consent sentence and ask
 		# //// for the phone (2026-09-29, the header of contact_form.html says how).
 		"params": [
+			# //// Neoffice — one shortcode, three forms (2026-10-17, see the header of contact_form.html).
+			{"name": "contact_model", "type": "str", "default": "steps", "about": "which form to draw: \"simple\" (name, e-mail, message), \"steps\" (the same in two, one question at a time) or \"questions\" (what the request is about, the budget and the timing before the message)"},
 			{"name": "contact_dialog", "type": "bool", "default": False, "about": "the form waits in a window its button opens; any link to #contact opens it too, from this page or another (/about#contact)"},
 			{"name": "contact_button_text", "type": "str", "default": "Contact us", "about": "what the button that opens the window reads, in the site's language; empty draws no button, for a page with its own link to #contact"},
 			{"name": "consent_text", "type": "str", "default": "", "about": "the business's own consent sentence, a box the visitor must tick before sending"},

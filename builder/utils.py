@@ -442,6 +442,57 @@ def sync_block_templates():
 	make_records(builder_block_template_path)
 
 
+def sync_shortcodes():
+	"""The Builder Shortcode registry, shipped as a file like the block templates beside it.
+
+	//// Neoffice — added (2026-10-17, neoffice-maintenance#1593). The rows sat in
+	//// builder_shortcode_fixtures.json and NOTHING read it: the `fixtures` hook of this app
+	//// exports `source_app = "webshop"` only, and there is no builder/fixtures/ folder. So the
+	//// eight shortcodes existed on the instance where someone had once inserted them and nowhere
+	//// else — measured the day this was written: 8 rows on our own instance, 0 on a client's,
+	//// freshly updated that morning. The editor's shortcode list and the generator's
+	//// get_shortcodes_for_ai() were therefore empty on every client site.
+	//// `enabled` is left alone on a row that already exists: that switch belongs to the site, and
+	//// a migrate must not turn a shortcode back on after its owner turned it off. Everything else
+	//// — the documentation the editor and the generator read — follows the file.
+	//// A row whose source_app is not installed here is skipped: its template would not render.
+	"""
+	import json
+
+	print("Syncing Builder Shortcodes")
+	path = frappe.get_module_path("builder", "doctype", "builder_shortcode", "builder_shortcode_fixtures.json")
+	try:
+		with open(path, encoding="utf-8") as handle:
+			rows = json.load(handle)
+	except (OSError, ValueError) as error:
+		print(f"{path} unreadable: {error}")
+		return
+
+	installed = set(frappe.get_installed_apps())
+	documented = (
+		"category",
+		"source_app",
+		"template_path",
+		"description",
+		"usage_syntax",
+		"parameters",
+		"example_code",
+	)
+	for row in rows:
+		name = row.get("shortcode_name")
+		source_app = row.get("source_app")
+		if not name or (source_app and source_app not in installed):
+			continue
+		if frappe.db.exists("Builder Shortcode", name):
+			doc = frappe.get_doc("Builder Shortcode", name)
+			for field in documented:
+				if field in row:
+					doc.set(field, row[field])
+			doc.save(ignore_permissions=True)
+		else:
+			frappe.get_doc(dict(row, doctype="Builder Shortcode")).insert(ignore_permissions=True)
+
+
 def sync_builder_tokens():
 	print("Syncing Builder Tokens")
 	builder_token_path = frappe.get_module_path("builder", "builder_token")

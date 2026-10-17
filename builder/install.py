@@ -11,6 +11,9 @@ from builder.utils import (
 	sync_block_templates,
 	sync_builder_tokens,
 	sync_page_templates,
+	# //// Neoffice — the delivery path of the shortcode registry, which reached no site before
+	# //// (see sync_shortcodes in utils.py).
+	sync_shortcodes,
 )
 
 
@@ -20,6 +23,8 @@ def after_install():
 	sync_page_templates()
 	sync_block_templates()
 	sync_builder_tokens()
+	# //// Neoffice — the shortcode registry, which reached no site before (see sync_shortcodes).
+	sync_shortcodes()
 	add_composite_index_to_web_page_view()
 	sync_standard_builder_pages()
 	# //// Neoffice — the chrome templates on a fresh site.
@@ -30,6 +35,8 @@ def after_migrate():
 	sync_page_templates()
 	sync_block_templates()
 	sync_builder_tokens()
+	# //// Neoffice — the shortcode registry, which reached no site before (see sync_shortcodes).
+	sync_shortcodes()
 	sync_standard_builder_pages()
 	# //// Neoffice — same on every migrate, plus a plugin-registry resync (an app added or
 	# //// removed on the bench must show up in Settings > Plugins).

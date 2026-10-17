@@ -5285,3 +5285,55 @@ msgstr "Telefon"
 #: website contact form
 msgid "Message"
 msgstr "Nachricht"
+
+#: website contact form
+msgid "What is your request about?"
+msgstr "Ihre Anfrage betrifft"
+
+#: website contact form
+msgid "A quote"
+msgstr "Eine Offerte"
+
+#: website contact form
+msgid "A technical question"
+msgstr "Eine technische Frage"
+
+#: website contact form
+msgid "An appointment"
+msgstr "Einen Termin"
+
+#: website contact form
+msgid "Something else"
+msgstr "Etwas anderes"
+
+#: website contact form
+msgid "Budget you have in mind"
+msgstr "Vorgesehenes Budget"
+
+#: website contact form
+msgid "Under 1,000 CHF"
+msgstr "Weniger als 1'000 CHF"
+
+#: website contact form
+msgid "1,000 to 5,000 CHF"
+msgstr "1'000 bis 5'000 CHF"
+
+#: website contact form
+msgid "Over 5,000 CHF"
+msgstr "Mehr als 5'000 CHF"
+
+#: website contact form
+msgid "I do not know yet"
+msgstr "Ich weiss es noch nicht"
+
+#: website contact form
+msgid "When would you like to start?"
+msgstr "Wann möchten Sie starten?"
+
+#: website contact form
+msgid "As soon as possible, in three months…"
+msgstr "So bald wie möglich, in drei Monaten…"
+
+#: website contact form
+msgid "your.email@example.com"
+msgstr "ihre.adresse@beispiel.ch"

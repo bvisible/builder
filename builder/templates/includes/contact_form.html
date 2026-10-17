@@ -33,6 +33,15 @@
 {%- set cf_title = cf_button or _("Contact us") -%}
 {%- set cf_consent = consent_text if consent_text is defined and consent_text else "" -%}
 {%- set cf_phone_required = phone_required is defined and phone_required -%}
+{#- //// Neoffice — contact_model says WHICH form this is (2026-10-17, neoffice-maintenance#1593).
+    //// One shortcode, three forms: "simple" asks the three things every site needs, "steps" walks
+    //// them in two, "questions" asks what the request is about, the budget and the timing before
+    //// the message. The default is "steps", which is what every page written before this parameter
+    //// already draws: an existing site sees no change. An unknown value falls back to it rather
+    //// than drawing nothing — a page must never lose its form over a typo. -#}
+{%- set cf_model = contact_model if contact_model is defined and contact_model in ("simple", "steps", "questions") else "steps" -%}
+{%- set cf_steps = cf_model != "simple" -%}
+{%- set cf_questions = cf_model == "questions" -%}
 {#- a page may carry the form twice (a window and a contact section): the window's fields keep ids of their own -#}
 {%- set cf_id = "dialog_" if cf_dialog else "" -%}
 <div class="builder-contact-form{% if cf_dialog %} builder-contact-form--dialog{% endif %}">
@@ -58,10 +67,14 @@
           data-consent-label="{{ _('Consent given') | e }}">
         <input type="hidden" name="subject" value="{{ _('Contact from the website') | e }}">
 
-        <p class="builder-contact-form__progress" data-progress hidden>{{ _("Step") }} <span data-step-now>1</span> / 2</p>
+        {%- if cf_steps %}
+        <p class="builder-contact-form__progress" data-progress hidden>{{ _("Step") }} <span data-step-now>1</span> / <span data-step-total>2</span></p>
 
         <fieldset class="builder-contact-form__step" data-step="1">
             <legend class="builder-contact-form__legend">{{ _("About you") }}</legend>
+        {%- else %}
+        <div class="builder-contact-form__plain">
+        {%- endif %}
             <div class="form-row">
                 <div class="form-group">
                     <label for="{{ cf_id }}sender_name">{{ _("Name") }} <span class="required">*</span></label>
@@ -75,16 +88,58 @@
                 </div>
             </div>
 
+            {#- //// Neoffice — the simple form asks for a phone only when the business says it needs one. -#}
+            {%- if cf_steps or cf_phone_required %}
             <div class="form-group">
                 <label for="{{ cf_id }}contact_phone">{{ _("Phone") }}{% if cf_phone_required %} <span class="required">*</span>{% endif %}</label>
                 <input type="tel" id="{{ cf_id }}contact_phone" name="phone" autocomplete="tel"{% if cf_phone_required %} required{% endif %}
                        placeholder="{{ _('+41 XX XXX XX XX') }}">
             </div>
+            {%- endif %}
+            {%- if cf_steps %}
             <button type="button" class="builder-contact-form__next" data-step-next hidden>{{ _("Next") }}</button>
         </fieldset>
 
         <fieldset class="builder-contact-form__step" data-step="2">
             <legend class="builder-contact-form__legend">{{ _("Your message") }}</legend>
+            {%- endif %}
+
+            {#- //// Neoffice — the questions of the "questions" model. The endpoint knows eight field
+                //// names and no more, so each of these travels inside the message, under the question
+                //// it answers: that is what data-label carries (neo_contact_form.js). Without it the
+                //// owner would read "A quote: A quote" — the label beside a radio belongs to the
+                //// option, not to the question. -#}
+            {%- if cf_questions %}
+            {%- set cf_about = _("What is your request about?") %}
+            <div class="form-group builder-contact-form__question">
+                <p class="builder-contact-form__question-label">{{ cf_about }}</p>
+                {%- for cf_option in [_("A quote"), _("A technical question"), _("An appointment"), _("Something else")] %}
+                <label class="builder-contact-form__choice">
+                    <input type="radio" name="request_type" value="{{ cf_option | e }}" data-label="{{ cf_about | e }}" required>
+                    <span>{{ cf_option }}</span>
+                </label>
+                {%- endfor %}
+            </div>
+
+            {%- set cf_budget = _("Budget you have in mind") %}
+            <div class="form-group builder-contact-form__question">
+                <p class="builder-contact-form__question-label">{{ cf_budget }}</p>
+                {%- for cf_option in [_("Under 1,000 CHF"), _("1,000 to 5,000 CHF"), _("Over 5,000 CHF"), _("I do not know yet")] %}
+                <label class="builder-contact-form__choice">
+                    <input type="radio" name="budget" value="{{ cf_option | e }}" data-label="{{ cf_budget | e }}" required>
+                    <span>{{ cf_option }}</span>
+                </label>
+                {%- endfor %}
+            </div>
+
+            {%- set cf_when = _("When would you like to start?") %}
+            <div class="form-group">
+                <label for="{{ cf_id }}contact_when">{{ cf_when }}</label>
+                <input type="text" id="{{ cf_id }}contact_when" name="start_when" data-label="{{ cf_when | e }}"
+                       placeholder="{{ _('As soon as possible, in three months…') }}">
+            </div>
+            {%- endif %}
+
             <div class="form-group">
                 <label for="{{ cf_id }}contact_message">{{ _("Message") }} <span class="required">*</span></label>
                 <textarea id="{{ cf_id }}contact_message" name="message" rows="5" required
@@ -103,11 +158,17 @@
                 <input type="text" id="{{ cf_id }}contact_website" name="website" tabindex="-1" autocomplete="off">
             </div>
 
+            {%- if cf_steps %}
             <button type="button" class="builder-contact-form__back" data-step-back hidden>{{ _("Back") }}</button>
+            {%- endif %}
             <button type="submit" class="btn btn-primary">
                 {{ _("Send Message") }}
             </button>
+        {%- if cf_steps %}
         </fieldset>
+        {%- else %}
+        </div>
+        {%- endif %}
 
         <p class="builder-contact-form__status" role="status" aria-live="polite" hidden></p>
     </form>
@@ -244,6 +305,34 @@
     font-weight: 400;
     font-size: 0.9375rem;
     line-height: 1.5;
+    cursor: pointer;
+}
+/* //// Neoffice — the questions of the "questions" model (contact_model, 2026-10-17): the question
+   above its options, each option a row. The field rule above would otherwise draw every radio as a
+   full-width rounded box, the same way it did to the consent checkbox. */
+.builder-contact-form .builder-contact-form__question-label {
+    margin: 0 0 0.5rem;
+    font-weight: 500;
+    color: inherit;
+}
+.builder-contact-form .builder-contact-form__choice {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    margin-bottom: 0.5rem;
+    font-weight: 400;
+    cursor: pointer;
+}
+.builder-contact-form .builder-contact-form__choice input[type="radio"] {
+    -webkit-appearance: radio;
+    appearance: auto;
+    flex: none;
+    width: var(--checkbox-size, 1rem);
+    height: var(--checkbox-size, 1rem);
+    margin: 0;
+    padding: 0;
+    border-radius: 0;
+    accent-color: currentColor;
     cursor: pointer;
 }
 /* //// Neoffice — the form in a window (contact_dialog). The wrapper only holds the button, which

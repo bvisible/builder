@@ -9951,7 +9951,7 @@ msgstr "vitrine avec connexion"
 
 #: builder/templates/includes/contact_form.html:18
 msgid "your.email@example.com"
-msgstr "your.email@example.com"
+msgstr "votre.adresse@exemple.ch"
 
 #: frontend/src/components/ToolbarItems/ViewerAvatars.vue:40
 msgid "{0} & {1} others"
@@ -10804,3 +10804,51 @@ msgstr "Laissez ce champ vide"
 #: website contact form
 msgid "Too many messages have been sent. Please try again later."
 msgstr "Trop de messages ont été envoyés. Veuillez réessayer plus tard."
+
+#: website contact form
+msgid "What is your request about?"
+msgstr "Votre demande concerne"
+
+#: website contact form
+msgid "A quote"
+msgstr "Un devis"
+
+#: website contact form
+msgid "A technical question"
+msgstr "Une question technique"
+
+#: website contact form
+msgid "An appointment"
+msgstr "Un rendez-vous"
+
+#: website contact form
+msgid "Something else"
+msgstr "Autre chose"
+
+#: website contact form
+msgid "Budget you have in mind"
+msgstr "Budget envisagé"
+
+#: website contact form
+msgid "Under 1,000 CHF"
+msgstr "Moins de 1 000 CHF"
+
+#: website contact form
+msgid "1,000 to 5,000 CHF"
+msgstr "De 1 000 à 5 000 CHF"
+
+#: website contact form
+msgid "Over 5,000 CHF"
+msgstr "Plus de 5 000 CHF"
+
+#: website contact form
+msgid "I do not know yet"
+msgstr "Je ne sais pas encore"
+
+#: website contact form
+msgid "When would you like to start?"
+msgstr "Quand souhaitez-vous démarrer ?"
+
+#: website contact form
+msgid "As soon as possible, in three months…"
+msgstr "Dès que possible, dans trois mois…"

@@ -72,12 +72,16 @@ class TestContactFormDialog(unittest.TestCase):
 		phone = re.search(r'<input type="tel"[^>]*>', html).group(0)
 		self.assertIn("required", phone)
 
-	def test_the_catalogue_offers_the_four_parameters(self):
+	def test_the_catalogue_offers_every_parameter_the_template_reads(self):
 		from builder.site_ai.components import catalogue
 
 		form = next(c for c in catalogue() if c.path == FORM)
 		names = {p["name"] for p in form.params}
-		self.assertEqual({"contact_dialog", "contact_button_text", "consent_text", "phone_required"}, names)
+		# //// Neoffice — contact_model joined them on 2026-10-17: one shortcode, three forms.
+		self.assertEqual(
+			{"contact_model", "contact_dialog", "contact_button_text", "consent_text", "phone_required"},
+			names,
+		)
 		with open(os.path.join(HERE, "templates", "includes", "contact_form.html"), encoding="utf-8") as f:
 			template = f.read()
 		for name in names:
