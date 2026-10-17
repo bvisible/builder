@@ -483,14 +483,29 @@ def sync_shortcodes():
 		source_app = row.get("source_app")
 		if not name or (source_app and source_app not in installed):
 			continue
-		if frappe.db.exists("Builder Shortcode", name):
-			doc = frappe.get_doc("Builder Shortcode", name)
-			for field in documented:
-				if field in row:
-					doc.set(field, row[field])
-			doc.save(ignore_permissions=True)
-		else:
-			frappe.get_doc(dict(row, doctype="Builder Shortcode")).insert(ignore_permissions=True)
+		# //// Neoffice — one row must never fail a migrate. This runs inside `bench migrate` on every
+		# //// instance of the fleet, and what it carries is a catalogue the editor reads: a row that
+		# //// will not save (an old one a site edited into something invalid, a field a future version
+		# //// renamed) is worth a line in the log, not a failed update for the whole instance. The
+		# //// savepoint keeps the failure from poisoning the transaction the rest of the migrate needs.
+		savepoint = f"shortcode_{frappe.scrub(name)}"
+		try:
+			frappe.db.savepoint(savepoint)
+			if frappe.db.exists("Builder Shortcode", name):
+				doc = frappe.get_doc("Builder Shortcode", name)
+				for field in documented:
+					if field in row:
+						doc.set(field, row[field])
+				doc.save(ignore_permissions=True)
+			else:
+				frappe.get_doc(dict(row, doctype="Builder Shortcode")).insert(ignore_permissions=True)
+		except Exception:
+			frappe.db.rollback(save_point=savepoint)
+			frappe.log_error(
+				f"Builder Shortcode: {name[:100]}",
+				f"sync_shortcodes could not write this row:\n\n{frappe.get_traceback()}",
+			)
+			print(f"  {name}: skipped, see the Error Log")
 
 
 def sync_builder_tokens():

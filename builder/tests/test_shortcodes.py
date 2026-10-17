@@ -126,6 +126,45 @@ class TestTheRegistryReachesASite(unittest.TestCase):
 			INCLUDE,
 		)
 
+	def test_a_row_that_will_not_save_does_not_stop_the_others(self):
+		"""This runs inside `bench migrate` on every instance of the fleet. A row that refuses to
+		save — one a site edited into something invalid, a field a later version renamed — must cost
+		a line in the Error Log, not the instance's whole update."""
+		import json as json_module
+		import tempfile
+		from unittest.mock import patch
+
+		from builder.utils import sync_shortcodes
+
+		broken = {
+			"doctype": "Builder Shortcode",
+			"shortcode_name": "Broken Test Shortcode",
+			# a value the Select does not allow: the row refuses to save
+			"category": "Not a category this doctype knows",
+			"enabled": 1,
+			"source_app": "builder",
+			"template_path": "builder/templates/includes/contact_form.html",
+		}
+		with tempfile.NamedTemporaryFile("w", suffix=".json", delete=False, encoding="utf-8") as handle:
+			json_module.dump([broken] + rows(), handle)
+			path = handle.name
+
+		real = frappe.get_module_path
+
+		def only_the_fixtures(*args, **kwargs):
+			# everything else still needs the real one: get_doc imports a controller through it
+			if args and args[-1].endswith("builder_shortcode_fixtures.json"):
+				return path
+			return real(*args, **kwargs)
+
+		frappe.db.delete("Builder Shortcode")
+		with patch("frappe.get_module_path", side_effect=only_the_fixtures):
+			sync_shortcodes()
+
+		self.assertFalse(frappe.db.exists("Builder Shortcode", "Broken Test Shortcode"))
+		expected = {r["shortcode_name"] for r in rows() if r["source_app"] in frappe.get_installed_apps()}
+		self.assertEqual(expected, set(frappe.get_all("Builder Shortcode", pluck="name")))
+
 	def test_a_row_of_an_app_that_is_not_installed_is_skipped(self):
 		from builder.utils import sync_shortcodes
 
