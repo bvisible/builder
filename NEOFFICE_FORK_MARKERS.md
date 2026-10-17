@@ -125,6 +125,17 @@ runtime that drives them, and checked by `builder/tests/test_contact_form_templa
 - `builder/builder/builder_block_template/contact_form_steps/contact_form_steps.json`
 - `builder/builder/builder_block_template/contact_form_questions/contact_form_questions.json`
 
+#### Upstream block templates we removed — forms that post nowhere
+
+`Form 1`, `Form 2` and `Form 3` (with their previews under `builder/www/builder_assets/`) were
+markup and nothing else: their `<form>` carried no `action` and no `method`, so a visitor filled one
+in, pressed the button, and the page reloaded having sent nothing. Dropped on 2026-10-17 along with
+the rows on every instance (patch `drop_legacy_form_templates`), because hiding them behind a
+category our panel no longer draws only hid the trap: one category fix would have put a dead contact
+form one click away, and within the site generator's reach. What replaces them: the three
+`contact_form_*` templates, which post to the endpoint that stores the message
+(neoffice-maintenance#1593). At a merge, do not take them back.
+
 #### Vendored data — `builder/site_ai/design_data/data/*.csv`
 
 Copied verbatim from `nextlevelbuilder/ui-ux-pro-max-skill` (MIT, upstream

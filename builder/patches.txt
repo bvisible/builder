@@ -40,3 +40,4 @@ builder.builder.patches.adopt_design_system
 builder.builder.patches.drop_ai_settings_fields
 builder.builder.patches.blank_default_newsletter_strings
 builder.builder.patches.add_page_top_fields # //// Neoffice — the top page's per-page settings (2026-09-14)
+builder.builder.patches.drop_legacy_form_templates # //// Neoffice — forms that post nowhere (#1593, 2026-10-17)

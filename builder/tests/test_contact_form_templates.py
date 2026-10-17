@@ -23,11 +23,11 @@ STORE = APP.parent / "frontend/src/stores/blockTemplateStore.ts"
 CONTACT_FORMS = ("contact_form_simple", "contact_form_steps", "contact_form_questions")
 SUBMIT_URL = "/api/method/neoffice_theme.website_messages.submit"
 
-# upstream's own form templates, left in categories our panel does not draw on purpose: they are
-# markup with no endpoint behind them, and the category list is also what the site generator picks
-# from (blockTemplateStore.ts). Making them visible would put a form that posts nowhere one click
-# away, and in the generator's reach.
-DELIBERATELY_NOT_DRAWN = {"form_1", "form_2", "form_3", "label"}
+# upstream's own form templates were removed on 2026-10-17 (patch drop_legacy_form_templates): they
+# posted nowhere. `label` stays, in a category our panel does not draw: it is a markup part, not a
+# form, and the category list is also what the site generator picks from (blockTemplateStore.ts).
+DELIBERATELY_NOT_DRAWN = {"label"}
+LEGACY_FORMS = ("form_1", "form_2", "form_3")
 
 
 def load(folder):
@@ -187,12 +187,32 @@ class TestTheEditorDrawsThem(unittest.TestCase):
 			with self.subTest(folder):
 				self.assertIn(load(folder)["category"], drawn)
 
-	def test_upstream_s_own_forms_stay_out_of_the_panel(self):
-		"""Not an oversight: see DELIBERATELY_NOT_DRAWN above before making them visible."""
+	def test_what_is_not_drawn_is_not_drawn_on_purpose(self):
+		"""Not an oversight: see DELIBERATELY_NOT_DRAWN above before making it visible."""
 		drawn = drawn_categories()
 		for folder in sorted(DELIBERATELY_NOT_DRAWN):
 			with self.subTest(folder):
 				self.assertNotIn(load(folder)["category"], drawn)
+
+	def test_the_forms_that_posted_nowhere_are_gone(self):
+		"""They were markup with no endpoint: filled in, sent nothing. Removed with their rows."""
+		for folder in LEGACY_FORMS:
+			with self.subTest(folder):
+				self.assertFalse((TEMPLATES / folder).exists())
+		patches = (APP / "patches.txt").read_text(encoding="utf-8")
+		self.assertIn("builder.builder.patches.drop_legacy_form_templates", patches)
+		self.assertTrue((APP / "builder/patches/drop_legacy_form_templates.py").is_file())
+
+	def test_no_shipped_template_carries_a_form_that_posts_nowhere(self):
+		"""The rule the removed ones broke: a form a visitor can fill must say where it goes."""
+		for folder in sorted(p.name for p in TEMPLATES.iterdir() if p.is_dir() and not p.name.startswith("__")):
+			forms = [node for node in walk(tree(folder)) if node["element"] == "form"]
+			for form in forms:
+				with self.subTest(folder):
+					self.assertTrue(
+						(form.get("customAttributes") or {}).get("action"),
+						f"{folder} carries a form that posts nowhere",
+					)
 
 	def test_each_one_has_a_preview_the_panel_can_show(self):
 		for folder in CONTACT_FORMS:
