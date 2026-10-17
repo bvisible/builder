@@ -110,6 +110,21 @@ marker that says what the doctype is for.
 - `builder/builder/doctype/website_menu_item/website_menu_item.json`
 - `builder/builder/doctype/website_plugin/website_plugin.json`
 
+#### Block templates — entirely ours (no upstream equivalent)
+
+Blocks a page author drops from the editor's panel, stored as files and loaded by
+`sync_block_templates()` on every migrate. Upstream ships its own block templates in
+this folder; these three are ours, markup, field names and texts alike. They are not
+free-form markup: each one must carry what the contact form's defence needs (the
+endpoint's field names, the hidden field, a status line, and `data-label` on every
+option of a question), or a visitor presses Send and nobody ever receives anything.
+What they must honour is written in `builder/public/js/neo_contact_form.js`, the one
+runtime that drives them, and checked by `builder/tests/test_contact_form_templates.py`.
+
+- `builder/builder/builder_block_template/contact_form_simple/contact_form_simple.json`
+- `builder/builder/builder_block_template/contact_form_steps/contact_form_steps.json`
+- `builder/builder/builder_block_template/contact_form_questions/contact_form_questions.json`
+
 #### Vendored data — `builder/site_ai/design_data/data/*.csv`
 
 Copied verbatim from `nextlevelbuilder/ui-ux-pro-max-skill` (MIT, upstream

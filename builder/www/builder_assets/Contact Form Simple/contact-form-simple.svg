@@ -1,0 +1,16 @@
+<!-- //// Neoffice — added file (no upstream equivalent): the editor panel's preview of the
+     //// simple contact form block template beside it (neoffice-maintenance#1593). -->
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 120 260" width="120" height="260" role="img" aria-label="Contact form, simple">
+  <rect width="120" height="260" rx="10" fill="#FDFBF7"/>
+  <g fill="#141414" opacity=".35">
+    <rect x="16" y="26" width="34" height="6" rx="3"/>
+    <rect x="16" y="78" width="40" height="6" rx="3"/>
+    <rect x="16" y="130" width="52" height="6" rx="3"/>
+  </g>
+  <g fill="none" stroke="#141414" stroke-opacity=".22" stroke-width="2">
+    <rect x="16" y="38" width="88" height="26" rx="6"/>
+    <rect x="16" y="90" width="88" height="26" rx="6"/>
+    <rect x="16" y="142" width="88" height="62" rx="6"/>
+  </g>
+  <rect x="16" y="218" width="54" height="24" rx="7" fill="#141414"/>
+</svg>

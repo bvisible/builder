@@ -5,6 +5,9 @@ import re
 import unittest
 
 TEMPLATE = pathlib.Path(__file__).parent.parent / "templates/includes/contact_form.html"
+# //// Neoffice — the script moved out of the template on 2026-10-17: one runtime for the include
+# //// and for the block templates of the editor alike (hooks.py web_include_js).
+RUNTIME = pathlib.Path(__file__).parent.parent / "public/js/neo_contact_form.js"
 
 
 def _rule(css: str, selector: str) -> str:
@@ -47,7 +50,7 @@ class TestTheContactFormDeliversTheMessage(unittest.TestCase):
 	def setUp(self):
 		source = TEMPLATE.read_text()
 		self.form = source.split("<style>", 1)[0]
-		self.script = source.split("<script>", 1)[1]
+		self.script = RUNTIME.read_text()
 
 	def test_only_the_email_field_is_the_sender(self):
 		senders = re.findall(r"<input\b[^>]*\bname=\"sender\"[^>]*>", self.form)
@@ -79,8 +82,8 @@ class TestTheContactFormDeliversTheMessage(unittest.TestCase):
 	def test_the_name_and_the_phone_travel_in_the_message(self):
 		# send_message takes sender, subject and message: any other field is dropped on the way
 		for name in ("full_name", "phone", "message"):
-			self.assertIn(f'field("{name}")', self.script)
-		self.assertIn("message: (head.length", self.script)
+			self.assertIn(f'value(form, "{name}")', self.script)
+		self.assertIn('head.join("\\n")', self.script)
 
 	def test_the_subject_is_translated_not_written_in_french(self):
 		self.assertNotIn("Contact depuis le site web", TEMPLATE.read_text())

@@ -23,6 +23,11 @@
 (function(){function s(){var t=document.documentElement.getAttribute('data-theme')||document.documentElement.getAttribute('data-prefers-color-scheme');document.querySelectorAll('picture source[data-scheme="dark"]').forEach(function(s){s.media=t==='dark'?'all':t==='light'?'not all':'(prefers-color-scheme: dark)';});}new MutationObserver(s).observe(document.documentElement,{attributes:true,attributeFilter:['data-theme','data-prefers-color-scheme']});s();})();
 </script>
 {% endif %}
+{# //// Neoffice — the contact form's runtime, on the pages that carry one (builder_page.py says
+   //// which, and why it is not a web_include_js). #}
+{% if has_contact_form %}
+<script src="{{ contact_form_script }}"></script>
+{% endif %}
 {% if _body_html %}
 {{ _body_html | safe }}
 {% endif %}

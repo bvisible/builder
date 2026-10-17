@@ -62,7 +62,10 @@ class TestContactFormDialog(unittest.TestCase):
 		self.assertIn(f'value="{CONSENT}"', box)
 		self.assertIn(f">{CONSENT}</label>", html)
 		self.assertIn("data-consent-label=", html)
-		self.assertIn("form.dataset.consentLabel", html)
+		# the sentence travels with the message: the runtime reads that label, and lives in a file of
+		# its own since 2026-10-17 (public/js/neo_contact_form.js)
+		with open(os.path.join(HERE, "public", "js", "neo_contact_form.js"), encoding="utf-8") as f:
+			self.assertIn("consentLabel", f.read())
 
 	def test_the_phone_can_be_required(self):
 		html = render(phone_required=True)

@@ -672,6 +672,22 @@ class BuilderPage(WebsiteGenerator):
 			context.no_cache = 1
 		context.has_dual_mode_image = has_dual_mode_image
 
+		# //// Neoffice — the one runtime behind every contact form of a generated site
+		# //// (public/js/neo_contact_form.js, neoffice-maintenance#1593): the signed token, the minimum
+		# //// delay, the field only a script fills, the steps and the fallback to the stock URL. A page
+		# //// carries it only if it has a form — a block template of the editor, which renders
+		# //// data-neo-contact, or the Jinja include, whose {% include %} is still unrendered in
+		# //// `content` at this point. Loaded here and NOT by web_include_js: frappe renders those in
+		# //// base.html, and a Builder page never goes through it (our templates/generators/webpage.html
+		# //// owns the document), so a page had no script at all and the form sent nothing.
+		context.has_contact_form = "data-neo-contact" in content or "contact_form.html" in content
+		if context.has_contact_form:
+			from builder.hooks import _asset_version
+
+			context.contact_form_script = (
+				f"/assets/builder/js/neo_contact_form.js?v={_asset_version('js/neo_contact_form.js')}"
+			)
+
 		self.set_custom_font(context, fonts)
 		# //// Neoffice — the site's own copy of each Google stylesheet (SEO / GEO plan, D-10): a page
 		# //// that linked fonts.googleapis.com handed every visitor's IP address to Google. The copy is

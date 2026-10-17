@@ -1,0 +1,27 @@
+<!-- //// Neoffice — added file (no upstream equivalent): the editor panel's preview of the
+     //// contact form with questions block template beside it (neoffice-maintenance#1593). -->
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 120 260" width="120" height="260" role="img" aria-label="Contact form with questions">
+  <rect width="120" height="260" rx="10" fill="#FDFBF7"/>
+  <g fill="#141414" opacity=".35">
+    <rect x="16" y="22" width="34" height="6" rx="3"/>
+    <rect x="16" y="66" width="56" height="6" rx="3"/>
+    <rect x="16" y="140" width="48" height="6" rx="3"/>
+  </g>
+  <g fill="none" stroke="#141414" stroke-opacity=".22" stroke-width="2">
+    <rect x="16" y="34" width="88" height="22" rx="6"/>
+    <rect x="16" y="152" width="88" height="48" rx="6"/>
+  </g>
+  <g>
+    <circle cx="21" cy="84" r="5" fill="#141414"/>
+    <rect x="32" y="81" width="46" height="6" rx="3" fill="#141414" opacity=".3"/>
+    <circle cx="21" cy="102" r="5" fill="none" stroke="#141414" stroke-opacity=".3" stroke-width="2"/>
+    <rect x="32" y="99" width="60" height="6" rx="3" fill="#141414" opacity=".3"/>
+    <circle cx="21" cy="120" r="5" fill="none" stroke="#141414" stroke-opacity=".3" stroke-width="2"/>
+    <rect x="32" y="117" width="38" height="6" rx="3" fill="#141414" opacity=".3"/>
+  </g>
+  <g>
+    <rect x="16" y="210" width="12" height="12" rx="3" fill="none" stroke="#141414" stroke-opacity=".3" stroke-width="2"/>
+    <rect x="34" y="213" width="60" height="6" rx="3" fill="#141414" opacity=".3"/>
+  </g>
+  <rect x="16" y="232" width="66" height="22" rx="7" fill="#141414"/>
+</svg>
