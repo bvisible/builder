@@ -12,6 +12,8 @@ import linkSection from "@/components/BlockPropertySections/LinkSection";
 import moreStylesSection from "@/components/BlockPropertySections/MoreStylesSection";
 import optionsSection from "@/components/BlockPropertySections/OptionsSection";
 import positionSection from "@/components/BlockPropertySections/PositionSection";
+//// Neoffice — see the first entry of `sections` below.
+import siteComponentSection from "@/components/BlockPropertySections/SiteComponentSection";
 import spacingSection from "@/components/BlockPropertySections/SpacingSection";
 import standardPropsInputSection from "@/components/BlockPropertySections/StandardPropsInputSection";
 import styleSection from "@/components/BlockPropertySections/StyleSection";
@@ -39,6 +41,8 @@ export type PropertySection = RegistryItem & {
 export const propertySections = createRegistry<PropertySection>();
 
 const sections = [
+	//// Neoffice — first, so a block that carries a component's tag shows the way to its options before its raw HTML
+	siteComponentSection,
 	standardPropsInputSection,
 	collectionOptionsSection,
 	linkSection,

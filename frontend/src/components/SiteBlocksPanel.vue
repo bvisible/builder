@@ -202,6 +202,13 @@ const toggle = (component: SiteComponent) => {
 	addForm.value = { typed: {}, flags: {} };
 };
 
+// What the person calls a block: a component by its name, else the name the block was given, else its element
+const nameOf = (block: Block) => {
+	const read = readComponentTag(block.getInnerHTML());
+	const component = read && siteComponents.value.find((c) => c.path === read.path);
+	return component?.label || block.blockName || block.getElement() || "";
+};
+
 // Where a block lands: after the selected one, but never inside a row or a grid (a component is a block of its own,
 // full width); with nothing selected, at the end of the page.
 const placement = computed<{ parent: Block | null; after: Block | null; where: string }>(() => {
@@ -217,7 +224,7 @@ const placement = computed<{ parent: Block | null; after: Block | null; where: s
 		parent = target.getParentBlock();
 	}
 	if (!parent) return { parent: root, after: null, where: __("at the end of the page") };
-	return { parent, after: target, where: __("after “{0}”", [target.blockName || target.getElement() || ""]) };
+	return { parent, after: target, where: __("after “{0}”", [nameOf(target)]) };
 });
 
 const insert = async (component: SiteComponent) => {

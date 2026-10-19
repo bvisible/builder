@@ -11161,3 +11161,286 @@ msgstr ""
 #: frontend/src/utils/useBuilderEvents.ts:357
 msgid "Zoom Out"
 msgstr ""
+
+#. //// Neoffice — what the editor's component picker shows (declared in
+#. builder/hooks.py, passed through _() by builder.api.get_site_components)
+#: builder/hooks.py
+msgid "'View more' link"
+msgstr "Lien « Voir plus »"
+
+#. //// Neoffice — what the editor's component picker shows (declared in
+#. builder/site_ai/components.py, passed through _() by
+#. builder.api.get_site_components)
+#: builder/site_ai/components.py
+msgid "'View more' text"
+msgstr "Texte « Voir plus »"
+
+#: frontend/src/components/SiteBlocksPanel.vue:220
+msgid "after “{0}”"
+msgstr "après « {0} »"
+
+#. //// Neoffice — what the editor's component picker shows (declared in
+#. builder/hooks.py, passed through _() by builder.api.get_site_components)
+#: builder/hooks.py
+msgid "Another address"
+msgstr "Autre adresse"
+
+#: frontend/src/components/SiteBlocksPanel.vue:211
+#: frontend/src/components/SiteBlocksPanel.vue:219
+msgid "at the end of the page"
+msgstr "en fin de page"
+
+#. //// Neoffice — what the editor's component picker shows (declared in
+#. builder/hooks.py, passed through _() by builder.api.get_site_components)
+#: builder/hooks.py
+msgid "Button text"
+msgstr "Texte du bouton"
+
+#. //// Neoffice — what the editor's component picker shows (declared in
+#. builder/hooks.py, passed through _() by builder.api.get_site_components)
+#: builder/hooks.py
+msgid "Consent sentence"
+msgstr "Phrase de consentement"
+
+#. //// Neoffice — what the editor's component picker shows (declared in
+#. builder/hooks.py, passed through _() by builder.api.get_site_components)
+#: builder/hooks.py
+msgid "Creation date"
+msgstr "Date de création"
+
+#. //// Neoffice — what the editor's component picker shows (declared in
+#. builder/site_ai/components.py, passed through _() by
+#. builder.api.get_site_components)
+#: builder/site_ai/components.py
+msgid "Discounted products only"
+msgstr "Produits en promotion uniquement"
+
+#. //// Neoffice — what the editor's component picker shows (declared in
+#. builder/site_ai/components.py, passed through _() by
+#. builder.api.get_site_components)
+#: builder/site_ai/components.py
+msgid "Hide brands without a logo"
+msgstr "Masquer les marques sans logo"
+
+#. //// Neoffice — what the editor's component picker shows (declared in
+#. builder/site_ai/components.py, passed through _() by
+#. builder.api.get_site_components)
+#: builder/site_ai/components.py
+msgid "Hide products without a photo"
+msgstr "Masquer les produits sans photo"
+
+#. //// Neoffice — what the editor's component picker shows (declared in
+#. builder/site_ai/components.py, passed through _() by
+#. builder.api.get_site_components)
+#: builder/site_ai/components.py
+msgid "How many brands"
+msgstr "Nombre de marques"
+
+#. //// Neoffice — what the editor's component picker shows (declared in
+#. builder/hooks.py, passed through _() by builder.api.get_site_components)
+#: builder/hooks.py
+msgid "How many posts"
+msgstr "Nombre d'articles"
+
+#. //// Neoffice — what the editor's component picker shows (declared in
+#. builder/site_ai/components.py, passed through _() by
+#. builder.api.get_site_components)
+#: builder/site_ai/components.py
+msgid "How many products"
+msgstr "Nombre de produits"
+
+#. //// Neoffice — what the editor's component picker shows (declared in
+#. builder/hooks.py, passed through _() by builder.api.get_site_components)
+#: builder/hooks.py
+msgid "In two steps, one question at a time"
+msgstr "En deux étapes, une question à la fois"
+
+#: frontend/src/components/ComponentTagBlock.vue:16
+msgid "It draws this site's live data once published. Select it, then open Site blocks to change its options."
+msgstr "Il affiche les données en direct de ce site une fois publié. Sélectionnez-le, puis ouvrez Blocs du site pour modifier ses options."
+
+#: frontend/src/components/SiteBlocksPanel.vue:84
+msgid "It will be placed {0}."
+msgstr "Il sera placé {0}."
+
+#. //// Neoffice — what the editor's component picker shows (declared in
+#. builder/site_ai/components.py, passed through _() by
+#. builder.api.get_site_components)
+#: builder/site_ai/components.py
+msgid "Last updated"
+msgstr "Dernière mise à jour"
+
+#. //// Neoffice — what the editor's component picker shows (declared in
+#. builder/hooks.py, passed through _() by builder.api.get_site_components)
+#: builder/hooks.py
+msgid "Map type"
+msgstr "Type de carte"
+
+#. //// Neoffice — what the editor's component picker shows (declared in
+#. builder/site_ai/components.py, passed through _() by
+#. builder.api.get_site_components)
+#: builder/site_ai/components.py
+msgid "Number of products"
+msgstr "Nombre de produits"
+
+#. //// Neoffice — what the editor's component picker shows (declared in
+#. builder/site_ai/components.py, passed through _() by
+#. builder.api.get_site_components)
+#: builder/site_ai/components.py
+msgid "Only this brand"
+msgstr "Uniquement cette marque"
+
+#. //// Neoffice — what the editor's component picker shows (declared in
+#. builder/hooks.py, passed through _() by builder.api.get_site_components)
+#: builder/hooks.py
+msgid "Only this category"
+msgstr "Uniquement cette catégorie"
+
+#. //// Neoffice — what the editor's component picker shows (declared in
+#. builder/hooks.py, passed through _() by builder.api.get_site_components)
+#: builder/hooks.py
+msgid "Open in a window"
+msgstr "Ouvrir dans une fenêtre"
+
+#: frontend/src/components/SiteBlocksPanel.vue:262
+msgid "Other blocks"
+msgstr "Autres blocs"
+
+#. //// Neoffice — what the editor's component picker shows (declared in
+#. builder/hooks.py, passed through _() by builder.api.get_site_components)
+#: builder/hooks.py
+msgid "Phone number required"
+msgstr "Numéro de téléphone obligatoire"
+
+#. //// Neoffice — what the editor's component picker shows (declared in
+#. builder/hooks.py, passed through _() by builder.api.get_site_components)
+#: builder/hooks.py
+msgid "Pick the form that suits the business. With the window option the form waits behind a button, and any link to #contact opens it, from this page or another."
+msgstr "Choisissez le formulaire qui convient à l'activité. Avec « Ouvrir dans une fenêtre », le formulaire attend derrière un bouton, et tout lien vers #contact l'ouvre, depuis cette page ou une autre."
+
+#. //// Neoffice — what the editor's component picker shows (declared in
+#. builder/hooks.py, passed through _() by builder.api.get_site_components)
+#: builder/hooks.py
+msgid "Publication date"
+msgstr "Date de publication"
+
+#. //// Neoffice — what the editor's component picker shows (declared in
+#. builder/hooks.py, passed through _() by builder.api.get_site_components)
+#: builder/hooks.py
+msgid "Quote request: subject, budget and timing first"
+msgstr "Demande de devis : d'abord le sujet, le budget et le délai"
+
+#. //// Neoffice — what the editor's component picker shows (declared in
+#. builder/site_ai/components.py, passed through _() by
+#. builder.api.get_site_components)
+#: builder/site_ai/components.py
+msgid "Show the number of products"
+msgstr "Afficher le nombre de produits"
+
+#. //// Neoffice — what the editor's component picker shows (declared in
+#. builder/hooks.py, passed through _() by builder.api.get_site_components)
+#: builder/hooks.py
+msgid "Simple: name, e-mail, message"
+msgstr "Simple : nom, e-mail, message"
+
+#. //// Neoffice — what the editor's component picker shows (declared in
+#. builder/hooks.py, passed through _() by builder.api.get_site_components)
+#: builder/hooks.py
+msgid "Sorted by"
+msgstr "Trier par"
+
+#: frontend/src/components/SiteBlocksPanel.vue:261
+msgid "Suited to this page"
+msgstr "Adapté à cette page"
+
+#. //// Neoffice — what the editor's component picker shows (declared in
+#. builder/hooks.py, passed through _() by builder.api.get_site_components)
+#: builder/hooks.py
+msgid "Terrain"
+msgstr "Relief"
+
+#: frontend/src/components/SiteBlocksPanel.vue:190
+msgid "The block could not be updated."
+msgstr "Le bloc n'a pas pu être mis à jour."
+
+#: builder/api.py:344
+msgid "The options could not be read."
+msgstr "Les options n'ont pas pu être lues."
+
+#. //// Neoffice — what the editor's component picker shows (declared in
+#. builder/site_ai/components.py, passed through _() by
+#. builder.api.get_site_components)
+#: builder/site_ai/components.py
+msgid "The whole week"
+msgstr "Toute la semaine"
+
+#: builder/api.py:351
+msgid "This block cannot be written with these options."
+msgstr "Ce bloc ne peut pas être enregistré avec ces options."
+
+#: frontend/src/components/SiteBlocksPanel.vue:34
+msgid "This block is selected: change its options and update it."
+msgstr "Ce bloc est sélectionné : modifiez ses options, puis mettez-le à jour."
+
+#: frontend/src/components/SiteBlocksPanel.vue:30
+msgid "This block's tag was written by hand: it cannot be changed from here."
+msgstr "La balise de ce bloc a été écrite à la main : elle ne peut pas être modifiée d'ici."
+
+#. //// Neoffice — what the editor's component picker shows (declared in
+#. builder/site_ai/components.py, passed through _() by
+#. builder.api.get_site_components)
+#: builder/site_ai/components.py
+msgid "Today only"
+msgstr "Aujourd'hui uniquement"
+
+#. //// Neoffice — what the editor's component picker shows (declared in
+#. builder/site_ai/components.py, passed through _() by
+#. builder.api.get_site_components)
+#: builder/site_ai/components.py
+msgid "Two of them on one page show the same products twice: give the second one another order, or only the discounted products."
+msgstr "Si deux blocs de produits figurent sur une même page, ils affichent deux fois les mêmes produits : donnez au second un autre ordre de tri, ou ne gardez que les produits en promotion."
+
+#: builder/api.py:337
+msgid "Unknown component: {0}"
+msgstr "Composant inconnu : {0}"
+
+#: frontend/src/components/SiteBlocksPanel.vue:41
+msgid "Update the block"
+msgstr "Mettre à jour le bloc"
+
+#: frontend/src/utils/siteComponents.ts:117
+msgid "yes"
+msgstr "oui"
+
+#: frontend/src/components/SiteComponentFields.vue:65
+msgid "{0} (default)"
+msgstr "{0} (par défaut)"
+
+#: frontend/src/components/SiteBlocksPanel.vue:188
+msgid "{0} updated."
+msgstr "{0} mis à jour."
+
+#: builder/site_ai/components.py:157
+msgid "{0}: expected a number from {1} to {2}."
+msgstr "{0} : saisissez un nombre entre {1} et {2}."
+
+#: builder/site_ai/components.py:145 builder/site_ai/components.py:151
+#: builder/site_ai/components.py:153
+msgid "{0}: expected a whole number."
+msgstr "{0} : saisissez un nombre entier."
+
+#: builder/site_ai/components.py:141
+msgid "{0}: expected yes or no."
+msgstr "{0} : choisissez oui ou non."
+
+#: builder/site_ai/components.py:164
+msgid "{0}: pick one of the choices offered."
+msgstr "{0} : choisissez l'une des valeurs proposées."
+
+#: builder/site_ai/components.py:166
+msgid "{0}: the text cannot contain these characters or a line break: {1}"
+msgstr "{0} : le texte ne peut contenir aucun de ces caractères ni de saut de ligne : {1}"
+
+#: builder/site_ai/components.py:168
+msgid "{0}: the text is too long ({1} characters at most)."
+msgstr "{0} : le texte est trop long ({1} caractères au maximum)."
