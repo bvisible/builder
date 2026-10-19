@@ -253,7 +253,7 @@ def clean_tag(text: str) -> str | None:
 
 
 # a parameter value written as a LITERAL: a quoted string with no Jinja in it, a number, true or false
-LITERAL = r"""(?:"[^"{}%\\\n]*"|'[^'{}%\\\n]*'|-?\d+(?:\.\d+)?|true|false)"""
+LITERAL = r"""(?:"[^"{}%\\\n]*"|'[^'{}%\\\n]*'|-?\d+(?:\.\d+)?|true|false|True|False)"""
 LAWFUL_SET = rf"\{{%-?\s*set\s+[a-z_][a-z0-9_]*\s*=\s*{LITERAL}\s*-?%\}}"
 LAWFUL_TAG = re.compile(rf"^\s*(?:{LAWFUL_SET}\s*)*\{{%-?\s*include\s+['\"][^'\"{{}}%]+['\"]\s*-?%\}}\s*$")
 LAWFUL_VALUE = re.compile(rf"\{{%-?\s*set\s+([a-z_][a-z0-9_]*)\s*=\s*({LITERAL})\s*-?%\}}")
@@ -281,8 +281,8 @@ def lawful_tag(text: str) -> str | None:
 	for name, raw in LAWFUL_VALUE.findall(text):
 		if name not in declared:
 			return None
-		if raw in ("true", "false"):
-			values[name] = raw == "true"
+		if raw.lower() in ("true", "false"):  # the generator writes True, the assistant true: both are Jinja
+			values[name] = raw.lower() == "true"
 		elif raw[0] in "\"'":
 			values[name] = raw[1:-1]
 		else:

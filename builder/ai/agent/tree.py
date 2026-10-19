@@ -65,7 +65,7 @@ MOUSTACHE_HINT = (
 )
 
 
-# //// Neoffice — a component's tag is the one Jinja a block's text may carry (2026-10-20). The assistant
+# //// Neoffice — a component's tag is the one Jinja a block's text may carry (2026-10-19). The assistant
 # //// is told to place a catalogued component (the contact form, a carousel, the map) as a div whose text is
 # //// its include tag, and to change its options by rewriting that text; this guard refused every `{%`, so it
 # //// could do neither: asked to turn the contact form into a quote form it answered that its tools

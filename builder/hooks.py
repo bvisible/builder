@@ -222,7 +222,7 @@ website_components = [
 		"shows": "a working contact form, sent to the site's inbox",
 		"pages": ["contact", "one_page"],
 		"required": True,
-		# //// Neoffice — how to choose and wire it (2026-10-20): the generator always wrote "simple".
+		# //// Neoffice — how to choose and wire it (2026-10-19): the generator always wrote "simple".
 		"note": (
 			"Never write a <form> of your own beside it: this include IS the form. Choose contact_model by what the "
 			"business needs: \"questions\" for a business that answers with a quote (trades, installation, B2B, agencies: "

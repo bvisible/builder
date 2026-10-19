@@ -71,7 +71,7 @@ def connected_submission_doctype(page_id: str) -> str | None:
 # //// Neoffice — the contact form is ONE include of the site (builder/templates/includes/contact_form.html): it posts
 # //// to the site's own entry point, saves the message in the inbox and notifies the owner. Asked to "add a contact
 # //// form", a weaker model drew its own <form> and called connect_form for it, which opens a DocType nobody reads and
-# //// leaves the site with two contact forms (2026-10-20). A form whose fields are an e-mail and a message is a contact
+# //// leaves the site with two contact forms (2026-10-19). A form whose fields are an e-mail and a message is a contact
 # //// form: it is declined with the way to the real one.
 CONTACT_FORM_DECLINED = (
 	"DECLINED: this is a CONTACT form, and the site already has one: the contact_form include, which posts, "
@@ -95,7 +95,7 @@ def request_connect_form(ctx, args: dict) -> str | None:
 	the user approves (see pending.apply_connect_form)."""
 	if not getattr(ctx, "page_id", None):
 		return "DECLINED: no page is open — build the form's page first."
-	# //// Neoffice — a contact form is the site's include, never a connected DocType (2026-10-20)
+	# //// Neoffice — a contact form is the site's include, never a connected DocType (2026-10-19)
 	if looks_like_contact_form(args.get("fields")):
 		return CONTACT_FORM_DECLINED
 	# A form here is already wired — very likely a "where do submissions go?" ask.

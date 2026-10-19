@@ -158,7 +158,7 @@ def run_get_site_chrome(ctx, args: dict) -> str:
         offered = available_includes(page_type, "ecommerce" if page_type in ("accueil", "shop") else "vitrine", profile, site_name)
         if offered:
             includes[page_type] = [
-                # //// Neoffice — the note too (2026-10-20): how to choose between its forms, what to never write beside it
+                # //// Neoffice — the note too (2026-10-19): how to choose between its forms, what to never write beside it
                 {"include": c.tag(), "label": c.label, "purpose": c.shows, "params": list(c.params), "note": c.note}
                 for c in offered
             ]

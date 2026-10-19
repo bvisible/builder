@@ -54,7 +54,7 @@ def profiles_line(page_id: str | None = None) -> str:
     )
 
 
-# //// Neoffice — the contact form's tags, written out for the assistant (2026-10-20). A weaker model asked to turn
+# //// Neoffice — the contact form's tags, written out for the assistant (2026-10-19). A weaker model asked to turn
 # //// the form into a quote form deleted the include and drew a window of its own (script that only simulated a
 # //// "thank you"), or offered to create a DocType to store the answers: the three forms, the window and the delivery
 # //// are options of ONE include, and an example it can copy is worth more to it than a rule.

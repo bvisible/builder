@@ -1,7 +1,7 @@
 # //// Neoffice — added file (no upstream equivalent): the assistant places a catalogued component and changes its options.
 """The editor's assistant is told to place a component (the contact form, a carousel, the map) as a div whose
 text is its include tag, and to change its options by rewriting that text. Its block tools refused every `{%`,
-so asked to turn the contact form into a quote form it answered that its tools refuse Jinja (2026-10-20, the
+so asked to turn the contact form into a quote form it answered that its tools refuse Jinja (2026-10-19, the
 contact form the colleague's work made three forms of).
 
 A text that is NOTHING BUT a catalogued component's tag, with literal values for parameters the component
@@ -38,6 +38,11 @@ class TestLawfulTag(unittest.TestCase):
 			components.lawful_tag(written),
 			tag(("contact_model", '"questions"'), ("phone_required", "true")),
 		)
+
+	def test_a_capitalised_boolean_is_the_same_literal(self):
+		# the generator wrote `True` in a page's tag; the tag the assistant reads back must stay lawful
+		written = f'{{%- set phone_required = True -%}}{{% include "{FORM}" %}}'
+		self.assertEqual(components.lawful_tag(written), tag(("phone_required", "true")))
 
 	def test_the_bare_include_is_lawful(self):
 		self.assertEqual(components.lawful_tag(f"{{% include '{FORM}' %}}"), tag())
