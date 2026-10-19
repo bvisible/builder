@@ -436,7 +436,9 @@ class TestBuilderPage(FrappeTestCase):
 			# //// Neoffice — every link of the page, not the first one: a page that opens on its own
 			# //// title now carries the breadcrumb trail under that title, so the first anchor inside
 			# //// div.builder-page-content is the trail's Home link (place_page_crumbs, 2026-09-14).
-			self.assertIn('href="https://example.com"', " ".join(get_html_for(content, "tag", "a", list_all=True)))
+			self.assertIn(
+				'href="https://example.com"', " ".join(get_html_for(content, "tag", "a", list_all=True))
+			)
 			self.assertEqual("admin", get_html_for(content, "attribute", "data-role"))
 		finally:
 			page.delete()
@@ -468,7 +470,10 @@ class TestBuilderPage(FrappeTestCase):
 		try:
 			content = get_response_content("/dotted-keys-fallback-test")
 			self.assertEqual("Fallback title", get_html_for(content, "tag", "h1", only_content=True))
-			self.assertIn('href="/fallback"', get_html_for(content, "tag", "a"))
+			# //// Neoffice — every link of the page, not the first one: a page that opens on its own
+			# //// title carries the breadcrumb trail under that title, so the first anchor inside
+			# //// div.builder-page-content is the trail's Home link (place_page_crumbs, 2026-09-14).
+			self.assertIn('href="/fallback"', " ".join(get_html_for(content, "tag", "a", list_all=True)))
 			self.assertNotIn("Only with hero", content)
 		finally:
 			page.delete()
@@ -490,7 +495,12 @@ class TestBuilderPage(FrappeTestCase):
 		try:
 			content = get_response_content("/dotted-keys-test")
 			self.assertEqual("Real title", get_html_for(content, "tag", "h1", only_content=True))
-			self.assertIn('href="https://example.com"', get_html_for(content, "tag", "a"))
+			# //// Neoffice — every link of the page, not the first one: a page that opens on its own
+			# //// title carries the breadcrumb trail under that title, so the first anchor inside
+			# //// div.builder-page-content is the trail's Home link (place_page_crumbs, 2026-09-14).
+			self.assertIn(
+				'href="https://example.com"', " ".join(get_html_for(content, "tag", "a", list_all=True))
+			)
 			self.assertIn("Only with hero", content)
 		finally:
 			page.delete()
