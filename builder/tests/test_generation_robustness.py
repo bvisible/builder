@@ -739,3 +739,49 @@ class TestVerdictAboutTheChrome(unittest.TestCase):
 	def test_an_unprofessional_verdict_with_no_serious_point_stays(self):
 		self.assertFalse(visual_check.verdict_is_about_the_chrome(critique(False)))
 		self.assertFalse(visual_check.verdict_is_about_the_chrome(critique(False, ("low", "Footer"))))
+
+
+TEXT_IN_STYLE = """
+el: div
+name: body
+c:
+  - el: h2
+    style:
+      color: red
+      fontSize: 2rem
+      text: "1. Responsable du traitement"
+  - el: p
+    style:
+      color: blue
+    text: "Written where it belongs"
+  - el: p
+    style:
+      color: blue
+      text: "ignored, the block has its own"
+    text: "The block's own text wins"
+"""
+
+
+class TestMisplacedKeys(unittest.TestCase):
+	def test_a_text_written_inside_the_style_goes_back_to_the_block(self):
+		blocks, _ = pw.expand_page_yaml(TEXT_IN_STYLE)
+		heading, kept, own = blocks[0]["children"]
+		self.assertEqual(heading["innerHTML"], "1. Responsable du traitement")  # was an empty block
+		self.assertNotIn("text", heading["baseStyles"])
+		self.assertEqual(heading["baseStyles"]["color"], "red")
+		self.assertEqual(kept["innerHTML"], "Written where it belongs")
+		self.assertEqual(own["innerHTML"], "The block's own text wins")
+
+	def test_the_other_block_keys_are_hoisted_too(self):
+		node = {"el": "div", "style": {"color": "red", "classes": ["u-card"], "name": "intro"}}
+		self.assertEqual(pw.hoist_misplaced_keys(node), 2)
+		self.assertEqual(node["classes"], ["u-card"])
+		self.assertEqual(node["name"], "intro")
+		self.assertEqual(node["style"], {"color": "red"})
+
+	def test_a_clean_block_is_left_alone(self):
+		node = {"el": "p", "style": {"color": "red"}, "text": "x"}
+		self.assertEqual(pw.hoist_misplaced_keys(node), 0)
+		self.assertEqual(node, {"el": "p", "style": {"color": "red"}, "text": "x"})
+		self.assertEqual(pw.hoist_misplaced_keys({"el": "p"}), 0)
+		self.assertEqual(pw.hoist_misplaced_keys({"el": "p", "style": "bold"}), 0)

@@ -312,6 +312,27 @@ def adopt_flat_repeater(node: dict, taken=()) -> bool:
 	return True
 
 
+# //// Neoffice — added: a block key written one level too deep, inside `style:` (2026-10-19): see
+# //// hoist_misplaced_keys.
+MISPLACED_IN_STYLE = ("text", "c", "bind", "classes", "attrs", "repeat", "name")
+
+
+def hoist_misplaced_keys(node: dict) -> int:
+	"""A key the model indented as if it belonged to the style: `text: "..."` under `style:` is read
+	as a CSS property named "text", and the heading or paragraph it was meant for has no words. A
+	whole legal page came out as seventy-six empty blocks and one word (the local 27B model,
+	2026-10-19); it was refused, and the revision could not know why. A block key found in `style`
+	moves up to the block unless the block already has it. Returns how many keys moved."""
+	moved = 0
+	styles = node.get("style")
+	if isinstance(styles, dict):
+		for key in MISPLACED_IN_STYLE:
+			if key in styles and not node.get(key):
+				node[key] = styles.pop(key)
+				moved += 1
+	return moved
+
+
 def normalise_repeaters(parsed) -> int:
 	"""Rename, in the parsed YAML, every repeater key and item field that is not a Python
 	identifier, in the data and in the bindings that read it. Returns how many names changed."""
@@ -326,6 +347,8 @@ def normalise_repeaters(parsed) -> int:
 			return
 		if not isinstance(node, dict):
 			return
+		# //// Neoffice — a block key written inside `style:` goes back to the block (hoist_misplaced_keys)
+		changed += hoist_misplaced_keys(node)
 		# //// Neoffice — a repeater written flat is moved under `repeat` before anything reads it
 		# //// (adopt_flat_repeater)
 		if adopt_flat_repeater(node, taken=set(keys.values())):
