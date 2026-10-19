@@ -112,6 +112,21 @@ def fit_grid_placements(blocks: list) -> int:
             columns = 12 if max(needs) <= 12 else max(needs)
             template = styles["gridTemplateColumns"] = f"repeat({columns}, minmax(0, 1fr))"
             edits += 1
+        # a layout grid placed by spans keeps all its columns on the phone when the page says nothing for
+        # it: `1 / span 5` of twelve is a 96 px column on a 375 px screen, a heading wrapped on four lines
+        # and refused (2026-10-19). It collapses: one column, two when four or more narrow items share a row.
+        widths = [e[2] for e in (_extent((c.get("baseStyles") or {}).get("gridColumn")) for c in kids) if e]
+        if (
+            columns >= MIN_COLUMNS
+            and not (block.get("tabletStyles") or {}).get("gridTemplateColumns")
+            and not (block.get("mobileStyles") or {}).get("gridTemplateColumns")
+            and any(w is not None and w < columns for w in widths)
+        ):
+            narrow = len(widths) >= 4 and max(w or columns for w in widths) <= 3
+            block.setdefault("mobileStyles", {})["gridTemplateColumns"] = (
+                "repeat(2, minmax(0, 1fr))" if narrow else "minmax(0, 1fr)"
+            )
+            edits += 1
         current = [(c.get("baseStyles") or {}).get("gridColumn") for c in kids]
         for screen in ("tabletStyles", "mobileStyles"):
             template = str((block.get(screen) or {}).get("gridTemplateColumns") or template)

@@ -341,7 +341,7 @@ def grid(template, kids, **screens):
 class TestGridPlacementsFit(unittest.TestCase):
 	def test_halves_on_a_two_column_template_get_the_twelve_columns_they_were_written_for(self):
 		block = grid("repeat(2, minmax(0, 1fr))", ["1 / span 6", "7 / span 6"])
-		self.assertEqual(layout.fit_grid_placements([block]), 1)
+		layout.fit_grid_placements([block])
 		self.assertEqual(block["baseStyles"]["gridTemplateColumns"], "repeat(12, minmax(0, 1fr))")
 
 	def test_the_phone_gets_spans_that_fit_its_single_column(self):
@@ -398,10 +398,12 @@ class TestGridPlacementsFit(unittest.TestCase):
 		self.assertEqual(block["children"][0]["mobileStyles"]["gridColumn"], "1 / -1")
 		self.assertEqual(block["children"][1]["mobileStyles"]["gridColumn"], "span 1")
 
-	def test_a_grid_that_fits_is_not_touched(self):
+	def test_the_desktop_layout_of_a_grid_that_fits_is_not_touched(self):
 		block = grid("repeat(12, minmax(0, 1fr))", ["span 4", "span 4", "span 4"])
-		self.assertEqual(layout.fit_grid_placements([block]), 0)
+		layout.fit_grid_placements([block])
+		self.assertEqual(block["baseStyles"]["gridTemplateColumns"], "repeat(12, minmax(0, 1fr))")
 		self.assertEqual(block["children"][0]["baseStyles"], {"gridColumn": "span 4"})
+		self.assertNotIn("tabletStyles", block)
 
 	def test_a_fluid_grid_and_a_repeater_are_left_alone(self):
 		fluid = grid(
@@ -785,3 +787,39 @@ class TestMisplacedKeys(unittest.TestCase):
 		self.assertEqual(node, {"el": "p", "style": {"color": "red"}, "text": "x"})
 		self.assertEqual(pw.hoist_misplaced_keys({"el": "p"}), 0)
 		self.assertEqual(pw.hoist_misplaced_keys({"el": "p", "style": "bold"}), 0)
+
+
+class TestPhoneCollapse(unittest.TestCase):
+	def test_a_twelve_column_grid_with_no_phone_layout_collapses_to_one_column(self):
+		block = grid("repeat(12, minmax(0, 1fr))", ["1 / span 5", "7 / span 6"])
+		layout.fit_grid_placements([block])
+		self.assertEqual(block["mobileStyles"]["gridTemplateColumns"], "minmax(0, 1fr)")
+		self.assertEqual([k["mobileStyles"]["gridColumn"] for k in block["children"]], ["span 1", "span 1"])
+		self.assertNotIn("tabletStyles", block)  # the tablet keeps its twelve columns
+
+	def test_four_narrow_items_keep_two_columns_on_the_phone(self):
+		block = grid("repeat(12, minmax(0, 1fr))", ["span 3", "span 3", "span 3", "span 3"])
+		layout.fit_grid_placements([block])
+		self.assertEqual(block["mobileStyles"]["gridTemplateColumns"], "repeat(2, minmax(0, 1fr))")
+		self.assertEqual({k["mobileStyles"]["gridColumn"] for k in block["children"]}, {"span 1"})
+
+	def test_a_phone_layout_the_page_wrote_is_respected(self):
+		block = grid(
+			"repeat(12, minmax(0, 1fr))",
+			["span 6", "span 6"],
+			mobileStyles={"gridTemplateColumns": "repeat(2, 1fr)"},
+		)
+		layout.fit_grid_placements([block])
+		self.assertEqual(block["mobileStyles"]["gridTemplateColumns"], "repeat(2, 1fr)")
+		tablet = grid(
+			"repeat(12, minmax(0, 1fr))", ["span 6", "span 6"], tabletStyles={"gridTemplateColumns": "1fr"}
+		)
+		layout.fit_grid_placements([tablet])
+		self.assertNotIn("gridTemplateColumns", tablet.get("mobileStyles", {}))  # it inherits the tablet's
+
+	def test_full_width_children_and_small_grids_are_not_collapsed(self):
+		full = grid("repeat(12, minmax(0, 1fr))", ["1 / -1", "span 12"])
+		self.assertEqual(layout.fit_grid_placements([full]), 0)
+		small = grid("repeat(4, minmax(0, 1fr))", ["span 2", "span 2"])
+		self.assertEqual(layout.fit_grid_placements([small]), 0)
+		self.assertNotIn("mobileStyles", small)
