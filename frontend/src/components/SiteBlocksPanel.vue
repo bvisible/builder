@@ -37,7 +37,12 @@
 					{{ editing.component.help }}
 				</p>
 				<SiteComponentFields v-model:form="editForm" :component="editing.component" />
-				<Button variant="solid" class="mt-2 w-full" :loading="saving" @click="update">
+				<Button
+					variant="solid"
+					class="mt-2 w-full"
+					:loading="saving"
+					:disabled="builderStore.readOnlyMode"
+					@click="update">
 					{{ __("Update the block") }}
 				</Button>
 			</template>
@@ -83,7 +88,12 @@
 					<p class="mt-2 mb-1 text-p-sm text-ink-gray-5">
 						{{ __("It will be placed {0}.", [placement.where]) }}
 					</p>
-					<Button variant="solid" class="w-full" :loading="saving" @click="insert(component)">
+					<Button
+						variant="solid"
+						class="w-full"
+						:loading="saving"
+						:disabled="builderStore.readOnlyMode"
+						@click="insert(component)">
 						{{ __("Add to the page") }}
 					</Button>
 				</div>
@@ -95,6 +105,7 @@
 <script setup lang="ts">
 import type Block from "@/block";
 import SiteComponentFields from "@/components/SiteComponentFields.vue";
+import useBuilderStore from "@/stores/builderStore";
 import useCanvasStore from "@/stores/canvasStore";
 import usePageStore from "@/stores/pageStore";
 import { getErrorMessage } from "@/utils/helpers";
@@ -114,6 +125,7 @@ import { __ } from "@/translation";
 import { Button, createResource, toast } from "frappe-ui";
 import { computed, ref, watch } from "vue";
 
+const builderStore = useBuilderStore();
 const canvasStore = useCanvasStore();
 const pageStore = usePageStore();
 
@@ -181,7 +193,7 @@ const tagOf = (component: SiteComponent, form: OptionsForm): Promise<string> =>
 
 const update = async () => {
 	const current = editing.value;
-	if (!current) return;
+	if (!current || builderStore.readOnlyMode) return;
 	saving.value = true;
 	try {
 		current.block.setInnerHTML(await tagOf(current.component, editForm.value));
@@ -228,6 +240,7 @@ const placement = computed<{ parent: Block | null; after: Block | null; where: s
 });
 
 const insert = async (component: SiteComponent) => {
+	if (builderStore.readOnlyMode) return;
 	saving.value = true;
 	try {
 		const tag = await tagOf(component, addForm.value);
