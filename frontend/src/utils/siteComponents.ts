@@ -34,6 +34,8 @@ export type SiteComponent = {
 	tag: string;
 	help: string;
 	has_data: boolean | null;
+	/** false when the site turned it off in the registry: it is not offered, but a block that carries it is still read */
+	enabled: boolean;
 	/** true / false when the open page's type is known, null when nothing is recommended */
 	suited: boolean | null;
 };

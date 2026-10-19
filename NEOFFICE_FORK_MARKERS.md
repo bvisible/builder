@@ -102,7 +102,6 @@ marker that says what the doctype is for.
 - `builder/builder/doctype/builder_chat_session/builder_chat_session.json`
 - `builder/builder/doctype/builder_content_asset/builder_content_asset.json`
 - `builder/builder/doctype/builder_shortcode/builder_shortcode.json`
-- `builder/builder/doctype/builder_shortcode/builder_shortcode_fixtures.json` (fixture data, not a doctype)
 - `builder/builder/doctype/builder_site_inspiration/builder_site_inspiration.json`
 - `builder/builder/doctype/website_footer_link/website_footer_link.json`
 - `builder/builder/doctype/website_header_footer_config/website_header_footer_config.json`

@@ -1,40 +1,16 @@
-# //// Neoffice — added file (no upstream equivalent): registry of reusable Jinja components the
-# //// generator may include. Neoffice DocType, no upstream counterpart. First commit 057ddaaa
-# //// 2026-02-02.
+# //// Neoffice — added file (no upstream equivalent): what a page of this site can carry, as desk shows it.
+# //// Neoffice DocType, no upstream counterpart. First commit 057ddaaa 2026-02-02; rewritten 2026-10-20.
+#
+# This is NOT a second definition of the components. They are defined once, in code (`website_components` in the hooks
+# of each app, site_ai/components.py), and `components.sync_registry` writes one row here for each of them on every
+# install and migrate: the documentation a person reads (description, usage, example) follows the code, and the one
+# field a person owns is `enabled`, the switch that stops the editor, the assistant and the generator from offering
+# a component on this site. A page that already carries its tag is untouched. Nobody types a row: nothing would read it.
 # Copyright (c) 2025, Frappe Technologies Pvt Ltd and contributors
 # For license information, please see license.txt
 
-import frappe
 from frappe.model.document import Document
 
 
 class BuilderShortcode(Document):
 	pass
-
-
-def get_all_shortcodes():
-	"""Get all enabled shortcodes for AI generation context."""
-	shortcodes = frappe.get_all(
-		"Builder Shortcode",
-		filters={"enabled": 1},
-		fields=["shortcode_name", "category", "description", "usage_syntax", "parameters", "example_code"]
-	)
-	return shortcodes
-
-
-def get_shortcodes_for_prompt():
-	"""Format shortcodes for inclusion in AI prompts."""
-	shortcodes = get_all_shortcodes()
-	if not shortcodes:
-		return ""
-
-	lines = ["## Available Shortcodes\n"]
-	for sc in shortcodes:
-		lines.append(f"### {sc.shortcode_name}")
-		if sc.description:
-			lines.append(sc.description)
-		if sc.usage_syntax:
-			lines.append(f"```jinja\n{sc.usage_syntax}\n```")
-		lines.append("")
-
-	return "\n".join(lines)

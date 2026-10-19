@@ -442,69 +442,21 @@ def sync_block_templates():
 
 
 def sync_shortcodes():
-	"""The Builder Shortcode registry, shipped as a file like the block templates beside it.
+	"""The Builder Shortcode registry of this site, written from the component catalogue.
 
-	//// Neoffice — added (2026-10-17, neoffice-maintenance#1593). The rows sat in
-	//// builder_shortcode_fixtures.json and NOTHING read it: the `fixtures` hook of this app
-	//// exports `source_app = "webshop"` only, and there is no builder/fixtures/ folder. So the
-	//// eight shortcodes existed on the instance where someone had once inserted them and nowhere
-	//// else — measured the day this was written: 8 rows on our own instance, 0 on a client's,
-	//// freshly updated that morning. The editor's shortcode list and the generator's
-	//// get_shortcodes_for_ai() were therefore empty on every client site.
-	//// `enabled` is left alone on a row that already exists: that switch belongs to the site, and
-	//// a migrate must not turn a shortcode back on after its owner turned it off. Everything else
-	//// — the documentation the editor and the generator read — follows the file.
-	//// A row whose source_app is not installed here is skipped: its template would not render.
+	//// Neoffice — added (2026-10-17, neoffice-maintenance#1593), rewritten 2026-10-20. It shipped the registry as a
+	//// fixture file nobody read, next to two other registries that said the same thing (the catalogue the generator
+	//// reads, and the AI shortcodes typed on one instance). The catalogue is the only definition now
+	//// (site_ai/components.py, `website_components`): this writes a row for each component of an installed app,
+	//// keeps `enabled` (that switch belongs to the site) and removes the rows the catalogue does not hold.
+	//// The work is components.sync_registry; this stays the name install.py and the migrate hook call.
 	"""
-	import json
+	from builder.site_ai import components
 
 	print("Syncing Builder Shortcodes")
-	path = frappe.get_module_path("builder", "doctype", "builder_shortcode", "builder_shortcode_fixtures.json")
-	try:
-		with open(path, encoding="utf-8") as handle:
-			rows = json.load(handle)
-	except (OSError, ValueError) as error:
-		print(f"{path} unreadable: {error}")
-		return
-
-	installed = set(frappe.get_installed_apps())
-	documented = (
-		"category",
-		"source_app",
-		"template_path",
-		"description",
-		"usage_syntax",
-		"parameters",
-		"example_code",
-	)
-	for row in rows:
-		name = row.get("shortcode_name")
-		source_app = row.get("source_app")
-		if not name or (source_app and source_app not in installed):
-			continue
-		# //// Neoffice — one row must never fail a migrate. This runs inside `bench migrate` on every
-		# //// instance of the fleet, and what it carries is a catalogue the editor reads: a row that
-		# //// will not save (an old one a site edited into something invalid, a field a future version
-		# //// renamed) is worth a line in the log, not a failed update for the whole instance. The
-		# //// savepoint keeps the failure from poisoning the transaction the rest of the migrate needs.
-		savepoint = f"shortcode_{frappe.scrub(name)}"
-		try:
-			frappe.db.savepoint(savepoint)
-			if frappe.db.exists("Builder Shortcode", name):
-				doc = frappe.get_doc("Builder Shortcode", name)
-				for field in documented:
-					if field in row:
-						doc.set(field, row[field])
-				doc.save(ignore_permissions=True)
-			else:
-				frappe.get_doc(dict(row, doctype="Builder Shortcode")).insert(ignore_permissions=True)
-		except Exception:
-			frappe.db.rollback(save_point=savepoint)
-			frappe.log_error(
-				f"Builder Shortcode: {name[:100]}",
-				f"sync_shortcodes could not write this row:\n\n{frappe.get_traceback()}",
-			)
-			print(f"  {name}: skipped, see the Error Log")
+	# //// Neoffice — the registry is written from the catalogue, not read from a file (see the docstring)
+	done = components.sync_registry()
+	print("  " + ", ".join(f"{count} {what}" for what, count in done.items()))
 
 
 def sync_builder_tokens():

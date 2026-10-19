@@ -21,7 +21,15 @@ and its parameters with their meaning and default. Three readers:
   * the generator's prompt, written from here instead of a frozen list;
   * the validator, which accepts a catalogued include with declared parameters instead of
     forcing the string back;
-  * (next) the editor, so a person can drop one and fill its parameters in a form.
+  * the editor, so a person can drop one and fill its parameters in a form (2026-10-19).
+
+A fourth reader came on 2026-10-20: the `Builder Shortcode` registry that desk shows (the Website space of the
+theme links to it). Until then THREE registries said the same thing, with three covers and three ways to reach a
+site: this catalogue (code, every instance), `Builder Shortcode` (a fixture file nobody read) and `Builder AI
+Shortcode` (rows typed on one instance, read by the old generator's prompt). The catalogue is the only definition
+now. `Builder Shortcode` is its mirror on each site (sync_registry, run by install and migrate) and holds the
+one thing a person owns there: `enabled`, the switch that takes a component out of what is offered. The two
+endpoints that read the registry, and the old generator's prompt, read the catalogue.
 
 An app OWNS its components: webshop knows what its carousel takes, not builder. So a component is
 declared in its own app's hooks.py, as `website_components`, and this module collects them. The
@@ -31,6 +39,7 @@ webshop declares its own, its entries come out of here.
 
 from __future__ import annotations
 
+import json
 import re
 
 import frappe
@@ -44,7 +53,7 @@ INCLUDE_PATH = re.compile(r"\{%-?\s*include\s+['\"]([^'\"]+)['\"]\s*-?%\}")
 class Component:
 	"""One component of the catalogue."""
 
-	def __init__(self, path, label, shows, pages=(), app="", params=(), data_check="", required=False, note="", needs_shop=False, help=""):
+	def __init__(self, path, label, shows, pages=(), app="", params=(), data_check="", required=False, note="", needs_shop=False, help="", category="Content"):
 		self.path = path
 		self.label = label
 		self.shows = shows
@@ -58,6 +67,8 @@ class Component:
 		# //// written for the generator ("never write a <form> of your own beside it"): shown to a
 		# //// person it is an instruction to somebody else, in English.
 		self.help = help
+		# //// Neoffice — the group the desk registry files it under (E-commerce, Navigation, Content, Form, Layout, Other)
+		self.category = category or "Content"
 		# //// Neoffice — whether this component only makes sense on a site that SELLS. It is the
 		# //// component's own answer, not its app's: webshop owns the products carousel, which
 		# //// needs a shop, AND the opening hours, which are about the premises and belong on the
@@ -200,6 +211,7 @@ BRIDGE: list[Component] = [
 			{"name": "view_more_text", "label": "'View more' text", "type": "str", "default": "View More", "about": "what that button reads, in the site's language"},
 		],
 		needs_shop=True,
+		category="E-commerce",
 		help="Two of them on one page show the same products twice: give the second one another order, or only the discounted products.",
 		note="Two of them on one page is two rows of the same shop: give the second a different sort or show_discounted_only.",
 	),
@@ -224,6 +236,7 @@ BRIDGE: list[Component] = [
 			{"name": "view_more_text", "label": "'View more' text", "type": "str", "default": "View More", "about": "what that button reads, in the site's language"},
 		],
 		needs_shop=True,
+		category="E-commerce",
 	),
 	Component(
 		path="webshop/templates/includes/opening_hours.html",
@@ -260,6 +273,7 @@ def _from_hooks() -> list[Component]:
 				note=entry.get("note") or "",
 				needs_shop=bool(entry.get("needs_shop")),
 				help=entry.get("help") or "",
+				category=entry.get("category") or "Content",
 			)
 		)
 	return out
@@ -302,8 +316,12 @@ def for_page(page_type: str, profile: str | None = None, allow=None) -> list[Com
 	`allow` is the caller's own rule — on a multi-site instance a site built for ANOTHER
 	business must not show this instance's shop — and it is asked about each component."""
 	out = []
+	off = disabled_paths()
 	for component in catalogue():
 		if page_type not in component.pages:
+			continue
+		# //// Neoffice — what the site turned off in the registry is not offered (a page that already carries it keeps it)
+		if component.path in off:
 			continue
 		if callable(allow) and not allow(component):
 			continue
@@ -311,6 +329,150 @@ def for_page(page_type: str, profile: str | None = None, allow=None) -> list[Com
 			continue
 		out.append(component)
 	return out
+
+
+# ---- the registry desk shows -------------------------------------------------------------------------------------
+REGISTRY = "Builder Shortcode"
+REGISTRY_FIELDS = ("category", "source_app", "template_path", "description", "usage_syntax", "parameters", "example_code")
+_TYPE_NAMES = {"str": "string", "int": "integer", "bool": "boolean"}
+
+
+def disabled_paths() -> set[str]:
+	"""The include paths this site turned off in the registry, the one thing a person owns there. A site where
+	the registry cannot be read (before its migrate) turns nothing off."""
+	try:
+		return {path for path in frappe.get_all(REGISTRY, filters={"enabled": 0}, pluck="template_path") if path}
+	except Exception:
+		return set()
+
+
+def enabled_catalogue() -> list[Component]:
+	"""The catalogue without what this site turned off. A tag already on a page is still read through the whole
+	catalogue (lawful_tag, clean_tag, by_file): turning a component off stops offering it, it does not break a page."""
+	off = disabled_paths()
+	return [c for c in catalogue() if c.path not in off]
+
+
+def _example_value(param: dict):
+	"""A value that shows what the option does: the other choice, the opposite switch, else the default."""
+	default = param.get("default")
+	if param.get("type") == "bool":
+		return not bool(default)
+	for choice in choices_of(param):
+		if choice["value"] != str(default):
+			return choice["value"]
+	return default
+
+
+def example_tag(component: Component) -> str:
+	"""A tag with its first options filled in, for the registry's Example field."""
+	values = {}
+	for param in component.params:
+		value = _example_value(param)
+		if value not in (None, "") and len(values) < 3:
+			values[param["name"]] = value
+	return component.tag(values)
+
+
+def registry_row(component: Component) -> dict:
+	"""The component as the `Builder Shortcode` registry documents it, written FROM the catalogue and never typed:
+	the description, usage and example a person reads in desk, and the endpoints that serve them."""
+	parameters = []
+	for param in component.params:
+		item = {
+			"name": param["name"],
+			"label": param_label(param),
+			"type": _TYPE_NAMES.get(param.get("type"), param.get("type") or "string"),
+			"default": param.get("default"),
+			"description": param.get("about") or "",
+		}
+		if choices_of(param):
+			item["choices"] = [c["value"] for c in choices_of(param)]
+		parameters.append(item)
+	return {
+		"shortcode_name": component.label,
+		"category": component.category,
+		"source_app": component.app,
+		"template_path": component.path,
+		"description": component.shows,
+		"usage_syntax": component.tag(),
+		"parameters": json.dumps(parameters, ensure_ascii=False, indent=2) if parameters else "[]",
+		"example_code": example_tag(component),
+	}
+
+
+def sync_registry() -> dict:
+	"""Make the registry of this site say what the catalogue says: a row for each component of an installed app,
+	its documentation following the code, `enabled` left alone (that switch belongs to the site, and a migrate must
+	not turn a component back on after its owner turned it off), and no row for what the catalogue does not hold
+	(a retired component, an app that is not installed here, a row typed by hand: nothing reads it).
+
+	One row must never fail a migrate: this runs inside `bench migrate` on every instance of the fleet. The savepoint
+	keeps one bad row from poisoning the transaction the rest of the migrate needs; it costs a line in the Error Log."""
+	wanted = {c.path: registry_row(c) for c in catalogue()}
+	existing = frappe.get_all(REGISTRY, fields=["name", "template_path"], order_by="creation")
+	kept: dict[str, str] = {}
+	stale: list[str] = []
+	for row in existing:
+		if row.template_path in wanted and row.template_path not in kept:
+			kept[row.template_path] = row.name
+		else:
+			stale.append(row.name)
+
+	done = {"added": 0, "updated": 0, "removed": 0, "failed": 0}
+	for path, row in wanted.items():
+		name = row["shortcode_name"]
+		savepoint = f"registry_{frappe.scrub(name)}"[:60]
+		try:
+			frappe.db.savepoint(savepoint)
+			current = kept.get(path)
+			if current is None:
+				frappe.get_doc(dict(row, doctype=REGISTRY)).insert(ignore_permissions=True)
+				done["added"] += 1
+				continue
+			if current != name:
+				frappe.rename_doc(REGISTRY, current, name, force=True, ignore_permissions=True, show_alert=False, rebuild_search=False)
+			doc = frappe.get_doc(REGISTRY, name)
+			changed = False
+			for field in REGISTRY_FIELDS:
+				if (doc.get(field) or "") != (row[field] or ""):
+					doc.set(field, row[field])
+					changed = True
+			if changed:
+				doc.save(ignore_permissions=True)
+				done["updated"] += 1
+		except Exception:
+			frappe.db.rollback(save_point=savepoint)
+			done["failed"] += 1
+			frappe.log_error(f"Builder Shortcode: {name[:100]}", f"sync_registry could not write this row:\n\n{frappe.get_traceback()}")
+	for name in stale:
+		try:
+			frappe.delete_doc(REGISTRY, name, ignore_permissions=True, force=True)
+			done["removed"] += 1
+		except Exception:
+			done["failed"] += 1
+			frappe.log_error(f"Builder Shortcode: {name[:100]}", f"sync_registry could not remove this row:\n\n{frappe.get_traceback()}")
+	return done
+
+
+def shortcodes_markdown() -> str:
+	"""The components this site offers, as markdown for a prompt: what `get_shortcodes_for_ai` has always returned
+	(category, name, description, usage, example), written from the catalogue."""
+	rows = sorted((registry_row(c) for c in enabled_catalogue()), key=lambda r: (r["category"], r["shortcode_name"]))
+	if not rows:
+		return ""
+	lines = ["## Available Shortcodes\n", "You can use these Jinja includes in Builder pages:\n"]
+	category = None
+	for row in rows:
+		if row["category"] != category:
+			category = row["category"]
+			lines.append(f"\n### {category}\n")
+		lines.append(f"#### {row['shortcode_name']}")
+		if row["description"]:
+			lines.append(f"{row['description']}\n")
+		lines.append(f"**Usage:**\n```jinja\n{row['usage_syntax']}\n```\n")
+		lines.append(f"**Example:**\n```jinja\n{row['example_code']}\n```\n")
+	return "\n".join(lines)
 
 
 def by_file(name: str) -> Component | None:

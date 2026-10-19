@@ -737,23 +737,45 @@ def _drop_unavailable_shortcodes(text: str) -> str:
 def get_shortcodes_context(site_type: str = None) -> str:
     """
     Get shortcodes documentation for AI context.
-    Includes both Builder Shortcodes and Builder AI Shortcodes.
+
+    //// Neoffice — rewritten 2026-10-20. It read the `Builder AI Shortcode` rows typed on one instance: ten on ours,
+    //// one on a client's, four of them the same components as the catalogue (the map, the team, the contact
+    //// details, the timeline) described apart from it, and not the contact form's three models. The components a page
+    //// can carry are the catalogue's now (site_ai/components.py): the ones this site offers, those suited to the page
+    //// type when it is one the catalogue knows. The rows still add what the catalogue does not hold: an include
+    //// somebody described for THIS site (a cart icon, a search box), which is what that DocType is for.
     """
     import frappe
 
+    from builder.site_ai import components
+
     lines = []
 
-    # Get AI Shortcodes (Team Grid, Contact Form, etc.)
-    try:
-        ai_shortcodes = frappe.get_all(
-            "Builder AI Shortcode",
-            fields=["name1", "category", "shortcode", "description", "jinja_code", "use_when"]
-        )
-        if ai_shortcodes:
-            lines.append("## AVAILABLE DYNAMIC SHORTCODES")
-            lines.append("Use these shortcodes in innerHTML for dynamic content.\n")
+    offered = components.enabled_catalogue()
+    if site_type and any(site_type in c.pages for c in components.catalogue()):
+        offered = components.for_page(site_type)
+    if offered:
+        lines.append("## AVAILABLE DYNAMIC SHORTCODES")
+        lines.append("Use these shortcodes in innerHTML for dynamic content.\n")
+        lines.extend(c.describes() for c in offered)
+        lines.append("")
 
-            for sc in ai_shortcodes:
+    # Whatever the catalogue does not hold, typed as a Builder AI Shortcode on this site
+    try:
+        known = {c.path for c in components.catalogue()}
+        custom = []
+        for sc in frappe.get_all(
+            "Builder AI Shortcode",
+            fields=["name1", "category", "shortcode", "description", "jinja_code", "use_when"],
+        ):
+            included = components.INCLUDE_PATH.search(sc.jinja_code or "")
+            if included and included.group(1) in known:
+                continue
+            custom.append(sc)
+        if custom:
+            lines.append("## THIS SITE'S OWN SHORTCODES")
+            lines.append("Use these shortcodes in innerHTML for dynamic content.\n")
+            for sc in custom:
                 lines.append(f"### {sc.name1} (`{sc.shortcode}`)")
                 if sc.description:
                     lines.append(f"{sc.description}")

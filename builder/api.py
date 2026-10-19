@@ -286,6 +286,8 @@ def get_site_components(page: str | None = None, website_profile: str | None = N
 		website_profile = website_profile or page_profile(page)
 
 	out = []
+	# //// Neoffice — what the site turned off in the registry (builder.api.get_available_shortcodes reads the same switch)
+	off = components.disabled_paths()
 	for component in components.catalogue():
 		has = components.has_data(component, website_profile)
 		out.append(
@@ -310,8 +312,13 @@ def get_site_components(page: str | None = None, website_profile: str | None = N
 				"help": _(component.help) if component.help else "",
 				# None when the component declares no check: nothing to say about it
 				"has_data": has,
+				# //// Neoffice — false when the site turned it off in the registry: the panel stops offering it, and
+				# //// still reads a block that carries it, so that block's options can be changed
+				"enabled": component.path not in off,
 				# //// Neoffice — None when the page's type is not known: nothing is recommended
-				"suited": None if page_type is None else (page_type in component.pages and has is not False),
+				"suited": None
+				if page_type is None
+				else (page_type in component.pages and has is not False and component.path not in off),
 			}
 		)
 	# //// Neoffice — the components suited to the open page first (False sorts after True, None counts as not suited)
@@ -2165,26 +2172,24 @@ def get_available_shortcodes():
 	"""
 	Get all enabled shortcodes for use in Builder pages.
 
+	//// Neoffice — read from the component catalogue (site_ai/components.py), not from the Builder Shortcode rows
+	//// (2026-10-20): the catalogue is the one definition, the registry is its mirror on each site and holds the site's
+	//// `enabled` switch, which this honours. The shape of what is returned is the one it always had.
+
 	Returns:
 		list: List of shortcode objects with usage info
 	"""
-	shortcodes = frappe.get_all(
-		"Builder Shortcode",
-		filters={"enabled": 1},
-		fields=["shortcode_name", "category", "source_app", "template_path",
-				"description", "usage_syntax", "parameters", "example_code"],
-		order_by="category, shortcode_name"
-	)
+	# //// Neoffice — the catalogue, not the registry's rows: one definition (see the docstring)
+	from builder.site_ai import components
 
-	# Parse JSON parameters
-	for sc in shortcodes:
-		if sc.get("parameters"):
-			try:
-				sc["parameters"] = json.loads(sc["parameters"])
-			except Exception:
-				sc["parameters"] = []
-
-	return shortcodes
+	shortcodes = []
+	for component in components.enabled_catalogue():
+		row = components.registry_row(component)
+		row["parameters"] = json.loads(row["parameters"])
+		shortcodes.append(
+			{key: row[key] for key in ("shortcode_name", "category", "source_app", "template_path", "description", "usage_syntax", "parameters", "example_code")}
+		)
+	return sorted(shortcodes, key=lambda row: (row["category"], row["shortcode_name"]))
 
 
 @frappe.whitelist()
@@ -2331,37 +2336,15 @@ def get_shortcodes_for_ai():
 	"""
 	Get shortcodes formatted for AI prompt context.
 
+	//// Neoffice — written from the component catalogue, as get_available_shortcodes is (2026-10-20).
+
 	Returns:
 		str: Markdown formatted shortcode documentation
 	"""
-	shortcodes = frappe.get_all(
-		"Builder Shortcode",
-		filters={"enabled": 1},
-		fields=["shortcode_name", "category", "description", "usage_syntax", "parameters", "example_code"],
-		order_by="category, shortcode_name"
-	)
+	# //// Neoffice — the catalogue, not the registry's rows: one definition (see the docstring)
+	from builder.site_ai import components
 
-	if not shortcodes:
-		return ""
-
-	lines = ["## Available Shortcodes\n"]
-	lines.append("You can use these Jinja includes in Builder pages:\n")
-
-	current_category = None
-	for sc in shortcodes:
-		if sc.category != current_category:
-			current_category = sc.category
-			lines.append(f"\n### {current_category}\n")
-
-		lines.append(f"#### {sc.shortcode_name}")
-		if sc.description:
-			lines.append(f"{sc.description}\n")
-		if sc.usage_syntax:
-			lines.append(f"**Usage:**\n```jinja\n{sc.usage_syntax}\n```\n")
-		if sc.example_code:
-			lines.append(f"**Example:**\n```jinja\n{sc.example_code}\n```\n")
-
-	return "\n".join(lines)
+	return components.shortcodes_markdown()
 
 
 # =========================================================================

@@ -125,12 +125,9 @@ web_include_css = f"/assets/builder/css/web_pages.css?v={_asset_version('css/web
 
 # Fixtures
 # --------
-fixtures = [
-	{
-		"dt": "Builder Shortcode",
-		"filters": [["source_app", "=", "webshop"]]
-	}
-]
+# //// Neoffice — the `fixtures` export of the Builder Shortcode registry is gone (2026-10-20). The registry is no longer
+# //// a file somebody exports: it is written on each site from `website_components` (components.sync_registry, run by
+# //// install and migrate), so an export of it would only create a second definition of what a page can carry.
 
 # Uninstallation
 # ------------
@@ -222,6 +219,8 @@ website_components = [
 		"shows": "a working contact form, sent to the site's inbox",
 		"pages": ["contact", "one_page"],
 		"required": True,
+		# //// Neoffice — the group the desk registry files it under (builder_shortcode.category)
+		"category": "Form",
 		# //// Neoffice — what a person reads in the editor's picker (2026-10-19), not the generator's `note`.
 		"help": "Pick the form that suits the business. With the window option the form waits behind a button, and any link to #contact opens it, from this page or another.",
 		# //// Neoffice — how to choose and wire it (2026-10-19): the generator always wrote "simple".

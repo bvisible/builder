@@ -275,7 +275,8 @@ const insert = async (component: SiteComponent) => {
 // Suited to the open page first, the rest after it. When the page's type is not known nothing is recommended, and
 // the list is one list.
 const groups = computed(() => {
-	const all = siteComponents.value;
+	// what the site turned off is not offered (a block that carries it is still found above, in the whole list)
+	const all = siteComponents.value.filter((c) => c.enabled !== false);
 	if (!all.some((c) => c.suited !== null)) return [{ name: "all", title: "", components: all }];
 	return [
 		{ name: "suited", title: __("Suited to this page"), components: all.filter((c) => c.suited) },
