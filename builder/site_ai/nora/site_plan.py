@@ -25,7 +25,7 @@ from __future__ import annotations
 import json
 from typing import Literal, get_args
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, field_validator
 
 from builder.site_ai.logging import ai_log
 
@@ -62,6 +62,9 @@ SECTION_KINDS = get_args(SectionKind)
 PLAN_PHOTOS_SHOWN = 6
 PLAN_INSPIRATIONS_SHOWN = 3
 PLAN_MAX_TOKENS = 24000
+# //// Neoffice — the pages a plan lacks are asked for in small batches (2026-10-20), see complete_plan
+PLAN_PAGES_PER_COMPLETION = 3
+PLAN_COMPLETION_ROUNDS = 3
 
 
 class PlannedSection(BaseModel):
@@ -79,6 +82,27 @@ class PlannedPage(BaseModel):
     sections: list[PlannedSection] = Field(default_factory=list)
     notes: str = Field(default="", description="what the writer of this page must know that the sections do not say")
 
+    # //// Neoffice — a plan cut at the model's output ceiling (4 096 tokens on the local lane) ends in a half-written
+    # //// section, which json repair closes as a list or a bare word: the whole plan then failed validation and the
+    # //// site was written with the static plans (2026-10-20). Only whole sections are kept.
+    @field_validator("sections", mode="before")
+    @classmethod
+    def keep_whole_sections(cls, value):
+        if not isinstance(value, list):
+            return []
+        return [v for v in value if isinstance(v, PlannedSection) or (isinstance(v, dict) and v.get("kind") in SECTION_KINDS)]
+
+
+def keep_pages(value) -> list:
+    """The entries of a `pages` list that are pages: a cut answer can end in a bare word or a half object."""
+    if not isinstance(value, list):
+        return []
+    return [
+        v
+        for v in value
+        if isinstance(v, PlannedPage) or (isinstance(v, dict) and isinstance(v.get("route"), str) and isinstance(v.get("title"), str))
+    ]
+
 
 class SitePlan(BaseModel):
     direction: str = Field(default="", description="3-5 sentences: the art direction made concrete — colour by role, type, spacing, how photographs are treated, what the site must never do")
@@ -87,6 +111,25 @@ class SitePlan(BaseModel):
     rhythm: str = Field(default="", description="section padding scale, the content's maximum width, the grid, how backgrounds alternate")
     logo_notes: str = Field(default="", description="what the logo imposes: its colours, the header background it reads on, whether the wordmark is wide or tall")
     pages: list[PlannedPage] = Field(default_factory=list)
+
+    @field_validator("pages", mode="before")
+    @classmethod
+    def keep_whole_pages(cls, value):
+        return keep_pages(value)
+
+    class Config:
+        extra = "ignore"
+
+
+class PlannedPages(BaseModel):
+    """The pages of a plan, asked for on their own when the first answer left some out."""
+
+    pages: list[PlannedPage] = Field(default_factory=list)
+
+    @field_validator("pages", mode="before")
+    @classmethod
+    def keep_whole_pages(cls, value):
+        return keep_pages(value)
 
     class Config:
         extra = "ignore"
@@ -157,6 +200,79 @@ def plan_prompt(site: dict, brief, pages: list[dict], includes_by_route: dict[st
     return "\n".join(lines)
 
 
+MIN_PLANNED_SECTIONS = 3
+
+
+def is_planned(page: PlannedPage) -> bool:
+    """A page is planned when it carries at least MIN_PLANNED_SECTIONS sections, or, for a legal page, its text: a
+    page the plan stopped in the middle of (a cut answer) is asked for again."""
+    if any(s.kind == "legal-text" for s in page.sections):
+        return True
+    return len(page.sections) >= MIN_PLANNED_SECTIONS
+
+
+def missing_routes(plan: SitePlan, pages: list[dict]) -> list[dict]:
+    """The pages to plan that the plan has no whole page for, in the site's order."""
+    planned = {p.route.strip("/") for p in plan.pages if is_planned(p)}
+    return [p for p in pages if p["route"].strip("/") not in planned]
+
+
+def completion_prompt(plan: SitePlan, site: dict, brief, lacking: list[dict], includes_by_route: dict[str, list[str]], photos: list[dict], language: str, background_mode: str) -> str:
+    """The prompt that asks for the pages a plan left out: the decisions already taken, then only those pages."""
+    used = {url for page in plan.pages for section in page.sections for url in section.photos}
+    free = [p for p in photos if p.get("url") not in used]
+    decided = [
+        "THE PLAN OF THE SITE IS ALREADY DECIDED and must not change. Plan ONLY the pages listed under PAGES below, in the same hand, "
+        "and answer with `pages` only: one entry per listed page, each with its sections, its route and its title exactly as given.",
+        f"- art direction: {plan.direction}",
+        f"- signature move, on every page: {plan.signature_move}",
+        f"- every interior page opens with: {plan.interior_top}",
+        f"- rhythm: {plan.rhythm}",
+    ]
+    if plan.logo_notes:
+        decided.append(f"- logo: {plan.logo_notes}")
+    already = [f"'{p.title}' ({', '.join(s.kind for s in p.sections)})" for p in plan.pages if p.sections]
+    if already:
+        decided.append("- pages already planned (do not repeat their shape): " + "; ".join(already))
+    return "\n".join(decided) + "\n\n" + plan_prompt(site, brief, lacking, includes_by_route, free, language, background_mode)
+
+
+def complete_plan(llm, plan: SitePlan, site: dict, brief, pages: list[dict], includes_by_route: dict[str, list[str]], photos: list[dict], language: str, background_mode: str = "auto") -> SitePlan:
+    """The plan with the pages it left out planned too. //// Neoffice (2026-10-20): the local model, whose answer is
+    cut at 4 096 tokens, planned two pages of seven in one run (eight sections, against thirty-two for the strong
+    model); the five others were written with no plan and came out thin. The missing pages are asked for in
+    batches of PLAN_PAGES_PER_COMPLETION, the decisions already taken in front, for at most PLAN_COMPLETION_ROUNDS
+    rounds. Never raises: a batch that fails leaves its pages to the static plans, as before."""
+    for round_number in range(PLAN_COMPLETION_ROUNDS):
+        lacking = missing_routes(plan, pages)
+        if not lacking:
+            break
+        batch = lacking[:PLAN_PAGES_PER_COMPLETION]
+        try:
+            extra = llm.generate_structured(
+                prompt=completion_prompt(plan, site, brief, batch, includes_by_route, photos, language, background_mode),
+                schema=PlannedPages,
+                system_prompt=PLAN_SYSTEM,
+                images=None,
+                max_tokens=PLAN_MAX_TOKENS,
+            )
+        except Exception as e:
+            ai_log("warning", "Site plan completion failed", round=round_number + 1, pages=[p["route"] for p in batch], error=str(e)[:200])
+            continue
+        asked = {p["route"].strip("/") for p in batch}
+        held = {p.route.strip("/"): len(p.sections) for p in plan.pages}
+        # a page replaces the one the plan holds (half of it, or none) only when it is whole and fuller
+        added = [
+            p
+            for p in extra.pages
+            if p.route.strip("/") in asked and is_planned(p) and len(p.sections) > held.get(p.route.strip("/"), 0)
+        ]
+        replaced = {p.route.strip("/") for p in added}
+        plan.pages = [p for p in plan.pages if p.sections and p.route.strip("/") not in replaced] + added
+        ai_log("info", "Site plan completed", round=round_number + 1, asked=sorted(asked), added=[p.route for p in added])
+    return plan
+
+
 def plan_site(model: str, site: dict, brief, pages: list[dict], includes_by_route: dict[str, list[str]], photos: list[dict], language: str, logo_image: str | None = None, inspiration_images: list[str] | None = None, background_mode: str = "auto") -> SitePlan | None:
     """The plan, written by `model` from the brief and the material, or None when it could not be
     written (the caller then keeps the static plans). Never raises."""
@@ -172,7 +288,7 @@ def plan_site(model: str, site: dict, brief, pages: list[dict], includes_by_rout
         prompt = plan_prompt(site, brief, pages, includes_by_route, photos, language, background_mode)
         if images:
             prompt += (
-                f"\n\nPICTURES ATTACHED, in this order: "
+                "\n\nPICTURES ATTACHED, in this order: "
                 + ("the client's LOGO first — read its colours and its proportions, and say in logo_notes what they impose; " if logo_image else "")
                 + (f"{min(len(inspiration_images or []), PLAN_INSPIRATIONS_SHOWN)} reference picture(s) the client likes; " if inspiration_images else "")
                 + (f"then {min(len(photos), PLAN_PHOTOS_SHOWN)} of the client's photographs, in the order of the list above." if photos else "")
@@ -185,6 +301,7 @@ def plan_site(model: str, site: dict, brief, pages: list[dict], includes_by_rout
             images=images if images and callable(can_see) and can_see() else None,
             max_tokens=PLAN_MAX_TOKENS,
         )
+        plan = complete_plan(llm, plan, site, brief, pages, includes_by_route, photos, language, background_mode)  # //// Neoffice — see complete_plan
         planned = {p.route.strip("/") for p in plan.pages}
         wanted = {p["route"].strip("/") for p in pages}
         ai_log("info", "Site plan written", model=model, pages=len(plan.pages), missing=sorted(wanted - planned),
