@@ -1416,12 +1416,47 @@ class OutputCut(Exception):
         self.text = text
 
 
+# //// Neoffice — how many times a page cut at the provider's output ceiling is resumed (see _stream_text)
+CONTINUATION_ROUNDS = 3
+
+
 def _stream_text(ctx, model: str, messages: list, params: dict, keep_cut: bool = False) -> str:
+    """A page of YAML, streamed (see _stream_once). //// Neoffice — and resumed when the provider cuts it
+    at its output ceiling (finish_reason "length"): the text so far, back to its last whole line, goes
+    back as the start of the assistant's own message (`continue_final_message`, which vLLM serves) and the
+    model carries on from there, up to CONTINUATION_ROUNDS times. A local model behind a gate that caps
+    max_tokens at 4 096 cut every page at about 17 000 characters, and the page was built from its prefix;
+    a small model with a short output window does the same. Resumed, the ceiling stops mattering. A
+    provider that refuses the resume leaves the page as it was: cut, retried or kept (see OutputCut)."""
+    from builder.site_ai.logging import ai_log
+
+    text, finish = _stream_once(ctx, model, messages, params)
+    rounds = 0
+    while finish == "length" and rounds < CONTINUATION_ROUNDS and len(text) < PAGE_STREAM_MAX_CHARS and not ctx.is_cancelled():
+        rounds += 1
+        head = text[: text.rfind("\n") + 1] or text
+        resume = {**params, "extra_body": {**(params.get("extra_body") or {}), "continue_final_message": True, "add_generation_prompt": False}}
+        try:
+            more, finish = _stream_once(ctx, model, [*messages, {"role": "assistant", "content": head}], resume, already=len(head))
+        except Exception as exc:
+            ai_log("warning", "Page stream could not be resumed", model=model, round=rounds, error=str(exc)[:160])
+            break
+        ai_log("info", "Page stream resumed after the output ceiling", model=model, round=rounds, chars=len(head), added=len(more))
+        text = head + more
+    # //// Neoffice — a stream still cut after its resumes is a half page (see OutputCut)
+    if finish == "length":
+        ai_log("warning", "Page stream cut at the provider's output ceiling", model=model, chars=len(text), kept=keep_cut)
+        if not keep_cut:
+            raise OutputCut(f"the model's output was cut at the provider's ceiling after {len(text)} characters", text)
+    return text
+
+
+def _stream_once(ctx, model: str, messages: list, params: dict, already: int = 0) -> tuple[str, str | None]:
     """A page of YAML takes minutes to write: stream it, as upstream's artifact
     generator does, so the provider's read timeout counts between chunks instead
     of over the whole completion. Stops early when the user cancels the turn, and
     gives up on a runaway generation (size or wall clock) so the page is retried
-    instead of holding the whole build."""
+    instead of holding the whole build. Returns (text, finish_reason)."""
     from builder.ai import llm
 
     stream = llm.complete(model, messages, params, stream=True)
@@ -1433,7 +1468,7 @@ def _stream_text(ctx, model: str, messages: list, params: dict, keep_cut: bool =
             if ctx.is_cancelled():
                 break
             elapsed = time.time() - started
-            if size > PAGE_STREAM_MAX_CHARS or elapsed > PAGE_STREAM_MAX_SECONDS:
+            if already + size > PAGE_STREAM_MAX_CHARS or elapsed > PAGE_STREAM_MAX_SECONDS:
                 raise TimeoutError(f"page generation runaway after {size} chars / {int(elapsed)} s")
             if not size and not thought and elapsed > PAGE_STREAM_FIRST_CHUNK_SECONDS:
                 raise TimeoutError(f"page generation stalled: no output after {int(elapsed)} s")
@@ -1464,15 +1499,7 @@ def _stream_text(ctx, model: str, messages: list, params: dict, keep_cut: bool =
             stream.close()
         except Exception:
             pass
-    text = "".join(parts)
-    # //// Neoffice — a stream the provider cut at its ceiling is a half page (see OutputCut)
-    if finish == "length":
-        from builder.site_ai.logging import ai_log
-
-        ai_log("warning", "Page stream cut at the provider's output ceiling", model=model, chars=size, kept=keep_cut)
-        if not keep_cut:
-            raise OutputCut(f"the model's output was cut at the provider's ceiling after {size} characters", text)
-    return text
+    return "".join(parts), finish
 
 
 def _page_model(ctx) -> str:

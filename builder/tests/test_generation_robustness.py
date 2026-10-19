@@ -7,7 +7,8 @@ gate allows (2026-10-19, the local 27B model behind a capped, gated endpoint):
 - a boolean or a null in a repeater item, written as JSON (`true`) and read as Python (NameError, a 500
   on the published route);
 - a provider answering 503 "llm busy, retry after 5s", which failed the call after one retry;
-- a stream cut at the provider's output ceiling, built from its prefix as if it were whole;
+- a stream cut at the provider's output ceiling (4 096 tokens on the local lane), built from its prefix
+  as if it were whole: it is now resumed from its last whole line;
 - a brief naming a font the chrome's Select does not offer ("Lora"), a validation error that stopped the
   build before its first page.
 
@@ -185,6 +186,17 @@ def chunk(text="", finish=None):
 	)
 
 
+def iter_stream(chunks):
+	class Stream:
+		def __iter__(self):
+			yield from chunks
+
+		def close(self):
+			pass
+
+	return Stream()
+
+
 class FakeCtx:
 	def is_cancelled(self):
 		return False
@@ -206,15 +218,70 @@ class TestCutStream(FrappeTestCase):
 		return Stream()
 
 	def test_a_stream_cut_at_the_ceiling_is_an_error_carrying_its_text(self):
-		with patch.object(llm, "complete", return_value=self.stream("length")):
+		with (
+			patch.object(llm, "complete", return_value=self.stream("length")),
+			patch.object(site_builder, "CONTINUATION_ROUNDS", 0),
+		):
 			with self.assertRaises(site_builder.OutputCut) as raised:
 				site_builder._stream_text(FakeCtx(), "m", [], {})
 		self.assertEqual(raised.exception.text, "el: div\nc: []")
 
 	def test_the_last_attempt_keeps_what_was_written(self):
-		with patch.object(llm, "complete", return_value=self.stream("length")):
+		with (
+			patch.object(llm, "complete", return_value=self.stream("length")),
+			patch.object(site_builder, "CONTINUATION_ROUNDS", 0),
+		):
 			text = site_builder._stream_text(FakeCtx(), "m", [], {}, keep_cut=True)
 		self.assertEqual(text, "el: div\nc: []")
+
+	def test_a_cut_stream_is_resumed_from_its_last_whole_line(self):
+		cut = [chunk("el: div\nc:\n  - el: p\n    te", "length")]
+		rest = [chunk("    text: Hello\n", "stop")]
+		calls = []
+
+		def complete(model, messages, params, stream):
+			calls.append((messages, params))
+			return iter_stream(cut if len(calls) == 1 else rest)
+
+		with patch.object(llm, "complete", complete):
+			text = site_builder._stream_text(
+				FakeCtx(), "m", [{"role": "user", "content": "page"}], {"max_tokens": 10}
+			)
+		self.assertEqual(text, "el: div\nc:\n  - el: p\n    text: Hello\n")
+		messages, params = calls[1]
+		self.assertEqual(messages[-1], {"role": "assistant", "content": "el: div\nc:\n  - el: p\n"})
+		self.assertTrue(params["extra_body"]["continue_final_message"])
+		self.assertFalse(params["extra_body"]["add_generation_prompt"])
+
+	def test_a_stream_always_cut_is_resumed_a_few_times_then_reported(self):
+		calls = []
+
+		def complete(model, messages, params, stream):
+			calls.append(1)
+			return iter_stream([chunk("line\n", "length")])
+
+		with patch.object(llm, "complete", complete):
+			with self.assertRaises(site_builder.OutputCut):
+				site_builder._stream_text(FakeCtx(), "m", [], {})
+		self.assertEqual(len(calls), 1 + site_builder.CONTINUATION_ROUNDS)
+
+	def test_a_provider_that_refuses_the_resume_leaves_the_page_cut(self):
+		calls = []
+
+		def complete(model, messages, params, stream):
+			calls.append(1)
+			if len(calls) == 1:
+				return iter_stream([chunk("el: div\nc: []\nx", "length")])
+			raise RuntimeError("400 unknown field continue_final_message")
+
+		with patch.object(llm, "complete", complete):
+			with self.assertRaises(site_builder.OutputCut) as raised:
+				site_builder._stream_text(FakeCtx(), "m", [], {})
+			self.assertEqual(raised.exception.text, "el: div\nc: []\nx")
+			calls.clear()
+			self.assertEqual(
+				site_builder._stream_text(FakeCtx(), "m", [], {}, keep_cut=True), "el: div\nc: []\nx"
+			)
 
 	def test_a_stream_that_ended_normally_is_returned(self):
 		with patch.object(llm, "complete", return_value=self.stream("stop")):
