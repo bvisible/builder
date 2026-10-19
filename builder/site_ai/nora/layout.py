@@ -215,6 +215,38 @@ def fit_phone_gutters(blocks: list, gutter: str, phone_gutter: str) -> int:
     return edits
 
 
+SCROLLING_ROW = re.compile(r"carousel|slider|marquee|scroll", re.I)
+
+
+def wrap_phone_rows(blocks: list) -> int:
+    """A flex row that cannot wrap squeezes its items on a phone: a number and its sentence side by
+    side, the sentence 116 px wide on four lines and the page refused as "starved" (2026-10-19).
+    A row of two items or more gets `flexWrap: wrap` on the phone, which changes nothing while the
+    items fit and puts an item that does not on a line of its own when they do not. Left alone: a
+    column, a row that says anything about wrapping, a row whose phone layout the page wrote
+    (display or direction), a scrolling strip (overflow, carousel, slider, marquee). Returns the
+    edit count."""
+    edits = 0
+    for block in _walk(blocks):
+        base = block.get("baseStyles") or {}
+        mobile = block.get("mobileStyles") or {}
+        if base.get("display") != "flex" or str(base.get("flexDirection") or "row").startswith("column"):
+            continue
+        if any("flexWrap" in (block.get(key) or {}) for key in ("baseStyles", "tabletStyles", "mobileStyles")):
+            continue
+        if "display" in mobile or "flexDirection" in mobile:
+            continue
+        if len([c for c in block.get("children") or [] if isinstance(c, dict)]) < 2:
+            continue
+        if SCROLLING_ROW.search(" ".join(str(c) for c in block.get("classes") or [])):
+            continue
+        if re.search(r"auto|scroll", f"{base.get('overflow', '')} {base.get('overflowX', '')}"):
+            continue
+        block.setdefault("mobileStyles", {})["flexWrap"] = "wrap"
+        edits += 1
+    return edits
+
+
 BARE_FR = re.compile(r"^\d*\.?\d+fr$")
 REPEAT_FR = re.compile(r"^repeat\(\s*(\d+)\s*,\s*(\d*\.?\d+fr)\s*\)$")
 

@@ -2441,6 +2441,12 @@ def build_site(ctx, spec: dict) -> str:
                     gutters = fit_phone_gutters(blocks, handles.get("gutter"), handles.get("gutter-phone"))
                     if gutters:
                         ai_log("info", "Phone gutters set on containers", page=page["title"], edits=gutters)
+                    # //// Neoffice — and a flex row that cannot wrap squeezes its items on a phone (layout.wrap_phone_rows)
+                    from builder.site_ai.nora.layout import wrap_phone_rows
+
+                    wrapped = wrap_phone_rows(blocks)
+                    if wrapped:
+                        ai_log("info", "Flex rows allowed to wrap on the phone", page=page["title"], edits=wrapped)
                     # //// Neoffice — and a bare `1fr` track grows to its widest word: minmax(0, 1fr) (layout.fluid_tracks)
                     from builder.site_ai.nora.layout import fluid_tracks
 

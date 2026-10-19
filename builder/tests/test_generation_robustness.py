@@ -823,3 +823,53 @@ class TestPhoneCollapse(unittest.TestCase):
 		small = grid("repeat(4, minmax(0, 1fr))", ["span 2", "span 2"])
 		self.assertEqual(layout.fit_grid_placements([small]), 0)
 		self.assertNotIn("mobileStyles", small)
+
+
+class TestPhoneRows(unittest.TestCase):
+	def row(self, base=None, mobile=None, kids=2, **extra):
+		block = {
+			"element": "div",
+			"baseStyles": {"display": "flex", "gap": "24px", **(base or {})},
+			"children": [{"element": "span"} for _ in range(kids)],
+			**extra,
+		}
+		if mobile is not None:
+			block["mobileStyles"] = mobile
+		return block
+
+	def test_a_row_of_two_items_may_wrap_on_the_phone(self):
+		block = self.row()
+		self.assertEqual(layout.wrap_phone_rows([block]), 1)
+		self.assertEqual(block["mobileStyles"], {"flexWrap": "wrap"})
+		self.assertNotIn("flexWrap", block["baseStyles"])
+
+	def test_a_column_and_a_lone_item_are_left_alone(self):
+		for block in (
+			self.row({"flexDirection": "column"}),
+			self.row({"flexDirection": "column-reverse"}),
+			self.row(kids=1),
+		):
+			self.assertEqual(layout.wrap_phone_rows([block]), 0)
+			self.assertNotIn("mobileStyles", block)
+
+	def test_what_the_page_said_about_wrapping_or_the_phone_layout_is_kept(self):
+		for block in (
+			self.row({"flexWrap": "nowrap"}),
+			self.row(mobile={"flexWrap": "nowrap"}),
+			self.row(mobile={"flexDirection": "column"}),
+			self.row(mobile={"display": "block"}),
+		):
+			self.assertEqual(layout.wrap_phone_rows([block]), 0)
+
+	def test_a_scrolling_strip_is_not_wrapped(self):
+		for block in (
+			self.row({"overflowX": "auto"}),
+			self.row({"overflow": "scroll"}),
+			self.row(classes=["logo-carousel"]),
+			self.row(classes=["u-marquee"]),
+		):
+			self.assertEqual(layout.wrap_phone_rows([block]), 0)
+
+	def test_a_grid_is_not_a_row(self):
+		block = {"element": "div", "baseStyles": {"display": "grid"}, "children": [{}, {}]}
+		self.assertEqual(layout.wrap_phone_rows([block]), 0)
