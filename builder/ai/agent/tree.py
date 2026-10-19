@@ -65,16 +65,55 @@ MOUSTACHE_HINT = (
 )
 
 
+# //// Neoffice — a component's tag is the one Jinja a block's text may carry (2026-10-20). The assistant
+# //// is told to place a catalogued component (the contact form, a carousel, the map) as a div whose text is
+# //// its include tag, and to change its options by rewriting that text; this guard refused every `{%`, so it
+# //// could do neither: asked to turn the contact form into a quote form it answered that its tools
+# //// refuse Jinja. A text that is NOTHING BUT a catalogued component's tag, with literal values for
+# //// parameters the component declares, passes and is rewritten to its canonical form
+# //// (site_ai/components.py, lawful_tag); any other Jinja is still refused.
+TEXT_KEYS = ("text", "inner_text", "inner_html", "innerHTML")
+
+
+def lawful_component_text(holder: dict, key: str) -> bool:
+	"""True when holder[key] is a lawful component tag, which is then rewritten in place to the canonical tag."""
+	from builder.site_ai.components import lawful_tag
+
+	canonical = lawful_tag(str(holder.get(key) or ""))
+	if canonical is None:
+		return False
+	holder[key] = canonical
+	return True
+
+
+def moustache_in_block(value) -> bool:
+	"""Whether a block payload carries Jinja that is not a lawful component tag (those are rewritten in place)."""
+	if isinstance(value, dict):
+		bad = False
+		for key, item in list(value.items()):
+			if isinstance(item, str):
+				if MOUSTACHE_RE.search(item) and not (key in TEXT_KEYS and lawful_component_text(value, key)):
+					bad = True
+			elif isinstance(item, (dict, list)):
+				bad = moustache_in_block(item) or bad
+		return bad
+	if isinstance(value, list):
+		return any([moustache_in_block(item) for item in value])
+	return isinstance(value, str) and bool(MOUSTACHE_RE.search(value))
+
+
 def moustache_fields(op: dict) -> list[str]:
 	"""Fields of an update/add payload carrying moustache text."""
 	hits = []
 	for field in ("inner_text", "inner_html"):
-		if MOUSTACHE_RE.search(str(op.get(field) or "")):
+		# //// Neoffice — a lawful component tag is not a hit (lawful_component_text)
+		if MOUSTACHE_RE.search(str(op.get(field) or "")) and not lawful_component_text(op, field):
 			hits.append(field)
 	for key, value in (op.get("attributes") or {}).items() if isinstance(op.get("attributes"), dict) else []:
 		if MOUSTACHE_RE.search(str(value or "")):
 			hits.append(f"attributes.{key}")
-	if "block" in op and MOUSTACHE_RE.search(json_dumps_safe(op.get("block"))):
+	# //// Neoffice — same for the text of a block payload (moustache_in_block)
+	if "block" in op and moustache_in_block(op["block"]):
 		hits.append("block")
 	return hits
 

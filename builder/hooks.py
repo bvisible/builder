@@ -222,7 +222,16 @@ website_components = [
 		"shows": "a working contact form, sent to the site's inbox",
 		"pages": ["contact", "one_page"],
 		"required": True,
-		"note": "Never write a <form> of your own beside it: this include IS the form.",
+		# //// Neoffice — how to choose and wire it (2026-10-20): the generator always wrote "simple".
+		"note": (
+			"Never write a <form> of your own beside it: this include IS the form. Choose contact_model by what the "
+			"business needs: \"questions\" for a business that answers with a quote (trades, installation, B2B, agencies: "
+			"the visitor says what the request is about, the budget and the timing first), \"simple\" for a shop, a "
+			"restaurant or a showcase that only needs a message, \"steps\" when the form should look light. The form "
+			"stands on the Contact page; use contact_dialog (a button opens it, and any link to #contact opens it from any "
+			"page) only when the user asks for a window or the site is a single page. Write consent_text only when the "
+			"brief gives the business's sentence, never invent one."
+		),
 		# //// Neoffice — the form can wait in a window, carry the business's consent sentence and ask
 		# //// for the phone (2026-09-29, the header of contact_form.html says how).
 		"params": [

@@ -68,11 +68,36 @@ def connected_submission_doctype(page_id: str) -> str | None:
 	return None
 
 
+# //// Neoffice — the contact form is ONE include of the site (builder/templates/includes/contact_form.html): it posts
+# //// to the site's own entry point, saves the message in the inbox and notifies the owner. Asked to "add a contact
+# //// form", a weaker model drew its own <form> and called connect_form for it, which opens a DocType nobody reads and
+# //// leaves the site with two contact forms (2026-10-20). A form whose fields are an e-mail and a message is a contact
+# //// form: it is declined with the way to the real one.
+CONTACT_FORM_DECLINED = (
+	"DECLINED: this is a CONTACT form, and the site already has one: the contact_form include, which posts, "
+	"saves the message in the site's inbox (Website Messages) and notifies the owner. Do not build or connect "
+	"your own: remove the form you drew, call get_site_chrome, and put the include on the page as a block whose "
+	"`text` is its tag (the Shortcodes section of your instructions has the exact tags for a quote form, a "
+	"window and the plain form). connect_form is for OTHER forms: booking, reservation, signup, waitlist, RSVP."
+)
+
+
+def looks_like_contact_form(fields) -> bool:
+	"""Whether the fields are those of a contact form: an e-mail and a message."""
+	names = " ".join(
+		f"{f.get('fieldname', '')} {f.get('label', '')}".lower() for f in (fields or []) if isinstance(f, dict)
+	)
+	return "mail" in names and any(w in names for w in ("message", "msg", "comment", "question", "request", "demande", "devis"))
+
+
 def request_connect_form(ctx, args: dict) -> str | None:
 	"""Validate the proposal and raise the confirm card. Nothing is created until
 	the user approves (see pending.apply_connect_form)."""
 	if not getattr(ctx, "page_id", None):
 		return "DECLINED: no page is open — build the form's page first."
+	# //// Neoffice — a contact form is the site's include, never a connected DocType (2026-10-20)
+	if looks_like_contact_form(args.get("fields")):
+		return CONTACT_FORM_DECLINED
 	# A form here is already wired — very likely a "where do submissions go?" ask.
 	# Answer with the existing DocType; don't create a duplicate (unless forced).
 	if not args.get("force_new") and (connected := connected_submission_doctype(ctx.page_id)):

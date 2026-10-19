@@ -252,6 +252,44 @@ def clean_tag(text: str) -> str | None:
 	return text.strip() if nothing_changed else "".join(kept) + f'{{% include "{component.path}" %}}'
 
 
+# a parameter value written as a LITERAL: a quoted string with no Jinja in it, a number, true or false
+LITERAL = r"""(?:"[^"{}%\\\n]*"|'[^'{}%\\\n]*'|-?\d+(?:\.\d+)?|true|false)"""
+LAWFUL_SET = rf"\{{%-?\s*set\s+[a-z_][a-z0-9_]*\s*=\s*{LITERAL}\s*-?%\}}"
+LAWFUL_TAG = re.compile(rf"^\s*(?:{LAWFUL_SET}\s*)*\{{%-?\s*include\s+['\"][^'\"{{}}%]+['\"]\s*-?%\}}\s*$")
+LAWFUL_VALUE = re.compile(rf"\{{%-?\s*set\s+([a-z_][a-z0-9_]*)\s*=\s*({LITERAL})\s*-?%\}}")
+
+
+def lawful_tag(text: str) -> str | None:
+	"""The canonical tag when `text` is NOTHING BUT a catalogued component's tag: `set` statements of
+	parameters the component declares, each with a literal value, then its include. None for anything
+	else, a stray Jinja expression, a second statement, a path the catalogue does not hold, a
+	parameter it does not declare.
+
+	The editor's assistant writes block text through tools that refuse Jinja, because Jinja in a page
+	that is not a component's tag crashes the published route. A component's tag is the one Jinja a
+	page is meant to carry (the generator writes them, repair_includes keeps them): this is what lets
+	the assistant place one and change its options, and nothing else. The tag is rebuilt from the
+	values, never passed through as written."""
+	if not text or "{%" not in text or not LAWFUL_TAG.match(text):
+		return None
+	found = INCLUDE_PATH.search(text)
+	component = by_file(found.group(1).rsplit("/", 1)[-1]) if found else None
+	if component is None or found.group(1) != component.path:
+		return None
+	declared = {p["name"] for p in component.params}
+	values: dict = {}
+	for name, raw in LAWFUL_VALUE.findall(text):
+		if name not in declared:
+			return None
+		if raw in ("true", "false"):
+			values[name] = raw == "true"
+		elif raw[0] in "\"'":
+			values[name] = raw[1:-1]
+		else:
+			values[name] = float(raw) if "." in raw else int(raw)
+	return component.tag(values)
+
+
 def prompt_block(components: list[Component]) -> str:
 	"""The INCLUDES section of a page brief, written from the catalogue."""
 	if not components:

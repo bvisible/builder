@@ -54,6 +54,20 @@ def profiles_line(page_id: str | None = None) -> str:
     )
 
 
+# //// Neoffice — the contact form's tags, written out for the assistant (2026-10-20). A weaker model asked to turn
+# //// the form into a quote form deleted the include and drew a window of its own (script that only simulated a
+# //// "thank you"), or offered to create a DocType to store the answers: the three forms, the window and the delivery
+# //// are options of ONE include, and an example it can copy is worth more to it than a rule.
+CONTACT_FORM = "builder/templates/includes/contact_form.html"
+CONTACT_FORM_EXAMPLES = (
+    f'a quote form (what the request is about, the budget and the timing, then the message): '
+    f'inner_text = {{%- set contact_model = "questions" -%}}{{% include "{CONTACT_FORM}" %}} ; '
+    f'the form in a window opened by a button: '
+    f'inner_text = {{%- set contact_dialog = true -%}}{{%- set contact_button_text = "Request a quote" -%}}{{% include "{CONTACT_FORM}" %}} ; '
+    f'back to the plain form: inner_text = {{% include "{CONTACT_FORM}" %}}'
+)
+
+
 def site_playbook(page_id: str | None = None) -> str:
     # //// Neoffice — the "Site rules" section below states that generate_site's routes are FINAL (never rename a page or rewrite a route/menu link afterwards): after a reseller site build the model kept "correcting" the routes it had just set (2d78d71d "fix(nora): includes written as offered, routes honoured but home, and the build's routes stated as final")
     # //// Neoffice — same section also tells the model not to edit blocks, preview pages or touch settings right after generate_site in the same turn: a block edit made before the editor reloaded the pages the build wrote saved a stale copy of the home over the new one (a reseller site, 2026-09-09) (bbc135b2 "fix(nora): no block edit in the turn that built the site"). Cannot be placed closer: this text lives inside the f-string below, where a "#" would become part of the prompt itself
@@ -87,6 +101,7 @@ present_ui(text="Which pages do you want?", ui=[{{"kind":"choices","label":"Page
 - The header, the navigation and the footer are the site chrome, rendered around every page by the theme from the site's settings: NEVER build a header, nav or footer section inside a page, with generate_page or the block tools. To change them, tell the user they live under Settings > Theme.
 - Pages belong to a site profile; work on the open page's profile only.
 - To change the header, the menu, the footer, the CTA button, the logo text, the social links or the opening-hours block: call get_site_chrome, then update_site_chrome with only the fields to change. That is how the user edits "the header" or "the footer" with you; never touch them inside a page.
-- Shortcodes: a page can embed live blocks of the site through Jinja includes (get_site_chrome lists them by page type with their purpose: contact form, map, team grid, company timeline, product carousels, opening hours). To place one, add a plain div block whose text is the include tag copied exactly; the site renders it.
+- Shortcodes: a page can embed live blocks of the site through Jinja includes (get_site_chrome lists them by page type with their purpose, note and parameters: contact form, map, team grid, company timeline, product carousels, opening hours). To place one, add a plain div block whose `text` is its include tag; to change its options, rewrite the `text` of the block that already carries it with update_block `inner_text`: the `set` lines first (only parameters get_site_chrome lists for that component, values as literals: "text", a number, true or false), then the include tag. The tools accept ONLY a catalogued component's tag written that way and refuse any other Jinja. read_page shows the tag a page already carries: change that one, never add a second.
+- The contact form is ONE include with everything behind it: three forms (contact_model "simple" name, e-mail, message; "steps" the same one question at a time, the default; "questions" what the request is about, the budget and the timing before the message, for a business that quotes), a window a button opens (contact_dialog true and contact_button_text; any link to #contact then opens it, from any page), the business's own consent sentence (consent_text, only a sentence the user gave you) and a phone number asked for (phone_required). To change the form of a page that has it, rewrite that block's text, for example {CONTACT_FORM_EXAMPLES}. NEVER delete the form's block to draw a form, a window or a button of your own, NEVER write a <form>, and NEVER create a DocType or a script to store answers: the form already posts, saves and notifies. Its messages are saved as Website Messages (Site web, Messages du site: the bell rings and an e-mail goes to the company's address; the visitor's address is never published on the page); who is notified and what the visitor receives are set under Site web, Paramètres, Formulaire de contact, Réglages du formulaire. A message is not a Lead and Website Settings does not decide who is notified: never say so.
 - The site's colours and fonts are Builder Tokens named after the site (var(--<prefix>-primary), var(--<prefix>-font-heading), ...); reuse the handles you see in the open page instead of inventing new ones.
 """
