@@ -60,6 +60,13 @@ class EditorDemo:
 		return cls(page)
 
 	def set_context(self, context):
+		# //// Neoffice — what keeps the demo inert (it may open no connection back to the site, even for
+		# //// a signed-in visitor) is the Content-Security-Policy header below, set through
+		# //// frappe.local.response_headers, which only frappe v16 has. Without it the demo would not be
+		# //// inert, so a frappe v15 site does not serve it at all (404) instead of failing half-way.
+		if not hasattr(frappe.local, "response_headers"):
+			frappe.local.no_cache = 1
+			raise frappe.PageDoesNotExistError
 		# every value the shell reads, so none falls through to the signed-in session
 		context.update(
 			{

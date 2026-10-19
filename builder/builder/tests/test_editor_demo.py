@@ -73,7 +73,17 @@ class TestEditorDemo(FrappeTestCase):
 		self.assertNotIn("secret", frappe.as_json(payload))
 		self.assertNotIn("unpublished", frappe.as_json(payload))
 
+	# //// Neoffice — frappe v15 has no response_headers: the demo is then not served, and says so with a 404
+	def test_without_response_headers_the_demo_is_not_served(self):
+		if hasattr(frappe.local, "response_headers"):
+			self.skipTest("this frappe sets response headers")
+		with self.assertRaises(frappe.PageDoesNotExistError):
+			self.open_demo().set_context(frappe._dict())
+
 	def test_shell_has_no_session_and_no_way_out(self):
+		# //// Neoffice — the headers it checks are frappe v16's, see test_without_response_headers_the_demo_is_not_served
+		if not hasattr(frappe.local, "response_headers"):
+			self.skipTest("this frappe has no response headers: the demo is not served")
 		context = frappe._dict()
 		self.open_demo().set_context(context)
 
