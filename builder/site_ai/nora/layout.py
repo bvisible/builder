@@ -177,6 +177,29 @@ def fit_phone_widths(blocks: list) -> int:
     return edits
 
 
+def fit_phone_gutters(blocks: list, gutter: str, phone_gutter: str) -> int:
+    """The site grid has a side gutter (48 or 64 px on a wide screen) and a phone gutter (24 px), and
+    the page brief says to write the second as the container's phone style. The small model writes
+    the first and forgets the second: a hero kept 64 px on each side of a 375 px phone, its heading
+    was left 247 px and refused as "starved" (2026-10-19). A block whose side padding is the gutter
+    token and that says nothing for the phone gets the phone gutter there. `padding` shorthands that
+    use the token are covered. Returns the edit count."""
+    if not gutter or not phone_gutter or gutter == phone_gutter:
+        return 0
+    edits = 0
+    for block in _walk(blocks):
+        base = block.get("baseStyles") or {}
+        mobile = block.get("mobileStyles") or {}
+        for key in ("paddingLeft", "paddingRight", "padding"):
+            value = str(base.get(key) or "")
+            if gutter in value and key not in mobile:
+                if key == "padding" and ("paddingLeft" in mobile or "paddingRight" in mobile):
+                    continue
+                block.setdefault("mobileStyles", {})[key] = value.replace(gutter, phone_gutter)
+                edits += 1
+    return edits
+
+
 BARE_FR = re.compile(r"^\d*\.?\d+fr$")
 REPEAT_FR = re.compile(r"^repeat\(\s*(\d+)\s*,\s*(\d*\.?\d+fr)\s*\)$")
 

@@ -2434,6 +2434,13 @@ def build_site(ctx, spec: dict) -> str:
                     widths = fit_phone_widths(blocks)
                     if widths:
                         ai_log("info", "Wide minimums and widths released on the phone", page=page["title"], edits=widths)
+                    # //// Neoffice — and the container's side gutter has its phone value (layout.fit_phone_gutters):
+                    # //// a hero kept 64 px a side on a 375 px phone and its heading was starved
+                    from builder.site_ai.nora.layout import fit_phone_gutters
+
+                    gutters = fit_phone_gutters(blocks, handles.get("gutter"), handles.get("gutter-phone"))
+                    if gutters:
+                        ai_log("info", "Phone gutters set on containers", page=page["title"], edits=gutters)
                     # //// Neoffice — and a bare `1fr` track grows to its widest word: minmax(0, 1fr) (layout.fluid_tracks)
                     from builder.site_ai.nora.layout import fluid_tracks
 
@@ -2471,6 +2478,12 @@ def build_site(ctx, spec: dict) -> str:
                     filled = fill_last_phone_row(blocks)
                     if filled:
                         ai_log("info", "Last phone rows filled", page=page["title"], edits=filled)
+                    # //// Neoffice — the passes above rewrite templates and move children (a wrapper unwrapped, a
+                    # //// grid balanced): the two fits that guarantee a grid's placements and tracks run once more
+                    # //// on the result, so they hold at the end (layout.fit_grid_placements, layout.fluid_tracks)
+                    refitted = fit_grid_placements(blocks) + fluid_tracks(blocks)
+                    if refitted:
+                        ai_log("info", "Grid fits repeated after the layout passes", page=page["title"], edits=refitted)
                     # //// Neoffice — added: wire orphaned CTAs to real routes and repair button
                     # //// variants so a button never keeps the section's own colour (0d1ae82c
                     # //// "feat(design system): buttons that read anywhere, calls to action that

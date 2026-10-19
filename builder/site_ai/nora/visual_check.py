@@ -108,6 +108,22 @@ def actionable(critique) -> list[dict]:
     return out
 
 
+# //// Neoffice — a verdict about the chrome is not a verdict about the page (2026-10-19). The reviewer is
+# //// told the header, the navigation and the footer are reviewed separately; a weaker reviewer (the local
+# //// 27B model as the judge) reported the footer anyway ("describes a cheese shop") and called the page
+# //// unprofessional on that point alone: actionable() dropped the point, so the page was refused with
+# //// nothing to revise — four looks, the essential home among them. When every serious point against a
+# //// page is about the chrome, the verdict is set aside; a page the reviewer also faults elsewhere stays refused.
+def verdict_is_about_the_chrome(critique) -> bool:
+    """True when the reviewer called the page unprofessional, has no serious point about the page body,
+    and has at least one serious point about the shared chrome."""
+    if getattr(critique, "looks_professional", True):
+        return False
+    serious = [i for i in getattr(critique, "issues", None) or [] if i.severity in ("high", "medium")]
+    about_chrome = [i for i in serious if any(word in (i.area or "").lower() for word in CHROME_AREAS)]
+    return bool(about_chrome) and len(about_chrome) == len(serious)
+
+
 def revision_instructions(issues: list[dict], gate: list[dict] | None = None) -> str:
     """What the page writer gets on the revision pass: the measured facts first (they are not
     opinions), then the designer's points."""
@@ -469,6 +485,10 @@ def review_page(page: dict, profile: str | None, model: str, site_name: str = ""
             extra_images=[phone_picture] if phone_picture else None,
         )
         report["professional"] = bool(critique.looks_professional)
+        # //// Neoffice — see verdict_is_about_the_chrome
+        if verdict_is_about_the_chrome(critique):
+            report["professional"] = True
+            ai_log("info", "Verdict set aside: every serious point is about the shared chrome", page=page["title"])
         report["overall"] = (critique.overall or "")[:200]
         report["issues"] = actionable(critique)
         report["all_issues"] = len(critique.issues or [])

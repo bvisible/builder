@@ -26,7 +26,7 @@ from frappe.tests.utils import FrappeTestCase
 
 from builder.ai import llm
 from builder.ai import page_writer as pw
-from builder.site_ai.nora import layout, site_builder, typography
+from builder.site_ai.nora import layout, site_builder, typography, visual_check
 from builder.utils import execute_script
 
 KEBAB_PAGE = """
@@ -660,3 +660,82 @@ class TestFlatRepeaters(unittest.TestCase):
 		self.assertFalse(pw.adopt_flat_repeater(already))
 		no_template = {"el": "repeat", "items": [{"a": 1}]}
 		self.assertFalse(pw.adopt_flat_repeater(no_template))
+
+
+GUTTER, PHONE_GUTTER = "var(--qvb-gutter)", "var(--qvb-gutter-phone)"
+
+
+class TestPhoneGutters(unittest.TestCase):
+	def test_a_container_that_forgot_its_phone_gutter_gets_it(self):
+		block = {
+			"element": "div",
+			"baseStyles": {"paddingLeft": GUTTER, "paddingRight": GUTTER, "width": "100%"},
+		}
+		self.assertEqual(layout.fit_phone_gutters([block], GUTTER, PHONE_GUTTER), 2)
+		self.assertEqual(block["mobileStyles"], {"paddingLeft": PHONE_GUTTER, "paddingRight": PHONE_GUTTER})
+		self.assertEqual(block["baseStyles"]["paddingLeft"], GUTTER)
+
+	def test_a_padding_shorthand_with_the_token_is_covered(self):
+		block = {"element": "section", "baseStyles": {"padding": f"80px {GUTTER}"}}
+		self.assertEqual(layout.fit_phone_gutters([block], GUTTER, PHONE_GUTTER), 1)
+		self.assertEqual(block["mobileStyles"], {"padding": f"80px {PHONE_GUTTER}"})
+
+	def test_what_the_page_wrote_for_the_phone_is_kept(self):
+		block = {
+			"element": "div",
+			"baseStyles": {"paddingLeft": GUTTER, "paddingRight": GUTTER, "padding": f"4rem {GUTTER}"},
+			"mobileStyles": {"paddingLeft": "16px", "paddingRight": "16px"},
+		}
+		self.assertEqual(layout.fit_phone_gutters([block], GUTTER, PHONE_GUTTER), 0)
+		self.assertEqual(block["mobileStyles"], {"paddingLeft": "16px", "paddingRight": "16px"})
+
+	def test_other_paddings_are_not_touched(self):
+		block = {"element": "div", "baseStyles": {"paddingLeft": "64px", "padding": "2rem"}}
+		self.assertEqual(layout.fit_phone_gutters([block], GUTTER, PHONE_GUTTER), 0)
+		self.assertNotIn("mobileStyles", block)
+
+	def test_a_site_without_a_grid_changes_nothing(self):
+		block = {"element": "div", "baseStyles": {"paddingLeft": GUTTER}}
+		self.assertEqual(layout.fit_phone_gutters([block], None, PHONE_GUTTER), 0)
+		self.assertEqual(layout.fit_phone_gutters([block], GUTTER, GUTTER), 0)
+
+
+def critique(professional, *issues):
+	return SimpleNamespace(
+		looks_professional=professional,
+		issues=[SimpleNamespace(severity=sev, area=area, problem="p", fix="f") for sev, area in issues],
+	)
+
+
+class TestVerdictAboutTheChrome(unittest.TestCase):
+	def test_a_verdict_resting_only_on_the_footer_is_set_aside(self):
+		self.assertTrue(visual_check.verdict_is_about_the_chrome(critique(False, ("high", "Footer"))))
+		self.assertTrue(
+			visual_check.verdict_is_about_the_chrome(
+				critique(False, ("high", "Footer"), ("medium", "Navigation menu"))
+			)
+		)
+
+	def test_low_points_do_not_change_that(self):
+		self.assertTrue(
+			visual_check.verdict_is_about_the_chrome(
+				critique(False, ("high", "Footer"), ("low", "Hero section"))
+			)
+		)
+
+	def test_a_page_faulted_in_its_body_stays_refused(self):
+		self.assertFalse(
+			visual_check.verdict_is_about_the_chrome(
+				critique(False, ("high", "Footer"), ("high", "Hero section"))
+			)
+		)
+		self.assertFalse(
+			visual_check.verdict_is_about_the_chrome(critique(False, ("medium", "Pricing cards")))
+		)
+
+	def test_a_page_called_professional_is_left_alone(self):
+		self.assertFalse(visual_check.verdict_is_about_the_chrome(critique(True, ("high", "Footer"))))
+
+	def test_an_unprofessional_verdict_with_no_serious_point_stays(self):
+		self.assertFalse(visual_check.verdict_is_about_the_chrome(critique(False)))
+		self.assertFalse(visual_check.verdict_is_about_the_chrome(critique(False, ("low", "Footer"))))
