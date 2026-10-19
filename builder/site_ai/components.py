@@ -34,6 +34,7 @@ from __future__ import annotations
 import re
 
 import frappe
+from frappe import _
 
 # a tag a page carries: the {% set %} parameters it was given, then the include itself
 SET_PARAM = re.compile(r"\{%-?\s*set\s+([a-z_][a-z0-9_]*)\s*=\s*(.+?)\s*-?%\}")
@@ -43,7 +44,7 @@ INCLUDE_PATH = re.compile(r"\{%-?\s*include\s+['\"]([^'\"]+)['\"]\s*-?%\}")
 class Component:
 	"""One component of the catalogue."""
 
-	def __init__(self, path, label, shows, pages=(), app="", params=(), data_check="", required=False, note="", needs_shop=False):
+	def __init__(self, path, label, shows, pages=(), app="", params=(), data_check="", required=False, note="", needs_shop=False, help=""):
 		self.path = path
 		self.label = label
 		self.shows = shows
@@ -53,6 +54,10 @@ class Component:
 		self.data_check = data_check
 		self.required = required
 		self.note = note
+		# //// Neoffice — a sentence for the PERSON choosing it in the editor (2026-10-19). `note` is
+		# //// written for the generator ("never write a <form> of your own beside it"): shown to a
+		# //// person it is an instruction to somebody else, in English.
+		self.help = help
 		# //// Neoffice — whether this component only makes sense on a site that SELLS. It is the
 		# //// component's own answer, not its app's: webshop owns the products carousel, which
 		# //// needs a shop, AND the opening hours, which are about the premises and belong on the
@@ -73,6 +78,25 @@ class Component:
 			sets.append(f'{{%- set {name} = {_as_jinja(value)} -%}}')
 		return "".join(sets) + f'{{% include "{self.path}" %}}'
 
+	def checked_values(self, values: dict | None) -> dict:
+		"""What a person chose in the editor's form, held to what the component declares.
+
+		A name the component does not declare is dropped (the way a generated page's is), an empty
+		text is silence (the component's default applies), and a value that cannot be a literal of
+		its tag raises ValueError with the sentence to show: a choice not on offer, a number out of
+		range, a text with a character that would end the Jinja statement. Nothing here writes
+		anything; the tag built from these values still goes through lawful_tag."""
+		declared = {p["name"]: p for p in self.params}
+		out = {}
+		for name, value in (values or {}).items():
+			param = declared.get(name)
+			if param is None or value is None:
+				continue
+			checked = _checked_value(param, value)
+			if checked is not _SILENT:
+				out[name] = checked
+		return out
+
 	def describes(self) -> str:
 		"""The line the generator reads: what it shows, then what it can be given."""
 		line = f'- {{% include "{self.path}" %}} — {self.shows}'
@@ -82,6 +106,67 @@ class Component:
 		if self.note:
 			line += f"\n  {self.note}"
 		return line
+
+
+# a text a tag can carry as a literal: LITERAL (below) refuses these characters, so a person who types one is
+# told so, instead of the editor writing a tag the guard would then refuse
+UNSAFE_TEXT = re.compile(r"[{}%\\\r\n]")
+UNSAFE_TEXT_SHOWN = "{ } % \\"
+MAX_TEXT = 600
+_SILENT = object()
+
+
+def choices_of(param: dict) -> list[dict]:
+	"""A parameter's choices as [{value, label}]; a declaration may give bare strings."""
+	out = []
+	for choice in param.get("choices") or ():
+		if isinstance(choice, dict):
+			out.append({"value": str(choice["value"]), "label": choice.get("label") or str(choice["value"])})
+		else:
+			out.append({"value": str(choice), "label": str(choice)})
+	return out
+
+
+def param_label(param: dict) -> str:
+	"""What a person reads over a parameter: its declared label, else its name made readable."""
+	return param.get("label") or param["name"].replace("_", " ").capitalize()
+
+
+def _checked_value(param: dict, value):
+	"""One value, as the tag will carry it, or _SILENT for "not set"; ValueError with the sentence to show."""
+	kind = param.get("type") or "str"
+	label = _(param_label(param))
+	if kind == "bool":
+		if not isinstance(value, bool):
+			raise ValueError(_("{0}: expected yes or no.").format(label))
+		return value
+	if kind == "int":
+		if isinstance(value, bool) or not isinstance(value, (int, float, str)):
+			raise ValueError(_("{0}: expected a whole number.").format(label))
+		if isinstance(value, str) and not value.strip():
+			return _SILENT
+		try:
+			number = float(value)
+		except ValueError:
+			raise ValueError(_("{0}: expected a whole number.").format(label)) from None
+		if number != int(number):
+			raise ValueError(_("{0}: expected a whole number.").format(label))
+		number = int(number)
+		low, high = param.get("min"), param.get("max")
+		if (low is not None and number < low) or (high is not None and number > high):
+			raise ValueError(_("{0}: expected a number from {1} to {2}.").format(label, low if low is not None else "-", high if high is not None else "-"))
+		return number
+	text = str(value).strip()
+	if not text and not param.get("blank"):
+		return _SILENT
+	offered = choices_of(param)
+	if offered and text not in {c["value"] for c in offered}:
+		raise ValueError(_("{0}: pick one of the choices offered.").format(label))
+	if UNSAFE_TEXT.search(text):
+		raise ValueError(_("{0}: the text cannot contain these characters or a line break: {1}").format(label, UNSAFE_TEXT_SHOWN))
+	if len(text) > MAX_TEXT:
+		raise ValueError(_("{0}: the text is too long ({1} characters at most).").format(label, MAX_TEXT))
+	return text
 
 
 def _as_jinja(value) -> str:
@@ -103,18 +188,19 @@ BRIDGE: list[Component] = [
 		app="webshop",
 		data_check="builder.empty_includes.has_pictured_products",
 		params=[
-			{"name": "carousel_title", "type": "str", "default": "", "about": "the heading over the row, in the site's language"},
-			{"name": "carousel_limit", "type": "int", "default": 8, "about": "how many products"},
-			{"name": "carousel_sort_by", "type": "str", "default": "creation", "about": "creation, modified, item_name or standard_rate"},
-			{"name": "carousel_sort_order", "type": "str", "default": "desc", "about": "desc or asc"},
-			{"name": "carousel_brand", "type": "str", "default": "", "about": "only the products of that brand, by its exact name"},
-			{"name": "carousel_item_group", "type": "str", "default": "", "about": "only the products of that category, by its exact name"},
-			{"name": "show_discounted_only", "type": "bool", "default": False, "about": "only the products on sale"},
-			{"name": "hide_without_image", "type": "bool", "default": True, "about": "leave out a product with no photograph"},
-			{"name": "view_more_link", "type": "str", "default": "", "about": "where the 'View more' button goes, e.g. /all-products"},
-			{"name": "view_more_text", "type": "str", "default": "View More", "about": "what that button reads, in the site's language"},
+			{"name": "carousel_title", "label": "Title", "type": "str", "default": "", "about": "the heading over the row, in the site's language"},
+			{"name": "carousel_limit", "label": "How many products", "min": 1, "type": "int", "default": 8, "about": "how many products"},
+			{"name": "carousel_sort_by", "label": "Sorted by", "choices": [{"value": "creation", "label": "Newest first"}, {"value": "modified", "label": "Last updated"}, {"value": "item_name", "label": "Name"}, {"value": "standard_rate", "label": "Price"}], "type": "str", "default": "creation", "about": "creation, modified, item_name or standard_rate"},
+			{"name": "carousel_sort_order", "label": "Order", "choices": [{"value": "desc", "label": "Descending"}, {"value": "asc", "label": "Ascending"}], "type": "str", "default": "desc", "about": "desc or asc"},
+			{"name": "carousel_brand", "label": "Only this brand", "type": "str", "default": "", "about": "only the products of that brand, by its exact name"},
+			{"name": "carousel_item_group", "label": "Only this category", "type": "str", "default": "", "about": "only the products of that category, by its exact name"},
+			{"name": "show_discounted_only", "label": "Discounted products only", "type": "bool", "default": False, "about": "only the products on sale"},
+			{"name": "hide_without_image", "label": "Hide products without a photo", "type": "bool", "default": True, "about": "leave out a product with no photograph"},
+			{"name": "view_more_link", "label": "'View more' link", "type": "str", "default": "", "about": "where the 'View more' button goes, e.g. /all-products"},
+			{"name": "view_more_text", "label": "'View more' text", "type": "str", "default": "View More", "about": "what that button reads, in the site's language"},
 		],
 		needs_shop=True,
+		help="Two of them on one page show the same products twice: give the second one another order, or only the discounted products.",
 		note="Two of them on one page is two rows of the same shop: give the second a different sort or show_discounted_only.",
 	),
 	Component(
@@ -125,17 +211,17 @@ BRIDGE: list[Component] = [
 		app="webshop",
 		data_check="builder.empty_includes.has_pictured_brands",
 		params=[
-			{"name": "carousel_title", "type": "str", "default": "", "about": "the heading over the row"},
+			{"name": "carousel_title", "label": "Title", "type": "str", "default": "", "about": "the heading over the row"},
 			# //// Neoffice — 0 is NOT "all" (2026-09-16). The template slices `sorted_brands[:carousel_limit|default(20)]`
 			# //// and Jinja's default() only fires on an UNDEFINED variable, never on 0 — so 0 draws an empty strip.
 			# //// The catalogue said "0 for all", the generator passed 0, and a home page announced "Nos univers
 			# //// produits" over "Aucune marque disponible". Describe what the template does, not what would be nice.
-			{"name": "carousel_limit", "type": "int", "default": 20, "about": "how many brands at most; leave it out for the default, never 0 — 0 draws none"},
-			{"name": "carousel_sort_by", "type": "str", "default": "brand_name", "about": "brand_name or product_count"},
-			{"name": "show_product_count", "type": "bool", "default": False, "about": "show how many products each brand has"},
-			{"name": "hide_without_image", "type": "bool", "default": True, "about": "leave out a brand with no logo"},
-			{"name": "view_more_link", "type": "str", "default": "", "about": "where the 'View more' button goes"},
-			{"name": "view_more_text", "type": "str", "default": "View More", "about": "what that button reads, in the site's language"},
+			{"name": "carousel_limit", "label": "How many brands", "min": 1, "type": "int", "default": 20, "about": "how many brands at most; leave it out for the default, never 0 — 0 draws none"},
+			{"name": "carousel_sort_by", "label": "Sorted by", "choices": [{"value": "brand_name", "label": "Name"}, {"value": "product_count", "label": "Number of products"}], "type": "str", "default": "brand_name", "about": "brand_name or product_count"},
+			{"name": "show_product_count", "label": "Show the number of products", "type": "bool", "default": False, "about": "show how many products each brand has"},
+			{"name": "hide_without_image", "label": "Hide brands without a logo", "type": "bool", "default": True, "about": "leave out a brand with no logo"},
+			{"name": "view_more_link", "label": "'View more' link", "type": "str", "default": "", "about": "where the 'View more' button goes"},
+			{"name": "view_more_text", "label": "'View more' text", "type": "str", "default": "View More", "about": "what that button reads, in the site's language"},
 		],
 		needs_shop=True,
 	),
@@ -146,7 +232,7 @@ BRIDGE: list[Component] = [
 		pages=("contact", "about", "one_page"),
 		app="webshop",
 		data_check="builder.empty_includes.opening_hours_configured",
-		params=[{"name": "display", "type": "str", "default": "full", "about": "full for the whole week, compact for the state and today only"}],
+		params=[{"name": "display", "label": "Show", "choices": [{"value": "full", "label": "The whole week"}, {"value": "compact", "label": "Today only"}], "type": "str", "default": "full", "about": "full for the whole week, compact for the state and today only"}],
 	),
 ]
 
@@ -173,6 +259,7 @@ def _from_hooks() -> list[Component]:
 				required=bool(entry.get("required")),
 				note=entry.get("note") or "",
 				needs_shop=bool(entry.get("needs_shop")),
+				help=entry.get("help") or "",
 			)
 		)
 	return out
@@ -259,22 +346,23 @@ LAWFUL_TAG = re.compile(rf"^\s*(?:{LAWFUL_SET}\s*)*\{{%-?\s*include\s+['\"][^'\"
 LAWFUL_VALUE = re.compile(rf"\{{%-?\s*set\s+([a-z_][a-z0-9_]*)\s*=\s*({LITERAL})\s*-?%\}}")
 
 
-def lawful_tag(text: str) -> str | None:
-	"""The canonical tag when `text` is NOTHING BUT a catalogued component's tag: `set` statements of
+def component_of(text: str) -> Component | None:
+	"""The catalogued component whose include `text` carries, lawful or not (a tag edited by hand still
+	names its component); None when there is no include, or its path is not in the catalogue."""
+	found = INCLUDE_PATH.search(text or "")
+	component = by_file(found.group(1).rsplit("/", 1)[-1]) if found else None
+	return component if component is not None and found.group(1) == component.path else None
+
+
+def parse_tag(text: str) -> tuple[Component, dict] | None:
+	"""(component, values) when `text` is NOTHING BUT a catalogued component's tag: `set` statements of
 	parameters the component declares, each with a literal value, then its include. None for anything
 	else, a stray Jinja expression, a second statement, a path the catalogue does not hold, a
-	parameter it does not declare.
-
-	The editor's assistant writes block text through tools that refuse Jinja, because Jinja in a page
-	that is not a component's tag crashes the published route. A component's tag is the one Jinja a
-	page is meant to carry (the generator writes them, repair_includes keeps them): this is what lets
-	the assistant place one and change its options, and nothing else. The tag is rebuilt from the
-	values, never passed through as written."""
+	parameter it does not declare."""
 	if not text or "{%" not in text or not LAWFUL_TAG.match(text):
 		return None
-	found = INCLUDE_PATH.search(text)
-	component = by_file(found.group(1).rsplit("/", 1)[-1]) if found else None
-	if component is None or found.group(1) != component.path:
+	component = component_of(text)
+	if component is None:
 		return None
 	declared = {p["name"] for p in component.params}
 	values: dict = {}
@@ -287,7 +375,29 @@ def lawful_tag(text: str) -> str | None:
 			values[name] = raw[1:-1]
 		else:
 			values[name] = float(raw) if "." in raw else int(raw)
-	return component.tag(values)
+	return component, values
+
+
+def lawful_tag(text: str) -> str | None:
+	"""The canonical tag when `text` is NOTHING BUT a catalogued component's tag (parse_tag), else None.
+
+	The editor's assistant writes block text through tools that refuse Jinja, because Jinja in a page
+	that is not a component's tag crashes the published route. A component's tag is the one Jinja a
+	page is meant to carry (the generator writes them, repair_includes keeps them): this is what lets
+	the assistant place one and change its options, and nothing else. The tag is rebuilt from the
+	values, never passed through as written. It is also the gate of the editor's own picker
+	(api.render_component_tag): a person's form values become a tag only if this accepts it."""
+	parsed = parse_tag(text)
+	return parsed[0].tag(parsed[1]) if parsed else None
+
+
+def page_type_for_route(route: str | None) -> str | None:
+	"""The page type a route stands for ("contact", "home" -> "accueil"), None for a route the
+	generator does not know: the picker then offers everything and recommends nothing."""
+	from builder.site_ai.nora.site_builder import KNOWN_PAGES
+
+	route = (route or "").strip().strip("/")
+	return next((kind for known, kind in KNOWN_PAGES.values() if known == route), None)
 
 
 def prompt_block(components: list[Component]) -> str:

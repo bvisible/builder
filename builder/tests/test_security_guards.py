@@ -114,6 +114,10 @@ class TestGuardedEndpoints(FrappeTestCase):
 		"get_inspirations",
 		"analyze_inspirations_for_generation",
 		"get_shortcodes_for_ai",
+		# //// Neoffice — the editor's component picker (2026-10-19)
+		"get_site_components",
+		"render_component_tag",
+		"read_component_tag",
 	]
 
 	OTHER_ENDPOINTS = [

@@ -222,6 +222,8 @@ website_components = [
 		"shows": "a working contact form, sent to the site's inbox",
 		"pages": ["contact", "one_page"],
 		"required": True,
+		# //// Neoffice — what a person reads in the editor's picker (2026-10-19), not the generator's `note`.
+		"help": "Pick the form that suits the business. With the window option the form waits behind a button, and any link to #contact opens it, from this page or another.",
 		# //// Neoffice — how to choose and wire it (2026-10-19): the generator always wrote "simple".
 		"note": (
 			"Never write a <form> of your own beside it: this include IS the form. Choose contact_model by what the "
@@ -236,11 +238,11 @@ website_components = [
 		# //// for the phone (2026-09-29, the header of contact_form.html says how).
 		"params": [
 			# //// Neoffice — one shortcode, three forms (2026-10-17, see the header of contact_form.html).
-			{"name": "contact_model", "type": "str", "default": "steps", "about": "which form to draw: \"simple\" (name, e-mail, message), \"steps\" (the same in two, one question at a time) or \"questions\" (what the request is about, the budget and the timing before the message)"},
-			{"name": "contact_dialog", "type": "bool", "default": False, "about": "the form waits in a window its button opens; any link to #contact opens it too, from this page or another (/about#contact)"},
-			{"name": "contact_button_text", "type": "str", "default": "Contact us", "about": "what the button that opens the window reads, in the site's language; empty draws no button, for a page with its own link to #contact"},
-			{"name": "consent_text", "type": "str", "default": "", "about": "the business's own consent sentence, a box the visitor must tick before sending"},
-			{"name": "phone_required", "type": "bool", "default": False, "about": "the visitor must give a phone number"},
+			{"name": "contact_model", "label": "Form", "choices": [{"value": "simple", "label": "Simple: name, e-mail, message"}, {"value": "steps", "label": "In two steps, one question at a time"}, {"value": "questions", "label": "Quote request: subject, budget and timing first"}], "type": "str", "default": "steps", "about": "which form to draw: \"simple\" (name, e-mail, message), \"steps\" (the same in two, one question at a time) or \"questions\" (what the request is about, the budget and the timing before the message)"},
+			{"name": "contact_dialog", "label": "Open in a window", "type": "bool", "default": False, "about": "the form waits in a window its button opens; any link to #contact opens it too, from this page or another (/about#contact)"},
+			{"name": "contact_button_text", "label": "Button text", "blank": True, "type": "str", "default": "Contact us", "about": "what the button that opens the window reads, in the site's language; empty draws no button, for a page with its own link to #contact"},
+			{"name": "consent_text", "label": "Consent sentence", "type": "str", "default": "", "about": "the business's own consent sentence, a box the visitor must tick before sending"},
+			{"name": "phone_required", "label": "Phone number required", "type": "bool", "default": False, "about": "the visitor must give a phone number"},
 		],
 	},
 	{
@@ -250,16 +252,17 @@ website_components = [
 		"pages": ["contact", "one_page"],
 		"data_check": "builder.empty_includes.site_has_address",
 		"params": [
-			{"name": "height", "type": "str", "default": "400px", "about": "how tall the map stands"},
-			{"name": "zoom", "type": "int", "default": 16, "about": "1 the world, 20 a street corner"},
+			# //// Neoffice — label, choices and bounds are what the editor's picker shows (2026-10-19)
+			{"name": "height", "label": "Height", "type": "str", "default": "400px", "about": "how tall the map stands"},
+			{"name": "zoom", "label": "Zoom", "min": 1, "max": 20, "type": "int", "default": 16, "about": "1 the world, 20 a street corner"},
 			# //// Neoffice — the template writes this straight into Google's &t= (2026-09-16): it takes
 			# //// Google's own codes, not English words. "roadmap" produced an invalid t=roadmap.
-			{"name": "type", "type": "str", "default": "m", "about": "m map, k satellite, h hybrid, p terrain"},
+			{"name": "type", "label": "Map type", "choices": [{"value": "m", "label": "Map"}, {"value": "k", "label": "Satellite"}, {"value": "h", "label": "Hybrid"}, {"value": "p", "label": "Terrain"}], "type": "str", "default": "m", "about": "m map, k satellite, h hybrid, p terrain"},
 			# //// Neoffice — the template reads `address`, not `map_address` (2026-09-16). The old name
 			# //// set a variable nobody read, so a chosen address silently fell back to the site's own.
 			# //// It passed the "declared parameter exists in the template" test because the string
 			# //// map_address does appear there — as the template's own local variable.
-			{"name": "address", "type": "str", "default": "", "about": "another address than the business's"},
+			{"name": "address", "label": "Another address", "type": "str", "default": "", "about": "another address than the business's"},
 		],
 	},
 	{
@@ -284,12 +287,13 @@ website_components = [
 		"pages": ["accueil", "blog", "about", "one_page"],
 		"data_check": "builder.empty_includes.has_blog_posts",
 		"params": [
-			{"name": "blog_title", "type": "str", "default": "", "about": "the heading over the list"},
-			{"name": "blog_limit", "type": "int", "default": 6, "about": "how many posts"},
-			{"name": "blog_category", "type": "str", "default": "", "about": "one Blog Category, empty for all"},
-			{"name": "blog_sort_by", "type": "str", "default": "published_on", "about": "published_on, creation or title"},
-			{"name": "blog_layout", "type": "str", "default": "grid", "about": "grid or list"},
-			{"name": "view_more_link", "type": "str", "default": "", "about": "where the 'View more' button goes"},
+			# //// Neoffice — label, choices and bounds are what the editor's picker shows (2026-10-19)
+			{"name": "blog_title", "label": "Title", "type": "str", "default": "", "about": "the heading over the list"},
+			{"name": "blog_limit", "label": "How many posts", "min": 1, "type": "int", "default": 6, "about": "how many posts"},
+			{"name": "blog_category", "label": "Only this category", "type": "str", "default": "", "about": "one Blog Category, empty for all"},
+			{"name": "blog_sort_by", "label": "Sorted by", "choices": [{"value": "published_on", "label": "Publication date"}, {"value": "creation", "label": "Creation date"}, {"value": "title", "label": "Title"}], "type": "str", "default": "published_on", "about": "published_on, creation or title"},
+			{"name": "blog_layout", "label": "Layout", "choices": [{"value": "grid", "label": "Grid"}, {"value": "list", "label": "List"}], "type": "str", "default": "grid", "about": "grid or list"},
+			{"name": "view_more_link", "label": "'View more' link", "type": "str", "default": "", "about": "where the 'View more' button goes"},
 		],
 	},
 	{

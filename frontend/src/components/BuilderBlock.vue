@@ -52,6 +52,8 @@ import { BlockValueResolver } from "@/utils/blockValueResolver";
 import componentController from "@/utils/componentController.js";
 import { needsItalic, setFont } from "@/utils/fontManager";
 import { extractComponentId, getTextContent } from "@/utils/helpers";
+//// Neoffice — see getComponentName below.
+import { readComponentTag } from "@/utils/siteComponents";
 import type { BlockClientScriptEmulator } from "@/utils/scriptSandbox";
 import { useDraggableBlock } from "@/utils/useDraggableBlock";
 import {
@@ -68,6 +70,8 @@ import {
 } from "vue";
 import BlockEditor from "./BlockEditor.vue";
 import BlockHTML from "./BlockHTML.vue";
+//// Neoffice — see getComponentName below.
+import ComponentTagBlock from "./ComponentTagBlock.vue";
 import DataLoaderBlock from "./DataLoaderBlock.vue";
 import TextBlock from "./TextBlock.vue";
 
@@ -149,6 +153,13 @@ const uidToUse = !!props.repeaterIndex
 	? `builder-block-${props.block.blockId}-${props.repeaterIndex}`
 	: props.block.blockId;
 
+//// Neoffice — a div whose text is a catalogued component's include tag (the contact form, a map, a carousel) is
+//// a live block on the published page, but the editor cannot run Jinja: upstream drew it as an empty div, 0px
+//// tall, that could not be seen, clicked or found again. ComponentTagBlock draws a card for it. Not for a block with
+//// children: a container that happens to hold such a text is still a container.
+const isComponentTagBlock = (block: Block) =>
+	!block.isRoot() && !block.getChildren().length && Boolean(readComponentTag(block.getInnerHTML()));
+
 const getComponentName = (block: Block) => {
 	if (block.isRepeater()) {
 		return DataLoaderBlock;
@@ -160,6 +171,9 @@ const getComponentName = (block: Block) => {
 		return TextBlock;
 	} else if (block.isHTML()) {
 		return BlockHTML;
+		//// Neoffice — a component's tag draws a card instead of an empty div (see isComponentTagBlock above)
+	} else if (isComponentTagBlock(block)) {
+		return ComponentTagBlock;
 	} else {
 		return block.getTag();
 	}
@@ -228,7 +242,9 @@ const attributes = computed(() => {
 		props.block.isInlineSVG() ||
 		props.block.isLink() ||
 		props.block.isButton() ||
-		props.block.isRepeater()
+		props.block.isRepeater() ||
+		//// Neoffice — the card of a component's tag takes the block like the other block components (see isComponentTagBlock)
+		isComponentTagBlock(props.block)
 	) {
 		attribs.block = props.block;
 		attribs.repeaterIndex = props.repeaterIndex;

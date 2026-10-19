@@ -244,23 +244,46 @@ OPTIONAL_PAGES_BY_SITE_TYPE = {
 # //// the promise made when it was written — that a person could drop a products carousel or a
 # //// blog listing themselves, and set what it takes, instead of only the assistant being able to.
 def translate_param(param: dict) -> dict:
-	"""A parameter as the panel shows it: its meaning translated, its name and default untouched."""
+	"""A parameter as the panel shows it: its label, meaning and choices translated, its name, type and
+	default untouched. Every parameter gets a label (declared, else its name made readable): a person
+	should not read `contact_model`."""
+	from builder.site_ai import components
+
 	param = dict(param)
+	# //// Neoffice — the label and the choices are what the picker shows (2026-10-19), translated like `about`
+	param["label"] = _(components.param_label(param))
 	if param.get("about"):
 		param["about"] = _(param["about"])
+	# //// Neoffice — choices as [{value, label}], the value untouched
+	if param.get("choices"):
+		param["choices"] = [{"value": c["value"], "label": _(c["label"])} for c in components.choices_of(param)]
 	return param
 
 
+# //// Neoffice — `page` added (2026-10-19): the catalogue as it stands for the open page, the suited ones first
 @frappe.whitelist()
 @builder_role_required()
-def get_site_components(website_profile: str | None = None) -> list[dict]:
+def get_site_components(page: str | None = None, website_profile: str | None = None) -> list[dict]:
 	"""The components this site can place on a page, with their parameters.
 
-	Each one carries what it shows, the pages it suits, the parameters it takes (name, meaning,
-	default) and the tag to insert. A component with nothing to show on this site — a products
-	carousel with no pictured product, a team with nobody in it — is reported as such rather than
-	hidden: the panel says why it is greyed out, which is the answer the user needs."""
+	Each one carries what it shows, the pages it suits, the parameters it takes (label, meaning,
+	choices, default) and the tag to insert. A component with nothing to show on this site, a
+	products carousel with no pictured product, a team with nobody in it, is reported as such
+	rather than hidden: the panel says why it is greyed out, which is the answer the user needs.
+
+	Given the open `page`, each one also says whether it is `suited` to that page (its type is one
+	the component declares, and it has something to show), and the suited ones come first. The type
+	is read from the page's route; a route the generator does not know (None) recommends nothing,
+	every component then offers itself."""
 	from builder.site_ai import components
+
+	# //// Neoffice — the open page decides the type (its route) and the site (its profile)
+	from builder.site_ai.nora.prompts import page_profile
+
+	page_type = None
+	if page:
+		page_type = components.page_type_for_route(frappe.db.get_value("Builder Page", page, "route"))
+		website_profile = website_profile or page_profile(page)
 
 	out = []
 	for component in components.catalogue():
@@ -268,7 +291,7 @@ def get_site_components(website_profile: str | None = None) -> list[dict]:
 		out.append(
 			{
 				# //// Neoffice — the catalogue is written in English because the generator reads it as its
-				# //// prompt, and the panel shows these four fields exactly as they arrive: a French user
+				# //// prompt, and the panel shows these fields exactly as they arrive: a French user
 				# //// saw "Contact form" and a sentence of English under it. What a person reads goes
 				# //// through _() here; the generator still reads the English. Names, paths, tags and
 				# //// defaults are identifiers and stay as declared.
@@ -281,13 +304,18 @@ def get_site_components(website_profile: str | None = None) -> list[dict]:
 				# //// Neoffice — see the block marker above: params translated per-field
 				"params": [translate_param(p) for p in component.params],
 				"tag": component.tag(),
-				# //// Neoffice — see the block marker above: note text translated
-				"note": _(component.note) if component.note else "",
+				# //// Neoffice — what a person reads, translated (2026-10-19). Not `component.note`: that one is
+				# //// the generator's instruction ("never write a <form> of your own beside it"), and shown to a
+				# //// person it was an English order given to somebody else.
+				"help": _(component.help) if component.help else "",
 				# None when the component declares no check: nothing to say about it
 				"has_data": has,
+				# //// Neoffice — None when the page's type is not known: nothing is recommended
+				"suited": None if page_type is None else (page_type in component.pages and has is not False),
 			}
 		)
-	return sorted(out, key=lambda c: (c["app"], c["label"]))
+	# //// Neoffice — the components suited to the open page first (False sorts after True, None counts as not suited)
+	return sorted(out, key=lambda c: (c["suited"] is not True, c["app"], c["label"]))
 
 
 @frappe.whitelist()
@@ -297,15 +325,53 @@ def render_component_tag(path: str, values: str | dict | None = None) -> str:
 
 	Built here rather than in the browser so the catalogue stays the only thing that decides
 	which parameters exist: a value for a parameter the component does not declare is dropped,
-	the same way it is when a generated page carries one."""
+	the same way it is when a generated page carries one. A value that cannot be a literal of the
+	tag (a choice not on offer, a number out of range, a character that would end the Jinja
+	statement) is refused with the sentence to show. And the tag built from the values must come
+	back unchanged from `lawful_tag`, the gate the assistant's block tools are held to: the editor
+	writes the one Jinja a page may carry through the same door, never another."""
 	from builder.site_ai import components
 
 	component = next((c for c in components.catalogue() if c.path == path), None)
 	if not component:
 		frappe.throw(_("Unknown component: {0}").format(path))
-	if isinstance(values, str):
-		values = json.loads(values or "{}")
-	return component.tag(values or {})
+	# //// Neoffice — the options are read, held to what the component declares, and written only through lawful_tag
+	try:
+		chosen = json.loads(values or "{}") if isinstance(values, str) else (values or {})
+	except ValueError:
+		chosen = None
+	if not isinstance(chosen, dict):
+		frappe.throw(_("The options could not be read."))
+	try:
+		tag = component.tag(component.checked_values(chosen))
+	except ValueError as error:
+		frappe.throw(str(error))
+	lawful = components.lawful_tag(tag)
+	if lawful is None:
+		frappe.throw(_("This block cannot be written with these options."))
+	return lawful
+
+
+@frappe.whitelist()
+@builder_role_required()
+def read_component_tag(text: str | None = None) -> dict | None:
+	"""Which component a block's text is, and the options it carries, so the panel can change them.
+
+	{path, label, values} when the text is NOTHING BUT a catalogued component's tag (components.parse_tag,
+	the same reading `lawful_tag` is built on); {path, label, values: None} when it names a catalogued
+	component but was written by hand, which the panel then leaves alone; None for any other text."""
+	from builder.site_ai import components
+
+	if not text or "{%" not in text:
+		return None
+	parsed = components.parse_tag(text)
+	if parsed:
+		component, values = parsed
+		return {"path": component.path, "label": _(component.label), "values": values}
+	component = components.component_of(text)
+	if component:
+		return {"path": component.path, "label": _(component.label), "values": None}
+	return None
 # //// Neoffice ▲▲▲
 
 
