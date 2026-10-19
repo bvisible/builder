@@ -293,13 +293,21 @@ FLAT_REPEATER_ELEMENTS = frozenset({"repeat", "repeater", "loop", "each", "for"}
 
 def adopt_flat_repeater(node: dict, taken=()) -> bool:
 	"""A repeater written flat: `el: repeat` (or any element) with `data`, `items` and `item` as
-	siblings of `el`, instead of `repeat: {data, items, item}` under a div. The block builder reads
+	siblings of `el`, instead of `repeat: {data, items, item}` under a div; or `repeat: {data, items}`
+	with its `item` beside it instead of inside (one section of three on a home, 2026-10-19: the
+	cards never rendered, the heading stood alone, the page was refused after four revisions). The block builder reads
 	only `repeat`, so the section announced its content and showed an empty block named `repeat`: a
 	page refused after four revisions for "content that never appears" (2026-10-19, with the local
 	27B model, on two pages of three; the revision cannot cure what the model does not see). The
 	three keys move under `repeat`, an element that is not an HTML tag becomes a div, and a repeater
 	with no `data` is named after the block (or `items`) without colliding with another."""
-	if isinstance(node.get("repeat"), dict) or not isinstance(node.get("item"), dict):
+	# //// Neoffice — an `item` written beside `repeat` goes inside it (2026-10-19), see the docstring
+	existing = node.get("repeat")
+	if isinstance(existing, dict) and not existing.get("item") and isinstance(node.get("item"), dict):
+		# `repeat: {data, items}` with `item:` one level too shallow, beside it: the template belongs inside
+		existing["item"] = node.pop("item")
+		return True
+	if isinstance(existing, dict) or not isinstance(node.get("item"), dict):
 		return False
 	if "items" not in node and "data" not in node:
 		return False

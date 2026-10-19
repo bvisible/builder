@@ -913,3 +913,45 @@ class TestTokenSyncKeepsFontsTheChromeLacks(unittest.TestCase):
 	def test_a_select_with_no_options_is_not_second_guessed(self):
 		chrome, _saved = self.chrome("")
 		self.assertTrue(self.sync("Lora", chrome))
+
+
+SHALLOW_ITEM_PAGE = """
+el: div
+name: body
+c:
+  - el: div
+    name: feature-cards
+    classes: ['u-grid', 'u-grid--3']
+    repeat:
+      data: features
+      items:
+        - title: 'Bouquets de saison'
+          body: 'Compositions fraîches'
+        - title: 'Abonnement mensuel'
+          body: 'Des fleurs chaque mois'
+    item:
+      el: div
+      c:
+        - el: h3
+          bind: {innerHTML: title}
+"""
+
+
+class TestShallowItem(unittest.TestCase):
+	def test_an_item_written_beside_repeat_goes_inside_it(self):
+		blocks, script = pw.expand_page_yaml(SHALLOW_ITEM_PAGE)
+		repeater = blocks[0]["children"][0]
+		self.assertTrue(repeater["isRepeaterBlock"])  # was a heading over nothing
+		self.assertEqual(repeater["dataKey"]["key"], "features")
+		self.assertEqual(repeater["classes"], ["u-grid", "u-grid--3"])
+		self.assertEqual(len(repeater["children"]), 1)
+		self.assertTrue(script.startswith("data.features = "))
+
+	def test_a_repeat_that_has_its_item_is_left_alone(self):
+		node = {"el": "div", "repeat": {"data": "a", "items": [], "item": {"el": "p"}}}
+		self.assertFalse(pw.adopt_flat_repeater(node))
+		self.assertEqual(node["repeat"]["item"], {"el": "p"})
+
+	def test_a_repeat_with_no_item_anywhere_stays_as_it_is(self):
+		node = {"el": "div", "repeat": {"data": "a", "items": [{"x": 1}]}}
+		self.assertFalse(pw.adopt_flat_repeater(node))
