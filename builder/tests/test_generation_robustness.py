@@ -873,3 +873,43 @@ class TestPhoneRows(unittest.TestCase):
 	def test_a_grid_is_not_a_row(self):
 		block = {"element": "div", "baseStyles": {"display": "grid"}, "children": [{}, {}]}
 		self.assertEqual(layout.wrap_phone_rows([block]), 0)
+
+
+class TestTokenSyncKeepsFontsTheChromeLacks(unittest.TestCase):
+	def chrome(self, options, current="Inter"):
+		saved = []
+		field = SimpleNamespace(fieldtype="Select", options=options)
+		doc = SimpleNamespace(
+			meta=SimpleNamespace(get_field=lambda name: field),
+			flags=SimpleNamespace(),
+			get=lambda name: current,
+			set=lambda name, value: saved.append((name, value)),
+			save=lambda: saved.append("saved"),
+		)
+		return doc, saved
+
+	def sync(self, token_value, chrome):
+		from builder.hf_utils import tokens
+
+		token = SimpleNamespace(name="qxb-font-body", value=token_value)
+		with (
+			patch.object(
+				tokens, "_chrome_for_prefix", return_value=("Website Header Footer Variant", "QW x")
+			),
+			patch.object(tokens.frappe, "get_doc", return_value=chrome),
+		):
+			return tokens.sync_token_to_chrome(token)
+
+	def test_a_font_the_chrome_offers_is_written_back(self):
+		chrome, saved = self.chrome("Inter\nLato\nMerriweather")
+		self.assertTrue(self.sync("Lato", chrome))
+		self.assertEqual(saved, [("body_font", "Lato"), "saved"])
+
+	def test_a_font_the_chrome_lacks_stays_a_token_and_nothing_fails(self):
+		chrome, saved = self.chrome("Inter\nLato\nMerriweather")
+		self.assertFalse(self.sync("Lora", chrome))
+		self.assertEqual(saved, [])  # was a validation error that stopped the build
+
+	def test_a_select_with_no_options_is_not_second_guessed(self):
+		chrome, _saved = self.chrome("")
+		self.assertTrue(self.sync("Lora", chrome))

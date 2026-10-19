@@ -53,6 +53,12 @@ def sync_token_to_chrome(doc, method=None) -> bool:
         chrome = frappe.get_doc(doctype, docname)
         if (chrome.get(field) or "") == doc.value:
             return False
+        # a font the chrome's Select does not offer stays a token (2026-10-19): the token was minted
+        # with the brief's "Lora", the chrome of a profile that already had this prefix refused it,
+        # and the token save failed, so the whole site build stopped before its first page
+        df = chrome.meta.get_field(field)
+        if df and df.fieldtype == "Select" and df.options and doc.value not in df.options.split("\n"):
+            return False
         chrome.set(field, doc.value)
         chrome.flags.skip_token_sync = True
         chrome.flags.ignore_permissions = True
