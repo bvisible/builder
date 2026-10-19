@@ -71,6 +71,25 @@ def neutral_paint(value: str) -> tuple[int, int, str, str | None, float] | None:
     return int(size.group(1)), int(size.group(2)), rects[0][0], wash[0] if wash else None, float(wash[1] or 1) if wash else 0.0
 
 
+# //// Neoffice — added (2026-10-19, neoffice-maintenance #1723): an img the writer left without any
+# //// src is a photo slot with no photo, and it paints nothing: a feature card whose height came from
+# //// its photograph collapsed to zero at desktop width (the copy over it, absolute, clipped away),
+# //// and the gate measured text nobody could see. It becomes the plain block of any other slot.
+# the hero / banner size the brief hands the model (system_prompts: "Hero/Banner: 1200x600")
+EMPTY_SLOT_SIZE = (1200, 600)
+
+
+def is_empty_slot(block: dict) -> bool:
+    """An img that shows nothing and will show nothing: no src of any kind, none bound to data, not
+    the skeleton of a component instance (its picture lives in the component)."""
+    if str(block.get("element") or "").lower() != "img" or block.get("extendedFromComponent") or block.get("referenceBlockId"):
+        return False
+    attrs = block.get("attributes") or {}
+    if any(str(attrs.get(key) or "").strip() for key in ("src", "data-src", "srcset")):
+        return False
+    return not any((d or {}).get("property") in ("src", "srcset") for d in block.get("dynamicValues") or [])
+
+
 # a placehold.co URL: its size, and the background colour it names when it names one. The
 # greys handed to the model by default stand for no colour: the site's own takes their place.
 SLOT = re.compile(r"placehold\.co/(\d+)x(\d+)(?:/([0-9a-fA-F]{3,8})(?=[/?&.]|$))?")
@@ -120,6 +139,9 @@ def neutral_placeholders(blocks: list, palette: dict, prefix: str) -> int:
         # the src carries the plain block; a srcset of placeholders would override it
         if isinstance(attrs.get("srcset"), str) and "placehold.co" in attrs["srcset"]:
             attrs.pop("srcset")
+            changed = True
+        if is_empty_slot(block):
+            block.setdefault("attributes", {})["src"] = neutral_image(*EMPTY_SLOT_SIZE, palette, prefix)
             changed = True
         for style_key in ("baseStyles", "mobileStyles", "tabletStyles", "rawStyles"):
             styles = block.get(style_key) or {}

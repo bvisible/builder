@@ -18,7 +18,7 @@ from __future__ import annotations
 import copy
 import re
 
-from builder.site_ai.nora.placeholders import neutral_image, neutral_paint
+from builder.site_ai.nora.placeholders import is_empty_slot, neutral_image, neutral_paint
 
 HEX = re.compile(r"^#([0-9a-fA-F]{3,4}|[0-9a-fA-F]{6}|[0-9a-fA-F]{8})$")
 RGB = re.compile(r"^rgba?\(\s*([\d.]+)\s*,\s*([\d.]+)\s*,\s*([\d.]+)\s*(?:,\s*([\d.]+)\s*)?\)$")
@@ -218,15 +218,10 @@ def _picture_state(block: dict) -> tuple[str, Color | None] | None:
     styles = block.get("baseStyles") or {}
     attrs = block.get("attributes") or {}
     if str(block.get("element") or "").lower() == "img":
-        # a block that extends a component, or binds its src to data, has its picture elsewhere
-        if block.get("extendedFromComponent") or block.get("referenceBlockId") or attrs.get("srcset"):
-            return "photo", None
-        if any((d or {}).get("property") in ("src", "srcset") for d in block.get("dynamicValues") or []):
-            return "photo", None
-        src = str(attrs.get("src") or attrs.get("data-src") or "").strip()
-        if not src:
+        if is_empty_slot(block):
             return "plain", None
-        paint = neutral_paint(src)
+        # a src of its own, one bound to data, a component's picture: only a neutral block is plain
+        paint = neutral_paint(str(attrs.get("src") or ""))
         colour = _plain_colour(paint) if paint else None
         return ("plain", colour) if colour is not None else ("photo", None)
     if styles.get("objectFit"):

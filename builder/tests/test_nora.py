@@ -375,6 +375,33 @@ class TestCopyOverAPlainSlot(unittest.TestCase):
 		# and a second look finds nothing left to repair
 		self.assertEqual(repair_contrast([band], QV), [])
 
+	def test_an_img_with_no_src_holds_its_place_as_a_plain_block(self):
+		from builder.site_ai.nora.placeholders import neutral_paint, neutral_placeholders
+
+		empty = self.empty_picture()
+		bound = {"element": "img", "dynamicValues": [{"key": "photo", "property": "src", "type": "key"}]}
+		responsive = {"element": "img", "attributes": {"srcset": "/files/a.jpg 1x"}}
+		skeleton = {"referenceBlockId": "b1", "isChildOfComponent": "c1"}
+		self.assertEqual(neutral_placeholders([{"element": "section", "children": [empty, bound, responsive, skeleton]}], QV, "qv"), 1)
+		self.assertEqual(neutral_paint(empty["attributes"]["src"])[:2], (1200, 600))
+		self.assertNotIn("attributes", bound)
+		self.assertNotIn("src", responsive["attributes"])
+		self.assertNotIn("attributes", skeleton)
+
+	def test_a_feature_card_with_no_photograph_comes_out_dark_and_with_a_body(self):
+		"""The shape of the refused shop page, through the passes the build runs in this order."""
+		from builder.site_ai.nora.placeholders import neutral_paint, neutral_placeholders
+
+		picture = self.empty_picture()
+		band, frame, copy = self.feature(picture)
+		neutral_placeholders([band], QV, "qv")
+		repair_contrast([band], QV)
+		# the card has a picture again, so a height of its own, drawn in the dark token the copy reads on
+		self.assertEqual(neutral_paint(picture["attributes"]["src"])[2:4], ("#5b2a4a", None))
+		self.assertEqual(frame["baseStyles"]["backgroundColor"], "var(--qv-primary)")
+		self.assertEqual(copy[1]["baseStyles"]["color"], "var(--qv-background)")
+		self.assertEqual(repair_contrast([band], QV), [])
+
 	def test_a_neutral_block_under_light_copy_is_redrawn_in_the_dark_token(self):
 		from builder.site_ai.nora.placeholders import neutral_paint, neutral_placeholders
 
