@@ -1405,7 +1405,18 @@ def _delta_parts(chunk) -> tuple[str, str]:
     return (getattr(delta, "content", None) or ""), (reasoning or "")
 
 
-def _stream_text(ctx, model: str, messages: list, params: dict) -> str:
+class OutputCut(Exception):
+    """The provider ended the stream at its output ceiling (finish_reason "length"): what arrived is
+    kept in `text`. A local model sits behind a gate that caps max_tokens whatever the caller asked
+    for (4 096 on the plain lane), so a page of YAML is cut mid-section and, until now, was built
+    from its valid prefix as if it were whole (2026-10-19)."""
+
+    def __init__(self, message: str, text: str):
+        super().__init__(message)
+        self.text = text
+
+
+def _stream_text(ctx, model: str, messages: list, params: dict, keep_cut: bool = False) -> str:
     """A page of YAML takes minutes to write: stream it, as upstream's artifact
     generator does, so the provider's read timeout counts between chunks instead
     of over the whole completion. Stops early when the user cancels the turn, and
@@ -1416,6 +1427,7 @@ def _stream_text(ctx, model: str, messages: list, params: dict) -> str:
     stream = llm.complete(model, messages, params, stream=True)
     parts: list[str] = []
     size, thought, started = 0, 0, time.time()
+    finish = None
     try:
         for chunk in stream:
             if ctx.is_cancelled():
@@ -1444,12 +1456,23 @@ def _stream_text(ctx, model: str, messages: list, params: dict) -> str:
             if delta:
                 parts.append(delta)
                 size += len(delta)
+            choices = getattr(chunk, "choices", None)
+            if choices and getattr(choices[0], "finish_reason", None):
+                finish = choices[0].finish_reason
     finally:
         try:
             stream.close()
         except Exception:
             pass
-    return "".join(parts)
+    text = "".join(parts)
+    # //// Neoffice — a stream the provider cut at its ceiling is a half page (see OutputCut)
+    if finish == "length":
+        from builder.site_ai.logging import ai_log
+
+        ai_log("warning", "Page stream cut at the provider's output ceiling", model=model, chars=size, kept=keep_cut)
+        if not keep_cut:
+            raise OutputCut(f"the model's output was cut at the provider's ceiling after {size} characters", text)
+    return text
 
 
 def _page_model(ctx) -> str:
@@ -2314,8 +2337,10 @@ def build_site(ctx, spec: dict) -> str:
         blocks, data_script, error = [], "", None
         for attempt in range(2):
             try:
+                # //// Neoffice — a first attempt cut at the provider's output ceiling is asked again for a
+                # //// more compact page; the second keeps what it gets (OutputCut, _stream_text)
                 with meter.kind(meter.WRITING):
-                    raw = _stream_text(ctx, page_model, messages, llm.TASK_PARAMS["complex"])
+                    raw = _stream_text(ctx, page_model, messages, llm.TASK_PARAMS["complex"], keep_cut=attempt == 1)
                 blocks, data_script = expand_page_yaml(BlockCodec.strip_fences(raw))
                 if blocks:
                     # //// Neoffice — kept for the revision (see the top of write_page)
@@ -2588,6 +2613,17 @@ def build_site(ctx, spec: dict) -> str:
             except Exception as e:
                 error = str(e)[:200]
                 ai_log("warning", "Page generation attempt failed", page=page["title"], attempt=attempt + 1, error=error)
+                if isinstance(e, OutputCut):
+                    messages = [
+                        *messages[:-1],
+                        {
+                            "role": "user",
+                            "content": messages[-1]["content"]
+                            + "\n\nIMPORTANT: your previous attempt was cut off by the output limit before the page was "
+                            "complete. Write a MORE COMPACT page: at most five sections, short copy, at most four items in "
+                            "any repeated list, and finish with the closing section.",
+                        },
+                    ]
         return blocks, data_script, error
 
     # the page that lists the offer: where the category tiles lead, and a page of tiles itself
@@ -2620,7 +2656,16 @@ def build_site(ctx, spec: dict) -> str:
             frappe.log_error("Nora site build: page failed", f"{page['title']}: {error or 'no blocks'}")
             continue
         use_host = host_page if (host_reusable and page["route"] == "home") else None
-        name, route = _write_page(page, blocks, data_script, profile, use_host, _describe(blocks))
+        # //// Neoffice — a page that cannot be saved (Frappe refusing its data script, say) is one failed
+        # //// page, not the end of the build: the pages already written stay, the others are still written,
+        # //// and the summary names the one that failed (2026-10-19: page three of five stopped the site)
+        try:
+            name, route = _write_page(page, blocks, data_script, profile, use_host, _describe(blocks))
+        except Exception as e:
+            failed.append({"title": page["title"], "error": f"could not be saved: {str(e)[:200]}"})
+            ai_log("warning", "Page could not be saved", page=page["title"], error=str(e)[:300])
+            frappe.log_error("Nora site build: page not saved", f"{page['title']}: {frappe.get_traceback()[-1500:]}")
+            continue
         planned_photos[name] = (page_photos, page_notes)
         # //// Neoffice — "type" travels with the page (2026-09-15): the reviewer needs it to know
         # //// that the bracketed blanks of a legal page are deliberate (visual_check.LEGAL_CONTEXT).

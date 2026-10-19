@@ -9,7 +9,9 @@ always comes from this module.
 """
 
 import json
+import keyword  # //// Neoffice — see python_identifier
 import re
+import unicodedata  # //// Neoffice — see python_identifier
 
 import frappe
 import yaml
@@ -230,6 +232,101 @@ def strip_binding_prefix(key) -> str:
 		if key.startswith(prefix):
 			return key[len(prefix) :]
 	return key
+
+
+# //// Neoffice — added: a repeater's data key and its item fields become Python identifiers, in the
+# //// parsed YAML itself, before anything is built from it. The key is written into the page data
+# //// script as `data.<key> = [...]`: a model that wrote `event-services` (kebab-case, the way it names
+# //// routes and CSS classes) produced `data.event-services = ...`, a SyntaxError that Frappe raised
+# //// when the page was saved, and a whole site build stopped on page three of five (2026-10-19, with
+# //// the local 27B model). The item fields obey the same rule: Jinja cannot read `item.event-title`,
+# //// and a binding on it rendered nothing.
+IDENTIFIER = re.compile(r"^[A-Za-z_][A-Za-z0-9_]*$")
+
+
+def python_identifier(raw, taken=()) -> str:
+	"""`raw` as a Python identifier: accents folded, anything else turned into "_", never a keyword,
+	never a digit first, and never one of `taken`."""
+	text = unicodedata.normalize("NFKD", str(raw or "")).encode("ascii", "ignore").decode()
+	text = re.sub(r"\W+", "_", text).strip("_") or "items"
+	if text[0].isdigit():
+		text = "_" + text
+	if keyword.iskeyword(text):
+		text += "_"
+	candidate, n = text, 2
+	while candidate in taken:
+		candidate, n = f"{text}_{n}", n + 1
+	return candidate
+
+
+def is_data_identifier(name) -> bool:
+	return bool(IDENTIFIER.match(str(name))) and not keyword.iskeyword(str(name))
+
+
+def rename_item_bindings(node, renames: dict) -> None:
+	"""Follow an item field's new name inside a repeater's template: `bind` values and the
+	moustaches a model writes straight into a text or an attribute."""
+	if isinstance(node, list):
+		for n in node:
+			rename_item_bindings(n, renames)
+		return
+	if not isinstance(node, dict):
+		return
+	for key, value in list(node.items()):
+		if key == "bind" and isinstance(value, dict):
+			for prop, field in list(value.items()):
+				bare = strip_binding_prefix(field)
+				if bare in renames:
+					value[prop] = renames[bare]
+		elif isinstance(value, str) and "{{" in value:
+			for old, new in renames.items():
+				value = re.sub(r"(\{\{\s*(?:item\.|row\.)?)" + re.escape(old) + r"(\s*\}\})", lambda m, new=new: m.group(1) + new + m.group(2), value)
+			node[key] = value
+		elif isinstance(value, (dict, list)):
+			rename_item_bindings(value, renames)
+
+
+def normalise_repeaters(parsed) -> int:
+	"""Rename, in the parsed YAML, every repeater key and item field that is not a Python
+	identifier, in the data and in the bindings that read it. Returns how many names changed."""
+	changed = 0
+	keys: dict = {}  # raw key -> identifier, one per page: two repeaters on the same data share it
+
+	def visit(node):
+		nonlocal changed
+		if isinstance(node, list):
+			for n in node:
+				visit(n)
+			return
+		if not isinstance(node, dict):
+			return
+		rep = node.get("repeat")
+		if isinstance(rep, dict) and rep.get("data"):
+			raw = strip_binding_prefix(rep["data"])
+			if raw not in keys:
+				keys[raw] = raw if is_data_identifier(raw) else python_identifier(raw, taken=set(keys.values()))
+			if keys[raw] != raw:
+				changed += 1
+			rep["data"] = keys[raw]
+			items = rep.get("items")
+			if isinstance(items, list):
+				fields = {k for row in items if isinstance(row, dict) for k in row}
+				renames = {}
+				for field in fields:
+					if not is_data_identifier(field):
+						renames[field] = python_identifier(field, taken=fields | set(renames.values()))
+				if renames:
+					changed += len(renames)
+					rep["items"] = [
+						{renames.get(k, k): v for k, v in row.items()} if isinstance(row, dict) else row for row in items
+					]
+					rename_item_bindings(rep.get("item"), renames)
+			visit(rep.get("item"))
+		visit(node.get("c"))
+
+	visit(parsed)
+	return changed
+
 
 
 # Key prefixes that SELECT a binding source: a component instance's props, or the
@@ -454,7 +551,11 @@ def collect_repeater_data(node, out: dict) -> None:
 def build_repeater_data_script(parsed) -> str:
 	out: dict = {}
 	collect_repeater_data(parsed, out)
-	return "\n".join(f"data.{key} = {json.dumps(items, separators=(',', ':'))}" for key, items in out.items())
+	# //// Neoffice — default=str: an unquoted `2024-05-01` in a model's item is a date to YAML, and json.dumps
+	# //// raised on it, dropping the whole page. (Booleans and null stay JSON: see utils.execute_script.)
+	return "\n".join(
+		f"data.{key} = {json.dumps(items, separators=(',', ':'), default=str)}" for key, items in out.items()
+	)
 
 
 # --- top level ---
@@ -526,6 +627,9 @@ def expand_page_yaml(yaml_text: str, is_root: bool = True) -> tuple[list, str]:
 	parsed = parse_generation_yaml(yaml_text)
 	if parsed is None:
 		return [], ""
+	# //// Neoffice — repeater keys and item fields that are not identifiers (see normalise_repeaters)
+	if renamed := normalise_repeaters(parsed):
+		logger.info("repeater names made into identifiers: %d", renamed)
 	root = unwrap_root(parsed)
 	if not isinstance(root, dict) or not root.get("el"):
 		return [], ""

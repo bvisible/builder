@@ -8,6 +8,7 @@ import json
 import logging
 # //// Neoffice — for _loggable, which names a picture by its weight instead of logging its bytes
 import re
+import time  # //// Neoffice — see completion_waiting_for_a_busy_provider
 
 import frappe
 import litellm
@@ -227,6 +228,48 @@ def _loggable(content) -> str:
 	return _BASE64_IMAGE.sub(lambda m: f"data:{m.group(1)};base64,<{len(m.group(2)) // 1024} kB elided>", text)
 
 
+# //// Neoffice — a provider that says it is busy, and when to come back, is waited for. The local model
+# //// sits behind a gate that answers 503 "llm busy with long-context jobs, retry after 5s" while its
+# //// slots are taken (Retry-After: 5); litellm retried once, then the call failed. A design brief that
+# //// failed that way fell back to the default styling in silence, and a page was lost to the first
+# //// refusal (2026-10-19, three builds at once on a four-slot gate). A busy answer is not an error: the
+# //// request is repeated, up to BUSY_WAIT_SECONDS, at the pace the provider gave. Any other failure,
+# //// a quota or a bad key included, goes straight up as before.
+BUSY_WAIT_SECONDS = 300
+
+
+def busy_pause(exc: Exception) -> float | None:
+	"""How long to wait before asking again when `exc` is a provider saying it is busy, else None."""
+	if not isinstance(exc, litellm.ServiceUnavailableError) or "busy" not in str(exc).lower():
+		return None
+	retry_after = None
+	for source in (getattr(exc, "response", None), getattr(exc, "litellm_response_headers", None)):
+		headers = getattr(source, "headers", source)
+		if headers is not None and hasattr(headers, "get"):
+			retry_after = headers.get("retry-after") or headers.get("Retry-After")
+			if retry_after:
+				break
+	match = re.search(r"retry after (\d+)", str(exc).lower())
+	try:
+		seconds = float(retry_after or (match.group(1) if match else 5))
+	except (TypeError, ValueError):
+		seconds = 5.0
+	return min(max(seconds, 1.0), 30.0)
+
+
+def completion_waiting_for_a_busy_provider(**kwargs):
+	deadline = time.time() + BUSY_WAIT_SECONDS
+	while True:
+		try:
+			return litellm.completion(**kwargs)
+		except Exception as exc:
+			pause = busy_pause(exc)
+			if pause is None or time.time() + pause >= deadline:
+				raise
+			logger.warning(f"provider busy, asking again in {pause:.0f}s: {str(exc)[:160]}")
+			time.sleep(pause)
+
+
 def complete(model: str, messages: list, params: dict, *, stream: bool, api_key: str | None = None):
 	"""Plain completion. Returns the response iterator when streaming, else the
 	text content. Transient failures are retried by litellm (and, for streaming
@@ -248,7 +291,8 @@ def complete(model: str, messages: list, params: dict, *, stream: bool, api_key:
 		f"LLM | model={model} stream={stream} params={params} timeout={timeout}\n"
 		+ "\n".join(f"[{m['role']}] {_loggable(m['content'])}" for m in messages)
 	)
-	resp = litellm.completion(
+	# //// Neoffice — through the busy-provider wait (see completion_waiting_for_a_busy_provider)
+	resp = completion_waiting_for_a_busy_provider(
 		model=model,
 		messages=messages,
 		stream=stream,

@@ -751,6 +751,12 @@ def sanitize_style_value(value):
 
 
 def execute_script(script, _locals, script_filename):
+	# //// Neoffice — `true`, `false` and `null` are names a data script can use. A page's repeater data
+	# //// is written into its data script as JSON (page_writer.build_repeater_data_script), and a model
+	# //// puts booleans and nulls in its items: `data.x = [{"featured": true}]` raised NameError when the
+	# //// page was rendered, a 500 on the published route. JSON literals are valid Python once named.
+	for name, value in (("true", True), ("false", False), ("null", None)):
+		_locals.setdefault(name, value)
 	if is_safe_exec_enabled():
 		safe_exec(script, None, _locals, script_filename=script_filename)
 	else:
