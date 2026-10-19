@@ -376,6 +376,10 @@ LAYOUT_PROBE = r"""
     if (stuck >= 4 && cut >= 4) break;
     if (chrome(el) || !visible(el)) continue;
     const r = el.getBoundingClientRect();
+    // content hidden BY POSITION is hidden on purpose, not a layout defect: the contact form's anti-spam
+    // field sits at -9999px (data-neo-honeypot), as do skip links and screen-reader text. A page whose
+    // sections clip nothing was refused for it (an industrial site's contact page, 2026-10-19).
+    if (el.closest('[data-neo-honeypot]') || r.right < -500 || r.left > vw + 3000) continue;
     if (reported.some(p => p.contains(el))) continue;
     const c = clipper(el);
     if (!c) {

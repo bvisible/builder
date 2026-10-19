@@ -32,6 +32,15 @@ class TestProbesParse(unittest.TestCase):
 
 		self._check(LAYOUT_PROBE, "LAYOUT_PROBE")
 
+	def test_the_layout_probe_ignores_content_hidden_by_position(self):
+		# the contact form's anti-spam field sits at -9999px on purpose; a page whose sections clip
+		# nothing was refused for it (2026-10-19). Behaviour is proved in the browser, on a stored
+		# page (scripts/nora-eval/measure_fix.py); this keeps the guard from being edited out.
+		from builder.site_ai.inspiration.screenshotter import LAYOUT_PROBE
+
+		self.assertIn("[data-neo-honeypot]", LAYOUT_PROBE)
+		self.assertIn("r.right < -500", LAYOUT_PROBE)
+
 	def test_the_photo_text_probe_parses(self):
 		from builder.site_ai.inspiration.screenshotter import PHOTO_TEXT_PROBE
 
