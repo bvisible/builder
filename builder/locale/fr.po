@@ -11444,3 +11444,7 @@ msgstr "{0} : le texte ne peut contenir aucun de ces caractères ni de saut de l
 #: builder/site_ai/components.py:168
 msgid "{0}: the text is too long ({1} characters at most)."
 msgstr "{0} : le texte est trop long ({1} caractères au maximum)."
+
+#: frontend/src/components/BlockPropertySections/SiteComponentSection.ts:23
+msgid "Change its options"
+msgstr "Modifier ses options"
