@@ -346,7 +346,9 @@ class TestGridPlacementsFit(unittest.TestCase):
 
 	def test_the_phone_gets_spans_that_fit_its_single_column(self):
 		block = grid(
-			"repeat(2, minmax(0, 1fr))", ["1 / span 6", "7 / span 6"], mobileStyles={"gridTemplateColumns": "1fr"}
+			"repeat(2, minmax(0, 1fr))",
+			["1 / span 6", "7 / span 6"],
+			mobileStyles={"gridTemplateColumns": "1fr"},
 		)
 		layout.fit_grid_placements([block])
 		self.assertEqual([k["mobileStyles"]["gridColumn"] for k in block["children"]], ["span 1", "span 1"])
@@ -372,7 +374,8 @@ class TestGridPlacementsFit(unittest.TestCase):
 		)
 		layout.fit_grid_placements([block])
 		self.assertEqual(
-			[k["tabletStyles"]["gridColumn"] for k in block["children"]], ["span 1", "span 1", "span 1", "span 2"]
+			[k["tabletStyles"]["gridColumn"] for k in block["children"]],
+			["span 1", "span 1", "span 1", "span 2"],
 		)
 
 	def test_the_phone_inherits_what_the_tablet_was_given(self):
@@ -387,7 +390,9 @@ class TestGridPlacementsFit(unittest.TestCase):
 		self.assertNotIn("mobileStyles", block["children"][0])  # span 1 already fits one column
 
 	def test_a_child_the_page_already_reset_on_the_phone_is_left_alone(self):
-		block = grid("repeat(12, minmax(0, 1fr))", ["span 6", "span 6"], mobileStyles={"gridTemplateColumns": "1fr"})
+		block = grid(
+			"repeat(12, minmax(0, 1fr))", ["span 6", "span 6"], mobileStyles={"gridTemplateColumns": "1fr"}
+		)
 		block["children"][0]["mobileStyles"] = {"gridColumn": "1 / -1"}
 		layout.fit_grid_placements([block])
 		self.assertEqual(block["children"][0]["mobileStyles"]["gridColumn"], "1 / -1")
@@ -399,7 +404,11 @@ class TestGridPlacementsFit(unittest.TestCase):
 		self.assertEqual(block["children"][0]["baseStyles"], {"gridColumn": "span 4"})
 
 	def test_a_fluid_grid_and_a_repeater_are_left_alone(self):
-		fluid = grid("repeat(auto-fit, minmax(16rem, 1fr))", ["span 6", "span 6"], mobileStyles={"gridTemplateColumns": "1fr"})
+		fluid = grid(
+			"repeat(auto-fit, minmax(16rem, 1fr))",
+			["span 6", "span 6"],
+			mobileStyles={"gridTemplateColumns": "1fr"},
+		)
 		repeater = grid("repeat(2, minmax(0, 1fr))", ["1 / span 6"])
 		repeater["isRepeaterBlock"] = True
 		self.assertEqual(layout.fit_grid_placements([fluid, repeater]), 0)
@@ -410,7 +419,11 @@ class TestGridPlacementsFit(unittest.TestCase):
 		self.assertEqual(block["baseStyles"]["gridTemplateColumns"], "2fr 1fr")
 
 	def test_placements_nobody_can_read_are_ignored(self):
-		block = grid("repeat(12, minmax(0, 1fr))", ["auto", "foo", "", "3 / 3"], mobileStyles={"gridTemplateColumns": "1fr"})
+		block = grid(
+			"repeat(12, minmax(0, 1fr))",
+			["auto", "foo", "", "3 / 3"],
+			mobileStyles={"gridTemplateColumns": "1fr"},
+		)
 		self.assertEqual(layout.fit_grid_placements([block]), 0)
 
 	def test_the_extent_of_a_placement(self):
@@ -423,3 +436,53 @@ class TestGridPlacementsFit(unittest.TestCase):
 		self.assertEqual(extent("1 / -1"), (1, 1, None))
 		self.assertIsNone(extent("auto"))
 		self.assertIsNone(extent("0 / span 2"))
+
+
+class TestPhoneWidths(unittest.TestCase):
+	def box(self, base, mobile=None):
+		block = {"element": "div", "baseStyles": base}
+		if mobile is not None:
+			block["mobileStyles"] = mobile
+		return block
+
+	def test_a_wide_minimum_is_released_on_the_phone(self):
+		block = self.box({"minWidth": "30rem"})
+		self.assertEqual(layout.fit_phone_widths([block]), 1)
+		self.assertEqual(block["mobileStyles"], {"minWidth": "0"})
+		self.assertEqual(block["baseStyles"], {"minWidth": "30rem"})
+
+	def test_a_minimum_the_page_already_released_is_left_alone(self):
+		block = self.box({"minWidth": "18rem"}, {"minWidth": "12rem"})
+		self.assertEqual(layout.fit_phone_widths([block]), 0)
+		self.assertEqual(block["mobileStyles"], {"minWidth": "12rem"})
+
+	def test_a_small_minimum_is_kept(self):
+		for value in ("10rem", "160px", "var(--w)", "50%", "auto"):
+			block = self.box({"minWidth": value})
+			self.assertEqual(layout.fit_phone_widths([block]), 0, value)
+			self.assertNotIn("mobileStyles", block)
+
+	def test_a_minimum_in_viewport_units_counts_as_a_phone_width(self):
+		block = self.box({"minWidth": "100vw"})
+		self.assertEqual(layout.fit_phone_widths([block]), 1)
+
+	def test_a_wide_fixed_width_is_capped_on_the_phone(self):
+		block = self.box({"width": "600px"})
+		self.assertEqual(layout.fit_phone_widths([block]), 1)
+		self.assertEqual(block["mobileStyles"], {"maxWidth": "100%"})
+
+	def test_a_width_that_is_already_capped_or_relative_is_left_alone(self):
+		for base in (
+			{"width": "600px", "maxWidth": "100%"},
+			{"width": "100%"},
+			{"width": "calc(100% - 2rem)"},
+			{"width": "40px"},
+		):
+			block = self.box(base)
+			self.assertEqual(layout.fit_phone_widths([block]), 0, base)
+
+	def test_the_whole_tree_is_walked(self):
+		inner = self.box({"minWidth": "30rem"})
+		root = {"element": "div", "children": [{"element": "section", "children": [inner]}]}
+		self.assertEqual(layout.fit_phone_widths([root]), 1)
+		self.assertEqual(inner["mobileStyles"], {"minWidth": "0"})

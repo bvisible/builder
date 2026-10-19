@@ -134,6 +134,49 @@ def fit_grid_placements(blocks: list) -> int:
     return edits
 
 
+LENGTH = re.compile(r"^\s*(\d+(?:\.\d+)?)\s*(px|rem|em|vw)\s*$")
+PHONE_PX = 375
+WIDE_MIN_PX = 192  # a min-width from 12rem up
+WIDE_FIXED_PX = 288  # a fixed width from 18rem up
+
+
+def _px(value) -> float | None:
+    """A plain length in pixels (rem and em at 16 px, vw on a 375 px phone); None for anything else
+    (a percentage, calc(), var(), auto)."""
+    m = LENGTH.match(str(value or ""))
+    if not m:
+        return None
+    return float(m.group(1)) * {"px": 1, "rem": 16, "em": 16, "vw": PHONE_PX / 100}[m.group(2)]
+
+
+def _within_row(value) -> bool:
+    """A percentage of the row, 100 % at most: a cap the phone already respects."""
+    m = re.match(r"^\s*(\d+(?:\.\d+)?)\s*%\s*$", str(value or ""))
+    return bool(m) and float(m.group(1)) <= 100
+
+
+def fit_phone_widths(blocks: list) -> int:
+    """A box that insists on more width than a phone has sticks out of it. The small model keeps a
+    column wide with `minWidth: 30rem` (twelve headings of a legal page, 528 px on a 375 px screen)
+    or `minWidth: 18rem` on a half of a section, and rarely says what the phone does about it. A
+    min-width from 12rem up is released on the phone (`minWidth: 0`) and a fixed width from 18rem up
+    is capped there (`maxWidth: 100%`), unless the page already wrote its own phone value. Returns
+    the edit count."""
+    edits = 0
+    for block in _walk(blocks):
+        base = block.get("baseStyles") or {}
+        mobile = block.get("mobileStyles") or {}
+        px = _px(base.get("minWidth"))
+        if px is not None and px >= WIDE_MIN_PX and "minWidth" not in mobile:
+            block.setdefault("mobileStyles", {})["minWidth"] = "0"
+            edits += 1
+        px = _px(base.get("width"))
+        if px is not None and px >= WIDE_FIXED_PX and "maxWidth" not in mobile and not _within_row(base.get("maxWidth")):
+            block.setdefault("mobileStyles", {})["maxWidth"] = "100%"
+            edits += 1
+    return edits
+
+
 def _is_grid(block: dict) -> bool:
     return "u-grid" in (block.get("classes") or []) or (block.get("baseStyles") or {}).get("display") == "grid"
 

@@ -2424,11 +2424,16 @@ def build_site(ctx, spec: dict) -> str:
                     # //// Neoffice — a section laid on `repeat(2, …)` and placed `1 / span 6` + `7 / span 6` opened
                     # //// an implicit column past the edge (a refused page at 375 px): the template is widened to
                     # //// the placements and the phone gets spans that fit (layout.fit_grid_placements).
-                    from builder.site_ai.nora.layout import fit_grid_placements
+                    from builder.site_ai.nora.layout import fit_grid_placements, fit_phone_widths
 
                     fitted = fit_grid_placements(blocks)
                     if fitted:
                         ai_log("info", "Grid placements fitted to the columns", page=page["title"], edits=fitted)
+                    # //// Neoffice — and a `minWidth: 30rem` kept a legal page 528 px wide on a 375 px phone
+                    # //// (layout.fit_phone_widths): a wide minimum is released on the phone, a wide fixed width capped.
+                    widths = fit_phone_widths(blocks)
+                    if widths:
+                        ai_log("info", "Wide minimums and widths released on the phone", page=page["title"], edits=widths)
                     placed = place_orphans(blocks)
                     if placed:
                         ai_log("info", "Grid orphans placed", page=page["title"], edits=placed)
