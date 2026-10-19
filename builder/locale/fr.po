@@ -11448,3 +11448,7 @@ msgstr "{0} : le texte est trop long ({1} caractères au maximum)."
 #: frontend/src/components/BlockPropertySections/SiteComponentSection.ts:23
 msgid "Change its options"
 msgstr "Modifier ses options"
+
+#: builder/builder/doctype/builder_shortcode/builder_shortcode.json
+msgid "Untick to stop offering this block on this site (the editor's list, the assistant, the generator). A page that already carries it keeps it."
+msgstr "Décochez pour ne plus proposer ce bloc sur ce site (liste de l'éditeur de pages, assistant IA, générateur de sites). Une page qui le contient déjà le conserve."
