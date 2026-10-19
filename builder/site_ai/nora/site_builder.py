@@ -2421,6 +2421,14 @@ def build_site(ctx, spec: dict) -> str:
                         ai_log("info", "Accent folded into the token", page=page["title"], value=foreign, edits=edits)
                     # nor the placement on the 12-column grid: see layout.py (a cards wrapper
                     # squeezed into one column)
+                    # //// Neoffice — a section laid on `repeat(2, …)` and placed `1 / span 6` + `7 / span 6` opened
+                    # //// an implicit column past the edge (a refused page at 375 px): the template is widened to
+                    # //// the placements and the phone gets spans that fit (layout.fit_grid_placements).
+                    from builder.site_ai.nora.layout import fit_grid_placements
+
+                    fitted = fit_grid_placements(blocks)
+                    if fitted:
+                        ai_log("info", "Grid placements fitted to the columns", page=page["title"], edits=fitted)
                     placed = place_orphans(blocks)
                     if placed:
                         ai_log("info", "Grid orphans placed", page=page["title"], edits=placed)

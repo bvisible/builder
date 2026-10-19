@@ -61,6 +61,79 @@ def place_orphans(blocks: list) -> int:
     return edits
 
 
+def _extent(value) -> tuple | None:
+    """What a `gridColumn` value asks of the grid, as (first column or None when auto-placed, last
+    column it needs, columns spanned or None when it runs to the last line). None for a value that
+    cannot be read."""
+    text = str(value or "").strip().lower()
+    m = re.fullmatch(r"span\s+(\d+)", text)
+    if m:
+        n = int(m.group(1))
+        return (None, n, n) if n else None
+    m = re.fullmatch(r"(\d+)\s*(?:/\s*(span\s+\d+|-?\d+))?", text)
+    if not m or int(m.group(1)) < 1:
+        return None
+    first, end = int(m.group(1)), m.group(2)
+    if end is None:
+        return first, first, 1
+    if end.startswith("span"):
+        n = int(end.split()[1])
+        return (first, first + n - 1, n) if n else None
+    line = int(end)
+    if line < 0:
+        return first, first, None
+    return (first, line - 1, line - first) if line > first else None
+
+
+def fit_grid_placements(blocks: list) -> int:
+    """A grid whose children are placed by spans beyond its columns overflows the screen. The small
+    model wrote `repeat(2, ...)` for the two halves of a section and placed them `1 / span 6` and
+    `7 / span 6` (the 12-column vocabulary of the brief): the second half opened an implicit column
+    past the edge, and on the phone, where only the parent was told to use one column, both did
+    (2026-10-19, three pages of fourteen refused at 375 px).
+    - A plain `repeat(N, ...)` template narrower than the placements becomes the twelve columns
+      they were written for (more if they ask for more).
+    - A screen whose template has fewer columns than the layout (the phone's `1fr`) puts every child
+      that asks for columns it does not have on a span that fits: its share of the row, one column
+      at least, the whole row for a full-width child.
+    A repeater is left alone (its template child is cloned, never placed). Returns the edit count."""
+    edits = 0
+    for block in _walk(blocks):
+        styles = block.get("baseStyles") or {}
+        template = str(styles.get("gridTemplateColumns") or "")
+        kids = [c for c in block.get("children") or [] if isinstance(c, dict)]
+        if styles.get("display") != "grid" or not kids or _is_repeater(block) or "auto-" in template:
+            continue
+        columns = _tracks(template)
+        if not columns:
+            continue
+        needs = [e[1] for e in (_extent((c.get("baseStyles") or {}).get("gridColumn")) for c in kids) if e]
+        if needs and max(needs) > columns and WIDE_GRID.match(template.strip()):
+            columns = 12 if max(needs) <= 12 else max(needs)
+            template = styles["gridTemplateColumns"] = f"repeat({columns}, minmax(0, 1fr))"
+            edits += 1
+        current = [(c.get("baseStyles") or {}).get("gridColumn") for c in kids]
+        for screen in ("tabletStyles", "mobileStyles"):
+            template = str((block.get(screen) or {}).get("gridTemplateColumns") or template)
+            if "auto-" in template:
+                break
+            tracks = _tracks(template)
+            for i, kid in enumerate(kids):
+                current[i] = (kid.get(screen) or {}).get("gridColumn") or current[i]
+            if not 0 < tracks < columns:
+                continue
+            for i, kid in enumerate(kids):
+                extent = _extent(current[i])
+                if not extent or extent[1] <= tracks:
+                    continue
+                width = extent[2] or max(1, columns - extent[0] + 1)
+                fitted = "1 / -1" if width >= columns else f"span {max(1, min(tracks, round(width * tracks / columns)))}"
+                kid.setdefault(screen, {})["gridColumn"] = fitted
+                current[i] = fitted
+                edits += 1
+    return edits
+
+
 def _is_grid(block: dict) -> bool:
     return "u-grid" in (block.get("classes") or []) or (block.get("baseStyles") or {}).get("display") == "grid"
 

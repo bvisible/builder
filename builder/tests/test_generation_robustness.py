@@ -26,7 +26,7 @@ from frappe.tests.utils import FrappeTestCase
 
 from builder.ai import llm
 from builder.ai import page_writer as pw
-from builder.site_ai.nora import site_builder
+from builder.site_ai.nora import layout, site_builder
 from builder.utils import execute_script
 
 KEBAB_PAGE = """
@@ -325,3 +325,101 @@ class TestChromeFont(unittest.TestCase):
 
 	def test_a_field_without_options_is_not_second_guessed(self):
 		self.assertEqual(site_builder.chrome_font(config_offering(""), "body_font", "Lora"), "Lora")
+
+
+def grid(template, kids, **screens):
+	block = {
+		"element": "div",
+		"baseStyles": {"display": "grid", "gridTemplateColumns": template},
+		"children": [{"element": "div", "baseStyles": {"gridColumn": span}} for span in kids],
+	}
+	for screen, styles in screens.items():
+		block[screen] = styles
+	return block
+
+
+class TestGridPlacementsFit(unittest.TestCase):
+	def test_halves_on_a_two_column_template_get_the_twelve_columns_they_were_written_for(self):
+		block = grid("repeat(2, minmax(0, 1fr))", ["1 / span 6", "7 / span 6"])
+		self.assertEqual(layout.fit_grid_placements([block]), 1)
+		self.assertEqual(block["baseStyles"]["gridTemplateColumns"], "repeat(12, minmax(0, 1fr))")
+
+	def test_the_phone_gets_spans_that_fit_its_single_column(self):
+		block = grid(
+			"repeat(2, minmax(0, 1fr))", ["1 / span 6", "7 / span 6"], mobileStyles={"gridTemplateColumns": "1fr"}
+		)
+		layout.fit_grid_placements([block])
+		self.assertEqual([k["mobileStyles"]["gridColumn"] for k in block["children"]], ["span 1", "span 1"])
+		self.assertNotIn("tabletStyles", block["children"][0])
+
+	def test_a_full_width_child_keeps_the_whole_phone_row(self):
+		block = grid(
+			"repeat(12, minmax(0, 1fr))",
+			["1 / -1", "1 / span 12", "span 4"],
+			mobileStyles={"gridTemplateColumns": "1fr"},
+		)
+		layout.fit_grid_placements([block])
+		kids = block["children"]
+		self.assertNotIn("mobileStyles", kids[0])
+		self.assertEqual(kids[1]["mobileStyles"]["gridColumn"], "1 / -1")
+		self.assertEqual(kids[2]["mobileStyles"]["gridColumn"], "span 1")
+
+	def test_a_share_of_the_row_is_kept_proportionally(self):
+		block = grid(
+			"repeat(12, minmax(0, 1fr))",
+			["span 6", "span 6", "span 4", "span 10"],
+			tabletStyles={"gridTemplateColumns": "repeat(2, minmax(0, 1fr))"},
+		)
+		layout.fit_grid_placements([block])
+		self.assertEqual(
+			[k["tabletStyles"]["gridColumn"] for k in block["children"]], ["span 1", "span 1", "span 1", "span 2"]
+		)
+
+	def test_the_phone_inherits_what_the_tablet_was_given(self):
+		block = grid(
+			"repeat(12, minmax(0, 1fr))",
+			["span 6", "span 6"],
+			tabletStyles={"gridTemplateColumns": "repeat(2, minmax(0, 1fr))"},
+			mobileStyles={"gridTemplateColumns": "1fr"},
+		)
+		layout.fit_grid_placements([block])
+		self.assertEqual(block["children"][0]["tabletStyles"]["gridColumn"], "span 1")
+		self.assertNotIn("mobileStyles", block["children"][0])  # span 1 already fits one column
+
+	def test_a_child_the_page_already_reset_on_the_phone_is_left_alone(self):
+		block = grid("repeat(12, minmax(0, 1fr))", ["span 6", "span 6"], mobileStyles={"gridTemplateColumns": "1fr"})
+		block["children"][0]["mobileStyles"] = {"gridColumn": "1 / -1"}
+		layout.fit_grid_placements([block])
+		self.assertEqual(block["children"][0]["mobileStyles"]["gridColumn"], "1 / -1")
+		self.assertEqual(block["children"][1]["mobileStyles"]["gridColumn"], "span 1")
+
+	def test_a_grid_that_fits_is_not_touched(self):
+		block = grid("repeat(12, minmax(0, 1fr))", ["span 4", "span 4", "span 4"])
+		self.assertEqual(layout.fit_grid_placements([block]), 0)
+		self.assertEqual(block["children"][0]["baseStyles"], {"gridColumn": "span 4"})
+
+	def test_a_fluid_grid_and_a_repeater_are_left_alone(self):
+		fluid = grid("repeat(auto-fit, minmax(16rem, 1fr))", ["span 6", "span 6"], mobileStyles={"gridTemplateColumns": "1fr"})
+		repeater = grid("repeat(2, minmax(0, 1fr))", ["1 / span 6"])
+		repeater["isRepeaterBlock"] = True
+		self.assertEqual(layout.fit_grid_placements([fluid, repeater]), 0)
+
+	def test_a_template_that_is_not_a_repeat_is_not_rewritten(self):
+		block = grid("2fr 1fr", ["1 / span 6", "7 / span 6"])
+		layout.fit_grid_placements([block])
+		self.assertEqual(block["baseStyles"]["gridTemplateColumns"], "2fr 1fr")
+
+	def test_placements_nobody_can_read_are_ignored(self):
+		block = grid("repeat(12, minmax(0, 1fr))", ["auto", "foo", "", "3 / 3"], mobileStyles={"gridTemplateColumns": "1fr"})
+		self.assertEqual(layout.fit_grid_placements([block]), 0)
+
+	def test_the_extent_of_a_placement(self):
+		extent = layout._extent
+		self.assertEqual(extent("span 4"), (None, 4, 4))
+		self.assertEqual(extent("1 / span 6"), (1, 6, 6))
+		self.assertEqual(extent("7 / span 6"), (7, 12, 6))
+		self.assertEqual(extent("2 / 6"), (2, 5, 4))
+		self.assertEqual(extent("3"), (3, 3, 1))
+		self.assertEqual(extent("1 / -1"), (1, 1, None))
+		self.assertIsNone(extent("auto"))
+		self.assertIsNone(extent("0 / span 2"))
