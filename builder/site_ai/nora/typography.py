@@ -81,3 +81,28 @@ def cap_font_sizes(blocks: list) -> int:
                 styles["fontSize"] = new
                 edits += 1
     return edits
+
+
+def shrink_phone_headings(blocks: list) -> int:
+    """A heading keeps its desktop size on the phone when the page wrote none for it: 3.25rem
+    (52 px) on a 375 px screen, where "Responsabilité" alone is 408 px wide (a refused legal page,
+    2026-10-19). A heading above the phone cap with no phone size of its own (tablet included: the
+    phone inherits it) gets the cap, and every heading may break a word that still does not fit.
+    A fluid size (clamp, vw) is left to cap_font_sizes. Returns the edit count."""
+    edits = 0
+    for block in _walk(blocks):
+        tag = (block.get("element") or "").lower()
+        if tag not in HEADING_CAP_MOBILE:
+            continue
+        base, tablet, mobile = (block.get(key) or {} for key in ("baseStyles", "tabletStyles", "mobileStyles"))
+        m = SIZE.match(str(tablet.get("fontSize") or base.get("fontSize") or ""))
+        if m and m.group(2).lower() != "vw" and "fontSize" not in mobile:
+            number = float(m.group(1))
+            rem = number / ROOT_PX if m.group(2).lower() == "px" else number
+            if rem > HEADING_CAP_MOBILE[tag]:
+                block.setdefault("mobileStyles", {})["fontSize"] = f"{HEADING_CAP_MOBILE[tag]:g}rem"
+                edits += 1
+        if "overflowWrap" not in mobile and "overflowWrap" not in base:
+            block.setdefault("mobileStyles", {})["overflowWrap"] = "break-word"
+            edits += 1
+    return edits

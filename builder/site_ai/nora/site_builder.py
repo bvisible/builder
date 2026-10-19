@@ -2434,6 +2434,12 @@ def build_site(ctx, spec: dict) -> str:
                     widths = fit_phone_widths(blocks)
                     if widths:
                         ai_log("info", "Wide minimums and widths released on the phone", page=page["title"], edits=widths)
+                    # //// Neoffice — and a bare `1fr` track grows to its widest word: minmax(0, 1fr) (layout.fluid_tracks)
+                    from builder.site_ai.nora.layout import fluid_tracks
+
+                    fluid = fluid_tracks(blocks)
+                    if fluid:
+                        ai_log("info", "Bare fr tracks made fluid", page=page["title"], edits=fluid)
                     placed = place_orphans(blocks)
                     if placed:
                         ai_log("info", "Grid orphans placed", page=page["title"], edits=placed)
@@ -2662,6 +2668,13 @@ def build_site(ctx, spec: dict) -> str:
                     capped = cap_font_sizes(blocks)
                     if capped:
                         ai_log("info", "Font sizes capped", page=page["title"], edits=capped)
+                    # //// Neoffice — and a heading keeps its desktop size on the phone when the page wrote none:
+                    # //// 52 px, where one long French word is wider than the screen (typography.shrink_phone_headings)
+                    from builder.site_ai.nora.typography import shrink_phone_headings
+
+                    shrunk = shrink_phone_headings(blocks)
+                    if shrunk:
+                        ai_log("info", "Phone headings sized to the screen", page=page["title"], edits=shrunk)
                     # legibility is not left to the model: see contrast.py (#281)
                     fixes = repair_contrast(blocks, palette)
                     if fixes:

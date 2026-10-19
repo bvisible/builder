@@ -177,6 +177,53 @@ def fit_phone_widths(blocks: list) -> int:
     return edits
 
 
+BARE_FR = re.compile(r"^\d*\.?\d+fr$")
+REPEAT_FR = re.compile(r"^repeat\(\s*(\d+)\s*,\s*(\d*\.?\d+fr)\s*\)$")
+
+
+def _top_level(text: str) -> list[str]:
+    """The whitespace-separated tokens of a track list, parentheses kept whole."""
+    tokens, depth, current = [], 0, ""
+    for ch in text.strip():
+        depth += (ch == "(") - (ch == ")")
+        if ch.isspace() and depth == 0:
+            if current:
+                tokens.append(current)
+            current = ""
+        else:
+            current += ch
+    return [*tokens, current] if current else tokens
+
+
+def _fluid(value) -> str | None:
+    """`value` with every bare `Nfr` track turned into `minmax(0, Nfr)`, or None when it has none."""
+    text = str(value or "").strip()
+    m = REPEAT_FR.match(text)
+    if m:
+        return f"repeat({m.group(1)}, minmax(0, {m.group(2)}))"
+    tokens = _top_level(text)
+    if not any(BARE_FR.match(t) for t in tokens):
+        return None
+    return " ".join(f"minmax(0, {t})" if BARE_FR.match(t) else t for t in tokens)
+
+
+def fluid_tracks(blocks: list) -> int:
+    """A bare `1fr` track is `minmax(auto, 1fr)`: it grows to the widest unbreakable thing inside
+    it. On a phone, `gridTemplateColumns: 1fr` let one long French word at 52 px ("Responsabilité")
+    widen the column of a whole legal page to 408 px on a 375 px screen (a refused page,
+    2026-10-19). `minmax(0, 1fr)` keeps the track to its share of the row, as the Builder's own
+    grids already write it. Every screen of every block is covered. Returns the edit count."""
+    edits = 0
+    for block in _walk(blocks):
+        for key in ("baseStyles", "tabletStyles", "mobileStyles"):
+            styles = block.get(key) or {}
+            fluid = _fluid(styles.get("gridTemplateColumns")) if "gridTemplateColumns" in styles else None
+            if fluid:
+                styles["gridTemplateColumns"] = fluid
+                edits += 1
+    return edits
+
+
 def _is_grid(block: dict) -> bool:
     return "u-grid" in (block.get("classes") or []) or (block.get("baseStyles") or {}).get("display") == "grid"
 

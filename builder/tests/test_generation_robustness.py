@@ -26,7 +26,7 @@ from frappe.tests.utils import FrappeTestCase
 
 from builder.ai import llm
 from builder.ai import page_writer as pw
-from builder.site_ai.nora import layout, site_builder
+from builder.site_ai.nora import layout, site_builder, typography
 from builder.utils import execute_script
 
 KEBAB_PAGE = """
@@ -486,3 +486,91 @@ class TestPhoneWidths(unittest.TestCase):
 		root = {"element": "div", "children": [{"element": "section", "children": [inner]}]}
 		self.assertEqual(layout.fit_phone_widths([root]), 1)
 		self.assertEqual(inner["mobileStyles"], {"minWidth": "0"})
+
+
+class TestFluidTracks(unittest.TestCase):
+	def test_a_bare_fr_track_stops_growing_with_its_content(self):
+		for before, after in (
+			("1fr", "minmax(0, 1fr)"),
+			("repeat(2, 1fr)", "repeat(2, minmax(0, 1fr))"),
+			("2fr 1fr", "minmax(0, 2fr) minmax(0, 1fr)"),
+			("1fr 320px", "minmax(0, 1fr) 320px"),
+			("minmax(0, 1fr) 1fr", "minmax(0, 1fr) minmax(0, 1fr)"),
+		):
+			self.assertEqual(layout._fluid(before), after, before)
+
+	def test_a_track_list_that_is_already_fluid_is_left_alone(self):
+		for value in (
+			"repeat(3, minmax(0, 1fr))",
+			"repeat(auto-fit, minmax(16rem, 1fr))",
+			"320px minmax(0, 1fr)",
+			"",
+			"none",
+			None,
+		):
+			self.assertIsNone(layout._fluid(value), value)
+
+	def test_every_screen_of_every_grid_is_made_fluid(self):
+		block = {
+			"element": "div",
+			"baseStyles": {"display": "grid", "gridTemplateColumns": "repeat(3, 1fr)"},
+			"tabletStyles": {"gridTemplateColumns": "1fr 1fr"},
+			"mobileStyles": {"gridTemplateColumns": "1fr"},
+			"children": [{"element": "div", "baseStyles": {"display": "grid", "gridTemplateColumns": "1fr"}}],
+		}
+		self.assertEqual(layout.fluid_tracks([block]), 4)
+		self.assertEqual(block["baseStyles"]["gridTemplateColumns"], "repeat(3, minmax(0, 1fr))")
+		self.assertEqual(block["tabletStyles"]["gridTemplateColumns"], "minmax(0, 1fr) minmax(0, 1fr)")
+		self.assertEqual(block["mobileStyles"]["gridTemplateColumns"], "minmax(0, 1fr)")
+		self.assertEqual(layout.fluid_tracks([block]), 0)  # idempotent
+
+	def test_the_column_count_does_not_change(self):
+		for before in ("repeat(2, 1fr)", "2fr 1fr", "1fr"):
+			self.assertEqual(layout._tracks(layout._fluid(before)), layout._tracks(before), before)
+
+
+class TestPhoneHeadings(unittest.TestCase):
+	def heading(self, tag, base, tablet=None, mobile=None):
+		block = {"element": tag, "baseStyles": {"fontSize": base}}
+		if tablet:
+			block["tabletStyles"] = tablet
+		if mobile:
+			block["mobileStyles"] = mobile
+		return block
+
+	def test_a_big_heading_gets_the_phone_cap_and_may_break_a_long_word(self):
+		block = self.heading("h2", "3.25rem")
+		self.assertEqual(typography.shrink_phone_headings([block]), 2)
+		self.assertEqual(block["mobileStyles"], {"fontSize": "2.25rem", "overflowWrap": "break-word"})
+		self.assertEqual(block["baseStyles"], {"fontSize": "3.25rem"})
+
+	def test_a_pixel_size_counts_in_rem(self):
+		block = self.heading("h1", "72px")
+		typography.shrink_phone_headings([block])
+		self.assertEqual(block["mobileStyles"]["fontSize"], "2.75rem")
+
+	def test_a_heading_that_fits_only_gets_the_word_break(self):
+		block = self.heading("h2", "2rem")
+		self.assertEqual(typography.shrink_phone_headings([block]), 1)
+		self.assertEqual(block["mobileStyles"], {"overflowWrap": "break-word"})
+
+	def test_the_phone_inherits_the_tablet_size(self):
+		small = self.heading("h3", "48px", tablet={"fontSize": "1.5rem"})
+		typography.shrink_phone_headings([small])
+		self.assertNotIn("fontSize", small["mobileStyles"])
+		big = self.heading("h3", "1rem", tablet={"fontSize": "3rem"})
+		typography.shrink_phone_headings([big])
+		self.assertEqual(big["mobileStyles"]["fontSize"], "1.75rem")
+
+	def test_what_the_page_wrote_for_the_phone_is_kept(self):
+		block = self.heading("h2", "4rem", mobile={"fontSize": "3rem", "overflowWrap": "normal"})
+		self.assertEqual(typography.shrink_phone_headings([block]), 0)
+		self.assertEqual(block["mobileStyles"], {"fontSize": "3rem", "overflowWrap": "normal"})
+
+	def test_fluid_sizes_and_other_elements_are_left_to_the_other_pass(self):
+		fluid = self.heading("h1", "clamp(2rem, 6vw, 4.5rem)")
+		typography.shrink_phone_headings([fluid])
+		self.assertNotIn("fontSize", fluid["mobileStyles"])
+		paragraph = {"element": "p", "baseStyles": {"fontSize": "4rem"}}
+		self.assertEqual(typography.shrink_phone_headings([paragraph]), 0)
+		self.assertNotIn("mobileStyles", paragraph)
