@@ -75,7 +75,8 @@ def neutral_paint(value: str) -> tuple[int, int, str, str | None, float] | None:
 # //// Neoffice — added (2026-10-19, neoffice-maintenance #1723): an img the writer left without any
 # //// src is a photo slot with no photo, and it paints nothing: a feature card whose height came from
 # //// its photograph collapsed to zero at desktop width (the copy over it, absolute, clipped away),
-# //// and the gate measured text nobody could see. It becomes the plain block of any other slot.
+# //// and the gate measured text nobody could see. It becomes the plain block of any other slot (see
+# //// neutral_empty_slots: the build does it, with images on or off).
 # the hero / banner size the brief hands the model (system_prompts: "Hero/Banner: 1200x600")
 EMPTY_SLOT_SIZE = (1200, 600)
 
@@ -93,8 +94,10 @@ def is_empty_slot(block: dict) -> bool:
 
 def neutral_empty_slots(blocks: list, palette: dict, prefix: str) -> int:
     """Every img with no src at all becomes the plain block of any other slot, whether image generation
-    is on or off: the image job only draws the placehold.co URLs, and nothing would ever fill it. Returns
-    how many were filled."""
+    is on or off: the image job only draws the placehold.co URLs, and nothing would ever fill it. Run
+    by the BUILD on the page it has just written, never at render (neutral_for_render): a page of a
+    site that an editor built by hand may carry an img whose picture is not chosen yet, and showing
+    a pale rectangle there is not ours to decide. Returns how many were filled."""
     filled = 0
     for block in _walk(blocks):
         if is_empty_slot(block):
@@ -153,9 +156,6 @@ def neutral_placeholders(blocks: list, palette: dict, prefix: str) -> int:
         if isinstance(attrs.get("srcset"), str) and "placehold.co" in attrs["srcset"]:
             attrs.pop("srcset")
             changed = True
-        if is_empty_slot(block):
-            block.setdefault("attributes", {})["src"] = neutral_image(*EMPTY_SLOT_SIZE, palette, prefix)
-            changed = True  # (neutral_empty_slots does the same on its own, with images on)
         for style_key in ("baseStyles", "mobileStyles", "tabletStyles", "rawStyles"):
             styles = block.get(style_key) or {}
             for prop in ("backgroundImage", "background"):

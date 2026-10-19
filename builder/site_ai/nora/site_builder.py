@@ -2685,13 +2685,14 @@ def build_site(ctx, spec: dict) -> str:
                         withheld = neutral_named_slots(blocks, palette, prefix, names=[site_name, *categories])
                         if withheld:
                             ai_log("info", "Photo slots kept from the image job", page=page["title"], slots=withheld)
-                        # //// Neoffice — an img the writer left with no src is a slot the image job will never
-                        # //// find (it draws placehold.co URLs): it gets a plain block, or its card has no body (#1723)
-                        from builder.site_ai.nora.placeholders import neutral_empty_slots
+                    # //// Neoffice — and an img the writer left with no src, whether images are on or off: the
+                    # //// image job draws placehold.co URLs and would never find it, and its card has no body
+                    # //// without a picture (#1723). Done here, on the page just written, never at render.
+                    from builder.site_ai.nora.placeholders import neutral_empty_slots
 
-                        emptied = neutral_empty_slots(blocks, palette, prefix)
-                        if emptied:
-                            ai_log("info", "Pictures with no source given a plain block", page=page["title"], edits=emptied)
+                    emptied = neutral_empty_slots(blocks, palette, prefix)
+                    if emptied:
+                        ai_log("info", "Pictures with no source given a plain block", page=page["title"], edits=emptied)
                     # one photo treatment for the whole site: on a black-and-white site every
                     # photograph is black and white, on every page (photo_treatment.py)
                     if palette_mode == "monochrome":
