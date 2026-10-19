@@ -20,6 +20,7 @@ from frappe.model import child_table_fields, default_fields
 
 from builder.ai.agent import pending
 from builder.ai.agent.registry import Tool
+from builder.ai.agent.selectors import walk_blocks  # //// Neoffice — see page_has_no_form
 
 # Fieldtypes a public form can safely write. Anything else (Link, Table, Attach…)
 # is coerced to Data. Select is deliberately EXCLUDED: an HTML <select> submits its
@@ -82,12 +83,75 @@ CONTACT_FORM_DECLINED = (
 )
 
 
+# //// Neoffice — words that make a form a booking or a registration, not a contact form: a date, a time, a number of
+# //// people. A booking form carries a free "message" field as well; read as a contact form it was declined thirty-seven times
+# //// in a row (2026-10-19) and the model never got its form connected. Whole words, except for the stems that cannot
+# //// be taken for anything else: a quote form's "timeline" or a consent "checkbox" must not count.
+BOOKING_WORDS = {
+	"time",
+	"hour",
+	"heure",
+	"heures",
+	"day",
+	"jour",
+	"horaire",
+	"slot",
+	"slots",
+	"seat",
+	"seats",
+	"party",
+	"table",
+	"tables",
+	"nuit",
+	"nuits",
+	"night",
+	"nights",
+	"people",
+	"depart",
+	"d\u00e9part",
+	"departure",
+}
+BOOKING_STEMS = ("date", "guest", "person", "cr\u00e9neau", "creneau", "invit", "arriv")
+
+
 def looks_like_contact_form(fields) -> bool:
-	"""Whether the fields are those of a contact form: an e-mail and a message."""
+	"""Whether the fields are those of a contact form: an e-mail and a message, and nothing that books a time or
+	a number of places."""
+	# //// Neoffice — see BOOKING_WORDS
 	names = " ".join(
-		f"{f.get('fieldname', '')} {f.get('label', '')}".lower() for f in (fields or []) if isinstance(f, dict)
+		f"{f.get('fieldname', '')} {f.get('label', '')}".lower()
+		for f in (fields or [])
+		if isinstance(f, dict)
 	)
-	return "mail" in names and any(w in names for w in ("message", "msg", "comment", "question", "request", "demande", "devis"))
+	tokens = [t for t in re.split(r"[^a-z\u00e0-\u00ff]+", names) if t]
+	if any(t in BOOKING_WORDS or t.startswith(BOOKING_STEMS) for t in tokens):
+		return False
+	return "mail" in names and any(
+		w in names for w in ("message", "msg", "comment", "question", "request", "demande", "devis")
+	)
+
+
+# //// Neoffice — connect_form on a page that holds no form (2026-10-19). Asked for a booking form, the local
+# //// model called connect_form straight away: the card offered to create a DocType and wire a form that was
+# //// never drawn. The tree of the turn is checked, and a page with no input is sent back to draw the form first.
+FORM_ELEMENTS = {"form", "input", "textarea", "select"}
+NO_FORM_ON_PAGE = (
+	"DECLINED: this page has no form to connect: no form, input, textarea or select block. Draw the form FIRST "
+	'with add_block (the whole section in ONE call, every input carrying name="<fieldname>"), then call '
+	"connect_form for it."
+)
+
+
+def page_has_no_form(ctx) -> bool:
+	"""True when the working tree of the turn is known and holds nothing a visitor could type in. A block that
+	is an instance of a component is not looked into: the form may live inside it."""
+	root = ctx.page_root() if hasattr(ctx, "page_root") else None
+	if not isinstance(root, dict):
+		return False
+	for block, _ in walk_blocks(root):
+		if block.get("element") in FORM_ELEMENTS or block.get("extendedFromComponent"):
+			return False
+	return True
 
 
 def request_connect_form(ctx, args: dict) -> str | None:
@@ -98,6 +162,9 @@ def request_connect_form(ctx, args: dict) -> str | None:
 	# //// Neoffice — a contact form is the site's include, never a connected DocType (2026-10-19)
 	if looks_like_contact_form(args.get("fields")):
 		return CONTACT_FORM_DECLINED
+	# //// Neoffice — nothing to connect on a page without a form (see NO_FORM_ON_PAGE)
+	if page_has_no_form(ctx):
+		return NO_FORM_ON_PAGE
 	# A form here is already wired — very likely a "where do submissions go?" ask.
 	# Answer with the existing DocType; don't create a duplicate (unless forced).
 	if not args.get("force_new") and (connected := connected_submission_doctype(ctx.page_id)):

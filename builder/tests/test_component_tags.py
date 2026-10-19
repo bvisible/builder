@@ -10,8 +10,14 @@ that is not a component's tag crashes the published route."""
 
 import unittest
 from types import SimpleNamespace
+from unittest.mock import patch
 
-from builder.ai.agent.tools.forms import CONTACT_FORM_DECLINED, looks_like_contact_form, request_connect_form
+from builder.ai.agent.tools.forms import (
+	CONTACT_FORM_DECLINED,
+	NO_FORM_ON_PAGE,
+	looks_like_contact_form,
+	request_connect_form,
+)
 from builder.ai.agent.tree import WorkingTree, moustache_fields
 from builder.site_ai import components
 
@@ -82,6 +88,26 @@ class TestAssistantGuard(unittest.TestCase):
 		self.assertEqual(moustache_fields(op), [])
 		self.assertEqual(op["inner_text"], tag(("contact_model", '"questions"')))
 
+	def test_a_tag_with_its_quotes_and_line_breaks_escaped_twice_passes(self):
+		# what kimi-k2.7-code wrote: the backslashes are in the text itself
+		written = (
+			r"{%- set contact_model = \"questions\" -%}\n{%- set phone_required = true -%}\n"
+			r"{%- set consent_text = \"J accepte.\" -%}\n{% include \"" + FORM + r"\" %}"
+		)
+		self.assertIn("\\", written)
+		op = {"block_id": "form", "inner_text": written}
+		self.assertEqual(moustache_fields(op), [])
+		self.assertEqual(
+			op["inner_text"],
+			tag(
+				("contact_model", '"questions"'), ("phone_required", "true"), ("consent_text", '"J accepte."')
+			),
+		)
+
+	def test_a_backslash_does_not_make_other_jinja_lawful(self):
+		op = {"inner_text": r"{{ frappe.db.sql(\"x\") }}\n{% include \"" + FORM + r"\" %}"}
+		self.assertTrue(moustache_fields(op))
+
 	def test_other_jinja_is_still_refused(self):
 		for op in (
 			{"inner_text": "{{ item.title }}"},
@@ -131,6 +157,30 @@ class TestAssistantGuard(unittest.TestCase):
 		self.assertEqual(root["children"], [])
 
 
+class TestContactFormWithoutAModel(unittest.TestCase):
+	def add(self, text):
+		tree = WorkingTree({"blockId": "root", "element": "div", "children": []})
+		return tree.apply("add_block", {"parent_block_id": "root", "block": {"el": "div", "text": text}})
+
+	def test_the_bare_include_is_told_what_it_is(self):
+		result = self.add(tag())
+		self.assertTrue(result.startswith("Added block"))
+		self.assertIn("'questions'", result)
+		self.assertNotIn("FAILED", result)
+
+	def test_a_form_in_a_wrapper_is_told_too(self):
+		tree = WorkingTree({"blockId": "root", "element": "div", "children": []})
+		wrapped = {"el": "section", "c": [{"el": "div", "c": [{"el": "div", "text": tag()}]}]}
+		self.assertIn("'questions'", tree.apply("add_block", {"parent_block_id": "root", "block": wrapped}))
+
+	def test_a_chosen_model_is_not(self):
+		self.assertNotIn("NOTE", self.add(tag(("contact_model", '"questions"'))))
+		self.assertNotIn("NOTE", self.add(tag(("contact_model", '"simple"'))))
+
+	def test_another_block_is_not(self):
+		self.assertNotIn("NOTE", self.add("Hello"))
+
+
 class TestContactFormIsNotConnected(unittest.TestCase):
 	def test_an_email_and_a_message_make_a_contact_form(self):
 		fields = [
@@ -142,6 +192,33 @@ class TestContactFormIsNotConnected(unittest.TestCase):
 		self.assertTrue(
 			looks_like_contact_form([{"fieldname": "courriel", "label": "E-mail"}, {"fieldname": "demande"}])
 		)
+
+	def test_a_booking_form_with_a_message_is_not_a_contact_form(self):
+		# the local model's visit booking: it carries an e-mail AND a message, and was declined thirty-seven times
+		booking = [
+			{"fieldname": "nom", "label": "Nom"},
+			{"fieldname": "email", "label": "E-mail"},
+			{"fieldname": "date", "label": "Date souhait\u00e9e"},
+			{"fieldname": "personnes", "label": "Nombre de personnes"},
+			{"fieldname": "message", "label": "Message"},
+		]
+		self.assertFalse(looks_like_contact_form(booking))
+		self.assertFalse(
+			looks_like_contact_form(
+				[{"fieldname": "email"}, {"fieldname": "guests"}, {"fieldname": "message"}]
+			)
+		)
+
+	def test_a_quote_form_is_still_a_contact_form(self):
+		# a "timeline" and a consent "checkbox" are not bookings
+		quote = [
+			{"fieldname": "email"},
+			{"fieldname": "timeline", "label": "D\u00e9lai"},
+			{"fieldname": "budget"},
+			{"fieldname": "message"},
+			{"fieldname": "consent_checkbox"},
+		]
+		self.assertTrue(looks_like_contact_form(quote))
 
 	def test_other_forms_are_still_connected(self):
 		self.assertFalse(
@@ -162,6 +239,49 @@ class TestContactFormIsNotConnected(unittest.TestCase):
 		}
 		self.assertEqual(request_connect_form(ctx, args), CONTACT_FORM_DECLINED)
 		self.assertIn("get_site_chrome", CONTACT_FORM_DECLINED)
+
+
+BOOKING_ARGS = {
+	"doctype_name": "Visit Booking",
+	"fields": [{"fieldname": "nom"}, {"fieldname": "date_souhaitee"}],
+	"form_selector": ".booking",
+}
+
+
+class TestConnectFormNeedsAForm(unittest.TestCase):
+	def ctx(self, root):
+		return SimpleNamespace(page_id="page-x", page_root=lambda: root)
+
+	def goes_on(self, ctx):
+		# past the guard the tool reads the database; a connected form on the page ends it there, before any write
+		with patch("builder.ai.agent.tools.forms.connected_submission_doctype", return_value="Some Doctype"):
+			return request_connect_form(ctx, dict(BOOKING_ARGS)).startswith("ALREADY CONNECTED")
+
+	def test_a_page_without_a_form_is_sent_back_to_draw_one(self):
+		root = {"blockId": "root", "element": "div", "children": [{"blockId": "p", "element": "p"}]}
+		self.assertEqual(request_connect_form(self.ctx(root), dict(BOOKING_ARGS)), NO_FORM_ON_PAGE)
+
+	def test_a_page_with_an_input_goes_on(self):
+		root = {
+			"blockId": "root",
+			"element": "div",
+			"children": [
+				{"blockId": "f", "element": "div", "children": [{"blockId": "i", "element": "input"}]}
+			],
+		}
+		self.assertTrue(self.goes_on(self.ctx(root)))
+
+	def test_a_component_instance_may_hold_the_form(self):
+		root = {
+			"blockId": "root",
+			"element": "div",
+			"children": [{"blockId": "c", "element": "div", "extendedFromComponent": "booking"}],
+		}
+		self.assertTrue(self.goes_on(self.ctx(root)))
+
+	def test_a_tree_that_is_not_known_does_not_decline(self):
+		self.assertTrue(self.goes_on(SimpleNamespace(page_id="page-x")))
+		self.assertTrue(self.goes_on(self.ctx(None)))
 
 
 if __name__ == "__main__":

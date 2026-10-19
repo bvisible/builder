@@ -49,6 +49,7 @@ import time
 import frappe
 
 from builder.ai import llm, locks
+from builder.ai.agent.coerce import coerce_arguments  # //// Neoffice — see coerce.py
 from builder.ai.agent.registry import ToolRegistry, build_default_registry
 from builder.ai.agent.tree import WorkingTree
 from builder.ai.block_codec import BlockCodec
@@ -436,6 +437,8 @@ class AgentRunner:
 		# Each is fed back to the model to self-correct; also logged and surfaced here so a
 		# "why didn't my edit land" is traceable in the agent debugger, not just live logs.
 		self.tool_failures: list[str] = []
+		# //// Neoffice — how many times each (tool, arguments, result) came back this turn: see warn_on_repeated_call
+		self.repeated_calls: dict[tuple, int] = {}
 		# How many streaming rounds had to be retried after a transient failure this turn.
 		# Surfaced like args_repaired so a flaky provider shows up in the data, not as a
 		# silent turn failure.
@@ -828,6 +831,11 @@ class AgentRunner:
 						entry["name"],
 						truncated_args,
 					)
+			# //// Neoffice — an argument the schema declares as an object or an array that arrives as a JSON
+			# //// string is parsed here (coerce.py): the local model sent `block` as text, got "no block
+			# //// definition supplied" and sent the same text eight times (2026-10-19).
+			if (tool := self.registry.get(entry["name"])) and coerce_arguments(tool.parameters, args):
+				self.args_repaired += 1
 			logger.info(
 				"AI tool response: tool=%s, repaired=%s, raw_arguments=%s",
 				entry["name"],
@@ -1101,6 +1109,28 @@ class AgentRunner:
 		if side == "client" and tool and tool.handler and op["tool_name"] in SCRIPT_TWIN_TOOLS:
 			return "server"
 		return side
+
+	# //// Neoffice — added method. A model refused for a reason it does not grasp sends the identical call again,
+	# //// round after round: the local model called connect_form thirty-seven times with the same fields and the
+	# //// same answer, a million and a half prompt tokens spent on one refusal (2026-10-19).
+	REPEATED_CALL_WARNING = 3
+
+	def warn_on_repeated_call(self, op: dict, content: str) -> str:
+		"""From the third time a call comes back with the very same result in a turn, the result carries the
+		order not to send it again."""
+		try:
+			key = (op["tool_name"], json.dumps(op["args"], sort_keys=True, default=str), hash(str(content)))
+		except (TypeError, ValueError):
+			return content
+		seen = self.repeated_calls[key] = self.repeated_calls.get(key, 0) + 1
+		if seen < self.REPEATED_CALL_WARNING:
+			return content
+		logger.warning("Agent repeated %s with the same result %d times", op["tool_name"], seen)
+		return (
+			f"{content}\n\nSTOP: you have now made this exact call {seen} times in this turn, with the same result. "
+			"Sending it again cannot change the answer. Change the call itself, do something else, or tell the "
+			"user plainly what is blocking you."
+		)
 
 	def apply_client_ops(self, ops: list[dict]) -> tuple[dict[int, str], list[dict]]:
 		"""Apply this round's client ops to the working tree — the source of truth —
@@ -1406,6 +1436,7 @@ class AgentRunner:
 					if content is None:
 						turn_over = True  # terminal card emitted + persisted
 						break
+					content = self.warn_on_repeated_call(op, content)  # //// Neoffice — see the method
 					messages.append({"role": "tool", "tool_call_id": tc["id"], "content": content})
 				if turn_over:
 					return

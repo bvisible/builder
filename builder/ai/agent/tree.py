@@ -74,12 +74,40 @@ MOUSTACHE_HINT = (
 # //// (site_ai/components.py, lawful_tag); any other Jinja is still refused.
 TEXT_KEYS = ("text", "inner_text", "inner_html", "innerHTML")
 
+# //// Neoffice — the contact form placed with no model chosen (2026-10-19). Only the strongest model read the note of
+# //// the form (get_site_chrome) and chose `questions` for an industrial business that lives on quotes; the others
+# //// placed the bare include, which is the plain `simple` form, and said it was a two-step one. The result of the
+# //// call says what the bare include is, at the one moment the choice can still be made.
+CONTACT_FORM_FILE = "contact_form.html"
+CONTACT_FORM_WITHOUT_MODEL = (
+	" NOTE: you placed the contact form without choosing its model, so it is the plain 'simple' form (name, "
+	"e-mail, message). DECIDE NOW, do not ask the user to pick: if this business answers by quote or estimate "
+	"(trades, installation, industrial, B2B, agency), the 'questions' model fits it, so update_block the block "
+	"that holds the tag with the tag that sets contact_model to \"questions\" (the Shortcodes section of your "
+	"instructions has it). Keep 'simple' for a shop, a restaurant, a showcase site, or when the user asked for "
+	"the plain form. Then tell the user which one you chose and why."
+)
+
+
+def contact_form_without_model(block: dict) -> bool:
+	"""Whether a block just added carries the contact form's include with no `contact_model` set."""
+	for node, _ in walk_blocks(block):
+		html = node.get("innerHTML")
+		if isinstance(html, str) and CONTACT_FORM_FILE in html and "contact_model" not in html:
+			return True
+	return False
+
 
 def lawful_component_text(holder: dict, key: str) -> bool:
 	"""True when holder[key] is a lawful component tag, which is then rewritten in place to the canonical tag."""
 	from builder.site_ai.components import lawful_tag
 
-	canonical = lawful_tag(str(holder.get(key) or ""))
+	text = str(holder.get(key) or "")
+	canonical = lawful_tag(text)
+	if canonical is None and "\\" in text:
+		# //// Neoffice — a model that escapes the quotes and the line breaks of the tag twice writes `\\"` and `\\n`
+		# //// in the text itself (2026-10-19); the tag is rebuilt from its values, so what it escaped is read as written
+		canonical = lawful_tag(text.replace("\\n", "\n").replace('\\"', '"'))
 	if canonical is None:
 		return False
 	holder[key] = canonical
@@ -549,6 +577,14 @@ class WorkingTree:
 		parent = self.resolve(parent_id)
 		if parent is None:
 			return f"FAILED: parent_block_id '{parent_id}' not found{self.id_hint(parent_id)}"
+		# //// Neoffice — a block still text here could not be read as JSON (coerce.py): say so, instead of the
+		# //// moustache refusal the tag inside it would draw, which sent the local model hunting through the site
+		# //// with run_python for thirty-eight rounds (2026-10-19)
+		if isinstance(args.get("block"), str):
+			return (
+				"FAILED: `block` arrived as TEXT that is not valid JSON. Send it as a JSON object, not a quoted "
+				'string, with every key and string value in double quotes: {"el": "div", "text": "…"}.'
+			)
 		if fields := moustache_fields(args):
 			return f"FAILED: {fields} — {MOUSTACHE_HINT}"
 		if not isinstance(args.get("block"), dict):
@@ -566,7 +602,9 @@ class WorkingTree:
 		# canvas so both sides key the same ids, and name the new ref so the model can
 		# chain edits onto the block it just added.
 		args["block_json"] = block
-		return f"Added block {block.get('blockId')} (<{block.get('element')}>) under {parent_id}."
+		added = f"Added block {block.get('blockId')} (<{block.get('element')}>) under {parent_id}."
+		# //// Neoffice — see CONTACT_FORM_WITHOUT_MODEL
+		return added + CONTACT_FORM_WITHOUT_MODEL if contact_form_without_model(block) else added
 
 
 
