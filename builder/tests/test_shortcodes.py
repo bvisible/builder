@@ -158,6 +158,7 @@ class TestTheRegistryReachesASite(FrappeTestCase):
 
 	def setUp(self):
 		frappe.set_user("Administrator")
+		self.addCleanup(frappe.db.rollback)
 
 	def test_a_site_with_no_row_gets_one_per_component(self):
 		frappe.db.delete(components.REGISTRY)
@@ -271,6 +272,7 @@ class TestTheSwitchIsHonoured(FrappeTestCase):
 
 	def setUp(self):
 		frappe.set_user("Administrator")
+		self.addCleanup(frappe.db.rollback)
 		sync_shortcodes()
 		frappe.db.set_value(components.REGISTRY, CONTACT_FORM, "enabled", 0)
 
@@ -333,46 +335,45 @@ class TestTheSwitchIsHonoured(FrappeTestCase):
 
 
 class TestTheOldGeneratorsPromptReadsTheCatalogue(FrappeTestCase):
-	"""get_shortcodes_context fed the old generator the Builder AI Shortcode rows of ONE instance."""
+	"""get_shortcodes_context fed the old generator the Builder AI Shortcode rows of ONE instance: children of a
+	DocType (Builder AI Settings) that no longer exists, which nothing can edit."""
 
 	def setUp(self):
 		frappe.set_user("Administrator")
+		self.addCleanup(frappe.db.rollback)
 		sync_shortcodes()
-
-	def own_shortcode(self, name, include):
-		return frappe.get_doc(
-			{
-				"doctype": "Builder AI Shortcode",
-				"name1": name,
-				"shortcode": name.lower().replace(" ", "_"),
-				"category": "Other",
-				"description": f"{name} of this site",
-				"jinja_code": f"{{% include '{include}' %}}",
-			}
-		).insert(ignore_permissions=True)
 
 	def context(self, page_type=None):
 		from builder.site_ai.prompts.system_prompts import get_shortcodes_context
 
 		return get_shortcodes_context(page_type)
 
+	def orphan_row(self, name, include):
+		return frappe.get_doc(
+			{
+				"doctype": "Builder AI Shortcode",
+				"parent": "Builder AI Settings",
+				"parenttype": "Builder AI Settings",
+				"parentfield": "shortcodes",
+				"name1": name,
+				"shortcode": name.lower().replace(" ", "_"),
+				"category": "Other",
+				"description": f"{name} typed on this instance",
+				"jinja_code": f"{{% include '{include}' %}}",
+			}
+		).insert(ignore_permissions=True)
+
 	def test_the_components_are_the_catalogues_with_their_options(self):
 		text = self.context("contact")
 		self.assertIn(INCLUDE, text)
-		self.assertIn("contact_model", text)  # the three forms, which the typed row never knew
+		self.assertIn("contact_model", text)  # the three forms, which the typed rows never knew
 
-	def test_a_typed_row_that_repeats_a_component_is_not_listed_twice(self):
-		self.own_shortcode("Google Map", MAP)
+	def test_the_orphan_rows_are_not_a_source_any_more(self):
+		self.orphan_row("Google Map", MAP)
+		self.orphan_row("Search Box", "webshop/templates/includes/search_box.html")
 		text = self.context("contact")
-		# the catalogue's map may or may not be offered here (it needs an address): the typed row never is
-		self.assertLessEqual(text.count(MAP), 1)
-		self.assertNotIn("Google Map of this site", text)
-
-	def test_a_typed_row_the_catalogue_does_not_hold_is_still_offered(self):
-		self.own_shortcode("Search Box", "webshop/templates/includes/search_box.html")
-		text = self.context("contact")
-		self.assertIn("webshop/templates/includes/search_box.html", text)
-		self.assertIn("Search Box", text)
+		self.assertNotIn("typed on this instance", text)
+		self.assertNotIn("search_box.html", text)
 
 	def test_a_block_the_site_turned_off_is_not_offered(self):
 		frappe.db.set_value(components.REGISTRY, CONTACT_FORM, "enabled", 0)
@@ -381,6 +382,10 @@ class TestTheOldGeneratorsPromptReadsTheCatalogue(FrappeTestCase):
 	def test_a_page_type_the_catalogue_does_not_know_gets_what_the_site_offers(self):
 		text = self.context("accueil_ecommerce")
 		self.assertIn(INCLUDE, text)
+
+	def test_a_page_type_the_catalogue_knows_gets_what_suits_it(self):
+		# the team grid is for about and team pages, not the contact page
+		self.assertNotIn("team_grid.html", self.context("contact"))
 
 
 class TestItRunsOnEveryMigrate(unittest.TestCase):

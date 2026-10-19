@@ -738,12 +738,12 @@ def get_shortcodes_context(site_type: str = None) -> str:
     """
     Get shortcodes documentation for AI context.
 
-    //// Neoffice — rewritten 2026-10-20. It read the `Builder AI Shortcode` rows typed on one instance: ten on ours,
-    //// one on a client's, four of them the same components as the catalogue (the map, the team, the contact
-    //// details, the timeline) described apart from it, and not the contact form's three models. The components a page
-    //// can carry are the catalogue's now (site_ai/components.py): the ones this site offers, those suited to the page
-    //// type when it is one the catalogue knows. The rows still add what the catalogue does not hold: an include
-    //// somebody described for THIS site (a cart icon, a search box), which is what that DocType is for.
+    //// Neoffice — rewritten 2026-10-20. It read the `Builder AI Shortcode` rows: ten on our instance, one on a client's,
+    //// the children of a `Builder AI Settings` DocType that no longer exists, so nothing could edit or add one. Four of
+    //// them were the same components as the catalogue (the map, the team, the contact details, the timeline) described
+    //// apart from it, and none knew the contact form's three models. The components a page can carry are the
+    //// catalogue's (site_ai/components.py): those this site offers, suited to the page type when it is one the
+    //// catalogue knows. A host application that wants to add its own still has the `unpress_ai_prompt_context` hook below.
     """
     import frappe
 
@@ -759,33 +759,6 @@ def get_shortcodes_context(site_type: str = None) -> str:
         lines.append("Use these shortcodes in innerHTML for dynamic content.\n")
         lines.extend(c.describes() for c in offered)
         lines.append("")
-
-    # Whatever the catalogue does not hold, typed as a Builder AI Shortcode on this site
-    try:
-        known = {c.path for c in components.catalogue()}
-        custom = []
-        for sc in frappe.get_all(
-            "Builder AI Shortcode",
-            fields=["name1", "category", "shortcode", "description", "jinja_code", "use_when"],
-        ):
-            included = components.INCLUDE_PATH.search(sc.jinja_code or "")
-            if included and included.group(1) in known:
-                continue
-            custom.append(sc)
-        if custom:
-            lines.append("## THIS SITE'S OWN SHORTCODES")
-            lines.append("Use these shortcodes in innerHTML for dynamic content.\n")
-            for sc in custom:
-                lines.append(f"### {sc.name1} (`{sc.shortcode}`)")
-                if sc.description:
-                    lines.append(f"{sc.description}")
-                if sc.use_when:
-                    lines.append(f"**When to use:** {sc.use_when}")
-                if sc.jinja_code:
-                    lines.append(f"```jinja\n{sc.jinja_code}\n```")
-                lines.append("")
-    except Exception:
-        pass
 
     # Whatever else is installed on this bench can add to the prompt through the
     # `unpress_ai_prompt_context` hook — one dotted path per contributor,
