@@ -955,3 +955,40 @@ class TestShallowItem(unittest.TestCase):
 	def test_a_repeat_with_no_item_anywhere_stays_as_it_is(self):
 		node = {"el": "div", "repeat": {"data": "a", "items": [{"x": 1}]}}
 		self.assertFalse(pw.adopt_flat_repeater(node))
+
+
+class TestTextlessBlocks(unittest.TestCase):
+	def el(self, tag, name="", **extra):
+		return {"element": tag, "blockName": name, **extra}
+
+	def test_a_heading_without_words_is_reported_with_its_name(self):
+		page = [
+			self.el("div", children=[self.el("h1", "hero-title"), self.el("p", "hero-sub", innerHTML="x")])
+		]
+		self.assertEqual(layout.textless_blocks(page), ["hero-title (h1)"])
+
+	def test_three_empty_paragraphs_or_buttons_are_enough_without_a_heading(self):
+		page = [self.el("div", children=[self.el("p"), self.el("a"), self.el("button")])]
+		self.assertEqual(len(layout.textless_blocks(page)), 3)
+		two = [self.el("div", children=[self.el("p"), self.el("a")])]
+		self.assertEqual(layout.textless_blocks(two), [])
+
+	def test_what_has_words_a_binding_or_children_is_not_empty(self):
+		page = [
+			self.el(
+				"div",
+				children=[
+					self.el("h2", innerHTML="Titre"),
+					self.el("h3", dynamicValues=[{"key": "title", "property": "innerHTML", "type": "key"}]),
+					self.el("a", children=[self.el("img")]),
+					self.el("p", innerHTML="   "),
+				],
+			)
+		]
+		self.assertEqual(layout.textless_blocks(page), [])  # one blank paragraph alone is not worth a retry
+
+	def test_a_repeater_template_and_other_elements_are_not_judged(self):
+		page = [
+			self.el("div", children=[self.el("div"), self.el("span"), self.el("img"), self.el("section")])
+		]
+		self.assertEqual(layout.textless_blocks(page), [])

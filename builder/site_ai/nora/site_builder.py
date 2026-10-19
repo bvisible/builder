@@ -2400,6 +2400,29 @@ def build_site(ctx, spec: dict) -> str:
                 with meter.kind(meter.WRITING):
                     raw = _stream_text(ctx, page_model, messages, llm.TASK_PARAMS["complex"], keep_cut=attempt == 1)
                 blocks, data_script = expand_page_yaml(BlockCodec.strip_fences(raw))
+                # //// Neoffice — a page written without the words of its headings is asked for again, once, with the
+                # //// elements named: the visual check only saw "a hero with no headline" after a screenshot round
+                # //// and its revision did not know which elements had no text (layout.textless_blocks)
+                if attempt == 0 and blocks:
+                    from builder.site_ai.nora.layout import textless_blocks
+
+                    missing = textless_blocks(blocks)
+                    if missing:
+                        error = "the page was written without the text of: " + ", ".join(missing)
+                        ai_log("warning", "Page written with textless elements, asked again", page=page["title"], elements=missing)
+                        messages = [
+                            *messages[:-1],
+                            {
+                                "role": "user",
+                                "content": messages[-1]["content"]
+                                + "\n\nIMPORTANT: your previous attempt left these elements WITHOUT TEXT: "
+                                + ", ".join(missing)
+                                + ". Every heading, paragraph, link and button needs its `text:` (or a `bind` to the repeated data). "
+                                "Write the whole page again with the copy of every element.",
+                            },
+                        ]
+                        blocks, data_script = [], ""
+                        continue
                 if blocks:
                     # //// Neoffice — kept for the revision (see the top of write_page)
                     site.setdefault("last_yaml", {})[page["route"]] = BlockCodec.strip_fences(raw)

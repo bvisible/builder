@@ -294,6 +294,29 @@ def fluid_tracks(blocks: list) -> int:
     return edits
 
 
+TEXT_ELEMENTS = frozenset({"h1", "h2", "h3", "h4", "h5", "h6", "p", "a", "button", "li", "label", "blockquote"})
+HEADINGS = frozenset({"h1", "h2", "h3", "h4", "h5", "h6"})
+
+
+def textless_blocks(blocks: list) -> list[str]:
+    """The headings, paragraphs and buttons a page was written without words: `el: h1 / name: hero-title
+    / style: ...` and no `text:` (the local 27B model, a home whose hero had no headline and no subtitle,
+    refused after a revision that did not know what to fix, 2026-10-19). A text element counts as
+    empty with no text, no binding to a repeater's data and no child. Returns "name (tag)" labels, but
+    only when it is worth a second try: at least one heading, or three other elements."""
+    empty = []
+    for block in _walk(blocks):
+        tag = str(block.get("element") or "").lower()
+        if tag not in TEXT_ELEMENTS or block.get("children") or block.get("dynamicValues"):
+            continue
+        if str(block.get("innerHTML") or "").strip() or block.get("isRepeaterBlock") or block.get("dataKey"):
+            continue
+        empty.append((tag, str(block.get("blockName") or "")))
+    if any(tag in HEADINGS for tag, _ in empty) or len(empty) >= 3:
+        return [f"{name or 'unnamed'} ({tag})" for tag, name in empty][:8]
+    return []
+
+
 def _is_grid(block: dict) -> bool:
     return "u-grid" in (block.get("classes") or []) or (block.get("baseStyles") or {}).get("display") == "grid"
 
