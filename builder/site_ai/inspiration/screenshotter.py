@@ -416,7 +416,10 @@ LAYOUT_PROBE = r"""
     // line: a 90px display headline in a 200px track wraps word by word (seen on a home,
     // 2026-09-16), and 200px is plenty for a 20px h3
     const fs = parseFloat(s.fontSize) || 16;
-    if ((heading && r.width < Math.max(200, fs * 7) && lines > 2.5) || (!heading && r.width < 130 && lines > 4)) {
+    // three lines in a column that is still 150px wide is a long card title in a row of four cards, readable
+    // and whole (a page was refused for "Menus pour groupes dès huit personnes", 176px wide, 3 lines, and its
+    // writer could not "fix" it in three revisions: 2026-10-20). Starved is four lines, or three below 150px.
+    if ((heading && r.width < Math.max(200, fs * 7) && (lines > 3.5 || (lines > 2.5 && r.width < 150))) || (!heading && r.width < 130 && lines > 4)) {
       starved++;
       out.push({kind: 'starved-text', severity: 'high', where: where(el), detail: Math.round(r.width) + 'px wide for a ' + Math.round(fs) + 'px type, wrapped on ' + Math.round(lines) + ' lines: its column is starved (a grid track of minmax(0, 1fr) or a fixed narrow width); give the text a real minimum width, or stack the columns at this screen size'});
     }

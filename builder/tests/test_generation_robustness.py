@@ -810,12 +810,21 @@ class TestMisplacedKeys(unittest.TestCase):
 		self.assertEqual(pw.hoist_misplaced_keys({"el": "p", "style": "bold"}), 0)
 
 	def test_an_image_source_and_a_link_written_off_the_attributes_become_attributes(self):
-		node = {"el": "img", "src": "https://placehold.co/1200x600", "alt": "Bouquet", "style": {"objectFit": "cover"}}
+		node = {
+			"el": "img",
+			"src": "https://placehold.co/1200x600",
+			"alt": "Bouquet",
+			"style": {"objectFit": "cover"},
+		}
 		self.assertEqual(pw.hoist_misplaced_attributes(node), 2)
 		self.assertEqual(node["attrs"], {"src": "https://placehold.co/1200x600", "alt": "Bouquet"})
 		self.assertNotIn("src", node)
 		self.assertEqual(node["style"], {"objectFit": "cover"})
-		link = {"el": "a", "text": "Contact", "style": {"color": "red", "href": "/contact", "target": "_blank"}}
+		link = {
+			"el": "a",
+			"text": "Contact",
+			"style": {"color": "red", "href": "/contact", "target": "_blank"},
+		}
 		self.assertEqual(pw.hoist_misplaced_attributes(link), 2)
 		self.assertEqual(link["attrs"], {"href": "/contact", "target": "_blank"})
 		self.assertEqual(link["style"], {"color": "red"})
@@ -824,7 +833,9 @@ class TestMisplacedKeys(unittest.TestCase):
 		node = {"el": "img", "attrs": {"src": "/files/own.jpg"}, "src": "https://placehold.co/10x10"}
 		self.assertEqual(pw.hoist_misplaced_attributes(node), 0)
 		self.assertEqual(node["attrs"], {"src": "/files/own.jpg"})
-		self.assertEqual(pw.hoist_misplaced_attributes({"el": "p", "style": {"color": "red"}, "text": "x"}), 0)
+		self.assertEqual(
+			pw.hoist_misplaced_attributes({"el": "p", "style": {"color": "red"}, "text": "x"}), 0
+		)
 		self.assertEqual(pw.hoist_misplaced_attributes({"el": "p", "style": "bold"}), 0)
 
 	def test_a_picture_and_a_link_written_that_way_keep_their_source_through_the_expansion(self):
@@ -1040,3 +1051,16 @@ class TestTextlessBlocks(unittest.TestCase):
 			self.el("div", children=[self.el("div"), self.el("span"), self.el("img"), self.el("section")])
 		]
 		self.assertEqual(layout.textless_blocks(page), [])
+
+
+class TestTheStarvedTextRule(unittest.TestCase):
+	"""A page was refused for a card title of 176 px on three lines (2026-10-20): readable, whole, and its
+	writer could not "fix" it in three revisions. Starved is four lines, or three below 150 px. The rule lives in
+	the browser (LAYOUT_PROBE); it was tried in Chromium on a synthetic page: 176 px / 3 lines passes, 100 px / 5,
+	140 px / 4 and 176 px / 4 are still flagged."""
+
+	def test_three_lines_in_a_column_of_150_px_or_more_are_not_starved(self):
+		from builder.site_ai.inspiration.screenshotter import LAYOUT_PROBE
+
+		self.assertIn("lines > 3.5 || (lines > 2.5 && r.width < 150)", LAYOUT_PROBE)
+		self.assertIn("r.width < Math.max(200, fs * 7)", LAYOUT_PROBE)
