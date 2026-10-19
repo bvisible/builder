@@ -1821,6 +1821,31 @@ def apply_navigation(config, created: list[dict], site_type: str, description: s
     frappe.clear_cache()
 
 
+# //// Neoffice — added: the chrome's font Selects, and the nearest offered family for a font they do not offer
+SERIF_FONTS = frozenset(
+    {"lora", "playfair display", "cormorant", "cormorant garamond", "libre baskerville", "eb garamond", "crimson text",
+     "crimson pro", "source serif", "source serif 4", "spectral", "dm serif display", "dm serif text", "bitter", "noto serif",
+     "pt serif", "cardo", "gelasio", "fraunces", "newsreader", "literata", "vollkorn", "domine", "alegreya", "baskervville"}
+)
+ROUNDED_FONTS = frozenset({"quicksand", "comfortaa", "fredoka", "baloo 2", "varela round", "nunito sans", "mulish"})
+GEOMETRIC_FONTS = frozenset({"outfit", "urbanist", "sora", "lexend", "plus jakarta sans", "red hat display", "syne", "unbounded", "bricolage grotesque"})
+
+
+def chrome_font(config, field: str, wanted: str) -> str:
+    """`wanted` when the config's Select offers it, else the closest family it does offer: a serif
+    maps to the offered serif, a rounded face to Nunito, a geometric or display face to Space Grotesk,
+    anything else to Inter (or the first option when even Inter is not offered)."""
+    df = config.meta.get_field(field)
+    options = [o for o in (df.options or "").split("\n") if o] if df else []
+    if not options or wanted in options:
+        return wanted
+    key = (wanted or "").strip().lower()
+    for family, group in (("Merriweather", SERIF_FONTS), ("Nunito", ROUNDED_FONTS), ("Space Grotesk", GEOMETRIC_FONTS)):
+        if key in group and family in options:
+            return family
+    return "Inter" if "Inter" in options else options[0]
+
+
 def build_site(ctx, spec: dict) -> str:
     from builder.ai import llm
     from builder.ai.block_codec import BlockCodec
@@ -2209,9 +2234,15 @@ def build_site(ctx, spec: dict) -> str:
         # //// in a column. A shop's foot is its mark, one row of links, and the legal row under it.
         if _sells_here and hasattr(config, "footer_template") and config.get("footer_template") in ("Standard", "Extended"):
             config.footer_template = "Centered"
+        # //// Neoffice — the chrome's two font Selects offer thirteen families and a brief names any Google
+        # //// font: "Lora" failed the save with a validation error and the whole build stopped before its
+        # //// first page (2026-10-19, local model). The nearest offered family is taken, and logged.
         if getattr(brief, "heading_font", None):
-            config.heading_font = brief.heading_font
-            config.body_font = brief.body_font or "Inter"
+            for field, wanted in (("heading_font", brief.heading_font), ("body_font", brief.body_font or "Inter")):
+                offered = chrome_font(config, field, wanted)
+                if offered != wanted:
+                    ai_log("info", "Chrome font not offered, nearest taken", field=field, wanted=wanted, taken=offered)
+                config.set(field, offered)
         # the chrome's variables alias the tokens from now on (theme_variables.html)
         if hasattr(config, "token_prefix"):
             config.token_prefix = prefix

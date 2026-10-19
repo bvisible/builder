@@ -7,7 +7,9 @@ gate allows (2026-10-19, the local 27B model behind a capped, gated endpoint):
 - a boolean or a null in a repeater item, written as JSON (`true`) and read as Python (NameError, a 500
   on the published route);
 - a provider answering 503 "llm busy, retry after 5s", which failed the call after one retry;
-- a stream cut at the provider's output ceiling, built from its prefix as if it were whole.
+- a stream cut at the provider's output ceiling, built from its prefix as if it were whole;
+- a brief naming a font the chrome's Select does not offer ("Lora"), a validation error that stopped the
+  build before its first page.
 
 No model is called: the streams and the provider are simulated."""
 
@@ -217,3 +219,42 @@ class TestCutStream(FrappeTestCase):
 	def test_a_stream_that_ended_normally_is_returned(self):
 		with patch.object(llm, "complete", return_value=self.stream("stop")):
 			self.assertEqual(site_builder._stream_text(FakeCtx(), "m", [], {}), "el: div\nc: []")
+
+
+CHROME_FONTS = "Inter\nMontserrat\nPoppins\nRoboto\nOpen Sans\nLato\nRaleway\nSource Sans 3\nNunito\nMerriweather\nDM Sans\nManrope\nSpace Grotesk"
+
+
+def config_offering(options):
+	return SimpleNamespace(meta=SimpleNamespace(get_field=lambda field: SimpleNamespace(options=options)))
+
+
+class TestChromeFont(unittest.TestCase):
+	def test_an_offered_font_is_kept(self):
+		self.assertEqual(site_builder.chrome_font(config_offering(CHROME_FONTS), "body_font", "Lato"), "Lato")
+
+	def test_a_serif_the_chrome_lacks_becomes_the_offered_serif(self):
+		self.assertEqual(
+			site_builder.chrome_font(config_offering(CHROME_FONTS), "heading_font", "Lora"), "Merriweather"
+		)
+		self.assertEqual(
+			site_builder.chrome_font(config_offering(CHROME_FONTS), "heading_font", "Playfair Display"),
+			"Merriweather",
+		)
+
+	def test_a_geometric_face_becomes_space_grotesk(self):
+		self.assertEqual(
+			site_builder.chrome_font(config_offering(CHROME_FONTS), "heading_font", "Syne"), "Space Grotesk"
+		)
+
+	def test_anything_else_becomes_inter(self):
+		self.assertEqual(
+			site_builder.chrome_font(config_offering(CHROME_FONTS), "body_font", "Some Unknown Face"), "Inter"
+		)
+
+	def test_a_chrome_without_inter_falls_back_to_its_first_option(self):
+		self.assertEqual(
+			site_builder.chrome_font(config_offering("Lato\nRoboto"), "body_font", "Lora"), "Lato"
+		)
+
+	def test_a_field_without_options_is_not_second_guessed(self):
+		self.assertEqual(site_builder.chrome_font(config_offering(""), "body_font", "Lora"), "Lora")
