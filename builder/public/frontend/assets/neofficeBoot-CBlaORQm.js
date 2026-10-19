@@ -1,0 +1,1 @@
+var e={assistant_name:``,managed:!1,disabled_tools:[],users_tab:!0},t=()=>window.capabilities||{},n=()=>t().ai||e,r=e=>window.assistant_name||n().assistant_name||e,i=()=>n().managed===!0,a=()=>n().users_tab!==!1,o=()=>n().model_picker!==!1;export{a as i,i as n,o as r,r as t};

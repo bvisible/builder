@@ -1,0 +1,1 @@
+import{a as e,n as t,s as n,t as r}from"./Dialog-BAO4dECG.js";var i=r;i.Title=t,i.Description=e,i.Close=n;export{i as t};

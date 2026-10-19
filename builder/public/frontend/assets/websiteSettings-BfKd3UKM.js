@@ -1,0 +1,1 @@
+import{t as e}from"./documentResource-D4Qaql4k.js";var t=e({doctype:`Website Settings`,name:`Website Settings`});export{t};
