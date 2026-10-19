@@ -764,6 +764,27 @@ c:
 """
 
 
+ATTRIBUTES_OFF_THE_ATTRS = """
+el: div
+name: body
+c:
+  - el: img
+    src: "https://placehold.co/1200x600"
+    alt: "Un bouquet"
+    style:
+      objectFit: cover
+  - el: a
+    text: "Nous écrire"
+    style:
+      color: blue
+      href: "/contact"
+  - el: img
+    attrs:
+      src: "/files/own.jpg"
+    src: "https://placehold.co/10x10"
+"""
+
+
 class TestMisplacedKeys(unittest.TestCase):
 	def test_a_text_written_inside_the_style_goes_back_to_the_block(self):
 		blocks, _ = pw.expand_page_yaml(TEXT_IN_STYLE)
@@ -787,6 +808,33 @@ class TestMisplacedKeys(unittest.TestCase):
 		self.assertEqual(node, {"el": "p", "style": {"color": "red"}, "text": "x"})
 		self.assertEqual(pw.hoist_misplaced_keys({"el": "p"}), 0)
 		self.assertEqual(pw.hoist_misplaced_keys({"el": "p", "style": "bold"}), 0)
+
+	def test_an_image_source_and_a_link_written_off_the_attributes_become_attributes(self):
+		node = {"el": "img", "src": "https://placehold.co/1200x600", "alt": "Bouquet", "style": {"objectFit": "cover"}}
+		self.assertEqual(pw.hoist_misplaced_attributes(node), 2)
+		self.assertEqual(node["attrs"], {"src": "https://placehold.co/1200x600", "alt": "Bouquet"})
+		self.assertNotIn("src", node)
+		self.assertEqual(node["style"], {"objectFit": "cover"})
+		link = {"el": "a", "text": "Contact", "style": {"color": "red", "href": "/contact", "target": "_blank"}}
+		self.assertEqual(pw.hoist_misplaced_attributes(link), 2)
+		self.assertEqual(link["attrs"], {"href": "/contact", "target": "_blank"})
+		self.assertEqual(link["style"], {"color": "red"})
+
+	def test_an_attribute_the_block_already_has_is_left_as_it_is(self):
+		node = {"el": "img", "attrs": {"src": "/files/own.jpg"}, "src": "https://placehold.co/10x10"}
+		self.assertEqual(pw.hoist_misplaced_attributes(node), 0)
+		self.assertEqual(node["attrs"], {"src": "/files/own.jpg"})
+		self.assertEqual(pw.hoist_misplaced_attributes({"el": "p", "style": {"color": "red"}, "text": "x"}), 0)
+		self.assertEqual(pw.hoist_misplaced_attributes({"el": "p", "style": "bold"}), 0)
+
+	def test_a_picture_and_a_link_written_that_way_keep_their_source_through_the_expansion(self):
+		blocks, _ = pw.expand_page_yaml(ATTRIBUTES_OFF_THE_ATTRS)
+		photo, link, own = blocks[0]["children"]
+		# the picture used to come out as an img with no src at all: a hole that painted nothing
+		self.assertEqual(photo["attributes"], {"src": "https://placehold.co/1200x600", "alt": "Un bouquet"})
+		self.assertEqual(photo["baseStyles"], {"objectFit": "cover"})
+		self.assertEqual(link["attributes"], {"href": "/contact"})
+		self.assertEqual(own["attributes"], {"src": "/files/own.jpg"})
 
 
 class TestPhoneCollapse(unittest.TestCase):

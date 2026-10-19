@@ -324,6 +324,12 @@ def adopt_flat_repeater(node: dict, taken=()) -> bool:
 # //// hoist_misplaced_keys.
 MISPLACED_IN_STYLE = ("text", "c", "bind", "classes", "attrs", "repeat", "name")
 
+# //// Neoffice — added: an HTML attribute written on the block or inside `style:` (2026-10-19,
+# //// neoffice-maintenance #1723). The format keeps them under `attrs:`; a model that wrote `src:` beside `el:`
+# //// or among the CSS gave an img with no src at all (a hole that paints nothing) and an `a` with no href, and
+# //// nothing said so. No CSS property and no block key goes by these names.
+MISPLACED_ATTRIBUTES = ("src", "srcset", "alt", "href", "target", "rel")
+
 
 def hoist_misplaced_keys(node: dict) -> int:
 	"""A key the model indented as if it belonged to the style: `text: "..."` under `style:` is read
@@ -338,6 +344,26 @@ def hoist_misplaced_keys(node: dict) -> int:
 			if key in styles and not node.get(key):
 				node[key] = styles.pop(key)
 				moved += 1
+	return moved
+
+
+# //// Neoffice — added: see MISPLACED_ATTRIBUTES
+def hoist_misplaced_attributes(node: dict) -> int:
+	"""An attribute found on the block or in its `style` moves to `attrs`, unless `attrs` already has it
+	(then the block's own wins and the stray key is left where it is). Returns how many attributes moved."""
+	moved = 0
+	styles = node.get("style")
+	holders = [node] + ([styles] if isinstance(styles, dict) else [])
+	for key in MISPLACED_ATTRIBUTES:
+		source = next((holder for holder in holders if holder.get(key)), None)
+		if source is None:
+			continue
+		attrs = node.get("attrs") if isinstance(node.get("attrs"), dict) else {}
+		if attrs.get(key):
+			continue
+		attrs[key] = source.pop(key)
+		node["attrs"] = attrs
+		moved += 1
 	return moved
 
 
@@ -357,6 +383,8 @@ def normalise_repeaters(parsed) -> int:
 			return
 		# //// Neoffice — a block key written inside `style:` goes back to the block (hoist_misplaced_keys)
 		changed += hoist_misplaced_keys(node)
+		# //// Neoffice — and an attribute written off `attrs:` goes into it (hoist_misplaced_attributes)
+		changed += hoist_misplaced_attributes(node)
 		# //// Neoffice — a repeater written flat is moved under `repeat` before anything reads it
 		# //// (adopt_flat_repeater)
 		if adopt_flat_repeater(node, taken=set(keys.values())):
