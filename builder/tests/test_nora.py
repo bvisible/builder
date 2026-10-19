@@ -300,7 +300,9 @@ class TestContrast(unittest.TestCase):
 		overlay, then white numbers. The section itself inherits the cream page."""
 		numbers = {"element": "h3", "baseStyles": {"color": "#ffffff"}, "innerHTML": "12h"}
 		section = {"blockName": "proof-section", "baseStyles": {"position": "relative"}, "children": [
-			{"element": "img", "classes": ["u-media"], "baseStyles": {"position": "absolute", "inset": "0", "objectFit": "cover"}},
+			# //// Neoffice — the photograph has a file (2026-10-19): an img with no src at all paints
+			# //// nothing, and copy over it is judged on the colour behind it (TestCopyOverAPlainSlot)
+			{"element": "img", "classes": ["u-media"], "attributes": {"src": "/files/proof.jpg"}, "baseStyles": {"position": "absolute", "inset": "0", "objectFit": "cover"}},
 			{"element": "div", "baseStyles": {"position": "absolute", "inset": "0", "backgroundImage": "linear-gradient(180deg, rgba(15,15,15,0.45), rgba(15,15,15,0.65))"}},
 			{"element": "div", "baseStyles": {"position": "relative"}, "children": [numbers]},
 		]}
@@ -318,6 +320,136 @@ class TestContrast(unittest.TestCase):
 		# on a light site the same card is light, and dark ink reads
 		light = {"element": "p", "baseStyles": {"color": "#1a1a1a"}, "innerHTML": "Route de la Gare 1"}
 		self.assertEqual(repair_contrast([{"children": [{"classes": ["u-card"], "children": [light]}]}], PALETTE), [])
+
+
+QV = {"qv-primary": "#5b2a4a", "qv-secondary": "#f0d3e0", "qv-background": "#faf6f0", "qv-text": "#1a1a1a"}
+ALL_PALE = {"qv-primary": "#f0d3e0", "qv-secondary": "#f7f0e3", "qv-background": "#faf6f0", "qv-text": "#e8e0d8"}
+
+
+class TestCopyOverAPlainSlot(unittest.TestCase):
+	"""Copy written for a photograph reads on the block that stands in for it (contrast.py,
+	placeholders.py). With image generation off every photo slot is a plain block, or no picture at
+	all: a florist's shop page was refused for a feature card whose cream and white copy sat on a
+	pale pink ground, 1.2 to 1.3:1 (neoffice-maintenance #1723)."""
+
+	@staticmethod
+	def feature(picture, copy=None, band="#f5e6eb"):
+		"""A feature card as a weaker model writes it: a picture, a gradient laid over it, and the copy
+		in light inks, for the photograph that was meant to be there, on a pale band."""
+		copy = copy or [
+			{"element": "span", "baseStyles": {"color": "var(--qv-secondary)"}, "innerHTML": "Hiver"},
+			{"element": "h3", "baseStyles": {"color": "var(--qv-background)"}, "innerHTML": "Bouquet de décembre"},
+			{"element": "p", "baseStyles": {"color": "rgba(255,255,255,0.85)"}, "innerHTML": "Poinsettias et houx"},
+		]
+		frame = {"element": "div", "blockName": "feature", "baseStyles": {"position": "relative", "overflow": "hidden"}, "children": [
+			picture,
+			{"element": "div", "baseStyles": {"position": "absolute", "inset": "0", "backgroundImage": "linear-gradient(180deg, rgba(26,26,26,0) 30%, rgba(26,26,26,0.72))"}},
+			{"element": "div", "blockName": "feature-copy", "baseStyles": {"position": "absolute", "bottom": "0", "left": "0"}, "children": copy},
+		]}
+		return {"element": "section", "baseStyles": {"backgroundColor": band}, "children": [frame]}, frame, copy
+
+	@staticmethod
+	def empty_picture():
+		# the shape of the refused page: an img the writer left without a src
+		return {"element": "img", "baseStyles": {"display": "block", "height": "100%", "objectFit": "cover", "width": "100%"}}
+
+	@staticmethod
+	def slot(url="https://placehold.co/1200x600/e5e7eb/9ca3af/png?text=Hiver"):
+		return {"element": "img", "attributes": {"src": url}, "baseStyles": {"position": "absolute", "inset": "0", "objectFit": "cover", "width": "100%", "height": "100%"}}
+
+	def assert_reads(self, copy, ground, palette, ratio=4.5):
+		from builder.site_ai.nora.contrast import composite
+
+		for block in copy:
+			ink = parse_color(block["baseStyles"]["color"], palette)
+			self.assertGreaterEqual(contrast(composite(ink, ground) if ink[3] < 1 else ink, ground), ratio, block["innerHTML"])
+
+	def test_copy_over_a_picture_with_no_file_gets_a_dark_brand_block(self):
+		band, frame, copy = self.feature(self.empty_picture())
+		fixes = repair_contrast([band], QV)
+		self.assertTrue(fixes)
+		self.assertEqual(frame["baseStyles"]["backgroundColor"], "var(--qv-primary)")
+		self.assert_reads(copy, parse_color("var(--qv-primary)", QV), QV)
+		# written for a dark ground, the copy keeps the inks it was written in
+		self.assertEqual(copy[1]["baseStyles"]["color"], "var(--qv-background)")
+		# and a second look finds nothing left to repair
+		self.assertEqual(repair_contrast([band], QV), [])
+
+	def test_a_neutral_block_under_light_copy_is_redrawn_in_the_dark_token(self):
+		from builder.site_ai.nora.placeholders import neutral_paint, neutral_placeholders
+
+		picture = self.slot()
+		band, frame, _copy = self.feature(picture)
+		neutral_placeholders([band], QV, "qv")
+		self.assertNotEqual(neutral_paint(picture["attributes"]["src"])[2], "#5b2a4a")
+		self.assertTrue(repair_contrast([band], QV))
+		width, height, base, wash, _opacity = neutral_paint(picture["attributes"]["src"])
+		self.assertEqual((width, height, base, wash), (1200, 600, "#5b2a4a", None))
+		self.assertEqual(frame["baseStyles"]["backgroundColor"], "var(--qv-primary)")
+		self.assertEqual(repair_contrast([band], QV), [])
+
+	def test_a_section_scrimmed_over_a_neutral_block_is_redrawn_in_the_dark_token(self):
+		from builder.site_ai.nora.placeholders import neutral_paint, neutral_placeholders
+
+		picture = self.slot("https://placehold.co/1920x1080/e5e7eb/9ca3af/png")
+		heading = {"element": "h2", "baseStyles": {"color": "#ffffff"}, "innerHTML": "Nos bouquets"}
+		hero = {"element": "section", "classes": ["u-over-image", "u-over-image--bottom"], "baseStyles": {"position": "relative"}, "children": [picture, {"element": "div", "children": [heading]}]}
+		neutral_placeholders([hero], QV, "qv")
+		self.assertTrue(repair_contrast([hero], QV))
+		self.assertEqual(neutral_paint(picture["attributes"]["src"])[2], "#5b2a4a")
+		self.assertEqual(heading["baseStyles"]["color"], "#ffffff")
+
+	def test_a_section_whose_own_background_is_a_neutral_block_is_redrawn_dark(self):
+		from builder.site_ai.nora.placeholders import neutral_paint, neutral_placeholders
+
+		heading = {"element": "h2", "baseStyles": {"color": "#ffffff"}, "innerHTML": "Nos bouquets"}
+		hero = {"element": "section", "baseStyles": {"backgroundImage": "url('https://placehold.co/1920x1080/e5e7eb/9ca3af/png')"}, "children": [heading]}
+		neutral_placeholders([hero], QV, "qv")
+		self.assertTrue(repair_contrast([hero], QV))
+		self.assertEqual(neutral_paint(hero["baseStyles"]["backgroundImage"])[2], "#5b2a4a")
+		self.assertEqual(heading["baseStyles"]["color"], "#ffffff")
+		self.assertEqual(repair_contrast([hero], QV), [])
+
+	def test_dark_copy_over_a_plain_block_is_left_alone(self):
+		from builder.site_ai.nora.placeholders import neutral_placeholders
+
+		picture = self.slot()
+		ink = [{"element": "h3", "baseStyles": {"color": "var(--qv-text)"}, "innerHTML": "Bouquet de décembre"}]
+		band, frame, _copy = self.feature(picture, copy=ink)
+		neutral_placeholders([band], QV, "qv")
+		before = picture["attributes"]["src"]
+		self.assertEqual(repair_contrast([band], QV), [])
+		self.assertEqual(picture["attributes"]["src"], before)
+		self.assertNotIn("backgroundColor", frame["baseStyles"])
+
+	def test_a_photograph_that_is_there_or_on_its_way_is_left_alone(self):
+		for picture in (
+			{"element": "img", "attributes": {"src": "/files/hiver.jpg"}},
+			{"element": "img", "dynamicValues": [{"key": "photo", "property": "src", "type": "key"}]},
+			# the image job has not drawn it yet: the copy is written for what will be there
+			{"element": "img", "attributes": {"src": "https://placehold.co/1200x600/e5e7eb/9ca3af/png"}},
+		):
+			band, frame, copy = self.feature(picture)
+			self.assertEqual(repair_contrast([band], QV), [], picture)
+			self.assertEqual(copy[1]["baseStyles"]["color"], "var(--qv-background)")
+			self.assertNotIn("backgroundColor", frame["baseStyles"])
+
+	def test_copy_that_is_part_dark_is_flipped_not_put_on_a_dark_block(self):
+		copy = [
+			{"element": "h3", "baseStyles": {"color": "var(--qv-background)"}, "innerHTML": "Bouquet de décembre"},
+			{"element": "p", "baseStyles": {"color": "var(--qv-text)"}, "innerHTML": "Poinsettias et houx"},
+		]
+		band, frame, copy = self.feature(self.empty_picture(), copy=copy)
+		self.assertTrue(repair_contrast([band], QV))
+		self.assertNotIn("backgroundColor", frame["baseStyles"])
+		self.assertEqual(copy[0]["baseStyles"]["color"], "var(--qv-text)")
+		self.assertEqual(copy[1]["baseStyles"]["color"], "var(--qv-text)")
+
+	def test_with_no_dark_token_the_copy_is_flipped(self):
+		band, frame, copy = self.feature(self.empty_picture())
+		self.assertTrue(repair_contrast([band], ALL_PALE))
+		self.assertNotIn("backgroundColor", frame["baseStyles"])
+		self.assert_reads(copy, parse_color("#f5e6eb", ALL_PALE), ALL_PALE, ratio=3.0)
 
 
 class TestBriefHeroColours(unittest.TestCase):

@@ -18,6 +18,8 @@ from __future__ import annotations
 import copy
 import re
 
+from builder.site_ai.nora.placeholders import neutral_image, neutral_paint
+
 HEX = re.compile(r"^#([0-9a-fA-F]{3,4}|[0-9a-fA-F]{6}|[0-9a-fA-F]{8})$")
 RGB = re.compile(r"^rgba?\(\s*([\d.]+)\s*,\s*([\d.]+)\s*,\s*([\d.]+)\s*(?:,\s*([\d.]+)\s*)?\)$")
 VAR = re.compile(r"^var\(\s*--([A-Za-z0-9_-]+)\s*(?:,\s*(.+?)\s*)?\)$")
@@ -188,6 +190,168 @@ def repair_contrast(blocks: list[dict], palette: dict[str, str], minimum: float 
     return fixes
 
 
+# //// Neoffice ▼▼▼ — copy written for a photograph that is not there (2026-10-19,
+# //// neoffice-maintenance #1723). _walk assumed a dark photograph under any copy laid over a picture
+# //// and judged nothing. With image generation off the picture is a plain block (placeholders.py), or
+# //// no picture at all (an img the writer left without a src): a florist's shop page kept cream and
+# //// white copy on a pale pink ground, 1.2 to 1.3:1, and was refused after four revisions. Where every
+# //// picture under the copy is plain, the copy is judged on the colour that is really there: laid on
+# //// a dark brand token when all of it was written light, flipped to the ink that reads when it was not.
+PLAIN_SLOT_RATIO = 4.5
+DARK_SLOT_ROLES = ("primary", "accent", "secondary", "text")
+
+
+def _plain_colour(paint: tuple[int, int, str, str | None, float]) -> Color | None:
+    """The flat colour a neutral block shows: its base fill, the wash laid over it."""
+    base = parse_color(paint[2], {})
+    if base is None:
+        return None
+    wash = parse_color(paint[3], {}) if paint[3] else None
+    return composite((wash[0], wash[1], wash[2], paint[4]), base) if wash else base
+
+
+def _picture_state(block: dict) -> tuple[str, Color | None] | None:
+    """What a picture block shows. None: no picture. ("photo", None): a photograph is there, or on
+    its way (a file, a binding, a placehold.co URL the image job will fill), or this cannot be told.
+    ("plain", colour): a plain colour block drawn by placeholders.neutral_image, or (colour None) no
+    picture at all, an img with no src, which paints nothing so the ground shows through."""
+    styles = block.get("baseStyles") or {}
+    attrs = block.get("attributes") or {}
+    if str(block.get("element") or "").lower() == "img":
+        # a block that extends a component, or binds its src to data, has its picture elsewhere
+        if block.get("extendedFromComponent") or block.get("referenceBlockId") or attrs.get("srcset"):
+            return "photo", None
+        if any((d or {}).get("property") in ("src", "srcset") for d in block.get("dynamicValues") or []):
+            return "photo", None
+        src = str(attrs.get("src") or attrs.get("data-src") or "").strip()
+        if not src:
+            return "plain", None
+        paint = neutral_paint(src)
+        colour = _plain_colour(paint) if paint else None
+        return ("plain", colour) if colour is not None else ("photo", None)
+    if styles.get("objectFit"):
+        return "photo", None
+    image = f"{styles.get('backgroundImage') or ''} {styles.get('background') or ''}"
+    if "url(" not in image:
+        return None
+    paints = [neutral_paint(url) for url in re.findall(r"url\(([^)]*)\)", image)]
+    colour = _plain_colour(paints[-1]) if paints and all(paints) else None
+    return ("plain", colour) if colour is not None else ("photo", None)
+
+
+def _own_text(block: dict) -> bool:
+    if any((d or {}).get("property") == "innerHTML" for d in block.get("dynamicValues") or []):
+        return True
+    html = block.get("innerHTML")
+    return isinstance(html, str) and not html.lstrip().lower().startswith("<svg") and bool(re.sub(r"<[^>]+>", "", html).strip())
+
+
+def _copy_inks(holder: dict, fg: Color | None, palette: dict[str, str]) -> list[Color]:
+    """The ink of every piece of copy written over the holder's picture, inheritance resolved. What
+    sits on a surface of its own (a card, a button, a block with a flat background of its own) is
+    read on that surface, and the pictures and scrims hold no copy."""
+    inks: list[Color] = []
+
+    def visit(block: dict, ink: Color | None, top: bool) -> None:
+        styles = block.get("baseStyles") or {}
+        if not top:
+            if _picture_state(block) is not None or _veil(block):
+                return
+            if any(c == "u-card" or c.startswith(("u-card--", "u-btn")) for c in _classes(block)):
+                return
+            own = parse_color(styles.get("backgroundColor") or styles.get("background"), palette)
+            if own is not None and own[3] >= 0.9:
+                return
+        if "color" in styles:
+            ink = parse_color(styles.get("color"), palette)
+        if ink is not None and _own_text(block):
+            inks.append(ink)
+        for child in block.get("children") or []:
+            if isinstance(child, dict):
+                visit(child, ink, False)
+
+    visit(holder, fg, True)
+    return inks
+
+
+def _seen_on(ink: Color, ground: Color) -> float:
+    return contrast(composite(ink, ground) if ink[3] < 1.0 else ink, ground)
+
+
+def _dark_ground(inks: list[Color], palette: dict[str, str], minimum: float) -> tuple[str, Color] | None:
+    """The dark brand token every ink reads on, the brand colour first, then the site's own ink: at
+    the reading ratio when one does, else at the bar. None when no token is dark enough for them all."""
+    for need in dict.fromkeys((max(minimum, PLAIN_SLOT_RATIO), minimum)):
+        for role in DARK_SLOT_ROLES:
+            for name, value in palette.items():
+                if not name.endswith(f"-{role}"):
+                    continue
+                colour = parse_color(value, palette)
+                if colour is None or colour[3] < 1.0 or luminance(colour) > 0.2:
+                    continue
+                if all(_seen_on(ink, colour) >= need for ink in inks):
+                    return f"var(--{name})", colour
+    return None
+
+
+NEUTRAL_DATA = re.compile(r"data:image/svg\+xml;utf8,[^'\")]*")
+
+
+def _redraw_dark(block: dict, colour: Color) -> None:
+    """The neutral block(s) of a picture, drawn again in `colour` at the same size."""
+    hexcolour = "#{:02x}{:02x}{:02x}".format(*(round(v) for v in colour[:3]))
+
+    def redraw(match: re.Match) -> str:
+        paint = neutral_paint(match.group(0))
+        return match.group(0) if paint is None else neutral_image(paint[0], paint[1], {}, "", hexcolour)
+
+    attrs = block.get("attributes") or {}
+    if isinstance(attrs.get("src"), str) and neutral_paint(attrs["src"]):
+        attrs["src"] = NEUTRAL_DATA.sub(redraw, attrs["src"])
+    styles = block.get("baseStyles") or {}
+    for key in ("backgroundImage", "background"):
+        if isinstance(styles.get(key), str) and "data:image/svg+xml" in styles[key]:
+            styles[key] = NEUTRAL_DATA.sub(redraw, styles[key])
+
+
+
+def _settle_plain_slots(
+    block: dict, children: list, ground: Color | None, fg: Color | None, palette: dict[str, str], minimum: float, fixes: list[str]
+) -> Color | None:
+    """The ground under the copy of a block that assumed a photograph, when no photograph is there:
+    every picture of the block (its own background, its children) is a plain block or nothing. None
+    when a photograph is there or on its way (nothing is judged, as before), or no copy is on it."""
+    pictures = [(node, _picture_state(node)) for node in (block, *children) if isinstance(node, dict)]
+    pictures = [(node, state) for node, state in pictures if state is not None]
+    if not pictures or any(state[0] != "plain" for _node, state in pictures):
+        return None
+    painted = [state[1] for _node, state in pictures if state[1] is not None]
+    base = painted[-1] if painted else ground
+    inks = _copy_inks(block, fg, palette) if base is not None else []
+    if not inks:
+        return None
+    if all(_seen_on(ink, base) >= minimum for ink in inks):
+        return base
+    dark = _dark_ground(inks, palette, minimum)
+    if dark is None:
+        # nothing dark reads for all of it (part of it is dark, or the site has no dark token): the
+        # copy is judged on the plain block and takes the ink that reads there
+        return base
+    handle, colour = dark
+    for node, state in pictures:
+        if state[1] is not None:
+            _redraw_dark(node, colour)
+    if not any(node is block and state[1] is not None for node, state in pictures):
+        styles = block.get("baseStyles") or {}
+        if parse_color(styles.get("background"), palette) is not None:
+            styles.pop("background", None)
+        styles["backgroundColor"] = handle
+        block["baseStyles"] = styles
+    fixes.append(f"{block.get('blockName') or block.get('element') or 'block'}: copy written for a photograph, over a plain block -> {handle}")
+    return colour
+
+
+# //// Neoffice ▲▲▲
 def _walk(block: dict, bg: Color | None, fg: Color | None, palette: dict[str, str], minimum: float, fixes: list[str]) -> None:
     styles = block.get("baseStyles") or {}
     # //// Neoffice — lettering filled with a photograph (a transparent text colour over a background
@@ -201,9 +365,14 @@ def _walk(block: dict, bg: Color | None, fg: Color | None, palette: dict[str, st
         styles["color"] = ink
         block["baseStyles"] = styles
         fixes.append(f"{block.get('blockName') or block.get('element') or 'block'}: photo lettering -> {ink}")
+    # //// Neoffice — what the block's own ground is if no photograph is assumed under its copy
+    # //// (_settle_plain_slots, #1723): the colour it inherits, or the flat colour it paints itself
+    ground = bg
+    photographic = False
     if any(c.startswith("u-over-image") for c in _classes(block)):
         # copy laid over a photo: the photo decides, not a flat colour
         bg = None
+        photographic = True
     raw_bg = styles.get("backgroundColor") or styles.get("background")
     if not raw_bg and any(c == "u-card" or c.startswith("u-card--") for c in _classes(block)):
         # //// Neoffice — added branch (e1e04aa0 "fix(contrast): a card wears the chrome's
@@ -222,14 +391,26 @@ def _walk(block: dict, bg: Color | None, fg: Color | None, palette: dict[str, st
             bg = parsed
         else:
             bg = composite(parsed, bg) if bg is not None else None
+        # //// Neoffice — the same reading, without the assumption of a photograph (#1723)
+        if parsed is None:
+            ground = None
+        elif parsed[3] >= 1.0:
+            ground = parsed
+        else:
+            ground = composite(parsed, ground) if ground is not None else None
     if styles.get("backgroundImage"):
         bg = None
+        photographic = True
     children = block.get("children") or []
     if any(_covers_parent(child) for child in children):
         # a section built as photo + overlay + copy: the copy reads on the photo
         bg = None
+        photographic = True
     if "color" in styles:
         fg = parse_color(styles.get("color"), palette)
+    if bg is None and photographic:
+        # //// Neoffice — ... unless the photograph is not there: the copy is judged on what is (#1723)
+        bg = _settle_plain_slots(block, children, ground, fg, palette, minimum, fixes)
     if bg is not None and fg is not None and _has_text(block):
         seen = composite(fg, bg) if fg[3] < 1.0 else fg
         ratio = contrast(seen, bg)

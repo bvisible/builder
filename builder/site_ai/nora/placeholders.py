@@ -13,7 +13,7 @@ Pure functions over the block tree."""
 
 import copy
 import re
-from urllib.parse import quote, unquote_plus
+from urllib.parse import quote, unquote, unquote_plus
 
 from builder.site_ai.nora.layout import _walk
 
@@ -46,6 +46,29 @@ def neutral_image(width: int, height: int, palette: dict, prefix: str, colour: s
     # the quotes of the SVG's attributes are encoded: a slot written as a CSS background sits
     # inside url('…'), which a bare quote would close
     return "data:image/svg+xml;utf8," + quote(svg, safe="/:=<> ,.")
+
+
+# //// Neoffice — added (2026-10-19, neoffice-maintenance #1723): a block drawn by neutral_image read
+# //// back from its data URI. Copy written for a photograph sits on this block once no photograph
+# //// comes, and contrast.py has to know what colour it lands on (and redraw the block when it is light).
+NEUTRAL_URI = re.compile(r"data:image/svg\+xml;utf8,([^'\")]*)")
+NEUTRAL_SIZE = re.compile(r"<svg [^>]*\bwidth='(\d+)' height='(\d+)'")
+NEUTRAL_RECT = re.compile(r"<rect width='100%' height='100%' fill='([^']+)'(?: fill-opacity='([\d.]+)')?/>")
+
+
+def neutral_paint(value: str) -> tuple[int, int, str, str | None, float] | None:
+    """What a block drawn by neutral_image paints, read back from its data URI (an image src, or a CSS
+    url()): (width, height, base fill, wash fill or None, wash opacity). None when `value` holds no
+    such block: a photograph, a logo, any other data URI."""
+    found = NEUTRAL_URI.search(value or "")
+    if not found:
+        return None
+    svg = unquote(found.group(1))
+    size, rects = NEUTRAL_SIZE.search(svg), NEUTRAL_RECT.findall(svg)
+    if not size or not rects or len(rects) > 2:
+        return None
+    wash = rects[1] if len(rects) == 2 else None
+    return int(size.group(1)), int(size.group(2)), rects[0][0], wash[0] if wash else None, float(wash[1] or 1) if wash else 0.0
 
 
 # a placehold.co URL: its size, and the background colour it names when it names one. The
