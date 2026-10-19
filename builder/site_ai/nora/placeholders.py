@@ -12,6 +12,7 @@ outside and looks composed rather than unfinished.
 Pure functions over the block tree."""
 
 import copy
+import json
 import re
 from urllib.parse import quote, unquote, unquote_plus
 
@@ -90,6 +91,18 @@ def is_empty_slot(block: dict) -> bool:
     return not any((d or {}).get("property") in ("src", "srcset") for d in block.get("dynamicValues") or [])
 
 
+def neutral_empty_slots(blocks: list, palette: dict, prefix: str) -> int:
+    """Every img with no src at all becomes the plain block of any other slot, whether image generation
+    is on or off: the image job only draws the placehold.co URLs, and nothing would ever fill it. Returns
+    how many were filled."""
+    filled = 0
+    for block in _walk(blocks):
+        if is_empty_slot(block):
+            block.setdefault("attributes", {})["src"] = neutral_image(*EMPTY_SLOT_SIZE, palette, prefix)
+            filled += 1
+    return filled
+
+
 # a placehold.co URL: its size, and the background colour it names when it names one. The
 # greys handed to the model by default stand for no colour: the site's own takes their place.
 SLOT = re.compile(r"placehold\.co/(\d+)x(\d+)(?:/([0-9a-fA-F]{3,8})(?=[/?&.]|$))?")
@@ -142,7 +155,7 @@ def neutral_placeholders(blocks: list, palette: dict, prefix: str) -> int:
             changed = True
         if is_empty_slot(block):
             block.setdefault("attributes", {})["src"] = neutral_image(*EMPTY_SLOT_SIZE, palette, prefix)
-            changed = True
+            changed = True  # (neutral_empty_slots does the same on its own, with images on)
         for style_key in ("baseStyles", "mobileStyles", "tabletStyles", "rawStyles"):
             styles = block.get(style_key) or {}
             for prop in ("backgroundImage", "background"):
@@ -180,7 +193,21 @@ def neutral_for_render(blocks):
             "render-secondary": palette.get("secondary") or palette.get("primary") or "#c8c2b8",
         }
         data = frappe.parse_json(blocks) if isinstance(blocks, str) else copy.deepcopy(blocks)
-        return data if neutral_placeholders(data if isinstance(data, list) else [data], colours, "render") else blocks
+        listed = data if isinstance(data, list) else [data]
+        if not neutral_placeholders(listed, colours, "render"):
+            return blocks
+        # //// Neoffice — and the stand-in of a photo still to come is dark under copy written light for
+        # //// it, in the tokens of this page's own site (contrast.darken_plain_slots, #1723). A page that
+        # //// is only being shown is rewritten no further than that.
+        try:
+            from builder.site_ai.nora.contrast import darken_plain_slots, page_tokens
+
+            tokens = page_tokens(blocks if isinstance(blocks, str) else json.dumps(blocks), palette)
+            if tokens:
+                darken_plain_slots(listed, tokens)
+        except Exception:
+            frappe.log_error("Placeholders: stand-ins left pale", frappe.get_traceback())
+        return data
     except Exception:
         frappe.log_error("Placeholders: page rendered with its placeholders", frappe.get_traceback())
         return blocks

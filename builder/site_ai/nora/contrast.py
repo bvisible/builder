@@ -173,10 +173,11 @@ def accent_shade(handle: str, fg: Color, bg: Color, minimum: float = MIN_RATIO) 
     return None
 
 
-def repair_contrast(blocks: list[dict], palette: dict[str, str], minimum: float = MIN_RATIO) -> list[str]:
+def repair_contrast(blocks: list[dict], palette: dict[str, str], minimum: float = MIN_RATIO, judge: bool = True) -> list[str]:
     """Rewrite, in place, every text colour that falls under the ratio on its
     resolved background. Returns one line per fix. `palette` maps token ids
-    (without the leading dashes) to their values."""
+    (without the leading dashes) to their values. `judge` False: only the plain slots
+    are repaired (darken_plain_slots), no text colour is judged."""
     fixes: list[str] = []
     # //// Neoffice — a card's surface as the theme draws it: the chrome's --surface-color IS the
     # //// site's background colour, so a card is dark on a dark site. Judged against white, an
@@ -186,8 +187,31 @@ def repair_contrast(blocks: list[dict], palette: dict[str, str], minimum: float 
     default_bg = next((parse_color(v, palette) for k, v in palette.items() if k.endswith("-background")), None) or NAMED["white"]
     default_fg = next((parse_color(v, palette) for k, v in palette.items() if k.endswith("-text")), None) or (26.0, 26.0, 26.0, 1.0)
     for block in blocks or []:
-        _walk(block, default_bg, default_fg, palette, minimum, fixes)
+        _walk(block, default_bg, default_fg, palette, minimum, fixes, judge)
     return fixes
+
+
+# //// Neoffice — added (2026-10-19, #1723): the plain-slot repair alone, for a page that is only being shown
+def darken_plain_slots(blocks: list[dict], palette: dict[str, str], minimum: float = MIN_RATIO) -> list[str]:
+    """What repair_contrast does for copy written for a photograph, and nothing else: the stand-in of a
+    photo still to come (placeholders.neutral_for_render) is drawn dark under copy written light for it.
+    No text colour is judged or rewritten: a page that is only being shown is changed no further than
+    that. Returns one line per slot."""
+    return repair_contrast(blocks, palette, minimum, judge=False)
+
+
+PAGE_TOKEN = re.compile(r"var\(--([A-Za-z0-9]+)-(?:primary|secondary|background|text|accent)\b")
+
+
+def page_tokens(text: str, palette: dict[str, str]) -> dict[str, str]:
+    """The colour tokens of the site a page belongs to, out of a palette that holds those of every
+    site of the instance (placeholders._render_palette): the prefix its own var(--<prefix>-…) names
+    most. {} when it names none, and the page is left as it is."""
+    prefixes = PAGE_TOKEN.findall(text or "")
+    if not prefixes:
+        return {}
+    prefix = max(set(prefixes), key=prefixes.count)
+    return {name: value for name, value in palette.items() if name.startswith(f"{prefix}-")}
 
 
 # //// Neoffice ▼▼▼ — copy written for a photograph that is not there (2026-10-19,
@@ -347,13 +371,13 @@ def _settle_plain_slots(
 
 
 # //// Neoffice ▲▲▲
-def _walk(block: dict, bg: Color | None, fg: Color | None, palette: dict[str, str], minimum: float, fixes: list[str]) -> None:
+def _walk(block: dict, bg: Color | None, fg: Color | None, palette: dict[str, str], minimum: float, fixes: list[str], judge: bool = True) -> None:
     styles = block.get("baseStyles") or {}
     # //// Neoffice — lettering filled with a photograph (a transparent text colour over a background
     # //// clipped to the letters) reads only where the picture is light behind every letter: the
     # //// brand tiles of a black site showed a name in near-black on black (2026-09-14). The letters
     # //// take the ink their band reads in, and the picture stays in its tile.
-    if _photo_lettering(styles):
+    if judge and _photo_lettering(styles):
         for key in LETTERING_KEYS:
             styles.pop(key, None)
         ink = best_text(bg, palette, minimum)[0] if bg is not None else "#ffffff"
@@ -406,7 +430,7 @@ def _walk(block: dict, bg: Color | None, fg: Color | None, palette: dict[str, st
     if bg is None and photographic:
         # //// Neoffice — ... unless the photograph is not there: the copy is judged on what is (#1723)
         bg = _settle_plain_slots(block, children, ground, fg, palette, minimum, fixes)
-    if bg is not None and fg is not None and _has_text(block):
+    if judge and bg is not None and fg is not None and _has_text(block):
         seen = composite(fg, bg) if fg[3] < 1.0 else fg
         ratio = contrast(seen, bg)
         if ratio < minimum:
@@ -423,7 +447,7 @@ def _walk(block: dict, bg: Color | None, fg: Color | None, palette: dict[str, st
             fg = value
             fixes.append(f"{block.get('blockName') or block.get('element') or 'block'}: {ratio:.1f}:1 -> {replacement}")
     for child in children:
-        _walk(child, bg, fg, palette, minimum, fixes)
+        _walk(child, bg, fg, palette, minimum, fixes, judge)
 
 
 # //// Neoffice — see _walk: the keys that paint letters with a picture

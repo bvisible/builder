@@ -402,6 +402,51 @@ class TestCopyOverAPlainSlot(unittest.TestCase):
 		self.assertEqual(copy[1]["baseStyles"]["color"], "var(--qv-background)")
 		self.assertEqual(repair_contrast([band], QV), [])
 
+	def test_an_empty_img_gets_its_plain_block_with_images_on_too(self):
+		from builder.site_ai.nora.placeholders import neutral_empty_slots, neutral_paint
+
+		empty, waiting = self.empty_picture(), self.slot()
+		self.assertEqual(neutral_empty_slots([{"element": "section", "children": [empty, waiting]}], QV, "qv"), 1)
+		self.assertEqual(neutral_paint(empty["attributes"]["src"])[:2], (1200, 600))
+		# a slot waiting for the image job is not an empty one
+		self.assertIn("placehold.co", waiting["attributes"]["src"])
+
+	def test_a_page_being_rendered_only_gets_its_plain_slot_darkened(self):
+		from builder.site_ai.nora.contrast import darken_plain_slots
+		from builder.site_ai.nora.placeholders import neutral_paint, neutral_placeholders
+
+		picture = self.slot()
+		band, _frame, _copy = self.feature(picture)
+		elsewhere = {"element": "p", "baseStyles": {"color": "#ffffff"}, "innerHTML": "Ailleurs"}
+		band["children"].append(elsewhere)
+		neutral_placeholders([band], QV, "qv")
+		self.assertEqual(len(darken_plain_slots([band], QV)), 1)
+		self.assertEqual(neutral_paint(picture["attributes"]["src"])[2], "#5b2a4a")
+		# nothing else of a page that is only being shown is rewritten
+		self.assertEqual(elsewhere["baseStyles"]["color"], "#ffffff")
+
+	def test_the_tokens_of_a_page_are_those_of_its_own_site(self):
+		from builder.site_ai.nora.contrast import page_tokens
+
+		render = {"primary": "#111111", "qv-primary": "#5b2a4a", "qv-text": "#1a1a1a", "ot-primary": "#000000", "ot-text": "#ffffff"}
+		self.assertEqual(page_tokens('[{"baseStyles": {"color": "var(--qv-text)"}}]', render), {"qv-primary": "#5b2a4a", "qv-text": "#1a1a1a"})
+		self.assertEqual(page_tokens('[{"baseStyles": {"color": "red"}}]', render), {})
+
+	def test_a_page_waiting_for_its_photos_is_rendered_with_a_dark_stand_in(self):
+		import json
+
+		from builder.site_ai.nora.placeholders import neutral_for_render, neutral_paint
+
+		band, _frame, _copy = self.feature(self.slot())
+		stored = json.dumps([band])
+		with patch("builder.site_ai.nora.buttons._render_palette", return_value={**QV, "primary": "#111111", "ot-primary": "#000000"}):
+			rendered = neutral_for_render(stored)
+		frame = rendered[0]["children"][0]
+		self.assertEqual(neutral_paint(frame["children"][0]["attributes"]["src"])[2], "#5b2a4a")
+		self.assertEqual(frame["baseStyles"]["backgroundColor"], "var(--qv-primary)")
+		# the stored page keeps its slot for the image job
+		self.assertIn("placehold.co", stored)
+
 	def test_a_neutral_block_under_light_copy_is_redrawn_in_the_dark_token(self):
 		from builder.site_ai.nora.placeholders import neutral_paint, neutral_placeholders
 
