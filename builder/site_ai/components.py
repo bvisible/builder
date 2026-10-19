@@ -420,11 +420,13 @@ def sync_registry() -> dict:
 			stale.append(row.name)
 
 	done = {"added": 0, "updated": 0, "removed": 0, "failed": 0}
-	for path, row in wanted.items():
+	for index, (path, row) in enumerate(wanted.items()):
 		name = row["shortcode_name"]
-		savepoint = f"registry_{frappe.scrub(name)}"[:60]
+		# a fixed identifier: a savepoint named after the label broke on "The company's timeline" (an apostrophe), and the
+		# guard that was meant to survive a bad row failed with it
+		savepoint = f"registry_row_{index}"
+		frappe.db.savepoint(savepoint)
 		try:
-			frappe.db.savepoint(savepoint)
 			current = kept.get(path)
 			if current is None:
 				frappe.get_doc(dict(row, doctype=REGISTRY)).insert(ignore_permissions=True)
@@ -442,7 +444,10 @@ def sync_registry() -> dict:
 				doc.save(ignore_permissions=True)
 				done["updated"] += 1
 		except Exception:
-			frappe.db.rollback(save_point=savepoint)
+			try:
+				frappe.db.rollback(save_point=savepoint)
+			except Exception:
+				pass
 			done["failed"] += 1
 			frappe.log_error(f"Builder Shortcode: {name[:100]}", f"sync_registry could not write this row:\n\n{frappe.get_traceback()}")
 	for name in stale:
