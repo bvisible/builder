@@ -1,4 +1,5 @@
 import vue from "@vitejs/plugin-vue";
+import frameworkUI from "@framework/ui/vite";
 import frappeui from "frappe-ui/vite";
 import path from "path";
 import { defineConfig } from "vite";
@@ -25,6 +26,9 @@ export default defineConfig({
 				source: "^/(app|desk|login|api|assets|files|pages|builder_assets)",
 			},
 			lucideIcons: true,
+			// this app brings its own @codemirror/lang-* packages and never imports
+			// frappe-ui/code-editor, so the language-stubbing plugin has nothing to do
+			codeLanguages: false,
 			frappeTypes: {
 				input: {
 					builder: [
@@ -44,6 +48,7 @@ export default defineConfig({
 			},
 		}),
 		vue(),
+		frameworkUI(),
 	],
 	build: {
 		chunkSizeWarningLimit: 1500,
@@ -75,6 +80,6 @@ export default defineConfig({
 		},
 	},
 	optimizeDeps: {
-		include: ["frappe-ui > feather-icons", "engine.io-client", "interactjs", "highlight.js/lib/core"],
+		include: ["engine.io-client", "highlight.js/lib/core"],
 	},
 });

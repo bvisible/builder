@@ -165,7 +165,7 @@ class TestBuilderUtils(FrappeTestCase):
 		execute_script("data.sum = a + b", {"data": data, "a": 2, "b": 2}, "test.py")
 		self.assertEqual(data.sum, 4)
 
-	# //// Neoffice — test of frappe/builder#745, taken with it.
+
 	def test_execute_script_can_translate(self):
 		data = frappe._dict({})
 		execute_script('data.text = _("Supplier")', {"data": data}, "test.py")

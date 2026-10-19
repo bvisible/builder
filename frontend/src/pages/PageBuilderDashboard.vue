@@ -46,10 +46,10 @@ import { startSiteCreation } from "@/composables/useSiteCreation";
 import { useRoute } from "vue-router";
 import { builderSettings } from "@/data/builderSettings";
 import router, { sessionUser } from "@/router";
-import { prefetchBuilderSettings } from "@/utils/prefetch";
+import { prefetchBuilderSettings, prefetchTemplateGallery } from "@/utils/prefetch";
 //// Neoffice — for the Settings dialog above (575f427e).
 import { Dialog } from "frappe-ui";
-import { useTelemetry } from "frappe-ui/frappe";
+import { useTelemetry } from "@framework/ui/telemetry";
 //// Neoffice — moved here with the dialog, together with defineAsyncComponent for BuilderSettings
 //// (575f427e).
 import { DialogDescription, DialogTitle } from "reka-ui";
@@ -61,9 +61,10 @@ const { showSettingsDialog, settingsTab } = useDashboardState();
 const telemetry = useTelemetry();
 const route = useRoute(); //// Neoffice — read by the ?chat= entry below
 
-onMounted(prefetchBuilderSettings);
-//// Neoffice — see the import above.
 onMounted(() => {
+	prefetchBuilderSettings();
+	prefetchTemplateGallery();
+	//// Neoffice — the ?chat= entry from the desk shortcut (see the import above).
 	if (route.query.chat) startSiteCreation();
 });
 // Dev benches have telemetry (and thus the survey) off; ?persona_survey=test forces the redirect.

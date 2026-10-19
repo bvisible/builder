@@ -104,6 +104,9 @@ def merge_attributes(block: dict, attrs: dict) -> None:
 	# Same standard/custom split the editor applies (toolDispatch.applyBlockUpdate).
 	for key, value in attrs.items():
 		target = "attributes" if key in STANDARD_ATTRS else "customAttributes"
+		if target == "attributes":
+			# An older write may have filed it as custom, where it would shadow this one.
+			block.get("customAttributes", {}).pop(key, None)
 		if value is None:
 			block.get(target, {}).pop(key, None)
 		else:
@@ -393,7 +396,7 @@ class WorkingTree:
 			return args, f"FAILED: {bad} — {BAD_BIND_HINT}"
 		if fields := moustache_fields(args):
 			return args, f"FAILED: {fields} — {MOUSTACHE_HINT}"
-		# //// Neoffice — frappe/builder#823, taken ahead of upstream (open on 2026-09-14)
+
 		if self.rejects_client_script(block, args):
 			return args, f"FAILED: {CLIENT_SCRIPT_HINT}"
 		return self.route_props(block, args)
@@ -424,14 +427,14 @@ class WorkingTree:
 			declared = ", ".join(sorted(set(pinned) | set(live)))
 			return args, (
 				f"FAILED: props {unknown} — this component declares only: {declared}. Use a "
-				# //// Neoffice — frappe/builder#823, taken ahead of upstream (open on 2026-09-14)
+
 				"declared name; a genuinely new prop is declared with edit_component (props on "
 				"the component's root), not through an instance."
 			)
 		merge_props(owner, props, pinned=pinned, live=live)
 		return {k: v for k, v in args.items() if k != "props"}, ""
 
-	# //// Neoffice — frappe/builder#823, taken ahead of upstream (open on 2026-09-14)
+
 	def rejects_client_script(self, block: dict, args: dict) -> bool:
 		return client_script_outside_component(block, args)
 
@@ -525,7 +528,7 @@ class WorkingTree:
 		# chain edits onto the block it just added.
 		args["block_json"] = block
 		return f"Added block {block.get('blockId')} (<{block.get('element')}>) under {parent_id}."
-# //// Neoffice — frappe/builder#823, taken ahead of upstream (open on 2026-09-14)
+
 
 
 class ComponentTree(WorkingTree):

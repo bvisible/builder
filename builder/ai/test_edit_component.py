@@ -1,5 +1,4 @@
-# //// Neoffice — added with frappe/builder#823 (open on 2026-09-14), taken ahead of upstream: the tests
-# //// of edit_component. Drop this header at the merge that brings the PR.
+
 from types import SimpleNamespace
 
 import frappe

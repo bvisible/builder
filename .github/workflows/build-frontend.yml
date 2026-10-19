@@ -37,6 +37,19 @@ jobs:
           cache: yarn
           cache-dependency-path: yarn.lock
 
+      # //// Neoffice — upstream v1.35 builds the editor against @framework/ui, a package that lives
+      # //// in frappe's own repository (ui/) and is linked from the folder beside this checkout
+      # //// (frontend/package.json: link:../../frappe/ui; yarn.lock: link:../frappe/ui). A bench has it
+      # //// at apps/frappe/ui; a CI checkout has nothing there, so frappe's version-15 branch (the
+      # //// branch that carries ui/) is fetched, only that folder. Our frappe fork does not carry
+      # //// ui/ yet, hence the upstream repository. Drop this step once it does.
+      - name: Fetch @framework/ui (frappe/ui)
+        run: |
+          git clone --depth 1 --filter=blob:none --sparse --branch version-15 \
+            https://github.com/frappe/frappe.git "${GITHUB_WORKSPACE}/../frappe"
+          git -C "${GITHUB_WORKSPACE}/../frappe" sparse-checkout set ui
+          test -f "${GITHUB_WORKSPACE}/../frappe/ui/package.json"
+
       - name: Install (workspace)
         run: yarn install --frozen-lockfile
 

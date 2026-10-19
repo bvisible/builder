@@ -1,15 +1,17 @@
+// first: in the editor demo it also walls off the site's storage before anything reads it
+import "./setupFrappeUIResource";
 import { createApp } from "vue";
 
 import { Button, FormControl, FrappeUI } from "frappe-ui";
-import { telemetryPlugin } from "frappe-ui/frappe";
+import { telemetryPlugin } from "@framework/ui/telemetry";
 import { createPinia } from "pinia";
 import "./index.css";
 import router from "./router";
-import "./setupFrappeUIResource";
 import translationPlugin, { ensureTranslations } from "./translation";
 
 import App from "@/App.vue";
 import Input from "@/components/Controls/Input.vue";
+import { editorDemo } from "@/utils/editorDemo";
 
 const app = createApp(App);
 const pinia = createPinia();
@@ -21,13 +23,16 @@ app.use(pinia);
 ensureTranslations().then(() => {
 	app.use(router);
 	app.use(FrappeUI);
-	//// Neoffice — the plugin's boot call (frappe.utils.telemetry.pulse) only exists on frappe
-	//// v16; the boot flag (builder/www/_builder.py) keeps a v15 bench from logging a 417 on
-	//// every load. Drop the guard with the flag once the fleet is on v16.
-	if ((window as any).telemetry_pulse) app.use(telemetryPlugin, { app_name: "builder" });
+	if (!editorDemo) {
+		//// Neoffice — the plugin's boot call (frappe.utils.telemetry.pulse) only exists on frappe
+		//// v16; the boot flag (builder/www/_builder.py) keeps a v15 bench from logging a 417 on
+		//// every load. Drop the guard with the flag once the fleet is on v16.
+		if ((window as any).telemetry_pulse) app.use(telemetryPlugin, { app_name: "builder" });
+		// the demo runs inside the published page, where these names would capture its edit link
+		window.name = "frappe-builder";
+	}
 	app.use(translationPlugin);
 
-	window.name = "frappe-builder";
 	app.config.globalProperties.window = window;
 
 	app.component("Button", Button);

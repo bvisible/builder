@@ -25,8 +25,8 @@
 				'--canvas-scale': canvasProps.scale,
 				colorScheme: builderStore.canvasDarkMode ? 'dark' : 'light',
 			}">
-			<div class="absolute right-0 top-[-60px] flex rounded-md bg-surface-base px-3">
-				<Tooltip :text="__('Toggle Canvas Dark Mode (⌘⇧D)')" :hoverDelay="0.6">
+			<div class="absolute right-0 top-[-60px] flex rounded-5 bg-surface-base px-3">
+				<Tooltip :text="__('Toggle Canvas Dark Mode (⌘⇧D)')" :hoverDelay="600">
 					<div
 						v-show="!canvasProps.scaling && !canvasProps.panning"
 						class="w-auto cursor-pointer p-2"
@@ -68,7 +68,7 @@
 				v-show="breakpoint.visible"
 				:key="breakpoint.device">
 				<div
-					class="absolute left-0 cursor-pointer select-none text-4xl text-ink-gray-7"
+					class="absolute left-0 cursor-pointer select-none text-3xl text-ink-gray-7"
 					:style="{
 						fontSize: `calc(${12}px * 1/${canvasProps.scale})`,
 						top: `calc(${-20}px * 1/${canvasProps.scale})`,
@@ -129,15 +129,16 @@
 				</div>
 			</div>
 		</div>
+		<!-- isolate keeps editor z-indexes from lifting handles above the side panels -->
 		<div
-			class="overlay absolute"
+			class="overlay absolute isolate"
 			:class="{ 'pointer-events-none': isOverDropZone }"
 			id="overlay"
 			ref="overlay" />
 		<div v-show="marquee.visible" class="pointer-events-none fixed z-[200]" :style="marqueeStyle" />
 		<DropIndicator />
 		<div
-			class="text-sm-semibold fixed bottom-12 left-[50%] flex translate-x-[-50%] cursor-default items-center justify-center gap-2 rounded-lg bg-surface-base px-3 py-2 text-center text-ink-gray-7 shadow-md"
+			class="text-sm-semibold fixed bottom-12 left-[50%] flex translate-x-[-50%] cursor-default items-center justify-center gap-2 rounded-6 bg-surface-base px-3 py-2 text-center text-ink-gray-7 shadow-md"
 			v-show="!canvasProps.panning && !canvasStore.isDragging">
 			{{ Math.round(canvasProps.scale * 100) + "%" }}
 			<div class="ml-2 cursor-pointer" @click="setScaleAndTranslate">
@@ -316,6 +317,8 @@ const {
 	selectBlockRange,
 	selectedBlockIds,
 	isSelected,
+	selectBlock,
+	removeNestedBlocks,
 	toggleBlockSelection,
 	selectedBlocks,
 } = useBlockSelection(block);
@@ -367,12 +370,11 @@ const {
 	clearCanvas,
 	getRootBlock,
 	setRootBlock,
-	selectBlock,
 	scrollBlockIntoView,
 	removeBlock,
 	findBlock,
 	isDirty,
-} = useCanvasUtils(canvasProps, canvasContainer, canvas, block, selectedBlockIds, history);
+} = useCanvasUtils(canvasProps, canvasContainer, canvas, block, selectedBlockIds, selectBlock, history);
 
 const { followBuildEdge, followBlock } = useBuildFollow(canvasProps, canvasContainer, canvas);
 
@@ -382,7 +384,9 @@ const { marquee, marqueeStyle, suppressNextClick, handleMarqueeStart, cleanupMar
 		canvasProps,
 		activeBreakpoint,
 		selectedBlockIds,
+		selectedBlocks,
 		findBlock,
+		removeNestedBlocks,
 		setActiveBreakpoint,
 		setHoveredBreakpoint,
 	});
@@ -584,7 +588,7 @@ function emulateBlockClientScript(script: BlockClientScriptRuntime) {
 	const selector = `[data-builder-canvas="${canvasId}"] [data-block-uid="${escapeAttributeValue(
 		script.key,
 	)}"][data-breakpoint="${escapeAttributeValue(script.breakpoint)}"]`;
-	blockStyles.set(registrationKey, script.css ? `${selector} { ${script.css} }` : "");
+	blockStyles.set(registrationKey, script.css ? `@scope (${selector}) { ${script.css} }` : "");
 
 	const mode = builderSettings.doc?.execute_block_scripts_in_editor ?? "Restricted";
 	let cleanup = () => {};

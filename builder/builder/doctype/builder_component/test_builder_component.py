@@ -1,12 +1,11 @@
 # Copyright (c) 2023, asdf and Contributors
 # See license.txt
 
-# //// Neoffice — frappe/builder#823, taken ahead of upstream (open on 2026-09-14)
 import frappe
 from frappe.tests.utils import FrappeTestCase
 
-# //// Neoffice — frappe/builder#823, taken ahead of upstream (open on 2026-09-14)
 from builder.builder.component_versions import ensure_component_version, resolve_component
+from builder.builder.doctype.builder_component.builder_component import get_component_data
 
 
 def header_block(title: str) -> str:
@@ -48,7 +47,6 @@ def rendered_title(component_id: str, blocks: str) -> str:
 
 
 class TestBuilderComponent(FrappeTestCase):
-	# //// Neoffice — frappe/builder#823, taken ahead of upstream (open on 2026-09-14)
 	def test_sync_repins_pages_to_the_latest_version(self):
 		component = make_component("Old")
 		page = make_page(component)
@@ -70,3 +68,13 @@ class TestBuilderComponent(FrappeTestCase):
 		self.assertEqual(
 			frappe.db.get_value("Builder Component", component.name, "block"), header_block("Three")
 		)
+
+	def test_a_page_using_a_data_script_is_not_served_from_the_page_cache(self):
+		component = make_component("Data")
+		component.db_set("component_data_script", "component.count = 1")
+		frappe.local.no_cache = 0
+		self.addCleanup(setattr, frappe.local, "no_cache", 0)
+
+		get_component_data(component.name)
+
+		self.assertTrue(frappe.local.no_cache)

@@ -3,7 +3,8 @@ import useCanvasStore from "@/stores/canvasStore";
 import { __ } from "@/translation";
 import { BuilderPage } from "@/types/doctypes";
 import getBlockTemplate from "@/utils/blockTemplate";
-import { dialog, FileUploadHandler, toast } from "frappe-ui";
+import { editorDemo } from "@/utils/editorDemo";
+import { dialog, FileUploadHandler, toast, type DialogSize, type DialogTheme } from "frappe-ui";
 import { reactive, toRaw } from "vue";
 import { getRGB, HexToHSV, HSVToHex } from "./colors";
 import {
@@ -27,10 +28,8 @@ async function confirm(message: string, title: string = __("Confirm")): Promise<
 		showDialog({
 			title,
 			message,
-			icon: {
-				name: "alert-circle",
-				appearance: "warning",
-			},
+			icon: "lucide-alert-circle",
+			theme: "amber",
 			actions: [
 				{
 					label: __("Cancel"),
@@ -69,6 +68,16 @@ function getTextContent(html: string | null) {
 
 function isHTMLString(str: string) {
 	return /<[a-z][\s\S]*>/i.test(str);
+}
+
+/** Escape a value for safe use in an HTML string.*/
+function escapeHtml(value: string) {
+	return value
+		.replace(/&/g, "&amp;")
+		.replace(/</g, "&lt;")
+		.replace(/>/g, "&gt;")
+		.replace(/"/g, "&quot;")
+		.replace(/'/g, "&#39;");
 }
 
 function copyToClipboard(text: string | object, e: ClipboardEvent, copyFormat = "text/plain") {
@@ -346,6 +355,10 @@ function getRouteVariables(route: string) {
 }
 
 async function uploadBuilderAsset(file: File, silent = false) {
+	if (editorDemo) {
+		// the demo has no server to upload to, so the image lives only in this tab
+		return { fileURL: URL.createObjectURL(file), fileName: file.name };
+	}
 	const uploader = new FileUploadHandler();
 	let fileDoc = {
 		file_url: "",
@@ -660,21 +673,21 @@ interface DialogAction {
 interface DialogOptions {
 	title?: string;
 	message: string;
-	icon?: {
-		name: string;
-		appearance?: "warning" | "info" | "danger" | "success";
-	};
+	/** a `lucide-*` class name; the theme colours it */
+	icon?: string;
+	theme?: DialogTheme;
 	actions?: DialogAction[];
-	size?: "xs" | "sm" | "md" | "lg" | "xl" | "2xl" | "3xl" | "4xl" | "5xl" | "6xl" | "7xl";
+	size?: DialogSize;
 }
 
 function showDialog(options: DialogOptions): Promise<void> {
-	const appearanceToTheme = { warning: "yellow", info: "blue", danger: "red", success: "green" } as const;
 	return new Promise((resolve) => {
 		dialog.confirm({
 			title: options.title || "",
 			message: options.message,
 			size: options.size || "md",
+			icon: options.icon,
+			theme: options.theme,
 			actions: (options.actions || []).map((action) => ({
 				label: action.label,
 				variant: action.variant ?? "subtle",
@@ -686,9 +699,6 @@ function showDialog(options: DialogOptions): Promise<void> {
 				},
 			})),
 			onCancel: () => resolve(),
-			...(options.icon
-				? { icon: options.icon.name, theme: appearanceToTheme[options.icon.appearance ?? "info"] }
-				: {}),
 		});
 	});
 }
@@ -956,6 +966,15 @@ function getPageUsageMessage(count: number) {
 	return count === 1 ? __("used in 1 page") : __("used in {0} pages", [count]);
 }
 
+// frappe-ui puts the server's text in `messages`; `message` is just "<url> <exc_type>"
+function getErrorMessage(error: unknown, fallback = __("Something went wrong")): string {
+	if (typeof error !== "object" || !error) return fallback;
+	const first = "messages" in error && Array.isArray(error.messages) ? error.messages[0] : null;
+	const text = typeof first === "string" ? first.replace(/<[^>]*>/g, "").trim() : "";
+	if (text) return text;
+	return ("message" in error && typeof error.message === "string" && error.message) || fallback;
+}
+
 function parseJSONWithFallback<T>(value: T | string | undefined, fallback: T): T {
 	if (value === undefined || value === null || value === "") {
 		return fallback;
@@ -983,6 +1002,7 @@ export {
 	deepEqual,
 	detachBlockFromComponent,
 	diffArray,
+	escapeHtml,
 	extractComponentId,
 	extractNumberAndUnit,
 	findNearestSiblingIndex,
@@ -997,6 +1017,7 @@ export {
 	getDataArray,
 	getDataForKey,
 	getDefaultPropsList,
+	getErrorMessage,
 	getImageBlock,
 	getNumberFromPx,
 	getPageUsageMessage,

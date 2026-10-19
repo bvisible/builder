@@ -57,7 +57,7 @@ def run_extract_component(ctx, args: dict) -> str:
 	return (
 		f"Extracted '{name}' as Builder Component {component_id}; the block is now an instance of it. "
 		f"Embed it on any page as a block {{el: div, component: {component_id}}} — its inner blocks are "
-		# //// Neoffice — frappe/builder#823, taken ahead of upstream (open on 2026-09-14)
+
 		f"no longer page blocks, so later changes to it go through the component "
 		f"(edit_component), not block edits."
 	)
@@ -84,7 +84,7 @@ def create_component_doc(name: str, block: dict) -> str:
 	return component_id
 
 
-# //// Neoffice — frappe/builder#823, taken ahead of upstream (open on 2026-09-14)
+
 EDIT_OPS = ("update_block", "update_blocks", "add_block", "remove_block", "move_block")
 
 
@@ -202,5 +202,5 @@ extract_component_tool = Tool(
 	handler=run_extract_component,
 )
 
-# //// Neoffice — frappe/builder#823, taken ahead of upstream (open on 2026-09-14)
+
 TOOLS = [extract_component_tool, edit_component_tool]

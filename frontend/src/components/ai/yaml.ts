@@ -1,11 +1,19 @@
-// @ts-ignore
-import yaml from "js-yaml";
+import * as yaml from "js-yaml";
 import { lucideSVG } from "./lucideIcon";
 import { normalizeStyles } from "./normalizeStyles";
 import type { ChatMessage } from "./types";
 
 /** HTML attributes that map to first-class Block attributes (vs. customAttributes). */
-export const STANDARD_ATTRS = new Set(["src", "alt", "href", "title", "value", "type", "placeholder"]);
+export const STANDARD_ATTRS = new Set([
+	"src",
+	"darkSrc",
+	"alt",
+	"href",
+	"title",
+	"value",
+	"type",
+	"placeholder",
+]);
 
 //// Neoffice — the properties a `bind` sets as CSS (mirrors page_writer.STYLE_BINDINGS). Width and
 //// height stay attributes: they are an image's own.

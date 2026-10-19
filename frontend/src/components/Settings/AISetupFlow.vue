@@ -17,7 +17,7 @@
 					Builder needs somewhere to send its requests. Pick who you already have an account with.
 				</p>
 			</div>
-			<div v-if="loadError" class="rounded-lg bg-surface-red-1 p-3 text-p-sm text-ink-red-6">
+			<div v-if="loadError" class="rounded-6 bg-surface-red-1 p-3 text-p-sm text-ink-red-6">
 				{{ loadError }}
 			</div>
 			<p v-else-if="loading" class="text-p-sm text-ink-gray-5">Loading providers…</p>
@@ -29,7 +29,7 @@
 				<button
 					v-for="preset in presets"
 					:key="preset.id"
-					class="group flex flex-col gap-1 rounded-lg border p-3.5 text-left transition-colors"
+					class="group flex flex-col gap-1 rounded-6 border p-3.5 text-left transition-colors"
 					:class="
 						preset.configured
 							? 'border-outline-gray-2 bg-surface-gray-1 hover:border-outline-gray-3'
@@ -168,7 +168,7 @@
 				<div
 					v-for="m in active.models"
 					:key="m.model_id"
-					class="ai-model-row cursor-pointer rounded-lg border p-3 transition-colors"
+					class="ai-model-row cursor-pointer rounded-6 border p-3 transition-colors"
 					:class="
 						selected.includes(m.model_id)
 							? 'border-outline-gray-4 bg-surface-gray-2'
@@ -235,6 +235,7 @@
 
 <script setup lang="ts">
 import { reloadAIRegistry } from "@/data/aiModels";
+import { getErrorMessage } from "@/utils/helpers";
 import { Badge, Button, Checkbox, createResource, FormControl, TabButtons, toast } from "frappe-ui";
 import { computed, onMounted, onUnmounted, ref } from "vue";
 
@@ -343,7 +344,7 @@ const load = async () => {
 	} catch (error) {
 		// Without this the screen renders its heading over an empty grid and says
 		// nothing, which reads as "there are no providers" rather than "it broke".
-		loadError.value = (error as Error).message || "Could not load the provider list.";
+		loadError.value = getErrorMessage(error, "Could not load the provider list.");
 	} finally {
 		loading.value = false;
 	}
@@ -414,7 +415,7 @@ const verify = async () => {
 		result.value = {
 			success: false,
 			severity: "error",
-			message: (error as Error).message || "Could not reach the provider",
+			message: getErrorMessage(error, "Could not reach the provider"),
 		};
 	} finally {
 		busy.value = false;
@@ -430,7 +431,7 @@ const signIn = async () => {
 		oauthStatus.value = "waiting";
 		pollTimer = window.setInterval(pollLogin, 2500);
 	} catch (error) {
-		loginFailed((error as Error).message || "Could not start the sign-in");
+		loginFailed(getErrorMessage(error, "Could not start the sign-in"));
 	}
 };
 
@@ -456,7 +457,7 @@ const connectPasted = async () => {
 		if (res.status === "connected") loginDone();
 		else loginFailed(res.message || "Could not complete the sign-in");
 	} catch (error) {
-		loginFailed((error as Error).message || "Could not complete the sign-in");
+		loginFailed(getErrorMessage(error, "Could not complete the sign-in"));
 	} finally {
 		busy.value = false;
 	}
@@ -511,7 +512,7 @@ const finish = async () => {
 		}
 		emit("done");
 	} catch (error) {
-		toast.error((error as Error).message || "Could not save the provider");
+		toast.error(getErrorMessage(error, "Could not save the provider"));
 	} finally {
 		busy.value = false;
 	}
