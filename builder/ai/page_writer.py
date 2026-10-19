@@ -286,6 +286,32 @@ def rename_item_bindings(node, renames: dict) -> None:
 			rename_item_bindings(value, renames)
 
 
+# //// Neoffice — added: a repeater written flat (`el: repeat` with data/items/item beside it) is a
+# //// repeater, not an empty block named "repeat" (2026-10-19): see adopt_flat_repeater.
+FLAT_REPEATER_ELEMENTS = frozenset({"repeat", "repeater", "loop", "each", "for"})
+
+
+def adopt_flat_repeater(node: dict, taken=()) -> bool:
+	"""A repeater written flat: `el: repeat` (or any element) with `data`, `items` and `item` as
+	siblings of `el`, instead of `repeat: {data, items, item}` under a div. The block builder reads
+	only `repeat`, so the section announced its content and showed an empty block named `repeat`: a
+	page refused after four revisions for "content that never appears" (2026-10-19, with the local
+	27B model, on two pages of three; the revision cannot cure what the model does not see). The
+	three keys move under `repeat`, an element that is not an HTML tag becomes a div, and a repeater
+	with no `data` is named after the block (or `items`) without colliding with another."""
+	if isinstance(node.get("repeat"), dict) or not isinstance(node.get("item"), dict):
+		return False
+	if "items" not in node and "data" not in node:
+		return False
+	repeat = {key: node.pop(key) for key in ("data", "items", "item") if key in node}
+	if not repeat.get("data"):
+		repeat["data"] = python_identifier(node.get("name") or "items", taken=taken)
+	node["repeat"] = repeat
+	if str(node.get("el") or "").strip().lower() in FLAT_REPEATER_ELEMENTS:
+		node["el"] = "div"
+	return True
+
+
 def normalise_repeaters(parsed) -> int:
 	"""Rename, in the parsed YAML, every repeater key and item field that is not a Python
 	identifier, in the data and in the bindings that read it. Returns how many names changed."""
@@ -300,6 +326,10 @@ def normalise_repeaters(parsed) -> int:
 			return
 		if not isinstance(node, dict):
 			return
+		# //// Neoffice — a repeater written flat is moved under `repeat` before anything reads it
+		# //// (adopt_flat_repeater)
+		if adopt_flat_repeater(node, taken=set(keys.values())):
+			changed += 1
 		rep = node.get("repeat")
 		if isinstance(rep, dict) and rep.get("data"):
 			raw = strip_binding_prefix(rep["data"])

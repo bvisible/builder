@@ -574,3 +574,89 @@ class TestPhoneHeadings(unittest.TestCase):
 		paragraph = {"element": "p", "baseStyles": {"fontSize": "4rem"}}
 		self.assertEqual(typography.shrink_phone_headings([paragraph]), 0)
 		self.assertNotIn("mobileStyles", paragraph)
+
+
+FLAT_PAGE = """
+el: div
+name: body
+c:
+  - el: repeat
+    classes: [u-grid, u-grid--3]
+    data: steps
+    items:
+      - {num: '01', title: Demande}
+      - {num: '02', title: Dispatch}
+    item:
+      el: div
+      c:
+        - el: h3
+          bind: {innerHTML: title}
+"""
+
+
+class TestFlatRepeaters(unittest.TestCase):
+	def test_a_repeater_written_flat_becomes_a_repeater(self):
+		blocks, script = pw.expand_page_yaml(FLAT_PAGE)
+		repeater = blocks[0]["children"][0]
+		self.assertEqual(repeater["element"], "div")  # was an empty block named "repeat"
+		self.assertTrue(repeater["isRepeaterBlock"])
+		self.assertEqual(repeater["dataKey"]["key"], "steps")
+		self.assertEqual(repeater["classes"], ["u-grid", "u-grid--3"])
+		self.assertEqual(len(repeater["children"]), 1)
+		compile(script, "<data script>", "exec")
+		self.assertTrue(script.startswith("data.steps = "))
+		self.assertEqual(
+			[row["title"] for row in json.loads(script.split(" = ", 1)[1])], ["Demande", "Dispatch"]
+		)
+
+	def test_the_flat_keys_leave_the_element(self):
+		parsed = {
+			"el": "section",
+			"items": [{"who": "X"}],
+			"item": {"el": "p", "text": "{{ item.who }}"},
+			"name": "team members",
+		}
+		self.assertTrue(pw.adopt_flat_repeater(parsed))
+		self.assertEqual(parsed["el"], "section")  # a real tag stays
+		self.assertNotIn("items", parsed)
+		self.assertNotIn("item", parsed)
+		self.assertEqual(parsed["repeat"]["data"], "team_members")  # named after the block
+
+	def test_two_unnamed_flat_repeaters_do_not_share_their_data(self):
+		page = {
+			"el": "div",
+			"c": [
+				{"el": "repeat", "items": [{"a": 1}], "item": {"el": "p"}},
+				{"el": "repeat", "items": [{"b": 2}], "item": {"el": "p"}},
+			],
+		}
+		pw.normalise_repeaters(page)
+		self.assertEqual([c["repeat"]["data"] for c in page["c"]], ["items", "items_2"])
+
+	def test_a_flat_repeater_obeys_the_naming_rule_too(self):
+		page = {
+			"el": "div",
+			"c": [
+				{
+					"el": "repeat",
+					"data": "event-services",
+					"items": [{"event-title": "Z"}],
+					"item": {"el": "p"},
+				}
+			],
+		}
+		pw.normalise_repeaters(page)
+		self.assertEqual(page["c"][0]["repeat"]["data"], "event_services")
+		self.assertIn("event_title", page["c"][0]["repeat"]["items"][0])
+
+	def test_what_is_not_a_flat_repeater_is_left_alone(self):
+		ordinary = {"el": "div", "c": [{"el": "p", "text": "x"}]}
+		self.assertFalse(pw.adopt_flat_repeater(ordinary))
+		already = {
+			"el": "div",
+			"repeat": {"data": "a", "items": [], "item": {"el": "p"}},
+			"item": {"el": "p"},
+		}
+		self.assertFalse(pw.adopt_flat_repeater(already))
+		no_template = {"el": "repeat", "items": [{"a": 1}]}
+		self.assertFalse(pw.adopt_flat_repeater(no_template))
