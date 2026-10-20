@@ -289,6 +289,16 @@ def build_form_script(selector: str, web_form: str, fieldnames: list) -> str:
 	the stock accept endpoint. Robust to a form with no name attrs or class."""
 	import json
 
+	# //// Neoffice — where the site keeps forms (the theme is installed), a connected form sends its fields through the
+	# //// one door of the site's forms, with the token and the traps of the contact form, and not to the open Web
+	# //// Form of Frappe (ten requests a minute, nothing else). 2026-10-20, neoffice-maintenance#1593.
+	from builder import site_forms
+
+	if site_forms.available():
+		from builder.site_ai.config import get_assistant_name
+
+		return site_forms.guarded_form_script(selector, web_form, fieldnames, get_assistant_name())
+
 	sel = json.dumps(selector or "")
 	wf = json.dumps(web_form)
 	fields = json.dumps(fieldnames)

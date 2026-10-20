@@ -43,3 +43,4 @@ builder.builder.patches.add_page_top_fields # //// Neoffice — the top page's p
 builder.builder.patches.drop_legacy_form_templates # //// Neoffice — forms that post nowhere (#1593, 2026-10-17)
 builder.builder.patches.drop_builder_ai_shortcode # //// Neoffice — the orphan child table of the dropped AI Settings (#1593, 2026-10-20)
 builder.builder.patches.drop_legacy_ai_tables # //// Neoffice — the five tables the legacy-AI drop patches left behind (2026-10-20)
+builder.builder.patches.rewire_connected_forms # //// Neoffice — the forms the assistant connected go through the site's one door (#1593, 2026-10-20)

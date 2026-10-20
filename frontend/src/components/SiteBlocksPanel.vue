@@ -51,7 +51,7 @@
 					variant="subtle"
 					class="mt-2 w-full"
 					data-testid="edit-this-form"
-					@click="editForm(selectedFormName)">
+					@click="openFormDialog(selectedFormName)">
 					{{ __("Edit the questions of this form") }}
 				</Button>
 			</template>
@@ -104,7 +104,7 @@
 						<span class="block truncate text-p-sm font-medium text-ink-gray-8">{{ form.title }}</span>
 						<span v-if="!form.enabled" class="text-p-xs text-ink-gray-5">{{ __("switched off") }}</span>
 					</div>
-					<Button size="sm" variant="ghost" @click="editForm(form.name)">{{ __("Edit") }}</Button>
+					<Button size="sm" variant="ghost" @click="openFormDialog(form.name)">{{ __("Edit") }}</Button>
 					<Button
 						size="sm"
 						variant="subtle"
@@ -228,7 +228,7 @@ const creating = ref(false);
 const showFormDialog = ref(false);
 const formBeingEdited = ref<string | null>(null);
 
-const editForm = (name: string) => {
+const openFormDialog = (name: string) => {
 	formBeingEdited.value = name;
 	showFormDialog.value = true;
 };
@@ -245,7 +245,7 @@ const createForm = async (preset: string) => {
 		);
 		startNewForm.value = false;
 		await reloadForms();
-		editForm(made.name);
+		openFormDialog(made.name);
 	} catch (e) {
 		toast.error(getErrorMessage(e, __("The form could not be created.")));
 	} finally {

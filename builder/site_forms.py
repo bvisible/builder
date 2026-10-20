@@ -13,6 +13,7 @@
 # //// To remove: nothing, there is no upstream counterpart.
 
 import importlib
+import json
 
 import frappe
 from frappe import _
@@ -171,3 +172,129 @@ def forms_for_assistant(profile: str | None = None) -> list[dict]:
 			}
 		)
 	return out
+
+
+# -- the booking and sign-up forms the assistant connects --------------------------------------------------
+
+
+def guarded_form_script(selector: str, web_form: str, fieldnames: list, assistant: str = "") -> str:
+	"""The script that makes a connected form (booking, sign-up) send its fields.
+
+	It used to post them to Frappe's own `web_form.accept`, open to every guest at ten requests a minute with no token,
+	no decoy field, no held-back mail: a booking form was far less protected than the contact form. It now posts to
+	the one door of the site's forms (neoffice_theme.website_messages.submit): the same single-use token, the same
+	field only a script fills, the same time check, the same limits and rules, and the answers go to the table of this
+	form as before. A page that predates the update keeps the old script until the patch that rewrites it runs."""
+	selector_js = json.dumps(selector or "")
+	web_form_js = json.dumps(web_form)
+	fields_js = json.dumps(fieldnames)
+	return f"""// Auto-wired by {assistant or "the assistant"}: saves this form to the '{web_form}' Web Form, through the site's one door for forms.
+(function () {{
+  // The script loads in <head>, before the form is parsed — wait for the DOM.
+  if (document.readyState === 'loading') {{ document.addEventListener('DOMContentLoaded', init); }}
+  else {{ init(); }}
+  function init() {{
+  var SEL = {selector_js}, WF = {web_form_js}, FIELDS = {fields_js};
+  var KEY = 'webform:' + WF;
+  var Q = 'input:not([type=hidden]):not([type=submit]):not([type=button]), select, textarea';
+  function findForm() {{
+    if (SEL) {{ var f = document.querySelector(SEL); if (f && f.querySelector(Q)) return f; }}
+    // Fallback: the tightest container that has a submit control and about the
+    // expected number of inputs — the form even without a class hook.
+    var best = null, bestScore = -1;
+    document.querySelectorAll('form, section, div').forEach(function (c) {{
+      var ins = c.querySelectorAll(Q);
+      if (!ins.length || ins.length > 15) return;
+      if (!c.querySelector('button, [type="submit"], [type="button"]')) return;
+      var score = 100 - Math.abs(ins.length - FIELDS.length) * 20 - Math.min(c.querySelectorAll('*').length, 400) / 20;
+      if (score > bestScore) {{ bestScore = score; best = c; }}
+    }});
+    return best;
+  }}
+  var form = findForm();
+  if (!form) return;
+  var inputs = Array.prototype.slice.call(form.querySelectorAll(Q));
+  var btn = form.querySelector('button, [type="submit"], input[type="submit"], [type="button"]');
+  var busy = false, touched = 0, token = {{ value: '', decoy: '', at: 0 }};
+  ['keydown', 'pointerdown', 'input', 'change'].forEach(function (type) {{
+    form.addEventListener(type, function () {{ if (!touched) touched = Date.now(); }}, true);
+  }});
+  // The token is single-use and bound to this form; it comes with the name of the field only a script is shown.
+  function setDecoy(name) {{
+    var old = form.querySelector('[data-neo-decoy]');
+    if (old) old.remove();
+    if (!name) return;
+    var decoy = document.createElement('input');
+    decoy.type = 'text'; decoy.name = name; decoy.tabIndex = -1; decoy.autocomplete = 'off';
+    decoy.setAttribute('aria-hidden', 'true'); decoy.setAttribute('data-neo-decoy', '1');
+    decoy.style.cssText = 'position:absolute!important;left:-9999px!important;width:1px!important;height:1px!important;overflow:hidden!important';
+    form.appendChild(decoy);
+  }}
+  function fetchToken() {{
+    return fetch('/api/method/neoffice_theme.website_messages.issue_token?form=' + encodeURIComponent(KEY), {{ credentials: 'same-origin' }})
+      .then(function (r) {{ if (!r.ok) throw r; return r.json(); }})
+      .then(function (j) {{
+        var m = (j && j.message) || {{}};
+        token = {{ value: m.token || '', decoy: m.decoy || '', at: Date.now() }};
+        setDecoy(token.decoy);
+      }})
+      .catch(function () {{ token = {{ value: '', decoy: '', at: 0 }}; }});
+  }}
+  function readyToken() {{
+    var fresh = token.value && Date.now() - token.at < 20 * 60 * 1000 ? Promise.resolve() : fetchToken();
+    return fresh.then(function () {{
+      var wait = token.value ? Math.max(0, 4000 - (Date.now() - token.at)) : 0;
+      return new Promise(function (resolve) {{ setTimeout(resolve, wait); }});
+    }});
+  }}
+  fetchToken();
+  function submit(e) {{
+    if (e) e.preventDefault();
+    if (busy) return false;
+    var data = {{}};
+    inputs.forEach(function (el, i) {{
+      var fn = (el.name && FIELDS.indexOf(el.name) !== -1) ? el.name : FIELDS[i];
+      if (!fn) return;
+      if ((el.type === 'checkbox' || el.type === 'radio') && !el.checked) return;
+      if ((el.value || '').trim()) data[fn] = el.value;
+    }});
+    if (!Object.keys(data).length) return false;
+    busy = true;
+    var label = btn && btn.textContent;
+    if (btn) {{ btn.textContent = 'Sending…'; btn.disabled = true; }}
+    readyToken().then(function () {{
+      var body = new URLSearchParams({{
+        form: KEY,
+        answers: JSON.stringify(data),
+        token: token.value,
+        elapsed: String(touched ? Date.now() - touched : 0)
+      }});
+      var decoy = form.querySelector('[data-neo-decoy]');
+      if (token.decoy) body.set(token.decoy, decoy ? decoy.value : '');
+      var headers = {{ 'Accept': 'application/json' }};
+      if (window.frappe && window.frappe.csrf_token) headers['X-Frappe-CSRF-Token'] = window.frappe.csrf_token;
+      return fetch('/api/method/neoffice_theme.website_messages.submit', {{ method: 'POST', body: body, headers: headers, credentials: 'same-origin' }});
+    }}).then(function (r) {{ if (!r.ok) throw r; return r.json(); }})
+      .then(function () {{
+        if (btn) btn.textContent = 'Thank you!';
+        inputs.forEach(function (el) {{ if (el.type === 'checkbox' || el.type === 'radio') el.checked = false; else el.value = ''; }});
+        touched = 0;
+      }})
+      .catch(function () {{
+        busy = false;
+        if (btn) {{ btn.textContent = label || 'Try again'; btn.disabled = false; }}
+      }})
+      .then(function () {{ fetchToken(); }});
+    return false;
+  }}
+  // Attach to BOTH: the button click (fires whether or not it's type=submit) and,
+  // for a real <form>, the submit event (Enter key). The busy flag dedupes.
+  if (btn) btn.addEventListener('click', submit);
+  if (form.tagName === 'FORM') form.addEventListener('submit', submit);
+  }}
+}})();
+"""
+
+
+# the three values the script above is written from: how the patch that rewrites the old scripts reads them back
+SCRIPT_VALUES = r"var SEL = (?P<selector>\".*?\"), WF = (?P<web_form>\".*?\"), FIELDS = (?P<fields>\[.*?\]);"
