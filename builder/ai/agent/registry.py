@@ -126,6 +126,14 @@ def build_default_registry() -> ToolRegistry:
 
 	for name in disabled_tools():
 		registry._tools.pop(name, None)
+	# //// Neoffice — the assistant's tools on the forms of the website (2026-10-20): offered only where the site keeps forms
+	# //// (the theme is installed and migrated). Unpress shares this code without the theme, and a tool the model is
+	# //// offered but that can only refuse is a tool it keeps trying.
+	from builder import site_forms as site_forms_module
+	from builder.ai.agent.tools import site_forms as site_form_tools
+
+	if site_forms_module.available():
+		registry.extend(site_form_tools.TOOLS)
 	# //// Neoffice — the whole-site tool (builder/site_ai/nora): our pipeline on this page engine.
 	registry.extend(nora_tools.TOOLS)
 	return registry

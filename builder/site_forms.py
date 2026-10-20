@@ -130,3 +130,44 @@ def create_form(
 
 def save_form(name: str, data: dict) -> dict:
 	return _require().save_form(name, data)
+
+
+def change_form(name: str, changes: dict) -> dict:
+	"""Changes form `name` by operations (add_questions, remove_questions, title, success_message...). The theme
+	holds the result to every rule of a form at save; a refusal is a sentence."""
+	return _require().change_form(name, changes)
+
+
+def forms_for_assistant(profile: str | None = None) -> list[dict]:
+	"""The forms of the site as the assistant reads them: name, title, kind, whether it is on, and its questions
+	(label, type, required, choices). No recipient: the assistant has no use for who is told."""
+	module = _require()
+	out = []
+	for row in module.list_forms(profile):
+		definition = module.get_form(row["name"])
+		out.append(
+			{
+				"name": definition["name"],
+				"title": definition["title"],
+				"kind": definition["kind"],
+				"enabled": bool(definition["enabled"]),
+				"steps": definition["steps"],
+				"window": bool(definition["dialog"]),
+				"questions": [
+					{
+						key: value
+						for key, value in {
+							"label": field["label"],
+							"identifier": field["fieldname"],
+							"type": field["type"],
+							"required": bool(field["required"]),
+							"step": field["step"],
+							"choices": field["options"] or None,
+						}.items()
+						if value not in (None, [])
+					}
+					for field in definition["fields"]
+				],
+			}
+		)
+	return out

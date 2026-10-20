@@ -147,6 +147,8 @@ READ_ONLY_SERVER_TOOLS = frozenset(
 		"get_doctype_schema",
 		"get_page_scripts",
 		"preview_page",
+		# //// Neoffice — reads the forms of the site; writes nothing (2026-10-20)
+		"list_site_forms",
 	}
 )
 
@@ -268,6 +270,10 @@ TOOL_LABELS = {
 	"seed_sample_data": ("Adding sample records", "Added sample records"),
 	"create_doctype": ("Creating a place to store data", "Created a place to store data"),
 	"connect_form": ("Connecting the form", "Connected the form"),
+	# //// Neoffice — the forms of the website kept as data (2026-10-20)
+	"list_site_forms": ("Looking at the site's forms", "Looked at the site's forms"),
+	"create_site_form": ("Preparing a new form", "Prepared a new form"),
+	"update_site_form": ("Preparing a change to a form", "Prepared a change to a form"),
 	"edit_global_settings": ("Updating site settings", "Updated site settings"),
 	"set_home_page": ("Setting the home page", "Set the home page"),
 }

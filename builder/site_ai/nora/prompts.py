@@ -68,6 +68,25 @@ CONTACT_FORM_EXAMPLES = (
 )
 
 
+# //// Neoffice — where the site keeps forms as data (2026-10-20, neoffice-maintenance#1593), the assistant is told how to
+# //// work on them. Only then: the tools do not exist elsewhere, and a rule about a tool the model does not have is noise.
+SITE_FORMS_RULES = (
+    "- This site keeps its FORMS as data: each form is a record with its questions, drawn by the include "
+    '"builder/templates/includes/site_form.html" (the option site_form names the form; left out, it is the contact '
+    "form of the site). To add a question to a form (\"ask for the surface of the premises on the quote form\"), take "
+    "one out, or change the message once sent or the button: call list_site_forms for the form's name and what it "
+    "already asks, then update_site_form. To make ANOTHER form: create_site_form, then put it on the page as a block "
+    'whose text is {%- set site_form = "<its name>" -%}{% include "builder/templates/includes/site_form.html" %}. '
+    "Never rewrite a page to add a question, never write a <form>. Both tools show a card the user confirms."
+)
+
+
+def site_forms_rules() -> str:
+    from builder import site_forms
+
+    return "\n" + SITE_FORMS_RULES if site_forms.available() else ""
+
+
 def site_playbook(page_id: str | None = None) -> str:
     # //// Neoffice — the "Site rules" section below states that generate_site's routes are FINAL (never rename a page or rewrite a route/menu link afterwards): after a reseller site build the model kept "correcting" the routes it had just set (2d78d71d "fix(nora): includes written as offered, routes honoured but home, and the build's routes stated as final")
     # //// Neoffice — same section also tells the model not to edit blocks, preview pages or touch settings right after generate_site in the same turn: a block edit made before the editor reloaded the pages the build wrote saved a stale copy of the home over the new one (a reseller site, 2026-09-09) (bbc135b2 "fix(nora): no block edit in the turn that built the site"). Cannot be placed closer: this text lives inside the f-string below, where a "#" would become part of the prompt itself
@@ -104,4 +123,4 @@ present_ui(text="Which pages do you want?", ui=[{{"kind":"choices","label":"Page
 - Shortcodes: a page can embed live blocks of the site through Jinja includes (get_site_chrome lists them by page type with their purpose, note and parameters: contact form, map, team grid, company timeline, product carousels, opening hours). To place one, add a plain div block whose `text` is its include tag; to change its options, rewrite the `text` of the block that already carries it with update_block `inner_text`: the `set` lines first (only parameters get_site_chrome lists for that component, values as literals: "text", a number, true or false), then the include tag. The tools accept ONLY a catalogued component's tag written that way and refuse any other Jinja. read_page shows the tag a page already carries: change that one, never add a second.
 - The contact form is ONE include with everything behind it: three forms (contact_model "simple" name, e-mail, message; "steps" the same one question at a time, the default; "questions" what the request is about, the budget and the timing before the message, for a business that quotes), a window a button opens (contact_dialog true and contact_button_text; any link to #contact then opens it, from any page), the business's own consent sentence (consent_text, only a sentence the user gave you) and a phone number asked for (phone_required). To change the form of a page that has it, rewrite that block's text, for example {CONTACT_FORM_EXAMPLES}. NEVER delete the form's block to draw a form, a window or a button of your own, NEVER write a <form>, and NEVER create a DocType or a script to store answers: the form already posts, saves and notifies. Its messages are saved as Website Messages (Site web, Messages du site: the bell rings and an e-mail goes to the company's address; the visitor's address is never published on the page); who is notified and what the visitor receives are set under Site web, Paramètres, Formulaire de contact, Réglages du formulaire. A message is not a Lead and Website Settings does not decide who is notified: never say so.
 - The site's colours and fonts are Builder Tokens named after the site (var(--<prefix>-primary), var(--<prefix>-font-heading), ...); reuse the handles you see in the open page instead of inventing new ones.
-"""
+""" + site_forms_rules()  # //// Neoffice — the rules of the forms kept as data, only where the site keeps them

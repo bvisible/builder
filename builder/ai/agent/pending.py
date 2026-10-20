@@ -21,6 +21,9 @@ KINDS = {
 	"create_doctype",
 	"seed_sample_data",
 	"connect_form",
+	# //// Neoffice — the forms of the website kept as data (2026-10-20, neoffice-maintenance#1593)
+	"create_site_form",
+	"update_site_form",
 }
 
 GLOBAL_SETTING_FIELDS = {"script", "style", "head_html", "body_html"}
@@ -66,7 +69,38 @@ def apply_pending_action(kind: str, payload: dict) -> str:
 		"create_doctype": apply_create_doctype,
 		"seed_sample_data": apply_seed_sample_data,
 		"connect_form": apply_connect_form,
+		# //// Neoffice — the forms of the website kept as data (see apply_create_site_form below)
+		"create_site_form": apply_create_site_form,
+		"update_site_form": apply_update_site_form,
 	}[kind](payload)
+
+
+# //// Neoffice — the two writes of the assistant on the forms of the website. Both run as the user who applied the
+# //// card: the theme checks their right on the doctype, and holds the result to every rule of a form.
+def apply_create_site_form(payload: dict) -> str:
+	from builder import site_forms
+
+	made = site_forms.create_form(
+		payload.get("preset") or "steps", payload.get("title") or None, payload.get("website_profile") or None
+	)
+	if payload.get("questions"):
+		made = site_forms.change_form(made["name"], {"add_questions": payload["questions"]})
+	return frappe._(
+		"Form “{0}” created. Its name for a page is {1}: put it on a page as a block whose text is "
+		'{{%- set site_form = "{1}" -%}}{{% include "builder/templates/includes/site_form.html" %}}.'
+	).format(made["title"], made["name"])
+
+
+def apply_update_site_form(payload: dict) -> str:
+	from builder import site_forms
+
+	changes = dict(payload.get("settings") or {})
+	if payload.get("add_questions"):
+		changes["add_questions"] = payload["add_questions"]
+	if payload.get("remove_questions"):
+		changes["remove_questions"] = payload["remove_questions"]
+	saved = site_forms.change_form(payload["form"], changes)
+	return frappe._("Form “{0}” updated: it now asks {1} question(s).").format(saved["title"], len(saved["fields"]))
 
 
 def apply_home_page(payload: dict) -> str:

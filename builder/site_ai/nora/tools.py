@@ -138,6 +138,16 @@ def chrome_payload(settings: dict) -> dict:
     return out
 
 
+# //// Neoffice — a parameter whose choices are rows of the site (the forms it keeps) is read with them listed, so the
+# //// assistant sees the names it may write instead of a bare option (2026-10-20, neoffice-maintenance#1593).
+def _with_listed_choices(param: dict, catalogue) -> dict:
+    if not param.get("choices_from"):
+        return param
+    listed = {key: value for key, value in param.items() if key != "choices_from"}
+    listed["choices"] = [choice["value"] for choice in catalogue.choices_of(param)]
+    return listed
+
+
 def run_get_site_chrome(ctx, args: dict) -> str:
     import json
 
@@ -159,7 +169,7 @@ def run_get_site_chrome(ctx, args: dict) -> str:
         if offered:
             includes[page_type] = [
                 # //// Neoffice — the note too (2026-10-19): how to choose between its forms, what to never write beside it
-                {"include": c.tag(), "label": c.label, "purpose": c.shows, "params": list(c.params), "note": c.note}
+                {"include": c.tag(), "label": c.label, "purpose": c.shows, "params": [_with_listed_choices(p, catalogue) for p in c.params], "note": c.note}
                 for c in offered
             ]
     return json.dumps({"profile": profile or "main site", "chrome": chrome, "options": settings.get("_options", {}), "page_includes": includes}, ensure_ascii=False)

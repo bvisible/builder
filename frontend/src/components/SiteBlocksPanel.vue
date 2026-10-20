@@ -45,8 +45,78 @@
 					@click="update">
 					{{ __("Update the block") }}
 				</Button>
+				<!-- the block draws a form: its questions are written in a dialog of their own -->
+				<Button
+					v-if="editing.component.path === FORM_INCLUDE && selectedFormName"
+					variant="subtle"
+					class="mt-2 w-full"
+					data-testid="edit-this-form"
+					@click="editForm(selectedFormName)">
+					{{ __("Edit the questions of this form") }}
+				</Button>
 			</template>
 		</section>
+
+		<!-- the forms of this site: where the questions of a form are written (the form itself is a record of the theme) -->
+		<section
+			v-if="formsState.available"
+			class="rounded border border-outline-gray-3 p-2"
+			data-testid="site-forms">
+			<div class="flex items-center justify-between gap-2">
+				<span class="text-base font-medium text-ink-gray-8">{{ __("Forms") }}</span>
+				<Button
+					variant="subtle"
+					size="sm"
+					:disabled="builderStore.readOnlyMode"
+					@click="startNewForm = !startNewForm">
+					{{ __("New form") }}
+				</Button>
+			</div>
+			<p class="mt-0.5 text-p-sm text-ink-gray-5">
+				{{
+					__(
+						"A form keeps its questions and its answers in the site's inbox. Write it here, then add it to a page.",
+					)
+				}}
+			</p>
+
+			<!-- a new form starts from one of three shapes -->
+			<div v-if="startNewForm" class="mt-2 flex flex-col gap-1" data-testid="site-form-presets">
+				<button
+					v-for="preset in formsState.presets"
+					:key="preset.key"
+					class="rounded border border-outline-gray-2 p-2 text-left hover:bg-surface-gray-1"
+					:disabled="creating"
+					:data-preset="preset.key"
+					@click="createForm(preset.key)">
+					<span class="text-base font-medium text-ink-gray-8">{{ preset.label }}</span>
+					<span class="block text-p-sm text-ink-gray-5">{{ preset.about }}</span>
+				</button>
+			</div>
+
+			<ul class="mt-2 flex flex-col gap-1">
+				<li
+					v-for="form in formsState.forms"
+					:key="form.name"
+					class="flex items-center gap-2 rounded bg-surface-gray-1 p-1.5"
+					:data-form="form.name">
+					<div class="min-w-0 flex-1">
+						<span class="block truncate text-p-sm font-medium text-ink-gray-8">{{ form.title }}</span>
+						<span v-if="!form.enabled" class="text-p-xs text-ink-gray-5">{{ __("switched off") }}</span>
+					</div>
+					<Button size="sm" variant="ghost" @click="editForm(form.name)">{{ __("Edit") }}</Button>
+					<Button
+						size="sm"
+						variant="subtle"
+						:disabled="builderStore.readOnlyMode || !form.enabled"
+						:loading="saving"
+						@click="placeForm(form.name)">
+						{{ __("Add to the page") }}
+					</Button>
+				</li>
+			</ul>
+		</section>
+		<SiteFormDialog v-model="showFormDialog" :formName="formBeingEdited" @saved="formSaved" />
 
 		<div v-if="!siteComponentsLoaded" class="text-p-sm text-ink-gray-4">{{ __("Loading…") }}</div>
 		<div v-else-if="siteComponentsError" class="text-p-sm text-ink-red-3">{{ siteComponentsError }}</div>
@@ -105,6 +175,7 @@
 <script setup lang="ts">
 import type Block from "@/block";
 import SiteComponentFields from "@/components/SiteComponentFields.vue";
+import SiteFormDialog from "@/components/Modals/SiteFormDialog.vue";
 import useBuilderStore from "@/stores/builderStore";
 import useCanvasStore from "@/stores/canvasStore";
 import usePageStore from "@/stores/pageStore";
@@ -120,6 +191,7 @@ import {
 	type OptionsForm,
 	type SiteComponent,
 } from "@/utils/siteComponents";
+import { createSiteForm, loadSiteForms, siteFormsState, type SiteFormDefinition } from "@/utils/siteForms";
 import { __ } from "@/translation";
 // BuilderInput is registered globally in main.ts; Button and toast come from frappe-ui
 import { Button, createResource, toast } from "frappe-ui";
@@ -139,9 +211,74 @@ const saving = ref(false);
 // the catalogue is asked for the open page, so the components that suit it come first
 watch(
 	() => pageStore.activePage?.name ?? null,
-	(page) => void loadSiteComponents(page),
+	(page) => {
+		void loadSiteComponents(page);
+		void loadSiteForms(page);
+	},
 	{ immediate: true },
 );
+
+// ---- the forms of the site ----------------------------------------------------------------------------------------
+
+// the include that draws a form kept as data (builder/templates/includes/site_form.html)
+const FORM_INCLUDE = "builder/templates/includes/site_form.html";
+const formsState = siteFormsState;
+const startNewForm = ref(false);
+const creating = ref(false);
+const showFormDialog = ref(false);
+const formBeingEdited = ref<string | null>(null);
+
+const editForm = (name: string) => {
+	formBeingEdited.value = name;
+	showFormDialog.value = true;
+};
+
+// a form is written in its website's language, so the person who clicks only chooses its shape
+const createForm = async (preset: string) => {
+	if (builderStore.readOnlyMode || creating.value) return;
+	creating.value = true;
+	try {
+		const made: SiteFormDefinition = await createSiteForm(
+			preset,
+			"",
+			formsState.value.available ? formsState.value.website_profile : "",
+		);
+		startNewForm.value = false;
+		await reloadForms();
+		editForm(made.name);
+	} catch (e) {
+		toast.error(getErrorMessage(e, __("The form could not be created.")));
+	} finally {
+		creating.value = false;
+	}
+};
+
+// the options of the include list the forms that exist, so the catalogue is read again when they change
+const reloadForms = async () => {
+	const page = pageStore.activePage?.name ?? null;
+	await Promise.all([loadSiteForms(page), loadSiteComponents(page)]);
+};
+const formSaved = () => void reloadForms();
+
+// the form a selected block draws: the one its option names, else the contact form of the site
+const selectedFormName = computed<string | null>(() => {
+	const named = editing.value?.values?.site_form;
+	if (typeof named === "string" && named) return named;
+	if (!formsState.value.available) return null;
+	const profile = formsState.value.website_profile;
+	const contact = formsState.value.forms.filter((f) => f.kind === "Contact" && f.enabled);
+	return (contact.find((f) => f.profile === profile) ?? contact[0])?.name ?? null;
+});
+
+// put a form on the page: the include with the form named, through the same door as any other component
+const placeForm = async (name: string) => {
+	const component = siteComponents.value.find((c) => c.path === FORM_INCLUDE);
+	if (!component) {
+		toast.error(__("The form block is not available on this site."));
+		return;
+	}
+	await insert(component, { site_form: name }, false);
+};
 
 const selected = computed<Block | null>(() => {
 	const blocks = canvasStore.activeCanvas?.selectedBlocks;
@@ -239,11 +376,13 @@ const placement = computed<{ parent: Block | null; after: Block | null; where: s
 	return { parent, after: target, where: __("after “{0}”", [nameOf(target)]) };
 });
 
-const insert = async (component: SiteComponent) => {
+const insert = async (component: SiteComponent, values?: Record<string, unknown>, fromList = true) => {
 	if (builderStore.readOnlyMode) return;
 	saving.value = true;
 	try {
-		const tag = await tagOf(component, addForm.value);
+		const tag = values
+			? await tagFor.submit({ path: component.path, values: JSON.stringify(values) })
+			: await tagOf(component, addForm.value);
 		const { parent, after } = placement.value;
 		if (!parent) {
 			toast.error(__("Open a page first."));
@@ -262,7 +401,7 @@ const insert = async (component: SiteComponent) => {
 		if (after) parent.addChildAfter(options, after);
 		else parent.addChild(options);
 		toast.success(__("{0} added to the page.", [component.label]));
-		open.value = null;
+		if (fromList) open.value = null;
 	} catch (e) {
 		toast.error(getErrorMessage(e, __("The block could not be added.")));
 	} finally {
