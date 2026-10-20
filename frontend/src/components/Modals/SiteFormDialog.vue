@@ -34,6 +34,7 @@
 							:label="__('Name of the form')"
 							:modelValue="definition.title"
 							:hideClearButton="true"
+							@input="(v: string) => (definition!.title = String(v ?? ''))"
 							@update:modelValue="(v: string) => (definition!.title = String(v ?? ''))" />
 						<label class="flex items-center gap-2 text-p-sm text-ink-gray-7">
 							<input v-model="definition.enabled" type="checkbox" />
@@ -43,7 +44,7 @@
 
 					<!-- the steps -->
 					<section class="flex flex-col gap-2">
-						<h4 class="text-base font-semibold text-ink-gray-8">{{ __("Steps") }}</h4>
+						<h4 class="text-base font-semibold text-ink-gray-8">{{ __("Steps of the form") }}</h4>
 						<p class="text-p-sm text-ink-gray-5">
 							{{
 								__(
@@ -58,6 +59,7 @@
 								type="text"
 								:modelValue="title"
 								:hideClearButton="true"
+								@input="(v: string) => (definition!.steps[index] = String(v ?? ''))"
 								@update:modelValue="(v: string) => (definition!.steps[index] = String(v ?? ''))" />
 							<Button variant="ghost" :title="__('Remove this step')" @click="dropStep(index + 1)">
 								<template #icon><span class="lucide-trash-2 size-3.5" /></template>
@@ -93,6 +95,7 @@
 											:modelValue="question.label"
 											:placeholder="__('Your question')"
 											:hideClearButton="true"
+											@input="(v: string) => (question.label = String(v ?? ''))"
 											@update:modelValue="(v: string) => (question.label = String(v ?? ''))" />
 										<Button
 											variant="ghost"
@@ -168,6 +171,7 @@
 											:label="__('Hint')"
 											:modelValue="question.help"
 											:hideClearButton="true"
+											@input="(v: string) => (question.help = String(v ?? ''))"
 											@update:modelValue="(v: string) => (question.help = String(v ?? ''))" />
 									</div>
 								</div>
@@ -205,6 +209,7 @@
 							:description="__('Empty: no button, the page has its own link to #contact.')"
 							:modelValue="definition.button_text"
 							:hideClearButton="true"
+							@input="(v: string) => (definition!.button_text = String(v ?? ''))"
 							@update:modelValue="(v: string) => (definition!.button_text = String(v ?? ''))" />
 						<BuilderInput
 							type="text"
@@ -212,6 +217,7 @@
 							:placeholder="__('Send Message')"
 							:modelValue="definition.submit_text"
 							:hideClearButton="true"
+							@input="(v: string) => (definition!.submit_text = String(v ?? ''))"
 							@update:modelValue="(v: string) => (definition!.submit_text = String(v ?? ''))" />
 						<BuilderInput
 							type="textarea"
@@ -236,6 +242,7 @@
 							"
 							:modelValue="definition.recipients"
 							:hideClearButton="true"
+							@input="(v: string) => (definition!.recipients = String(v ?? ''))"
 							@update:modelValue="(v: string) => (definition!.recipients = String(v ?? ''))" />
 						<BuilderInput
 							type="select"
@@ -385,8 +392,14 @@ const dropStep = (step: number) => definition.value && removeStep(definition.val
 
 const addAQuestion = () => {
 	if (!definition.value) return;
-	// a new question lands at the end, in the last step: that is where the visitor's message is asked
-	definition.value.fields.push(newQuestion(nextType.value, stepCount.value));
+	// a new question goes before the one used as the message (the visitor writes it last), in its step
+	const fields = definition.value.fields;
+	const messageAt = fields.findIndex((field) => field.role === "Message");
+	if (messageAt === -1) {
+		fields.push(newQuestion(nextType.value, stepCount.value));
+		return;
+	}
+	fields.splice(messageAt, 0, newQuestion(nextType.value, fields[messageAt].step));
 };
 
 const save = async () => {

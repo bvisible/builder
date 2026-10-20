@@ -98,21 +98,29 @@
 				<li
 					v-for="form in formsState.forms"
 					:key="form.name"
-					class="flex items-center gap-2 rounded bg-surface-gray-1 p-1.5"
+					class="flex flex-col gap-1.5 rounded bg-surface-gray-1 p-1.5"
 					:data-form="form.name">
-					<div class="min-w-0 flex-1">
+					<div class="min-w-0">
 						<span class="block truncate text-p-sm font-medium text-ink-gray-8">{{ form.title }}</span>
+						<span v-if="form.profile" class="block truncate text-p-xs text-ink-gray-5">
+							{{ form.profile }}
+						</span>
 						<span v-if="!form.enabled" class="text-p-xs text-ink-gray-5">{{ __("switched off") }}</span>
 					</div>
-					<Button size="sm" variant="ghost" @click="openFormDialog(form.name)">{{ __("Edit") }}</Button>
-					<Button
-						size="sm"
-						variant="subtle"
-						:disabled="builderStore.readOnlyMode || !form.enabled"
-						:loading="saving"
-						@click="placeForm(form.name)">
-						{{ __("Add to the page") }}
-					</Button>
+					<div class="flex gap-1.5">
+						<Button size="sm" variant="ghost" class="flex-1" @click="openFormDialog(form.name)">
+							{{ __("Edit") }}
+						</Button>
+						<Button
+							size="sm"
+							variant="subtle"
+							class="flex-1"
+							:disabled="builderStore.readOnlyMode || !form.enabled"
+							:loading="saving"
+							@click="placeForm(form.name)">
+							{{ __("Add to the page") }}
+						</Button>
+					</div>
 				</li>
 			</ul>
 		</section>
