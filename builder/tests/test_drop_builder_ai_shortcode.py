@@ -109,6 +109,27 @@ class TestTheDrop(FrappeTestCase):
 		self.assertFalse(frappe.db.exists("DocType", SCRATCH))
 		self.assertFalse(frappe.db.table_exists(SCRATCH))
 
+	def test_it_says_how_many_rows_it_is_about_to_drop_before_it_drops_them(self):
+		"""A run that dies halfway must still have left what it was about to remove."""
+		said = []
+		order = []
+		real_delete = frappe.delete_doc
+
+		def delete(*args, **kwargs):
+			order.append("deleted")
+			return real_delete(*args, **kwargs)
+
+		class Logger:
+			def info(self, message):
+				said.append(message)
+				order.append("said")
+
+		with patch("frappe.logger", return_value=Logger()), patch("frappe.delete_doc", side_effect=delete):
+			the_patch.drop([SCRATCH])
+
+		self.assertIn(f"dropping {SCRATCH}: 3 rows", " ".join(said))
+		self.assertLess(order.index("said"), order.index("deleted"))
+
 	def test_it_does_not_need_developer_mode(self):
 		"""On at osiris, off at a client: the drop must not be one of the things that differ."""
 		with patch.dict(frappe.conf, {"developer_mode": 0}):

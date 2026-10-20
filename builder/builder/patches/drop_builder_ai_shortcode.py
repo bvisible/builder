@@ -37,6 +37,8 @@ def drop(doctypes) -> dict[str, int | None]:
 			# the names are this module's constants, never data
 			count = frappe.db.sql(f"select count(*) from `tab{doctype}`")[0][0]
 		dropped[doctype] = count
+		# said BEFORE the drop: a run that dies halfway still leaves what it was about to remove
+		frappe.logger().info(f"dropping {doctype}: {count if count is not None else 'no table'} rows")
 		if record:
 			frappe.delete_doc("DocType", doctype, force=True, ignore_missing=True, ignore_permissions=True)
 		frappe.db.sql_ddl(f"drop table if exists `tab{doctype}`")
