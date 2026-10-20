@@ -258,9 +258,10 @@ website_components = [
 		"pages": ["contact", "one_page"],
 		"category": "Form",
 		"help": "Pick one of the forms of the site, or create one in this panel. With the window option the form waits behind a button, and any link to #contact opens it.",
+		# //// Neoffice — what the assistant reads of it; the generator is not offered this include (it writes contact_form and the build adopts it)
 		"note": (
 			"A form is a record, not markup: never write a <form> of your own beside it. `site_form` names the form; leave it "
-			"out for the contact form of the site. Prefer this include to contact_form.html on a site that has forms."
+			"out for the contact form of the site."
 		),
 		"params": [
 			{"name": "site_form", "label": "Form", "choices_from": "builder.site_forms.form_choices", "type": "str", "default": "", "about": "the identifier of the form to draw; leave it out for the contact form of the site"},

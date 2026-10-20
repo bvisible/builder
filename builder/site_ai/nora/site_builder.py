@@ -817,7 +817,11 @@ def revision_photos(planned: list[str], planned_notes: list[str], blocks_json: s
 # //// each app in its own hooks.py, with the parameters each component takes.
 # //// Neoffice ▼▼▼ — new: an include a page carries must be the one the brief offered, written exactly as offered; the model wrote the shop's opening hours with builder's path instead of webshop's and the Contact page of a reseller site answered 417 for a template it could not find (2d78d71d "fix(nora): includes written as offered, routes honoured but home, and the build's routes stated as final")
 INCLUDE_TAG = re.compile(r"\{%-?\s*include\s+['\"]([^'\"]+)['\"]\s*-?%\}")
-ALWAYS_ALLOWED_INCLUDES = ("{% include 'builder/templates/includes/contact_form.html' %}",)
+ALWAYS_ALLOWED_INCLUDES = (
+    "{% include 'builder/templates/includes/contact_form.html' %}",
+    # //// Neoffice — the form the build made out of it (adopt_contact_forms) is not an include the brief offered: it must survive a later repair
+    "{% include 'builder/templates/includes/site_form.html' %}",
+)
 
 
 def repair_includes(blocks: list, allowed) -> tuple[int, int]:
@@ -972,7 +976,7 @@ def _account_request_route() -> str | None:
         return None
 
 
-def available_includes(page_type: str, site_type: str = "vitrine", profile: str | None = None, site_name: str = "", lang: str = "fr"):
+def available_includes(page_type: str, site_type: str = "vitrine", profile: str | None = None, site_name: str = "", lang: str = "fr", generator: bool = False):
     """The components this page may carry, from the catalogue (site_ai/components.py).
 
     //// Neoffice — rewritten 2026-09-15. This used to read PAGE_INCLUDES, a dict of seven frozen
@@ -987,6 +991,10 @@ def available_includes(page_type: str, site_type: str = "vitrine", profile: str 
     sells = site_type in ("ecommerce", "ecommerce_search") or _profile_is_b2b(profile) or _profile_sells(profile)
 
     def allowed(component) -> bool:
+        # //// Neoffice — the generator writes the contact form with its options, as it always did; the build then makes
+        # //// the Site Form of the website out of them (adopt_contact_forms). Offered both, it wrote both (2026-10-20).
+        if generator and component.file == "site_form.html":
+            return False
         # a site built for ANOTHER business must not show this instance's shop, its team or its
         # hours: only its own contact form is left to it (the About page of a B2C test site
         # carried the host's employees and milestones, 2026-09-08)
@@ -1142,7 +1150,7 @@ def page_brief_text(site: dict, brief, page: dict, handles: dict, contact_prompt
     # the client's own photographs come with what each shows and what it is for (photos_for_page)
     notes = photo_notes or []
     photo_lines = "\n".join(f"{i}. {u}" + (f"  ({notes[i - 1]})" if i - 1 < len(notes) else "") for i, u in enumerate(photos, 1))
-    includes = available_includes(page["type"], site.get("site_type") or "vitrine", site.get("profile"), site.get("site_name") or "", lang=site.get("lang") or "fr")
+    includes = available_includes(page["type"], site.get("site_type") or "vitrine", site.get("profile"), site.get("site_name") or "", lang=site.get("lang") or "fr", generator=True)
     page_role = (
         "the HOME page: open with the hero" if is_home
         else "an INTERIOR page: the site renders a title band with the page title above the content, so start directly with the first content section, no hero banner and no repeated page title"
@@ -2370,7 +2378,7 @@ def build_site(ctx, spec: dict) -> str:
             _progress(ctx, job_id, _("Planning the site"), 9)
             try:
                 includes_by_route = {
-                    p["route"]: [f"{c.path} — {c.shows}" for c in available_includes(p["type"], site_type, profile, site_name, lang=lang_code)]
+                    p["route"]: [f"{c.path} — {c.shows}" for c in available_includes(p["type"], site_type, profile, site_name, lang=lang_code, generator=True)]
                     for p in pages
                 }
                 plan_logo = (frappe.utils.get_url() + logo_image) if logo_image and logo_image.startswith("/") else logo_image
@@ -2455,9 +2463,18 @@ def build_site(ctx, spec: dict) -> str:
                     # //// Neoffice — new call: repairs includes to the offered tag or drops them (2d78d71d "fix(nora): includes written as offered, routes honoured but home, and the build's routes stated as final")
                     # an include is one the brief offered, written as offered (a wrong
                     # path is a 417 at render time): see repair_includes
-                    fixed, dropped = repair_includes(blocks, available_includes(page["type"], site["site_type"], site["profile"], site["site_name"], lang=site.get("lang") or "fr"))
+                    fixed, dropped = repair_includes(blocks, available_includes(page["type"], site["site_type"], site["profile"], site["site_name"], lang=site.get("lang") or "fr", generator=True))
                     if fixed or dropped:
                         ai_log("info", "Includes repaired", page=page["title"], rewritten=fixed, removed=dropped)
+                    # //// Neoffice — where the site keeps forms, the contact form the page was written with becomes a Site
+                    # //// Form of the website (neoffice-maintenance#1593, 2026-10-20): its questions are then edited in the
+                    # //// editor, the desk or by the assistant, which markup in a page cannot be. The pages of one build that
+                    # //// ask the same things share one form, and a rebuild adds none.
+                    from builder.site_forms import adopt_contact_forms
+
+                    adopted = adopt_contact_forms(blocks, site.get("profile"), site.get("lang"), site.setdefault("site_forms", {}))
+                    if adopted:
+                        ai_log("info", "Contact form made editable", page=page["title"], tags=adopted)
                     # the page's own accent joins the design system (accent.py): minted
                     # from the first page that has one, every later one is folded into it
                     foreign = dominant_accent(blocks, palette)

@@ -328,3 +328,178 @@ class TestWithTheTheme(FrappeTestCase):
 		):
 			with self.assertRaises(frappe.PermissionError):
 				call()
+
+
+class TestTheFormsTheGeneratorWrites(FrappeTestCase):
+	"""The site generator writes the contact form with its options; where the site keeps forms the build makes a Site
+	Form of the website out of them and the page draws that."""
+
+	def setUp(self):
+		super().setUp()
+		forget_capability()
+		if not site_forms.available():
+			self.skipTest("the theme that keeps forms is not installed here")
+		frappe.set_user("Administrator")
+		self.module = site_forms.theme_module()
+		self.before = set(frappe.get_all("Site Form", pluck="name"))
+
+	def tearDown(self):
+		frappe.set_user("Administrator")
+		for name in set(frappe.get_all("Site Form", pluck="name")) - self.before:
+			frappe.delete_doc("Site Form", name, force=True, ignore_permissions=True)
+		forget_capability()
+		super().tearDown()
+
+	@staticmethod
+	def page(*tags):
+		"""A page as the generator writes it: sections whose children carry the includes."""
+		return [{"element": "div", "children": [{"element": "div", "innerHTML": tag} for tag in tags]}]
+
+	CONTACT = '{% include "builder/templates/includes/contact_form.html" %}'
+
+	@staticmethod
+	def contact(**options):
+		sets = "".join(
+			f"{{%- set {key} = {str(value).lower() if isinstance(value, bool) else json_string(value)} -%}}"
+			for key, value in options.items()
+		)
+		return sets + '{% include "builder/templates/includes/contact_form.html" %}'
+
+	def html(self, blocks):
+		return blocks[0]["children"][0]["innerHTML"]
+
+	def made(self):
+		return set(frappe.get_all("Site Form", pluck="name")) - self.before
+
+	@staticmethod
+	def form_of(blocks):
+		"""The form a page ended up drawing, from its tag."""
+		return components.parse_tag(blocks[0]["children"][0]["innerHTML"])[1]["site_form"]
+
+	def test_the_plain_include_becomes_the_steps_form_of_the_website(self):
+		blocks = self.page(self.CONTACT)
+		self.assertEqual(site_forms.adopt_contact_forms(blocks), 1)
+		name = self.form_of(blocks)
+		self.assertEqual(self.html(blocks), site_forms.form_tag(name))
+		form = self.module.get_form(name)
+		self.assertEqual(len(form["steps"]), 2)
+		self.assertEqual(
+			[f["role"] for f in form["fields"] if f["role"]], ["Name", "Email", "Phone", "Message"]
+		)
+
+	def test_the_model_the_generator_chose_is_the_preset_the_form_starts_from(self):
+		blocks = self.page(self.contact(contact_model="questions"))
+		site_forms.adopt_contact_forms(blocks)
+		identifiers = [f["fieldname"] for f in self.module.get_form(self.form_of(blocks))["fields"]]
+		for wanted in ("request_type", "budget", "start_when"):
+			self.assertIn(wanted, identifiers)
+		blocks = self.page(self.contact(contact_model="simple"))
+		site_forms.adopt_contact_forms(blocks)
+		self.assertEqual(self.module.get_form(self.form_of(blocks))["steps"], [])
+
+	def test_the_window_the_consent_and_the_phone_come_with_it(self):
+		blocks = self.page(
+			self.contact(
+				contact_model="simple",
+				contact_dialog=True,
+				contact_button_text="Request a quote",
+				consent_text="I agree to be contacted.",
+				phone_required=True,
+			)
+		)
+		site_forms.adopt_contact_forms(blocks)
+		form = self.module.get_form(self.form_of(blocks))
+		self.assertEqual((form["dialog"], form["button_text"]), (1, "Request a quote"))
+		consent = [f for f in form["fields"] if f["type"] == "Consent"]
+		self.assertEqual([(c["label"], c["required"]) for c in consent], [("I agree to be contacted.", 1)])
+		phone = [f for f in form["fields"] if f["role"] == "Phone"]
+		self.assertEqual([p["required"] for p in phone], [1])
+
+	def test_the_pages_of_one_build_that_ask_the_same_things_share_one_form(self):
+		made = {}
+		first, second = self.page(self.CONTACT), self.page(self.CONTACT)
+		site_forms.adopt_contact_forms(first, made=made)
+		site_forms.adopt_contact_forms(second, made=made)
+		self.assertLessEqual(len(self.made()), 1)
+		self.assertEqual(self.html(first), self.html(second))
+
+	def test_a_rebuild_adds_no_form(self):
+		first, second = self.page(self.CONTACT), self.page(self.CONTACT)
+		site_forms.adopt_contact_forms(first)
+		after_the_first = self.made()
+		site_forms.adopt_contact_forms(second)
+		self.assertEqual(self.made(), after_the_first)
+		self.assertEqual(self.html(first), self.html(second))
+
+	def test_another_set_of_questions_is_another_form(self):
+		steps, quote = self.page(self.CONTACT), self.page(self.contact(contact_model="questions"))
+		site_forms.adopt_contact_forms(steps)
+		site_forms.adopt_contact_forms(quote)
+		self.assertNotEqual(self.form_of(steps), self.form_of(quote))
+
+	def test_the_form_of_a_website_is_that_websites(self):
+		profile = frappe.db.get_value("Website Profile", {}, "name")
+		if not profile:
+			self.skipTest("this site has no Website Profile")
+		blocks = self.page(self.contact(contact_model="questions"))
+		site_forms.adopt_contact_forms(blocks, profile)
+		self.assertEqual(self.module.get_form(self.form_of(blocks))["profile"], profile)
+
+	def test_a_tag_written_by_hand_is_left_alone(self):
+		by_hand = '{% include "builder/templates/includes/contact_form.html" %}{{ frappe.session.user }}'
+		blocks = self.page(by_hand, "<p>no form here</p>")
+		self.assertEqual(site_forms.adopt_contact_forms(blocks), 0)
+		self.assertEqual(blocks[0]["children"][0]["innerHTML"], by_hand)
+		self.assertEqual(self.made(), set())
+
+	def test_without_the_theme_nothing_changes(self):
+		blocks = self.page(self.CONTACT)
+		with patch.object(site_forms, "theme_module", return_value=None):
+			forget_capability()
+			self.assertEqual(site_forms.adopt_contact_forms(blocks), 0)
+		self.assertEqual(self.html(blocks), self.CONTACT)
+
+	def test_a_failure_leaves_the_page_with_its_plain_form(self):
+		blocks = self.page(self.CONTACT)
+		with patch.object(self.module, "create_form", side_effect=RuntimeError("no")):
+			self.assertEqual(site_forms.adopt_contact_forms(blocks), 0)
+		self.assertEqual(self.html(blocks), self.CONTACT)
+
+	def test_the_tag_written_is_one_the_editor_and_the_assistant_read(self):
+		blocks = self.page(self.CONTACT)
+		site_forms.adopt_contact_forms(blocks)
+		tag = self.html(blocks)
+		with patch("frappe.get_installed_apps", return_value=["frappe", "builder", "neoffice_theme"]):
+			self.assertEqual(components.lawful_tag(tag), tag)
+			self.assertEqual(components.parse_tag(tag)[1], {"site_form": self.form_of(blocks)})
+
+	def test_the_generator_is_not_offered_the_include_that_would_duplicate_its_form(self):
+		from builder.site_ai.nora.site_builder import available_includes
+
+		offered = [c.file for c in available_includes("contact", generator=True)]
+		self.assertIn("contact_form.html", offered)
+		self.assertNotIn("site_form.html", offered)
+		# the assistant and the editor still see it
+		self.assertIn("site_form.html", [c.file for c in available_includes("contact")])
+
+	def test_the_buttons_of_a_page_find_the_form_of_either_include(self):
+		from builder.site_ai.nora.buttons import retarget_self_links
+
+		blocks = self.page(self.CONTACT)
+		site_forms.adopt_contact_forms(blocks)
+		link = {
+			"element": "a",
+			"classes": ["u-btn"],
+			"attributes": {"href": "/contact"},
+			"innerText": "Contact us",
+		}
+		blocks[0]["children"].append(link)
+		edits = retarget_self_links(blocks, "contact", "/contact")
+		self.assertTrue(edits, "the call to action should lead to the form of its own page")
+		self.assertEqual(link["attributes"]["href"], "#contact-form")
+
+
+def json_string(value):
+	import json
+
+	return json.dumps(str(value))

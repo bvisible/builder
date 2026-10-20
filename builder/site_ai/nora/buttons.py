@@ -504,7 +504,8 @@ def retarget_self_links(blocks: list, own_route: str, fallback: str) -> list[str
     brands") goes to the site's call to action. Returns one line per edit."""
     route = str(own_route or "").strip("/")
     own = "/" if route in ("", "home", "index") else f"/{route}"
-    form = _include_block(blocks, "contact_form.html")
+    # //// Neoffice — the form of a site that keeps forms as data is drawn by site_form.html (adopt_contact_forms)
+    form = _include_block(blocks, "contact_form.html") or _include_block(blocks, "site_form.html")
     edits: list[str] = []
 
     def walk(block: dict) -> None:

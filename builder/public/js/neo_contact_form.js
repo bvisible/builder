@@ -21,8 +21,9 @@
    ////
    //// To remove: nothing to remove, there is no upstream counterpart. */
 (function () {
-  // The eight names neoffice_theme.website_messages.submit knows. Anything else is a question of
-  // this template's own, and travels inside the message.
+  // The names neoffice_theme.website_messages.submit knows: the eight of the plain form, and the four a form kept
+  // as data adds (form, answers, elapsed, captcha). Anything else is a question of this template's own, and
+  // travels inside the message.
   var KNOWN_FIELDS = [
     "full_name",
     "sender",
@@ -32,6 +33,10 @@
     "consent",
     "website",
     "token",
+    "form",
+    "answers",
+    "elapsed",
+    "captcha",
   ];
 
   var SUBMIT_URL = "/api/method/neoffice_theme.website_messages.submit";
@@ -219,6 +224,77 @@
       });
   };
 
+  // //// Neoffice — Cloudflare Turnstile, off unless the site switched it on with its keys: captcha_config answers
+  // //// with the PUBLIC key only then, and nothing otherwise. Loaded once per page. A check that cannot be drawn
+  // //// (Cloudflare blocked, the script failed) leaves the form usable: the message goes without it and the server
+  // //// holds it back for the owner to look at, instead of turning the visitor away.
+  var CAPTCHA_URL =
+    "/api/method/neoffice_theme.website_messages.captcha_config";
+  var captchaKey = null;
+  var turnstileLoading = null;
+  var siteCaptchaKey = function () {
+    if (!captchaKey) {
+      captchaKey = fetch(CAPTCHA_URL, {
+        credentials: "same-origin",
+        headers: { Accept: "application/json" },
+      })
+        .then(function (response) {
+          return response.ok ? response.json() : {};
+        })
+        .then(function (json) {
+          return (
+            (json && json.message && json.message.turnstile_site_key) || ""
+          );
+        })
+        .catch(function () {
+          return "";
+        });
+    }
+    return captchaKey;
+  };
+  var loadTurnstile = function () {
+    if (window.turnstile) return Promise.resolve(window.turnstile);
+    if (!turnstileLoading) {
+      turnstileLoading = new Promise(function (resolve, reject) {
+        var script = document.createElement("script");
+        script.src =
+          "https://challenges.cloudflare.com/turnstile/v0/api.js?render=explicit";
+        script.async = true;
+        script.onload = function () {
+          resolve(window.turnstile);
+        };
+        script.onerror = reject;
+        document.head.appendChild(script);
+      });
+    }
+    return turnstileLoading;
+  };
+  // The check, drawn above the send button; null when the site has none or it cannot be drawn.
+  var mountCaptcha = function (form, button) {
+    return siteCaptchaKey()
+      .then(function (key) {
+        if (!key) return null;
+        return loadTurnstile().then(function (turnstile) {
+          var box = document.createElement("div");
+          box.className = "builder-contact-form__captcha";
+          var parent = button && button.parentNode ? button.parentNode : form;
+          parent.insertBefore(box, button || null);
+          var id = turnstile.render(box, { sitekey: key });
+          return {
+            value: function () {
+              return turnstile.getResponse(id) || "";
+            },
+            reset: function () {
+              turnstile.reset(id);
+            },
+          };
+        });
+      })
+      .catch(function () {
+        return null;
+      });
+  };
+
   var post = function (url, body) {
     var headers = { Accept: "application/json" };
     if (window.frappe && window.frappe.csrf_token)
@@ -242,6 +318,10 @@
     var action = form.getAttribute("action") || SUBMIT_URL;
     var legacyAction = form.dataset.legacyAction || LEGACY_URL;
     var siteForm = form.dataset.neoForm || "";
+    var captcha = null;
+    mountCaptcha(form, button).then(function (widget) {
+      captcha = widget;
+    });
     var token = { value: "", at: 0, decoy: "" };
     // when the visitor first touched the form: a script posting at once has no such moment to report
     var touched = 0;
@@ -390,6 +470,7 @@
               answers: JSON.stringify(answersOf(form)),
               token: ready,
               elapsed: String(touched ? Date.now() - touched : 0),
+              captcha: captcha ? captcha.value() : "",
             });
             var decoy = form.querySelector("[data-neo-decoy]");
             if (token.decoy) data.set(token.decoy, decoy ? decoy.value : "");
@@ -405,6 +486,7 @@
             consent: checkedConsent(form),
             token: ready,
             website: value(form, "website"),
+            captcha: captcha ? captcha.value() : "",
           });
           return post(action, body).then(function (response) {
             if (response.status === 404)
@@ -446,6 +528,8 @@
           });
         })
         .finally(function () {
+          // a Turnstile answer serves once
+          if (captcha) captcha.reset();
           if (status) status.hidden = false;
           if (button) button.disabled = false;
         });

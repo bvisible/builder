@@ -248,6 +248,28 @@ def guarded_form_script(selector: str, web_form: str, fieldnames: list, assistan
     }});
   }}
   fetchToken();
+  // Cloudflare Turnstile, when the site switched it on (the public key is served only then): drawn above the send
+  // button; a check that cannot be drawn leaves the form usable and the server holds the booking back for the owner.
+  var captcha = null;
+  fetch('/api/method/neoffice_theme.website_messages.captcha_config', {{ credentials: 'same-origin' }})
+    .then(function (r) {{ return r.ok ? r.json() : {{}}; }})
+    .then(function (j) {{
+      var key = (j && j.message && j.message.turnstile_site_key) || '';
+      if (!key) return;
+      return new Promise(function (resolve, reject) {{
+        if (window.turnstile) return resolve(window.turnstile);
+        var s = document.createElement('script');
+        s.src = 'https://challenges.cloudflare.com/turnstile/v0/api.js?render=explicit';
+        s.async = true; s.onload = function () {{ resolve(window.turnstile); }}; s.onerror = reject;
+        document.head.appendChild(s);
+      }}).then(function (turnstile) {{
+        var box = document.createElement('div');
+        (btn && btn.parentNode ? btn.parentNode : form).insertBefore(box, btn || null);
+        var id = turnstile.render(box, {{ sitekey: key }});
+        captcha = {{ value: function () {{ return turnstile.getResponse(id) || ''; }}, reset: function () {{ turnstile.reset(id); }} }};
+      }});
+    }})
+    .catch(function () {{ captcha = null; }});
   function submit(e) {{
     if (e) e.preventDefault();
     if (busy) return false;
@@ -267,7 +289,8 @@ def guarded_form_script(selector: str, web_form: str, fieldnames: list, assistan
         form: KEY,
         answers: JSON.stringify(data),
         token: token.value,
-        elapsed: String(touched ? Date.now() - touched : 0)
+        elapsed: String(touched ? Date.now() - touched : 0),
+        captcha: captcha ? captcha.value() : ''
       }});
       var decoy = form.querySelector('[data-neo-decoy]');
       if (token.decoy) body.set(token.decoy, decoy ? decoy.value : '');
@@ -284,7 +307,7 @@ def guarded_form_script(selector: str, web_form: str, fieldnames: list, assistan
         busy = false;
         if (btn) {{ btn.textContent = label || 'Try again'; btn.disabled = false; }}
       }})
-      .then(function () {{ fetchToken(); }});
+      .then(function () {{ if (captcha) captcha.reset(); fetchToken(); }});
     return false;
   }}
   // Attach to BOTH: the button click (fires whether or not it's type=submit) and,
@@ -298,3 +321,164 @@ def guarded_form_script(selector: str, web_form: str, fieldnames: list, assistan
 
 # the three values the script above is written from: how the patch that rewrites the old scripts reads them back
 SCRIPT_VALUES = r"var SEL = (?P<selector>\".*?\"), WF = (?P<web_form>\".*?\"), FIELDS = (?P<fields>\[.*?\]);"
+
+
+# -- the contact forms the site generator writes ----------------------------------------------------------------
+
+CONTACT_INCLUDE = "builder/templates/includes/contact_form.html"
+SITE_FORM_INCLUDE = "builder/templates/includes/site_form.html"
+
+
+def form_tag(name: str) -> str:
+	return f'{{%- set site_form = "{name}" -%}}{{% include "{SITE_FORM_INCLUDE}" %}}'
+
+
+def _signature(data: dict) -> str:
+	"""What makes two forms the same form for a website: its steps, its window, its questions. The name is not part
+	of it (the identifier and the title come from the website that made it)."""
+	fields = [
+		(
+			f.get("label"),
+			f.get("type"),
+			int(bool(f.get("required"))),
+			int(f.get("step") or 1),
+			"\n".join(f.get("options") or [])
+			if isinstance(f.get("options"), list)
+			else (f.get("options") or ""),
+			f.get("role") or "",
+		)
+		for f in data.get("fields") or []
+	]
+	steps = data.get("steps") or []
+	return json.dumps(
+		[
+			steps if isinstance(steps, list) else [s for s in str(steps).splitlines() if s.strip()],
+			int(bool(data.get("dialog"))),
+			(data.get("button_text") or "") if data.get("dialog") else "",
+			fields,
+		],
+		ensure_ascii=False,
+	)
+
+
+def _wanted_form(values: dict, lang: str | None) -> dict:
+	"""The form a contact include with these options stands for, as the theme writes forms: the preset the model
+	chose (contact_model), the window and its button, the consent sentence as a question to tick, the phone asked
+	for when the business needs it."""
+	module = theme_module()
+	model = values.get("contact_model")
+	preset = model if model in module.PRESETS else "steps"
+	spec = module.preset_definition(preset, lang)
+	fields = [dict(f) for f in spec["fields"]]
+	steps = max(1, len(spec["steps"]))
+	if values.get("phone_required"):
+		phone = next((f for f in fields if f["role"] == "Phone"), None)
+		if phone:
+			phone["required"] = 1
+		else:
+			message_at = next((i for i, f in enumerate(fields) if f["role"] == "Message"), len(fields))
+			fields.insert(
+				message_at,
+				{
+					"label": module.preset_definition("steps", lang)["fields"][2]["label"],
+					"type": "Phone",
+					"role": "Phone",
+					"fieldname": "phone",
+					"required": 1,
+					"step": 1,
+					"options": "",
+					"help": "",
+				},
+			)
+	consent = (values.get("consent_text") or "").strip()
+	if consent:
+		fields.append(
+			{
+				"label": consent,
+				"type": "Consent",
+				"required": 1,
+				"step": steps,
+				"options": "",
+				"help": "",
+				"role": "",
+			}
+		)
+	dialog = bool(values.get("contact_dialog"))
+	button = values.get("contact_button_text")
+	if dialog and button is None:
+		button = frappe._("Contact us", lang) if lang else frappe._("Contact us")
+	return {
+		"title": spec["title"],
+		"kind": spec["kind"],
+		"steps": spec["steps"],
+		"fields": fields,
+		"dialog": dialog,
+		"button_text": button if dialog else "",
+	}
+
+
+def adopt_contact_forms(
+	blocks: list, profile: str | None = None, lang: str | None = None, made: dict | None = None
+) -> int:
+	"""Where the site keeps forms, the contact form a page was written with (the contact_form include and the options
+	the site generator chose: model, window, consent, phone) becomes a Site Form of the website, and the page draws
+	it from that record. The owner then edits its questions in the editor, in the desk or with the assistant; a
+	form kept as markup in a page cannot be.
+
+	`made` carries the forms of this build ({signature: name}), so the pages of one site that ask the same things
+	share one form; a website that already has an equivalent form uses it, so a rebuild adds none. A tag that was
+	written by hand, or a failure of any kind, leaves the page as it was: the plain contact form still draws.
+	Returns the number of tags rewritten."""
+	if not available():
+		return 0
+	from builder.site_ai import components
+	from builder.site_ai.nora.layout import _walk
+
+	made = made if made is not None else {}
+	module = theme_module()
+	changed = 0
+	for block in _walk(blocks):
+		for child in block.get("children") or []:
+			html = child.get("innerHTML") if isinstance(child, dict) else None
+			if not isinstance(html, str) or "contact_form.html" not in html:
+				continue
+			parsed = components.parse_tag(html)
+			if not parsed or parsed[0].path != CONTACT_INCLUDE:
+				continue
+			try:
+				wanted = _wanted_form(parsed[1], lang)
+				signature = _signature(wanted)
+				name = made.get(signature) or _equivalent_form(module, profile, signature)
+				if name is None:
+					name = _make_form(module, wanted, profile, lang)
+				made[signature] = name
+				child["innerHTML"] = form_tag(name)
+				changed += 1
+			except Exception:  # noqa: BLE001 - the page keeps its plain contact form; the build goes on
+				frappe.log_error("Site form: a contact form was not adopted", frappe.get_traceback())
+	return changed
+
+
+def _equivalent_form(module, profile: str | None, signature: str) -> str | None:
+	for row in module.list_forms(profile):
+		if row.get("profile") != (profile or None) or not row.get("enabled"):
+			continue
+		if _signature(module.get_form(row["name"])) == signature:
+			return row["name"]
+	return None
+
+
+def _make_form(module, wanted: dict, profile: str | None, lang: str | None) -> str:
+	made = module.create_form(
+		title=wanted["title"], preset="simple", profile=profile or None, kind=wanted["kind"], lang=lang
+	)
+	module.save_form(
+		made["name"],
+		{
+			"steps": wanted["steps"],
+			"fields": wanted["fields"],
+			"dialog": wanted["dialog"],
+			"button_text": wanted["button_text"],
+		},
+	)
+	return made["name"]
