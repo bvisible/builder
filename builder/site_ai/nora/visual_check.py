@@ -13,6 +13,7 @@ for the check to see the right chrome."""
 
 import os
 import time
+from types import SimpleNamespace
 
 import frappe
 
@@ -143,33 +144,108 @@ def revision_instructions(issues: list[dict], gate: list[dict] | None = None) ->
 # //// client's B2B site shipped with three pages its own reviewer had called unprofessional:
 # //// a judge that is not the writer, a measured gate before the model's opinion, and a verdict
 # //// that decides what is published. They live here.
+def _usable_judge(name: str | None) -> bool:
+    """A registered model that reads images."""
+    from builder.ai.models import ModelRegistry
+
+    if not name:
+        return False
+    try:
+        info = ModelRegistry.find(name)
+        return bool(info) and bool(ModelRegistry.supports_vision(name))
+    except Exception:
+        return False
+
+
+def local_judge_models() -> list[str]:
+    """The host's own judge lanes that are on (managed.sync_nora_judge_providers), the reasoning lane first."""
+    try:
+        from builder.site_ai.managed import nora_judge_models
+
+        return nora_judge_models()
+    except Exception:
+        return []
+
+
 def judge_model(page_model: str) -> str:
     """The model that READS the pages: never the one that wrote them when a stronger reader is
     registered. `nora_review_model` in site_config names it; otherwise the strongest managed
-    Kimi that reads images (K3), else the page model itself.
+    Kimi that reads images (K3), else the host's own judge lanes, else the page model itself.
 
     A model judging its own work is the softest judge there is (self-preference, and mostly
     judge uncertainty: it does not see what it did not think of). The reading costs a fraction
     of the writing — 22 k in / 32 k out for a whole site — so the best reader is affordable."""
-    from builder.ai.models import ModelRegistry
-
-    def usable(name: str | None) -> bool:
-        if not name:
-            return False
-        try:
-            info = ModelRegistry.find(name)
-            return bool(info) and bool(ModelRegistry.supports_vision(name))
-        except Exception:
-            return False
-
     try:
         wanted = str(frappe.conf.get("nora_review_model") or "").strip()
     except Exception:
         wanted = ""
     for candidate in (wanted, f"managed/{wanted}" if wanted and "/" not in wanted else "", "managed/kimi-k3"):
-        if candidate and candidate != page_model and usable(candidate):
+        if candidate and candidate != page_model and _usable_judge(candidate):
+            return candidate
+    # //// Neoffice — the host's own judge lanes before the writer reads itself (2026-10-20): an instance with
+    # //// no large hosted reader (no Moonshot account, or none registered) judged its pages with the model that
+    # //// wrote them. The local lanes read under their own instructions (judge_style) and are not the writer's route.
+    for candidate in local_judge_models():
+        if candidate != page_model and _usable_judge(candidate):
             return candidate
     return page_model
+
+
+# //// Neoffice — a judge that is not a large hosted model reads under other instructions and twice (2026-10-20).
+# //// Measured on 23 pages read twice and on 28 pages it was not tuned on (Obsidian
+# //// Neoffice/Builder/Projet-Builder-v15/14, section 8): the local model, read with the instructions made for the
+# //// hosted ones, refused half of the good pages on faults it invented; with its own instructions
+# //// (visual_critique.EVIDENCE_SYSTEM) it refuses 21 % of the reads and none of the 14 pages of a large writer, and
+# //// a page that both of two reads refuse is the page a designer would refuse (the one such page of the 14
+# //// had a real defect on the phone). A split verdict lets the page stand.
+LOCAL_JUDGE_READS = 2
+
+
+def judge_style(model: str) -> str:
+    """"evidence" for a judge that is one of the host's own lanes (or when `nora_review_style` says so),
+    "default" for the large hosted models, whose instructions are the ones the build was tuned on."""
+    try:
+        forced = str(frappe.conf.get("nora_review_style") or "").strip().lower()
+    except Exception:
+        forced = ""
+    if forced in ("default", "evidence"):
+        return forced
+    try:
+        # the stored rows, not the catalog: the catalog may ask OpenRouter for live facts, and this is asked on every look
+        from builder.ai.models import load_models
+        from builder.site_ai.managed import HOST_ONLY_PROVIDERS
+
+        info = next((m for m in load_models() if m.get("name") == model), None)
+        if info and info.get("provider") in HOST_ONLY_PROVIDERS:
+            return "evidence"
+    except Exception:
+        pass
+    return "default"
+
+
+def fallback_judge(failed: str) -> str | None:
+    """Another reader for a page whose judge failed (an account out of credit, a lane down): the host's own
+    lanes when a hosted model failed, the hosted K3 first when a lane did."""
+    local = local_judge_models()
+    candidates = ["managed/kimi-k3", *local] if failed in local else local
+    for candidate in candidates:
+        if candidate != failed and _usable_judge(candidate):
+            return candidate
+    return None
+
+
+def _same_point(a, b) -> bool:
+    def key(issue):
+        return ((issue.area or "").strip().lower(), (issue.problem or "").strip().lower()[:80])
+
+    return key(a) == key(b)
+
+
+def merge_refusals(first, second):
+    """Two reads that both refused the page, as one critique: the first one's words and every point either made once."""
+    issues = list(first.issues or [])
+    issues += [i for i in second.issues or [] if not any(_same_point(i, seen) for seen in issues)]
+    return SimpleNamespace(looks_professional=False, overall=first.overall, issues=issues)
 
 
 def dedupe_findings(measured: dict) -> list[dict]:
@@ -308,7 +384,8 @@ def _screenshot(url: str, title: str) -> dict:
     for attempt in range(SERVER_RETRIES + 1):
         try:
             # //// Neoffice — see the block marker above: header threaded into the capture
-            shot = capture_website_screenshot(url, full_page=True, static_roots=roots, headers=headers)
+            # //// Neoffice — keep_bytes: the judge reads the capture, not the shrunk File (issue 1749, 2026-10-20)
+            shot = capture_website_screenshot(url, full_page=True, static_roots=roots, headers=headers, keep_bytes=True)
             if shot.get("success"):
                 return shot
             error = str(shot.get("error") or "screenshot failed")
@@ -320,7 +397,7 @@ def _screenshot(url: str, title: str) -> dict:
         time.sleep(SERVER_RETRY_SECONDS)
     ai_log("warning", "Full-page screenshot failed, viewport only", page=title, error=error[:120])
     # //// Neoffice — see the block marker above: header threaded into the viewport fallback too
-    return capture_website_screenshot(url, full_page=False, static_roots=roots, headers=headers)
+    return capture_website_screenshot(url, full_page=False, static_roots=roots, headers=headers, keep_bytes=True)
 
 
 # //// Neoffice ▼▼▼ — the screenshot, sized for a model to READ (2026-09-15). Wide enough that a
@@ -477,13 +554,38 @@ def review_page(page: dict, profile: str | None, model: str, site_name: str = ""
         # //// paying for a picture it could not read. And a data URL passes through
         # //// _image_to_data_url untouched, so what we sized is what is sent.
         phone_picture = _readable_data_url(phone) if phone and phone.get("success") else None
-        critique, label = critique_screenshot(
-            _readable_data_url(shot) or shot["file_url"],
-            model=model,
-            context=REVIEW_CONTEXT.format(site_name=site_name, activity=activity[:160])
-            + (LEGAL_CONTEXT if str(page.get("type") or "") == "legal" else ""),
-            extra_images=[phone_picture] if phone_picture else None,
-        )
+        picture = _readable_data_url(shot) or shot["file_url"]
+        context = REVIEW_CONTEXT.format(site_name=site_name, activity=activity[:160]) + (LEGAL_CONTEXT if str(page.get("type") or "") == "legal" else "")
+
+        def read(judge: str, style: str):
+            return critique_screenshot(picture, model=judge, context=context, extra_images=[phone_picture] if phone_picture else None, style=style)
+
+        style = judge_style(model)
+        try:
+            critique, label = read(model, style)
+        except Exception as failed:
+            # //// Neoffice — a judge that fails (an account out of credit, a lane down) is replaced by another
+            # //// reader, once (2026-10-20): the build used to publish the page unread ("not reviewed") for it.
+            other = fallback_judge(model)
+            if not other:
+                raise
+            ai_log("warning", "The judge failed, another reader looks", page=page["title"], judge=model, error=str(failed)[:120], other=other)
+            model, style = other, judge_style(other)
+            critique, label = read(model, style)
+            report["judge"] = model
+        report["reads"] = 1
+        if style == "evidence" and not critique.looks_professional and LOCAL_JUDGE_READS > 1:
+            # //// Neoffice — see LOCAL_JUDGE_READS: only a refusal is read again, and it stands when both reads give it
+            try:
+                again, _again_label = read(model, style)
+                report["reads"] = 2
+                if again.looks_professional:
+                    ai_log("info", "Two reads disagree, the page stands", page=page["title"], first=(critique.overall or "")[:100])
+                    critique = again
+                else:
+                    critique = merge_refusals(critique, again)
+            except Exception as e:
+                ai_log("warning", "The second read failed, the first one stands", page=page["title"], error=str(e)[:120])
         report["professional"] = bool(critique.looks_professional)
         # //// Neoffice — see verdict_is_about_the_chrome
         if verdict_is_about_the_chrome(critique):
@@ -511,7 +613,8 @@ def capture_phone(url: str) -> dict:
     """The page as a phone shows it (PHONE_WIDTH), full length, for the judge's second picture."""
     from builder.site_ai.inspiration.screenshotter import capture_website_screenshot
 
-    return capture_website_screenshot(url, full_page=True, static_roots=static_roots(), headers=loopback_headers(), viewport_width=PHONE_WIDTH)
+    # //// Neoffice — keep_bytes: without them _readable_data_url had nothing to size and the phone never reached the judge (issue 1749)
+    return capture_website_screenshot(url, full_page=True, static_roots=static_roots(), headers=loopback_headers(), viewport_width=PHONE_WIDTH, keep_bytes=True)
 
 
 def measure_page(url: str) -> dict:

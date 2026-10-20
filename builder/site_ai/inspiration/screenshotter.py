@@ -260,6 +260,8 @@ class WebsiteScreenshotter:
         static_roots: Optional[dict] = None,
         # //// Neoffice — capture_and_save takes headers too, for the same loopback site-name header (0445cc94 "fix(visual-check): the loopback render names its site by header, not by host")
         headers: Optional[dict] = None,
+        # //// Neoffice — keep_bytes: the capture itself rides along with the File (2026-10-20, see below)
+        keep_bytes: bool = False,
     ) -> dict:
         """
         Capture screenshot and save to Frappe File.
@@ -268,6 +270,7 @@ class WebsiteScreenshotter:
             url: URL to capture
             doc_name: Optional document name to link file to
             full_page: Whether to capture the full page
+            keep_bytes: also return the PNG bytes the browser took, under "screenshot"
 
         Returns:
             dict with file_url, file_doc, and capture metadata
@@ -293,7 +296,7 @@ class WebsiteScreenshotter:
         })
         file_doc.save(ignore_permissions=True)
 
-        return {
+        saved = {
             "file_url": file_doc.file_url,
             "file_doc_name": file_doc.name,
             "title": result.get("title"),
@@ -302,16 +305,26 @@ class WebsiteScreenshotter:
             "height": result.get("height"),
             "success": True,
         }
+        # //// Neoffice — the judge of a build read a page shrunk to 43 % and never saw the phone (issue 1749,
+        # //// 2026-10-20). The File this method stores is not the capture: a 1440 x 3706 page is kept as
+        # //// 622 x 1600, and the bytes were never handed back, so visual_check._readable_data_url (which
+        # //// sizes the picture for reading from them) returned None from its first line and the review
+        # //// fell back on the stored File, or on nothing for the phone. A caller that sizes the picture
+        # //// itself asks for the bytes; the others keep a dict that can be serialised.
+        if keep_bytes:
+            saved["screenshot"] = result["screenshot"]
+        return saved
 
 
 # //// Neoffice — module-level helper takes headers too, for the loopback site-name header (0445cc94 "fix(visual-check): the loopback render names its site by header, not by host")
-def capture_website_screenshot(url: str, full_page: bool = True, static_roots: Optional[dict] = None, headers: Optional[dict] = None, viewport_width: Optional[int] = None) -> dict:
+def capture_website_screenshot(url: str, full_page: bool = True, static_roots: Optional[dict] = None, headers: Optional[dict] = None, viewport_width: Optional[int] = None, keep_bytes: bool = False) -> dict:
     """
     Convenience function to capture a website screenshot.
 
     Args:
         url: URL to capture
         full_page: Whether to capture full page
+        keep_bytes: also return the PNG bytes the browser took, under "screenshot" (see capture_and_save)
 
     Returns:
         dict with capture result
@@ -321,7 +334,7 @@ def capture_website_screenshot(url: str, full_page: bool = True, static_roots: O
     # //// wrapped letter by letter on a narrow column: what breaks first breaks on the phone.
     screenshotter = WebsiteScreenshotter(viewport_width=viewport_width) if viewport_width else WebsiteScreenshotter()
     # //// Neoffice — pass headers through to capture_and_save (0445cc94 "fix(visual-check): the loopback render names its site by header, not by host")
-    return screenshotter.capture_and_save(url, full_page=full_page, static_roots=static_roots, headers=headers)
+    return screenshotter.capture_and_save(url, full_page=full_page, static_roots=static_roots, headers=headers, keep_bytes=keep_bytes)
 
 
 # //// Neoffice ▼▼▼ — the measured look at a rendered page (2026-09-16). A vision model reading a

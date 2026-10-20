@@ -15,10 +15,9 @@ critique step if nora proves too weak at design critique.
 
 
 from builder.site_ai.config import get_ai_settings
+from builder.site_ai.logging import ai_log
 from builder.site_ai.providers import get_provider
 from builder.site_ai.schemas.page_critique import PageCritique
-from builder.site_ai.logging import ai_log
-
 
 # //// Neoffice — 300 (2026-09-16): the judge thinks before it answers (K3 at "high" read a page in ~50 s;
 # //// a long page with two pictures may take twice that), and the timeout now reaches the call
@@ -34,6 +33,30 @@ _CRITIQUE_SYSTEM = (
     "concrete and specific to what you actually SEE. If it looks good, return "
     "few or no issues."
 )
+
+
+# //// Neoffice — the instructions of a judge that is not a large hosted model (2026-10-20). The local model read the
+# //// pages with the instructions above and refused half of the good ones, on faults it invented (a word it "saw"
+# //// misspelled, written correctly on the page), on text it found small, and on the plain blocks it was told to
+# //// ignore. Measured on 23 pages read twice, then on 28 pages it had not been tuned on (Obsidian
+# //// Neoffice/Builder/Projet-Builder-v15/14, section 8): this version, on the reasoning lane, refuses 21 % of the good
+# //// reads instead of 50 % and none of the 14 pages a large model wrote, and still refuses the 16 pages damaged on
+# //// purpose. What changed: the verdict starts from "professional", the judge does not proof-read (another tool
+# //// does), and a point must quote what the judge reads on the page.
+EVIDENCE_SYSTEM = (
+    "You are a senior web designer doing a final review of SCREENSHOTS of a generated web page before it goes live "
+    "for a client. Judge it as a visitor would at first glance. The default verdict is PROFESSIONAL: call the page "
+    "not professional only for a defect a visitor would notice at once and a designer would refuse to ship: the page "
+    "looks broken or half empty, text overlaps or is cut off, text cannot be read against its background, pictures "
+    "are stretched or missing where the layout depends on them, or the content is about another business. "
+    "Do NOT proof-read: spelling, grammar and wording are checked by another tool, so never report a typo or a "
+    "sentence you find awkward. Do not report text that is merely small or light unless you cannot read it at all. "
+    "Do not report the header, the navigation or the footer. Plain coloured blocks where a photo would go are "
+    "deliberate. Every issue must name the visible element and quote the exact words you can read on it (leave the "
+    "quote empty only for a problem that is not text, such as a gap or an overlap): if you cannot quote it, do not "
+    "report it. Prefer a few certain issues to many doubtful ones; a page without such a defect has no issues."
+)
+SYSTEMS = {"default": _CRITIQUE_SYSTEM, "evidence": EVIDENCE_SYSTEM}
 
 
 def _critique_provider(which: str = "auto"):
@@ -57,7 +80,7 @@ def _critique_provider(which: str = "auto"):
 CRITIQUE_MAX_TOKENS = 8000
 
 
-def critique_screenshot(screenshot_url: str, which: str = "auto", model: str | None = None, context: str = "", extra_images: list[str] | None = None):
+def critique_screenshot(screenshot_url: str, which: str = "auto", model: str | None = None, context: str = "", extra_images: list[str] | None = None, style: str = "default"):
     """Critique a page screenshot. Returns (PageCritique, model_label). `model` names a
     vision-capable registry model to use instead of the nora/kimi choice (the site build
     reviews with its page model, Kimi K2.7 reads images since 2026-09-08); `context` is
@@ -86,7 +109,8 @@ def critique_screenshot(screenshot_url: str, which: str = "auto", model: str | N
     critique = llm.generate_structured(
         prompt=prompt,
         schema=PageCritique,
-        system_prompt=_CRITIQUE_SYSTEM,
+        # //// Neoffice — `style` picks the instructions (SYSTEMS): "evidence" for a judge that is not a large hosted model
+        system_prompt=SYSTEMS.get(style, _CRITIQUE_SYSTEM),
         images=[screenshot_url, *(extra_images or [])],
         max_tokens=CRITIQUE_MAX_TOKENS,
         think=False,

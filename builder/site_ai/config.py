@@ -167,6 +167,9 @@ def get_ai_settings() -> AIConfig:
         nora_review_model      //// Neoffice (2026-09-16): the model that READS the built pages
                                (visual_check.judge_model); never the writer when another reader exists
         nora_reasoning_effort  //// Neoffice (2026-09-16): low / high / max for Kimi K3 (llm.reasoning_effort)
+        nora_review_style      //// Neoffice (2026-10-20): "evidence" or "default", the instructions the judge
+                               reads under; unset, a judge that is one of the host's own lanes reads
+                               under "evidence" and the large hosted models under "default"
 
     The upstream `ai_api_key` of Builder Settings is read as a last resort for
     the key (a self-hosted site that typed it there before the provider rows).

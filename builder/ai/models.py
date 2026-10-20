@@ -173,10 +173,10 @@ class ModelRegistry:
 	@staticmethod
 	def is_host_vision(model: dict) -> bool:
 		try:
-			from builder.site_ai.managed import NORA_PROVIDER_NAME
+			from builder.site_ai.managed import HOST_ONLY_PROVIDERS  # //// Neoffice — the judge lanes (Nora Think, Nora Judge) are the host's too (2026-10-20)
 		except ImportError:
 			return False
-		return model.get("provider") == NORA_PROVIDER_NAME
+		return model.get("provider") in HOST_ONLY_PROVIDERS  # //// Neoffice — not conversation models either: the picker leaves them out
 
 	@classmethod
 	def available(cls) -> list[dict]:

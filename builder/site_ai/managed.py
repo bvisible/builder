@@ -28,6 +28,18 @@ ROUTE_PREFIX = "managed"
 #: through the same litellm route as everything else.
 NORA_PROVIDER_NAME = "Nora Vision"
 NORA_ROUTE_PREFIX = "nora"
+#: The same local model under other route names, so it can read the pages it wrote (the judge is never
+#: the model that wrote a page: visual_check.judge_model skips a route equal to the page model), and so a
+#: judge can run on the reasoning lane, which answers a structured review 2 to 3 times faster than the
+#: plain lane and refuses fewer good pages (Obsidian Neoffice/Builder/Projet-Builder-v15/14, section 8).
+#: (provider, route prefix, site_config key of the lane's URL, label), the reasoning lane first.
+NORA_JUDGE_LANES = (
+    ("Nora Think", "nora-think", "nora_thinking_url", "Nora (reasoning judge)"),
+    ("Nora Judge", "nora-judge", "nora_base_url", "Nora (judge)"),
+)
+#: Providers that read documents and pages for the host and are not conversation models: the model picker
+#: does not offer them (builder.ai.models.is_host_vision).
+HOST_ONLY_PROVIDERS = (NORA_PROVIDER_NAME, *(lane[0] for lane in NORA_JUDGE_LANES))
 
 
 def nora_vision_model() -> str | None:
@@ -71,6 +83,62 @@ def sync_nora_vision_provider() -> str | None:
         frappe.db.set_value("Builder AI Model", other, "enabled", 0)
     frappe.db.commit()
     return NORA_PROVIDER_NAME
+
+
+def sync_nora_judge_providers() -> list[str]:
+    """Create or refresh one provider row per judge lane whose URL the host configured, and switch off the rows
+    of a lane it no longer has. No-op without `nora_api_key`. Returns the providers that are on."""
+    conf = frappe.conf
+    api_key = conf.get("nora_api_key")
+    if not frappe.db.exists("DocType", "Builder AI Provider"):
+        return []
+    model_id = conf.get("nora_ocr_model") or conf.get("nora_model") or "nora"
+    on = []
+    for provider, prefix, url_key, label in NORA_JUDGE_LANES:
+        url = conf.get(url_key)
+        exists = frappe.db.exists("Builder AI Provider", provider)
+        if not url or not api_key:
+            if exists:
+                frappe.db.set_value("Builder AI Provider", provider, "enabled", 0)
+            continue
+        if exists:
+            doc = frappe.get_doc("Builder AI Provider", provider)
+        else:
+            doc = frappe.new_doc("Builder AI Provider")
+            doc.provider_name = provider
+        doc.enabled = 1
+        doc.route_prefix = prefix
+        doc.litellm_provider = "openai"
+        doc.api_base = url
+        doc.api_key = api_key
+        doc.flags.ignore_permissions = True
+        doc.save()
+        name = f"{prefix}/{model_id}"
+        if frappe.db.exists("Builder AI Model", name):
+            frappe.db.set_value("Builder AI Model", name, {"enabled": 1, "supports_vision": 1})
+        else:
+            frappe.get_doc(
+                {"doctype": "Builder AI Model", "provider": provider, "enabled": 1, "model_id": model_id, "label": label, "supports_vision": 1}
+            ).insert(ignore_permissions=True)
+        for other in frappe.get_all("Builder AI Model", filters={"provider": provider, "name": ("!=", name)}, pluck="name"):
+            frappe.db.set_value("Builder AI Model", other, "enabled", 0)
+        on.append(provider)
+    frappe.db.commit()
+    return on
+
+
+def nora_judge_models() -> list[str]:
+    """The Builder AI Model names of the judge lanes that are on, the reasoning lane first."""
+    if not frappe.db.exists("DocType", "Builder AI Model"):
+        return []
+    found = []
+    for provider, _prefix, _url_key, _label in NORA_JUDGE_LANES:
+        if not frappe.db.get_value("Builder AI Provider", provider, "enabled"):
+            continue
+        found += frappe.get_all(
+            "Builder AI Model", filters={"provider": provider, "enabled": 1}, pluck="name", order_by="creation asc", limit=1
+        )
+    return found
 
 
 def managed_models() -> list[dict]:
@@ -173,11 +241,12 @@ def sync_managed_ai_provider() -> str | None:
     # would sit in the picker and fail on first use. A disabled provider takes its
     # models with it (builder.ai.models.load_models); an operator can re-enable one.
     for other in frappe.get_all(
-        "Builder AI Provider", filters={"name": ("not in", (PROVIDER_NAME, NORA_PROVIDER_NAME)), "enabled": 1}, pluck="name"
+        "Builder AI Provider", filters={"name": ("not in", (PROVIDER_NAME, *HOST_ONLY_PROVIDERS)), "enabled": 1}, pluck="name"
     ):
         frappe.db.set_value("Builder AI Provider", other, "enabled", 0)
     frappe.db.commit()
     sync_nora_vision_provider()
+    sync_nora_judge_providers()
     from builder.ai.models import ModelRegistry
 
     ModelRegistry.clear_cache()

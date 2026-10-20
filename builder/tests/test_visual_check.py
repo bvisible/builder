@@ -127,7 +127,8 @@ class TestLegalPageContext(unittest.TestCase):
 		seen = {}
 
 		# //// Neoffice — extra_images: the judge also gets the phone capture (2026-09-16)
-		def critique(url, model=None, context="", extra_images=None):
+		# //// Neoffice — style: the judge reads under instructions that follow it (2026-10-20)
+		def critique(url, model=None, context="", extra_images=None, style="default"):
 			seen["context"] = context
 			return SimpleNamespace(looks_professional=True, overall="fine", issues=[]), "kimi"
 
