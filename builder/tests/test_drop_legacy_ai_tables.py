@@ -10,7 +10,7 @@ the code base reads them (the reason it is safe)."""
 
 import pathlib
 import unittest
-from unittest.mock import MagicMock, patch
+from unittest.mock import patch
 
 import frappe
 
@@ -41,32 +41,24 @@ class TestTheFiveTables(unittest.TestCase):
 		):
 			self.assertLess(patches.index(earlier), mine, earlier)
 
-	def test_it_drops_exactly_those_and_says_how_many_rows_each_held(self):
-		said = []
-		logger = MagicMock()
-		logger.info.side_effect = said.append
-		counts = {"Builder Chat Message": 253, "Builder Chat Session": 50, "Builder Page Library": None}
+	def test_it_drops_exactly_those(self):
 		with (
-			patch.object(the_patch, "drop", return_value=counts) as drop,
-			patch("frappe.logger", return_value=logger),
+			patch.object(the_patch, "drop", return_value={"Builder Chat Message": 253}) as drop,
 			patch("frappe.db.commit") as commit,
 		):
 			the_patch.execute()
 		drop.assert_called_once_with(FIVE)
 		commit.assert_called_once()
-		line = " ".join(said)
-		self.assertIn("Builder Chat Message: 253", line)
-		self.assertIn("Builder Chat Session: 50", line)
-		self.assertIn("Builder Page Library: no table", line)
 
-	def test_a_site_that_has_none_of_them_logs_and_commits_nothing(self):
-		with (
-			patch.object(the_patch, "drop", return_value={}),
-			patch("frappe.logger") as logger,
-			patch("frappe.db.commit") as commit,
-		):
+	def test_the_row_counts_are_journaled_by_the_drop_it_uses(self):
+		"""The count is said by drop(), before each table goes (test_drop_builder_ai_shortcode): this patch must use it."""
+		from builder.builder.patches import drop_builder_ai_shortcode
+
+		self.assertIs(the_patch.drop, drop_builder_ai_shortcode.drop)
+
+	def test_a_site_that_has_none_of_them_commits_nothing(self):
+		with patch.object(the_patch, "drop", return_value={}), patch("frappe.db.commit") as commit:
 			the_patch.execute()
-		logger.assert_not_called()
 		commit.assert_not_called()
 
 

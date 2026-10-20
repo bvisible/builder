@@ -9,8 +9,8 @@
 # python, no vue, no fixture, no hook), the chat that replaced them lives in Builder AI Session and Builder AI Message, and
 # the brief lives on the site chrome.
 #
-# Jérémy decided on 2026-10-20 to drop them, after the row count is logged. drop() (drop_builder_ai_shortcode) says how
-# many rows each held, before the drop, and removes the table; a site where an earlier patch already removed a table
+# Jérémy decided on 2026-10-20 to drop them, after the row count is journaled. drop() (drop_builder_ai_shortcode) says how
+# many rows each held, before the drop, in sites/<site>/logs/dropped-tables.log and in the migrate output, then removes the table; a site where an earlier patch already removed a table
 # or never had one is left alone.
 import frappe
 
@@ -26,13 +26,5 @@ DOCTYPES = (
 
 
 def execute():
-	dropped = drop(DOCTYPES)
-	if dropped:
-		frappe.logger().info(
-			"dropped the tables of the legacy AI doctypes — "
-			+ ", ".join(
-				f"{doctype}: {count if count is not None else 'no table'}"
-				for doctype, count in dropped.items()
-			)
-		)
+	if drop(DOCTYPES):
 		frappe.db.commit()

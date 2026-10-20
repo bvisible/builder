@@ -17,6 +17,21 @@
 import frappe
 
 DOCTYPES = ("Builder AI Shortcode",)
+JOURNAL = "dropped-tables.log"
+
+
+def journal(line: str) -> None:
+	"""Say it where it stays. `frappe.logger().info` writes nothing with the default logging configuration (checked on osiris
+	on 2026-10-20: not a line, anywhere, from the patches that dropped the legacy AI doctypes, nor from the first version of
+	this one), so a count logged that way is a count nobody can read. The line is printed (it is in the migrate output) and
+	appended to sites/<site>/logs/dropped-tables.log. A journal that cannot be written never fails a migrate."""
+	print(line)
+	frappe.logger().info(line)
+	try:
+		with open(frappe.get_site_path("logs", JOURNAL), "a", encoding="utf-8") as handle:
+			handle.write(f"{frappe.utils.now()} {line}\n")
+	except OSError:
+		pass
 
 
 def drop(doctypes) -> dict[str, int | None]:
@@ -38,7 +53,7 @@ def drop(doctypes) -> dict[str, int | None]:
 			count = frappe.db.sql(f"select count(*) from `tab{doctype}`")[0][0]
 		dropped[doctype] = count
 		# said BEFORE the drop: a run that dies halfway still leaves what it was about to remove
-		frappe.logger().info(f"dropping {doctype}: {count if count is not None else 'no table'} rows")
+		journal(f"dropping {doctype}: {count if count is not None else 'no table'} rows")
 		if record:
 			frappe.delete_doc("DocType", doctype, force=True, ignore_missing=True, ignore_permissions=True)
 		frappe.db.sql_ddl(f"drop table if exists `tab{doctype}`")
@@ -46,13 +61,5 @@ def drop(doctypes) -> dict[str, int | None]:
 
 
 def execute():
-	dropped = drop(DOCTYPES)
-	if dropped:
-		frappe.logger().info(
-			"dropped the orphan AI shortcode table — "
-			+ ", ".join(
-				f"{doctype}: {count if count is not None else 'no table'}"
-				for doctype, count in dropped.items()
-			)
-		)
+	if drop(DOCTYPES):
 		frappe.db.commit()

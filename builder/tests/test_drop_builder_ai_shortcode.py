@@ -10,9 +10,12 @@ What is held here, because a patch runs once on every instance of the fleet and 
   * it does not depend on developer mode, which is on at osiris and off at a client;
   * it can be run twice, and it copes with a DocType record left without its table."""
 
+import contextlib
 import importlib
 import importlib.util
+import io
 import pathlib
+import tempfile
 import unittest
 from unittest.mock import patch
 
@@ -109,26 +112,65 @@ class TestTheDrop(FrappeTestCase):
 		self.assertFalse(frappe.db.exists("DocType", SCRATCH))
 		self.assertFalse(frappe.db.table_exists(SCRATCH))
 
+	def journal_in(self, folder):
+		"""frappe.get_site_path, sending only the journal to `folder`: the rest of Frappe keeps its real paths."""
+		real = frappe.get_site_path
+
+		def site_path(*parts):
+			if parts == ("logs", the_patch.JOURNAL):
+				return str(pathlib.Path(folder, the_patch.JOURNAL))
+			return real(*parts)
+
+		return patch("frappe.get_site_path", side_effect=site_path)
+
 	def test_it_says_how_many_rows_it_is_about_to_drop_before_it_drops_them(self):
-		"""A run that dies halfway must still have left what it was about to remove."""
-		said = []
-		order = []
-		real_delete = frappe.delete_doc
+		"""A run that dies halfway must still have left what it was about to remove. And it must be READABLE:
+		frappe.logger().info writes nothing with the default configuration (osiris, 2026-10-20), so the line is in a file."""
+		with tempfile.TemporaryDirectory() as folder:
+			journal = pathlib.Path(folder, the_patch.JOURNAL)
+			at_the_drop = []
+			real_delete = frappe.delete_doc
 
-		def delete(*args, **kwargs):
-			order.append("deleted")
-			return real_delete(*args, **kwargs)
+			def delete(*args, **kwargs):
+				at_the_drop.append(journal.read_text(encoding="utf-8") if journal.exists() else "")
+				return real_delete(*args, **kwargs)
 
-		class Logger:
-			def info(self, message):
-				said.append(message)
-				order.append("said")
+			with self.journal_in(folder), patch("frappe.delete_doc", side_effect=delete):
+				the_patch.drop([SCRATCH])
 
-		with patch("frappe.logger", return_value=Logger()), patch("frappe.delete_doc", side_effect=delete):
+			self.assertEqual(len(at_the_drop), 1)
+			self.assertIn(
+				f"dropping {SCRATCH}: 3 rows",
+				at_the_drop[0],
+				"the line was not there when the table was dropped",
+			)
+			self.assertRegex(journal.read_text(encoding="utf-8"), r"^\d{4}-\d\d-\d\d .*dropping")
+
+	def test_the_line_is_in_the_migrate_output_too(self):
+		output = io.StringIO()
+		with (
+			tempfile.TemporaryDirectory() as folder,
+			self.journal_in(folder),
+			contextlib.redirect_stdout(output),
+		):
 			the_patch.drop([SCRATCH])
+		self.assertIn(f"dropping {SCRATCH}: 3 rows", output.getvalue())
 
-		self.assertIn(f"dropping {SCRATCH}: 3 rows", " ".join(said))
-		self.assertLess(order.index("said"), order.index("deleted"))
+	def test_a_journal_that_cannot_be_written_never_fails_the_drop(self):
+		"""This runs inside `bench migrate` on every instance: a read-only logs folder must not stop it."""
+		real = frappe.get_site_path
+
+		def site_path(*parts):
+			return (
+				"/nonexistent-folder/dropped-tables.log"
+				if parts == ("logs", the_patch.JOURNAL)
+				else real(*parts)
+			)
+
+		with patch("frappe.get_site_path", side_effect=site_path):
+			dropped = the_patch.drop([SCRATCH])
+		self.assertEqual(dropped, {SCRATCH: 3})
+		self.assertFalse(frappe.db.table_exists(SCRATCH))
 
 	def test_it_does_not_need_developer_mode(self):
 		"""On at osiris, off at a client: the drop must not be one of the things that differ."""
