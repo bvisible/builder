@@ -44,6 +44,7 @@ import re
 
 import frappe
 from frappe import _
+from frappe.model.rename_doc import rename_doc
 
 # a tag a page carries: the {% set %} parameters it was given, then the include itself
 SET_PARAM = re.compile(r"\{%-?\s*set\s+([a-z_][a-z0-9_]*)\s*=\s*(.+?)\s*-?%\}")
@@ -438,7 +439,8 @@ def sync_registry() -> dict:
 				done["added"] += 1
 				continue
 			if current != name:
-				frappe.rename_doc(REGISTRY, current, name, force=True, ignore_permissions=True, show_alert=False, rebuild_search=False)
+				# the model function, not the frappe.rename_doc endpoint: only internal code may skip permissions
+				rename_doc(REGISTRY, current, name, force=True, ignore_permissions=True, show_alert=False, rebuild_search=False)
 			doc = frappe.get_doc(REGISTRY, name)
 			changed = False
 			for field in REGISTRY_FIELDS:
