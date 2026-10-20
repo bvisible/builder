@@ -1577,13 +1577,22 @@ def _stream_once(ctx, model: str, messages: list, params: dict, already: int = 0
 
 
 def _page_model(ctx) -> str:
-    """The heavy model for page YAML: the managed page model when the instance is
-    managed and it is registered, else the chat's model."""
+    """The heavy model for page YAML (and for the brief, the plan and the pictures read on the way): the host's
+    own site model when `nora_site_model` names a registered route, else the managed page model when the
+    instance is managed and it is registered, else the chat's model."""
     from builder.ai.models import ModelRegistry
     from builder.site_ai.capabilities import is_managed
     from builder.site_ai.config import get_ai_settings
     from builder.site_ai.managed import ROUTE_PREFIX
 
+    # //// Neoffice — a host that writes its sites with a model of its own names it once, in site_config
+    # //// (`nora_site_model`, e.g. "nora/nora" for the local one), whatever model the chat is on and
+    # //// whatever the managed provider serves: `openai_model` and `openai_page_model` cannot say it, they
+    # //// also feed the managed provider, which drops an id its gateway does not serve (2026-10-20).
+    # //// Unset, or naming a route nobody registered: nothing changes. Remove the key to go back.
+    site_model = str(frappe.conf.get("nora_site_model") or "").strip()
+    if site_model and ModelRegistry.find(site_model):
+        return site_model
     if is_managed():
         candidate = f"{ROUTE_PREFIX}/{get_ai_settings().page_model}"
         if ModelRegistry.find(candidate):
