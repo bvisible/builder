@@ -69,7 +69,11 @@ def _copy_container(handles: dict, centred: bool) -> str:
 		f"paddingRight: {_grid(handles, 'gutter')}, display: flex, flexDirection: column, {align}}}\n"
 		f"      m_style: {{paddingLeft: {_grid(handles, 'gutter-phone')}, paddingRight: {_grid(handles, 'gutter-phone')}}}\n"
 		"      # the label, the h1 with its accent word, one sentence and the button, as in the example"
-		+ (" (the h1 maxWidth 46rem, the sentence maxWidth 36rem, the button centred)" if centred else "")
+		+ (
+			" (the h1 maxWidth 46rem, the sentence maxWidth 36rem, the button centred)"
+			if centred
+			else " (the h1 maxWidth 40rem and the sentence maxWidth 28rem, so that the copy stays on the left half, where the veil is deepest)"
+		)
 	)
 
 

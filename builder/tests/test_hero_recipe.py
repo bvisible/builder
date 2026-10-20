@@ -143,6 +143,15 @@ class TestHowTheCopySits(unittest.TestCase):
 		self.assertEqual(hero["classes"], ["u-over-image"])
 		self.assertEqual(hero["children"][1]["baseStyles"]["alignItems"], "flex-start")
 
+	def test_left_copy_is_kept_on_the_veiled_half_and_centred_copy_is_not(self):
+		"""A sentence running across the whole photograph sat on its bright half, where the left-hand veil has faded (2026-10-20)."""
+		left = hero_recipe("image", HANDLES, PALETTE, "", PHOTO, tone="bold")
+		self.assertIn("the sentence maxWidth 28rem", left)
+		self.assertIn("on the left half", left)
+		centred = hero_recipe("image", HANDLES, PALETTE, "", PHOTO, tone="elegant")
+		self.assertNotIn("28rem", centred)
+		self.assertIn("the sentence maxWidth 36rem", centred)
+
 	def test_the_site_grid_is_the_copy_s_own(self):
 		handles = {
 			**HANDLES,
