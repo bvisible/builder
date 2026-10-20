@@ -97,7 +97,6 @@ and must stay in step with the JSON.
 Every field in these files is ours; the `.py` beside each carries the header
 marker that says what the doctype is for.
 
-- `builder/builder/doctype/builder_ai_shortcode/builder_ai_shortcode.json`
 - `builder/builder/doctype/builder_chat_message/builder_chat_message.json`
 - `builder/builder/doctype/builder_chat_session/builder_chat_session.json`
 - `builder/builder/doctype/builder_content_asset/builder_content_asset.json`

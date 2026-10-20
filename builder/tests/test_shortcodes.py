@@ -336,7 +336,7 @@ class TestTheSwitchIsHonoured(FrappeTestCase):
 
 class TestTheOldGeneratorsPromptReadsTheCatalogue(FrappeTestCase):
 	"""get_shortcodes_context fed the old generator the Builder AI Shortcode rows of ONE instance: children of a
-	DocType (Builder AI Settings) that no longer exists, which nothing can edit."""
+	DocType (Builder AI Settings) that no longer exists, which nothing could edit. It lists the catalogue."""
 
 	def setUp(self):
 		frappe.set_user("Administrator")
@@ -348,32 +348,23 @@ class TestTheOldGeneratorsPromptReadsTheCatalogue(FrappeTestCase):
 
 		return get_shortcodes_context(page_type)
 
-	def orphan_row(self, name, include):
-		return frappe.get_doc(
-			{
-				"doctype": "Builder AI Shortcode",
-				"parent": "Builder AI Settings",
-				"parenttype": "Builder AI Settings",
-				"parentfield": "shortcodes",
-				"name1": name,
-				"shortcode": name.lower().replace(" ", "_"),
-				"category": "Other",
-				"description": f"{name} typed on this instance",
-				"jinja_code": f"{{% include '{include}' %}}",
-			}
-		).insert(ignore_permissions=True)
-
 	def test_the_components_are_the_catalogues_with_their_options(self):
 		text = self.context("contact")
 		self.assertIn(INCLUDE, text)
 		self.assertIn("contact_model", text)  # the three forms, which the typed rows never knew
 
-	def test_the_orphan_rows_are_not_a_source_any_more(self):
-		self.orphan_row("Google Map", MAP)
-		self.orphan_row("Search Box", "webshop/templates/includes/search_box.html")
-		text = self.context("contact")
-		self.assertNotIn("typed on this instance", text)
-		self.assertNotIn("search_box.html", text)
+	def test_it_reads_no_table_of_typed_shortcodes(self):
+		"""The Builder AI Shortcode rows were a source once; the table is dropped, and nothing asks for it."""
+		asked = []
+		real = frappe.get_all
+
+		def spy(doctype, *args, **kwargs):
+			asked.append(doctype)
+			return real(doctype, *args, **kwargs)
+
+		with patch("frappe.get_all", side_effect=spy):
+			self.context("contact")
+		self.assertNotIn("Builder AI Shortcode", asked)
 
 	def test_a_block_the_site_turned_off_is_not_offered(self):
 		frappe.db.set_value(components.REGISTRY, CONTACT_FORM, "enabled", 0)

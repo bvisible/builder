@@ -739,7 +739,8 @@ def get_shortcodes_context(site_type: str = None) -> str:
     Get shortcodes documentation for AI context.
 
     //// Neoffice — rewritten 2026-10-20. It read the `Builder AI Shortcode` rows: ten on our instance, one on a client's,
-    //// the children of a `Builder AI Settings` DocType that no longer exists, so nothing could edit or add one. Four of
+    //// the children of a `Builder AI Settings` DocType that no longer exists, so nothing could edit or add one (the table
+    //// is dropped by the patch drop_builder_ai_shortcode). Four of
     //// them were the same components as the catalogue (the map, the team, the contact details, the timeline) described
     //// apart from it, and none knew the contact form's three models. The components a page can carry are the
     //// catalogue's (site_ai/components.py): those this site offers, suited to the page type when it is one the
