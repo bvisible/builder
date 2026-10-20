@@ -11042,101 +11042,101 @@ msgstr "Dès que possible, dans trois mois…"
 
 #: frontend/src/components/MoreStylesPanel.vue:168
 msgid "Add Property"
-msgstr ""
+msgstr "Ajouter une propriété"
 
 #: frontend/src/pages/PagePreview.vue:8 frontend/src/pages/PagePreview.vue:156
 msgid "Back to Builder"
-msgstr ""
+msgstr "Retour au Builder"
 
 #: frontend/src/components/RouteTreeView.vue:374
 msgid "Collapse Node or Move Up in Page Tree"
-msgstr ""
+msgstr "Replier le nœud ou remonter dans l'arborescence des pages"
 
 #: frontend/src/utils/useBuilderEvents.ts:367
 msgid "Container Mode"
-msgstr ""
+msgstr "Mode conteneur"
 
 #: frontend/src/components/BlockContextMenuOptions/index.ts:61
 msgid "Convert to Collection"
-msgstr ""
+msgstr "Convertir en collection"
 
 #: frontend/src/utils/useBuilderEvents.ts:240
 #: frontend/src/utils/useBuilderEvents.ts:254
 msgid "Delete Selected Blocks"
-msgstr ""
+msgstr "Supprimer les blocs sélectionnés"
 
 #: frontend/src/components/Modals/TokenManager.vue:767
 msgid "Delete Variable"
-msgstr ""
+msgstr "Supprimer la variable"
 
 #: frontend/src/components/Modals/TokenManager.vue:767
 msgid "Delete {0} Variables"
-msgstr ""
+msgstr "Supprimer {0} variables"
 
 #: frontend/src/components/DashboardContent.vue:134
 msgid "Deselect Pages"
-msgstr ""
+msgstr "Désélectionner les pages"
 
 #: frontend/src/utils/useBuilderEvents.ts:268
 msgid "Exit Current Mode"
-msgstr ""
+msgstr "Quitter le mode actuel"
 
 #: frontend/src/components/RouteTreeView.vue:355
 msgid "Expand Node or Move Down in Page Tree"
-msgstr ""
+msgstr "Déplier le nœud ou descendre dans l'arborescence des pages"
 
 #: frontend/src/utils/useBuilderEvents.ts:291
 msgid "Fit Canvas to Screen"
-msgstr ""
+msgstr "Adapter le canevas à l'écran"
 
 #: frontend/src/pages/PageBuilder.vue:192
 msgid "Hold for Move Mode"
-msgstr ""
+msgstr "Maintenir pour le mode déplacement"
 
 #: frontend/src/utils/useBuilderEvents.ts:376
 msgid "Image Mode"
-msgstr ""
+msgstr "Mode image"
 
 #: frontend/src/utils/useBuilderEvents.ts:402
 msgid "Move / Hand Mode"
-msgstr ""
+msgstr "Mode déplacement / main"
 
 #: frontend/src/components/RouteTreeView.vue:335
 msgid "Move Down in Page Tree"
-msgstr ""
+msgstr "Descendre dans l'arborescence des pages"
 
 #: frontend/src/components/Modals/TokenManager.vue:365
 #: frontend/src/components/Modals/TokenManager.vue:769
 msgid "Move to Group"
-msgstr ""
+msgstr "Déplacer dans le groupe"
 
 #: frontend/src/components/RouteTreeView.vue:345
 msgid "Move Up in Page Tree"
-msgstr ""
+msgstr "Remonter dans l'arborescence des pages"
 
 #: frontend/src/components/RouteTreeView.vue:390
 msgid "Open Page or Toggle Folder in Page Tree"
-msgstr ""
+msgstr "Ouvrir la page ou plier/déplier le dossier dans l'arborescence des pages"
 
 #: frontend/src/components/Modals/TokenManager.vue:771
 msgid "Remove from Group"
-msgstr ""
+msgstr "Retirer du groupe"
 
 #: frontend/src/utils/useBuilderEvents.ts:279
 msgid "Reset Canvas Zoom"
-msgstr ""
+msgstr "Réinitialiser le zoom du canevas"
 
 #: frontend/src/components/BlockContextMenuOptions/index.ts:218
 msgid "Save as Component"
-msgstr ""
+msgstr "Enregistrer comme composant"
 
 #: frontend/src/utils/useBuilderEvents.ts:228
 msgid "Save Page / Component"
-msgstr ""
+msgstr "Enregistrer la page / le composant"
 
 #: frontend/src/utils/useBuilderEvents.ts:394
 msgid "Select Mode"
-msgstr ""
+msgstr "Mode sélection"
 
 #: frontend/src/components/Commands/index.ts:205
 msgid "Show Keyboard Shortcuts"
@@ -11144,23 +11144,23 @@ msgstr "Afficher les raccourcis clavier"
 
 #: frontend/src/utils/useBuilderEvents.ts:385
 msgid "Text Mode"
-msgstr ""
+msgstr "Mode texte"
 
 #: frontend/src/components/Commands/index.ts:175
 msgid "Toggle Left Panel"
-msgstr ""
+msgstr "Afficher ou masquer le panneau gauche"
 
 #: frontend/src/components/BlockContextMenuOptions/index.ts:86
 msgid "Wrap in Container"
-msgstr ""
+msgstr "Envelopper dans un conteneur"
 
 #: frontend/src/utils/useBuilderEvents.ts:346
 msgid "Zoom In"
-msgstr ""
+msgstr "Zoom avant"
 
 #: frontend/src/utils/useBuilderEvents.ts:357
 msgid "Zoom Out"
-msgstr ""
+msgstr "Zoom arrière"
 
 #. //// Neoffice — what the editor's component picker shows (declared in
 #. builder/hooks.py, passed through _() by builder.api.get_site_components)
@@ -11452,3 +11452,629 @@ msgstr "Modifier ses options"
 #: builder/builder/doctype/builder_shortcode/builder_shortcode.json
 msgid "Untick to stop offering this block on this site (the editor's list, the assistant, the generator). A page that already carries it keeps it."
 msgstr "Décochez pour ne plus proposer ce bloc sur ce site (liste de l'éditeur de pages, assistant IA, générateur de sites). Une page qui le contient déjà le conserve."
+
+#. Description of the 'Opening Hours Display' (Select) field in DocType
+#. 'Website Header Footer Config'
+#. 'Website Header Footer Variant'
+#: builder/builder/doctype/website_header_footer_config/website_header_footer_config.json
+#: builder/builder/doctype/website_header_footer_variant/website_header_footer_variant.json
+msgid "//// Neoffice — Compact: the state, today's hours and a link to the full week, which is what a footer column has room for. Full week: the seven days."
+msgstr "Compact : l'état d'ouverture, les horaires du jour et un lien vers la semaine complète, ce qui tient dans une colonne de pied de page. Semaine complète : les sept jours."
+
+#. Description of the 'Opening Hours' (Section Break) field in DocType 'Website
+#. Header Footer Config'
+#. Header Footer Variant'
+#: builder/builder/doctype/website_header_footer_config/website_header_footer_config.json
+#: builder/builder/doctype/website_header_footer_variant/website_header_footer_variant.json
+msgid "//// Neoffice — shows the shop's opening hours in the footer. The block itself, its styles and its data belong to webshop: the footer only drops the marker, so a site without webshop renders nothing. Note the hours are instance-wide (one Webshop Settings for the whole bench): a secondary Website Profile showing them displays the same hours as the main site, which is right for a second storefront of the same shop and wrong for a different location."
+msgstr "Affiche les horaires d'ouverture de la boutique dans le pied de page. Le bloc lui-même, ses styles et ses données appartiennent à webshop : le pied de page ne fait que poser un marqueur, donc un site sans webshop n'affiche rien. Attention : les horaires valent pour toute l'instance (un seul Webshop Settings pour tout le bench). Un Website Profile secondaire qui les affiche montre les mêmes horaires que le site principal ; c'est voulu pour une deuxième vitrine de la même boutique, et faux pour un autre lieu."
+
+#: frontend/src/components/SiteFormPreview.vue:109
+msgid "A choice"
+msgstr "Un choix"
+
+#. Description of the 'Top Page Component' (Link) field in DocType 'Website
+#. Header Footer Config'
+#. Header Footer Variant'
+#: builder/builder/doctype/website_header_footer_config/website_header_footer_config.json
+#: builder/builder/doctype/website_header_footer_variant/website_header_footer_variant.json
+msgid "A component designed in the Builder, drawn at the top of every inner page. Its blocks can bind page_title, page_subtitle, breadcrumbs (label, url) and page_image."
+msgstr "Un composant conçu dans le Builder, affiché en haut de chaque page intérieure. Ses blocs peuvent se lier à page_title, page_subtitle, breadcrumbs (label, url) et page_image."
+
+#: frontend/src/components/Modals/SiteFormDialog.vue:375
+msgid "A copy of their message"
+msgstr "Une copie de leur message"
+
+#: frontend/src/utils/siteForms.ts:293
+msgid "A form has {0} questions at most."
+msgstr "Un formulaire comporte {0} questions au maximum."
+
+#: frontend/src/utils/siteForms.ts:296
+msgid "A form has {0} steps at most."
+msgstr "Un formulaire comporte {0} étapes au maximum."
+
+#: frontend/src/components/SiteBlocksPanel.vue:77
+msgid "A form keeps its questions and its answers in the site's inbox. Write it here, then add it to a page."
+msgstr "Un formulaire conserve ses questions et ses réponses dans la boîte de réception du site. Rédigez-le ici, puis ajoutez-le à une page."
+
+#: frontend/src/utils/siteForms.ts:291
+msgid "A form needs at least one question."
+msgstr "Un formulaire a besoin d'au moins une question."
+
+#: frontend/src/utils/siteForms.ts:310
+msgid "A form needs exactly one e-mail question, so that the visitor can be answered."
+msgstr "Un formulaire doit comporter exactement une question d'adresse e-mail, pour pouvoir répondre au visiteur."
+
+#. Description of the 'Newsletter Popup' (Check) field in DocType 'Website
+#. Header Footer Config'
+#. Header Footer Variant'
+#: builder/builder/doctype/website_header_footer_config/website_header_footer_config.json
+#: builder/builder/doctype/website_header_footer_variant/website_header_footer_variant.json
+msgid "A window that offers the newsletter to a first-time visitor, once, after a few seconds. It uses the Email Group above; the Email Group's welcome email template is sent at once, so a welcome code goes there."
+msgstr "Une fenêtre qui propose la newsletter à un visiteur qui arrive pour la première fois, une seule fois, après quelques secondes. Elle utilise le groupe d'e-mails ci-dessus ; le modèle d'e-mail de bienvenue de ce groupe part aussitôt, c'est donc là qu'il faut placer un code de bienvenue."
+
+#: frontend/src/components/Modals/SiteFormDialog.vue:188
+msgid "Add a question"
+msgstr "Ajouter une question"
+
+#: builder/ai/agent/tools/site_forms.py:146
+msgid "add: {0}"
+msgstr "ajout : {0}"
+
+#. Label of a Data field in DocType 'Website Header Footer Config'
+#. Label of a Data field in DocType 'Website Header Footer Variant'
+#: builder/builder/doctype/website_header_footer_config/website_header_footer_config.json
+#: builder/builder/doctype/website_header_footer_variant/website_header_footer_variant.json
+msgid "Address Shown on the Site"
+msgstr "Adresse affichée sur le site"
+
+#. Label of a JSON field in DocType 'Website Header Footer Config'
+#. Label of a JSON field in DocType 'Website Header Footer Variant'
+#: builder/builder/doctype/website_header_footer_config/website_header_footer_config.json
+#: builder/builder/doctype/website_header_footer_variant/website_header_footer_variant.json
+msgid "AI Brief"
+msgstr "Brief IA"
+
+#: frontend/src/components/SiteFormPreview.vue:109
+msgid "Another choice"
+msgstr "Un autre choix"
+
+#: frontend/src/components/Modals/SiteFormDialog.vue:373
+msgid "As chosen in the settings of the contact form"
+msgstr "Comme choisi dans les réglages du formulaire de contact"
+
+#: frontend/src/components/Modals/SiteFormDialog.vue:141
+msgid "Asked in"
+msgstr "Posée à l'étape"
+
+#. Label of a Data field in DocType 'Website Header Footer Config'
+#. Label of a Data field in DocType 'Website Header Footer Variant'
+#: builder/builder/doctype/website_header_footer_config/website_header_footer_config.json
+#: builder/builder/doctype/website_header_footer_variant/website_header_footer_variant.json
+msgid "Business Name Shown on the Site"
+msgstr "Raison sociale affichée sur le site"
+
+#: builder/ai/agent/tools/site_forms.py:154
+msgid "Change the form “{0}”? {1}."
+msgstr "Modifier le formulaire « {0} » ? {1}."
+
+#: builder/ai/agent/tools/site_forms.py:150
+msgid "change: {0}"
+msgstr "réglages modifiés : {0}"
+
+#: frontend/src/components/Modals/SiteFormDialog.vue:161
+msgid "Choices, one per line"
+msgstr "Choix, un par ligne"
+
+#: frontend/src/stores/componentStore.ts:72
+msgid "Components are shared across the site, so the demo can't edit them"
+msgstr "Les composants sont partagés dans tout le site : la démo ne peut donc pas les modifier"
+
+#: frontend/src/utils/siteForms.ts:90
+msgid "Consent box"
+msgstr "Case de consentement"
+
+#: builder/ai/agent/tools/site_forms.py:100
+msgid "Create the form “{0}” ({1})?"
+msgstr "Créer le formulaire « {0} » ({1}) ?"
+
+#: frontend/src/components/PageListItem.vue:39
+msgid "Created {0} by {1}"
+msgstr "Créé {0} par {1}"
+
+#: frontend/src/components/EditorDemo/EditorDemoActions.vue:4
+msgid "Demo"
+msgstr "Démo"
+
+#: frontend/src/components/EditorDemo/index.ts:51
+msgid "Double-click any text to edit it"
+msgstr "Double-cliquez sur un texte pour le modifier"
+
+#: frontend/src/components/Modals/SiteFormDialog.vue:239
+msgid "E-mail addresses separated by commas. Empty: the address of the company, as for every message."
+msgstr "Adresses e-mail séparées par des virgules. Vide : l'adresse de la société, comme pour chaque message."
+
+#: frontend/src/components/SiteBlocksPanel.vue:55
+msgid "Edit the questions of this form"
+msgstr "Modifier les questions de ce formulaire"
+
+#: frontend/src/components/Modals/SiteFormDialog.vue:209
+msgid "Empty: no button, the page has its own link to #contact."
+msgstr "Vide : pas de bouton, la page a déjà son propre lien vers #contact."
+
+#: frontend/src/components/EditorDemo/EditorDemoActions.vue:6
+msgid "Exit demo"
+msgstr "Quitter la démo"
+
+#: builder/ai/agent/pending.py:88
+#, python-format
+msgid "Form “{0}” created. Its name for a page is {1}: put it on a page as a block whose text is {{%- set site_form = \"{1}\" -%}}{{% include \"builder/templates/includes/site_form.html\" %}}."
+msgstr "Formulaire « {0} » créé. Son nom pour une page est {1} : placez-le sur une page, dans un bloc dont le texte est {{%- set site_form = \"{1}\" -%}}{{% include \"builder/templates/includes/site_form.html\" %}}."
+
+#: builder/ai/agent/pending.py:103
+msgid "Form “{0}” updated: it now asks {1} question(s)."
+msgstr "Formulaire « {0} » modifié : il pose maintenant {1} question(s)."
+
+#: builder/site_forms.py:87
+msgid "Forms are not available on this site."
+msgstr "Les formulaires ne sont pas disponibles sur ce site."
+
+#. Option for the 'Opening Hours Display' (Select) field in DocType 'Website
+#. Header Footer Config'
+#. Header Footer Variant'
+#: builder/builder/doctype/website_header_footer_config/website_header_footer_config.json
+#: builder/builder/doctype/website_header_footer_variant/website_header_footer_variant.json
+msgid "Full week"
+msgstr "Semaine complète"
+
+#: frontend/src/utils/siteForms.ts:303
+msgid "give at least two choices."
+msgstr "donnez au moins deux choix."
+
+#: frontend/src/utils/siteForms.ts:290
+msgid "Give the form a name."
+msgstr "Donnez un nom au formulaire."
+
+#. Label of a Select field in DocType 'Website Header Footer Config'
+#. Label of a Select field in DocType 'Website Header Footer Variant'
+#: builder/builder/doctype/website_header_footer_config/website_header_footer_config.json
+#: builder/builder/doctype/website_header_footer_variant/website_header_footer_variant.json
+msgid "Header Logo Size"
+msgstr "Taille du logo d'en-tête"
+
+#: frontend/src/components/Modals/SiteFormDialog.vue:195
+msgid "How it is shown"
+msgstr "Affichage"
+
+#. Description of the 'Header Logo Size' (Select) field in DocType 'Website
+#. Header Footer Config'
+#. Header Footer Variant'
+#: builder/builder/doctype/website_header_footer_config/website_header_footer_config.json
+#: builder/builder/doctype/website_header_footer_variant/website_header_footer_variant.json
+msgid "How tall the logo stands in the header. Large suits a wide wordmark that reads small at the default size."
+msgstr "Hauteur du logo dans l'en-tête. « Grand » convient à un logotype large qui paraît petit à la taille par défaut."
+
+#: frontend/src/components/Modals/SiteFormDialog.vue:50
+msgid "Leave a single page, or split the questions into steps the visitor goes through one at a time."
+msgstr "Gardez une seule page, ou répartissez les questions en étapes que le visiteur parcourt une à une."
+
+#. Description of the 'Popup Title' (Data) field in DocType 'Website Header
+#. Footer Config'
+#. Footer Variant'
+#: builder/builder/doctype/website_header_footer_config/website_header_footer_config.json
+#: builder/builder/doctype/website_header_footer_variant/website_header_footer_variant.json
+msgid "Leave empty to use the Newsletter Title."
+msgstr "Laissez vide pour reprendre le titre de la newsletter."
+
+#: frontend/src/components/Settings/PageGeneral.vue:199
+msgid "Live with limited access"
+msgstr "En ligne avec accès limité"
+
+#: frontend/src/utils/siteForms.ts:84
+msgid "Long text"
+msgstr "Texte long"
+
+#: frontend/src/stores/pageStore.ts:251
+msgid "Mark \"{0}\" as staging? It stays reachable by its link, but search engines and the sitemap stop listing it."
+msgstr "Marquer « {0} » en pré-production ? La page reste accessible par son lien, mais les moteurs de recherche et le plan du site ne la listent plus."
+
+#: frontend/src/components/PublishButton.vue:30
+msgid "Mark as Staging"
+msgstr "Marquer en pré-production"
+
+#: frontend/src/components/Modals/SiteFormDialog.vue:224
+msgid "Message once sent"
+msgstr "Message après envoi"
+
+#: frontend/src/components/Modals/SiteFormDialog.vue:237
+msgid "Messages go to"
+msgstr "Les messages sont envoyés à"
+
+#: frontend/src/components/Modals/SiteFormDialog.vue:34
+msgid "Name of the form"
+msgstr "Nom du formulaire"
+
+#: frontend/src/utils/pageActions.ts:121
+msgid "New folder…"
+msgstr "Nouveau dossier…"
+
+#: frontend/src/components/LeftPanelTabs/PagesSection.vue:110
+msgid "New page in {0}"
+msgstr "Nouvelle page dans {0}"
+
+#. Label of a Check field in DocType 'Website Header Footer Config'
+#. Label of a Check field in DocType 'Website Header Footer Variant'
+#: builder/builder/doctype/website_header_footer_config/website_header_footer_config.json
+#: builder/builder/doctype/website_header_footer_variant/website_header_footer_variant.json
+msgid "Newsletter Popup"
+msgstr "Fenêtre d'inscription à la newsletter"
+
+#: frontend/src/utils/pageActions.ts:126 frontend/src/utils/pageActions.ts:127
+msgid "No folder"
+msgstr "Aucun dossier"
+
+#: frontend/src/components/LeftPanelTabs/PagesSection.vue:37
+msgid "No pages match."
+msgstr "Aucune page ne correspond."
+
+#: frontend/src/components/SiteFormPreview.vue:84
+msgid "On the page, the form waits behind the button “{0}”."
+msgstr "Sur la page, le formulaire attend derrière le bouton « {0} »."
+
+#: frontend/src/components/SiteFormPreview.vue:85
+msgid "On the page, the form waits in a window that any link to #contact opens."
+msgstr "Sur la page, le formulaire attend dans une fenêtre que tout lien vers #contact ouvre."
+
+#: frontend/src/utils/siteForms.ts:87
+msgid "One choice"
+msgstr "Choix unique"
+
+#: builder/builder/doctype/builder_page/builder_page.py:518
+msgid "Only a live page can be marked as staging."
+msgstr "Seule une page en ligne peut être marquée en pré-production."
+
+#: frontend/src/utils/editorDemoBackend.ts:27
+msgid "Only this page can change in the demo, and nothing is saved"
+msgstr "Seule cette page peut être modifiée dans la démo, et rien n'est enregistré"
+
+#: frontend/src/components/BackgroundHandler.vue:26
+msgid "Open background picker"
+msgstr "Ouvrir le sélecteur d'arrière-plan"
+
+#: frontend/src/components/Controls/ColorInput.vue:49
+msgid "Open color picker"
+msgstr "Ouvrir le sélecteur de couleur"
+
+#. Label of a Select field in DocType 'Website Header Footer Config'
+#. Label of a Select field in DocType 'Website Header Footer Variant'
+#: builder/builder/doctype/website_header_footer_config/website_header_footer_config.json
+#: builder/builder/doctype/website_header_footer_variant/website_header_footer_variant.json
+msgid "Opening Hours Display"
+msgstr "Affichage des horaires d'ouverture"
+
+#: frontend/src/stores/pageStore.ts:264
+msgid "Page marked as staging"
+msgstr "Page marquée en pré-production"
+
+#: frontend/src/components/LeftPanelTabs/PagesSection.vue:7
+msgid "Pages in {0}"
+msgstr "Pages dans {0}"
+
+#: frontend/src/utils/useBuilderEvents.ts:317
+#: frontend/src/utils/useBuilderEvents.ts:328
+#: frontend/src/utils/useBuilderEvents.ts:339
+#: frontend/src/utils/useBuilderEvents.ts:350
+msgid "Pan Canvas"
+msgstr "Déplacer le canevas"
+
+#. Label of a Small Text field in DocType 'Website Header Footer Config'
+#. Label of a Small Text field in DocType 'Website Header Footer Variant'
+#: builder/builder/doctype/website_header_footer_config/website_header_footer_config.json
+#: builder/builder/doctype/website_header_footer_variant/website_header_footer_variant.json
+msgid "Popup Consent"
+msgstr "Consentement de la fenêtre"
+
+#. Label of a Int field in DocType 'Website Header Footer Config'
+#. Label of a Int field in DocType 'Website Header Footer Variant'
+#: builder/builder/doctype/website_header_footer_config/website_header_footer_config.json
+#: builder/builder/doctype/website_header_footer_variant/website_header_footer_variant.json
+msgid "Popup Delay"
+msgstr "Délai d'ouverture de la fenêtre"
+
+#. Label of a Small Text field in DocType 'Website Header Footer Config'
+#. Label of a Small Text field in DocType 'Website Header Footer Variant'
+#: builder/builder/doctype/website_header_footer_config/website_header_footer_config.json
+#: builder/builder/doctype/website_header_footer_variant/website_header_footer_variant.json
+msgid "Popup Success Message"
+msgstr "Message de confirmation de la fenêtre"
+
+#. Label of a Small Text field in DocType 'Website Header Footer Config'
+#. Label of a Small Text field in DocType 'Website Header Footer Variant'
+#: builder/builder/doctype/website_header_footer_config/website_header_footer_config.json
+#: builder/builder/doctype/website_header_footer_variant/website_header_footer_variant.json
+msgid "Popup Text"
+msgstr "Texte de la fenêtre"
+
+#. Label of a Data field in DocType 'Website Header Footer Config'
+#. Label of a Data field in DocType 'Website Header Footer Variant'
+#: builder/builder/doctype/website_header_footer_config/website_header_footer_config.json
+#: builder/builder/doctype/website_header_footer_variant/website_header_footer_variant.json
+msgid "Popup Title"
+msgstr "Titre de la fenêtre"
+
+#. Description of the 'Token Prefix' (Data) field in DocType 'Website Header
+#. Footer Config'
+#. Footer Variant'
+#: builder/builder/doctype/website_header_footer_config/website_header_footer_config.json
+#: builder/builder/doctype/website_header_footer_variant/website_header_footer_variant.json
+msgid "Prefix of the site's Builder Tokens (<prefix>-primary, <prefix>-font-heading...). Set by the AI site build; the chrome then follows the tokens."
+msgstr "Préfixe des tokens Builder du site (<prefix>-primary, <prefix>-font-heading...). Renseigné par la génération IA du site ; l'en-tête et le pied de page suivent ensuite ces tokens."
+
+#: frontend/src/components/PublishButton.vue:18
+msgid "Publish to Staging"
+msgstr "Publier en pré-production"
+
+#: frontend/src/components/Modals/SiteFormDialog.vue:123
+msgid "Remove this question"
+msgstr "Supprimer cette question"
+
+#: frontend/src/components/Modals/SiteFormDialog.vue:64
+msgid "Remove this step"
+msgstr "Supprimer cette étape"
+
+#: builder/ai/agent/tools/site_forms.py:148
+msgid "remove: {0}"
+msgstr "retrait : {0}"
+
+#: builder/builder/doctype/builder_page/builder_page.py:329
+msgid "Route variables can only use letters, numbers and underscores, like :slug or <slug>"
+msgstr "Les variables de route ne peuvent contenir que des lettres, des chiffres et des tirets bas, comme :slug ou <slug>"
+
+#: frontend/src/components/Modals/SiteFormDialog.vue:15
+msgid "Save the form"
+msgstr "Enregistrer le formulaire"
+
+#: frontend/src/components/LeftPanelTabs/PagesSection.vue:31
+msgid "Search pages"
+msgstr "Rechercher des pages"
+
+#. Description of the 'Popup Delay' (Int) field in DocType 'Website Header
+#. Footer Config'
+#. Footer Variant'
+#: builder/builder/doctype/website_header_footer_config/website_header_footer_config.json
+#: builder/builder/doctype/website_header_footer_variant/website_header_footer_variant.json
+msgid "Seconds on the site before the window opens."
+msgstr "Secondes passées sur le site avant l'ouverture de la fenêtre."
+
+#: frontend/src/components/Modals/SiteFormDialog.vue:216
+msgid "Send button text"
+msgstr "Texte du bouton d'envoi"
+
+#. Description of the 'Staging' (Check) field in DocType 'Builder Page'
+#: builder/builder/doctype/builder_page/builder_page.json
+msgid "Served at its route, but hidden from search engines and the sitemap"
+msgstr "Accessible à son adresse, mais masquée des moteurs de recherche et du plan du site"
+
+#: frontend/src/stores/builderStore.ts:124
+msgid "Settings are not part of the demo"
+msgstr "Les réglages ne font pas partie de la démo"
+
+#: frontend/src/utils/siteForms.ts:88
+msgid "Several choices"
+msgstr "Choix multiples"
+
+#: frontend/src/utils/siteForms.ts:83
+msgid "Short text"
+msgstr "Texte court"
+
+#. Label of a Check field in DocType 'Website Header Footer Config'
+#. Label of a Check field in DocType 'Website Header Footer Variant'
+#: builder/builder/doctype/website_header_footer_config/website_header_footer_config.json
+#: builder/builder/doctype/website_header_footer_variant/website_header_footer_variant.json
+msgid "Show Opening Hours"
+msgstr "Afficher les horaires d'ouverture"
+
+#: frontend/src/components/LeftPanelTabs/PagesSection.vue:40
+msgid "Showing the first {0} pages. Search to find the rest."
+msgstr "Affichage des {0} premières pages. Recherchez pour trouver les autres."
+
+#: frontend/src/components/Modals/SiteFormDialog.vue:41
+msgid "Shown on the website"
+msgstr "Affiché sur le site"
+
+#: frontend/src/components/Settings/PageGeneral.vue:202
+msgid "Staging with limited access"
+msgstr "Pré-production avec accès limité"
+
+#: frontend/src/utils/siteForms.ts:314
+msgid "Step {0} has no question: add one or remove the step."
+msgstr "L'étape {0} n'a aucune question : ajoutez-en une ou supprimez l'étape."
+
+#: frontend/src/components/Modals/SiteFormDialog.vue:47
+msgid "Steps of the form"
+msgstr "Étapes du formulaire"
+
+#: frontend/src/components/SiteBlocksPanel.vue:108
+msgid "switched off"
+msgstr "désactivé"
+
+#. Description of the 'Address Shown on the Site' (Data) field in DocType
+#. 'Website Header Footer Config'
+#. 'Website Header Footer Variant'
+#: builder/builder/doctype/website_header_footer_config/website_header_footer_config.json
+#: builder/builder/doctype/website_header_footer_variant/website_header_footer_variant.json
+msgid "The address this site shows, for instance only its town. Empty: the address of the company in ERPNext."
+msgstr "L'adresse affichée par ce site, par exemple seulement sa localité. Vide : l'adresse de la société dans ERPNext."
+
+#. Description of the 'Session ID' (Data) field in DocType 'Builder Content
+#. Asset'
+#: builder/builder/doctype/builder_content_asset/builder_content_asset.json
+msgid "The AI session (Builder AI Session name) this asset was uploaded in"
+msgstr "La session IA (nom de la Builder AI Session) dans laquelle ce fichier a été téléversé."
+
+#. Description of the 'Popup Consent' (Small Text) field in DocType 'Website
+#. Header Footer Config'
+#. Header Footer Variant'
+#: builder/builder/doctype/website_header_footer_config/website_header_footer_config.json
+#: builder/builder/doctype/website_header_footer_variant/website_header_footer_variant.json
+msgid "The consent sentence shown under the field. Example: By subscribing, you agree to receive our newsletter."
+msgstr "La phrase de consentement affichée sous le champ. Exemple : en vous inscrivant, vous acceptez de recevoir notre newsletter."
+
+#. Description of the 'AI Brief' (JSON) field in DocType 'Website Header Footer
+#. Config'
+#. Variant'
+#: builder/builder/doctype/website_header_footer_config/website_header_footer_config.json
+#: builder/builder/doctype/website_header_footer_variant/website_header_footer_variant.json
+msgid "The design brief behind the last AI site generation (Settings > Theme shows it)."
+msgstr "Le brief de design de la dernière génération IA du site (Réglages > Thème l'affiche)."
+
+#: frontend/src/utils/siteForms.ts:99
+msgid "the e-mail"
+msgstr "l'e-mail"
+
+#: frontend/src/components/Modals/SiteFormDialog.vue:122
+msgid "The e-mail question stays: a message needs someone to answer"
+msgstr "La question d'e-mail reste : un message a besoin de quelqu'un pour y répondre"
+
+#: frontend/src/components/SiteBlocksPanel.vue:285
+msgid "The form block is not available on this site."
+msgstr "Le bloc formulaire n'est pas disponible sur ce site."
+
+#: frontend/src/components/SiteBlocksPanel.vue:258
+msgid "The form could not be created."
+msgstr "Le formulaire n'a pas pu être créé."
+
+#: frontend/src/components/Modals/SiteFormDialog.vue:337
+msgid "The form could not be loaded."
+msgstr "Le formulaire n'a pas pu être chargé."
+
+#: builder/api.py:430
+msgid "The form could not be read."
+msgstr "Le formulaire n'a pas pu être lu."
+
+#: frontend/src/components/Modals/SiteFormDialog.vue:422
+msgid "The form could not be saved."
+msgstr "Le formulaire n'a pas pu être enregistré."
+
+#: frontend/src/components/Modals/SiteFormDialog.vue:201
+msgid "The form waits behind a button, and any link to #contact opens it."
+msgstr "Le formulaire attend derrière un bouton ; tout lien vers #contact l'ouvre."
+
+#. Description of the 'Business Name Shown on the Site' (Data) field in DocType
+#. 'Website Header Footer Config'
+#. 'Website Header Footer Variant'
+#: builder/builder/doctype/website_header_footer_config/website_header_footer_config.json
+#: builder/builder/doctype/website_header_footer_variant/website_header_footer_variant.json
+msgid "The legal name this site shows, on its contact and legal pages. Empty: the name of the company in ERPNext."
+msgstr "La raison sociale que ce site affiche sur ses pages de contact et juridiques. Vide : le nom de la société dans ERPNext."
+
+#: frontend/src/utils/siteForms.ts:101
+msgid "the message"
+msgstr "le message"
+
+#: frontend/src/utils/siteForms.ts:98
+msgid "the name"
+msgstr "le nom"
+
+#. Description of the 'Popup Text' (Small Text) field in DocType 'Website
+#. Header Footer Config'
+#. Header Footer Variant'
+#: builder/builder/doctype/website_header_footer_config/website_header_footer_config.json
+#: builder/builder/doctype/website_header_footer_variant/website_header_footer_variant.json
+#, python-format
+msgid "The offer, in the site's language. Example: Subscribe and receive 15% off your first order."
+msgstr "L'offre, dans la langue du site. Exemple : inscrivez-vous et recevez 15 % de réduction sur votre première commande."
+
+#: frontend/src/components/Modals/SiteFormDialog.vue:268
+msgid "The page draws the saved form in the style of the site. This is its shape."
+msgstr "La page affiche le formulaire enregistré dans le style du site. Voici sa structure."
+
+#: frontend/src/utils/siteForms.ts:100
+msgid "the phone"
+msgstr "le téléphone"
+
+#: frontend/src/components/SiteFormPreview.vue:21
+msgid "The sentence to agree to"
+msgstr "La phrase à accepter"
+
+#: frontend/src/components/PageOptions.vue:20
+msgid "The URL path for this page. For variables, use a colon, like"
+msgstr "Le chemin d'URL de cette page. Pour les variables, utilisez le deux-points, comme"
+
+#: builder/builder/doctype/builder_page/builder_page.py:505
+msgid "This page is live. Mark it as staging instead."
+msgstr "Cette page est en ligne. Marquez-la plutôt en pré-production."
+
+#. Label of a Data field in DocType 'Website Header Footer Config'
+#. Label of a Data field in DocType 'Website Header Footer Variant'
+#: builder/builder/doctype/website_header_footer_config/website_header_footer_config.json
+#: builder/builder/doctype/website_header_footer_variant/website_header_footer_variant.json
+msgid "Token Prefix"
+msgstr "Préfixe des tokens"
+
+#. Label of a Link field in DocType 'Website Header Footer Config'
+#. Label of a Link field in DocType 'Website Header Footer Variant'
+#: builder/builder/doctype/website_header_footer_config/website_header_footer_config.json
+#: builder/builder/doctype/website_header_footer_variant/website_header_footer_variant.json
+msgid "Top Page Component"
+msgstr "Composant en haut de page"
+
+#: frontend/src/utils/pageStatus.ts:29
+msgid "Unpublished changes"
+msgstr "Modifications non publiées"
+
+#: frontend/src/components/PageListItem.vue:40
+msgid "Updated {0} by {1}"
+msgstr "Modifié {0} par {1}"
+
+#: frontend/src/components/Modals/SiteFormDialog.vue:155
+msgid "Used as {0} of the message."
+msgstr "Utilisé comme {0} du message."
+
+#: frontend/src/utils/editorDemoBackend.ts:67
+msgid "Version not found"
+msgstr "Version introuvable"
+
+#: frontend/src/utils/pageActions.ts:147
+msgid "View Live Page"
+msgstr "Voir la page en ligne"
+
+#. Description of the 'Popup Success Message' (Small Text) field in DocType
+#. 'Website Header Footer Config'
+#. 'Website Header Footer Variant'
+#: builder/builder/doctype/website_header_footer_config/website_header_footer_config.json
+#: builder/builder/doctype/website_header_footer_variant/website_header_footer_variant.json
+msgid "What the visitor reads once subscribed. Example: Check your inbox, your code is on its way."
+msgstr "Ce que le visiteur lit une fois inscrit. Exemple : consultez votre boîte de réception, votre code est en route."
+
+#: frontend/src/components/Modals/SiteFormDialog.vue:249
+msgid "What the visitor receives"
+msgstr "Ce que reçoit le visiteur"
+
+#: frontend/src/components/Modals/SiteFormDialog.vue:265
+msgid "What the visitor sees"
+msgstr "Ce que voit le visiteur"
+
+#: frontend/src/components/Modals/SiteFormDialog.vue:234
+msgid "Who is told"
+msgstr "Qui est informé"
+
+#: builder/ai/agent/tools/site_forms.py:102
+msgid "With these questions added: {0}."
+msgstr "Avec ces questions ajoutées : {0}."
+
+#: frontend/src/utils/siteForms.ts:300
+msgid "write the question."
+msgstr "rédigez la question."
+
+#: builder/templates/includes/site_form.html:44
+msgid "Your message could not be sent. Please check your answers and try again."
+msgstr "Votre message n'a pas pu être envoyé. Veuillez vérifier vos réponses et réessayer."
+
+#: frontend/src/utils/siteForms.ts:305
+msgid "{0} choices at most."
+msgstr "{0} choix au maximum."
+
+#: frontend/src/components/Modals/SiteFormDialog.vue:417
+msgid "{0} saved."
+msgstr "« {0} » enregistré."
