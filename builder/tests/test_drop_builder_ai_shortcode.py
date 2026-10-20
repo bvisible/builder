@@ -15,6 +15,7 @@ import importlib
 import importlib.util
 import io
 import pathlib
+import shutil
 import tempfile
 import unittest
 from unittest.mock import patch
@@ -74,6 +75,12 @@ class TestTheDrop(FrappeTestCase):
 
 	def setUp(self):
 		frappe.set_user("Administrator")
+		# the journal of these drops is a file of the test, never the site's own dropped-tables.log
+		self.folder = tempfile.mkdtemp()
+		self.addCleanup(shutil.rmtree, self.folder, ignore_errors=True)
+		journal_patch = self.journal_in(self.folder)
+		journal_patch.start()
+		self.addCleanup(journal_patch.stop)
 		self.addCleanup(self.remove_scratch)
 		self.remove_scratch()  # a run that died halfway left its table behind: start from nothing
 		frappe.get_doc(
@@ -126,33 +133,28 @@ class TestTheDrop(FrappeTestCase):
 	def test_it_says_how_many_rows_it_is_about_to_drop_before_it_drops_them(self):
 		"""A run that dies halfway must still have left what it was about to remove. And it must be READABLE:
 		frappe.logger().info writes nothing with the default configuration (osiris, 2026-10-20), so the line is in a file."""
-		with tempfile.TemporaryDirectory() as folder:
-			journal = pathlib.Path(folder, the_patch.JOURNAL)
-			at_the_drop = []
-			real_delete = frappe.delete_doc
+		journal = pathlib.Path(self.folder, the_patch.JOURNAL)
+		at_the_drop = []
+		real_delete = frappe.delete_doc
 
-			def delete(*args, **kwargs):
-				at_the_drop.append(journal.read_text(encoding="utf-8") if journal.exists() else "")
-				return real_delete(*args, **kwargs)
+		def delete(*args, **kwargs):
+			at_the_drop.append(journal.read_text(encoding="utf-8") if journal.exists() else "")
+			return real_delete(*args, **kwargs)
 
-			with self.journal_in(folder), patch("frappe.delete_doc", side_effect=delete):
-				the_patch.drop([SCRATCH])
+		with patch("frappe.delete_doc", side_effect=delete):
+			the_patch.drop([SCRATCH])
 
-			self.assertEqual(len(at_the_drop), 1)
-			self.assertIn(
-				f"dropping {SCRATCH}: 3 rows",
-				at_the_drop[0],
-				"the line was not there when the table was dropped",
-			)
-			self.assertRegex(journal.read_text(encoding="utf-8"), r"^\d{4}-\d\d-\d\d .*dropping")
+		self.assertEqual(len(at_the_drop), 1)
+		self.assertIn(
+			f"dropping {SCRATCH}: 3 rows",
+			at_the_drop[0],
+			"the line was not there when the table was dropped",
+		)
+		self.assertRegex(journal.read_text(encoding="utf-8"), r"^\d{4}-\d\d-\d\d .*dropping")
 
 	def test_the_line_is_in_the_migrate_output_too(self):
 		output = io.StringIO()
-		with (
-			tempfile.TemporaryDirectory() as folder,
-			self.journal_in(folder),
-			contextlib.redirect_stdout(output),
-		):
+		with contextlib.redirect_stdout(output):
 			the_patch.drop([SCRATCH])
 		self.assertIn(f"dropping {SCRATCH}: 3 rows", output.getvalue())
 
