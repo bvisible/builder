@@ -5,7 +5,8 @@ replaced it. This patch drops it, on every instance, at the next migrate.
 
 What is held here, because a patch runs once on every instance of the fleet and cannot be taken back:
   * it is listed, after the model sync, and its file exists: an entry without its file kills `bench migrate` on the whole fleet;
-  * it drops what exists, with its rows and its table, says how many rows it held, and leaves a site that never had it alone;
+  * it drops what exists, with its rows and its TABLE (delete_doc alone leaves the table: five earlier drop patches left theirs
+    on osiris), says how many rows it held, and leaves a site that never had it alone;
   * it does not depend on developer mode, which is on at osiris and off at a client;
   * it can be run twice, and it copes with a DocType record left without its table."""
 
@@ -71,6 +72,7 @@ class TestTheDrop(FrappeTestCase):
 	def setUp(self):
 		frappe.set_user("Administrator")
 		self.addCleanup(self.remove_scratch)
+		self.remove_scratch()  # a run that died halfway left its table behind: start from nothing
 		frappe.get_doc(
 			{
 				"doctype": "DocType",
@@ -95,6 +97,7 @@ class TestTheDrop(FrappeTestCase):
 
 	def remove_scratch(self):
 		frappe.delete_doc("DocType", SCRATCH, force=True, ignore_missing=True, ignore_permissions=True)
+		frappe.db.sql_ddl(f"drop table if exists `tab{SCRATCH}`")
 		frappe.db.commit()
 
 	def test_it_drops_the_doctype_its_rows_and_its_table_and_says_how_many(self):
@@ -127,3 +130,14 @@ class TestTheDrop(FrappeTestCase):
 
 		self.assertEqual(dropped, {SCRATCH: None})
 		self.assertFalse(frappe.db.exists("DocType", SCRATCH))
+
+	def test_a_table_left_without_its_doctype_record_is_dropped_too(self):
+		"""What the earlier drop patches left on osiris: rows nobody can open."""
+		frappe.delete_doc("DocType", SCRATCH, force=True, ignore_permissions=True)
+		self.assertFalse(frappe.db.exists("DocType", SCRATCH))
+		self.assertTrue(frappe.db.table_exists(SCRATCH), "delete_doc is expected to leave the table")
+
+		dropped = the_patch.drop([SCRATCH])
+
+		self.assertEqual(dropped, {SCRATCH: 3})
+		self.assertFalse(frappe.db.table_exists(SCRATCH))

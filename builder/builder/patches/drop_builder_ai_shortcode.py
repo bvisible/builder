@@ -12,26 +12,34 @@
 # What a page can carry is defined once, in code (site_ai/components.py); the Builder Shortcode registry is its mirror.
 #
 # The row count is logged before the drop, as for the legacy AI doctypes before it: a silent delete of a table somebody
-# might remember is worse than a noisy one. A site that never had the table is left alone.
+# might remember is worse than a noisy one. A site that never had the table is left alone. Unlike them, this one drops the
+# table: see drop().
 import frappe
 
 DOCTYPES = ("Builder AI Shortcode",)
 
 
 def drop(doctypes) -> dict[str, int | None]:
-	"""Drop each DocType that exists, with its table, and say how many rows it held (None: the table was already gone)."""
+	"""Drop each DocType that exists, with its rows and its table, and say how many rows it held (None: no table).
+
+	`frappe.delete_doc("DocType", ...)` removes the DocType record and NOT its table: the patches that dropped the legacy chat,
+	site config and page library doctypes left `tabBuilder Chat Session`, `tabBuilder Chat Message`, `tabBuilder Site Config`,
+	`tabBuilder Site Config Page` and `tabBuilder Page Library` on osiris, full, with no DocType to open them. This one drops
+	the table too, because dropping the rows is the point. A table whose DocType record is already gone is dropped as well."""
 	dropped: dict[str, int | None] = {}
 	for doctype in doctypes:
-		if not frappe.db.exists("DocType", doctype):
+		record = frappe.db.exists("DocType", doctype)
+		table = frappe.db.table_exists(doctype)
+		if not record and not table:
 			continue
 		count = None
-		try:
-			count = frappe.db.count(doctype)
-		except Exception:
-			# the table is already gone, the doctype record was left behind
-			pass
+		if table:
+			# the names are this module's constants, never data
+			count = frappe.db.sql(f"select count(*) from `tab{doctype}`")[0][0]
 		dropped[doctype] = count
-		frappe.delete_doc("DocType", doctype, force=True, ignore_missing=True, ignore_permissions=True)
+		if record:
+			frappe.delete_doc("DocType", doctype, force=True, ignore_missing=True, ignore_permissions=True)
+		frappe.db.sql_ddl(f"drop table if exists `tab{doctype}`")
 	return dropped
 
 
