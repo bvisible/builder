@@ -121,6 +121,12 @@ class TestCritiqueCeiling(unittest.TestCase):
 # //// It read the bracketed blanks of a privacy policy as unfinished work, called the page
 # //// unprofessional and spent a revision erasing them — undoing the rule that put them there.
 class TestLegalPageContext(unittest.TestCase):
+	def setUp(self):
+		# //// Neoffice — the production log is not this test's (its "Visual check ... model=kimi" lines were read as a build's, 2026-10-20)
+		logging = patch.object(visual_check, "ai_log")
+		logging.start()
+		self.addCleanup(logging.stop)
+
 	def _context_for(self, page_type):
 		from unittest.mock import MagicMock, patch
 

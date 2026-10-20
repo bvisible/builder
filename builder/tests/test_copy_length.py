@@ -8,7 +8,8 @@ import unittest
 from types import SimpleNamespace
 from unittest.mock import patch
 
-from builder.site_ai.nora.site_builder import COPY_FLOOR_WORDS, copy_length_line, page_brief_text
+from builder.site_ai.nora import visual_check
+from builder.site_ai.nora.site_builder import COPY_FLOOR_WORDS, copy_length_line, page_brief_text, thin_copy_issue
 
 HANDLES = {
 	"primary": "var(--t-primary)",
@@ -69,6 +70,45 @@ class TestTheCopyLength(unittest.TestCase):
 			"COPY LENGTH", brief_for({"title": "À propos", "route": "about", "type": "about"}, "minimal")
 		)
 		self.assertNotIn("COPY LENGTH", brief_for({"title": "Mentions", "route": "legal", "type": "legal"}))
+
+
+def blocks_of(words):
+	"""A page whose sections carry `words` words in all, in paragraphs of ten."""
+	paragraphs = [{"element": "p", "innerHTML": " ".join(["mot"] * 10)} for _ in range(words // 10)]
+	return [{"element": "div", "children": [{"element": "section", "children": paragraphs}]}]
+
+
+class TestThinCopyIsMeasured(unittest.TestCase):
+	"""The strong hosted judge called the local writer's short pages "sparse" and they were rewritten longer; a judge
+	under the instructions made for the local model does not, so the floor of the brief is checked on the words."""
+
+	def test_a_page_below_the_floor_is_a_medium_point_with_its_numbers(self):
+		point = thin_copy_issue(blocks_of(100), {"type": "accueil"}, True, "standard")
+		self.assertEqual(point["severity"], "medium")
+		self.assertIn("100 words", point["problem"])
+		self.assertIn("at least 200", point["problem"])
+
+	def test_a_page_at_or_above_the_floor_is_not(self):
+		self.assertIsNone(thin_copy_issue(blocks_of(200), {"type": "accueil"}, True, "standard"))
+		self.assertIsNone(thin_copy_issue(blocks_of(150), {"type": "about"}, False, None))
+		self.assertIsNone(thin_copy_issue(blocks_of(90), {"type": "contact"}, False, "standard"))
+
+	def test_the_floor_depends_on_the_page_as_the_brief_says(self):
+		self.assertIsNotNone(thin_copy_issue(blocks_of(140), {"type": "about"}, False, "standard"))
+		self.assertIsNone(thin_copy_issue(blocks_of(140), {"type": "contact"}, False, "standard"))
+
+	def test_a_minimal_site_and_a_text_page_are_never_measured(self):
+		self.assertIsNone(thin_copy_issue(blocks_of(10), {"type": "about"}, False, "minimal"))
+		for kind in ("legal", "faq", "blog"):
+			self.assertIsNone(thin_copy_issue(blocks_of(10), {"type": kind}, False, "standard"))
+
+	def test_it_asks_for_one_revision_and_no_more(self):
+		# the point sits among the judge's, with a page the judge liked: revised once, then accepted
+		point = thin_copy_issue(blocks_of(100), {"type": "accueil"}, True, "standard")
+		report = {"professional": True, "issues": [point], "gate": [], "error": None}
+		self.assertFalse(visual_check.accepted(report, lenient=False))
+		self.assertTrue(visual_check.accepted(report, lenient=True))
+		self.assertFalse(visual_check.refused(report))
 
 
 if __name__ == "__main__":

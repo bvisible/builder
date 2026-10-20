@@ -1122,6 +1122,27 @@ def copy_length_line(page: dict, is_home: bool, density: str | None) -> str:
     )
 
 
+# //// Neoffice — thin copy is a measure, not an opinion (2026-10-20). With the strong hosted model as the judge the pages
+# //// the local writer left short came back "sparse" and were rewritten longer (108 to 130 words became 180 to 200); a
+# //// judge under the instructions made for the local model reports a defect a visitor would refuse, not a short page, so
+# //// the floor the brief states is checked here, on the words the page really carries, and a page below it is revised
+# //// once (a medium point: the judge's own medium points are fixed once, not chased; visual_check.accepted).
+def thin_copy_issue(blocks: list, page: dict, is_home: bool, density: str | None) -> dict | None:
+    """The revision point for a page that carries fewer words than the brief said (copy_length_line), or None."""
+    if density == "minimal" or page["type"] in TEXT_BY_NATURE:
+        return None
+    floor = COPY_FLOOR_WORDS["home" if is_home else "contact" if page["type"] == "contact" else "interior"]
+    words = page_word_count(blocks)
+    if words >= floor:
+        return None
+    return {
+        "severity": "medium",
+        "area": "copy length",
+        "problem": f"the page carries {words} words and this kind of page carries at least {floor}: sections are a heading over one short line",
+        "fix": "give every section its copy in full (a heading and two or three real sentences, or three or four items with a line each), without adding sections",
+    }
+
+
 def page_brief_text(site: dict, brief, page: dict, handles: dict, contact_prompt: str, layout_system: str, language: str, photos: list[str], cta: tuple[str, str], palette: dict | None = None, revision: str | None = None, photo_notes: list[str] | None = None) -> str:
     from builder.site_ai.nora.facts import FACTS_RULE, today_line
 
@@ -2902,6 +2923,12 @@ def build_site(ctx, spec: dict) -> str:
                         ai_log("info", "Measured contrast repaired", page=page["title"], fixes=measured_fixes[:4])
                         with meter.kind(meter.READING):
                             look = visual_check.review_page(created[-1], profile, judge, site_name=site_name, activity=activity, expect=site["headlines_by_route"].get(page["route"]) or [page["title"]])
+                # //// Neoffice — see thin_copy_issue: the floor of the brief is measured on the stored page
+                if not look.get("error"):
+                    thin = thin_copy_issue(stored_page(name)[0], page, page["route"] == "home", site.get("copy_density"))
+                    if thin:
+                        look.setdefault("issues", []).append(thin)
+                        ai_log("info", "Thin copy measured", page=page["title"], problem=thin["problem"][:120])
                 # the report is kept, with the page's state when it was read: the final pass
                 # re-reads only what changed since (the pictures land after the pages)
                 reviewed_already[name] = {"report": look, "modified": str(frappe.db.get_value("Builder Page", name, "modified") or "")}
