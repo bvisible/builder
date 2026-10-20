@@ -13,8 +13,8 @@ from __future__ import annotations
 
 import json
 import re
-import unicodedata
 import time
+import unicodedata
 from urllib.parse import quote
 
 import frappe
@@ -1099,6 +1099,21 @@ def headline_echoes(blocks: list, earlier: list[str]) -> list[dict]:
     return issues
 
 
+COPY_FLOOR_WORDS = {"home": 200, "interior": 150, "contact": 90}
+
+
+def copy_length_line(page: dict, is_home: bool, density: str | None) -> str:
+    """How much copy a page carries, for every page that is not text by nature and not asked to be minimal."""
+    if density == "minimal" or page["type"] in TEXT_BY_NATURE:
+        return ""
+    floor = COPY_FLOOR_WORDS["home" if is_home else "contact" if page["type"] == "contact" else "interior"]
+    return (
+        "COPY LENGTH: every section carries its copy in full: a heading and two or three real sentences (30 to 60 "
+        "words), or three or four items with a heading and a line each. A section that is a heading over one short "
+        f"line is unfinished. The page reads at least {floor} words in all."
+    )
+
+
 def page_brief_text(site: dict, brief, page: dict, handles: dict, contact_prompt: str, layout_system: str, language: str, photos: list[str], cta: tuple[str, str], palette: dict | None = None, revision: str | None = None, photo_notes: list[str] | None = None) -> str:
     from builder.site_ai.nora.facts import FACTS_RULE, today_line
 
@@ -1204,6 +1219,10 @@ def page_brief_text(site: dict, brief, page: dict, handles: dict, contact_prompt
             if page["type"] == "legal" else ""
         ),
         f"SECTIONS, in order, with real copy written in {language}:\n{sections}",
+        # //// Neoffice — the length of the copy, said (2026-10-20). With the density "standard" nothing told the
+        # //// writer how much to write: the strong model wrote 220 to 280 words on an interior page, the local one
+        # //// 50 to 210, a heading over one short line, and the reviewer called the page thin every time.
+        copy_length_line(page, is_home, site.get("copy_density")),
         (
             # the client's categories by name: without them the category wall came out with no
             # name and two repeated photographs (2026-09-12)
@@ -1877,7 +1896,6 @@ def build_site(ctx, spec: dict) -> str:
     from builder.ai import llm
     from builder.ai.block_codec import BlockCodec
     from builder.ai.page_writer import expand_page_yaml
-    from builder.site_ai.nora.contrast import repair_contrast
     from builder.ai.prompts import Prompts
     from builder.api import (
         SITE_TYPE_HEADER_FOOTER_DEFAULTS,
@@ -1891,21 +1909,29 @@ def build_site(ctx, spec: dict) -> str:
         classify_existing_pages,
         get_site_contact_context,
     )
+    from builder.hf_utils.header_footer import NEWSLETTER_DEFAULTS
     from builder.site_ai.config import get_ai_settings
     from builder.site_ai.generators.brief_generator import BriefGenerator, get_default_brief
     from builder.site_ai.logging import ai_log
-    from builder.site_ai.nora.accent import dominant_accent, rewrite_hex
     from builder.site_ai.nora import visual_check
-    from builder.hf_utils.header_footer import NEWSLETTER_DEFAULTS
+    from builder.site_ai.nora.accent import dominant_accent, rewrite_hex
+    from builder.site_ai.nora.contrast import repair_contrast
+    from builder.site_ai.nora.facts import facts_issues, invented_facts, known_text
+
     # //// Neoffice — cards stack on a grid (grid_stacked_cards/repeater_counts) and, with image
     # //// generation off, placehold.co slots become inline SVGs (neutral_placeholders) instead of
     # //// broken external images (65d8f360 "fix(nora): cards never stack in a column, and photo slots without photos are plain blocks")
-    from builder.site_ai.nora.layout import grid_stacked_cards, place_orphans, repeater_counts, strip_title_band, unwrap_grid_wrappers
-    from builder.site_ai.nora.facts import facts_issues, invented_facts, known_text
+    from builder.site_ai.nora.layout import (
+        grid_stacked_cards,
+        place_orphans,
+        repeater_counts,
+        strip_title_band,
+        unwrap_grid_wrappers,
+    )
     from builder.site_ai.nora.placeholders import neutral_named_slots, neutral_placeholders
+    from builder.site_ai.nora.prompts import page_profile
     from builder.site_ai.nora.punctuation import french_elisions, french_spacing, script_elisions
     from builder.site_ai.nora.typography import cap_font_sizes
-    from builder.site_ai.nora.prompts import page_profile
 
     started = time.time()
     site_name = (spec.get("site_name") or "").strip()
@@ -2519,7 +2545,11 @@ def build_site(ctx, spec: dict) -> str:
                     # //// lead somewhere, no client names in comments")
                     # a "Learn more" that goes nowhere, a card without the action its siblings
                     # carry, a primary button on a primary-coloured section: see buttons.py
-                    from builder.site_ai.nora.buttons import repair_button_variants, repair_foreign_links, wire_dead_ctas
+                    from builder.site_ai.nora.buttons import (
+                        repair_button_variants,
+                        repair_foreign_links,
+                        wire_dead_ctas,
+                    )
 
                     routes = ["/" if p["route"] in ("home", "index") else "/" + p["route"].lstrip("/") for p in pages]
                     routes.append("/login")
