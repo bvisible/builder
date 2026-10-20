@@ -128,9 +128,11 @@ _SILENT = object()
 
 
 def choices_of(param: dict) -> list[dict]:
-	"""A parameter's choices as [{value, label}]; a declaration may give bare strings."""
+	"""A parameter's choices as [{value, label}]; a declaration may give bare strings, or name a function that
+	lists them (`choices_from`, dotted path): the forms of the site are not known to the code, they are rows."""
 	out = []
-	for choice in param.get("choices") or ():
+	source = param.get("choices_from")
+	for choice in (frappe.get_attr(source)() if source else param.get("choices")) or ():
 		if isinstance(choice, dict):
 			out.append({"value": str(choice["value"]), "label": choice.get("label") or str(choice["value"])})
 		else:
@@ -358,6 +360,9 @@ def _example_value(param: dict):
 	default = param.get("default")
 	if param.get("type") == "bool":
 		return not bool(default)
+	# the choices of a parameter that lists rows belong to one site: an example must not name one of them
+	if param.get("choices_from"):
+		return default
 	for choice in choices_of(param):
 		if choice["value"] != str(default):
 			return choice["value"]
@@ -386,7 +391,7 @@ def registry_row(component: Component) -> dict:
 			"default": param.get("default"),
 			"description": param.get("about") or "",
 		}
-		if choices_of(param):
+		if choices_of(param) and not param.get("choices_from"):
 			item["choices"] = [c["value"] for c in choices_of(param)]
 		parameters.append(item)
 	return {

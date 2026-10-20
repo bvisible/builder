@@ -1,0 +1,139 @@
+{# //// Neoffice — added file (no upstream equivalent): a form of the website, drawn from its record.
+   ////
+   //// {%- set site_form = "quote-request" -%}{% include "builder/templates/includes/site_form.html" %}
+   ////
+   //// A Site Form (neoffice_theme) is a form kept as data: its questions, how it is shown, who is told. This
+   //// include draws it at EVERY display of the page, so an improvement of the forms reaches the sites already
+   //// online; the owner changes the questions in the editor of the Builder or in the desk, never in this file.
+   //// `site_form` is the identifier of the form. Left out, or naming a form that was renamed or switched off,
+   //// the page draws the contact form of its website: a page must never lose its form over a name.
+   ////
+   //// Where the site keeps no forms (Unpress, a theme that predates them) the plain contact form is drawn.
+   ////
+   //// One runtime drives it, public/js/neo_contact_form.js (a form carries data-neo-contact and data-neo-form):
+   //// the signed token taken when the page loads, the minimum delay, the field only a script fills, the steps, the
+   //// window. The answers travel as data, one entry for each question of the form; the entry point
+   //// (neoffice_theme.website_messages.submit) holds them to the questions the form asks. #}
+{%- set sf_wanted = site_form if site_form is defined else "" -%}
+{%- set sf = site_form_definition(sf_wanted) -%}
+{%- if not sf -%}
+{% include "builder/templates/includes/contact_form.html" %}
+{%- else -%}
+{%- set sf_steps = sf.steps if sf.steps else [""] -%}
+{%- set sf_count = sf_steps | length -%}
+{%- set sf_dialog = sf.dialog -%}
+{#- the window is titled by its button; a window form with no button text draws no button (the page has its own link to #contact) -#}
+{%- set sf_title = sf.button_text or sf.title -%}
+{%- set sf_id = "sf-" ~ sf.name ~ ("-window" if sf_dialog else "") -%}
+<div class="builder-contact-form{% if sf_dialog %} builder-contact-form--dialog{% endif %}" data-neo-site-form="{{ sf.name | e }}">
+    {%- if sf_dialog %}
+    {%- if sf.button_text %}
+    <button type="button" class="u-btn u-btn--primary builder-contact-form__open" data-contact-open>{{ sf.button_text | e }}</button>
+    {%- endif %}
+    <dialog class="builder-contact-form__dialog" aria-labelledby="{{ sf_id }}-title">
+    <div class="builder-contact-form__panel">
+    <div class="builder-contact-form__bar">
+        <h2 class="builder-contact-form__title" id="{{ sf_id }}-title">{{ sf_title | e }}</h2>
+        <button type="button" class="builder-contact-form__close" data-contact-close aria-label="{{ _('Close') | e }}">&times;</button>
+    </div>
+    {%- endif %}
+    <form action="/api/method/neoffice_theme.website_messages.submit" method="POST" class="contact-form" data-neo-contact="1"
+          data-neo-form="{{ sf.name | e }}"
+          data-token-url="/api/method/neoffice_theme.website_messages.issue_token"
+          data-sent="{{ (sf.success_message or _('Thank you, your message has been sent.')) | e }}"
+          data-failed="{{ _('Your message could not be sent. Please check your answers and try again.') | e }}"
+          data-throttled="{{ _('Too many messages have been sent. Please try again later.') | e }}">
+
+        {%- if sf_count > 1 %}
+        <p class="builder-contact-form__progress" data-progress hidden>{{ _("Step") }} <span data-step-now>1</span> / <span data-step-total>{{ sf_count }}</span></p>
+        {%- endif %}
+
+        {%- for step_title in sf_steps %}
+        {%- set step_number = loop.index %}
+        {%- set step_fields = sf.fields | selectattr("step", "equalto", step_number) | list %}
+        {%- if sf_count > 1 %}
+        <fieldset class="builder-contact-form__step" data-step="{{ step_number }}">
+            {%- if step_title %}
+            <legend class="builder-contact-form__legend">{{ step_title | e }}</legend>
+            {%- endif %}
+        {%- else %}
+        <div class="builder-contact-form__plain">
+        {%- endif %}
+
+            {#- the name and the e-mail stand side by side, as in the plain contact form -#}
+            {%- set pair = step_fields | length > 1 and step_fields[0].role == "Name" and step_fields[1].role == "Email" %}
+            {%- for field in step_fields %}
+            {%- set fid = sf_id ~ "-" ~ field.fieldname %}
+            {%- if pair and loop.index0 == 0 %}
+            <div class="form-row">
+            {%- endif %}
+            {%- if field.type in ("Text", "Email", "Phone", "Date") %}
+            <div class="form-group">
+                <label for="{{ fid }}">{{ field.label | e }}{% if field.required %} <span class="required">*</span>{% endif %}</label>
+                <input type="{{ 'email' if field.type == 'Email' else ('tel' if field.type == 'Phone' else ('date' if field.type == 'Date' else 'text')) }}"
+                       id="{{ fid }}" name="{{ field.fieldname }}"{% if field.required %} required{% endif %}
+                       {%- if field.type == "Text" %} maxlength="200"{% elif field.type == "Phone" %} maxlength="40"{% elif field.type == "Email" %} maxlength="140"{% endif %}
+                       {%- if field.role == "Name" %} autocomplete="name"{% elif field.role == "Email" %} autocomplete="email"{% elif field.role == "Phone" %} autocomplete="tel"{% endif %}
+                       {%- if field.help and field.type != "Date" %} placeholder="{{ field.help | e }}"{% endif %}>
+                {%- if field.help and field.type == "Date" %}
+                <p class="builder-contact-form__hint">{{ field.help | e }}</p>
+                {%- endif %}
+            </div>
+            {%- elif field.type == "Long text" %}
+            <div class="form-group">
+                <label for="{{ fid }}">{{ field.label | e }}{% if field.required %} <span class="required">*</span>{% endif %}</label>
+                <textarea id="{{ fid }}" name="{{ field.fieldname }}" rows="5" maxlength="5000"{% if field.required %} required{% endif %}
+                          {%- if field.help %} placeholder="{{ field.help | e }}"{% endif %}></textarea>
+            </div>
+            {%- elif field.type in ("Single choice", "Checkboxes") %}
+            {%- set control = "radio" if field.type == "Single choice" else "checkbox" %}
+            <div class="form-group builder-contact-form__question" role="{{ 'radiogroup' if control == 'radio' else 'group' }}" aria-labelledby="{{ fid }}-label">
+                <p class="builder-contact-form__question-label" id="{{ fid }}-label">{{ field.label | e }}{% if field.required %} <span class="required">*</span>{% endif %}</p>
+                {%- for option in field.options %}
+                <label class="builder-contact-form__choice">
+                    <input type="{{ control }}" name="{{ field.fieldname }}" value="{{ option | e }}" data-label="{{ field.label | e }}"{% if field.required and control == "radio" %} required{% endif %}>
+                    <span>{{ option | e }}</span>
+                </label>
+                {%- endfor %}
+                {%- if field.help %}
+                <p class="builder-contact-form__hint">{{ field.help | e }}</p>
+                {%- endif %}
+            </div>
+            {%- elif field.type == "Consent" %}
+            <div class="form-group builder-contact-form__consent">
+                <input type="checkbox" id="{{ fid }}" name="{{ field.fieldname }}" value="1"{% if field.required %} required{% endif %}>
+                <label for="{{ fid }}">{{ field.label | e }}</label>
+            </div>
+            {%- endif %}
+            {%- if pair and loop.index0 == 1 %}
+            </div>
+            {%- endif %}
+            {%- endfor %}
+
+            {%- if loop.last %}
+            {%- if sf_count > 1 %}
+            <button type="button" class="builder-contact-form__back" data-step-back hidden>{{ _("Back") }}</button>
+            {%- endif %}
+            <button type="submit" class="btn btn-primary">{{ sf.submit_text or _("Send Message") }}</button>
+            {%- else %}
+            {%- if loop.index > 1 %}
+            <button type="button" class="builder-contact-form__back" data-step-back hidden>{{ _("Back") }}</button>
+            {%- endif %}
+            <button type="button" class="builder-contact-form__next" data-step-next hidden>{{ _("Next") }}</button>
+            {%- endif %}
+        {%- if sf_count > 1 %}
+        </fieldset>
+        {%- else %}
+        </div>
+        {%- endif %}
+        {%- endfor %}
+
+        <p class="builder-contact-form__status" role="status" aria-live="polite" hidden></p>
+    </form>
+    {%- if sf_dialog %}
+    </div>
+    </dialog>
+    {%- endif %}
+</div>
+{% include "builder/templates/includes/contact_form_style.html" %}
+{%- endif -%}

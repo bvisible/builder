@@ -70,6 +70,8 @@ jinja = {
 		"builder.builder.doctype.builder_component.builder_component.get_component_data",
 		# //// Neoffice — the address the map include falls back to (templates/includes/google_map.html)
 		"builder.api.site_map_address",
+		# //// Neoffice — the definition of a Site Form, read at every display by templates/includes/site_form.html
+		"builder.site_forms.site_form_definition",
 	],
 	"filters": [
 		"builder.utils.combine",
@@ -242,6 +244,26 @@ website_components = [
 			{"name": "contact_button_text", "label": "Button text", "blank": True, "type": "str", "default": "Contact us", "about": "what the button that opens the window reads, in the site's language; empty draws no button, for a page with its own link to #contact"},
 			{"name": "consent_text", "label": "Consent sentence", "type": "str", "default": "", "about": "the business's own consent sentence, a box the visitor must tick before sending"},
 			{"name": "phone_required", "label": "Phone number required", "type": "bool", "default": False, "about": "the visitor must give a phone number"},
+		],
+	},
+	# //// Neoffice — the forms of the website (2026-10-20, plan of neoffice-maintenance#1593). A form is a record of the
+	# //// theme, kept as data (questions, steps, delivery) and drawn by this include at every display: the editor, the
+	# //// assistant, the desk and the generator write the record, never the markup. `app` is the theme, not builder:
+	# //// where the theme is not installed (Unpress) the catalogue does not offer it, and the generator is not told of it.
+	{
+		"path": "builder/templates/includes/site_form.html",
+		"app": "neoffice_theme",
+		"label": "Form",
+		"shows": "a form of this site (contact, quote request, call back...), its answers kept in the site's inbox",
+		"pages": ["contact", "one_page"],
+		"category": "Form",
+		"help": "Pick one of the forms of the site, or create one in this panel. With the window option the form waits behind a button, and any link to #contact opens it.",
+		"note": (
+			"A form is a record, not markup: never write a <form> of your own beside it. `site_form` names the form; leave it "
+			"out for the contact form of the site. Prefer this include to contact_form.html on a site that has forms."
+		),
+		"params": [
+			{"name": "site_form", "label": "Form", "choices_from": "builder.site_forms.form_choices", "type": "str", "default": "", "about": "the identifier of the form to draw; leave it out for the contact form of the site"},
 		],
 	},
 	{

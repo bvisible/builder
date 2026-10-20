@@ -13,6 +13,12 @@
    //// any field whose name the endpoint does not know is folded into the message as "Label: value",
    //// so a template may ask whatever questions it likes without a change on the server.
    ////
+   ////
+   //// A form kept as data (templates/includes/site_form.html, a Site Form of the theme) also carries
+   //// data-neo-form="<identifier>": its answers then travel as data, one entry for each question of the form
+   //// ({form, answers}), and the token comes with the name of the field only a script is shown. The forms
+   //// written before them keep their eight names and the folding of the other questions into the message.
+   ////
    //// To remove: nothing to remove, there is no upstream counterpart. */
 (function () {
   // The eight names neoffice_theme.website_messages.submit knows. Anything else is a question of
@@ -158,6 +164,61 @@
     });
   };
 
+  // The answers of a form kept as data: one entry for each name a control has, by what the control is. A
+  // question of several choices (checkboxes sharing a name) answers with a list, a single box (the consent)
+  // with true; the field only a script is shown is not an answer.
+  var answersOf = function (form) {
+    var answers = {};
+    var groups = {};
+    Array.prototype.forEach.call(form.elements, function (control) {
+      if (!control.name || control.disabled || control.type === "hidden")
+        return;
+      if (control.type === "submit" || control.type === "button") return;
+      if (control.hasAttribute("data-neo-honeypot")) return;
+      (groups[control.name] = groups[control.name] || []).push(control);
+    });
+    Object.keys(groups).forEach(function (name) {
+      var controls = groups[name];
+      var first = controls[0];
+      if (first.type === "checkbox") {
+        var ticked = controls
+          .filter(function (c) {
+            return c.checked;
+          })
+          .map(function (c) {
+            return c.value;
+          });
+        if (controls.length > 1) {
+          if (ticked.length) answers[name] = ticked;
+        } else if (ticked.length) {
+          answers[name] = true;
+        }
+      } else if (first.type === "radio") {
+        var picked = controls.filter(function (c) {
+          return c.checked;
+        })[0];
+        if (picked) answers[name] = picked.value;
+      } else if (first.value && first.value.trim()) {
+        answers[name] = first.value.trim();
+      }
+    });
+    return answers;
+  };
+
+  // The sentence the server gave for a refusal (frappe puts it in _server_messages), "" when there is none.
+  var sentenceOf = function (response) {
+    return response
+      .json()
+      .then(function (json) {
+        var messages = JSON.parse((json && json._server_messages) || "[]");
+        var first = messages.length ? JSON.parse(messages[0]) : null;
+        return (first && first.message) || "";
+      })
+      .catch(function () {
+        return "";
+      });
+  };
+
   var post = function (url, body) {
     var headers = { Accept: "application/json" };
     if (window.frappe && window.frappe.csrf_token)
@@ -180,7 +241,16 @@
     var tokenUrl = form.dataset.tokenUrl || TOKEN_URL;
     var action = form.getAttribute("action") || SUBMIT_URL;
     var legacyAction = form.dataset.legacyAction || LEGACY_URL;
-    var token = { value: "", at: 0 };
+    var siteForm = form.dataset.neoForm || "";
+    var token = { value: "", at: 0, decoy: "" };
+    // when the visitor first touched the form: a script posting at once has no such moment to report
+    var touched = 0;
+    var touch = function () {
+      if (!touched) touched = Date.now();
+    };
+    ["keydown", "pointerdown", "input", "change"].forEach(function (type) {
+      form.addEventListener(type, touch, true);
+    });
 
     // //// Neoffice — the steps are an enhancement: without JavaScript every step shows and the
     // //// form posts in one go, so a visitor is never stuck on a page that cannot go forward.
@@ -239,8 +309,31 @@
     }
 
     // The signed token the server asks for: taken when the page loads, renewed when it has aged.
+    // //// Neoffice — the field only a script is shown carries a name the server chose for this token, and
+    // //// is added once the token is taken: a bot that reads the markup finds no such field to learn.
+    var setDecoy = function (name) {
+      var old = form.querySelector("[data-neo-honeypot][data-neo-decoy]");
+      if (old) old.remove();
+      if (!name) return;
+      var decoy = document.createElement("input");
+      decoy.type = "text";
+      decoy.name = name;
+      decoy.tabIndex = -1;
+      decoy.autocomplete = "off";
+      decoy.setAttribute("aria-hidden", "true");
+      decoy.setAttribute("data-neo-honeypot", "1");
+      decoy.setAttribute("data-neo-decoy", "1");
+      form.appendChild(decoy);
+    };
+
     var fetchToken = function () {
-      return fetch(tokenUrl, {
+      var url = siteForm
+        ? tokenUrl +
+          (tokenUrl.indexOf("?") === -1 ? "?" : "&") +
+          "form=" +
+          encodeURIComponent(siteForm)
+        : tokenUrl;
+      return fetch(url, {
         credentials: "same-origin",
         headers: { Accept: "application/json" },
       })
@@ -249,11 +342,20 @@
           return response.json();
         })
         .then(function (json) {
-          token = { value: (json && json.message) || "", at: Date.now() };
+          // a string for the forms written before the forms kept as data, an object for these
+          var issued = (json && json.message) || "";
+          if (typeof issued !== "object") issued = { token: issued, decoy: "" };
+          token = {
+            value: issued.token || "",
+            at: Date.now(),
+            decoy: issued.decoy || "",
+          };
+          setDecoy(token.decoy);
           return token.value;
         })
         .catch(function () {
-          token = { value: "", at: 0 };
+          token = { value: "", at: 0, decoy: "" };
+          setDecoy("");
           return "";
         });
     };
@@ -280,6 +382,19 @@
       if (button) button.disabled = true;
       readyToken()
         .then(function (ready) {
+          // a form kept as data sends its answers as data, to the one entry point
+          if (siteForm) {
+            if (!ready) throw new Error("token");
+            var data = new URLSearchParams({
+              form: siteForm,
+              answers: JSON.stringify(answersOf(form)),
+              token: ready,
+              elapsed: String(touched ? Date.now() - touched : 0),
+            });
+            var decoy = form.querySelector("[data-neo-decoy]");
+            if (token.decoy) data.set(token.decoy, decoy ? decoy.value : "");
+            return post(action, data);
+          }
           if (!ready) return post(legacyAction, legacyBody(form));
           var body = new URLSearchParams({
             full_name: value(form, "full_name"),
@@ -299,8 +414,13 @@
         })
         .then(function (response) {
           if (response.status === 429) throw new Error("429");
-          if (!response.ok) throw new Error(String(response.status));
+          if (!response.ok) {
+            var failure = new Error(String(response.status));
+            failure.response = response;
+            throw failure;
+          }
           form.reset();
+          touched = 0;
           if (steps.length > 1) show(1);
           if (status) {
             status.textContent = text(form, "sent");
@@ -309,12 +429,21 @@
           fetchToken();
         })
         .catch(function (error) {
+          // a token serves one message: the next try needs a new one, sent or not
+          if (siteForm) fetchToken();
           if (!status) return;
-          status.textContent =
-            error && error.message === "429"
-              ? text(form, "throttled")
-              : text(form, "failed");
-          status.classList.add("is-error");
+          // the server says what to correct (a required question, a choice that is not offered)
+          var sentence =
+            siteForm && error && error.response
+              ? sentenceOf(error.response)
+              : Promise.resolve("");
+          return sentence.then(function (said) {
+            status.textContent =
+              error && error.message === "429"
+                ? text(form, "throttled")
+                : said || text(form, "failed");
+            status.classList.add("is-error");
+          });
         })
         .finally(function () {
           if (status) status.hidden = false;

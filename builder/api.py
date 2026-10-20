@@ -379,6 +379,56 @@ def read_component_tag(text: str | None = None) -> dict | None:
 	if component:
 		return {"path": component.path, "label": _(component.label), "values": None}
 	return None
+
+
+# //// Neoffice — the forms of the website, for the editor (2026-10-20, plan of neoffice-maintenance#1593).
+# //// A form is a record of the theme (`Site Form`); these four endpoints list, read, create and change it for the
+# //// panel and its dialog. The theme checks the caller's own right on the doctype; the Builder only checks that
+# //// it is a builder user. On a site without the theme (Unpress) `get_site_forms` answers {"available": false}:
+# //// the capability is an answer of the server, never a fork.
+@frappe.whitelist()
+@builder_role_required()
+def get_site_forms(page: str | None = None, website_profile: str | None = None) -> dict:
+	"""The forms the open page may carry, the presets a new one starts from, and the limits of a form."""
+	from builder import site_forms
+
+	return site_forms.editor_state(page, website_profile)
+
+
+@frappe.whitelist()
+@builder_role_required()
+def get_site_form(name: str) -> dict:
+	"""One form with all its questions, as the dialog edits it."""
+	from builder import site_forms
+
+	return site_forms.get_form(name)
+
+
+@frappe.whitelist(methods=["POST"])
+@builder_role_required()
+def create_site_form(
+	preset: str = "steps", title: str | None = None, website_profile: str | None = None, kind: str | None = None
+) -> dict:
+	"""A new form from a preset ("simple", "steps", "questions"), in the language of its website."""
+	from builder import site_forms
+
+	return site_forms.create_form(preset, title, website_profile, kind)
+
+
+@frappe.whitelist(methods=["POST"])
+@builder_role_required()
+def save_site_form(name: str, data: str | dict) -> dict:
+	"""Replaces what `data` carries of form `name` (its title, steps, questions, delivery...). Every rule of a form
+	is checked by the theme at save: a refusal comes back as the sentence to show."""
+	from builder import site_forms
+
+	try:
+		parsed = json.loads(data) if isinstance(data, str) else data
+	except ValueError:
+		parsed = None
+	if not isinstance(parsed, dict):
+		frappe.throw(_("The form could not be read."))
+	return site_forms.save_form(name, parsed)
 # //// Neoffice ▲▲▲
 
 

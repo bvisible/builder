@@ -732,7 +732,10 @@ class BuilderPage(WebsiteGenerator):
 		# //// `content` at this point. Loaded here and NOT by web_include_js: frappe renders those in
 		# //// base.html, and a Builder page never goes through it (our templates/generators/webpage.html
 		# //// owns the document), so a page had no script at all and the form sent nothing.
-		context.has_contact_form = "data-neo-contact" in content or "contact_form.html" in content
+		# //// Neoffice — site_form.html (a form kept as data, 2026-10-20) is the other include that draws a form
+		context.has_contact_form = (
+			"data-neo-contact" in content or "contact_form.html" in content or "site_form.html" in content
+		)
 		if context.has_contact_form:
 			from builder.hooks import _asset_version
 

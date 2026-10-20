@@ -118,6 +118,11 @@ class TestGuardedEndpoints(FrappeTestCase):
 		"get_site_components",
 		"render_component_tag",
 		"read_component_tag",
+		# //// Neoffice — the forms of the website, for the editor (2026-10-20)
+		"get_site_forms",
+		"get_site_form",
+		"create_site_form",
+		"save_site_form",
 	]
 
 	OTHER_ENDPOINTS = [
