@@ -199,7 +199,7 @@ def page_word_count(blocks: list) -> int:
 CLASS_CONTRACT = (
     "set `classes` on the matching elements: buttons ['u-btn', 'u-btn--primary'] (or --secondary / --outline / --ghost), "
     "cards ['u-card'] (add 'u-card--raised' or 'u-card--flat'), photos and media frames ['u-media'], form fields ['u-input'], "
-    "a wrapper that puts text over a photo ['u-over-image'] (add --bottom, --diagonal or --soft), a set of 2 to 4 equal items "
+    "a wrapper that puts text over a photo ['u-over-image'] (add --bottom, --diagonal, --soft, or --center for copy in the middle), a set of 2 to 4 equal items "
     "(cards, stats, steps, logos) in a container ['u-grid', 'u-grid--3'] (--2, --3 or --4) with NO gridTemplateColumns of its own: "
     "the site lays it out on every screen. "
     # //// Neoffice — the design system's accordion (theme_variables.html, .u-faq, 2026-09-29)
@@ -1137,10 +1137,10 @@ The brief's concept and signature decide the look; these are the moves a designe
 - Rhythm by GROUND: at least three different section grounds on a page (the page background, a warm tint of it, one deep brand band), alternating, with generous padding (6rem 0 for a major section, 3.5rem 0 for a statement; m_style 4rem 0 and 2.5rem 0).
 - At least one ASYMMETRIC composition: text and a photo block in two columns of unequal width (gridTemplateColumns 5fr 7fr or 7fr 5fr), the heading left-aligned. Not everything centred.
 - CARDS only when the content is a set: a top rule (borderTop 2px solid <secondary>), padding 2rem, the heading in the display font at 1.5rem, a hairline and no shadow.
-Two sections of the writer's own format, to echo (their words, sizes and colours are examples: yours come from the brief):
+Two sections of the writer's own format, to echo (their words, sizes and colours are examples: yours come from the brief; the home's hero takes its background from the HERO BACKGROUND line of the page brief, a flat colour is never enough):
 - el: section
   name: hero
-  style: {backgroundColor: <primary>, width: 100%, display: flex, justifyContent: center, minHeight: 80vh, alignItems: center}
+  style: {backgroundColor: <primary>, backgroundImage: 'linear-gradient(160deg, <primary> 0%, <text> 100%)', width: 100%, display: flex, justifyContent: center, minHeight: 80vh, alignItems: center}
   c:
     - el: div
       style: {maxWidth: <container>, width: 100%, paddingLeft: <gutter>, paddingRight: <gutter>, display: flex, flexDirection: column, alignItems: flex-start}
@@ -1240,6 +1240,7 @@ def thin_copy_issue(blocks: list, page: dict, is_home: bool, density: str | None
 
 def page_brief_text(site: dict, brief, page: dict, handles: dict, contact_prompt: str, layout_system: str, language: str, photos: list[str], cta: tuple[str, str], palette: dict | None = None, revision: str | None = None, photo_notes: list[str] | None = None) -> str:
     from builder.site_ai.nora.facts import FACTS_RULE, today_line
+    from builder.site_ai.nora.hero import hero_recipe
 
     is_home = page["route"] == "home"
     used_headlines = [h for route, lines in (site.get("headlines_by_route") or {}).items() if route != page["route"] for h in lines]
@@ -1255,8 +1256,18 @@ def page_brief_text(site: dict, brief, page: dict, handles: dict, contact_prompt
     from builder.site_ai.nora import site_plan as planner
 
     planned = planner.page_of(site.get("plan"), page["route"])
+    # //// Neoffice — what stands behind the home's hero (hero.py, 2026-10-20): the writer was given the bare word "image" and
+    # //// wrote a flat block of the primary colour in 17 homes of 23; the recipe names a photograph under the veil, a gradient or a split
+    hero_line = (
+        hero_recipe(
+            getattr(brief, "hero_style", "") or "", handles, palette, site.get("background_mode") or "", photos[0] if photos else None, language,
+            getattr(brief, "site_tone", "") or "",
+        )
+        if is_home
+        else ""
+    )
     if planned:
-        plan = planner.section_lines(planned)
+        plan = planner.section_lines(planned, hero_dressed=bool(hero_line))
     contract = planner.contract_lines(site.get("plan"), is_home)
     sections = "\n".join(f"{i}. {s}" for i, s in enumerate(plan, 1))
     concept = getattr(brief, "design_concept", "") or ""
@@ -1287,6 +1298,7 @@ def page_brief_text(site: dict, brief, page: dict, handles: dict, contact_prompt
         ),
         # //// Neoffice — the plan's site-wide contract, when there is a plan (site_plan.contract_lines)
         *contract,
+        hero_line,
         (f"PAGE NOTES from the plan: {planned.notes}" if planned and planned.notes else ""),
         # //// Neoffice — the grid the header, the band and the footer share (site_grid_line)
         site_grid_line(handles),

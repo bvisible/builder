@@ -721,6 +721,20 @@ button:where(.u-btn) {
 	);
 }
 
+/* //// Neoffice — a veil for copy that sits in the MIDDLE of a photograph (2026-10-20). The default veil is deepest at the
+   left and --bottom at the bottom edge, so a centred title over a bright photograph (snow, sky, a pale wall) was white on
+   white: a build's centred hero read nothing, and the review called the page professional. An even wash, a little deeper
+   toward the bottom, that lets the picture breathe and still holds white copy; lighter than --deep, which stays the measured
+   repair for a photograph that is brighter still. */
+.u-over-image--center::after {
+	background: linear-gradient(
+		to bottom,
+		rgba(0, 0, 0, 0.42) 0%,
+		rgba(0, 0, 0, 0.5) 50%,
+		rgba(0, 0, 0, 0.58) 100%
+	);
+}
+
 /* The measured answer, placed by the repair and not by hand: when the copy over a photograph is
    still measured unreadable WITH a scrim on, the gradient is not the problem — the picture under
    the words is simply bright. This one washes the whole surface, deep enough that white copy

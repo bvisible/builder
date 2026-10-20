@@ -320,13 +320,20 @@ def page_of(plan: SitePlan | None, route: str) -> PlannedPage | None:
     return next((p for p in plan.pages if (p.route or "").strip("/") == wanted and p.sections), None)
 
 
-def section_lines(page: PlannedPage) -> list[str]:
-    """The page's sections as the writer reads them, one line each."""
+def section_lines(page: PlannedPage, hero_dressed: bool = False) -> list[str]:
+    """The page's sections as the writer reads them, one line each. `hero_dressed`: the page brief carries a HERO BACKGROUND
+    recipe, so the plan's own layout and photos for the hero are left out (they described a flat centred block again and the
+    writer, reading the plan first, followed it over the recipe: 2026-10-20)."""
     out = []
     for section in page.sections:
         parts = [f"[{section.kind}] {section.purpose or ''}".strip()]
         if section.copy:
             parts.append(f"copy: {section.copy}")
+        if hero_dressed and section.kind == "hero":
+            # //// Neoffice — the recipe decides the background, the composition and the photograph of the home's hero (hero.py)
+            parts.append("layout: as the HERO BACKGROUND line says (its background, its photograph, how its copy sits)")
+            out.append(" — ".join(parts))
+            continue
         if section.layout:
             parts.append(f"layout: {section.layout}")
         if section.photos:
