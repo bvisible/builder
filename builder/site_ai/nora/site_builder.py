@@ -1159,8 +1159,10 @@ def thin_copy_issue(blocks: list, page: dict, is_home: bool, density: str | None
     words = page_word_count(blocks) + script_word_count(script)
     if words >= floor:
         return None
+    # under half of the floor the page is a skeleton, not a short page: a high point, so it is rewritten again (up to
+    # MAX_REVISIONS) instead of being accepted after one pass (a page written with 3 words came out of one with 46)
     return {
-        "severity": "medium",
+        "severity": "high" if words < floor // 2 else "medium",
         "area": "copy length",
         "problem": f"the page carries {words} words and this kind of page carries at least {floor}: sections are a heading over one short line",
         "fix": "give every section its copy in full (a heading and two or three real sentences, or three or four items with a line each), without adding sections",

@@ -95,6 +95,15 @@ class TestThinCopyIsMeasured(unittest.TestCase):
 		self.assertIn("100 words", point["problem"])
 		self.assertIn("at least 200", point["problem"])
 
+	def test_a_page_under_half_the_floor_is_a_high_point_and_is_not_accepted_after_one_pass(self):
+		point = thin_copy_issue(blocks_of(40), {"type": "about"}, False, "standard")
+		self.assertEqual(point["severity"], "high")
+		report = {"professional": True, "issues": [point], "gate": [], "error": None}
+		self.assertFalse(visual_check.accepted(report, lenient=True))
+		# exactly half is still only a short page
+		self.assertEqual(thin_copy_issue(blocks_of(100), {"type": "accueil"}, True, "standard")["severity"], "medium")
+		self.assertEqual(thin_copy_issue(blocks_of(90), {"type": "accueil"}, True, "standard")["severity"], "high")
+
 	def test_a_page_at_or_above_the_floor_is_not(self):
 		self.assertIsNone(thin_copy_issue(blocks_of(200), {"type": "accueil"}, True, "standard"))
 		self.assertIsNone(thin_copy_issue(blocks_of(150), {"type": "about"}, False, None))
