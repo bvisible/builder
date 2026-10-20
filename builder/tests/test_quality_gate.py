@@ -155,9 +155,15 @@ class TestTheLogoARebuildKeeps(unittest.TestCase):
 	def test_the_host_s_inherited_logo_is_not(self):
 		self.assertFalse(keeps_own_logo("Image", "/files/logo-default.png", "/files/logo-default.png"))
 
-	def test_a_text_logo_or_no_image_is_not_a_logo_of_its_own(self):
-		self.assertFalse(keeps_own_logo("Text", "/files/client-wordmark.svg", None))
+	def test_no_image_is_not_a_logo_of_its_own(self):
 		self.assertFalse(keeps_own_logo("Image", "", None))
+		self.assertFalse(keeps_own_logo("Text", "", None))
+
+	# //// Neoffice — a logo the chrome parked (neoffice-maintenance #1766): it was "Text" here, and a
+	# //// rebuild asked without a logo wiped the client's file out of the config.
+	def test_a_logo_parked_behind_the_site_name_is_kept(self):
+		self.assertTrue(keeps_own_logo("Text", "/files/client-wordmark.svg", "/files/logo-default.png"))
+		self.assertFalse(keeps_own_logo("Text", "/files/logo-default.png", "/files/logo-default.png"))
 
 
 class TestK3ReasoningEffort(unittest.TestCase):

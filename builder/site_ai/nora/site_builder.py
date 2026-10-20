@@ -1500,8 +1500,14 @@ def by_route_page(pages: list[dict], created: dict) -> dict:
 def keeps_own_logo(logo_type, logo_image, host_logo) -> bool:
     """//// Neoffice — whether a profile's chrome carries a logo of its OWN: an image that is not
     the host site's (a new Variant is bootstrapped from the host's Single, logo included, and that
-    inherited logo is the one a build must NOT keep). 2026-09-16."""
-    return bool(logo_image) and str(logo_type or "") == "Image" and str(logo_image) != str(host_logo or "")
+    inherited logo is the one a build must NOT keep). 2026-09-16.
+
+    //// Neoffice — a logo the chrome parked is kept too (2026-10-20): a logo that cannot be seen on
+    //// its ground gives way to the site's name (logo_contrast.settle_chrome_logos), type "Text", and
+    //// its file stays on the config. The next build, asked without a logo, must not mistake it for a
+    //// text logo with nothing behind it and wipe the client's file: it is measured again against the
+    //// new ground. `logo_type` stays in the signature for the callers; it no longer decides."""
+    return bool(logo_image) and str(logo_image) != str(host_logo or "")
 
 
 def _host_logo() -> str | None:
@@ -1990,6 +1996,17 @@ def apply_navigation(config, created: list[dict], site_type: str, description: s
             if _is_legal_route(page["route"]):
                 continue
             config.append("footer_links", {"column_name": _("Navigation", lang=lang), "label": _("Home", lang=lang) if home else page["title"], "url": "/" if home else page["route"]})
+    # //// Neoffice — a logo that cannot be seen on its ground gives way to the site's name (2026-10-20):
+    # //// the chrome put the logo image in the footer whatever colour the footer was, and a dark navy
+    # //// mark on a deep brown footer was a barely visible rectangle. Last, with every colour and the
+    # //// footer's copy of the header's logo settled (neoffice-maintenance #1766).
+    try:
+        from builder.site_ai.nora.logo_contrast import settle_chrome_logos
+
+        for change in settle_chrome_logos(config):
+            ai_log("info", "Chrome logo replaced by the site name", change=change)
+    except Exception as e:
+        ai_log("warning", "Chrome logos not measured", error=str(e)[:160])
     config.save(ignore_permissions=True)
     # //// Neoffice — the home is known by what it was planned as, not only by the route it got
     # //// (2026-09-15): a home written beside one that was kept takes a hashed route ("home-b059"),
