@@ -1122,6 +1122,75 @@ def copy_length_line(page: dict, is_home: bool, density: str | None) -> str:
     )
 
 
+# //// Neoffice — the editorial vocabulary the local writer was missing (2026-10-20). Measured on the content pages of the
+# //// builds of one brief: the hosted writer put 4.4 headings per page with an italic accent word, 2.3 small-caps labels,
+# //// 5.0 sections and 3.0 different section grounds; the local writer 0.0, 0.4, 2.8 and 1.9, with the same long craft prompt
+# //// (ai/prompts.py GENERATION_YAML), which says what to avoid far more than what to do. A blind comparison by pairs by a judge
+# //// put the hosted writer's home pages ahead of every local one, in both orders, and named these very moves. The block says
+# //// what to do and shows two sections in the writer's own YAML, with the site's own token handles.
+DESIGN_VOCABULARY = """# Design vocabulary: the editorial moves of a considered page
+The brief's concept and signature decide the look; these are the moves a designer reaches for, to carry it. A page that reads as designed uses most of them.
+- ONE accent word per big heading, in the SAME h1/h2 text, as inline markup: an <em> in italic and the secondary colour. Two or three headings of a page carry one; the hero heading always does; a word or a short phrase, never a sentence, never in body text.
+- A small all-caps LABEL (fontSize 0.75rem, fontWeight 700, letterSpacing 0.3em, textTransform uppercase, color <secondary>) above the hero heading and above two or three section headings. Not every section: that is the template fingerprint.
+- Section OPENERS that are not all the same: an index numeral (01, 02) with a short rule (width 3rem, height 1px, background <secondary>) above a left-aligned heading, with its lead paragraph in a narrow column (maxWidth 30rem to 34rem); or a label; or the heading alone.
+- Display type with real contrast: hero h1 fontSize 4.5rem, lineHeight 1.08, letterSpacing -0.01em (m_style 2.5rem); section h2 fontSize 2.75rem to 3.25rem, lineHeight 1.15 (m_style 1.75rem); body 1.0625rem to 1.125rem, lineHeight 1.7.
+- Rhythm by GROUND: at least three different section grounds on a page (the page background, a warm tint of it, one deep brand band), alternating, with generous padding (6rem 0 for a major section, 3.5rem 0 for a statement; m_style 4rem 0 and 2.5rem 0).
+- At least one ASYMMETRIC composition: text and a photo block in two columns of unequal width (gridTemplateColumns 5fr 7fr or 7fr 5fr), the heading left-aligned. Not everything centred.
+- CARDS only when the content is a set: a top rule (borderTop 2px solid <secondary>), padding 2rem, the heading in the display font at 1.5rem, a hairline and no shadow.
+Two sections of the writer's own format, to echo (their words, sizes and colours are examples: yours come from the brief):
+- el: section
+  name: hero
+  style: {backgroundColor: <primary>, width: 100%, display: flex, justifyContent: center, minHeight: 80vh, alignItems: center}
+  c:
+    - el: div
+      style: {maxWidth: <container>, width: 100%, paddingLeft: <gutter>, paddingRight: <gutter>, display: flex, flexDirection: column, alignItems: flex-start}
+      m_style: {paddingLeft: <gutter-phone>, paddingRight: <gutter-phone>}
+      c:
+        - el: p
+          style: {fontFamily: <font-body>, fontSize: 0.75rem, fontWeight: '700', letterSpacing: 0.3em, textTransform: uppercase, color: <secondary>, margin: 0 0 1.5rem}
+          text: Kicker of the brand
+        - el: h1
+          style: {fontFamily: <font-heading>, fontSize: 4.5rem, fontWeight: '700', lineHeight: '1.08', letterSpacing: -0.01em, color: <background>, margin: 0 0 1.5rem, maxWidth: 42rem}
+          m_style: {fontSize: 2.5rem}
+          text: 'A headline that names the place and the <em style="font-style: italic; color: <secondary>">craft</em>'
+- el: section
+  name: opener
+  style: {backgroundColor: <background>, padding: 6rem 0, width: 100%}
+  m_style: {padding: 4rem 0}
+  c:
+    - el: div
+      style: {maxWidth: <container>, margin: 0 auto, paddingLeft: <gutter>, paddingRight: <gutter>}
+      m_style: {paddingLeft: <gutter-phone>, paddingRight: <gutter-phone>}
+      c:
+        - el: span
+          style: {fontFamily: <font-body>, fontSize: 0.75rem, fontWeight: '700', letterSpacing: 0.35em, color: <text>}
+          text: '01'
+        - el: hr
+          style: {backgroundColor: <secondary>, border: none, height: 1px, width: 3rem, margin: 0.75rem 0 1.25rem}
+        - el: h2
+          style: {fontFamily: <font-heading>, fontSize: 3rem, fontWeight: '700', lineHeight: '1.15', color: <text>, margin: 0 0 1.25rem, maxWidth: 44rem}
+          m_style: {fontSize: 1.75rem}
+          text: 'What the house does, in <em style="font-style: italic; color: <primary>">one line</em>'
+        - el: p
+          style: {fontFamily: <font-body>, fontSize: 1.125rem, lineHeight: '1.7', color: 'rgba(0,0,0,0.65)', maxWidth: 32rem}
+          text: One or two real sentences from the brief.
+"""
+
+
+def design_vocabulary(handles: dict) -> str:
+    """DESIGN_VOCABULARY with the site's own token handles in place of the <names>, or "" when it is switched off
+    (`nora_design_vocabulary` = 0 in site_config)."""
+    try:
+        if str(frappe.conf.get("nora_design_vocabulary", 1)).strip().lower() in ("0", "false", "no", "off"):
+            return ""
+    except Exception:
+        pass
+    text = DESIGN_VOCABULARY
+    for name in ("font-heading", "font-body", "gutter-phone", "gutter", "container", "primary", "secondary", "background", "text"):
+        text = text.replace(f"<{name}>", handles.get(name) or {"container": "1200px", "gutter": "48px", "gutter-phone": "24px"}.get(name, ""))
+    return text
+
+
 # //// Neoffice — thin copy is a measure, not an opinion (2026-10-20). With the strong hosted model as the judge the pages
 # //// the local writer left short came back "sparse" and were rewritten longer (108 to 130 words became 180 to 200); a
 # //// judge under the instructions made for the local model reports a defect a visitor would refuse, not a short page, so
@@ -2479,7 +2548,9 @@ def build_site(ctx, spec: dict) -> str:
             )
         brief_text = page_brief_text(site, brief, page, handles, contact_prompt, layout_system, language, photos, cta, palette=palette, revision=revision, photo_notes=notes)
         messages = [
-            {"role": "system", "content": Prompts.GENERATION_YAML},
+            # //// Neoffice — the editorial vocabulary follows the craft prompt in the SAME system message (a second system message
+            # //// is refused by some chat templates), with the site's own handles (design_vocabulary)
+            {"role": "system", "content": Prompts.GENERATION_YAML + ("\n\n" + design_vocabulary(handles) if design_vocabulary(handles) else "")},
             {"role": "user", "content": f"Build this page now:\n{brief_text}"},
         ]
         blocks, data_script, error = [], "", None

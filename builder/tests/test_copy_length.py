@@ -7,12 +7,14 @@ No model is called."""
 import json
 import unittest
 from types import SimpleNamespace
+from typing import ClassVar
 from unittest.mock import patch
 
 from builder.site_ai.nora import visual_check
 from builder.site_ai.nora.site_builder import (
 	COPY_FLOOR_WORDS,
 	copy_length_line,
+	design_vocabulary,
 	page_brief_text,
 	script_word_count,
 	thin_copy_issue,
@@ -143,6 +145,63 @@ class TestThinCopyIsMeasured(unittest.TestCase):
 		self.assertFalse(visual_check.accepted(report, lenient=False))
 		self.assertTrue(visual_check.accepted(report, lenient=True))
 		self.assertFalse(visual_check.refused(report))
+
+
+class TestTheDesignVocabulary(unittest.TestCase):
+	"""The local writer used 0 italic accent words and 0.4 small-caps labels per page where the hosted one used 4.4 and 2.3,
+	with the same craft prompt: the vocabulary says what to do and shows two sections in the writer's own YAML."""
+
+	HANDLES: ClassVar[dict] = {
+		"primary": "var(--t-primary)",
+		"secondary": "var(--t-secondary)",
+		"background": "var(--t-background)",
+		"text": "var(--t-text)",
+		"font-heading": "var(--t-font-heading)",
+		"font-body": "var(--t-font-body)",
+		"container": "var(--t-container)",
+		"gutter": "var(--t-gutter)",
+		"gutter-phone": "var(--t-gutter-phone)",
+	}
+
+	def test_the_site_s_own_handles_replace_every_placeholder(self):
+		text = design_vocabulary(self.HANDLES)
+		self.assertIn("var(--t-secondary)", text)
+		self.assertIn("var(--t-gutter-phone)", text)
+		for name in ("primary", "secondary", "background", "text", "font-heading", "font-body", "container", "gutter", "gutter-phone"):
+			self.assertNotIn(f"<{name}>", text)
+		# the inline accent keeps its markup
+		self.assertIn('<em style="font-style: italic; color: var(--t-secondary)">', text)
+
+	def test_a_site_without_grid_tokens_still_gets_a_complete_example(self):
+		text = design_vocabulary({k: v for k, v in self.HANDLES.items() if k not in ("container", "gutter", "gutter-phone")})
+		self.assertNotIn("<container>", text)
+		self.assertIn("maxWidth: 1200px", text)
+
+	def test_it_can_be_switched_off(self):
+		with patch("builder.site_ai.nora.site_builder.frappe.conf", {"nora_design_vocabulary": 0}):
+			self.assertEqual(design_vocabulary(self.HANDLES), "")
+		with patch("builder.site_ai.nora.site_builder.frappe.conf", {}):
+			self.assertNotEqual(design_vocabulary(self.HANDLES), "")
+
+	def test_the_example_is_valid_yaml_the_page_parser_expands(self):
+		from builder.ai.page_writer import expand_page_yaml
+
+		text = design_vocabulary(self.HANDLES)
+		example = text.split("Two sections of the writer's own format")[1].split("\n", 1)[1]
+		indented = "\n".join("  " + line if line.strip() else line for line in example.splitlines())
+		page = "el: div\nname: body\nstyle: {display: flex, flexDirection: column, alignItems: center, backgroundColor: var(--t-background)}\nc:\n" + indented
+		blocks, _script = expand_page_yaml(page)
+		self.assertTrue(blocks)
+		sections = blocks[0]["children"]
+		self.assertEqual([s.get("element") for s in sections], ["section", "section"])
+		heading = next(b for b in _walk(sections[0]) if b.get("element") == "h1")
+		self.assertIn("<em", heading["innerHTML"])
+
+
+def _walk(block):
+	yield block
+	for child in block.get("children") or []:
+		yield from _walk(child)
 
 
 if __name__ == "__main__":
