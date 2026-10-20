@@ -208,12 +208,12 @@ class ChromeDoc(Chrome):
 		self.saved = True
 
 
-class TestTheBuildSettlesTheLogos(unittest.TestCase):
-	"""The wiring: apply_navigation, the last step of a build, measures the logo it has just copied
-	into the footer. The first real build after #1766's commit stopped on a NameError raised by the
-	log line of this very branch, which no pure test reaches."""
+class Navigates:
+	"""Drives apply_navigation, the last step of a build, on a stand-in for the chrome document."""
 
-	def navigate(self, config):
+	def navigate(self, config, profile=None, single=None):
+		"""`single` is what the host's Single (Website Header Footer Config) holds, read by the build
+		to tell the logos a profile's Variant inherited from the ones the client chose."""
 		from unittest.mock import patch
 
 		from builder.site_ai.nora.site_builder import apply_navigation
@@ -226,11 +226,12 @@ class TestTheBuildSettlesTheLogos(unittest.TestCase):
 			patch("builder.site_ai.nora.site_builder._other_business", return_value=False),
 			patch("builder.site_ai.nora.site_builder._profile_is_b2b", return_value=False),
 			patch("builder.site_ai.nora.site_builder._profile_sells", return_value=False),
-			patch("builder.site_ai.nora.site_builder.frappe"),
+			patch("builder.site_ai.nora.site_builder.frappe") as frappe_mock,
 			patch("builder.site_ai.logging.ai_log") as log,
 			patch("builder.site_ai.nora.logo_contrast.ink_of_file", return_value=flat(NAVY)),
 		):
-			apply_navigation(config, created, "vitrine", "a restaurant", None, "fr", site_name="Test")
+			frappe_mock.db.get_single_value.side_effect = lambda doctype, field: (single or {}).get(field)
+			apply_navigation(config, created, "vitrine", "a restaurant", profile, "fr", site_name="Test")
 		return log
 
 	def doc(self, **fields):
@@ -243,6 +244,12 @@ class TestTheBuildSettlesTheLogos(unittest.TestCase):
 				**fields,
 			}
 		)
+
+
+class TestTheBuildSettlesTheLogos(Navigates, unittest.TestCase):
+	"""The wiring: apply_navigation, the last step of a build, measures the logo it has just copied
+	into the footer. The first real build after #1766's commit stopped on a NameError raised by the
+	log line of this very branch, which no pure test reaches."""
 
 	def test_a_dark_logo_copied_into_a_dark_footer_becomes_the_site_name_and_is_logged(self):
 		config = self.doc()
@@ -258,3 +265,95 @@ class TestTheBuildSettlesTheLogos(unittest.TestCase):
 		log = self.navigate(config)
 		self.assertEqual((config.logo_type, config.footer_logo_type), ("Image", "Image"))
 		log.assert_not_called()
+
+
+HOST_WORDMARK = "/files/logo-default.png"
+HOST_EMBLEM = "/files/host-emblem.png"
+
+
+class TestTheHostLogoNeverReachesAnotherSite(Navigates, unittest.TestCase):
+	"""neoffice-maintenance #1773: a profile's Variant is bootstrapped from the host's Single, logos
+	included. A build asked for no logo wipes the header's (step 2 of the build); the footer's, which
+	differed from the wiped header's, then passed for a mark the client had chosen and stayed: the
+	host's identity in the foot of another site, six times out of six on a throwaway profile."""
+
+	def inherited(self, single, **fields):
+		"""A Variant as `_get_site_chrome_config` bootstraps it from the Single, then as step 2 of the
+		build leaves its header when the site has no logo of its own."""
+		from builder.site_ai.nora.site_builder import keeps_own_logo
+
+		variant = self.doc(
+			**{
+				"logo_type": "Image",
+				"logo_image": single["logo_image"],
+				"footer_logo_type": "Image",
+				"footer_logo_image": single["footer_logo_image"],
+				**fields,
+			}
+		)
+		if not keeps_own_logo(variant.logo_type, variant.logo_image, single["logo_image"]):
+			variant.logo_type, variant.logo_image = "Text", None
+		return variant
+
+	def test_a_variant_built_without_a_logo_of_its_own_ends_with_no_host_logo_anywhere(self):
+		single = {"logo_image": HOST_WORDMARK, "footer_logo_image": HOST_WORDMARK}
+		config = self.inherited(single)
+		self.navigate(config, profile="A Profile", single=single)
+		self.assertEqual((config.logo_type, config.footer_logo_type), ("Text", "Text"))
+		self.assertFalse(config.logo_image)
+		self.assertFalse(config.footer_logo_image)
+		self.assertTrue(config.saved)
+
+	def test_a_host_with_a_wordmark_and_an_emblem_leaves_neither_in_the_variant(self):
+		single = {"logo_image": HOST_WORDMARK, "footer_logo_image": HOST_EMBLEM}
+		config = self.inherited(single)
+		self.navigate(config, profile="A Profile", single=single)
+		self.assertEqual((config.logo_type, config.footer_logo_type), ("Text", "Text"))
+		self.assertEqual((config.logo_image or "", config.footer_logo_image or ""), ("", ""))
+
+	def test_the_host_logo_parked_in_the_footer_by_an_earlier_build_is_cleared_too(self):
+		"""The #1766 check parks a logo it cannot see ("Text", the file stays): a rebuild must not take
+		the parked host file for the client's."""
+		single = {"logo_image": HOST_WORDMARK, "footer_logo_image": HOST_WORDMARK}
+		config = self.inherited(single, footer_logo_type="Text")
+		self.navigate(config, profile="A Profile", single=single)
+		self.assertEqual((config.footer_logo_type, config.footer_logo_image or ""), ("Text", ""))
+
+	def test_nothing_is_left_for_the_contrast_check_to_replace(self):
+		"""The contrast check measures what the footer carries; the footer no longer carries the host's
+		logo, so it has nothing to measure and logs nothing."""
+		single = {"logo_image": HOST_WORDMARK, "footer_logo_image": HOST_WORDMARK}
+		config = self.inherited(single)
+		log = self.navigate(config, profile="A Profile", single=single)
+		self.assertNotIn(
+			"Chrome logo replaced by the site name", [call.args[1] for call in log.call_args_list]
+		)
+
+	def test_a_logo_the_client_chose_for_the_header_is_shown_in_the_footer_instead_of_the_host_s(self):
+		single = {"logo_image": HOST_WORDMARK, "footer_logo_image": HOST_WORDMARK}
+		config = self.inherited(single, logo_image="/files/client-wordmark.svg", footer_bg_color=PAPER)
+		self.navigate(config, profile="A Profile", single=single)
+		self.assertEqual(config.logo_image, "/files/client-wordmark.svg")
+		self.assertEqual(
+			(config.footer_logo_type, config.footer_logo_image), ("Image", "/files/client-wordmark.svg")
+		)
+
+	def test_an_emblem_the_client_chose_for_the_footer_stays(self):
+		single = {"logo_image": HOST_WORDMARK, "footer_logo_image": HOST_WORDMARK}
+		config = self.inherited(single, footer_logo_image="/files/client-emblem.svg", footer_bg_color=PAPER)
+		self.navigate(config, profile="A Profile", single=single)
+		self.assertEqual(
+			(config.footer_logo_type, config.footer_logo_image), ("Image", "/files/client-emblem.svg")
+		)
+
+	def test_the_host_s_own_site_keeps_its_logos(self):
+		"""No profile: the chrome IS the Single's, and its logo is the client's own."""
+		single = {"logo_image": HOST_WORDMARK, "footer_logo_image": HOST_EMBLEM}
+		config = self.doc(
+			logo_image=HOST_WORDMARK,
+			footer_logo_image=HOST_EMBLEM,
+			footer_bg_color=PAPER,
+		)
+		self.navigate(config, profile=None, single=single)
+		self.assertEqual((config.logo_type, config.logo_image), ("Image", HOST_WORDMARK))
+		self.assertEqual((config.footer_logo_type, config.footer_logo_image), ("Image", HOST_EMBLEM))

@@ -1510,12 +1510,38 @@ def keeps_own_logo(logo_type, logo_image, host_logo) -> bool:
     return bool(logo_image) and str(logo_image) != str(host_logo or "")
 
 
+def keeps_own_footer_mark(footer_image, header_image, host_logos) -> bool:
+    """//// Neoffice — whether the footer carries a mark of its OWN (neoffice-maintenance #1773): an
+    image that is neither a copy of the header's logo nor one a profile's Variant inherited, with the
+    rest of its chrome, from the host's Single (`host_logos`: both of the Single's files, the footer's
+    emblem included). The footer was judged against the header's logo alone: a header wiped of the
+    host's logo (keeps_own_logo) has none, so every footer logo differed from it, and the host's passed
+    for a mark the client had chosen: the host's identity stayed in the foot of another site. A site
+    with no host to inherit from (the Single itself) passes an empty set: its footer logo is its own."""
+    footer = str(footer_image or "")
+    return bool(footer) and footer != str(header_image or "") and footer not in host_logos
+
+
 def _host_logo() -> str | None:
     """The host site's own logo (the Single's), the one a profile's Variant inherits."""
     try:
         return frappe.db.get_single_value("Website Header Footer Config", "logo_image")
     except Exception:
         return None
+
+
+def _host_logos() -> set[str]:
+    """//// Neoffice — both logo files of the host site's Single (header, footer): the ones a profile's
+    Variant is bootstrapped with (see keeps_own_footer_mark)."""
+    logos = set()
+    for field in ("logo_image", "footer_logo_image"):
+        try:
+            value = frappe.db.get_single_value("Website Header Footer Config", field)
+        except Exception:
+            continue
+        if isinstance(value, str) and value.strip():
+            logos.add(value.strip())
+    return logos
 
 
 def _progress(ctx, job_id: str, message: str, progress: int, extra: dict | None = None) -> None:
@@ -1975,7 +2001,12 @@ def apply_navigation(config, created: list[dict], site_type: str, description: s
         config.append("menu_items", {"label": page["title"], "url": route, "is_external": False, "open_in_new_tab": False})
     # //// Neoffice — a mark chosen for the footer stays (2026-09-15): the build copied the header's
     # //// over it at every rebuild, and a site whose footer carries another mark lost it each time.
-    own_mark = bool(config.get("footer_logo_image")) and config.get("footer_logo_image") != config.get("logo_image")
+    # //// But the host's footer logo, inherited by a profile's Variant, is not a mark the client chose
+    # //// (neoffice-maintenance #1773): it is cleared like the header's, the footer then shows the
+    # //// header's logo or the site's name. Decided here, before the contrast check measures the footer.
+    footer_image = config.get("footer_logo_image")
+    host_logos = _host_logos() if profile and footer_image else set()
+    own_mark = keeps_own_footer_mark(footer_image, config.get("logo_image"), host_logos)
     for field, value in (("footer_logo_type", config.get("logo_type")), ("footer_logo_text", config.get("logo_text")), ("footer_logo_image", config.get("logo_image")), ("show_footer_logo", True), ("footer_menu_source", "Custom links")):
         if own_mark and field in ("footer_logo_type", "footer_logo_image"):
             continue

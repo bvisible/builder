@@ -12,7 +12,7 @@ import frappe
 from builder.ai.llm import patch_params_for_provider
 from builder.site_ai.nora import site_plan, visual_check
 from builder.site_ai.nora.layout import interior_top
-from builder.site_ai.nora.site_builder import keeps_own_logo, page_brief_text
+from builder.site_ai.nora.site_builder import keeps_own_footer_mark, keeps_own_logo, page_brief_text
 
 
 def report(**kw):
@@ -164,6 +164,35 @@ class TestTheLogoARebuildKeeps(unittest.TestCase):
 	def test_a_logo_parked_behind_the_site_name_is_kept(self):
 		self.assertTrue(keeps_own_logo("Text", "/files/client-wordmark.svg", "/files/logo-default.png"))
 		self.assertFalse(keeps_own_logo("Text", "/files/logo-default.png", "/files/logo-default.png"))
+
+
+class TestTheFooterMarkARebuildKeeps(unittest.TestCase):
+	"""//// Neoffice — added tests (neoffice-maintenance #1773): the footer's mark is the client's only
+	when it is neither the header's nor one the Variant inherited from the host's Single."""
+
+	HOST = frozenset({"/files/logo-default.png", "/files/host-emblem.png"})
+
+	def test_an_emblem_the_client_chose_for_the_footer_is_kept(self):
+		self.assertTrue(keeps_own_footer_mark("/files/client-emblem.svg", "/files/client-wordmark.svg", self.HOST))
+		self.assertTrue(keeps_own_footer_mark("/files/client-emblem.svg", None, self.HOST))
+
+	def test_the_logo_of_the_host_is_not_the_client_s_wherever_it_sits(self):
+		"""The header's logo was wiped (None) when the footer's inherited one was judged: the footer's
+		differed from nothing, so it passed for a choice."""
+		self.assertFalse(keeps_own_footer_mark("/files/logo-default.png", None, self.HOST))
+		self.assertFalse(keeps_own_footer_mark("/files/host-emblem.png", None, self.HOST))
+		self.assertFalse(keeps_own_footer_mark("/files/host-emblem.png", "/files/client-wordmark.svg", self.HOST))
+
+	def test_a_copy_of_the_header_s_logo_is_not_a_mark_of_its_own(self):
+		self.assertFalse(keeps_own_footer_mark("/files/client-wordmark.svg", "/files/client-wordmark.svg", self.HOST))
+
+	def test_no_image_is_no_mark(self):
+		self.assertFalse(keeps_own_footer_mark("", "/files/client-wordmark.svg", self.HOST))
+		self.assertFalse(keeps_own_footer_mark(None, None, set()))
+
+	def test_without_a_host_to_inherit_from_the_footer_is_judged_by_the_header_alone(self):
+		"""The site's own chrome (no profile) has no host: its footer logo is its own."""
+		self.assertTrue(keeps_own_footer_mark("/files/logo-default.png", "/files/other.png", set()))
 
 
 class TestK3ReasoningEffort(unittest.TestCase):
