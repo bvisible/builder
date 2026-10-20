@@ -193,3 +193,68 @@ class TestSettlingTheChrome(unittest.TestCase):
 		config = chrome(header_bg_color=BROWN)
 		settle_chrome_logos(config, measure=lambda url: flat(NAVY))
 		self.assertEqual(settle_chrome_logos(config, measure=lambda url: flat(NAVY)), [])
+
+
+class ChromeDoc(Chrome):
+	"""What apply_navigation asks of the chrome document, with the attributes it writes."""
+
+	def set(self, key, value):
+		setattr(self, key, value)
+
+	def append(self, field, row):
+		getattr(self, field).append(SimpleNamespace(**row))
+
+	def save(self, **kwargs):
+		self.saved = True
+
+
+class TestTheBuildSettlesTheLogos(unittest.TestCase):
+	"""The wiring: apply_navigation, the last step of a build, measures the logo it has just copied
+	into the footer. The first real build after #1766's commit stopped on a NameError raised by the
+	log line of this very branch, which no pure test reaches."""
+
+	def navigate(self, config):
+		from unittest.mock import patch
+
+		from builder.site_ai.nora.site_builder import apply_navigation
+
+		created = [
+			{"name": "p1", "title": "Accueil", "route": "/"},
+			{"name": "p2", "title": "La carte", "route": "/la-carte"},
+		]
+		with (
+			patch("builder.site_ai.nora.site_builder._other_business", return_value=False),
+			patch("builder.site_ai.nora.site_builder._profile_is_b2b", return_value=False),
+			patch("builder.site_ai.nora.site_builder._profile_sells", return_value=False),
+			patch("builder.site_ai.nora.site_builder.frappe"),
+			patch("builder.site_ai.logging.ai_log") as log,
+			patch("builder.site_ai.nora.logo_contrast.ink_of_file", return_value=flat(NAVY)),
+		):
+			apply_navigation(config, created, "vitrine", "a restaurant", None, "fr", site_name="Test")
+		return log
+
+	def doc(self, **fields):
+		return ChromeDoc(
+			**{
+				**vars(chrome(logo_text="Test", footer_logo_text="Test")),
+				"menu_items": [],
+				"footer_links": [],
+				"footer_description": "",
+				**fields,
+			}
+		)
+
+	def test_a_dark_logo_copied_into_a_dark_footer_becomes_the_site_name_and_is_logged(self):
+		config = self.doc()
+		log = self.navigate(config)
+		self.assertEqual(config.footer_logo_type, "Text")
+		self.assertEqual(config.footer_logo_image, "/files/logo-default.png")
+		self.assertEqual(config.logo_type, "Image")
+		self.assertTrue(config.saved)
+		self.assertIn("Chrome logo replaced by the site name", [call.args[1] for call in log.call_args_list])
+
+	def test_a_footer_on_which_the_logo_reads_keeps_it(self):
+		config = self.doc(footer_bg_color=PAPER)
+		log = self.navigate(config)
+		self.assertEqual((config.logo_type, config.footer_logo_type), ("Image", "Image"))
+		log.assert_not_called()

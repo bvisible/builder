@@ -2000,6 +2000,8 @@ def apply_navigation(config, created: list[dict], site_type: str, description: s
     # //// the chrome put the logo image in the footer whatever colour the footer was, and a dark navy
     # //// mark on a deep brown footer was a barely visible rectangle. Last, with every colour and the
     # //// footer's copy of the header's logo settled (neoffice-maintenance #1766).
+    from builder.site_ai.logging import ai_log
+
     try:
         from builder.site_ai.nora.logo_contrast import settle_chrome_logos
 

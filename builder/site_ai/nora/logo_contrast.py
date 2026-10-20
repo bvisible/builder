@@ -100,7 +100,7 @@ def logo_reads(
 	logo_image: str | None,
 	ground: str | None,
 	palette: dict[str, str] | None = None,
-	measure: Callable[[str], list[Rgb] | None] = ink_of_file,
+	measure: Callable[[str], list[Rgb] | None] | None = None,
 ) -> bool | None:
 	"""Whether the logo can be seen on this ground: True or False, None when it cannot be told (a
 	ground that is not a flat opaque colour, a logo that carries its own ground or cannot be read)."""
@@ -109,7 +109,7 @@ def logo_reads(
 	colour = parse_color(ground, palette or {})
 	if colour is None or colour[3] < 0.9:
 		return None
-	ink = measure(logo_image)
+	ink = (measure or ink_of_file)(logo_image)
 	if not ink:
 		return None
 	return ink_stands_out(ink, colour)
@@ -118,7 +118,7 @@ def logo_reads(
 def settle_chrome_logos(
 	config,
 	palette: dict[str, str] | None = None,
-	measure: Callable[[str], list[Rgb] | None] = ink_of_file,
+	measure: Callable[[str], list[Rgb] | None] | None = None,
 ) -> list[str]:
 	"""Header and footer logos against the grounds the chrome ended up with. A logo that cannot be
 	seen on its ground becomes the site's name as text; its file stays on the config. Returns what
