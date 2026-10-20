@@ -1127,12 +1127,36 @@ def copy_length_line(page: dict, is_home: bool, density: str | None) -> str:
 # //// judge under the instructions made for the local model reports a defect a visitor would refuse, not a short page, so
 # //// the floor the brief states is checked here, on the words the page really carries, and a page below it is revised
 # //// once (a medium point: the judge's own medium points are fixed once, not chased; visual_check.accepted).
-def thin_copy_issue(blocks: list, page: dict, is_home: bool, density: str | None) -> dict | None:
+def script_word_count(script: str) -> int:
+    """The words of the sentences a page's data script carries (the titles and bodies of a repeater's items): text a
+    visitor reads that is not in the blocks. The script is `data.name = <JSON>` lines; keys, icon names and one-word
+    values are not counted."""
+
+    def sentences(value) -> int:
+        if isinstance(value, dict):
+            return sum(sentences(v) for v in value.values())
+        if isinstance(value, list):
+            return sum(sentences(v) for v in value)
+        if isinstance(value, str) and " " in value.strip():
+            return len(re.findall(r"[^\W\d_]{2,}", value))
+        return 0
+
+    decoder, count = json.JSONDecoder(), 0
+    for match in re.finditer(r"=\s*(?=[\[{])", script or ""):
+        try:
+            value, _end = decoder.raw_decode(script, match.end())
+        except ValueError:
+            continue
+        count += sentences(value)
+    return count
+
+
+def thin_copy_issue(blocks: list, page: dict, is_home: bool, density: str | None, script: str = "") -> dict | None:
     """The revision point for a page that carries fewer words than the brief said (copy_length_line), or None."""
     if density == "minimal" or page["type"] in TEXT_BY_NATURE:
         return None
     floor = COPY_FLOOR_WORDS["home" if is_home else "contact" if page["type"] == "contact" else "interior"]
-    words = page_word_count(blocks)
+    words = page_word_count(blocks) + script_word_count(script)
     if words >= floor:
         return None
     return {
@@ -2925,7 +2949,8 @@ def build_site(ctx, spec: dict) -> str:
                             look = visual_check.review_page(created[-1], profile, judge, site_name=site_name, activity=activity, expect=site["headlines_by_route"].get(page["route"]) or [page["title"]])
                 # //// Neoffice — see thin_copy_issue: the floor of the brief is measured on the stored page
                 if not look.get("error"):
-                    thin = thin_copy_issue(stored_page(name)[0], page, page["route"] == "home", site.get("copy_density"))
+                    thin_blocks, thin_script = stored_page(name)
+                    thin = thin_copy_issue(thin_blocks, page, page["route"] == "home", site.get("copy_density"), script=thin_script)
                     if thin:
                         look.setdefault("issues", []).append(thin)
                         ai_log("info", "Thin copy measured", page=page["title"], problem=thin["problem"][:120])
@@ -3085,8 +3110,15 @@ def build_site(ctx, spec: dict) -> str:
                     # //// died on UnboundLocalError at its first status update (2026-09-15).
                     last_change = str(frappe.db.get_value("Builder Page", item["name"], "modified") or "")
                     if earlier_read and earlier_read["modified"] == last_change:
-                        reviews.append(earlier_read["report"])
-                        continue
+                        # //// Neoffice — see visual_check.measured_now: the chrome is set after the pages, so a report
+                        # //// kept from the page's look is measured again before it is trusted; a page that now breaks
+                        # //// where it did not is read in full (judge and measure) like a page that changed
+                        fresh = visual_check.measured_now(item, profile)
+                        breaks = visual_check.new_measured_breaks(earlier_read["report"], fresh or [])
+                        if not breaks:
+                            reviews.append(earlier_read["report"])
+                            continue
+                        ai_log("info", "Page changed under its look, read again", page=item["title"], breaks=[f"{b['kind']}@{b.get('width')} {str(b.get('where'))[:50]}" for b in breaks][:4])
                     _progress(ctx, job_id, _("Visual check: {0}").format(item["title"]), 96, {"pages_created": created})
                     with meter.kind(meter.READING):
                         # //// Neoffice — read by the judge, not the writer (2026-09-16)

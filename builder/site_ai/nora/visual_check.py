@@ -262,6 +262,29 @@ def dedupe_findings(measured: dict) -> list[dict]:
     return out
 
 
+# //// Neoffice — a page is measured again before its look is trusted at the end of the build (issue 1751, 2026-10-20).
+# //// The final pass reused the report of a page nothing had written since its look, and the chrome (the header, the footer,
+# //// the bands) is set after the pages: on two pages of a build the heading was dark on a dark band in the final state,
+# //// the hosted judge and the browser's measure both said so when asked again, and the build had published them on a look
+# //// that was true before the chrome moved. The measure is the browser's and costs no model call.
+def measured_now(page: dict, profile: str | None) -> list[dict] | None:
+    """The browser's findings on the page as it is now, or None when it could not be measured."""
+    try:
+        forget_page_caches(page["route"])
+        measured = measure_page(loopback_page_url(page["route"], profile))
+        if measured.get("error") or not measured.get("widths"):
+            return None
+        return dedupe_findings(measured)
+    except Exception:
+        return None
+
+
+def new_measured_breaks(report: dict, fresh: list[dict]) -> list[dict]:
+    """The high findings of a fresh measure that the report of the page's look did not carry."""
+    seen = {(g.get("kind"), g.get("where")) for g in report.get("gate") or []}
+    return [f for f in fresh if f.get("severity") == "high" and (f.get("kind"), f.get("where")) not in seen]
+
+
 def contract_findings(measured: dict, is_home: bool, background_mode: str = "auto") -> tuple[list[dict], list[dict]]:
     """What the facts of the rendered page say against the site's own rules: (page findings,
     chrome findings). The page's: an interior page opens under the site's title band, never with

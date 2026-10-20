@@ -211,6 +211,43 @@ class TestTheGateBeforeTheJudge(unittest.TestCase):
 		self.assertEqual(report["chrome"], [])
 
 
+# //// Neoffice — added tests (2026-10-20, issue 1751): a look kept from before the chrome was set is measured again.
+class TestAKeptLookIsMeasuredAgain(unittest.TestCase):
+	def finding(self, where, severity="high", kind="unreadable-text", width=1440):
+		return {"kind": kind, "severity": severity, "where": where, "width": width, "detail": "dark on dark"}
+
+	def test_only_a_high_finding_the_look_did_not_carry_is_new(self):
+		report = {"gate": [self.finding('h2 "Our team"')]}
+		fresh = [
+			self.finding('h2 "Our team"'),
+			self.finding('h2 "Prenons contact"'),
+			self.finding('span "A label"', severity="medium"),
+		]
+		self.assertEqual([f["where"] for f in visual_check.new_measured_breaks(report, fresh)], ['h2 "Prenons contact"'])
+
+	def test_a_page_that_measures_as_it_did_is_not_read_again(self):
+		report = {"gate": [self.finding('h2 "Our team"')]}
+		self.assertEqual(visual_check.new_measured_breaks(report, [self.finding('h2 "Our team"', width=768)]), [])
+		self.assertEqual(visual_check.new_measured_breaks({}, []), [])
+
+	def test_the_measure_is_the_browser_s_findings_deduplicated(self):
+		measured = {"status": 200, "widths": {1440: {"findings": [self.finding("a")], "facts": {}}, 768: {"findings": [self.finding("a", width=768)], "facts": {}}}}
+		with (
+			patch.object(visual_check, "measure_page", return_value=measured) as measure,
+			patch.object(visual_check, "forget_page_caches"),
+		):
+			found = visual_check.measured_now({"route": "/contact"}, "A Site")
+		self.assertEqual([f["where"] for f in found], ["a"])
+		self.assertIn("/contact", measure.call_args.args[0])
+
+	def test_a_measure_that_could_not_be_taken_says_so_and_never_raises(self):
+		for result in ({"error": "timeout", "widths": {}}, {"status": 200, "widths": {}}):
+			with patch.object(visual_check, "measure_page", return_value=result), patch.object(visual_check, "forget_page_caches"):
+				self.assertIsNone(visual_check.measured_now({"route": "/contact"}, None))
+		with patch.object(visual_check, "measure_page", side_effect=RuntimeError("browser gone")), patch.object(visual_check, "forget_page_caches"):
+			self.assertIsNone(visual_check.measured_now({"route": "/contact"}, None))
+
+
 # //// Neoffice — added tests (2026-09-17): the render must be the page that was written.
 class TestTheRenderIsThisPage(unittest.TestCase):
 	def setUp(self):

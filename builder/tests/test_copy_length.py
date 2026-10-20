@@ -4,12 +4,19 @@ words on an interior page, the local one 50 to 210 (a heading over one short lin
 page thin (2026-10-20). A floor is said in the page brief; a minimal-copy site and a legal page do not get it.
 No model is called."""
 
+import json
 import unittest
 from types import SimpleNamespace
 from unittest.mock import patch
 
 from builder.site_ai.nora import visual_check
-from builder.site_ai.nora.site_builder import COPY_FLOOR_WORDS, copy_length_line, page_brief_text, thin_copy_issue
+from builder.site_ai.nora.site_builder import (
+	COPY_FLOOR_WORDS,
+	copy_length_line,
+	page_brief_text,
+	script_word_count,
+	thin_copy_issue,
+)
 
 HANDLES = {
 	"primary": "var(--t-primary)",
@@ -101,6 +108,24 @@ class TestThinCopyIsMeasured(unittest.TestCase):
 		self.assertIsNone(thin_copy_issue(blocks_of(10), {"type": "about"}, False, "minimal"))
 		for kind in ("legal", "faq", "blog"):
 			self.assertIsNone(thin_copy_issue(blocks_of(10), {"type": kind}, False, "standard"))
+
+	def test_the_sentences_of_a_repeater_count_like_the_blocks(self):
+		# as the build stores it: a JSON array with the accents escaped (\u00e0)
+		items = [
+			{"icon": "file-text", "title": "Menus sur mesure", "body": "Des menus adaptables à vos besoins, construits autour des produits de la vallée et des saisons."},
+			{"icon": "users", "title": "Salle pour groupes", "body": "Un espace convivial pour vos rassemblements."},
+		]
+		script = "data.services = " + json.dumps(items)
+		self.assertIn("\\u00e0", script)
+		# keys, icon names and the one-word values are not words a visitor reads
+		self.assertEqual(script_word_count(script), 3 + 15 + 3 + 6)
+		self.assertEqual(script_word_count(""), 0)
+		self.assertEqual(script_word_count('data.flag = {"on": true, "icon": "star"}'), 0)
+		# 90 words in the blocks and 30 in the data of a home: 120, still below 200, but not "90"
+		point = thin_copy_issue(blocks_of(90), {"type": "accueil"}, True, "standard", script='data.a = [{"body": "' + " ".join(["mot"] * 30) + '"}]')
+		self.assertIn("120 words", point["problem"])
+		self.assertIsNone(thin_copy_issue(blocks_of(150), {"type": "about"}, False, "standard", script=""))
+		self.assertIsNone(thin_copy_issue(blocks_of(100), {"type": "about"}, False, "standard", script='data.a = [{"body": "' + " ".join(["mot"] * 60) + '"}]'))
 
 	def test_it_asks_for_one_revision_and_no_more(self):
 		# the point sits among the judge's, with a page the judge liked: revised once, then accepted
