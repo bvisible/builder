@@ -127,6 +127,36 @@ def sync_nora_judge_providers() -> list[str]:
     return on
 
 
+def nora_model_id() -> str:
+    """The id of the host's own model, the same for its vision endpoint and its two judge lanes."""
+    conf = frappe.conf
+    return conf.get("nora_ocr_model") or conf.get("nora_model") or "nora"
+
+
+# //// Neoffice — the host's own models on every instance that holds its endpoint and key, managed or not (2026-10-21).
+# //// The three providers were only created by sync_managed_ai_provider, which does nothing on an instance without
+# //// `ai_managed`: 9 of the 11 client instances had no `nora/…` route at all, so nothing could write their sites with
+# //// the local model, and a host that wants it everywhere had to turn the whole managed mode on (hidden model picker,
+# //// fewer agent tools, the other providers switched off). This creates only the three Nora providers and touches nothing else.
+def sync_nora_providers() -> list[str]:
+    """Create or refresh the host's own providers (vision, reasoning lane, plain lane) when site_config holds its endpoint
+    (`nora_base_url`) and key (`nora_api_key`), whether or not the instance is managed. Run on every migrate (key rotation
+    and an endpoint that moved are picked up) and by the patch that names the local model. Returns the providers that are on."""
+    conf = frappe.conf
+    if not conf.get("nora_base_url") or not conf.get("nora_api_key"):
+        return []
+    if not frappe.db.exists("DocType", "Builder AI Provider"):
+        return []
+    on = []
+    if sync_nora_vision_provider():
+        on.append(NORA_PROVIDER_NAME)
+    on.extend(sync_nora_judge_providers())
+    from builder.ai.models import ModelRegistry
+
+    ModelRegistry.clear_cache()
+    return on
+
+
 def nora_judge_models() -> list[str]:
     """The Builder AI Model names of the judge lanes that are on, the reasoning lane first."""
     if not frappe.db.exists("DocType", "Builder AI Model"):

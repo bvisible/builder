@@ -3,7 +3,7 @@ from frappe.core.api.file import create_new_folder
 # //// Neoffice — the subsystems upstream does not have: the plugin registry, the chrome Web
 # //// Templates and the managed AI provider row.
 from builder.plugins import sync_plugins
-from builder.site_ai.managed import sync_managed_ai_provider
+from builder.site_ai.managed import sync_managed_ai_provider, sync_nora_providers
 from builder.web_chrome import ensure_web_chrome_templates
 from builder.export_import_standard_page import sync_standard_builder_pages
 from builder.utils import (
@@ -45,6 +45,9 @@ def after_migrate():
 	# //// Neoffice — a managed instance runs the upstream agent on the host's models: the provider
 	# //// row follows site_config on every migrate (key rotation included), see site_ai/managed.py.
 	sync_managed_ai_provider()
+	# //// Neoffice — the host's own model providers on an instance that is not managed too (2026-10-21): the local model is
+	# //// reachable from every client, and a route that does not exist cannot be named by `nora_site_model` (see managed.sync_nora_providers).
+	sync_nora_providers()
 
 
 def after_app_install(app_name=None):
