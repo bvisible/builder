@@ -22,6 +22,7 @@ from frappe import _
 from frappe.utils import now
 
 from builder.site_ai.nora.contrast import palette_roles
+from builder.site_ai.nora.page_form import ensure_form, wants_form  # //// Neoffice — see page_form.py
 
 PLACEHOLDER = "https://placehold.co/{w}x{h}/e5e7eb/9ca3af/png?text={text}"
 
@@ -333,6 +334,10 @@ def normalise_pages(pages: list, site_type: str) -> list[dict]:
         if not title:
             continue
         known_route, ptype = KNOWN_PAGES.get(_bare(title), (None, None))
+        # //// Neoffice — a page made to be written to (its title says book, reserve, quote...) is a contact page: it is offered the
+        # //// contact form and the plan plans it (page_form.py, 2026-10-21: a restaurant's booking page, typed "generic", had no form)
+        if ptype is None and wants_form(_bare(title)):
+            ptype = "contact"
         # the home page keeps its canonical route whatever the model proposed: on the
         # B2C regeneration the model sent route "accueil" for Accueil, so the home
         # page lost its "home" route and everything keyed on it (the host page, the
@@ -2331,7 +2336,10 @@ def build_site(ctx, spec: dict) -> str:
         config.primary_color = primary
     if secondary and hasattr(config, "secondary_color"):
         config.secondary_color = secondary
-    contact_page = next((p for p in pages if p["type"] == "contact"), None)
+    # //// Neoffice — the page the site calls Contact comes first: a booking page typed "contact" by its title (page_form.py) is only the fallback
+    contact_page = next((p for p in pages if p["type"] == "contact" and KNOWN_PAGES.get(_bare(p["title"]), (None,))[0] == "contact"), None) or next(
+        (p for p in pages if p["type"] == "contact"), None
+    )
     cta = (_("Contact us", lang=lang_code), f"/{contact_page['route']}" if contact_page else "/")
     # a B2B site opens accounts before it sells: its CTA asks for one on the theme's
     # request page, and never doubles the "Sign in" entry or a resellers page of the menu
@@ -2752,6 +2760,9 @@ def build_site(ctx, spec: dict) -> str:
                     # //// Neoffice — new call: repairs includes to the offered tag or drops them (2d78d71d "fix(nora): includes written as offered, routes honoured but home, and the build's routes stated as final")
                     # an include is one the brief offered, written as offered (a wrong
                     # path is a 417 at render time): see repair_includes
+                    # //// Neoffice — a page made to be written to carries the site's form whatever the plan and the writer did (page_form.ensure_form)
+                    if ensure_form(blocks, page, _bare(page["title"]), handles, palette):
+                        ai_log("info", "Contact form added to a page made to be written to", page=page["title"])
                     fixed, dropped = repair_includes(blocks, available_includes(page["type"], site["site_type"], site["profile"], site["site_name"], lang=site.get("lang") or "fr", generator=True))
                     if fixed or dropped:
                         ai_log("info", "Includes repaired", page=page["title"], rewritten=fixed, removed=dropped)

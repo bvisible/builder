@@ -211,6 +211,8 @@ def plan_prompt(site: dict, brief, pages: list[dict], includes_by_route: dict[st
         "RULES OF THE PLAN:",
         "- The home opens with a hero; every INTERIOR page opens with a content section under the site's title band: never a hero, never an h1 of its own, and all interior pages open with the SAME shape (say it in interior_top).",
         "- 4 to 7 sections per page (a legal page: intro, then one 'legal-text'), no two consecutive sections of the same kind, and a rhythm a visitor feels: a tall section, then a short one.",
+        # //// Neoffice — a page made to be written to (page_form.py): a booking page planned without its form had to be given one after the writer
+        "- A page made to be written to (its title says book, reserve, quote or contact) carries a 'contact-form' section with the form component offered to it, right after its opening section.",
         "- Every section's layout is geometry a writer can execute: columns and widths (text columns at least 18rem), alignment, background, height. A photograph is placed by URL. A live component is named by its include path and takes the section on its own.",
         "- The signature move is ONE device, described as CSS, inside its section: never a shape, a mark or a layer that leaves the section or the page.",
         "- Only facts the material gives. A section that would need a fact nobody gave (a price, a figure, a review, an opening hour) is not planned.",
