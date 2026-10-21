@@ -176,6 +176,37 @@ class TestBusyProvider(unittest.TestCase):
 			with self.assertRaises(litellm.ServiceUnavailableError):
 				llm.completion_waiting_for_a_busy_provider(model="m")
 
+	def waited(self, limit=None):
+		"""Seconds spent waiting on a provider that stays busy forever, on a fake clock (the limit, or the default)."""
+		clock = [1000.0]
+
+		def completion(**kwargs):
+			raise self.busy()
+
+		def sleep(seconds):
+			clock[0] += seconds
+
+		with (
+			patch.object(llm.litellm, "completion", completion),
+			patch.object(llm.time, "sleep", side_effect=sleep),
+			patch.object(llm.time, "time", side_effect=lambda: clock[0]),
+		):
+			with llm.busy_wait_limit(limit):
+				with self.assertRaises(litellm.ServiceUnavailableError):
+					llm.completion_waiting_for_a_busy_provider(model="m")
+		return clock[0] - 1000.0
+
+	def test_a_caller_with_another_lane_to_go_to_waits_less(self):
+		"""A judge on the local model's reasoning lane (one long job at a time) sat behind another instance's judge for the
+		whole five minutes, then failed over to the plain lane anyway (2026-10-21)."""
+		self.assertLessEqual(self.waited(12), 12)
+		self.assertGreater(self.waited(None), 200)
+
+	def test_the_limit_ends_with_its_block(self):
+		with llm.busy_wait_limit(5):
+			pass
+		self.assertGreater(self.waited(None), 200)
+
 
 def chunk(text="", finish=None):
 	return SimpleNamespace(

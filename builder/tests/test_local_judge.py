@@ -125,6 +125,11 @@ class TestWhichJudgeAndWhichInstructions(unittest.TestCase):
 		lanes = [LOCAL, "nora-judge/nora"]
 		with self.known(rows), patch.object(visual_check, "local_judge_models", return_value=lanes):
 			self.assertEqual(visual_check.fallback_judge("managed/kimi-k3"), LOCAL)
+			# the point is the local model: the host's other lane reads before the hosted K3 does (2026-10-21)
+			self.assertEqual(visual_check.fallback_judge(LOCAL), "nora-judge/nora")
+			self.assertEqual(visual_check.fallback_judge("nora-judge/nora"), LOCAL)
+		only_one = {LOCAL: {"vision": True}, "managed/kimi-k3": {"vision": True}}
+		with self.known(only_one), patch.object(visual_check, "local_judge_models", return_value=[LOCAL]):
 			self.assertEqual(visual_check.fallback_judge(LOCAL), "managed/kimi-k3")
 		del rows["managed/kimi-k3"]
 		with self.known(rows), patch.object(visual_check, "local_judge_models", return_value=lanes):
@@ -206,6 +211,34 @@ class TestTwoReadsAndAFallback(unittest.TestCase):
 	def test_without_a_replacement_the_failure_is_reported_as_before(self):
 		report, _ = self.review([RuntimeError("account suspended")], style="default", fallback=None)
 		self.assertEqual(report["error"], "account suspended")
+
+	def test_a_lane_with_another_lane_behind_it_waits_ninety_seconds_not_five_minutes_for_its_slot(self):
+		from contextlib import nullcontext
+
+		with (
+			patch.object(visual_check, "local_judge_models", return_value=["judge"]),
+			patch("builder.ai.llm.busy_wait_limit", return_value=nullcontext()) as limit,
+		):
+			self.review([self.read(True)], fallback="other-lane")
+		limit.assert_called_once_with(visual_check.JUDGE_BUSY_WAIT_SECONDS)
+		self.assertEqual(visual_check.JUDGE_BUSY_WAIT_SECONDS, 90)
+
+	def test_a_judge_with_nothing_behind_it_keeps_the_default_wait(self):
+		from contextlib import nullcontext
+
+		with (
+			patch.object(visual_check, "local_judge_models", return_value=["judge"]),
+			patch("builder.ai.llm.busy_wait_limit", return_value=nullcontext()) as limit,
+		):
+			self.review([self.read(True)], fallback=None)
+		limit.assert_called_once_with(None)
+		# and a hosted judge, which is not one of the host's lanes, keeps it too
+		with (
+			patch.object(visual_check, "local_judge_models", return_value=["some-lane"]),
+			patch("builder.ai.llm.busy_wait_limit", return_value=nullcontext()) as limit,
+		):
+			self.review([self.read(True)], fallback="other")
+		limit.assert_called_once_with(None)
 
 	def test_the_judge_is_given_the_phone_picture(self):
 		_, critique = self.review([self.read(True)])

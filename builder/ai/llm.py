@@ -4,10 +4,12 @@ This is the ONLY place that knows about provider-specific quirks. The agent
 loop and tools talk to LLMs exclusively through the functions defined here.
 """
 
+import contextlib  # //// Neoffice — see busy_wait_limit
 import json
 import logging
 # //// Neoffice — for _loggable, which names a picture by its weight instead of logging its bytes
 import re
+import threading  # //// Neoffice — see busy_wait_limit
 import time  # //// Neoffice — see completion_waiting_for_a_busy_provider
 
 import frappe
@@ -257,8 +259,27 @@ def busy_pause(exc: Exception) -> float | None:
 	return min(max(seconds, 1.0), 30.0)
 
 
+# //// Neoffice — a reader that has another lane to go to does not wait five minutes for a busy one (2026-10-21). The local
+# //// model's reasoning lane lets ONE long job in at a time, so with several instances building at once the second judge sat
+# //// behind the first for up to BUSY_WAIT_SECONDS, then failed and was replaced by the plain lane anyway. The caller that has a
+# //// fallback lowers the wait for its own calls (a context, per thread); every other call keeps the five minutes.
+_busy_limit = threading.local()
+
+
+@contextlib.contextmanager
+def busy_wait_limit(seconds: float | None):
+	"""Within the block, the calls of this thread wait at most `seconds` for a busy provider (None: the default)."""
+	previous = getattr(_busy_limit, "seconds", None)
+	_busy_limit.seconds = seconds
+	try:
+		yield
+	finally:
+		_busy_limit.seconds = previous
+
+
 def completion_waiting_for_a_busy_provider(**kwargs):
-	deadline = time.time() + BUSY_WAIT_SECONDS
+	# //// Neoffice — the caller's own limit (busy_wait_limit) when it set one, the five minutes otherwise
+	deadline = time.time() + (getattr(_busy_limit, "seconds", None) or BUSY_WAIT_SECONDS)
 	while True:
 		try:
 			return litellm.completion(**kwargs)

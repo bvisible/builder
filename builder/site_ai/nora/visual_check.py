@@ -223,11 +223,16 @@ def judge_style(model: str) -> str:
     return "default"
 
 
+#: How long a read waits for a busy lane of the host's own when another lane can read instead.
+JUDGE_BUSY_WAIT_SECONDS = 90
+
+
 def fallback_judge(failed: str) -> str | None:
-    """Another reader for a page whose judge failed (an account out of credit, a lane down): the host's own
-    lanes when a hosted model failed, the hosted K3 first when a lane did."""
+    """Another reader for a page whose judge failed (an account out of credit, a lane down, a lane busy): the host's own
+    lanes when a hosted model failed; when a lane did, the host's other lane first (the point is the local model) and the
+    hosted K3 only after it (2026-10-21: it was the other way round, and a busy reasoning lane sent the read to the hosted model)."""
     local = local_judge_models()
-    candidates = ["managed/kimi-k3", *local] if failed in local else local
+    candidates = [*local, "managed/kimi-k3"] if failed in local else local
     for candidate in candidates:
         if candidate != failed and _usable_judge(candidate):
             return candidate
@@ -581,7 +586,13 @@ def review_page(page: dict, profile: str | None, model: str, site_name: str = ""
         context = REVIEW_CONTEXT.format(site_name=site_name, activity=activity[:160]) + (LEGAL_CONTEXT if str(page.get("type") or "") == "legal" else "")
 
         def read(judge: str, style: str):
-            return critique_screenshot(picture, model=judge, context=context, extra_images=[phone_picture] if phone_picture else None, style=style)
+            # //// Neoffice — a lane of the host's own that has another lane behind it does not wait five minutes for its one
+            # //// long-job slot when another instance holds it (see llm.busy_wait_limit): the other lane reads instead
+            patient = None if not (judge in local_judge_models() and fallback_judge(judge)) else JUDGE_BUSY_WAIT_SECONDS
+            from builder.ai import llm
+
+            with llm.busy_wait_limit(patient):
+                return critique_screenshot(picture, model=judge, context=context, extra_images=[phone_picture] if phone_picture else None, style=style)
 
         style = judge_style(model)
         try:
