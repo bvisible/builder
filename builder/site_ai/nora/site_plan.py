@@ -74,6 +74,14 @@ class PlannedSection(BaseModel):
     layout: str = Field(default="", description="the geometry, concretely: columns and their widths, alignment, background (light / dark / photograph), height, spacing")
     photos: list[str] = Field(default_factory=list, description="URLs of the client's photographs used here, copied exactly from the list given; empty when none fits")
     component: str = Field(default="", description="the include path of the live component that carries this section, exactly as offered, or empty")
+    # //// Neoffice — a section recipe proposed by the plan (recipes.py, 2026-10-21); empty when the plan designs the section itself
+    recipe: str = Field(default="", description="the id of a section recipe from the SECTION RECIPES catalogue that this section starts from, or empty when you design it yourself (say in `layout` what you change in a recipe)")
+
+    # //// Neoffice — a model that answers `recipe: null` for a section it designs itself is not a failed plan
+    @field_validator("recipe", mode="before")
+    @classmethod
+    def recipe_is_text(cls, value):
+        return value.strip() if isinstance(value, str) else ""
 
 
 class PlannedPage(BaseModel):
@@ -179,12 +187,25 @@ def plan_prompt(site: dict, brief, pages: list[dict], includes_by_route: dict[st
     if photos:
         lines.append(f"THE CLIENT'S PHOTOGRAPHS ({len(photos)}), with what the vision read in each; use each at most once across the site, by its exact URL:\n" + _photo_lines(photos))
     else:
-        lines.append("PHOTOGRAPHS: none from the client. Plan sections that do not depend on photographs; a photo slot is a plain block in the palette.")
+        # //// Neoffice — where the site generates photographs (site["images_on"]), a photo slot is a real photograph made after the build, not a plain block
+        if site.get("images_on"):
+            lines.append(
+                "PHOTOGRAPHS: none from the client. The site GENERATES a photograph for every photo slot after the build (a minute each: use them where "
+                "the photograph is the point of a section, not everywhere). A photo slot is a place for a real photograph of this business, never a plain "
+                "coloured block and never a label; say in `layout` what the photograph shows."
+            )
+        else:
+            lines.append("PHOTOGRAPHS: none from the client. Plan sections that do not depend on photographs; a photo slot is a plain block in the palette.")
     lines.append("")
     lines.append("PAGES to plan, in order, with the live components each may carry (a component draws the site's REAL data — products, brands, hours, posts — and is the only way to show it):")
     for page in pages:
         offered = includes_by_route.get(page["route"]) or []
         lines.append(f"- '{page['title']}' at /{page['route']} (type {page['type']})" + (": components " + "; ".join(offered) if offered else ": no live component"))
+    # //// Neoffice — the catalogue of section recipes (recipes.py, 2026-10-21): proposals the plan picks from or leaves
+    from builder.site_ai.nora import recipes
+
+    if recipes.enabled():
+        lines += ["", *recipes.catalogue_lines(seed=str(site.get("site_name") or ""), material=recipes.site_material(site))]
     lines += [
         "",
         "RULES OF THE PLAN:",
@@ -273,6 +294,20 @@ def complete_plan(llm, plan: SitePlan, site: dict, brief, pages: list[dict], inc
     return plan
 
 
+# //// Neoffice — the plan may only use the photographs it was given (2026-10-21): told "none from the client", the local planner still wrote
+# //// `photos: [https://picsum.photos/seed/auberge-interior/800/1000]` on sections, and a writer given a recipe with that address kept it
+def keep_offered_photos(plan: SitePlan, photos: list[dict]) -> int:
+    """Takes out of every section the photograph addresses that are not among the ones offered to the plan. Returns how many."""
+    offered = {p.get("url") for p in photos or []}
+    removed = 0
+    for page in plan.pages:
+        for section in page.sections:
+            kept = [u for u in section.photos if u in offered]
+            removed += len(section.photos) - len(kept)
+            section.photos = kept
+    return removed
+
+
 def plan_site(model: str, site: dict, brief, pages: list[dict], includes_by_route: dict[str, list[str]], photos: list[dict], language: str, logo_image: str | None = None, inspiration_images: list[str] | None = None, background_mode: str = "auto") -> SitePlan | None:
     """The plan, written by `model` from the brief and the material, or None when it could not be
     written (the caller then keeps the static plans). Never raises."""
@@ -302,6 +337,9 @@ def plan_site(model: str, site: dict, brief, pages: list[dict], includes_by_rout
             max_tokens=PLAN_MAX_TOKENS,
         )
         plan = complete_plan(llm, plan, site, brief, pages, includes_by_route, photos, language, background_mode)  # //// Neoffice — see complete_plan
+        invented = keep_offered_photos(plan, photos)  # //// Neoffice — see keep_offered_photos
+        if invented:
+            ai_log("info", "Photograph addresses the plan made up removed", count=invented)
         planned = {p.route.strip("/") for p in plan.pages}
         wanted = {p["route"].strip("/") for p in pages}
         ai_log("info", "Site plan written", model=model, pages=len(plan.pages), missing=sorted(wanted - planned),
@@ -320,15 +358,23 @@ def page_of(plan: SitePlan | None, route: str) -> PlannedPage | None:
     return next((p for p in plan.pages if (p.route or "").strip("/") == wanted and p.sections), None)
 
 
-def section_lines(page: PlannedPage, hero_dressed: bool = False) -> list[str]:
+def section_lines(page: PlannedPage, hero_dressed: bool = False, recipes: dict | None = None) -> list[str]:
     """The page's sections as the writer reads them, one line each. `hero_dressed`: the page brief carries a HERO BACKGROUND
     recipe, so the plan's own layout and photos for the hero are left out (they described a flat centred block again and the
     writer, reading the plan first, followed it over the recipe: 2026-10-20)."""
     out = []
-    for section in page.sections:
+    for index, section in enumerate(page.sections):
         parts = [f"[{section.kind}] {section.purpose or ''}".strip()]
         if section.copy:
             parts.append(f"copy: {section.copy}")
+        # //// Neoffice — a section with a recipe starts from its structure (recipes.brief_lines): the plan's own layout words
+        # //// become the adaptations of that structure, and its photographs and component sit in the structure
+        if recipes and index in recipes:
+            parts.append(f"starts from the recipe {recipes[index].recipe.id}, given below (photographs and component included)")
+            if section.layout:
+                parts.append(f"adaptations the plan decided (they win over the structure where they differ): {section.layout}")
+            out.append(" — ".join(parts))
+            continue
         if hero_dressed and section.kind == "hero":
             # //// Neoffice — the recipe decides the background, the composition and the photograph of the home's hero (hero.py)
             parts.append("layout: as the HERO BACKGROUND line says (its background, its photograph, how its copy sits)")

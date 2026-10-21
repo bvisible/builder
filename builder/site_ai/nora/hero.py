@@ -80,6 +80,8 @@ def _copy_container(handles: dict, centred: bool, over_photo: bool = False) -> s
 	)
 
 
+# the alt of the hero photograph is the prompt of the image generator, and the guard that keeps a picture from stating something false
+# withholds a slot whose alt names the business: the hero of a site came out a plain beige block (2026-10-21)
 def _photo_hero(handles: dict, behind: str, photo: str, language: str, centred: bool) -> str:
 	scrim = "[u-over-image, u-over-image--center]" if centred else "[u-over-image]"
 	where = "alignItems: flex-end, paddingBottom: 6rem" if centred else "alignItems: center"
@@ -98,7 +100,7 @@ def _photo_hero(handles: dict, behind: str, photo: str, language: str, centred: 
 		f"  style: {{position: relative, minHeight: 85vh, width: 100%, display: flex, {where}, justifyContent: center, backgroundColor: {behind}}}\n"
 		"  c:\n"
 		"    - el: img\n"
-		f"      attrs: {{src: '{photo}', alt: 'WRITE a descriptive alt in {language}'}}\n"
+		f"      attrs: {{src: '{photo}', alt: 'WRITE a photographic description of the scene in {language}: the subject, the setting, the light, never the name of the business'}}\n"
 		"      style: {position: absolute, inset: '0', width: 100%, height: 100%, objectFit: cover}\n"
 		+ _copy_container(handles, centred, over_photo=True)
 	)
@@ -124,7 +126,7 @@ def _split_hero(handles: dict, stops: str, photo: str, language: str) -> str:
 		"          # the label, the h1 with its accent word, one sentence and the button, left-aligned, as in the example\n"
 		"        - el: img\n"
 		"          classes: [u-media]\n"
-		f"          attrs: {{src: '{photo}', alt: 'WRITE a descriptive alt in {language}'}}\n"
+		f"          attrs: {{src: '{photo}', alt: 'WRITE a photographic description of the scene in {language}: the subject, the setting, the light, never the name of the business'}}\n"
 		"          style: {width: 100%, height: 34rem, objectFit: cover}\n"
 		"          m_style: {height: 18rem}"
 	)

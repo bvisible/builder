@@ -1238,6 +1238,52 @@ def thin_copy_issue(blocks: list, page: dict, is_home: bool, density: str | None
     }
 
 
+# //// Neoffice — the section recipes of a page (recipes.py, 2026-10-21): the plan proposes a starting structure per section, the writer adapts it
+def section_recipes_brief(uses: dict, handles: dict, language: str) -> list[str]:
+    from builder.site_ai.nora import recipes as section_recipes
+
+    return section_recipes.brief_lines(uses, handles, language)
+
+
+def _page_recipes(site: dict, planned, page: dict, is_home: bool, hero_line: str, photos: list[str], handles: dict, palette: dict | None, cta: tuple[str, str]) -> dict:
+    """The recipes of a planned page, drawn once and kept for its revisions (so that a plan which ignored the field does not draw
+    other variants at every attempt); {} when recipes are switched off or the page is a legal one."""
+    from builder.site_ai.logging import ai_log
+    from builder.site_ai.nora import recipes as section_recipes
+
+    if not section_recipes.enabled() or page["type"] == "legal":
+        return {}
+    kept = site.setdefault("recipe_uses", {})
+    if page["route"] in kept:
+        return kept[page["route"]]
+    # the home's first photograph is the hero's (hero.py)
+    pool = list(photos[1:] if (is_home and hero_line and photos) else photos)
+    dropped: list[str] = []
+    uses = section_recipes.uses_for_page(
+        planned,
+        handles=handles,
+        palette=palette,
+        page_photos=pool,
+        mint=lambda text, n: PLACEHOLDER.format(w=1200, h=800, text=quote(text)),
+        cta_href=cta[1],
+        seed=site.get("site_name") or "",
+        taken=site.setdefault("recipes_taken", {}),
+        # with the image backend off a photograph slot is a plain block and costs nothing
+        budget=site.setdefault("recipe_budget", {"left": 10**6 if site.get("images_on") is False else section_recipes.image_budget()}),
+        left_out=dropped,
+        material=section_recipes.site_material(site),
+    )
+    kept[page["route"]] = uses
+    if dropped:
+        ai_log("info", "Section recipes left out for want of a photograph", page=page["title"], recipes=dropped)
+    if uses:
+        ai_log(
+            "info", "Section recipes", page=page["title"], recipes={i + 1: u.recipe.id for i, u in uses.items()},
+            chosen_by_code=[i + 1 for i, u in uses.items() if u.fallback],
+        )
+    return uses
+
+
 def page_brief_text(site: dict, brief, page: dict, handles: dict, contact_prompt: str, layout_system: str, language: str, photos: list[str], cta: tuple[str, str], palette: dict | None = None, revision: str | None = None, photo_notes: list[str] | None = None) -> str:
     from builder.site_ai.nora.facts import FACTS_RULE, today_line
     from builder.site_ai.nora.hero import hero_recipe
@@ -1266,8 +1312,11 @@ def page_brief_text(site: dict, brief, page: dict, handles: dict, contact_prompt
         if is_home
         else ""
     )
+    # //// Neoffice — a revision rewrites the previous version, which carries the structure: the recipes are given to the first write only
+    recipe_uses = _page_recipes(site, planned, page, is_home, hero_line, photos, handles, palette, cta) if planned else {}
+    given_recipes = {} if revision else recipe_uses
     if planned:
-        plan = planner.section_lines(planned, hero_dressed=bool(hero_line))
+        plan = planner.section_lines(planned, hero_dressed=bool(hero_line), recipes=given_recipes)
     contract = planner.contract_lines(site.get("plan"), is_home)
     sections = "\n".join(f"{i}. {s}" for i, s in enumerate(plan, 1))
     concept = getattr(brief, "design_concept", "") or ""
@@ -1276,7 +1325,9 @@ def page_brief_text(site: dict, brief, page: dict, handles: dict, contact_prompt
     hero = getattr(brief, "hero_style", "") or ""
     # the client's own photographs come with what each shows and what it is for (photos_for_page)
     notes = photo_notes or []
-    photo_lines = "\n".join(f"{i}. {u}" + (f"  ({notes[i - 1]})" if i - 1 < len(notes) else "") for i, u in enumerate(photos, 1))
+    # //// Neoffice — the photographs a recipe already holds are not offered a second time
+    held = {u for use in recipe_uses.values() for u in use.photos}
+    photo_lines = "\n".join(f"{i}. {u}" + (f"  ({notes[i - 1]})" if i - 1 < len(notes) else "") for i, u in enumerate(photos, 1) if u not in held)
     includes = available_includes(page["type"], site.get("site_type") or "vitrine", site.get("profile"), site.get("site_name") or "", lang=site.get("lang") or "fr", generator=True)
     page_role = (
         "the HOME page: open with the hero" if is_home
@@ -1355,6 +1406,8 @@ def page_brief_text(site: dict, brief, page: dict, handles: dict, contact_prompt
             if page["type"] == "legal" else ""
         ),
         f"SECTIONS, in order, with real copy written in {language}:\n{sections}",
+        # //// Neoffice — the starting structures of the sections that have a recipe (recipes.py)
+        *section_recipes_brief(given_recipes, handles, language),
         # //// Neoffice — the length of the copy, said (2026-10-20). With the density "standard" nothing told the
         # //// writer how much to write: the strong model wrote 220 to 280 words on an interior page, the local one
         # //// 50 to 210, a heading over one short line, and the reviewer called the page thin every time.
@@ -2557,6 +2610,9 @@ def build_site(ctx, spec: dict) -> str:
     from builder.site_ai.nora import site_plan as planner
 
     site["plan"] = None
+    # //// Neoffice — whether the site generates the photographs a page asks for (read by the plan's photograph line and the recipes'
+    # //// photograph budget, 2026-10-21): a plan told that a photo slot is "a plain block" wrote plain blocks over the recipes' photographs
+    site["images_on"] = _image_backend_available()
     if not building_part and spec.get("plan_site", True) and not ctx.is_cancelled():
         # //// Neoffice — a rebuild of the same pages reuses the plan it already has (2026-09-17),
         # //// as it reuses the brief: six minutes of the strong model's thinking, kept 48 h. A
@@ -2641,6 +2697,12 @@ def build_site(ctx, spec: dict) -> str:
                     from builder.site_ai.nora.layout import textless_blocks
 
                     missing = textless_blocks(blocks)
+                    # //// Neoffice — and a recipe's slot left as it was given (recipes.unfilled_slots) is asked for in the same way
+                    from builder.site_ai.nora import recipes as section_recipes
+
+                    left_slots = section_recipes.unfilled_slots(blocks)
+                    if left_slots:
+                        missing = [*missing, *(f"{label} still a WRITE slot" for label in left_slots)]
                     if missing:
                         error = "the page was written without the text of: " + ", ".join(missing)
                         ai_log("warning", "Page written with textless elements, asked again", page=page["title"], elements=missing)
@@ -2658,6 +2720,33 @@ def build_site(ctx, spec: dict) -> str:
                         blocks, data_script = [], ""
                         continue
                 if blocks:
+                    # //// Neoffice — a slot of a recipe that is still there after the second try is removed, never published (recipes.scrub_unfilled)
+                    from builder.site_ai.nora import recipes as section_recipes
+
+                    scrubbed_slots = section_recipes.scrub_unfilled(blocks)
+                    if scrubbed_slots:
+                        ai_log("warning", "Recipe slots left in the page removed", page=page["title"], slots=scrubbed_slots)
+                    # //// Neoffice — and a stock-photo address the writer remembered in place of a photograph slot goes back to a placeholder
+                    # //// the site fills (recipes.replace_invented_pictures)
+                    here = (site.get("recipe_uses") or {}).get(page["route"], {})
+                    given = {*(photos or []), *(u for use in here.values() for u in use.photos)}
+                    # the recipes' photograph slots were counted in the site's budget of generated photographs when the page was briefed; a
+                    # picture beyond them costs one more, and the site has only so many (recipes.IMAGE_BUDGET): the rest is taken out
+                    prepaid = {"left": sum(len(use.photos) for use in here.values())}
+                    spendable = site.setdefault("recipe_budget", {"left": 10**6 if site.get("images_on") is False else section_recipes.image_budget()})
+
+                    def made_up_picture(alt: str):
+                        if prepaid["left"] > 0:
+                            prepaid["left"] -= 1
+                        elif spendable["left"] > 0:
+                            spendable["left"] -= 1
+                        else:
+                            return None
+                        return PLACEHOLDER.format(w=1200, h=800, text=quote((alt or page["title"])[:60]))
+
+                    made_up = section_recipes.replace_invented_pictures(blocks, given, None if page["type"] == "legal" else made_up_picture)
+                    if made_up:
+                        ai_log("warning", "Made-up picture addresses replaced by placeholders", page=page["title"], edits=made_up[:6])
                     # //// Neoffice — kept for the revision (see the top of write_page)
                     site.setdefault("last_yaml", {})[page["route"]] = BlockCodec.strip_fences(raw)
                     # //// Neoffice — new call: repairs includes to the offered tag or drops them (2d78d71d "fix(nora): includes written as offered, routes honoured but home, and the build's routes stated as final")

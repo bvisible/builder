@@ -32,6 +32,11 @@ class TestTheHeroPhoto(unittest.TestCase):
 		self.assertIn("write no overlay", text)
 		self.assertNotIn("linear-gradient", text)
 
+	def test_the_alt_of_the_photograph_is_a_scene_never_the_name_of_the_business(self):
+		for style in ("image", "split"):
+			text = hero_recipe(style, HANDLES, PALETTE, "", PHOTO)
+			self.assertIn("never the name of the business", text, style)
+
 	def test_the_example_is_valid_yaml_the_page_parser_expands(self):
 		from builder.ai.page_writer import expand_page_yaml
 
