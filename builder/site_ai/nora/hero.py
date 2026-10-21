@@ -59,14 +59,17 @@ def _grid(handles: dict, name: str) -> str:
 	return handles.get(name) or GRID_FALLBACKS[name]
 
 
-def _copy_container(handles: dict, centred: bool) -> str:
+def _copy_container(handles: dict, centred: bool, over_photo: bool = False) -> str:
 	"""The container of the copy, in the writer's YAML: the grid the header and the footer share, the copy centred or not."""
 	align = "alignItems: center, textAlign: center" if centred else "alignItems: flex-start"
+	# the veil darkens the photograph where it was drawn to, not where a bright sky happens to sit behind a sentence: the copy over a
+	# photograph carries a soft shadow of its own (text-shadow is inherited, so one line on the container serves every line of copy)
+	shadow = ", textShadow: '0 1px 14px rgba(0,0,0,0.5)'" if over_photo else ""
 	return (
 		"    - el: div\n"
 		"      name: hero-copy\n"
 		f"      style: {{maxWidth: {_grid(handles, 'container')}, width: 100%, paddingLeft: {_grid(handles, 'gutter')}, "
-		f"paddingRight: {_grid(handles, 'gutter')}, display: flex, flexDirection: column, {align}}}\n"
+		f"paddingRight: {_grid(handles, 'gutter')}, display: flex, flexDirection: column, {align}{shadow}}}\n"
 		f"      m_style: {{paddingLeft: {_grid(handles, 'gutter-phone')}, paddingRight: {_grid(handles, 'gutter-phone')}}}\n"
 		"      # the label, the h1 with its accent word, one sentence and the button, as in the example"
 		+ (
@@ -97,7 +100,7 @@ def _photo_hero(handles: dict, behind: str, photo: str, language: str, centred: 
 		"    - el: img\n"
 		f"      attrs: {{src: '{photo}', alt: 'WRITE a descriptive alt in {language}'}}\n"
 		"      style: {position: absolute, inset: '0', width: 100%, height: 100%, objectFit: cover}\n"
-		+ _copy_container(handles, centred)
+		+ _copy_container(handles, centred, over_photo=True)
 	)
 
 

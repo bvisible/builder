@@ -152,6 +152,14 @@ class TestHowTheCopySits(unittest.TestCase):
 		self.assertNotIn("28rem", centred)
 		self.assertIn("the sentence maxWidth 36rem", centred)
 
+	def test_copy_over_a_photograph_carries_a_soft_shadow_and_copy_on_a_gradient_does_not(self):
+		"""The subtitle of a left-aligned hero sat on a bright patch of sky, where the veil has little to give (2026-10-21)."""
+		for tone in ("bold", "elegant"):
+			copy = _expand(hero_recipe("image", HANDLES, PALETTE, "", PHOTO, tone=tone))["children"][1]
+			self.assertEqual(copy["baseStyles"]["textShadow"], "0 1px 14px rgba(0,0,0,0.5)", tone)
+		split = _expand(hero_recipe("split", HANDLES, PALETTE, "", PHOTO))
+		self.assertNotIn("textShadow", split["children"][0]["baseStyles"])
+
 	def test_the_site_grid_is_the_copy_s_own(self):
 		handles = {
 			**HANDLES,
