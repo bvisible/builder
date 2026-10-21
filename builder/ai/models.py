@@ -233,11 +233,29 @@ class ModelRegistry:
 		m = cls.find(model_name)
 		return bool(m.get("vision")) if m else False
 
+	# //// Neoffice — the model that carries the assistant is the host's choice (2026-10-21). The clients' assistant ran on a
+	# //// hosted Kimi whatever the host wanted, because the picker's first model was the answer and nothing could name
+	# //// another. `nora_assistant_model` in site_config (e.g. "nora/nora", the host's own model) is that name; a route nobody
+	# //// registered changes nothing, so an instance whose local provider is missing keeps the model it had.
+	@classmethod
+	def host_assistant_model(cls) -> str | None:
+		"""The route `nora_assistant_model` names, when it is registered, else None."""
+		try:
+			wanted = str(frappe.conf.get("nora_assistant_model") or "").strip()
+		except Exception:
+			return None
+		return wanted if wanted and cls.find(wanted) else None
+
 	@classmethod
 	def get_default(cls, model_or_provider: str) -> str:
 		"""Resolve a selection to a model name. A known model passes through;
 		anything else (a provider name, or the legacy "openrouter" sentinel the
 		frontend still sends) falls back to the first configured model."""
+		# //// Neoffice — the host's model carries the assistant whatever the browser asks for (its picker may still hold an
+		# //// earlier choice in localStorage); the host's Administrator keeps the choice, to test another model.
+		host = cls.host_assistant_model()
+		if host and not (frappe.session.user == "Administrator" and cls.find(model_or_provider)):
+			return host
 		if cls.find(model_or_provider):
 			return model_or_provider
 		catalog = cls.catalog()

@@ -42,6 +42,10 @@ def ai_capabilities() -> dict:
     by the host (read-only AI settings, no provider setup), which tools are off,
     and whether the Users tab (invitations outside the licence quota) shows."""
     managed = is_managed()
+    from builder.ai.models import ModelRegistry
+
+    # the host names the model behind the assistant (`nora_assistant_model`): no picker for anyone but its Administrator
+    host_model = bool(ModelRegistry.host_assistant_model())
     return {
         "assistant_name": get_assistant_name(),
         "managed": managed,
@@ -50,5 +54,5 @@ def ai_capabilities() -> dict:
         # the model behind the assistant is the host's choice on a managed instance: a
         # client sees "Nora", not a picker of Kimi ids (Jérémy, 2026-09-08); the host's
         # Administrator keeps the picker to test
-        "model_picker": (not managed) or frappe.session.user == "Administrator",
+        "model_picker": ((not managed) and not host_model) or frappe.session.user == "Administrator",
     }

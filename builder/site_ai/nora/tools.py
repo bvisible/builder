@@ -217,7 +217,10 @@ update_site_chrome = Tool(
         "Change the site chrome of the open page's site: pass ONLY the fields to change, with the names and option "
         "values get_site_chrome returned (menu_items and footer_links are full lists of {label, url}; the opening "
         "hours block is show_opening_hours 0/1 with opening_hours_display). The header and the footer of every page "
-        "follow at once. Never build a header, menu or footer inside a page instead."
+        "follow at once. Never build a header, menu or footer inside a page instead. Only when the user asks for the "
+        "header, the menu, the footer, the call-to-action button, the logo text, the social links or the opening hours, "
+        "or for the whole site: a request about THIS page (translate it, rewrite its text, change its colours, add a "
+        "section) never calls it, the chrome is not part of the page."
     ),
     parameters={
         "type": "object",

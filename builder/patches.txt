@@ -45,3 +45,5 @@ builder.builder.patches.drop_builder_ai_shortcode # //// Neoffice — the orphan
 builder.builder.patches.drop_legacy_ai_tables # //// Neoffice — the five tables the legacy-AI drop patches left behind (2026-10-20)
 builder.builder.patches.rewire_connected_forms # //// Neoffice — the forms the assistant connected go through the site's one door (#1593, 2026-10-20)
 builder.builder.patches.use_the_host_model_for_site_generation # //// Neoffice — the local model writes the sites of every instance that holds the host's endpoint (2026-10-21)
+builder.builder.patches.use_the_host_model_for_the_assistant # //// Neoffice — the editor's assistant runs on the host's model where the host has one (2026-10-21)
+builder.builder.patches.enable_image_generation_where_the_host_has_it # //// Neoffice — the flag says what the endpoint already does (2026-10-21)
