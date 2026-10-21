@@ -124,7 +124,7 @@ def _score(slot: dict, asset: dict, reuse_count: int) -> float:
     return score
 
 
-def match_and_apply(session_id: str, page_names: list = None, min_score: float = 2.5) -> dict:
+def match_and_apply(session_id: str, page_names: list = None, min_score: float = 2.5, exclude=None) -> dict:
     """Replace placeholder image slots in the session's pages with the best
     matching client photos. Returns a coverage report. Slots with no good
     match are left as placeholders (Flux can fill them afterwards)."""
@@ -142,6 +142,11 @@ def match_and_apply(session_id: str, page_names: list = None, min_score: float =
     assets = [a for a in assets if a.get("status") != "failed" or a.get("orientation")]
     # Logos are brand chrome, not page content.
     assets = [a for a in assets if "logo" not in (a.get("suggested_slots") or "").lower()]
+    # //// Neoffice — and the photographs the build judged foreign to this business stay out of the leftover slots too
+    # //// (photo_fit.unusable_photos, 2026-10-21): a home office had been laid on a restaurant's booking page
+    from builder.site_ai.nora.photo_fit import usable_assets
+
+    assets = usable_assets(assets, exclude)
     if not assets:
         return {"matched": 0, "slots": 0, "assets": 0, "message": "no client images"}
 

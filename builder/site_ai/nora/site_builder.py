@@ -2395,6 +2395,17 @@ def build_site(ctx, spec: dict) -> str:
     # for "the same 12 photos", the model hunted them in the File list and found 10 on the pages,
     # or product shots beside them (2026-09-12)
     client_photos = library_photos(getattr(ctx, "session_id", None), only=photos or None)
+    # //// Neoffice — the photographs that do not belong on THIS site stay out (photo_fit.unusable_photos, 2026-10-21): a modern home
+    # //// office brought among the photographs of a mountain restaurant was laid on its booking page, because the picker takes whatever is left
+    library_all = list(client_photos)
+    left_out: dict[str, str] = {}
+    if len(client_photos) >= 2:
+        from builder.site_ai.nora import photo_fit
+
+        left_out = photo_fit.unusable_photos(_page_model(ctx), site_name, activity, client_photos)
+        if left_out:
+            client_photos = [p for p in client_photos if p["url"] not in left_out]
+            ai_log("info", "Photographs left out as foreign to the site", photos=[u.rsplit("/", 1)[-1] for u in left_out], reasons=list(left_out.values()))
     # the categories travel as their own list; the brief's own words are only the fallback
     categories = [str(c).strip() for c in (spec.get("categories") or []) if str(c).strip()][:8] or category_names(
         activity, spec.get("differentiators") or "", spec.get("style_direction") or ""
@@ -2877,7 +2888,10 @@ def build_site(ctx, spec: dict) -> str:
                     # //// down, beside its statement (2026-09-15)
                     from builder.site_ai.nora.layout import one_photo_once
 
-                    swapped = one_photo_once(blocks, photos)
+                    # //// Neoffice — a repeat takes, failing the page's own spare, the least used photograph of the whole library
+                    # //// (2026-10-21): a banquet page showed the same hall twice because its list had no third photograph
+                    spare = [p["url"] for p in sorted(client_photos, key=lambda p: photos_used.get(p["url"], 0)) if p["url"] not in (photos or [])]
+                    swapped = one_photo_once(blocks, [*(photos or []), *spare])
                     if swapped:
                         ai_log("info", "Repeated photographs replaced", page=page["title"], edits=swapped)
                     # //// Neoffice — and the emblem is an ornament or nothing (layout.drop_small_marks): offered
@@ -3206,7 +3220,7 @@ def build_site(ctx, spec: dict) -> str:
             _progress(ctx, job_id, _("Placing your photos"), 93, {"pages_created": created})
             from builder.site_ai.ingestion.image_matcher import match_and_apply
 
-            report = match_and_apply(ctx.session_id, [p["name"] for p in created])
+            report = match_and_apply(ctx.session_id, [p["name"] for p in created], exclude=set(left_out))
             placed = report.get("matched") or 0
             ai_log("info", "Client photos placed", placed=placed, slots=report.get("slots"), assets=report.get("assets"))
         except Exception as e:
@@ -3398,6 +3412,18 @@ def build_site(ctx, spec: dict) -> str:
             f"{len(photos_used)} of the client's {len(client_photos)} photographs were laid into the pages as they were "
             f"written; {placed} leftover photo slot(s) were filled with them afterwards."
         )
+    # //// Neoffice — and the real placement, photo by photo, so the assistant tells the user where each went and which were left out
+    if library_all:
+        try:
+            from builder.site_ai.nora import photo_fit
+
+            page_blocks = []
+            for made in created:
+                raw = frappe.db.get_value("Builder Page", made["name"], "blocks") or "[]"
+                page_blocks.append((made["title"], json.loads(raw)))
+            lines += photo_fit.photo_plan(library_all, left_out, page_blocks)
+        except Exception as e:
+            ai_log("warning", "Photo plan not written", error=str(e)[:160])
     if image_job:
         lines.append(f"{pending} photo slot(s) are being filled with generated images in the background (job {image_job}).")
     # //// Neoffice — "elif pending" instead of "else": the client's own photographs may
