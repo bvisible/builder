@@ -68,6 +68,7 @@
   "footer_content_section",
   "footer_description",
   "copyright_text",
+  "show_data_notice",
   "business_name",
   "business_address",
   "business_phone",
@@ -552,6 +553,13 @@
    "fieldname": "copyright_text",
    "fieldtype": "Data",
    "label": "Copyright Text"
+  },
+  {
+   "default": "0",
+   "description": "A short notice at the foot of every page: the site uses technical cookies only and does not track, with a link to its privacy policy. Also makes a map wait for a click before it loads Google. Set by the site generator.",
+   "fieldname": "show_data_notice",
+   "fieldtype": "Check",
+   "label": "Show the Cookie and Privacy Notice"
   },
   {
    "description": "The legal name this site shows, on its contact and legal pages. Empty: the name of the company in ERPNext.",
@@ -1123,7 +1131,7 @@
  "index_web_pages_for_search": 1,
  "issingle": 0,
  "links": [],
- "modified": "2026-09-29 09:49:06.644600",
+ "modified": "2026-10-22 11:00:00.000000",
  "modified_by": "Administrator",
  "module": "Builder",
  "name": "Website Header Footer Variant",

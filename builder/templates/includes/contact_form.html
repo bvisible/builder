@@ -171,6 +171,8 @@
         {%- endif %}
 
         <p class="builder-contact-form__status" role="status" aria-live="polite" hidden></p>
+        {#- //// Neoffice — what happens to the details, under the form (form_privacy_note.html), unless the business worded its own consent -#}
+        {%- if not cf_consent %}{% include "builder/templates/includes/form_privacy_note.html" %}{% endif %}
     </form>
     {%- if cf_dialog %}
     </div>

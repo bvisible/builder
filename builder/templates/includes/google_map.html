@@ -14,7 +14,15 @@
 {% set map_type = type | default("m") %}
 {% set encoded_address = map_address | urlencode %}
 
+{#- //// Neoffice — on a site that shows the cookie and privacy notice (2026-10-22, legal.py) the map waits for a click: loading
+    //// Google's embed sends the visitor's address to Google, in the United States, before they have chosen anything, which neither
+    //// the Swiss Federal Act on Data Protection (art. 19: the visitor is told) nor the GDPR allows without their consent. Until the
+    //// click the visitor sees the address and a button; the iframe is built by the click, from the same address. Any other site
+    //// keeps the embed as it was. -#}
+{%- set neo_legal = site_legal() if site_legal is defined else {} -%}
 {% if map_address %}
+{%- set map_src = "https://maps.google.com/maps?q=" ~ encoded_address ~ "&t=" ~ map_type ~ "&z=" ~ map_zoom ~ "&output=embed" -%}
+{%- set map_title = _("Map showing") ~ " " ~ map_address -%}
 <div class="builder-map-container" style="
     width: 100%;
     height: {{ map_height }};
@@ -22,6 +30,14 @@
     overflow: hidden;
     box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
 ">
+{%- if neo_legal and neo_legal.notice %}
+    <div class="builder-map-gate" data-map-src="{{ map_src | e }}" data-map-title="{{ map_title | e }}">
+        <p class="builder-map-gate__address">{{ map_address }}</p>
+        <p class="builder-map-gate__note">{{ _("The map is provided by Google. Loading it sends your IP address to Google, in the United States.") }}
+            {%- if neo_legal.privacy_url %} <a href="{{ neo_legal.privacy_url | e }}">{{ _("Privacy policy") }}</a>{% endif %}</p>
+        <button type="button" class="builder-map-gate__button">{{ _("Show the map") }}</button>
+    </div>
+{%- else %}
     <iframe
         width="100%"
         height="100%"
@@ -29,9 +45,10 @@
         loading="lazy"
         allowfullscreen
         referrerpolicy="no-referrer-when-downgrade"
-        src="https://maps.google.com/maps?q={{ encoded_address }}&t={{ map_type }}&z={{ map_zoom }}&output=embed"
-        title="{{ _('Map showing') }} {{ map_address }}"
+        src="{{ map_src }}"
+        title="{{ map_title }}"
     ></iframe>
+{%- endif %}
 </div>
 
 <style>
@@ -44,5 +61,57 @@
         border-radius: 8px;
     }
 }
+{%- if neo_legal and neo_legal.notice %}
+.builder-map-gate {
+    box-sizing: border-box;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 0.75rem;
+    width: 100%;
+    height: 100%;
+    padding: 1.5rem;
+    text-align: center;
+    background: rgba(127, 127, 127, 0.1);
+    color: inherit;
+}
+.builder-map-gate__address { margin: 0; font-weight: 600; }
+.builder-map-gate__note { margin: 0; max-width: 32rem; font-size: 0.875rem; line-height: 1.5; opacity: 0.85; }
+.builder-map-gate__note a { color: inherit; text-decoration: underline; }
+.builder-map-gate__button {
+    min-height: 2.75rem;
+    padding: 0 1.5rem;
+    border: 0;
+    border-radius: 0.5rem;
+    background: #1a1a1a;
+    color: #ffffff;
+    cursor: pointer;
+    font: inherit;
+    font-weight: 600;
+}
+{%- endif %}
 </style>
+{%- if neo_legal and neo_legal.notice %}
+<script>
+(function () {
+    if (window.__neoMapGate) return;
+    window.__neoMapGate = true;
+    document.addEventListener("click", function (event) {
+        var button = event.target.closest && event.target.closest(".builder-map-gate__button");
+        if (!button) return;
+        var gate = button.closest(".builder-map-gate");
+        var frame = document.createElement("iframe");
+        frame.width = "100%";
+        frame.height = "100%";
+        frame.style.border = "none";
+        frame.allowFullscreen = true;
+        frame.referrerPolicy = "no-referrer-when-downgrade";
+        frame.title = gate.getAttribute("data-map-title") || "";
+        frame.src = gate.getAttribute("data-map-src");
+        gate.replaceWith(frame);
+    });
+})();
+</script>
+{%- endif %}
 {% endif %}

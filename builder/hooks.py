@@ -70,6 +70,8 @@ jinja = {
 		"builder.builder.doctype.builder_component.builder_component.get_component_data",
 		# //// Neoffice — the address the map include falls back to (templates/includes/google_map.html)
 		"builder.api.site_map_address",
+		# //// Neoffice — the privacy policy to link and whether the site shows the cookie notice (templates/includes/data_notice.html)
+		"builder.site_legal.site_legal",
 		# //// Neoffice — the definition of a Site Form, read at every display by templates/includes/site_form.html
 		"builder.site_forms.site_form_definition",
 	],

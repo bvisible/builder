@@ -21,6 +21,7 @@ import frappe
 from frappe import _
 from frappe.utils import now
 
+from builder.site_ai.nora import legal  # //// Neoffice — the legal pages, see legal.py
 from builder.site_ai.nora.contrast import palette_roles
 from builder.site_ai.nora.page_form import ensure_form, wants_form  # //// Neoffice — see page_form.py
 
@@ -372,6 +373,31 @@ def token_prefix(name: str) -> str:
     else:
         prefix = (words[0] if words else "site")[:8]
     return prefix or "site"
+
+
+def unique_token_prefix(name: str, profile: str | None) -> str:
+    """The prefix of a site's tokens, distinct from the prefix of every other site of the instance.
+
+    //// Neoffice — added (2026-10-22). The prefix is the initials of the site's name ("Chez Paul" and "Café Pierre" are both
+    `cp`), and the tokens of a prefix are the colours and the fonts of whichever site holds it: the second site's build rewrote the
+    first one's six tokens, and the first site changed colour with nobody touching it. A site whose initials are already held by the
+    chrome of ANOTHER site takes a short suffix from its own name (stable: the same site gets the same prefix on every rebuild, and a
+    site that already holds its initials keeps them)."""
+    import hashlib
+
+    base = token_prefix(name)
+    own = ("Website Header Footer Variant", profile) if profile else ("Website Header Footer Config", "Website Header Footer Config")
+    holders: list[tuple[str, str]] = []
+    try:
+        if frappe.db.exists("DocType", "Website Header Footer Variant"):
+            holders += [("Website Header Footer Variant", n) for n in frappe.get_all("Website Header Footer Variant", filters={"token_prefix": base}, pluck="name")]
+        if frappe.db.get_single_value("Website Header Footer Config", "token_prefix") == base:
+            holders.append(("Website Header Footer Config", "Website Header Footer Config"))
+    except Exception:
+        return base
+    if all(holder == own for holder in holders):
+        return base
+    return base + hashlib.md5((profile or name).encode("utf-8")).hexdigest()[:3]
 
 
 def choose_layout_system(style_direction: str, brief) -> str:
@@ -1890,23 +1916,28 @@ class BriefAlreadyWritten(Exception):
 LEGAL_PLANNED = {
     "terms": ("terms-conditions", "Terms & Conditions"),
     "privacy": ("privacy-policy", "Privacy Policy"),
+    # //// Neoffice — added (2026-10-22): the legal notice every site carries beside its privacy policy (legal.py)
+    "legal": ("legal-notice", "Legal Notice"),
 }
 
 
 def plan_legal_pages(pages: list[dict], profile: str | None, site_type: str, lang: str = "fr") -> list[dict]:
-    """The legal pages a shop must have and does not: neither already planned nor already on
-    the site. A showcase site is left alone — it is the shop that cannot trade without them."""
-    if site_type not in ("ecommerce", "ecommerce_search") and not (profile and _profile_sells(profile)):
-        return []
+    """The legal pages a site must have and does not: neither already planned nor already on the site.
+
+    //// Neoffice — every site carries its privacy policy and its legal notice (2026-10-22, legal.py): the Swiss
+    Federal Act on Data Protection (art. 19) asks that a visitor be told who processes what they give and why, and
+    a showcase site has a contact form like the others. The terms stay a shop's: only a shop sells under them."""
+    sells = site_type in ("ecommerce", "ecommerce_search") or bool(profile and _profile_sells(profile))
     planned = {str(p.get("route") or "").strip("/").lower() for p in pages}
     already = {route.strip("/") for route, _ in legal_pages(profile)}
     out: list[dict] = []
-    for kind in ("terms", "privacy"):
+    for kind in ("terms", "privacy", "legal") if sells else ("privacy", "legal"):
         known = LEGAL_ROUTES[kind]
         if any(route in known for route in planned | already):
             continue
         route, title = LEGAL_PLANNED[kind]
-        out.append({"title": _(title, lang=lang), "route": route, "type": "legal"})
+        title = legal.title("privacy" if kind == "privacy" else "notice", lang) if kind != "terms" else _(title, lang=lang)
+        out.append({"title": title, "route": route, "type": "legal"})
     return out
 
 
@@ -2085,6 +2116,10 @@ def apply_navigation(config, created: list[dict], site_type: str, description: s
             if _is_legal_route(page["route"]):
                 continue
             config.append("footer_links", {"column_name": _("Navigation", lang=lang), "label": _("Home", lang=lang) if home else page["title"], "url": "/" if home else page["route"]})
+    # //// Neoffice — a generated site shows the cookie and privacy notice and keeps its map behind a click (2026-10-22, legal.py,
+    # //// templates/includes/data_notice.html): the site carries a privacy policy that says it uses technical cookies only
+    if hasattr(config, "show_data_notice"):
+        config.show_data_notice = 1
     # //// Neoffice — a logo that cannot be seen on its ground gives way to the site's name (2026-10-20):
     # //// the chrome put the logo image in the footer whatever colour the footer was, and a dark navy
     # //// mark on a deep brown footer was a barely visible rectangle. Last, with every colour and the
@@ -2534,7 +2569,8 @@ def build_site(ctx, spec: dict) -> str:
     secondary = secondary or getattr(brief, "secondary_color", None)
 
     # 4. the design system as tokens, and the chrome from the brief
-    prefix = token_prefix(profile or site_name)
+    # //// Neoffice — a prefix no other site of the instance holds (unique_token_prefix)
+    prefix = unique_token_prefix(profile or site_name, profile)
     handles = mint_tokens(prefix, profile or site_name, brief, primary, secondary)
     # //// Neoffice — and the site grid the chrome shares with the pages (SITE_GRIDS)
     try:
@@ -2670,6 +2706,15 @@ def build_site(ctx, spec: dict) -> str:
 
     def write_page(page: dict, photos: list[str], revision: str | None = None, notes: list[str] | None = None) -> tuple[list, str, str | None]:
         """One page through the writer and the mechanical passes: (blocks, data_script, error)."""
+        # //// Neoffice — the privacy policy and the legal notice are not written by a model (2026-10-22, legal.py): a fixed
+        # //// document filled with what the business gave and what the site holds, the same on every revision
+        if legal.is_mechanical(page):
+            import datetime
+
+            facts = legal.facts_from(contact_data, site_name, legal.uses_of(profile, site_type))
+            yaml_text = legal.page_yaml(legal.kind_of(page), facts, lang_code, handles, palette, datetime.date.today())
+            made, made_script = expand_page_yaml(yaml_text)
+            return (made, made_script, None) if made else ([], "", "the legal page could not be expanded")
         # //// Neoffice — a revision REWRITES the page it revises (2026-09-16). It used to be a fresh
         # //// page from the same brief plus "fix these points and keep everything else" — with
         # //// nothing to keep, since the writer never saw what it had written: the second version
@@ -2935,6 +2980,12 @@ def build_site(ctx, spec: dict) -> str:
                     scrubbed = drop_placeholders(blocks)
                     if scrubbed:
                         ai_log("info", "Placeholders dropped", page=page["title"], edits=scrubbed[:6])
+                    # //// Neoffice — and a person nobody named is not published: "Partenaire 1" under a role (facts.drop_unnamed_people)
+                    from builder.site_ai.nora.facts import drop_unnamed_people
+
+                    unnamed = drop_unnamed_people(blocks)
+                    if unnamed:
+                        ai_log("info", "Stand-in people dropped", page=page["title"], edits=unnamed[:6])
                     # //// Neoffice — nor a picture whose file does not exist: shown a folder of
                     # //// marque-<brand>.jpg the writer invented the one brand it was missing
                     # //// (facts.drop_missing_pictures)
@@ -3032,6 +3083,14 @@ def build_site(ctx, spec: dict) -> str:
                     # a picture that would state something false is not drawn: a stranger's face
                     # for the practitioner the page names, a map with made-up streets (placeholders.py)
                     else:
+                        # //// Neoffice — the hero of the home is never left a plain block because its description named someone: it is
+                        # //// described by the scene of the business instead (hero.rescue_hero_alt, 2026-10-22)
+                        if page["type"] == "accueil":
+                            from builder.site_ai.nora.hero import rescue_hero_alt
+
+                            scened = rescue_hero_alt(blocks, [site_name, *categories], activity, lang_code)
+                            if scened:
+                                ai_log("info", "Hero photograph described by the scene", page=page["title"], was=scened)
                         withheld = neutral_named_slots(blocks, palette, prefix, names=[site_name, *categories])
                         if withheld:
                             ai_log("info", "Photo slots kept from the image job", page=page["title"], slots=withheld)
@@ -3043,6 +3102,13 @@ def build_site(ctx, spec: dict) -> str:
                     emptied = neutral_empty_slots(blocks, palette, prefix)
                     if emptied:
                         ai_log("info", "Pictures with no source given a plain block", page=page["title"], edits=emptied)
+                    # //// Neoffice — and every picture has an alt text (alt_text.py): the heading of its card or section, else the page's
+                    # //// title, else the site's name, where the writer left none or a file name (2026-10-22)
+                    from builder.site_ai.nora.alt_text import ensure_alts
+
+                    alted = ensure_alts(blocks, page["title"], site_name)
+                    if alted:
+                        ai_log("info", "Pictures given an alt text", page=page["title"], edits=alted[:6])
                     # one photo treatment for the whole site: on a black-and-white site every
                     # photograph is black and white, on every page (photo_treatment.py)
                     if palette_mode == "monochrome":

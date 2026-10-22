@@ -1543,25 +1543,26 @@ class TestShopIncludes(unittest.TestCase):
 		planned = [{"title": "Home", "route": "home", "type": "accueil"}]
 		with patch("builder.site_ai.nora.site_builder.legal_pages", return_value=[("/terms-conditions", "CGV")]):
 			added = plan_legal_pages(planned, "A Storefront", "ecommerce", "en")
-		self.assertEqual([("privacy-policy", "legal")], [(p["route"], p["type"]) for p in added])
+		self.assertEqual([("privacy-policy", "legal"), ("legal-notice", "legal")], [(p["route"], p["type"]) for p in added])
 
 		# already in the plan: not planned twice
 		planned = [{"title": "Home", "route": "home", "type": "accueil"}, {"title": "CGU", "route": "cgu", "type": "legal"}]
 		with patch("builder.site_ai.nora.site_builder.legal_pages", return_value=[]):
 			added = plan_legal_pages(planned, "A Storefront", "ecommerce", "en")
-		self.assertEqual(["privacy-policy"], [p["route"] for p in added])
+		self.assertEqual(["privacy-policy", "legal-notice"], [p["route"] for p in added])
 
-		# a showcase site is left alone
+		# //// Neoffice — a showcase site carries its privacy policy and its legal notice too (2026-10-22), not its terms
 		with patch("builder.site_ai.nora.site_builder._profile_sells", return_value=False), patch(
 			"builder.site_ai.nora.site_builder.legal_pages", return_value=[]
 		):
-			self.assertEqual([], plan_legal_pages([], "A Showcase", "vitrine", "en"))
+			showcase = plan_legal_pages([], "A Showcase", "vitrine", "en")
+		self.assertEqual(["privacy-policy", "legal-notice"], [p["route"] for p in showcase])
 
 		# a site with neither gets both, home first untouched
 		planned = [{"title": "Home", "route": "home", "type": "accueil"}]
 		with patch("builder.site_ai.nora.site_builder.legal_pages", return_value=[]):
 			added = plan_legal_pages(planned, "A Storefront", "ecommerce", "en")
-		self.assertEqual(["terms-conditions", "privacy-policy"], [p["route"] for p in added])
+		self.assertEqual(["terms-conditions", "privacy-policy", "legal-notice"], [p["route"] for p in added])
 
 	def test_a_legal_title_is_recognised_as_a_legal_page(self):
 		from builder.site_ai.nora.site_builder import normalise_pages

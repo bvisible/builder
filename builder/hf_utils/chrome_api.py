@@ -79,6 +79,8 @@ SIMPLE_FIELDS = (
 	"business_website",
 	"footer_description",
 	"copyright_text",
+	# //// Neoffice — the cookie and privacy notice (data_notice.html), set by the site generator
+	"show_data_notice",
 	"show_social_links",
 	"facebook_url",
 	"twitter_url",

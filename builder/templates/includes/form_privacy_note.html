@@ -1,0 +1,17 @@
+{# //// Neoffice — added file (no upstream equivalent): the sentence under a form that tells the visitor what happens to what they
+   //// write (Swiss Federal Act on Data Protection, art. 19: the duty to inform comes at the moment the data is collected). It names
+   //// the use and links the privacy policy; it appears only on a site that has such a page, and never under a form that carries
+   //// its own consent box (the business has worded it). #}
+{%- set neo_legal = site_legal() if site_legal is defined else {} -%}
+{%- if neo_legal and neo_legal.privacy_url %}
+<p class="builder-contact-form__privacy">{{ _("Your details are only used to answer your request.") }} <a href="{{ neo_legal.privacy_url | e }}">{{ _("Privacy policy") }}</a></p>
+<style>
+.builder-contact-form .builder-contact-form__privacy {
+	margin: 0.875rem 0 0;
+	font-size: 0.8125rem;
+	line-height: 1.5;
+	opacity: 0.8;
+}
+.builder-contact-form .builder-contact-form__privacy a { color: inherit; text-decoration: underline; }
+</style>
+{%- endif %}

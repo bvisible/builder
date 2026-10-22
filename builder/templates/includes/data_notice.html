@@ -1,0 +1,75 @@
+{# //// Neoffice — added file (no upstream equivalent): the cookie and privacy notice at the foot of a generated site.
+   //// What it says is true of every site the generator builds (legal.py): technical cookies only, no measurement, no
+   //// advertising, no social widget. It is shown only where the site's chrome asks for it (show_data_notice, set by the
+   //// generator), so a site that carries its own cookie tools or analytics is never told it "does not track". A visitor
+   //// closes it once; the choice stays in the browser's localStorage (a cookie would be one more cookie), and the page is
+   //// complete without JavaScript: the notice is only shown by it. #}
+{%- set neo_legal = site_legal() if site_legal is defined else {} -%}
+{%- if neo_legal and neo_legal.notice %}
+<div class="site-data-notice" id="site-data-notice" role="region" aria-label="{{ _('Cookies and privacy') | e }}" hidden>
+	<p class="site-data-notice__text">{{ _("This website only uses technical cookies. It does not track you.") }}
+		{%- if neo_legal.privacy_url %} <a class="site-data-notice__link" href="{{ neo_legal.privacy_url | e }}">{{ _("Privacy policy") }}</a>{% endif %}</p>
+	<button type="button" class="site-data-notice__button">{{ _("OK") }}</button>
+</div>
+<style>
+.site-data-notice {
+	position: fixed;
+	left: 1rem;
+	right: 1rem;
+	bottom: 1rem;
+	z-index: 9000;
+	display: flex;
+	align-items: center;
+	gap: 1rem;
+	max-width: 40rem;
+	margin: 0 auto;
+	padding: 0.875rem 1rem 0.875rem 1.25rem;
+	background: var(--footer-bg, #ffffff);
+	color: var(--footer-text, #1a1a1a);
+	border: 1px solid var(--footer-border, rgba(0, 0, 0, 0.12));
+	border-radius: 0.75rem;
+	box-shadow: 0 8px 28px rgba(0, 0, 0, 0.18);
+	font-size: 0.9375rem;
+	line-height: 1.45;
+	letter-spacing: normal;
+}
+.site-data-notice[hidden] { display: none; }
+.site-data-notice__text { margin: 0; flex: 1 1 auto; }
+.site-data-notice__link { color: inherit; font-weight: 600; text-decoration: underline; white-space: nowrap; }
+.site-data-notice__button {
+	flex: none;
+	min-width: 3.5rem;
+	min-height: 2.5rem;
+	padding: 0 1.25rem;
+	border: 0;
+	border-radius: 0.5rem;
+	background: var(--footer-text, #1a1a1a);
+	color: var(--footer-bg, #ffffff);
+	font: inherit;
+	font-weight: 600;
+	cursor: pointer;
+}
+.site-data-notice__button:focus-visible,
+.site-data-notice__link:focus-visible { outline: 2px solid currentColor; outline-offset: 2px; }
+@media (max-width: 480px) {
+	.site-data-notice { flex-direction: column; align-items: stretch; gap: 0.75rem; }
+	.site-data-notice__button { width: 100%; }
+}
+@media print { .site-data-notice { display: none; } }
+</style>
+<script>
+(function () {
+	var notice = document.getElementById("site-data-notice");
+	if (!notice) return;
+	var KEY = "neo_data_notice";
+	var seen = false;
+	try { seen = window.localStorage.getItem(KEY) === "1"; } catch (e) {}
+	if (seen) return;
+	notice.hidden = false;
+	notice.querySelector(".site-data-notice__button").addEventListener("click", function () {
+		notice.hidden = true;
+		try { window.localStorage.setItem(KEY, "1"); } catch (e) {}
+	});
+})();
+</script>
+{%- endif %}

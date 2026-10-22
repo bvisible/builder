@@ -24,7 +24,12 @@ FACTS_RULE = (
     "the brief does not give is written without it (how to get a price, what a first visit covers) or left out. "
     "Never write a placeholder in brackets ([email address], [phone]): a detail the brief does not give is left "
     "out, and its label with it. Never write an e-mail address, a web address or a phone number that BUSINESS "
-    "DATA does not give."
+    "DATA does not give. "
+    # //// Neoffice — never a person nobody named (2026-10-22): a team page of a practice that gave no team came out as cards
+    # //// "Partenaire 1", "Partenaire 2" under a role ("Juriste"). A person is on a page only if the brief names them.
+    "Never invent a person: no team member, founder, expert or author, and no numbered stand-in such as \"Partner 1\" "
+    "or \"Team member 2\", unless the brief names them. A team or about section without named people speaks of the way "
+    "the business works, never of faces."
 )
 
 TAG = re.compile(r"<[^>]+>")
@@ -557,4 +562,82 @@ def spell_names_as_given(blocks: list, names: list[str]) -> list[str]:
 
     for block in blocks or []:
         walk(block)
+    return edits
+
+
+# //// Neoffice — a person nobody named is not published (2026-10-22). A practice that gave no team got a team page of cards
+# //// "Partenaire 1", "Partenaire 2", each under a role: stand-ins a visitor reads as a firm that does not know its own people.
+STAND_IN_PERSON = re.compile(
+    r"^(?:(?:team|staff)\s+member|member|partner|associate|employee|colleague|expert|specialist|lawyer|consultant|"
+    r"membre|partenaire|associ[ée]e?|collaborat(?:eur|rice)|employ[ée]e?|expert(?:e)?|sp[ée]cialiste|avocat(?:e)?|juriste|conseill(?:er|[èe]re)|"
+    r"mitarbeiter(?:in)?|teammitglied|partner(?:in)?|kolleg(?:e|in)|berater(?:in)?|"
+    r"collaborat(?:ore|rice)|membro|socio|dipendente|esperto|consulente)"
+    r"\s*(?:n[°o.]?\s*)?#?\d{1,2}$"
+    r"|^(?:pr[ée]nom\s+nom|nom\s+pr[ée]nom|first\s*name\s+last\s*name|full\s+name|name\s+surname|vorname\s+nachname|nome\s+cognome"
+    r"|nom\s+du\s+(?:membre|collaborateur|associ[ée])|name\s+of\s+(?:the\s+)?(?:member|partner))$",
+    re.I,
+)
+
+
+def _stand_ins(block: dict) -> int:
+    own = 1 if STAND_IN_PERSON.match(_text_of(block)) else 0
+    return own + sum(_stand_ins(c) for c in block.get("children") or [] if isinstance(c, dict))
+
+
+def _hollow(section: dict) -> bool:
+    """A section that lost its cards: what is left is a heading and a line, no picture, no list."""
+    texts, pictures = 0, 0
+    stack = [section]
+    while stack:
+        node = stack.pop()
+        if str(node.get("element") or "").lower() == "img":
+            pictures += 1
+        if _text_of(node) and not any(isinstance(c, dict) and _text_of(c) for c in node.get("children") or []):
+            texts += 1
+        stack.extend(c for c in node.get("children") or [] if isinstance(c, dict))
+    return pictures == 0 and texts <= 3
+
+
+def drop_unnamed_people(blocks: list) -> list[str]:
+    """Takes the stand-in people ("Partenaire 1", "Team member 2", "Prénom Nom") out of a written page: the card that shows one goes,
+    and a section left with only its heading goes with it. A lone stand-in line goes alone. Returns one line per edit."""
+    edits: list[str] = []
+
+    def strip(parent: dict) -> int:
+        """Removes the stand-in cards below `parent`; the number of children it removed."""
+        kids = [c for c in parent.get("children") or [] if isinstance(c, dict)]
+        hit = [c for c in kids if _stand_ins(c)]
+        removed = 0
+        if len(hit) >= 2 and all(_stand_ins(c) == 1 for c in hit):
+            keep = [c for c in parent.get("children") or [] if not (isinstance(c, dict) and c in hit)]
+            parent["children"] = keep
+            edits.append(f"{len(hit)} stand-in people dropped ('{_text_of(_first_stand_in(hit[0]))[:30]}')")
+            return len(hit)
+        for child in hit:
+            if STAND_IN_PERSON.match(_text_of(child)):
+                parent["children"] = [c for c in parent.get("children") or [] if c is not child]
+                edits.append(f"stand-in '{_text_of(child)[:30]}' dropped")
+                removed += 1
+            else:
+                removed += strip(child)
+        return removed
+
+    def _first_stand_in(block: dict) -> dict:
+        if STAND_IN_PERSON.match(_text_of(block)):
+            return block
+        for c in block.get("children") or []:
+            if isinstance(c, dict) and _stand_ins(c):
+                return _first_stand_in(c)
+        return block
+
+    for root in blocks or []:
+        if not isinstance(root, dict):
+            continue
+        for section in list(root.get("children") or []):
+            if isinstance(section, dict) and _stand_ins(section):
+                # the section itself may be a single card (no grid), or hold the cards below its container
+                # a section that lost its CARDS and kept only its heading goes; a lone stand-in line leaves the section as it is
+                if strip(section) >= 2 and _hollow(section):
+                    root["children"] = [c for c in root.get("children") or [] if c is not section]
+                    edits.append("section left with no person dropped")
     return edits

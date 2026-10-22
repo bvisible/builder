@@ -192,3 +192,36 @@ def hero_recipe(
 		f"backgroundColor: {start}, backgroundImage: '{stops}'. The ink is {ink}; the accent word of the h1 is {accent}. "
 		f"No photograph and no overlay in the hero.{sit}"
 	)
+
+
+# a hero photograph whose description the guard would keep from the image job (it names someone, a portrait, a document) is described by
+# the scene of the business instead, so the home never opens on a plain block for that reason alone (2026-10-22: the cabinet's hero)
+HERO_SCENE = {
+	"fr": "Intérieur lumineux et accueillant d'une activité de {activity}, lumière naturelle, sans personnes ni texte",
+	"en": "Bright, welcoming interior of a business in {activity}, natural light, no people, no text",
+	"de": "Heller, einladender Innenraum eines Betriebs für {activity}, natürliches Licht, ohne Personen und Text",
+	"it": "Interno luminoso e accogliente di un'attività di {activity}, luce naturale, senza persone né testo",
+}
+
+
+def rescue_hero_alt(blocks: list, names, activity: str, lang: str = "fr") -> list[str]:
+	"""Gives the picture of the first section of the home a scene to draw when its own description would keep it from the image job.
+	Only a placeholder (a photograph still to be made) is touched; a real photograph and a description the guard accepts are left as
+	they are. Returns the descriptions it replaced."""
+	from builder.site_ai.nora.layout import _walk
+	from builder.site_ai.nora.placeholders import must_not_be_drawn
+
+	scene = HERO_SCENE.get(str(lang or "fr")[:2], HERO_SCENE["fr"]).format(activity=" ".join(str(activity or "").split())[:80] or "services")
+	known = {str(n).strip().lower() for n in names or () if str(n).strip()}
+	roots = [b for b in blocks or [] if isinstance(b, dict)]
+	first = next(iter(roots[0].get("children") or []), None) if roots else None
+	replaced: list[str] = []
+	for block in _walk([first] if isinstance(first, dict) else []):
+		attrs = block.get("attributes") or {}
+		src = attrs.get("src")
+		if str(block.get("element") or "").lower() == "img" and isinstance(src, str) and "placehold.co" in src:
+			alt = str(attrs.get("alt") or "")
+			if alt and must_not_be_drawn(alt, known):
+				attrs["alt"] = scene
+				replaced.append(alt[:60])
+	return replaced
