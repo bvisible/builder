@@ -5250,3 +5250,48 @@ msgstr ""
 msgid "{0} set as primary"
 msgstr ""
 
+#. Description of the 'Show the Cookie and Privacy Notice' (Check) field in
+#. DocType 'Website Header Footer Config'
+#. DocType 'Website Header Footer Variant'
+#: builder/builder/doctype/website_header_footer_config/website_header_footer_config.json
+#: builder/builder/doctype/website_header_footer_variant/website_header_footer_variant.json
+msgid "A short notice at the foot of every page: the site uses technical cookies only and does not track, with a link to its privacy policy. Also makes a map wait for a click before it loads Google. Set by the site generator."
+msgstr "Un breve avviso in fondo a ogni pagina: il sito utilizza solo cookie tecnici e non traccia i visitatori, con un link alla propria informativa sulla privacy. Inoltre la mappa attende un clic prima di caricare Google. Impostato dal generatore del sito."
+
+#: builder/templates/includes/data_notice.html:9
+#: builder/templates/includes/header_footer/footer.html:394
+msgid "Cookies and privacy"
+msgstr "Cookie e privacy"
+
+#: builder/templates/includes/contact_form.html:175
+#: builder/templates/includes/data_notice.html:11
+#: builder/templates/includes/form_privacy_note.html:7
+#: builder/templates/includes/google_map.html:37
+#: builder/templates/includes/header_footer/footer.html:394
+msgid "Privacy policy"
+msgstr "Informativa sulla privacy"
+
+#. Label of a Check field in DocType 'Website Header Footer Config'
+#. Label of a Check field in DocType 'Website Header Footer Variant'
+#: builder/builder/doctype/website_header_footer_config/website_header_footer_config.json
+#: builder/builder/doctype/website_header_footer_variant/website_header_footer_variant.json
+msgid "Show the Cookie and Privacy Notice"
+msgstr "Mostra l'avviso su cookie e privacy"
+
+#: builder/templates/includes/google_map.html:38
+msgid "Show the map"
+msgstr "Mostra la mappa"
+
+#: builder/templates/includes/google_map.html:36
+msgid "The map is provided by Google. Loading it sends your IP address to Google, in the United States."
+msgstr "La mappa è fornita da Google. Caricandola, il vostro indirizzo IP viene inviato a Google, negli Stati Uniti."
+
+#: builder/templates/includes/data_notice.html:10
+#: builder/templates/includes/header_footer/footer.html:394
+msgid "This website only uses technical cookies. It does not track you."
+msgstr "Questo sito utilizza unicamente cookie tecnici. Non vi traccia."
+
+#: builder/templates/includes/contact_form.html:175
+#: builder/templates/includes/form_privacy_note.html:7
+msgid "Your details are only used to answer your request."
+msgstr "I vostri dati sono utilizzati unicamente per rispondere alla vostra richiesta."

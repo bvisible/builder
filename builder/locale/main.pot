@@ -7,8 +7,8 @@ msgid ""
 msgstr ""
 "Project-Id-Version: Frappe Builder VERSION\n"
 "Report-Msgid-Bugs-To: suraj@frappe.io\n"
-"POT-Creation-Date: 2026-10-20 10:20+0000\n"
-"PO-Revision-Date: 2026-10-20 10:20+0000\n"
+"POT-Creation-Date: 2026-10-22 09:14+0000\n"
+"PO-Revision-Date: 2026-10-22 09:14+0000\n"
 "Last-Translator: suraj@frappe.io\n"
 "Language-Team: suraj@frappe.io\n"
 "MIME-Version: 1.0\n"
@@ -45,7 +45,7 @@ msgstr ""
 msgid "+41 XX XXX XX XX"
 msgstr ""
 
-#: builder/public/frontend/assets/PageBuilder-f0dYv2kB.js:96
+#: builder/public/frontend/assets/PageBuilder-B9T2SvsG.js:96
 msgid ",ab(JSON.stringify(c),!1)));function l(e){let t=n.cache(e);return i&&n.hmr&&(t.needArraySpread=!0),t}function u(e,t){if(e.children&&!de(e.children)&&e.children.type===15){let n=e.children.properties.find(e=>e.key===t||e.key.content===t);return n&&n.value}}o.length&&n.transformHoist&&n.transformHoist(a,n,e)}function Mx(e,t){let{constantCache:n}=t;switch(e.type){case 1:if(e.tagType!==0)return 0;let r=n.get(e);if(r!==void 0)return r;let i=e.codegenNode;if(i.type!==13||i.isBlock&&e.tag!=="
 msgstr ""
 
@@ -169,6 +169,15 @@ msgstr ""
 msgid "A record points to wrong IP: {0}"
 msgstr ""
 
+#. Description of the 'Show the Cookie and Privacy Notice' (Check) field in
+#. DocType 'Website Header Footer Config'
+#. Description of the 'Show the Cookie and Privacy Notice' (Check) field in
+#. DocType 'Website Header Footer Variant'
+#: builder/builder/doctype/website_header_footer_config/website_header_footer_config.json
+#: builder/builder/doctype/website_header_footer_variant/website_header_footer_variant.json
+msgid "A short notice at the foot of every page: the site uses technical cookies only and does not track, with a link to its privacy policy. Also makes a map wait for a click before it loads Google. Set by the site generator."
+msgstr ""
+
 #: builder/site_ai/inspiration/site_extractor.py:266
 msgid "A site URL is required"
 msgstr ""
@@ -283,7 +292,7 @@ msgstr ""
 msgid "Active"
 msgstr ""
 
-#: builder/public/frontend/assets/PageBuilder-f0dYv2kB.js:112
+#: builder/public/frontend/assets/PageBuilder-B9T2SvsG.js:112
 #: frontend/src/components/ArrayEditor.vue:16
 #: frontend/src/components/MoreStylesPanel.vue:43
 #: frontend/src/components/ObjectEditor.vue:35
@@ -350,12 +359,12 @@ msgstr ""
 msgid "Add menu item"
 msgstr ""
 
-#: builder/public/frontend/assets/PageCode-Dxdhirxl.js:1
+#: builder/public/frontend/assets/PageCode-aMmrH3D4.js:1
 #: frontend/src/components/Settings/PageCode.vue:7
 msgid "Add meta tags, styles, and scripts to page head"
 msgstr ""
 
-#: builder/public/frontend/assets/PageCode-Dxdhirxl.js:1
+#: builder/public/frontend/assets/PageCode-aMmrH3D4.js:1
 #: frontend/src/components/Settings/PageCode.vue:17
 msgid "Add scripts to page body"
 msgstr ""
@@ -365,12 +374,12 @@ msgstr ""
 msgid "Add to the page"
 msgstr ""
 
-#: builder/public/frontend/assets/GlobalCode-Cvr8ehvi.js:1
+#: builder/public/frontend/assets/GlobalCode-C19XYcQn.js:1
 #: frontend/src/components/Settings/GlobalCode.vue:15
 msgid "Added to end of body. For adding scripts."
 msgstr ""
 
-#: builder/public/frontend/assets/GlobalCode-Cvr8ehvi.js:1
+#: builder/public/frontend/assets/GlobalCode-C19XYcQn.js:1
 #: frontend/src/components/Settings/GlobalCode.vue:6
 msgid "Added to end of head. For meta tags, styles, and scripts."
 msgstr ""
@@ -586,7 +595,7 @@ msgstr ""
 msgid "Append the original query string to the target URL"
 msgstr ""
 
-#: builder/public/frontend/assets/GlobalCode-Cvr8ehvi.js:1
+#: builder/public/frontend/assets/GlobalCode-C19XYcQn.js:1
 #: frontend/src/components/Settings/GlobalCode.vue:33
 msgid "Applies to all pages"
 msgstr ""
@@ -912,7 +921,7 @@ msgstr ""
 msgid "Black"
 msgstr ""
 
-#: builder/public/frontend/assets/TemplateGallery-BZR7vnqq.js:2
+#: builder/public/frontend/assets/TemplateGallery-DGylQF5-.js:2
 #: frontend/src/components/Templates/TemplatePageGrid.vue:12
 msgid "Blank Page"
 msgstr ""
@@ -1410,7 +1419,7 @@ msgstr ""
 
 #. Label of a Data field in DocType 'Builder Page'
 #: builder/builder/doctype/builder_page/builder_page.json
-#: builder/public/frontend/assets/PageMeta-BgkziMSq.js:1
+#: builder/public/frontend/assets/PageMeta-Cw_DCwCa.js:1
 #: frontend/src/components/Settings/PageMeta.vue:71
 msgid "Canonical URL"
 msgstr ""
@@ -1467,7 +1476,7 @@ msgstr ""
 msgid "Cart Audience"
 msgstr ""
 
-#: builder/site_ai/nora/site_builder.py:1803
+#: builder/site_ai/nora/site_builder.py:2061
 msgid "Catalogue"
 msgstr ""
 
@@ -1608,7 +1617,7 @@ msgstr ""
 msgid "Clicks"
 msgstr ""
 
-#: builder/public/frontend/assets/GlobalCode-Cvr8ehvi.js:1
+#: builder/public/frontend/assets/GlobalCode-C19XYcQn.js:1
 #: frontend/src/components/PageScript.vue:5
 #: frontend/src/components/Settings/GlobalCode.vue:22
 msgid "Client Script"
@@ -1878,7 +1887,7 @@ msgstr ""
 msgid "Contact from the website"
 msgstr ""
 
-#: builder/site_ai/nora/site_builder.py:2095 builder/site_forms.py:409
+#: builder/site_ai/nora/site_builder.py:2378 builder/site_forms.py:409
 #: builder/templates/includes/contact_form.html:32
 #: builder/templates/includes/contact_form.html:33
 msgid "Contact us"
@@ -1939,6 +1948,11 @@ msgstr ""
 
 #: frontend/src/utils/imageUtils.ts:57
 msgid "Converting..."
+msgstr ""
+
+#: builder/templates/includes/data_notice.html:9
+#: builder/templates/includes/header_footer/footer.html:394
+msgid "Cookies and privacy"
 msgstr ""
 
 #: frontend/src/components/Settings/GlobalDomains.vue:209
@@ -2313,8 +2327,8 @@ msgstr ""
 msgid "Default Language"
 msgstr ""
 
-#: builder/public/frontend/assets/PageBuilder-f0dYv2kB.js:110
-#: builder/public/frontend/assets/PageBuilder-f0dYv2kB.js:112
+#: builder/public/frontend/assets/PageBuilder-B9T2SvsG.js:110
+#: builder/public/frontend/assets/PageBuilder-B9T2SvsG.js:112
 #: frontend/src/components/PropsOptions/BooleanOptions.vue:20
 #: frontend/src/components/PropsOptions/ColorOptions.vue:5
 #: frontend/src/components/PropsOptions/ImageOptions.vue:4
@@ -2397,7 +2411,7 @@ msgstr ""
 #: builder/builder/doctype/builder_shortcode/builder_shortcode.json
 #: builder/builder/doctype/builder_site_inspiration/builder_site_inspiration.json
 #: builder/builder/doctype/website_plugin/website_plugin.json
-#: builder/public/frontend/assets/PageMeta-BgkziMSq.js:1
+#: builder/public/frontend/assets/PageMeta-Cw_DCwCa.js:1
 #: frontend/src/components/Settings/GlobalTheme.vue:325
 #: frontend/src/components/Settings/PageMeta.vue:15
 msgid "Description"
@@ -2604,7 +2618,7 @@ msgstr ""
 msgid "Drag to reorder"
 msgstr ""
 
-#: builder/public/frontend/assets/BuilderAIChatPanel-DKV5RrMB.js:33606
+#: builder/public/frontend/assets/BuilderAIChatPanel-CbV9b0Oz.js:33606
 #: frontend/src/components/BuilderAIChatPanel.vue:354
 msgid "Drop image to attach"
 msgstr ""
@@ -2700,7 +2714,7 @@ msgstr ""
 msgid "Edit in the Builder"
 msgstr ""
 
-#: builder/public/frontend/assets/TemplateGallery-BZR7vnqq.js:2
+#: builder/public/frontend/assets/TemplateGallery-DGylQF5-.js:2
 #: frontend/src/components/Templates/TemplatePageCard.vue:28
 msgid "Edit template"
 msgstr ""
@@ -2800,8 +2814,8 @@ msgstr ""
 msgid "Enter a model id to test with"
 msgstr ""
 
-#: builder/public/frontend/assets/PageBuilder-f0dYv2kB.js:110
-#: builder/public/frontend/assets/PageBuilder-f0dYv2kB.js:112
+#: builder/public/frontend/assets/PageBuilder-B9T2SvsG.js:110
+#: builder/public/frontend/assets/PageBuilder-B9T2SvsG.js:112
 #: frontend/src/components/PropsOptions/BooleanOptions.vue:35
 #: frontend/src/components/PropsOptions/NumberOptions.vue:32
 #: frontend/src/components/PropsOptions/SelectOptions.vue:14
@@ -2809,12 +2823,12 @@ msgstr ""
 msgid "Enter default value"
 msgstr ""
 
-#: builder/public/frontend/assets/PageBuilder-f0dYv2kB.js:112
+#: builder/public/frontend/assets/PageBuilder-B9T2SvsG.js:112
 #: frontend/src/components/PropsOptions/BooleanOptions.vue:16
 msgid "Enter false label display"
 msgstr ""
 
-#: builder/public/frontend/assets/PageBuilder-f0dYv2kB.js:112
+#: builder/public/frontend/assets/PageBuilder-B9T2SvsG.js:112
 #: frontend/src/components/PropsOptions/ImageOptions.vue:6
 msgid "Enter image URL or upload one"
 msgstr ""
@@ -2846,12 +2860,12 @@ msgstr ""
 msgid "Enter prop label"
 msgstr ""
 
-#: builder/public/frontend/assets/PageBuilder-f0dYv2kB.js:112
+#: builder/public/frontend/assets/PageBuilder-B9T2SvsG.js:112
 #: frontend/src/components/PropsOptions/BooleanOptions.vue:8
 msgid "Enter true label display"
 msgstr ""
 
-#: builder/public/frontend/assets/PageBuilder-f0dYv2kB.js:112
+#: builder/public/frontend/assets/PageBuilder-B9T2SvsG.js:112
 #: frontend/src/components/ArrayEditor.vue:6
 msgid "Enter value"
 msgstr ""
@@ -2926,7 +2940,7 @@ msgstr ""
 msgid "Example usage code"
 msgstr ""
 
-#: builder/public/frontend/assets/PageBuilder-f0dYv2kB.js:114
+#: builder/public/frontend/assets/PageBuilder-B9T2SvsG.js:114
 #: frontend/src/components/PageScript.vue:81
 #: frontend/src/components/PageScript.vue:139
 msgid "Example:"
@@ -3103,7 +3117,7 @@ msgstr ""
 msgid "Failed to upload font"
 msgstr ""
 
-#: builder/public/frontend/assets/PageBuilder-f0dYv2kB.js:112
+#: builder/public/frontend/assets/PageBuilder-B9T2SvsG.js:112
 #: frontend/src/components/PropsOptions/BooleanOptions.vue:12
 msgid "False Label"
 msgstr ""
@@ -3215,11 +3229,11 @@ msgstr ""
 msgid "Fixed"
 msgstr ""
 
-#: builder/site_ai/nora/site_builder.py:2927
+#: builder/site_ai/nora/site_builder.py:3303
 msgid "Fixing {0} after looking at it ({1}/{2})"
 msgstr ""
 
-#: builder/site_ai/nora/site_builder.py:3111
+#: builder/site_ai/nora/site_builder.py:3494
 msgid "Fixing {0} after the visual check"
 msgstr ""
 
@@ -3883,8 +3897,8 @@ msgstr ""
 #: builder/hf_utils/menu_integration.py:221
 #: builder/hf_utils/menu_integration.py:227 builder/page_header.py:190
 #: builder/page_header.py:239 builder/site_ai/nora/api.py:50
-#: builder/site_ai/nora/site_builder.py:1813
-#: builder/site_ai/nora/site_builder.py:1855 builder/tests/test_page_top.py:115
+#: builder/site_ai/nora/site_builder.py:2071
+#: builder/site_ai/nora/site_builder.py:2118 builder/tests/test_page_top.py:115
 #: builder/tests/test_page_top.py:120 builder/tests/test_page_top.py:132
 #: builder/tests/test_page_top.py:135 builder/tests/test_page_top.py:166
 #: builder/tests/test_page_top.py:173 builder/tests/test_page_top.py:178
@@ -3909,7 +3923,7 @@ msgstr ""
 msgid "Home page set to /{0}"
 msgstr ""
 
-#: builder/public/frontend/assets/PageBuilder-f0dYv2kB.js:118
+#: builder/public/frontend/assets/PageBuilder-B9T2SvsG.js:118
 #: frontend/src/components/LeftPanelTabs/PageRow.vue:16
 #: frontend/src/components/Settings/GlobalGeneral.vue:5
 #: frontend/src/components/Settings/PageGeneral.vue:94
@@ -4353,7 +4367,7 @@ msgstr ""
 
 #. Label of a Data field in DocType 'Builder Page'
 #: builder/builder/doctype/builder_page/builder_page.json
-#: builder/public/frontend/assets/PageMeta-BgkziMSq.js:1
+#: builder/public/frontend/assets/PageMeta-Cw_DCwCa.js:1
 #: frontend/src/components/Settings/GlobalGeneral.vue:16
 #: frontend/src/components/Settings/PageMeta.vue:81
 msgid "Language"
@@ -4361,7 +4375,7 @@ msgstr ""
 
 #. Description of the 'Language' (Data) field in DocType 'Builder Page'
 #: builder/builder/doctype/builder_page/builder_page.json
-#: builder/public/frontend/assets/PageMeta-BgkziMSq.js:1
+#: builder/public/frontend/assets/PageMeta-Cw_DCwCa.js:1
 #: frontend/src/components/Settings/PageMeta.vue:82
 msgid "Language code for HTML (e.g., en, es, fr, de). Uses default if unset."
 msgstr ""
@@ -4762,7 +4776,7 @@ msgstr ""
 msgid "Map route parameters into form variables. Example <code>/profile/:user</code>"
 msgstr ""
 
-#: builder/templates/includes/google_map.html:33
+#: builder/templates/includes/google_map.html:25
 msgid "Map showing"
 msgstr ""
 
@@ -4874,7 +4888,7 @@ msgstr ""
 msgid "Menu and theme are managed in {0}."
 msgstr ""
 
-#: builder/site_ai/nora/site_builder.py:2997
+#: builder/site_ai/nora/site_builder.py:3373
 msgid "Menu, footer and home page"
 msgstr ""
 
@@ -4917,7 +4931,7 @@ msgstr ""
 msgid "Meta"
 msgstr ""
 
-#: builder/public/frontend/assets/PageMeta-BgkziMSq.js:1
+#: builder/public/frontend/assets/PageMeta-Cw_DCwCa.js:1
 #: frontend/src/components/Settings/PageMeta.vue:37
 msgid "Meta Image"
 msgstr ""
@@ -5125,7 +5139,7 @@ msgstr ""
 
 #. Option for the 'Category' (Select) field in DocType 'Builder Shortcode'
 #: builder/builder/doctype/builder_shortcode/builder_shortcode.json
-#: builder/site_ai/nora/site_builder.py:1855
+#: builder/site_ai/nora/site_builder.py:2118
 #: frontend/src/pages/PagePreview.vue:157
 msgid "Navigation"
 msgstr ""
@@ -5276,7 +5290,7 @@ msgstr ""
 msgid "No commands found"
 msgstr ""
 
-#: builder/public/frontend/assets/PageBuilder-f0dYv2kB.js:94
+#: builder/public/frontend/assets/PageBuilder-B9T2SvsG.js:94
 #: frontend/src/components/BuilderAssets.vue:20
 msgid "No components saved"
 msgstr ""
@@ -5415,7 +5429,7 @@ msgstr ""
 msgid "No tokens match \"{0}\". Try a different search term."
 msgstr ""
 
-#: builder/public/frontend/assets/PageMeta-BgkziMSq.js:1
+#: builder/public/frontend/assets/PageMeta-Cw_DCwCa.js:1
 #: frontend/src/components/Settings/PageMeta.vue:29
 msgid "No top page on this page"
 msgstr ""
@@ -5542,6 +5556,11 @@ msgstr ""
 #: builder/builder/doctype/website_header_footer_config/website_header_footer_config.json
 #: builder/builder/doctype/website_header_footer_variant/website_header_footer_variant.json
 msgid "Nunito"
+msgstr ""
+
+#: builder/templates/includes/data_notice.html:12
+#: builder/templates/includes/header_footer/footer.html:394
+msgid "OK"
 msgstr ""
 
 #: frontend/src/components/PropsPopoverContent.vue:172
@@ -5742,14 +5761,14 @@ msgstr ""
 msgid "Opens in"
 msgstr ""
 
-#: builder/public/frontend/assets/PageMeta-BgkziMSq.js:1
+#: builder/public/frontend/assets/PageMeta-Cw_DCwCa.js:1
 #: frontend/src/components/Settings/PageMeta.vue:73
 msgid "Optional. Set this to specify a preferred version of this page for search engines."
 msgstr ""
 
 #. Label of a Tab Break field in DocType 'Builder Page'
 #: builder/builder/doctype/builder_page/builder_page.json
-#: builder/public/frontend/assets/PageBuilder-f0dYv2kB.js:112
+#: builder/public/frontend/assets/PageBuilder-B9T2SvsG.js:112
 #: frontend/src/components/BlockPropertySections/OptionsSection.ts:48
 #: frontend/src/components/PropsOptions/SelectOptions.vue:3
 msgid "Options"
@@ -6104,11 +6123,11 @@ msgstr ""
 msgid "Placement"
 msgstr ""
 
-#: builder/site_ai/nora/site_builder.py:3010
+#: builder/site_ai/nora/site_builder.py:3386
 msgid "Placing your photos"
 msgstr ""
 
-#: builder/site_ai/nora/site_builder.py:2378
+#: builder/site_ai/nora/site_builder.py:2676
 msgid "Planning the site"
 msgstr ""
 
@@ -6254,7 +6273,7 @@ msgstr ""
 msgid "Prefix of the site's Builder Tokens (<prefix>-primary, <prefix>-font-heading...). Set by the AI site build; the chrome then follows the tokens."
 msgstr ""
 
-#: builder/site_ai/nora/site_builder.py:2012
+#: builder/site_ai/nora/site_builder.py:2292
 msgid "Preparing the site"
 msgstr ""
 
@@ -6287,7 +6306,7 @@ msgstr ""
 #: builder/builder/doctype/block_template/block_template.json
 #: builder/builder/doctype/website_header_footer_config/website_header_footer_config.json
 #: builder/builder/doctype/website_header_footer_variant/website_header_footer_variant.json
-#: builder/public/frontend/assets/TemplateGallery-BZR7vnqq.js:2
+#: builder/public/frontend/assets/TemplateGallery-DGylQF5-.js:2
 #: frontend/src/components/Templates/TemplateGroupCard.vue:19
 #: frontend/src/components/Templates/TemplatePageCard.vue:16
 #: frontend/src/components/ToolbarItems/ToolbarActions.vue:17
@@ -6354,6 +6373,14 @@ msgstr ""
 msgid "Primary is for"
 msgstr ""
 
+#: builder/templates/includes/contact_form.html:175
+#: builder/templates/includes/data_notice.html:11
+#: builder/templates/includes/form_privacy_note.html:7
+#: builder/templates/includes/google_map.html:37
+#: builder/templates/includes/header_footer/footer.html:394
+msgid "Privacy policy"
+msgstr ""
+
 #. Label of a Link field in DocType 'Builder Page'
 #: builder/builder/doctype/builder_page/builder_page.json
 msgid "Project Folder"
@@ -6363,7 +6390,7 @@ msgstr ""
 msgid "Properties"
 msgstr ""
 
-#: builder/public/frontend/assets/PageBuilder-f0dYv2kB.js:112
+#: builder/public/frontend/assets/PageBuilder-B9T2SvsG.js:112
 #: frontend/src/components/BlockPropertySections/DataKeySection.ts:39
 #: frontend/src/components/ObjectEditor.vue:10
 msgid "Property"
@@ -6482,11 +6509,11 @@ msgstr ""
 msgid "Read-only preview · Use <b>Restore</b> to load this version."
 msgstr ""
 
-#: builder/site_ai/nora/site_builder.py:2135
+#: builder/site_ai/nora/site_builder.py:2418
 msgid "Reading the inspirations"
 msgstr ""
 
-#: builder/site_ai/nora/site_builder.py:2197
+#: builder/site_ai/nora/site_builder.py:2480
 msgid "Reading your photos"
 msgstr ""
 
@@ -6723,7 +6750,7 @@ msgstr ""
 msgid "Replaced in {0} blocks"
 msgstr ""
 
-#: builder/site_ai/nora/site_builder.py:2102
+#: builder/site_ai/nora/site_builder.py:2385
 msgid "Request an account"
 msgstr ""
 
@@ -6793,7 +6820,7 @@ msgstr ""
 msgid "Retrying {0}…"
 msgstr ""
 
-#: builder/site_ai/nora/site_builder.py:2240
+#: builder/site_ai/nora/site_builder.py:2534
 msgid "Reusing this site's design brief"
 msgstr ""
 
@@ -7126,7 +7153,7 @@ msgstr ""
 msgid "Search commands..."
 msgstr ""
 
-#: builder/public/frontend/assets/PageBuilder-f0dYv2kB.js:94
+#: builder/public/frontend/assets/PageBuilder-B9T2SvsG.js:94
 #: frontend/src/components/BuilderAssets.vue:6
 msgid "Search component"
 msgstr ""
@@ -7291,7 +7318,7 @@ msgstr ""
 msgid "Select date range"
 msgstr ""
 
-#: builder/public/frontend/assets/PageBuilder-f0dYv2kB.js:112
+#: builder/public/frontend/assets/PageBuilder-B9T2SvsG.js:112
 #: frontend/src/components/PropsOptions/ColorOptions.vue:10
 msgid "Select default color"
 msgstr ""
@@ -7374,7 +7401,7 @@ msgstr ""
 msgid "Session ID"
 msgstr ""
 
-#: builder/site_ai/ingestion/image_matcher.py:223
+#: builder/site_ai/ingestion/image_matcher.py:228
 msgid "Session ID is required"
 msgstr ""
 
@@ -7487,8 +7514,8 @@ msgstr ""
 #. Option for the 'Category' (Select) field in DocType 'Block Template'
 #: builder/builder/doctype/block_template/block_template.json
 #: builder/hf_utils/menu_integration.py:209 builder/page_header.py:190
-#: builder/site_ai/nora/site_builder.py:1800
-#: builder/site_ai/nora/site_builder.py:1806 builder/tests/test_page_top.py:132
+#: builder/site_ai/nora/site_builder.py:2058
+#: builder/site_ai/nora/site_builder.py:2064 builder/tests/test_page_top.py:132
 #: builder/tests/test_page_top.py:135 builder/www/404.py:39
 msgid "Shop"
 msgstr ""
@@ -7588,6 +7615,13 @@ msgstr ""
 #. Label of a Check field in DocType 'Website Header Footer Variant'
 #: builder/builder/doctype/website_header_footer_config/website_header_footer_config.json
 #: builder/builder/doctype/website_header_footer_variant/website_header_footer_variant.json
+msgid "Show the Cookie and Privacy Notice"
+msgstr ""
+
+#. Label of a Check field in DocType 'Website Header Footer Config'
+#. Label of a Check field in DocType 'Website Header Footer Variant'
+#: builder/builder/doctype/website_header_footer_config/website_header_footer_config.json
+#: builder/builder/doctype/website_header_footer_variant/website_header_footer_variant.json
 #: frontend/src/components/Settings/GlobalTheme.vue:581
 msgid "Show the author"
 msgstr ""
@@ -7605,6 +7639,10 @@ msgstr ""
 #: builder/builder/doctype/website_header_footer_config/website_header_footer_config.json
 #: builder/builder/doctype/website_header_footer_variant/website_header_footer_variant.json
 msgid "Show the custom block"
+msgstr ""
+
+#: builder/templates/includes/google_map.html:38
+msgid "Show the map"
 msgstr ""
 
 #. Description of the 'User' (Check) field in DocType 'Website Header Footer
@@ -7782,7 +7820,7 @@ msgstr ""
 msgid "Social Links"
 msgstr ""
 
-#: builder/public/frontend/assets/PageMeta-BgkziMSq.js:1
+#: builder/public/frontend/assets/PageMeta-Cw_DCwCa.js:1
 #: frontend/src/components/Settings/PageMeta.vue:47
 msgid "Social Preview"
 msgstr ""
@@ -8090,7 +8128,7 @@ msgstr ""
 
 #. Label of a Code field in DocType 'Builder Settings'
 #: builder/builder/doctype/builder_settings/builder_settings.json
-#: builder/public/frontend/assets/GlobalCode-Cvr8ehvi.js:1
+#: builder/public/frontend/assets/GlobalCode-C19XYcQn.js:1
 #: frontend/src/components/BlockPropertySections/StyleSection.ts:304
 #: frontend/src/components/Controls/SearchBlock.vue:213
 #: frontend/src/components/Settings/GlobalCode.vue:31
@@ -8459,7 +8497,7 @@ msgstr ""
 msgid "The block could not be updated."
 msgstr ""
 
-#: builder/public/frontend/assets/PageMeta-BgkziMSq.js:1
+#: builder/public/frontend/assets/PageMeta-Cw_DCwCa.js:1
 #: frontend/src/components/Settings/PageMeta.vue:30
 msgid "The breadcrumb stays in the page for search engines."
 msgstr ""
@@ -8498,8 +8536,8 @@ msgstr ""
 msgid "The design brief behind the last AI site generation (Settings > Theme shows it)."
 msgstr ""
 
-#: builder/site_ai/nora/site_builder.py:2271
-#: builder/site_ai/nora/site_builder.py:2272
+#: builder/site_ai/nora/site_builder.py:2565
+#: builder/site_ai/nora/site_builder.py:2566
 msgid "The design brief failed; the site uses default styling."
 msgstr ""
 
@@ -8563,6 +8601,10 @@ msgstr ""
 #: builder/builder/doctype/website_header_footer_config/website_header_footer_config.json
 #: builder/builder/doctype/website_header_footer_variant/website_header_footer_variant.json
 msgid "The legal name this site shows, on its contact and legal pages. Empty: the name of the company in ERPNext."
+msgstr ""
+
+#: builder/templates/includes/google_map.html:36
+msgid "The map is provided by Google. Loading it sends your IP address to Google, in the United States."
 msgstr ""
 
 #. Description of the 'Model ID' (Data) field in DocType 'Builder AI Model'
@@ -8768,7 +8810,7 @@ msgstr ""
 msgid "This provider has no API Base to ask"
 msgstr ""
 
-#: builder/public/frontend/assets/GlobalCode-Cvr8ehvi.js:1
+#: builder/public/frontend/assets/GlobalCode-C19XYcQn.js:1
 #: frontend/src/components/Settings/GlobalCode.vue:24
 msgid "This script will be executed on all the pages of your website."
 msgstr ""
@@ -8779,6 +8821,11 @@ msgstr ""
 
 #: frontend/src/components/Settings/GlobalPlugins.vue:185
 msgid "This uninstalls {0} from the site and drops its tables. Turning it off instead keeps everything and is instant."
+msgstr ""
+
+#: builder/templates/includes/data_notice.html:10
+#: builder/templates/includes/header_footer/footer.html:394
+msgid "This website only uses technical cookies. It does not track you."
 msgstr ""
 
 #. Description of the 'Body HTML' (Code) field in DocType 'Builder Page'
@@ -8833,7 +8880,7 @@ msgstr ""
 #: builder/builder/doctype/builder_ai_session/builder_ai_session.json
 #: builder/builder/doctype/builder_page/builder_page.json
 #: builder/builder/doctype/website_plugin/website_plugin.json
-#: builder/public/frontend/assets/PageMeta-BgkziMSq.js:1
+#: builder/public/frontend/assets/PageMeta-Cw_DCwCa.js:1
 #: frontend/src/components/BlogManager.vue:124
 #: frontend/src/components/Settings/PageMeta.vue:9
 #: frontend/src/utils/pageActions.ts:75
@@ -8952,7 +8999,7 @@ msgstr ""
 msgid "Top Right"
 msgstr ""
 
-#: builder/hf_utils/chrome_api.py:296
+#: builder/hf_utils/chrome_api.py:298
 #: frontend/src/components/Settings/GlobalTheme.vue:458
 msgid "Top page"
 msgstr ""
@@ -8965,7 +9012,7 @@ msgstr ""
 msgid "Top page preview"
 msgstr ""
 
-#: builder/public/frontend/assets/PageMeta-BgkziMSq.js:1
+#: builder/public/frontend/assets/PageMeta-Cw_DCwCa.js:1
 #: frontend/src/components/Settings/PageMeta.vue:23
 msgid "Top page subtitle"
 msgstr ""
@@ -9018,7 +9065,7 @@ msgstr ""
 msgid "Transparent"
 msgstr ""
 
-#: builder/public/frontend/assets/PageBuilder-f0dYv2kB.js:112
+#: builder/public/frontend/assets/PageBuilder-B9T2SvsG.js:112
 #: frontend/src/components/PropsOptions/BooleanOptions.vue:4
 msgid "True Label"
 msgstr ""
@@ -9129,7 +9176,7 @@ msgstr ""
 msgid "Under 1,000 CHF"
 msgstr ""
 
-#: builder/public/frontend/assets/PageMeta-BgkziMSq.js:1
+#: builder/public/frontend/assets/PageMeta-Cw_DCwCa.js:1
 #: frontend/src/components/Settings/PageMeta.vue:24
 msgid "Under the title, in the band at the top of this page. Empty: the description, unless the page already shows it."
 msgstr ""
@@ -9283,7 +9330,7 @@ msgstr ""
 msgid "Upload Font"
 msgstr ""
 
-#: builder/public/frontend/assets/PageMeta-BgkziMSq.js:1
+#: builder/public/frontend/assets/PageMeta-Cw_DCwCa.js:1
 #: frontend/src/components/Settings/PageMeta.vue:38
 msgid "Upload Meta Image"
 msgstr ""
@@ -9344,7 +9391,7 @@ msgstr ""
 msgid "Use for all"
 msgstr ""
 
-#: builder/public/frontend/assets/TemplateGallery-BZR7vnqq.js:2
+#: builder/public/frontend/assets/TemplateGallery-DGylQF5-.js:2
 #: frontend/src/components/Templates/TemplatePageCard.vue:14
 #: frontend/src/components/Templates/TemplatePreview.vue:20
 msgid "Use template"
@@ -9371,7 +9418,7 @@ msgstr ""
 msgid "Used in 1 page"
 msgstr ""
 
-#: builder/public/frontend/assets/PageBuilder-f0dYv2kB.js:94
+#: builder/public/frontend/assets/PageBuilder-B9T2SvsG.js:94
 #: frontend/src/components/Modals/PageListModal.vue:2
 msgid "Used in following pages"
 msgstr ""
@@ -9408,7 +9455,7 @@ msgstr ""
 
 #. Label of a Data field in DocType 'Builder Token'
 #: builder/builder/doctype/builder_token/builder_token.json
-#: builder/public/frontend/assets/PageBuilder-f0dYv2kB.js:112
+#: builder/public/frontend/assets/PageBuilder-B9T2SvsG.js:112
 #: frontend/src/components/BlockPropertySections/InputOptionsSection.ts:69
 #: frontend/src/components/DynamicValueDropdown.vue:6
 #: frontend/src/components/Modals/NewBuilderToken.vue:26
@@ -9533,11 +9580,11 @@ msgstr ""
 msgid "Visitors only"
 msgstr ""
 
-#: builder/site_ai/nora/site_builder.py:3040
+#: builder/site_ai/nora/site_builder.py:3416
 msgid "Visual check: waiting for the images"
 msgstr ""
 
-#: builder/site_ai/nora/site_builder.py:3063
+#: builder/site_ai/nora/site_builder.py:3446
 msgid "Visual check: {0}"
 msgstr ""
 
@@ -9794,11 +9841,11 @@ msgstr ""
 msgid "Writing"
 msgstr ""
 
-#: builder/site_ai/nora/site_builder.py:2828
+#: builder/site_ai/nora/site_builder.py:3197
 msgid "Writing page {0} of {1}: {2}"
 msgstr ""
 
-#: builder/site_ai/nora/site_builder.py:2223
+#: builder/site_ai/nora/site_builder.py:2517
 msgid "Writing the design brief"
 msgstr ""
 
@@ -9926,6 +9973,11 @@ msgstr ""
 #: builder/templates/includes/header_footer/components/cart_drawer.html:28
 #: builder/templates/includes/header_footer/header.html:30
 msgid "Your cart is empty"
+msgstr ""
+
+#: builder/templates/includes/contact_form.html:175
+#: builder/templates/includes/form_privacy_note.html:7
+msgid "Your details are only used to answer your request."
 msgstr ""
 
 #: builder/templates/includes/contact_page.html:421
@@ -10395,28 +10447,28 @@ msgstr ""
 msgid "{0} {1} not found"
 msgstr ""
 
-#: builder/site_ai/components.py:170
+#: builder/site_ai/components.py:171
 msgid "{0}: expected a number from {1} to {2}."
 msgstr ""
 
-#: builder/site_ai/components.py:158 builder/site_ai/components.py:164
-#: builder/site_ai/components.py:166
+#: builder/site_ai/components.py:159 builder/site_ai/components.py:165
+#: builder/site_ai/components.py:167
 msgid "{0}: expected a whole number."
 msgstr ""
 
-#: builder/site_ai/components.py:154
+#: builder/site_ai/components.py:155
 msgid "{0}: expected yes or no."
 msgstr ""
 
-#: builder/site_ai/components.py:177
+#: builder/site_ai/components.py:178
 msgid "{0}: pick one of the choices offered."
 msgstr ""
 
-#: builder/site_ai/components.py:179
+#: builder/site_ai/components.py:180
 msgid "{0}: the text cannot contain these characters or a line break: {1}"
 msgstr ""
 
-#: builder/site_ai/components.py:181
+#: builder/site_ai/components.py:182
 msgid "{0}: the text is too long ({1} characters at most)."
 msgstr ""
 
