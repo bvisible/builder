@@ -232,6 +232,18 @@ class TestWhichPagesAreWrittenHere(unittest.TestCase):
 			self.assertEqual([], plan_legal_pages(pages, "A Site", "vitrine", "de"))
 
 
+class TestTheFinalPassesLeaveTheFixedDocumentsAlone(unittest.TestCase):
+	def test_the_invented_facts_check_skips_the_policy_and_the_notice(self):
+		"""The policy says "30 jours": the delay the law gives to answer a request for access, not a figure the model made up. Told of
+		it, the final pass would have revised a page that only rewrites the same text (seen on the cabinet build, 2026-10-22)."""
+		import inspect
+
+		from builder.site_ai.nora import site_builder
+
+		source = inspect.getsource(site_builder.build_site)
+		self.assertIn('legal.is_mechanical({"type": item.get("type"), "route": item.get("planned")})', source)
+
+
 class TestTheFactsOfASite(unittest.TestCase):
 	def test_the_facts_come_from_the_verified_business_data(self):
 		facts = legal.facts_from(

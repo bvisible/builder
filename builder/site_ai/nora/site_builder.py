@@ -3452,6 +3452,10 @@ def build_site(ctx, spec: dict) -> str:
             for item in created:
                 stored_blocks, stored_script = stored_page(item["name"])
                 found = invented_facts(stored_blocks, stored_script, known, today=frappe.utils.today())
+                # //// Neoffice — the privacy policy and the legal notice are fixed documents (legal.py): "30 jours" is the delay the
+                # //// law gives to answer a request for access, not a fact the model made up, and a revision would only rewrite the same text
+                if legal.is_mechanical({"type": item.get("type"), "route": item.get("planned")}):
+                    found = []
                 # a page written later does not say again what an earlier one said (headline_echoes)
                 echoes = headline_echoes(stored_blocks, earlier)
                 earlier += page_headlines(stored_blocks, categories)
