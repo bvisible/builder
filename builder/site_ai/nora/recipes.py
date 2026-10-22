@@ -12,8 +12,9 @@ What a recipe is NOT. It is never imposed and never chosen by the code when the 
     section's `layout` what it changes (reverse the columns, the ground, the proportions);
   - each family offers several variants that differ in STRUCTURE, not in colour, so two sites do not share a skeleton;
   - the writer is told the structure is a starting point it adapts, and that the plan's adaptations win over it.
-The code only fills in when a plan ignored the field altogether (`plan_ignored_recipes`), seeded by the site so that two sites
-do not draw the same variants.
+The code never picks a recipe for a section the plan left free, whatever the plan did elsewhere: a plan that never answered the field
+(one written before the catalogue existed, kept two days, a model that ignored it) gives pages written as they always were. The only
+thing the code changes is a structure the plan named on more than MAX_REPEATS pages (`pick`).
 
 A recipe renders as the writer's own YAML: the same elements and classes, the handles of the site (no hex, no pixel size that
 is not a literal), `m_style` on every grid. Its slots are texts that start with `WRITE <role>:` followed by the guidance (length,
@@ -1335,18 +1336,10 @@ def _seed(*parts) -> int:
 	return int(hashlib.sha1("|".join(str(p) for p in parts).encode("utf-8")).hexdigest()[:8], 16)
 
 
-def plan_ignored_recipes(sections) -> bool:
-	"""True when the plan has sections a recipe could carry and not one of them names a recipe: a plan written before the catalogue
-	existed (the plan is kept two days), or a model that never answered the field."""
-	kinds = eligible_kinds()
-	eligible = [s for s in sections if s.kind in kinds]
-	return bool(eligible) and not any((getattr(s, "recipe", "") or "").strip() for s in eligible)
-
-
-def pick(section, seed: str, taken: dict, ignored: bool) -> tuple[Recipe | None, bool]:
-	"""The recipe for a plan section and whether the code chose it: the plan's own pick when it is a recipe of the section's kind that
-	the section can carry; the plan's silence stays silence (a free section) unless the whole plan ignored the field, then a recipe
-	seeded by the site and the least used so far."""
+def pick(section, seed: str, taken: dict) -> tuple[Recipe | None, bool]:
+	"""The recipe for a plan section and whether the code changed the plan's pick: the plan's own pick when it is a recipe of the section's
+	kind that the section can carry (another variant of the same family when the plan named it on too many pages of the site); the plan's
+	silence stays silence, a free section."""
 	has_component = bool((getattr(section, "component", "") or "").strip())
 	named = (getattr(section, "recipe", "") or "").strip()
 	candidates = recipes_for(section.kind, has_component)
@@ -1362,13 +1355,7 @@ def pick(section, seed: str, taken: dict, ignored: bool) -> tuple[Recipe | None,
 					ordered = others[start:] + others[:start]
 					return min(ordered, key=lambda c: taken.get(c.id, 0)), True
 			return r, False
-		return None, False
-	if not ignored or not candidates:
-		return None, False
-	start = _seed(seed, section.kind) % len(candidates)
-	ordered = candidates[start:] + candidates[:start]
-	best = min(ordered, key=lambda r: taken.get(r.id, 0))
-	return best, True
+	return None, False
 
 
 def allocate_photos(recipe_: Recipe, section_photos: list[str], pool: list[str], mint) -> list[str]:
@@ -1433,13 +1420,12 @@ def uses_for_page(
 	skip_kinds=("hero",),
 ) -> dict[int, Use]:
 	"""{section index: Use} for the sections of a planned page that carry a recipe. `taken` counts the recipes already used on the
-	site, so that a plan which ignored the field does not draw the same variant everywhere; `budget` ({"left": n}) the generated
+	site, so that the same structure is not drawn on every page; `budget` ({"left": n}) the generated
 	photographs the site may still spend, and `left_out` collects the recipes dropped for want of one."""
 	taken = taken if taken is not None else {}
 	budget = budget if budget is not None else {"left": image_budget()}
 	look = Look(handles, palette)
 	held_back = withheld_families(material)
-	ignored = plan_ignored_recipes(planned_page.sections)
 	pool = list(page_photos)
 	for s in planned_page.sections:
 		for url in getattr(s, "photos", None) or []:
@@ -1450,7 +1436,7 @@ def uses_for_page(
 	for i, s in enumerate(planned_page.sections):
 		if s.kind in skip_kinds:
 			continue
-		r, by_code = pick(s, f"{seed}|{planned_page.route}|{i}", taken, ignored)
+		r, by_code = pick(s, f"{seed}|{planned_page.route}|{i}", taken)
 		if r is None or r.id in used_here or r.family in held_back:
 			continue
 		missing = max(0, r.photos - len(getattr(s, "photos", None) or []) - len(pool))

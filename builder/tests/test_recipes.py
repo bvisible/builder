@@ -1,7 +1,7 @@
 # //// Neoffice — added file (no upstream equivalent): section recipes are structures the plan proposes and the writer adapts.
 """A library of section compositions with slots for the copy and the photographs (site_ai/nora/recipes.py). They are proposals:
-the plan picks one by id or leaves the section free, each family offers variants that differ in structure, and the code only
-fills in when a plan ignored the field. No model is called."""
+the plan picks one by id or leaves the section free, each family offers variants that differ in structure, and the code never
+picks one for a section the plan left free. No model is called."""
 
 import re
 import unittest
@@ -286,25 +286,18 @@ class TestThePlanChooses(unittest.TestCase):
 		)
 		self.assertEqual(sorted(got), [1])
 
-	def test_a_plan_that_ignored_the_field_is_filled_in_by_a_seed_of_the_site(self):
-		planned = page(section("two-column"), section("faq"), section("figures"))
-		a, _ = uses(planned, seed="Auberge A")
-		self.assertEqual(sorted(a), [0, 1, 2])
-		self.assertTrue(all(u.fallback for u in a.values()))
-		picks = {tuple(uses(planned, seed=f"site {n}")[0][i].recipe.id for i in (0, 1, 2)) for n in range(12)}
-		self.assertGreater(len(picks), 3, "two sites must not draw the same skeletons")
+	def test_a_plan_that_never_answered_the_field_gives_pages_written_as_they_always_were(self):
+		# a plan written before the catalogue existed (kept two days), a model that ignored it, a plan with its own geometry: no recipe is drawn
+		planned = page(
+			section("two-column"), section("faq"), section("figures"), section("statement"), section("cta")
+		)
+		got, made = uses(planned, seed="Auberge A")
+		self.assertEqual(got, {})
+		self.assertEqual(made, [])
 
 	def test_a_plan_that_named_one_recipe_is_not_filled_in(self):
 		got, _ = uses(page(section("two-column", "two-column.halves"), section("faq"), section("figures")))
 		self.assertEqual(sorted(got), [0])
-
-	def test_the_fallback_spreads_the_variants_over_the_site(self):
-		taken = {}
-		seen = []
-		for n in range(3):
-			got, _ = uses(page(section("two-column"), route=f"p{n}", title=f"P{n}"), taken=taken)
-			seen.append(got[0].recipe.id)
-		self.assertEqual(len(set(seen)), 3)
 
 
 class TestWhatTheBusinessGave(unittest.TestCase):
@@ -623,8 +616,12 @@ class TestThePageBrief(unittest.TestCase):
 
 	def test_the_structures_are_drawn_once_per_page_and_kept_for_its_revisions(self):
 		site = {}
-		first = self.brief([section("two-column"), section("faq")], site=site)
-		again = self.brief([section("two-column"), section("faq")], site=site)
+		first = self.brief(
+			[section("two-column", "two-column.framed"), section("faq", "faq.side")], site=site
+		)
+		again = self.brief(
+			[section("two-column", "two-column.framed"), section("faq", "faq.side")], site=site
+		)
 		self.assertEqual(first, again)
 		self.assertIn("STARTING STRUCTURES", first)
 
