@@ -55,6 +55,29 @@ KNOWN_PAGES = {
     "impressum": ("legal-notice", "legal"),
 }
 
+# //// Neoffice — the titles of the other two languages of the generator (2026-10-23). Only French and English titles were known: a German
+# //// site's "Startseite" was no home (typed "generic", routed "startseite", no hero, and the root of the site served the instance's own
+# //// default page), its "Leistungen" no services page, its "Über uns" no about page. Every title is the bare form (lower case, no accent).
+# //// The routes stay the canonical ones, as for a French site ("Prestations" is /services).
+_OTHER_LANGUAGE_PAGES = {
+    ("home", "accueil"): ("startseite", "start", "willkommen", "hauptseite", "pagina iniziale", "pagina principale", "benvenuti"),
+    ("about", "about"): ("uber uns", "ueber uns", "wer wir sind", "unser unternehmen", "das unternehmen", "uber das unternehmen", "chi siamo", "la nostra storia", "su di noi"),
+    ("services", "services"): ("leistungen", "dienstleistungen", "angebot", "unsere leistungen", "unser angebot", "leistungsangebot", "servizi", "prestazioni", "i nostri servizi", "cosa facciamo"),
+    ("contact", "contact"): ("kontakt", "kontaktieren sie uns", "kontaktformular", "contatti", "contatto", "contattaci", "contattateci"),
+    ("faq", "faq"): ("haufige fragen", "fragen und antworten", "domande frequenti"),
+    ("team", "team"): ("unser team", "das team", "il team", "il nostro team", "squadra"),
+    ("blog", "blog"): ("neuigkeiten", "aktuelles", "news", "magazin", "novita", "notizie", "attualita"),
+    ("testimonials", "testimonials"): ("kundenstimmen", "kundenmeinungen", "bewertungen", "testimonianze", "recensioni"),
+    ("shop", "shop"): ("onlineshop", "online-shop", "webshop", "produkte", "negozio", "negozio online", "shop online", "prodotti"),
+    ("pricing", "pricing"): ("preise", "tarife", "preisliste", "unsere preise", "prezzi", "tariffe", "listino prezzi"),
+    ("projects", "portfolio"): ("projekte", "unsere projekte", "referenzen", "referenzprojekte", "galerie", "progetti", "i nostri progetti", "realizzazioni", "referenze"),
+    ("features", "features"): ("funktionen", "eigenschaften", "funzionalita", "caratteristiche"),
+    ("terms-conditions", "legal"): ("allgemeine geschaftsbedingungen", "allgemeine geschaeftsbedingungen", "nutzungsbedingungen", "condizioni generali", "condizioni generali di vendita", "termini e condizioni"),
+    ("privacy-policy", "legal"): ("datenschutzerklarung", "datenschutzerklaerung", "datenschutzhinweise", "informativa sulla privacy", "informativa privacy"),
+    ("legal-notice", "legal"): ("note legali",),
+}
+KNOWN_PAGES.update({title: page for page, titles in _OTHER_LANGUAGE_PAGES.items() for title in titles})
+
 # a section asking for proof, figures, prices or people is filled from the brief or left out: asked
 # for "proof: testimonials, figures" and "three plans side by side", a practice about to open came
 # out with a patient's testimonial, three prices and a "most chosen" badge, and its contact page
@@ -1936,7 +1959,7 @@ def plan_legal_pages(pages: list[dict], profile: str | None, site_type: str, lan
         if any(route in known for route in planned | already):
             continue
         route, title = LEGAL_PLANNED[kind]
-        title = legal.title("privacy" if kind == "privacy" else "notice", lang) if kind != "terms" else _(title, lang=lang)
+        title = legal.title({"terms": "terms", "privacy": "privacy"}.get(kind, "notice"), lang)
         out.append({"title": title, "route": route, "type": "legal"})
     return out
 
@@ -2711,7 +2734,11 @@ def build_site(ctx, spec: dict) -> str:
         if legal.is_mechanical(page):
             import datetime
 
-            facts = legal.facts_from(contact_data, site_name, legal.uses_of(profile, site_type))
+            uses = legal.uses_of(profile, site_type)
+            # a profile that sells (an account to request, a basket, an order) is a shop for the policy whatever its site type: the
+            # build treats it as one for its terms and its footer (the same condition as the routes below)
+            uses["shop"] = bool(uses.get("shop") or (profile and _profile_sells(profile) and _webshop_installed() and not _other_business(profile, site_name)))
+            facts = legal.facts_from(contact_data, site_name, uses)
             yaml_text = legal.page_yaml(legal.kind_of(page), facts, lang_code, handles, palette, datetime.date.today())
             made, made_script = expand_page_yaml(yaml_text)
             return (made, made_script, None) if made else ([], "", "the legal page could not be expanded")

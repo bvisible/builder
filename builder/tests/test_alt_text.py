@@ -60,6 +60,16 @@ class TestEveryPictureGetsOne(unittest.TestCase):
 		alt_text.ensure_alts(blocks, "Accueil", "Chez Test")
 		self.assertEqual(["Une cuisine de saison"], alts(blocks))
 
+	def test_a_tag_does_not_leave_a_space_before_the_punctuation(self):
+		blocks = body(section(img(), text("h2", "Nos <em>spécialités</em>.")))
+		alt_text.ensure_alts(blocks, "Accueil", "Chez Test")
+		self.assertEqual(["Nos spécialités."], alts(blocks))
+
+	def test_a_line_break_is_a_space(self):
+		blocks = body(section(img(), text("h2", "Nos vins<br>et nos fromages")))
+		alt_text.ensure_alts(blocks, "Accueil", "Chez Test")
+		self.assertEqual(["Nos vins et nos fromages"], alts(blocks))
+
 	def test_a_heading_inside_a_tag_is_read_as_text(self):
 		blocks = body(section(img(), text("h2", "Notre <em>histoire</em>")))
 		alt_text.ensure_alts(blocks, "Accueil", "Chez Test")
@@ -120,6 +130,58 @@ class TestWhatIsLeftAlone(unittest.TestCase):
 	def test_a_page_without_pictures_is_untouched(self):
 		self.assertEqual([], alt_text.ensure_alts(body(section(text("h2", "Pain"))), "Accueil", "Chez Test"))
 		self.assertEqual([], alt_text.ensure_alts([], "Accueil", "Chez Test"))
+
+
+def bound(element, prop, key, **extra):
+	node = {"element": element, "dynamicValues": [{"key": key, "property": prop, "type": "key" if prop == "innerHTML" else "attribute"}]}
+	node.update(extra)
+	return node
+
+
+def repeated_card(*children):
+	return {"element": "div", "isRepeaterBlock": True, "children": [{"element": "div", "children": list(children)}]}
+
+
+class TestThePicturesOfARepeatedCard(unittest.TestCase):
+	"""The picture of a card repeated over the page data takes its src from the item: its alt is the title of the same item, not one
+	text for every card (seen as the open question of the 22.10 review)."""
+
+	def card(self, alt=None, alt_bound=False):
+		picture = bound("img", "src", "image", attributes={"src": ""} if alt is None else {"src": "", "alt": alt})
+		if alt_bound:
+			picture["dynamicValues"].append({"key": "caption", "property": "alt", "type": "attribute"})
+		return repeated_card(picture, bound("h3", "innerHTML", "title", innerHTML=""))
+
+	def test_the_alt_is_bound_to_the_field_the_heading_of_the_card_shows(self):
+		blocks = body(section(self.card()))
+		edits = alt_text.ensure_alts(blocks, "La carte", "Chez Test")
+		picture = blocks[0]["children"][0]["children"][0]["children"][0]["children"][0]
+		self.assertIn({"key": "title", "property": "alt", "type": "attribute"}, picture["dynamicValues"])
+		self.assertEqual(1, len(edits))
+		self.assertIn("title", edits[0])
+
+	def test_an_alt_the_writer_bound_is_left_alone(self):
+		blocks = body(section(self.card(alt_bound=True)))
+		self.assertEqual([], alt_text.ensure_alts(blocks, "La carte", "Chez Test"))
+		picture = blocks[0]["children"][0]["children"][0]["children"][0]["children"][0]
+		self.assertEqual(1, sum(1 for d in picture["dynamicValues"] if d["property"] == "alt"))
+
+	def test_a_bound_alt_is_not_a_missing_one(self):
+		blocks = body(section(self.card(alt_bound=True)))
+		self.assertEqual([], alt_text.pictures_without_alt(blocks))
+
+	def test_after_the_pass_the_card_picture_is_not_missing(self):
+		blocks = body(section(self.card()))
+		self.assertNotEqual([], alt_text.pictures_without_alt(blocks))
+		alt_text.ensure_alts(blocks, "La carte", "Chez Test")
+		self.assertEqual([], alt_text.pictures_without_alt(blocks))
+
+	def test_a_repeated_picture_with_no_heading_takes_the_title_of_the_page(self):
+		picture = bound("img", "src", "image", attributes={"src": ""})
+		blocks = body(section(repeated_card(picture)))
+		alt_text.ensure_alts(blocks, "La carte", "Chez Test")
+		self.assertEqual("La carte", picture["attributes"]["alt"])
+		self.assertNotIn("alt", [d["property"] for d in picture["dynamicValues"]])
 
 
 class TestNothingIsLeftWithoutOne(unittest.TestCase):

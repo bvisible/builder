@@ -96,6 +96,23 @@ class TestThePrivacyPolicyDescribesWhatTheSiteDoes(unittest.TestCase):
 			self.assertNotIn("Google", bare, lang)
 			self.assertIn("Google", full, lang)
 
+	def test_a_site_that_sells_speaks_of_the_account_the_basket_and_the_orders(self):
+		for lang in legal.LANGUAGES:
+			shop = legal.plain_text("privacy", FULL, lang, TODAY)
+			bare = legal.plain_text("privacy", BARE, lang, TODAY)
+			self.assertIn(legal.text(lang, "p_cookies_shop", FULL, TODAY), shop, lang)
+			self.assertNotIn(legal.text(lang, "p_cookies_shop", BARE, TODAY), bare, lang)
+			self.assertIn(legal.TEXT[lang]["p_shop_h"], headings("privacy", FULL, lang))
+
+	def test_a_profile_that_sells_is_a_shop_for_the_policy_whatever_its_site_type(self):
+		"""A B2B or B2C profile has an account to request and a basket: the build gives it its terms, so its policy describes them too."""
+		import inspect
+
+		from builder.site_ai.nora import site_builder
+
+		source = inspect.getsource(site_builder.build_site)
+		self.assertIn('uses["shop"] = bool(uses.get("shop") or (profile and _profile_sells(profile)', source)
+
 	def test_the_assistant_that_reads_messages_is_told_only_to_a_site_with_a_form(self):
 		for lang in legal.LANGUAGES:
 			self.assertNotIn(legal.text(lang, "p_form_ai", BARE, TODAY), legal.plain_text("privacy", BARE, lang, TODAY))
@@ -221,6 +238,8 @@ class TestWhichPagesAreWrittenHere(unittest.TestCase):
 				self.assertTrue(all(p["type"] == "legal" for p in added))
 			shop = plan_legal_pages([], "A Shop", "ecommerce", "fr")
 			self.assertEqual(["terms-conditions", "privacy-policy", "legal-notice"], [p["route"] for p in shop])
+			# the terms carry the name the country's shops give them (a German shop says AGB, not "Bedingungen & Konditionen")
+			self.assertEqual("Allgemeine Geschäftsbedingungen", plan_legal_pages([], "A Shop", "ecommerce", "de")[0]["title"])
 
 	def test_a_page_the_client_asked_for_under_another_name_is_not_planned_twice(self):
 		from builder.site_ai.nora.site_builder import normalise_pages, plan_legal_pages

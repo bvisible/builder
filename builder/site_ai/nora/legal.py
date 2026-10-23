@@ -39,10 +39,10 @@ SUBPROCESSORS = {
 }
 
 TITLES = {
-	"fr": {"privacy": "Politique de confidentialité", "notice": "Mentions légales"},
-	"en": {"privacy": "Privacy Policy", "notice": "Legal Notice"},
-	"de": {"privacy": "Datenschutzerklärung", "notice": "Impressum"},
-	"it": {"privacy": "Informativa sulla privacy", "notice": "Note legali"},
+	"fr": {"privacy": "Politique de confidentialité", "notice": "Mentions légales", "terms": "Conditions générales"},
+	"en": {"privacy": "Privacy Policy", "notice": "Legal Notice", "terms": "Terms & Conditions"},
+	"de": {"privacy": "Datenschutzerklärung", "notice": "Impressum", "terms": "Allgemeine Geschäftsbedingungen"},
+	"it": {"privacy": "Informativa sulla privacy", "notice": "Note legali", "terms": "Condizioni generali"},
 }
 
 MONTHS = {
@@ -71,8 +71,9 @@ TEXT = {
 		"p_form_ai": "Selon la configuration du site, les messages peuvent être lus par un assistant automatisé (intelligence artificielle) qui en rédige un résumé pour faciliter leur traitement. Cet assistant fonctionne sur des serveurs situés en Suisse et ne prend aucune décision à votre sujet : c'est une personne qui répond à votre message.",
 		"p_news_h": "Lettre d'information",
 		"p_news": "Si vous vous inscrivez à notre lettre d'information, nous utilisons votre adresse e-mail pour vous l'envoyer. Vous pouvez vous désinscrire à tout moment, par le lien présent dans chaque envoi ou en nous écrivant.",
-		"p_shop_h": "Commandes et paiements",
-		"p_shop": "Si vous passez commande, nous traitons les données nécessaires à l'exécution du contrat : votre identité, vos adresses de facturation et de livraison, vos coordonnées et le contenu de votre commande. Le paiement est traité par le prestataire de paiement que vous choisissez au moment de la commande, qui est responsable de ses propres traitements. Les pièces comptables sont conservées dix ans, comme la loi suisse l'exige.",
+		"p_shop_h": "Compte client, commandes et paiements",
+		"p_cookies_shop": "Sur ce site de vente, la connexion à votre compte et votre panier utilisent aussi un cookie technique, supprimé à la fin de la session ou à la déconnexion.",
+		"p_shop": "Si vous demandez un compte ou passez commande, nous traitons les données nécessaires à l'exécution du contrat : votre identité, vos adresses de facturation et de livraison, vos coordonnées et le contenu de votre commande. Le paiement est traité par le prestataire de paiement que vous choisissez au moment de la commande, qui est responsable de ses propres traitements. Les pièces comptables sont conservées dix ans, comme la loi suisse l'exige.",
 		"p_map_h": "Carte",
 		"p_map": "La carte Google Maps n'est chargée que si vous cliquez sur « Afficher la carte ». Votre adresse IP et des données techniques sont alors transmises à Google, aux États-Unis, qui peut en déduire que vous avez consulté cette page. Tant que vous ne cliquez pas, aucune donnée n'est transmise à Google.",
 		"p_recip_h": "Destinataires et hébergement",
@@ -124,8 +125,9 @@ TEXT = {
 		"p_form_ai": "Depending on how the website is set up, messages may be read by an automated assistant (artificial intelligence) that writes a summary to make them easier to handle. This assistant runs on servers located in Switzerland and takes no decision about you: a person answers your message.",
 		"p_news_h": "Newsletter",
 		"p_news": "If you subscribe to our newsletter, we use your e-mail address to send it to you. You can unsubscribe at any time, with the link in every issue or by writing to us.",
-		"p_shop_h": "Orders and payments",
-		"p_shop": "If you place an order, we process the data needed to perform the contract: your identity, your billing and delivery addresses, your contact details and the content of your order. Payment is handled by the payment provider you choose when you order, which is responsible for its own processing. Accounting records are kept for ten years, as Swiss law requires.",
+		"p_shop_h": "Customer account, orders and payments",
+		"p_cookies_shop": "On this shop, signing in to your account and your basket also use a technical cookie, removed at the end of the session or when you sign out.",
+		"p_shop": "If you request an account or place an order, we process the data needed to perform the contract: your identity, your billing and delivery addresses, your contact details and the content of your order. Payment is handled by the payment provider you choose when you order, which is responsible for its own processing. Accounting records are kept for ten years, as Swiss law requires.",
 		"p_map_h": "Map",
 		"p_map": "The Google Maps map is loaded only if you click “Show the map”. Your IP address and technical data are then sent to Google, in the United States, which can tell that you viewed this page. As long as you do not click, no data is sent to Google.",
 		"p_recip_h": "Recipients and hosting",
@@ -177,8 +179,9 @@ TEXT = {
 		"p_form_ai": "Je nach Einrichtung der Website können Nachrichten von einem automatisierten Assistenten (künstliche Intelligenz) gelesen werden, der eine Zusammenfassung verfasst, um die Bearbeitung zu erleichtern. Dieser Assistent läuft auf Servern in der Schweiz und trifft keine Entscheidung über Sie: Eine Person beantwortet Ihre Nachricht.",
 		"p_news_h": "Newsletter",
 		"p_news": "Wenn Sie unseren Newsletter abonnieren, verwenden wir Ihre E-Mail-Adresse, um ihn Ihnen zuzustellen. Sie können sich jederzeit abmelden, über den Link in jeder Ausgabe oder indem Sie uns schreiben.",
-		"p_shop_h": "Bestellungen und Zahlungen",
-		"p_shop": "Wenn Sie bestellen, bearbeiten wir die Daten, die für die Vertragserfüllung nötig sind: Ihre Identität, Ihre Rechnungs- und Lieferadresse, Ihre Kontaktangaben und den Inhalt Ihrer Bestellung. Die Zahlung wird vom Zahlungsdienstleister abgewickelt, den Sie bei der Bestellung wählen und der für seine eigenen Bearbeitungen verantwortlich ist. Buchungsbelege werden, wie vom schweizerischen Recht verlangt, zehn Jahre aufbewahrt.",
+		"p_shop_h": "Kundenkonto, Bestellungen und Zahlungen",
+		"p_cookies_shop": "In diesem Shop verwenden die Anmeldung bei Ihrem Konto und Ihr Warenkorb ebenfalls ein technisches Cookie, das am Ende der Sitzung oder beim Abmelden gelöscht wird.",
+		"p_shop": "Wenn Sie ein Konto beantragen oder bestellen, bearbeiten wir die Daten, die für die Vertragserfüllung nötig sind: Ihre Identität, Ihre Rechnungs- und Lieferadresse, Ihre Kontaktangaben und den Inhalt Ihrer Bestellung. Die Zahlung wird vom Zahlungsdienstleister abgewickelt, den Sie bei der Bestellung wählen und der für seine eigenen Bearbeitungen verantwortlich ist. Buchungsbelege werden, wie vom schweizerischen Recht verlangt, zehn Jahre aufbewahrt.",
 		"p_map_h": "Karte",
 		"p_map": "Die Google-Maps-Karte wird nur geladen, wenn Sie auf «Karte anzeigen» klicken. Ihre IP-Adresse und technische Daten werden dann an Google in den USA übermittelt, wo erkannt werden kann, dass Sie diese Seite besucht haben. Solange Sie nicht klicken, werden keine Daten an Google übermittelt.",
 		"p_recip_h": "Empfänger und Hosting",
@@ -230,8 +233,9 @@ TEXT = {
 		"p_form_ai": "A seconda della configurazione del sito, i messaggi possono essere letti da un assistente automatizzato (intelligenza artificiale) che ne redige un riassunto per facilitarne la gestione. Questo assistente funziona su server situati in Svizzera e non prende alcuna decisione su di voi: è una persona a rispondere al vostro messaggio.",
 		"p_news_h": "Newsletter",
 		"p_news": "Se vi iscrivete alla nostra newsletter, utilizziamo il vostro indirizzo e-mail per inviarvela. Potete annullare l'iscrizione in qualsiasi momento, tramite il link presente in ogni invio o scrivendoci.",
-		"p_shop_h": "Ordini e pagamenti",
-		"p_shop": "Se effettuate un ordine, trattiamo i dati necessari all'esecuzione del contratto: la vostra identità, gli indirizzi di fatturazione e di consegna, i recapiti e il contenuto dell'ordine. Il pagamento è gestito dal fornitore di servizi di pagamento che scegliete al momento dell'ordine, responsabile dei propri trattamenti. I documenti contabili sono conservati per dieci anni, come richiede il diritto svizzero.",
+		"p_shop_h": "Account cliente, ordini e pagamenti",
+		"p_cookies_shop": "In questo negozio, l'accesso al vostro account e il carrello utilizzano anch'essi un cookie tecnico, eliminato al termine della sessione o alla disconnessione.",
+		"p_shop": "Se richiedete un account o effettuate un ordine, trattiamo i dati necessari all'esecuzione del contratto: la vostra identità, gli indirizzi di fatturazione e di consegna, i recapiti e il contenuto dell'ordine. Il pagamento è gestito dal fornitore di servizi di pagamento che scegliete al momento dell'ordine, responsabile dei propri trattamenti. I documenti contabili sono conservati per dieci anni, come richiede il diritto svizzero.",
 		"p_map_h": "Mappa",
 		"p_map": "La mappa di Google Maps viene caricata solo se cliccate su «Mostra la mappa». Il vostro indirizzo IP e dati tecnici sono allora trasmessi a Google, negli Stati Uniti, che può dedurne che avete consultato questa pagina. Finché non cliccate, nessun dato è trasmesso a Google.",
 		"p_recip_h": "Destinatari e hosting",
@@ -391,7 +395,7 @@ def privacy_sections(facts: Facts, lang: str, today) -> list[tuple[str, list]]:
 	sections: list[tuple[str, list]] = [("", [t("updated"), t("p_intro")])]
 	sections.append((t("p_controller_h"), [t("p_controller")]))
 	sections.append((t("p_visit_h"), [t("p_visit")]))
-	sections.append((t("p_cookies_h"), [t("p_cookies")]))
+	sections.append((t("p_cookies_h"), [t("p_cookies")] + ([t("p_cookies_shop")] if facts.shop else [])))
 	if facts.form:
 		sections.append((t("p_form_h"), [t("p_form"), t("p_form_ai")]))
 	if facts.newsletter:
