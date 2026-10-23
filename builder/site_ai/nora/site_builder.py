@@ -1944,13 +1944,20 @@ LEGAL_PLANNED = {
 }
 
 
+def sells_to_visitors(profile: str | None, site_type: str) -> bool:
+    """Whether the site is a shop for its legal pages: a storefront by its type, or a profile that sells (an account to request, a basket,
+    an order). The terms and the privacy policy follow the same answer (2026-10-23: the terms were planned for such a profile and its
+    policy spoke of neither accounts nor orders, because the policy asked a narrower question than the plan)."""
+    return site_type in ("ecommerce", "ecommerce_search") or bool(profile and _profile_sells(profile))
+
+
 def plan_legal_pages(pages: list[dict], profile: str | None, site_type: str, lang: str = "fr") -> list[dict]:
     """The legal pages a site must have and does not: neither already planned nor already on the site.
 
     //// Neoffice — every site carries its privacy policy and its legal notice (2026-10-22, legal.py): the Swiss
     Federal Act on Data Protection (art. 19) asks that a visitor be told who processes what they give and why, and
     a showcase site has a contact form like the others. The terms stay a shop's: only a shop sells under them."""
-    sells = site_type in ("ecommerce", "ecommerce_search") or bool(profile and _profile_sells(profile))
+    sells = sells_to_visitors(profile, site_type)
     planned = {str(p.get("route") or "").strip("/").lower() for p in pages}
     already = {route.strip("/") for route, _ in legal_pages(profile)}
     out: list[dict] = []
@@ -2735,9 +2742,8 @@ def build_site(ctx, spec: dict) -> str:
             import datetime
 
             uses = legal.uses_of(profile, site_type)
-            # a profile that sells (an account to request, a basket, an order) is a shop for the policy whatever its site type: the
-            # build treats it as one for its terms and its footer (the same condition as the routes below)
-            uses["shop"] = bool(uses.get("shop") or (profile and _profile_sells(profile) and _webshop_installed() and not _other_business(profile, site_name)))
+            # the same answer as the plan's: a site whose terms were planned is a shop for its policy too (sells_to_visitors)
+            uses["shop"] = sells_to_visitors(profile, site_type)
             facts = legal.facts_from(contact_data, site_name, uses)
             yaml_text = legal.page_yaml(legal.kind_of(page), facts, lang_code, handles, palette, datetime.date.today())
             made, made_script = expand_page_yaml(yaml_text)
@@ -3008,11 +3014,22 @@ def build_site(ctx, spec: dict) -> str:
                     if scrubbed:
                         ai_log("info", "Placeholders dropped", page=page["title"], edits=scrubbed[:6])
                     # //// Neoffice — and a person nobody named is not published: "Partenaire 1" under a role (facts.drop_unnamed_people)
-                    from builder.site_ai.nora.facts import drop_unnamed_people
+                    from builder.site_ai.nora.facts import (
+                        drop_invented_people,
+                        drop_invented_people_rows,
+                        drop_unnamed_people,
+                    )
 
                     unnamed = drop_unnamed_people(blocks)
                     if unnamed:
                         ai_log("info", "Stand-in people dropped", page=page["title"], edits=unnamed[:6])
+                    # //// Neoffice — and so is a believable one the brief does not name: "Hans Lindenhof, Inhaber" (facts.drop_invented_people),
+                    # //// whether the cards are written out or repeated over the page's data
+                    people_known = known_text(site, contact_prompt)
+                    invented_people = drop_invented_people(blocks, people_known)
+                    rows_dropped, data_script = drop_invented_people_rows(blocks, data_script, people_known)
+                    if invented_people or rows_dropped:
+                        ai_log("info", "People the brief does not name dropped", page=page["title"], edits=[*invented_people, *rows_dropped][:6])
                     # //// Neoffice — nor a picture whose file does not exist: shown a folder of
                     # //// marque-<brand>.jpg the writer invented the one brand it was missing
                     # //// (facts.drop_missing_pictures)

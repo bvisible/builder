@@ -111,7 +111,7 @@ class TestThePrivacyPolicyDescribesWhatTheSiteDoes(unittest.TestCase):
 		from builder.site_ai.nora import site_builder
 
 		source = inspect.getsource(site_builder.build_site)
-		self.assertIn('uses["shop"] = bool(uses.get("shop") or (profile and _profile_sells(profile)', source)
+		self.assertIn('uses["shop"] = sells_to_visitors(profile, site_type)', source)
 
 	def test_the_assistant_that_reads_messages_is_told_only_to_a_site_with_a_form(self):
 		for lang in legal.LANGUAGES:

@@ -641,3 +641,201 @@ def drop_unnamed_people(blocks: list) -> list[str]:
                     root["children"] = [c for c in root.get("children") or [] if c is not section]
                     edits.append("section left with no person dropped")
     return edits
+
+
+# //// Neoffice — a person the brief does not name is not published, even with a believable name (2026-10-23). Told never to invent a person,
+# //// the writer of a German site's "Über uns" still gave a family of three: "Hans Lindenhof, Inhaber", "Anna Lindenhof, Planerin", a bio each
+# //// (the brief said "a family business, third generation" and named nobody). The cards were a repeated template, their names in the page's
+# //// data. A visitor reads each as true. A card, or a row of the data, whose name is a forename and a surname the brief does not contain,
+# //// inside a section about the team, goes, with the section when it has nothing else.
+TEAM_CONTEXT = re.compile(
+    r"\b(?:team|[eé]quipe|famille|familie|famiglia|mitarbeit\w*|inhaber\w*|gr[uü]nder\w*|fondat\w*|fondator\w*|collaborat\w*|squadra|staff|personen|menschen|persone)\b",
+    re.I,
+)
+PERSON_NAME = re.compile(
+    r"^(?:(?:Dr|Prof|Me|Maître|Herr|Frau|Dott|Mag|Dipl)\.?\s+)?[A-ZÀ-ÖØ-Þ][^\W\d_]{1,}(?:\s+(?:de|von|van|di|da|du|del|della|le|la)\s+|\s+)[A-ZÀ-ÖØ-Þ][^\W\d_'’-]{1,}(?:[-'’][A-ZÀ-ÖØ-Þ][^\W\d_]+)?(?:\s+[A-ZÀ-ÖØ-Þ][^\W\d_]{1,})?$"
+)
+NAME_HEADINGS = {"h3", "h4", "h5"}
+TITLE_WORDS = {"herr", "frau", "prof", "dott", "dipl", "maître", "von", "van", "del", "della", "dr"}
+
+
+def _names_nobody_known(text: str, known: str) -> bool:
+    """Whether a text reads as a person's name that the brief does not contain: two or three capitalised words, one of them absent from `known`."""
+    text = " ".join(str(text or "").split())
+    if not PERSON_NAME.match(text) or any(ch.isdigit() for ch in text):
+        return False
+    lowered = (known or "").lower()
+    if text.lower() in lowered:
+        return False
+    tokens = [t for t in re.split(r"[\s.]+", text) if len(t) >= 3 and t.lower() not in TITLE_WORDS]
+    return any(t.lower() not in lowered for t in tokens)
+
+
+def _flat(node: dict) -> list[dict]:
+    found, todo = [], [node]
+    while todo:
+        n = todo.pop()
+        found.append(n)
+        todo.extend(c for c in n.get("children") or [] if isinstance(c, dict))
+    return found
+
+
+def _tree(blocks: list):
+    """(parent of every block by id, the roots' ids) of a block tree."""
+    parent: dict[int, dict] = {}
+    stack = [b for b in blocks or [] if isinstance(b, dict)]
+    roots = {id(b) for b in stack}
+    while stack:
+        node = stack.pop()
+        for child in node.get("children") or []:
+            if isinstance(child, dict):
+                parent[id(child)] = node
+                stack.append(child)
+    return parent, roots
+
+
+def _team_context(section: dict, skip: set) -> bool:
+    """Whether the heading, the label or the short lines of a section (outside the cards) speak of a team."""
+    stack = [section]
+    while stack:
+        node = stack.pop()
+        if id(node) in skip:
+            continue
+        element = str(node.get("element") or "").lower()
+        text = _text_of(node)
+        if text and (element in ("h1", "h2") or (element in ("p", "span", "div") and len(text) <= 40 and not node.get("children"))) and TEAM_CONTEXT.search(text):
+            return True
+        stack.extend(c for c in node.get("children") or [] if isinstance(c, dict))
+    return False
+
+
+def _team_section(card: dict, parent: dict, roots: set, skip: set) -> dict | None:
+    """The lowest ancestor of a card, below the page's root, that speaks of a team."""
+    node = card
+    while id(node) in parent and id(parent[id(node)]) not in roots:
+        node = parent[id(node)]
+        if _team_context(node, skip):
+            return node
+    return None
+
+
+def _blank(node: dict) -> bool:
+    """A block that shows nothing: no words and no picture anywhere below it."""
+    return not any(_text_of(n) or str(n.get("element") or "").lower() in ("img", "video", "picture") for n in _flat(node))
+
+
+def _drop_card(card: dict, section: dict, parent: dict, edits: list[str], label: str) -> None:
+    """Takes a card out of its holder, the wrappers it leaves empty, and the section left with only its heading (and the shells around it)."""
+
+    def remove(node: dict) -> dict | None:
+        up = parent.get(id(node))
+        if up is None or not any(node is c for c in up.get("children") or []):
+            return None
+        up["children"] = [c for c in up["children"] if c is not node]
+        return up
+
+    holder = remove(card)
+    if holder is None:
+        return
+    edits.append(f"person '{label}' dropped (the brief names nobody)")
+    node = holder
+    while id(node) in parent and _blank(node):
+        up = remove(node)
+        if up is None:
+            break
+        node = up
+    if id(section) in parent and any(section is n for n in _flat(parent[id(section)])) and _hollow(section):
+        up = remove(section)
+        if up is not None:
+            edits.append("section left with no person dropped")
+            while id(up) in parent and _blank(up):
+                above = remove(up)
+                if above is None:
+                    break
+                up = above
+
+
+def drop_invented_people(blocks: list, known: str) -> list[str]:
+    """Takes out the cards of people the brief does not name, in the sections about a team: the card (the person's picture, name, role and
+    words), the wrappers it leaves empty and the section left with only its heading. A name the brief contains stays. Returns one line per
+    edit. The cards of a repeated template are read from the data: drop_invented_people_rows."""
+    edits: list[str] = []
+    parent, roots = _tree(blocks)
+    order = [n for b in blocks or [] if isinstance(b, dict) for n in _flat(b)]
+
+    def names_below(node: dict) -> list[dict]:
+        """The headings below a block that read as a person's name, the brief's own people included (a card never takes a neighbour with it)."""
+        return [n for n in _flat(node) if str(n.get("element") or "").lower() in NAME_HEADINGS and PERSON_NAME.match(_text_of(n))]
+
+    people = [n for n in order if str(n.get("element") or "").lower() in NAME_HEADINGS and _names_nobody_known(_text_of(n), known)]
+    # the card of a name: the highest ancestor that holds this name alone and no page or section title
+    cards: list[dict] = []
+    for heading in people:
+        card = heading
+        while id(card) in parent and id(parent[id(card)]) not in roots:
+            up = parent[id(card)]
+            if len(names_below(up)) != 1 or any(str(n.get("element") or "").lower() in ("h1", "h2") for n in _flat(up)):
+                break
+            card = up
+        if not any(card is other for other in cards):
+            cards.append(card)
+    skip = {id(n) for card in cards for n in _flat(card)}
+    for card in cards:
+        section = _team_section(card, parent, roots, skip)
+        if section is not None:
+            _drop_card(card, section, parent, edits, _first_name(card))
+    return edits
+
+
+def _first_name(card: dict) -> str:
+    for n in _flat(card):
+        if str(n.get("element") or "").lower() in NAME_HEADINGS and _text_of(n):
+            return _text_of(n)[:40]
+    return _text_of(card)[:40]
+
+
+def _name_field(repeater: dict) -> str:
+    """The data field the heading of a repeated card shows."""
+    for template in repeater.get("children") or []:
+        for n in _flat(template):
+            if str(n.get("element") or "").lower() in NAME_HEADINGS:
+                for d in n.get("dynamicValues") or []:
+                    if isinstance(d, dict) and d.get("property") == "innerHTML" and d.get("key"):
+                        return str(d["key"])
+    return ""
+
+
+def drop_invented_people_rows(blocks: list, data_script: str, known: str) -> tuple[list[str], str]:
+    """The same for the cards of a repeated template, whose names are rows of the page's data (`data.team = [{"name": ...}]`): the rows
+    that name nobody the brief knows go from the data; when none is left the repeated block goes, and its section when it has nothing else.
+    Returns the edits and the data script."""
+    import json
+
+    edits: list[str] = []
+    parent, roots = _tree(blocks)
+    for block in [n for b in blocks or [] if isinstance(b, dict) for n in _flat(b)]:
+        key = ((block.get("dataKey") or {}).get("key") or "") if block.get("isRepeaterBlock") else ""
+        field = _name_field(block) if key else ""
+        match = re.search(r"^(\s*data\." + re.escape(key) + r"\s*=\s*)(\[.*\])(\s*;?\s*)$", data_script or "", re.M) if field else None
+        if not match:
+            continue
+        try:
+            rows = json.loads(match.group(2))
+        except ValueError:
+            continue
+        if not rows or not all(isinstance(r, dict) for r in rows):
+            continue
+        invented = [r for r in rows if _names_nobody_known(r.get(field), known)]
+        if not invented:
+            continue
+        section = _team_section(block, parent, roots, {id(n) for n in _flat(block)})
+        if section is None:
+            continue
+        kept = [r for r in rows if r not in invented]
+        if kept:
+            data_script = data_script[: match.start(2)] + json.dumps(kept, ensure_ascii=False) + data_script[match.end(2) :]
+            edits += [f"person '{str(r.get(field))[:40]}' dropped from the data (the brief names nobody)" for r in invented]
+        else:
+            _drop_card(block, section, parent, edits, str(invented[0].get(field))[:40])
+            edits += [f"person '{str(r.get(field))[:40]}' dropped from the data" for r in invented[1:]]
+    return edits, data_script
