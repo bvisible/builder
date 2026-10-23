@@ -14,8 +14,10 @@ IDENTIFY = "frappe.utils.telemetry.pulse.client.identify"
 # //// Neoffice — Pulse identify ships with frappe v16 and our fork runs v15, where
 # //// builder.api.identify_persona returns on the ImportError it guards. Patching a module that does
 # //// not exist raised AttributeError, and these two tests errored on every CI run (2026-09-15).
+# //// Neoffice — since frappe v15.124 the Pulse client module exists on v15, WITHOUT `identify`: the module
+# //// is no proof of the function (the import guard let the two patching tests error on 2026-10-23).
 try:
-	import frappe.utils.telemetry.pulse.client  # noqa: F401
+	from frappe.utils.telemetry.pulse.client import identify  # noqa: F401
 
 	HAS_PULSE = True
 except ImportError:
