@@ -1055,11 +1055,11 @@ msgstr ""
 
 #: builder/api.py:583
 msgid "Could not import any pages from this template group."
-msgstr ""
+msgstr "Non è stato possibile importare alcuna pagina da questo gruppo di modelli."
 
 #: builder/api.py:551
 msgid "Could not load the selected template. Please try again."
-msgstr ""
+msgstr "Non è stato possibile caricare il modello selezionato. Vi preghiamo di riprovare."
 
 #: builder/ai/api.py:320
 msgid "Could not reach {0}: {1}"
@@ -1067,7 +1067,7 @@ msgstr ""
 
 #: builder/api.py:330
 msgid "Could not resolve hostname: {0}"
-msgstr ""
+msgstr "Impossibile risolvere il nome host: {0}"
 
 #: frontend/src/components/Modals/TokenManager.vue:443
 msgid "Couldn't copy to clipboard"
@@ -2220,7 +2220,7 @@ msgstr ""
 
 #: builder/api.py:326
 msgid "Invalid URL: missing hostname."
-msgstr ""
+msgstr "URL non valido: manca il nome host."
 
 #: builder/ai/block_codec.py:254
 msgid "Invalid image data: must be a base64-encoded data URL"
@@ -2817,7 +2817,7 @@ msgstr ""
 
 #: builder/api.py:568
 msgid "No pages found in this template group."
-msgstr ""
+msgstr "Nessuna pagina trovata in questo gruppo di modelli"
 
 #: frontend/src/components/RouteTreeView.vue:9
 msgid "No pages found."
@@ -2829,7 +2829,7 @@ msgstr ""
 
 #: builder/api.py:40
 msgid "No permission to preview this page"
-msgstr ""
+msgstr "Non avete l'autorizzazione per visualizzare l'anteprima di questa pagina"
 
 #: frontend/src/components/Settings/GlobalRedirects.vue:62
 msgid "No redirects match \"{0}\""
@@ -2846,7 +2846,7 @@ msgstr ""
 
 #: frontend/src/components/Controls/SearchBlock.vue:141
 msgid "No results found"
-msgstr ""
+msgstr "Nessun risultato trovato"
 
 #: frontend/src/components/VersionHistory.vue:36
 msgid "No saved versions yet. A version is captured every time you publish, or when you save one manually."
@@ -2937,7 +2937,7 @@ msgstr ""
 
 #: builder/api.py:323
 msgid "Only HTTP/HTTPS URLs are allowed for external images."
-msgstr ""
+msgstr "Per le immagini esterne sono ammessi solo URL HTTP/HTTPS."
 
 #. Description of the 'Authenticated Access' (Check) field in DocType 'Builder
 #. Page'
@@ -3577,7 +3577,7 @@ msgstr ""
 
 #: builder/api.py:336
 msgid "Requests to private or internal addresses are not allowed."
-msgstr ""
+msgstr "Non sono ammesse richieste verso indirizzi privati o interni."
 
 #: frontend/src/components/Settings/GlobalUsers.vue:35
 msgid "Resend"
@@ -3881,7 +3881,7 @@ msgstr "Ricerca..."
 
 #: frontend/src/components/CommandPalette.vue:74
 msgid "Searching..."
-msgstr ""
+msgstr "Ricerca in corso…"
 
 #: builder/ai/agent/pending.py:145
 msgid "Seeded {0} sample record(s) into {1}"
@@ -4359,7 +4359,7 @@ msgstr ""
 
 #: builder/api.py:564
 msgid "Template group not found."
-msgstr ""
+msgstr "Gruppo di modelli non trovato"
 
 #: builder/builder/doctype/builder_page/builder_page.py:310
 msgid "Template pages can only be deleted in developer mode."
@@ -5295,3 +5295,499 @@ msgstr "Questo sito utilizza unicamente cookie tecnici. Non vi traccia."
 #: builder/templates/includes/form_privacy_note.html:7
 msgid "Your details are only used to answer your request."
 msgstr "I vostri dati sono utilizzati unicamente per rispondere alla vostra richiesta."
+
+#: builder/templates/includes/contact_form.html:127
+msgid "1,000 to 5,000 CHF"
+msgstr "Da 1’000 a 5’000 CHF"
+
+#: builder/templates/includes/contact_form.html:116
+msgid "A quote"
+msgstr "Un preventivo"
+
+#: builder/templates/includes/contact_form.html:116
+msgid "A technical question"
+msgstr "Una domanda tecnica"
+
+#: builder/templates/includes/contact_form.html:74
+msgid "About you"
+msgstr "Su di voi"
+
+#: builder/ai/agent/tools/site_forms.py:146
+msgid "add: {0}"
+msgstr "aggiungi: {0}"
+
+#: builder/templates/includes/contact_form.html:116
+msgid "An appointment"
+msgstr "Un appuntamento"
+
+#: builder/templates/includes/contact_page.html:479
+#: builder/templates/includes/contact_page.html:491
+msgid "An error occurred. Please try again."
+msgstr "Si è verificato un errore. Vi preghiamo di riprovare."
+
+#: builder/templates/includes/blog_listing.html:90
+msgid "Articles will appear here once published. Create your first Blog Post to get started."
+msgstr "Gli articoli appariranno qui non appena saranno pubblicati. Per iniziare, create il vostro primo articolo del blog."
+
+#: builder/templates/includes/contact_form.html:139
+msgid "As soon as possible, in three months…"
+msgstr "Al più presto, entro tre mesi…"
+
+#: builder/www/404.html:30
+msgid "Back to the homepage"
+msgstr "Torna alla pagina iniziale"
+
+#: builder/page_header.py:929
+#: builder/templates/includes/header_footer/page_header.html:28
+msgid "Breadcrumb"
+msgstr "Percorso di navigazione"
+
+#: builder/templates/includes/contact_form.html:124
+msgid "Budget you have in mind"
+msgstr "Il budget che avete in mente"
+
+#: builder/site_ai/nora/site_builder.py:2061
+msgid "Catalogue"
+msgstr "Catalogo"
+
+#: builder/hf_utils/menu_integration.py:210
+msgid "Categories"
+msgstr "Categorie"
+
+#: builder/ai/agent/tools/site_forms.py:154
+msgid "Change the form “{0}”? {1}."
+msgstr "Modificare il modulo «{0}»? {1}."
+
+#: builder/ai/agent/tools/site_forms.py:150
+msgid "change: {0}"
+msgstr "modifica: {0}"
+
+#: builder/templates/includes/contact_page.html:425
+msgid "Choose a topic"
+msgstr "Scegliete un argomento"
+
+#: builder/templates/includes/header_footer/components/cart_drawer.html:12
+#: builder/templates/includes/header_footer/header.html:29
+msgid "Close cart"
+msgstr "Chiudi il carrello"
+
+#: builder/templates/includes/header_footer/components/search_overlay.html:14
+#: builder/templates/includes/header_footer/header.html:22
+msgid "Close search"
+msgstr "Chiudi la ricerca"
+
+#: builder/www/404.html:15 builder/www/404.py:71
+msgid "Coming soon"
+msgstr "Prossimamente"
+
+#: builder/templates/includes/company_timeline.html:31
+msgid "Company milestones will be displayed here once configured in About Us Settings."
+msgstr "Le tappe dell'azienda appariranno qui non appena le avrete configurate nelle Impostazioni Chi siamo."
+
+#: builder/templates/includes/contact_form.html:67
+msgid "Consent given"
+msgstr "Consenso fornito"
+
+#: builder/templates/includes/contact_form.html:68
+msgid "Contact from the website"
+msgstr "Contatto dal sito web"
+
+#: builder/site_ai/nora/site_builder.py:2378 builder/site_forms.py:409
+#: builder/templates/includes/contact_form.html:32
+#: builder/templates/includes/contact_form.html:33
+msgid "Contact us"
+msgstr "Contattateci"
+
+#: builder/templates/includes/header_footer/components/cart_drawer.html:754
+#: builder/templates/includes/header_footer/header.html:30
+msgid "Coupon Discount"
+msgstr "Sconto coupon"
+
+#: builder/ai/agent/tools/site_forms.py:100
+msgid "Create the form “{0}” ({1})?"
+msgstr "Creare il modulo «{0}» ({1})?"
+
+#: builder/api.py:2157
+msgid "Email Group not found"
+msgstr "Gruppo e-mail non trovato"
+
+#: builder/api.py:2134
+msgid "Email is required"
+msgstr "L'indirizzo e-mail è obbligatorio"
+
+#: builder/templates/includes/header_footer/footer.html:53
+#: builder/templates/includes/header_footer/footer.html:99
+#: builder/templates/includes/header_footer/footer.html:316
+msgid "Enter your email"
+msgstr "Inserite la vostra e-mail"
+
+#: builder/api.py:2210
+msgid "Failed to subscribe. Please try again later."
+msgstr "Iscrizione non riuscita. Vi preghiamo di riprovare più tardi."
+
+#: builder/templates/includes/header_footer/footer.html:277
+#: builder/templates/includes/header_footer/footer.html:380
+msgid "Failed to subscribe. Please try again."
+msgstr "Iscrizione non riuscita. Vi preghiamo di riprovare."
+
+#: builder/hf_utils/menu_integration.py:228
+msgid "Features"
+msgstr "Funzionalità"
+
+#: builder/site_ai/nora/site_builder.py:3303
+msgid "Fixing {0} after looking at it ({1}/{2})"
+msgstr "Correzione di {0} dopo la verifica ({1}/{2})"
+
+#: builder/site_ai/nora/site_builder.py:3494
+msgid "Fixing {0} after the visual check"
+msgstr "Correzione di {0} dopo il controllo visivo"
+
+#: builder/site_forms.py:87
+msgid "Forms are not available on this site."
+msgstr "I moduli non sono disponibili su questo sito."
+
+#: builder/templates/includes/header_footer/components/cart_drawer.html:36
+#: builder/templates/includes/header_footer/header.html:30
+msgid "Frequently bought together"
+msgstr "Acquistati spesso insieme"
+
+#: builder/templates/includes/contact_form.html:146
+msgid "How can we help you?"
+msgstr "Come possiamo aiutarvi?"
+
+#: builder/templates/includes/contact_form.html:127
+msgid "I do not know yet"
+msgstr "Non lo so ancora"
+
+#: builder/api.py:2138
+msgid "Invalid email address"
+msgstr "Indirizzo e-mail non valido"
+
+#: builder/templates/includes/contact_form.html:157
+msgid "Leave this field empty"
+msgstr "Lasciate vuoto questo campo"
+
+#: builder/templates/includes/header_footer/footer.html:199
+msgid "Legal"
+msgstr "Note legali"
+
+#: builder/templates/includes/header_footer/components/cart_drawer.html:20
+#: builder/templates/includes/header_footer/header.html:30
+msgid "Loading Cart..."
+msgstr "Caricamento del carrello…"
+
+#: builder/templates/includes/header_footer/components/user_header.html:12
+msgid "Log in"
+msgstr "Accedi"
+
+#: builder/templates/includes/google_map.html:25
+msgid "Map showing"
+msgstr "Mappa che mostra"
+
+#: builder/site_ai/nora/site_builder.py:3373
+msgid "Menu, footer and home page"
+msgstr "Menu, piè di pagina e pagina iniziale"
+
+#: builder/templates/blog/post.html:43 builder/templates/blog/post.html:56
+msgid "min read"
+msgstr "min di lettura"
+
+#: builder/templates/includes/contact_info.html:65
+msgid "Mon - Fri: 9:00 - 18:00"
+msgstr "lun - ven: 9:00 - 18:00"
+
+#: builder/templates/includes/header_footer/components/user_header.html:23
+msgid "My account"
+msgstr "Il mio account"
+
+#: builder/templates/includes/header_footer/components/user_header.html:24
+msgid "My orders"
+msgstr "I miei ordini"
+
+#: builder/templates/includes/header_footer/components/user_header.html:25
+msgid "My wishlist"
+msgstr "La mia lista dei desideri"
+
+#: builder/ai/agent/tools/site_forms.py:100
+#: frontend/src/components/Modals/SiteFormDialog.vue:10
+#: frontend/src/components/SiteBlocksPanel.vue:72
+msgid "New form"
+msgstr "Nuovo modulo"
+
+#: builder/templates/includes/blog_listing.html:89
+msgid "No articles yet"
+msgstr "Nessun articolo per ora"
+
+#: builder/api.py:2153
+msgid "No Email Group configured for newsletter"
+msgstr "Nessun gruppo e-mail configurato per la newsletter"
+
+#: builder/templates/includes/contact_page.html:360
+msgid "Our contact details"
+msgstr "I nostri recapiti"
+
+#: builder/templates/includes/contact_form.html:127
+msgid "Over 5,000 CHF"
+msgstr "Oltre 5’000 CHF"
+
+#: builder/api.py:1022
+msgid "Page out of date"
+msgstr "Pagina non più aggiornata"
+
+#: builder/site_ai/nora/site_builder.py:3386
+msgid "Placing your photos"
+msgstr "Disposizione delle vostre foto"
+
+#: builder/site_ai/nora/site_builder.py:2676
+msgid "Planning the site"
+msgstr "Pianificazione del sito"
+
+#: builder/site_ai/nora/site_builder.py:2292
+msgid "Preparing the site"
+msgstr "Preparazione del sito"
+
+#: builder/site_ai/nora/site_builder.py:2418
+msgid "Reading the inspirations"
+msgstr "Esame dei riferimenti"
+
+#: builder/site_ai/nora/site_builder.py:2480
+msgid "Reading your photos"
+msgstr "Esame delle vostre foto"
+
+#: builder/ai/agent/tools/site_forms.py:148
+msgid "remove: {0}"
+msgstr "rimuovi: {0}"
+
+#: builder/site_ai/nora/site_builder.py:2385
+msgid "Request an account"
+msgstr "Richiedete un account"
+
+#: builder/site_ai/nora/site_builder.py:2534
+msgid "Reusing this site's design brief"
+msgstr "Riutilizzo del brief grafico di questo sito"
+
+#: builder/templates/includes/header_footer/components/search_bar.html:352
+msgid "Search all products"
+msgstr "Cercate tra tutti i prodotti"
+
+#: builder/templates/includes/header_footer/components/search_overlay.html:254
+#: builder/templates/includes/header_footer/header.html:23
+msgid "Search error"
+msgstr "Errore di ricerca"
+
+#: builder/templates/includes/header_footer/components/search_overlay.html:12
+#: builder/templates/includes/header_footer/header.html:22
+msgid "Search for Products"
+msgstr "Ricerca di prodotti"
+
+#: builder/templates/includes/header_footer/components/search_bar.html:17
+msgid "Search products..."
+msgstr "Cercate prodotti…"
+
+#: builder/templates/includes/contact_form.html:165
+#: builder/templates/includes/site_form.html:117
+#: frontend/src/components/Modals/SiteFormDialog.vue:217
+#: frontend/src/components/SiteFormPreview.vue:78
+msgid "Send Message"
+msgstr "Inviate il messaggio"
+
+#: builder/templates/includes/contact_page.html:417
+msgid "Send us a message"
+msgstr "Inviateci un messaggio"
+
+#: builder/templates/includes/contact_page.html:459
+msgid "Sending..."
+msgstr "Invio in corso…"
+
+#: builder/templates/includes/contact_form.html:116
+msgid "Something else"
+msgstr "Altro"
+
+#: builder/templates/includes/header_footer/components/cart_drawer.html:29
+#: builder/templates/includes/header_footer/header.html:30
+msgid "Start Shopping"
+msgstr "Iniziate a fare acquisti"
+
+#: builder/templates/includes/header_footer/footer.html:54
+#: builder/templates/includes/header_footer/footer.html:100
+#: builder/templates/includes/header_footer/footer.html:290
+#: builder/templates/includes/header_footer/footer.html:317
+msgid "Subscribe"
+msgstr "Iscrivetevi"
+
+#: builder/templates/includes/header_footer/footer.html:50
+#: builder/templates/includes/header_footer/footer.html:96
+#: builder/templates/includes/header_footer/footer.html:310
+msgid "Subscribe to our newsletter"
+msgstr "Iscrivetevi alla nostra newsletter"
+
+#: builder/templates/includes/header_footer/footer.html:249
+msgid "Subscribing..."
+msgstr "Iscrizione in corso…"
+
+#: builder/templates/includes/header_footer/footer.html:273
+msgid "Subscription failed"
+msgstr "Iscrizione non riuscita"
+
+#: builder/templates/includes/header_footer/components/cart_drawer.html:43
+#: builder/templates/includes/header_footer/header.html:30
+msgid "Subtotal"
+msgstr "Subtotale"
+
+#: builder/templates/includes/team_grid.html:33
+msgid "Team members will be displayed here once configured in About Us Settings."
+msgstr "I membri della squadra appariranno qui non appena li avrete configurati nelle Impostazioni Chi siamo."
+
+#: builder/api.py:2198
+msgid "Thank you for subscribing to our newsletter!"
+msgstr "Grazie per esservi iscritti alla nostra newsletter!"
+
+#: builder/templates/includes/contact_page.html:475
+msgid "Thank you! Your message has been sent successfully."
+msgstr "Grazie! Il vostro messaggio è stato inviato con successo."
+
+#: builder/templates/includes/contact_form.html:62
+#: builder/templates/includes/site_form.html:43
+#: frontend/src/components/Modals/SiteFormDialog.vue:225
+msgid "Thank you, your message has been sent."
+msgstr "Grazie, il vostro messaggio è stato inviato."
+
+#: builder/www/404.html:24
+msgid "The address may have changed, or the page may have been removed."
+msgstr "L'indirizzo potrebbe essere cambiato oppure la pagina potrebbe essere stata rimossa."
+
+#: builder/site_ai/nora/site_builder.py:2565
+#: builder/site_ai/nora/site_builder.py:2566
+msgid "The design brief failed; the site uses default styling."
+msgstr "Il brief grafico non è riuscito; il sito usa lo stile predefinito."
+
+#: builder/api.py:430
+msgid "The form could not be read."
+msgstr "Non è stato possibile leggere il modulo."
+
+#: builder/api.py:351
+msgid "The options could not be read."
+msgstr "Non è stato possibile leggere le opzioni."
+
+#: builder/api.py:358
+msgid "This block cannot be written with these options."
+msgstr "Con queste opzioni non è possibile creare questo blocco."
+
+#: builder/www/404.html:22
+msgid "This page does not exist"
+msgstr "Questa pagina non esiste"
+
+#: builder/api.py:1020
+msgid "This page was changed elsewhere while you were editing it. Reload before saving."
+msgstr "Questa pagina è stata modificata da un'altra parte mentre la stavate modificando. Ricaricatela prima di salvare."
+
+#: builder/www/404.html:18
+msgid "This section is on its way. The link is already in place so it will work the day it opens."
+msgstr "Questa sezione sta arrivando. Il collegamento è già predisposto e funzionerà il giorno in cui sarà aperta."
+
+#: builder/templates/includes/contact_form.html:64
+#: builder/templates/includes/site_form.html:45
+msgid "Too many messages have been sent. Please try again later."
+msgstr "Sono stati inviati troppi messaggi. Vi preghiamo di riprovare più tardi."
+
+#: builder/hf_utils/chrome_api.py:298
+#: frontend/src/components/Settings/GlobalTheme.vue:458
+msgid "Top page"
+msgstr "Pagina iniziale"
+
+#: builder/templates/includes/header_footer/components/search_bar.html:349
+msgid "Try different keywords"
+msgstr "Provate con altre parole chiave"
+
+#: builder/templates/includes/contact_form.html:127
+msgid "Under 1,000 CHF"
+msgstr "Meno di 1’000 CHF"
+
+#: builder/api.py:344
+msgid "Unknown component: {0}"
+msgstr "Componente sconosciuto: {0}"
+
+#: builder/templates/includes/blog_listing.html:19
+msgid "View All Articles"
+msgstr "Visualizzate tutti gli articoli"
+
+#: builder/templates/includes/header_footer/components/search_bar.html:487
+msgid "View all results"
+msgstr "Visualizzate tutti i risultati"
+
+#: builder/templates/includes/header_footer/components/cart_drawer.html:52
+#: builder/templates/includes/header_footer/header.html:30
+msgid "View Cart"
+msgstr "Visualizzate il carrello"
+
+#: builder/site_ai/nora/site_builder.py:3416
+msgid "Visual check: waiting for the images"
+msgstr "Controllo visivo: in attesa delle immagini"
+
+#: builder/site_ai/nora/site_builder.py:3446
+msgid "Visual check: {0}"
+msgstr "Controllo visivo: {0}"
+
+#: builder/templates/includes/contact_form.html:113
+msgid "What is your request about?"
+msgstr "Di cosa riguarda la vostra richiesta?"
+
+#: builder/templates/includes/contact_form.html:135
+msgid "When would you like to start?"
+msgstr "Quando desiderate iniziare?"
+
+#: builder/ai/agent/tools/site_forms.py:102
+msgid "With these questions added: {0}."
+msgstr "Con queste domande aggiunte: {0}."
+
+#: builder/hf_utils/menu_integration.py:222
+msgid "Work"
+msgstr "Lavori"
+
+#: builder/site_ai/nora/site_builder.py:3197
+msgid "Writing page {0} of {1}: {2}"
+msgstr "Stesura della pagina {0} di {1}: {2}"
+
+#: builder/site_ai/nora/site_builder.py:2517
+msgid "Writing the design brief"
+msgstr "Stesura del brief grafico"
+
+#: builder/api.py:2163 builder/api.py:2205
+msgid "You are already subscribed to our newsletter"
+msgstr "Siete già iscritti alla nostra newsletter"
+
+#: builder/templates/includes/header_footer/components/cart_drawer.html:11
+#: builder/templates/includes/header_footer/header.html:29
+msgid "Your Cart"
+msgstr "Il vostro carrello"
+
+#: builder/templates/includes/header_footer/components/cart_drawer.html:28
+#: builder/templates/includes/header_footer/header.html:30
+msgid "Your cart is empty"
+msgstr "Il vostro carrello è vuoto"
+
+#: builder/templates/includes/contact_page.html:421
+msgid "Your email"
+msgstr "La vostra e-mail"
+
+#: builder/templates/includes/contact_form.html:104
+#: builder/templates/includes/contact_page.html:436
+msgid "Your message"
+msgstr "Il vostro messaggio"
+
+#: builder/templates/includes/site_form.html:44
+msgid "Your message could not be sent. Please check your answers and try again."
+msgstr "Il vostro messaggio non è stato inviato. Verificate le risposte e riprovate."
+
+#: builder/templates/includes/contact_form.html:63
+msgid "Your message could not be sent. Please check your email address and try again."
+msgstr "Il vostro messaggio non è stato inviato. Verificate l'indirizzo e-mail e riprovate."
+
+#: builder/templates/includes/contact_form.html:82
+#: builder/templates/includes/contact_page.html:420
+msgid "Your name"
+msgstr "Il vostro nome"
+
+#: builder/builder/doctype/website_header_footer_config/website_header_footer_config.py:376
+msgid "© {year} {site_name}. All rights reserved."
+msgstr "© {year} {site_name}. Tutti i diritti riservati."

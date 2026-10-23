@@ -5383,3 +5383,412 @@ msgstr "Diese Website verwendet nur technische Cookies. Ihr Surfverhalten wird n
 #: builder/templates/includes/form_privacy_note.html:7
 msgid "Your details are only used to answer your request."
 msgstr "Ihre Angaben werden nur verwendet, um Ihre Anfrage zu beantworten."
+
+#: builder/ai/agent/tools/site_forms.py:146
+msgid "add: {0}"
+msgstr "Hinzufügen: {0}"
+
+#: builder/templates/includes/contact_page.html:479
+#: builder/templates/includes/contact_page.html:491
+msgid "An error occurred. Please try again."
+msgstr "Ein Fehler ist aufgetreten. Bitte versuchen Sie es erneut."
+
+#: builder/templates/includes/blog_listing.html:90
+msgid "Articles will appear here once published. Create your first Blog Post to get started."
+msgstr "Artikel erscheinen hier, sobald sie veröffentlicht sind. Erstellen Sie Ihren ersten Blog-Eintrag, um loszulegen."
+
+#: builder/www/404.html:30
+msgid "Back to the homepage"
+msgstr "Zurück zur Startseite"
+
+#: builder/site_ai/nora/site_builder.py:2061
+msgid "Catalogue"
+msgstr "Katalog"
+
+#: builder/hf_utils/menu_integration.py:210
+msgid "Categories"
+msgstr "Kategorien"
+
+#: builder/ai/agent/tools/site_forms.py:154
+msgid "Change the form “{0}”? {1}."
+msgstr "Soll das Formular «{0}» geändert werden? {1}."
+
+#: builder/ai/agent/tools/site_forms.py:150
+msgid "change: {0}"
+msgstr "Ändern: {0}"
+
+#: builder/templates/includes/contact_page.html:425
+msgid "Choose a topic"
+msgstr "Thema auswählen"
+
+#: builder/templates/includes/header_footer/components/cart_drawer.html:12
+#: builder/templates/includes/header_footer/header.html:29
+msgid "Close cart"
+msgstr "Warenkorb schliessen"
+
+#: builder/templates/includes/header_footer/components/search_overlay.html:14
+#: builder/templates/includes/header_footer/header.html:22
+msgid "Close search"
+msgstr "Suche schliessen"
+
+#: builder/www/404.html:15 builder/www/404.py:71
+msgid "Coming soon"
+msgstr "Demnächst verfügbar"
+
+#: builder/templates/includes/company_timeline.html:31
+msgid "Company milestones will be displayed here once configured in About Us Settings."
+msgstr "Meilensteine des Unternehmens werden hier angezeigt, sobald sie in den Einstellungen zu «Über uns» hinterlegt sind."
+
+#: builder/templates/includes/contact_form.html:68
+msgid "Contact from the website"
+msgstr "Kontaktanfrage über die Website"
+
+#: builder/site_ai/nora/site_builder.py:2378 builder/site_forms.py:409
+#: builder/templates/includes/contact_form.html:32
+#: builder/templates/includes/contact_form.html:33
+msgid "Contact us"
+msgstr "Kontaktieren Sie uns"
+
+#: builder/templates/includes/header_footer/components/cart_drawer.html:754
+#: builder/templates/includes/header_footer/header.html:30
+msgid "Coupon Discount"
+msgstr "Gutscheinrabatt"
+
+#: builder/ai/agent/tools/site_forms.py:100
+msgid "Create the form “{0}” ({1})?"
+msgstr "Soll das Formular «{0}» ({1}) erstellt werden?"
+
+#: builder/api.py:2157
+msgid "Email Group not found"
+msgstr "E-Mail-Gruppe nicht gefunden"
+
+#: builder/templates/includes/header_footer/footer.html:53
+#: builder/templates/includes/header_footer/footer.html:99
+#: builder/templates/includes/header_footer/footer.html:316
+msgid "Enter your email"
+msgstr "Ihre E-Mail-Adresse eingeben"
+
+#: builder/api.py:2210
+msgid "Failed to subscribe. Please try again later."
+msgstr "Die Anmeldung ist fehlgeschlagen. Bitte versuchen Sie es später erneut."
+
+#: builder/templates/includes/header_footer/footer.html:277
+#: builder/templates/includes/header_footer/footer.html:380
+msgid "Failed to subscribe. Please try again."
+msgstr "Die Anmeldung ist fehlgeschlagen. Bitte versuchen Sie es erneut."
+
+#: builder/hf_utils/menu_integration.py:228
+msgid "Features"
+msgstr "Funktionen"
+
+#: builder/site_ai/nora/site_builder.py:3303
+msgid "Fixing {0} after looking at it ({1}/{2})"
+msgstr "{0} wird nach der Sichtung überarbeitet ({1}/{2})"
+
+#: builder/site_ai/nora/site_builder.py:3494
+msgid "Fixing {0} after the visual check"
+msgstr "{0} wird nach der visuellen Prüfung überarbeitet"
+
+#: builder/site_forms.py:87
+msgid "Forms are not available on this site."
+msgstr "Formulare sind auf dieser Website nicht verfügbar."
+
+#: builder/templates/includes/header_footer/components/cart_drawer.html:36
+#: builder/templates/includes/header_footer/header.html:30
+msgid "Frequently bought together"
+msgstr "Häufig zusammen gekauft"
+
+#: builder/templates/includes/contact_form.html:146
+msgid "How can we help you?"
+msgstr "Wie können wir Ihnen helfen?"
+
+#: builder/api.py:2138
+msgid "Invalid email address"
+msgstr "Ungültige E-Mail-Adresse"
+
+#: builder/templates/includes/header_footer/footer.html:199
+msgid "Legal"
+msgstr "Rechtliches"
+
+#: builder/templates/includes/header_footer/components/cart_drawer.html:20
+#: builder/templates/includes/header_footer/header.html:30
+msgid "Loading Cart..."
+msgstr "Warenkorb wird geladen..."
+
+#: builder/templates/includes/header_footer/components/user_header.html:12
+msgid "Log in"
+msgstr "Anmelden"
+
+#: builder/templates/includes/google_map.html:25
+msgid "Map showing"
+msgstr "Karte von"
+
+#: builder/site_ai/nora/site_builder.py:3373
+msgid "Menu, footer and home page"
+msgstr "Menü, Fusszeile und Startseite"
+
+#: builder/templates/includes/contact_info.html:65
+msgid "Mon - Fri: 9:00 - 18:00"
+msgstr "Mo–Fr: 9.00–18.00 Uhr"
+
+#: builder/templates/includes/header_footer/components/user_header.html:23
+msgid "My account"
+msgstr "Mein Konto"
+
+#: builder/templates/includes/header_footer/components/user_header.html:24
+msgid "My orders"
+msgstr "Meine Bestellungen"
+
+#: builder/templates/includes/header_footer/components/user_header.html:25
+msgid "My wishlist"
+msgstr "Meine Wunschliste"
+
+#: builder/ai/agent/tools/site_forms.py:100
+#: frontend/src/components/Modals/SiteFormDialog.vue:10
+#: frontend/src/components/SiteBlocksPanel.vue:72
+msgid "New form"
+msgstr "Neues Formular"
+
+#: builder/templates/includes/blog_listing.html:89
+msgid "No articles yet"
+msgstr "Noch keine Artikel"
+
+#: builder/api.py:2153
+msgid "No Email Group configured for newsletter"
+msgstr "Für den Newsletter ist keine E-Mail-Gruppe eingerichtet."
+
+#: builder/templates/includes/contact_page.html:360
+msgid "Our contact details"
+msgstr "Unsere Kontaktdaten"
+
+#: builder/api.py:1022
+msgid "Page out of date"
+msgstr "Seite ist nicht mehr aktuell"
+
+#: builder/site_ai/nora/site_builder.py:3386
+msgid "Placing your photos"
+msgstr "Ihre Fotos werden platziert"
+
+#: builder/site_ai/nora/site_builder.py:2676
+msgid "Planning the site"
+msgstr "Website wird geplant"
+
+#: builder/templates/includes/header_footer/footer.html:214
+msgid "Powered by {0}"
+msgstr "Betrieben mit {0}"
+
+#: builder/site_ai/nora/site_builder.py:2292
+msgid "Preparing the site"
+msgstr "Website wird vorbereitet"
+
+#: builder/site_ai/nora/site_builder.py:2418
+msgid "Reading the inspirations"
+msgstr "Inspirationen werden gesichtet"
+
+#: builder/site_ai/nora/site_builder.py:2480
+msgid "Reading your photos"
+msgstr "Ihre Fotos werden gesichtet"
+
+#: builder/ai/agent/tools/site_forms.py:148
+msgid "remove: {0}"
+msgstr "Entfernen: {0}"
+
+#: builder/site_ai/nora/site_builder.py:2385
+msgid "Request an account"
+msgstr "Konto anfragen"
+
+#: builder/site_ai/nora/site_builder.py:2534
+msgid "Reusing this site's design brief"
+msgstr "Gestaltungskonzept dieser Website wird übernommen"
+
+#: builder/templates/includes/header_footer/components/search_bar.html:352
+msgid "Search all products"
+msgstr "Alle Produkte durchsuchen"
+
+#: builder/templates/includes/header_footer/components/search_overlay.html:254
+#: builder/templates/includes/header_footer/header.html:23
+msgid "Search error"
+msgstr "Suchfehler"
+
+#: builder/templates/includes/header_footer/components/search_overlay.html:12
+#: builder/templates/includes/header_footer/header.html:22
+msgid "Search for Products"
+msgstr "Nach Produkten suchen"
+
+#: builder/templates/includes/header_footer/components/search_bar.html:17
+msgid "Search products..."
+msgstr "Produkte suchen..."
+
+#: builder/templates/includes/contact_form.html:165
+#: builder/templates/includes/site_form.html:117
+#: frontend/src/components/Modals/SiteFormDialog.vue:217
+#: frontend/src/components/SiteFormPreview.vue:78
+msgid "Send Message"
+msgstr "Nachricht senden"
+
+#: builder/templates/includes/contact_page.html:417
+msgid "Send us a message"
+msgstr "Senden Sie uns eine Nachricht"
+
+#: builder/templates/includes/header_footer/components/cart_drawer.html:29
+#: builder/templates/includes/header_footer/header.html:30
+msgid "Start Shopping"
+msgstr "Jetzt einkaufen"
+
+#: builder/templates/includes/header_footer/footer.html:54
+#: builder/templates/includes/header_footer/footer.html:100
+#: builder/templates/includes/header_footer/footer.html:290
+#: builder/templates/includes/header_footer/footer.html:317
+msgid "Subscribe"
+msgstr "Abonnieren"
+
+#: builder/templates/includes/header_footer/footer.html:50
+#: builder/templates/includes/header_footer/footer.html:96
+#: builder/templates/includes/header_footer/footer.html:310
+msgid "Subscribe to our newsletter"
+msgstr "Abonnieren Sie unseren Newsletter"
+
+#: builder/templates/includes/header_footer/footer.html:249
+msgid "Subscribing..."
+msgstr "Anmeldung läuft..."
+
+#: builder/templates/includes/header_footer/footer.html:273
+msgid "Subscription failed"
+msgstr "Anmeldung fehlgeschlagen"
+
+#: builder/templates/includes/header_footer/components/cart_drawer.html:43
+#: builder/templates/includes/header_footer/header.html:30
+msgid "Subtotal"
+msgstr "Zwischensumme"
+
+#: builder/templates/includes/team_grid.html:33
+msgid "Team members will be displayed here once configured in About Us Settings."
+msgstr "Teammitglieder werden hier angezeigt, sobald sie in den Einstellungen zu «Über uns» hinterlegt sind."
+
+#: builder/api.py:2198
+msgid "Thank you for subscribing to our newsletter!"
+msgstr "Vielen Dank für Ihre Anmeldung zu unserem Newsletter."
+
+#: builder/templates/includes/contact_page.html:475
+msgid "Thank you! Your message has been sent successfully."
+msgstr "Vielen Dank. Ihre Nachricht wurde erfolgreich gesendet."
+
+#: builder/templates/includes/contact_form.html:62
+#: builder/templates/includes/site_form.html:43
+#: frontend/src/components/Modals/SiteFormDialog.vue:225
+msgid "Thank you, your message has been sent."
+msgstr "Vielen Dank, Ihre Nachricht wurde gesendet."
+
+#: builder/www/404.html:24
+msgid "The address may have changed, or the page may have been removed."
+msgstr "Die Adresse hat sich möglicherweise geändert, oder die Seite wurde entfernt."
+
+#: builder/site_ai/nora/site_builder.py:2565
+#: builder/site_ai/nora/site_builder.py:2566
+msgid "The design brief failed; the site uses default styling."
+msgstr "Das Gestaltungskonzept konnte nicht erstellt werden; die Website verwendet die Standardgestaltung."
+
+#: builder/api.py:430
+msgid "The form could not be read."
+msgstr "Das Formular konnte nicht gelesen werden."
+
+#: builder/api.py:351
+msgid "The options could not be read."
+msgstr "Die Optionen konnten nicht gelesen werden."
+
+#: builder/api.py:358
+msgid "This block cannot be written with these options."
+msgstr "Dieser Block kann mit diesen Optionen nicht gespeichert werden."
+
+#: builder/www/404.html:22
+msgid "This page does not exist"
+msgstr "Diese Seite existiert nicht."
+
+#: builder/api.py:1020
+msgid "This page was changed elsewhere while you were editing it. Reload before saving."
+msgstr "Diese Seite wurde während der Bearbeitung anderswo geändert. Laden Sie sie vor dem Speichern neu."
+
+#: builder/www/404.html:18
+msgid "This section is on its way. The link is already in place so it will work the day it opens."
+msgstr "Dieser Bereich ist in Arbeit. Der Link ist bereits gesetzt und funktioniert, sobald der Bereich öffnet."
+
+#: builder/hf_utils/chrome_api.py:298
+#: frontend/src/components/Settings/GlobalTheme.vue:458
+msgid "Top page"
+msgstr "Seitenkopf"
+
+#: builder/templates/includes/header_footer/components/search_bar.html:349
+msgid "Try different keywords"
+msgstr "Versuchen Sie andere Suchbegriffe."
+
+#: builder/api.py:344
+msgid "Unknown component: {0}"
+msgstr "Unbekannte Komponente: {0}"
+
+#: builder/templates/includes/blog_listing.html:19
+msgid "View All Articles"
+msgstr "Alle Artikel anzeigen"
+
+#: builder/templates/includes/header_footer/components/search_bar.html:487
+msgid "View all results"
+msgstr "Alle Ergebnisse anzeigen"
+
+#: builder/templates/includes/header_footer/components/cart_drawer.html:52
+#: builder/templates/includes/header_footer/header.html:30
+msgid "View Cart"
+msgstr "Warenkorb anzeigen"
+
+#: builder/site_ai/nora/site_builder.py:3416
+msgid "Visual check: waiting for the images"
+msgstr "Visuelle Prüfung: Warten auf die Bilder"
+
+#: builder/site_ai/nora/site_builder.py:3446
+msgid "Visual check: {0}"
+msgstr "Visuelle Prüfung: {0}"
+
+#: builder/ai/agent/tools/site_forms.py:102
+msgid "With these questions added: {0}."
+msgstr "Mit diesen zusätzlichen Fragen: {0}."
+
+#: builder/site_ai/nora/site_builder.py:3197
+msgid "Writing page {0} of {1}: {2}"
+msgstr "Seite {0} von {1} wird verfasst: {2}"
+
+#: builder/site_ai/nora/site_builder.py:2517
+msgid "Writing the design brief"
+msgstr "Gestaltungskonzept wird verfasst"
+
+#: builder/api.py:2163 builder/api.py:2205
+msgid "You are already subscribed to our newsletter"
+msgstr "Sie sind bereits für unseren Newsletter angemeldet."
+
+#: builder/templates/includes/header_footer/components/cart_drawer.html:11
+#: builder/templates/includes/header_footer/header.html:29
+msgid "Your Cart"
+msgstr "Ihr Warenkorb"
+
+#: builder/templates/includes/header_footer/components/cart_drawer.html:28
+#: builder/templates/includes/header_footer/header.html:30
+msgid "Your cart is empty"
+msgstr "Ihr Warenkorb ist leer"
+
+#: builder/templates/includes/contact_page.html:421
+msgid "Your email"
+msgstr "Ihre E-Mail-Adresse"
+
+#: builder/templates/includes/site_form.html:44
+msgid "Your message could not be sent. Please check your answers and try again."
+msgstr "Ihre Nachricht konnte nicht gesendet werden. Bitte prüfen Sie Ihre Angaben und versuchen Sie es erneut."
+
+#: builder/templates/includes/contact_form.html:63
+msgid "Your message could not be sent. Please check your email address and try again."
+msgstr "Ihre Nachricht konnte nicht gesendet werden. Bitte prüfen Sie Ihre E-Mail-Adresse und versuchen Sie es erneut."
+
+#: builder/templates/includes/contact_form.html:82
+#: builder/templates/includes/contact_page.html:420
+msgid "Your name"
+msgstr "Ihr Name"
+
+#: builder/builder/doctype/website_header_footer_config/website_header_footer_config.py:376
+msgid "© {year} {site_name}. All rights reserved."
+msgstr "© {year} {site_name}. Alle Rechte vorbehalten."
