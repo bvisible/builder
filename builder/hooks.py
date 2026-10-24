@@ -157,6 +157,12 @@ web_include_css = f"/assets/builder/css/web_pages.css?v={_asset_version('css/web
 # "Event": "frappe.desk.doctype.event.event.has_permission",
 # }
 
+# //// Neoffice — on a managed instance the AI providers (and the host's key they carry) are the host's:
+# //// a Website Manager holds write on the doctype, so the doctype alone does not keep a client out.
+has_permission = {
+	"Builder AI Provider": "builder.site_ai.capabilities.ai_provider_permission",
+}
+
 user_invitation = {
 	"allowed_roles": {
 		"System Manager": ["Website Manager"],

@@ -9,7 +9,10 @@ its boot payload; the agent registry reads `disabled_tools()` when it is built.
 
 from __future__ import annotations
 
+import functools
+
 import frappe
+from frappe import _
 
 from builder.site_ai.config import MANAGED_KEY, get_assistant_name
 
@@ -21,6 +24,42 @@ MANAGED_DISABLED_TOOLS = ("run_python", "create_doctype", "seed_sample_data")
 
 def is_managed() -> bool:
     return bool(frappe.conf.get(MANAGED_KEY))
+
+
+def host_owns_ai_settings() -> bool:
+    """Whether this user may connect, change or remove AI providers, keys and models.
+
+    On a managed instance they are the host's: the `Managed` provider row carries the host's key, and
+    whoever may rewrite its API base receives that key at the next chat. Same rule as the model picker
+    (`ai_capabilities`): the host's Administrator only. Anywhere else, whoever could before still can.
+    """
+    return not is_managed() or frappe.session.user == "Administrator"
+
+
+def require_host_ai_settings() -> None:
+    if not host_owns_ai_settings():
+        frappe.throw(_("The AI of this site is managed by its host"), frappe.PermissionError)
+
+
+def host_ai_settings_only(fn):
+    """Decorator for the endpoints that set up providers: the menu hides them from a client of a managed
+    instance, this makes the server refuse them too (a hidden button is not a permission)."""
+
+    @functools.wraps(fn)
+    def wrapper(*args, **kwargs):
+        require_host_ai_settings()
+        return fn(*args, **kwargs)
+
+    return wrapper
+
+
+def ai_provider_permission(doc=None, ptype=None, user=None, **kwargs):
+    """`has_permission` hook of Builder AI Provider: a client of a managed instance reads the row (the picker
+    needs it) but never saves or deletes it. Code that writes it on the host's behalf passes
+    `ignore_permissions` and never reaches this hook."""
+    if ptype in ("write", "create", "delete") and is_managed() and (user or frappe.session.user) != "Administrator":
+        return False
+    return None
 
 
 def disabled_tools() -> list[str]:

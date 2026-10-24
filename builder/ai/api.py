@@ -17,6 +17,9 @@ from builder.ai.block_codec import BlockCodec
 from builder.ai.llm import resolve_api_key, settings_api_key
 from builder.ai.models import GatewayListing, ModelRegistry
 from builder.ai.session import AISession
+from builder.site_ai.capabilities import (  # //// Neoffice — the endpoints that set up providers refuse a client of a managed instance
+	host_ai_settings_only,
+)
 from builder.utils import has_page_write
 
 logger = frappe.logger("builder.ai.api")
@@ -264,6 +267,7 @@ PROVIDER_FIELDS = (
 
 
 @frappe.whitelist()
+@host_ai_settings_only  # //// Neoffice — the host's key sits on a managed provider row
 def save_ai_provider(provider: dict, name: str | None = None) -> str:
 	"""Create or update a provider from the settings UI. An omitted api_key keeps
 	the stored one: the client never receives it (keys live in __Auth), so without
@@ -286,6 +290,7 @@ def save_ai_provider(provider: dict, name: str | None = None) -> str:
 
 
 @frappe.whitelist()
+@host_ai_settings_only  # //// Neoffice — the host's key sits on a managed provider row
 def import_provider_models(provider: str) -> dict:
 	"""Add every chat model a gateway advertises at /models, right now rather than
 	on the picker's next sync. Existing rows are left alone, so this is safe to re-run."""
@@ -303,6 +308,7 @@ def import_provider_models(provider: str) -> dict:
 
 
 @frappe.whitelist()
+@host_ai_settings_only  # //// Neoffice — the host's key sits on a managed provider row
 def delete_ai_provider(provider: str) -> None:
 	"""Delete a provider with its models. A provider refuses to go while models still
 	point at it, so they go first, in the same request."""
@@ -319,6 +325,7 @@ def sync_ai_models() -> None:
 
 
 @frappe.whitelist()
+@host_ai_settings_only  # //// Neoffice — the host's key sits on a managed provider row
 def get_provider_credits(provider: str) -> dict | None:
 	"""The balance a gateway reports at <api_base>/credits, or None when it reports none."""
 	if not frappe.has_permission("Builder AI Provider", "read"):
@@ -361,6 +368,7 @@ def ai_setup_state():
 
 
 @frappe.whitelist()
+@host_ai_settings_only  # //// Neoffice — the host's key sits on a managed provider row
 @has_page_write()
 def verify_ai_key(preset: str, api_key: str = "", api_base: str = "", model_id: str = ""):
 	"""Make one small real call so a bad key fails here, not on the first build."""
@@ -381,6 +389,7 @@ def verify_ai_key(preset: str, api_key: str = "", api_base: str = "", model_id: 
 
 
 @frappe.whitelist()
+@host_ai_settings_only  # //// Neoffice — the host's key sits on a managed provider row
 @has_page_write()
 def start_codex_login():
 	"""Begin a ChatGPT browser sign-in: the URL to open, the state to poll on,
@@ -391,6 +400,7 @@ def start_codex_login():
 
 
 @frappe.whitelist()
+@host_ai_settings_only  # //// Neoffice — the host's key sits on a managed provider row
 @has_page_write()
 def poll_codex_login(state: str):
 	"""Where a started sign-in stands: pending, connected, failed or expired.
@@ -401,6 +411,7 @@ def poll_codex_login(state: str):
 
 
 @frappe.whitelist()
+@host_ai_settings_only  # //// Neoffice — the host's key sits on a managed provider row
 @has_page_write()
 def finish_codex_login(redirect_url: str):
 	"""Complete a sign-in from the pasted redirect URL, for when the localhost
@@ -415,6 +426,7 @@ def finish_codex_login(redirect_url: str):
 
 
 @frappe.whitelist()
+@host_ai_settings_only  # //// Neoffice — the host's key sits on a managed provider row
 @has_page_write()
 def setup_ai_provider(
 	preset: str,
@@ -555,6 +567,7 @@ def update_session_message_metadata(session_id: str, metadata: dict):
 
 
 @frappe.whitelist()
+@host_ai_settings_only  # //// Neoffice — the host's key sits on a managed provider row
 @has_page_write()
 def test_api_key(provider: str | None = None, api_key: str | None = None):
 	"""Call the cheapest model this key can reach and report what happened. With a
