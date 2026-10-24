@@ -14,7 +14,7 @@ dependencies = [
     "csscompressor>=0.9.5",
     "pandas (>=2.3.2,<3.0.0)",
     "duckdb==1.4.3",
-    "litellm==1.95.0",
+    "litellm==1.95.1",
     "json-repair>=0.30",
     # //// Neoffice — runtime dependencies of builder/site_ai/** (litellm and json-repair now come
     # //// from upstream above; the Ollama client stays until site_ai moves onto builder.ai.llm).
@@ -49,7 +49,17 @@ requires = ["flit_core >=3.4,<4"]
 build-backend = "flit_core.buildapi"
 
 [tool.bench.frappe-dependencies]
+# 16.36.1 is the first release whose @framework/ui ships telemetry and TrialBanner,
+# which the frontend imports; older benches fail the build instead of the update check
+# //// Neoffice — the whole fleet runs frappe v15 and the editor is never built on a bench: the CI builds it
+# //// (build-frontend.yml) against frappe's version-15 ui/, which carries telemetry and TrialBanner, and commits
+# //// the artifacts. So the floor stays where v1.35.1 had it (">=16.36.1" would refuse every instance).
 frappe = ">=15.0.0,<18.0.0"
+
+[tool.bench.assets]
+build_dir = "./frontend"
+out_dir = "./builder/public/frontend"
+index_html_path = "./builder/www/_builder.html"
 
 [tool.black]
 line-length = 99

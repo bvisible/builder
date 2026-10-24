@@ -264,7 +264,8 @@ onActivated(async () => {
 	});
 	builderStore.realtime.doc_subscribe("Builder Page", route.params.pageId as string);
 	builderStore.realtime.doc_open("Builder Page", route.params.pageId as string);
-	if (route.params.pageId === pageStore.selectedPage) {
+	// a preview selects the page but does not load its canvas
+	if (route.params.pageId === pageStore.selectedPage && pageStore.pageBlocks.length) {
 		return;
 	}
 	if (!webPages.data) {
@@ -324,6 +325,7 @@ onMounted(() => {
 	if (!editorDemo) {
 		prefetchBuilderSettings();
 		prefetchTemplateGallery();
+		pageStore.findDetachedPreview();
 	}
 	// //// Neoffice — arriving with ?nora=site (Create with AI on the dashboard) opens the agent's
 	// //// tab; the panel seeds the site conversation from the same query (useSiteCreation).
@@ -341,7 +343,12 @@ watchEffect(() => {
 	}
 });
 
-const debouncedPageSave = useDebounceFn(pageStore.savePage, 300);
+// a save queued before one of Bob's server edits landed would write over the server's newer draft
+const debouncedPageSave = useDebounceFn((aiEditEpoch: number) => {
+	if (aiEditEpoch === builderStore.aiEditEpoch) return pageStore.savePage();
+	// a save still in flight clears the flag itself when it lands
+	if (!pageStore.saveId) pageStore.savingPage = false;
+}, 300);
 
 const usageMessage = computed(() => getPageUsageMessage(usageCount.value));
 
@@ -359,7 +366,7 @@ watch(
 			!pageCanvas.value?.canvasProps?.settingCanvas
 		) {
 			pageStore.savingPage = true;
-			debouncedPageSave();
+			debouncedPageSave(builderStore.aiEditEpoch);
 		}
 	},
 	{

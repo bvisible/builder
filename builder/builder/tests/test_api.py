@@ -1,4 +1,5 @@
 import io
+import os
 from contextlib import contextmanager
 from unittest.mock import patch
 
@@ -7,12 +8,15 @@ from frappe.tests.utils import FrappeTestCase
 from PIL import Image
 
 from builder.api import (
+	convert_to_webp,
 	create_import_folder,
 	duplicate_page,
+	get_copy_script_name,
 	import_remote_assets,
 	import_remote_fonts,
 	import_template_group,
 	insert_folder,
+	save_client_script,
 )
 
 FONT = "https://cdn.example.com/inter.woff2"
@@ -40,14 +44,15 @@ class Response:
 		if self.status >= 400:
 			raise Exception(f"HTTP {self.status}")
 
+	def iter_content(self, chunk_size):
+		yield self.content
+
 
 @contextmanager
 def serving(*responses):
-	with (
-		patch("builder.api.requests.get", side_effect=list(responses)) as get,
-		patch("builder.api.assert_not_private_url"),
-	):
-		yield get
+	with patch("builder.api.public_session") as session:
+		session.return_value.get.side_effect = list(responses)
+		yield session.return_value.get
 
 
 class TestImportRemoteAssets(FrappeTestCase):
@@ -182,6 +187,56 @@ class TestImportRemoteFonts(FrappeTestCase):
 		self.assertEqual(len(imported), 2)
 
 
+class TestConvertToWebp(FrappeTestCase):
+	def setUp(self):
+		self.url = f"https://cdn.example.com/{frappe.generate_hash(length=8)}.png"
+
+	def test_pulls_an_external_image_as_webp(self):
+		with serving(Response(png_bytes())):
+			self.assertTrue(convert_to_webp(image_url=self.url).endswith(".webp"))
+
+	def test_keeps_an_existing_file_with_the_same_name(self):
+		other_url = self.url.replace("cdn.example.com", "other.example.com")
+		with serving(Response(png_bytes("red")), Response(png_bytes("blue"))):
+			first = convert_to_webp(image_url=self.url)
+			first_content = frappe.get_doc("File", {"file_url": first}).get_content()
+			second = convert_to_webp(image_url=other_url)
+
+		self.assertNotEqual(first, second)
+		self.assertEqual(frappe.get_doc("File", {"file_url": first}).get_content(), first_content)
+
+	def test_stops_downloading_at_the_size_limit(self):
+		endless = Response()
+		endless.iter_content = lambda chunk_size: iter(lambda: b"x" * 1024, None)
+		with serving(endless), patch("builder.api.MAX_ASSET_BYTES", 4096):
+			self.assertRaises(frappe.ValidationError, convert_to_webp, image_url=self.url)
+
+	def test_converts_only_files_inside_builder_assets(self):
+		outside = frappe.get_app_path("builder", "www", "outside.png")
+		converted = outside.replace(".png", ".webp")
+		with open(outside, "wb") as f:
+			f.write(png_bytes())
+		self.addCleanup(os.remove, outside)
+		self.addCleanup(lambda: os.path.exists(converted) and os.remove(converted))
+
+		url = "/builder_assets/../outside.png"
+		self.assertEqual(convert_to_webp(image_url=url), url)
+		self.assertFalse(os.path.exists(converted))
+
+	def test_refuses_a_user_who_cannot_edit_pages(self):
+		email = "builder-website-user@example.com"
+		if not frappe.db.exists("User", email):
+			frappe.get_doc(
+				{"doctype": "User", "email": email, "first_name": "Website", "user_type": "Website User"}
+			).insert(ignore_permissions=True)
+
+		with serving(Response(png_bytes())) as get, self.set_user(email):
+			# //// Neoffice — frappe v15's PermissionError is not a ValidationError (v16's is): upstream's test is written against develop
+			self.assertRaises((frappe.ValidationError, frappe.PermissionError), convert_to_webp, image_url=self.url)
+
+		get.assert_not_called()
+
+
 class TestDuplicatePage(FrappeTestCase):
 	def test_duplicate_of_a_standard_page_is_a_plain_page(self):
 		# developer mode off so the standard page is not exported to disk
@@ -204,6 +259,27 @@ class TestDuplicatePage(FrappeTestCase):
 		self.assertEqual(first.page_title, "Numbered (Copy)")
 		self.assertEqual(second.page_title, "Numbered (Copy 2)")
 		self.assertEqual(third.page_title, "Numbered (Copy 3)")
+
+	def test_copied_script_names_swap_the_hash(self):
+		for name in ("fp sidebar", "fp sidebar-8120f", "fp sidebar-8120f-c8371-91f8e"):
+			self.assertRegex(get_copy_script_name(name), r"^fp sidebar-[0-9a-f]{5}$")
+
+
+class TestSaveClientScript(FrappeTestCase):
+	def test_stale_save_is_refused(self):
+		script = frappe.get_doc(
+			{"doctype": "Builder Client Script", "script_type": "CSS", "script": "a{}"}
+		).insert()
+		# inserting writes the script file and commits, so remove it the same way
+		self.addCleanup(lambda: (frappe.delete_doc("Builder Client Script", script.name), frappe.db.commit()))
+		loaded = str(script.modified)
+
+		saved = save_client_script(script.name, "b{}", loaded)
+
+		with self.assertRaises(frappe.TimestampMismatchError):
+			save_client_script(script.name, "c{}", loaded)
+		save_client_script(script.name, "d{}", saved)
+		self.assertEqual(frappe.db.get_value("Builder Client Script", script.name, "script"), "d{}")
 
 
 GROUP = {

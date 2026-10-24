@@ -245,7 +245,7 @@ class BuilderPage(WebsiteGenerator):
 	def set_default_values(self):
 		if not self.page_title:
 			self.page_title = "My Page"
-		if not self.route:
+		if not (self.route or "").strip():
 			if not self.name:
 				self.autoname()
 			self.route = f"pages/{self.name}"
@@ -319,6 +319,14 @@ class BuilderPage(WebsiteGenerator):
 			queue="short",
 			enqueue_after_commit=True,
 		)
+
+
+	def set_route(self):
+		if self.route:
+			# frappe trims slashes and dots but keeps whitespace, which reaches URLs as %20
+			self.route = self.route.strip("/. \t\n")
+		super().set_route()
+
 	def validate_route_variables(self):
 		if not self.route or not (":" in self.route or "<" in self.route):
 			return
@@ -439,7 +447,8 @@ class BuilderPage(WebsiteGenerator):
 		# //// the deleted name for an hour, and the site's root fell through to another page.
 		self.clear_route_cache()
 		for session in frappe.get_all("Builder AI Session", filters={"page": self.name}, pluck="name"):
-			frappe.delete_doc("Builder AI Session", session, ignore_missing=True)
+			# another user's chat on this page goes too, whoever deletes the page
+			frappe.delete_doc("Builder AI Session", session, ignore_missing=True, ignore_permissions=True)
 
 		if self.is_template and self.template_group:
 			if frappe.conf.developer_mode:

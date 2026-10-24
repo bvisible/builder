@@ -1,10 +1,8 @@
-import ipaddress
 # //// Neoffice — needed by the generation/chat/chrome code added below; upstream's api.py
 # //// has no json import (7deba177: NameError on every site-generation path).
 import json
 import os
 import re
-import socket
 from io import BytesIO
 from itertools import count
 from types import FunctionType, MethodType, ModuleType
@@ -12,13 +10,9 @@ from typing import Any
 from urllib.parse import unquote, urlparse
 
 import frappe
-# //// Neoffice — frappe._ is used by our endpoints below (4661ae05). `import frappe.utils`
-# //// on the next line blames to upstream 8b96f0c9 but is ABSENT at the merge base: upstream
-# //// dropped it and our merge kept it — our code calls frappe.utils.now() 13 times, so it
-# //// stays, but treat it as ours from now on.
-from frappe import _
+# //// Neoffice — `import frappe.utils`: upstream dropped it, our code calls frappe.utils.now() 13 times, so it
+# //// stays (treat it as ours). `ipaddress` and `requests` went with the SSRF guard that moved to public_fetch.py.
 import frappe.utils
-import requests
 from frappe import _
 from frappe.apps import get_apps as get_permitted_apps
 from frappe.core.doctype.file.file import get_local_image
@@ -37,6 +31,7 @@ from builder.builder.doctype.builder_page.builder_page import BuilderPageRendere
 from builder.builder.doctype.builder_snapshot import builder_snapshot
 # //// Neoffice — builder_role_required: the guard the AI/chat/site-chrome endpoints below
 # //// carry. Upstream needs none — it ships no endpoint that an untrusted caller can reach.
+from builder.public_fetch import public_session
 from builder.utils import builder_role_required, compact_json, has_page_read, has_page_write, normalize_renamed_doc
 
 
@@ -689,20 +684,28 @@ MAX_FONT_BYTES = 6 * 1024 * 1024
 FONT_EXTENSIONS = ("woff2", "woff", "ttf", "otf")
 
 
+def download_remote_file(url: str, max_bytes: int) -> tuple[bytes, str]:
+	"""Body and media type of a remote file, refused as soon as it passes max_bytes."""
+	response = public_session().get(url, timeout=20, stream=True, headers={"User-Agent": "FrappeBuilder/1.0"})
+	response.raise_for_status()
+	content = bytearray()
+	for chunk in response.iter_content(64 * 1024):
+		content += chunk
+		if len(content) > max_bytes:
+			frappe.throw(f"File is larger than {max_bytes // (1024 * 1024)}MB: {url}")
+	return bytes(content), response.headers.get("content-type", "").split(";")[0].strip().lower()
+
+
 def import_remote_font(family: str, url: str) -> str:
 	existing = frappe.db.get_value("User Font", {"font_name": family}, "font_file")
 	if existing:
 		return existing
 
-	assert_not_private_url(url)
 	extension = next((e for e in FONT_EXTENSIONS if urlparse(url).path.lower().endswith(f".{e}")), None)
 	if not extension:
 		frappe.throw(f"Not a font file: {url}")
 
-	response = requests.get(url, timeout=20, headers={"User-Agent": "FrappeBuilder/1.0"})
-	response.raise_for_status()
-	if len(response.content) > MAX_FONT_BYTES:
-		frappe.throw(f"Font is larger than {MAX_FONT_BYTES // (1024 * 1024)}MB: {url}")
+	content = download_remote_file(url, MAX_FONT_BYTES)[0]
 
 	file = frappe.get_doc(
 		{
@@ -710,7 +713,7 @@ def import_remote_font(family: str, url: str) -> str:
 			"file_name": f"{frappe.scrub(family)}.{extension}",
 			"is_private": 0,
 			"folder": "Home/Builder Uploads/Fonts",
-			"content": response.content,
+			"content": content,
 		}
 	).insert()
 	frappe.get_doc({"doctype": "User Font", "font_name": family, "font_file": file.file_url}).insert()
@@ -728,7 +731,6 @@ MAX_IMAGE_EDGE = 2048
 def import_remote_asset(url: str) -> str:
 	import hashlib
 
-	assert_not_private_url(url)
 	digest = hashlib.md5(url.encode()).hexdigest()[:10]
 	# the name is derived from the URL, so importing the same asset twice reuses the file
 	stem = f"builder-import-{digest}"
@@ -736,13 +738,7 @@ def import_remote_asset(url: str) -> str:
 	if existing:
 		return existing
 
-	response = requests.get(url, timeout=20, headers={"User-Agent": "FrappeBuilder/1.0"})
-	response.raise_for_status()
-	content = response.content
-	if len(content) > MAX_ASSET_BYTES:
-		frappe.throw(f"Asset is larger than {MAX_ASSET_BYTES // (1024 * 1024)}MB: {url}")
-
-	content_type = response.headers.get("content-type", "").split(";")[0].strip().lower()
+	content, content_type = download_remote_file(url, MAX_ASSET_BYTES)
 	extension = KEEP_AS_IS.get(content_type) or guess_keep_as_is_extension(url)
 	if extension:
 		return save_imported_asset(f"{stem}.{extension}", content)
@@ -777,6 +773,7 @@ def save_imported_asset(file_name: str, content: bytes) -> str:
 
 
 @frappe.whitelist()
+@has_page_write("You do not have permission to convert images.")
 def convert_to_webp(image_url: str | None = None, file_doc: Document | None = None) -> str:
 	"""
 	Convert image to webp format.
@@ -793,7 +790,7 @@ def convert_to_webp(image_url: str | None = None, file_doc: Document | None = No
 	def get_extension(filename: str) -> str:
 		return filename.split(".")[-1].lower() if "." in filename else ""
 
-	def save_as_webp(image, path: str) -> None:
+	def save_as_webp(image, path: str | BytesIO) -> None:
 		# a 5000px original costs ~100MB decoded and thrashes the browser's image cache,
 		# so the canvas re-decodes it on every pan; thumbnail() only ever shrinks
 		image.thumbnail((MAX_IMAGE_EDGE, MAX_IMAGE_EDGE))
@@ -833,10 +830,11 @@ def convert_to_webp(image_url: str | None = None, file_doc: Document | None = No
 		return new_file.file_url
 
 	def handle_builder_asset(image_url: str) -> str:
+		assets_path = os.path.abspath(frappe.get_app_path("builder", "www", "builder_assets"))
 		image_path = os.path.abspath(frappe.get_app_path("builder", "www", image_url.lstrip("/")))
 		image_path = image_path.replace("_", "-").replace("/builder-assets", "/builder_assets")
 		extn = get_extension(image_path)
-		if not can_convert_image(extn):
+		if not image_path.startswith(assets_path + os.sep) or not can_convert_image(extn):
 			return image_url
 		image = Image.open(image_path)
 		save_as_webp(image, to_webp_path(image_path, extn))
@@ -851,13 +849,10 @@ def convert_to_webp(image_url: str | None = None, file_doc: Document | None = No
 
 	def handle_external_url(image_url: str) -> str:
 		url = unquote(image_url)
-		assert_not_private_url(url)
-		image = Image.open(BytesIO(requests.get(url).content))
-		filename = get_external_webp_filename(url)
-		file = frappe.get_doc({"doctype": "File", "file_name": filename, "file_url": f"/files/{filename}"})
-		save_as_webp(image, file.get_full_path())
-		file.save()
-		return file.file_url
+		content = download_remote_file(url, MAX_ASSET_BYTES)[0]
+		buffer = BytesIO()
+		save_as_webp(Image.open(BytesIO(content)), buffer)
+		return save_imported_asset(get_external_webp_filename(url), buffer.getvalue())
 
 	if not image_url and not file_doc:
 		return ""
@@ -872,31 +867,6 @@ def convert_to_webp(image_url: str | None = None, file_doc: Document | None = No
 	if image_url.startswith("http"):
 		return handle_external_url(image_url)
 	return image_url
-
-
-def assert_not_private_url(url: str) -> list[str]:
-	"""Raise PermissionError if the URL resolves to a private/internal IP (SSRF guard).
-	Returns the addresses it validated so a caller can PIN its connection to one — a
-	second DNS resolution at connect time can answer differently (DNS rebinding)."""
-	parsed = urlparse(url)
-	if parsed.scheme not in ("http", "https"):
-		frappe.throw(_("Only HTTP/HTTPS URLs are allowed for external images."), frappe.PermissionError)
-	hostname = parsed.hostname
-	if not hostname:
-		frappe.throw(_("Invalid URL: missing hostname."), frappe.ValidationError)
-	try:
-		addr_infos = socket.getaddrinfo(hostname, None)
-	except socket.gaierror:
-		frappe.throw(_("Could not resolve hostname: {0}").format(hostname), frappe.ValidationError)
-	ips = []
-	for addr_info in addr_infos:
-		ip = ipaddress.ip_address(addr_info[4][0])
-		if ip.is_private or ip.is_loopback or ip.is_link_local or ip.is_reserved or ip.is_multicast:
-			frappe.throw(
-				_("Requests to private or internal addresses are not allowed."), frappe.PermissionError
-			)
-		ips.append(str(ip))
-	return ips
 
 
 def check_app_permission():
@@ -985,10 +955,7 @@ def clone_client_scripts(source_page, new_page) -> None:
 	client_scripts = source_page.client_scripts
 	new_page.client_scripts = []
 	for script in client_scripts:
-		builder_script = frappe.get_doc("Builder Client Script", script.builder_script)
-		new_script = frappe.copy_doc(builder_script, ignore_no_copy=False)
-		new_script.name = f"{builder_script.name}-{frappe.generate_hash(length=5)}"
-		new_script.insert(ignore_permissions=True)
+		new_script = copy_client_script(script.builder_script)
 		new_page.append("client_scripts", {"builder_script": new_script.name})
 
 
@@ -1025,6 +992,48 @@ def save_page_draft(page: str, draft_blocks: str | None = None, loaded_modified:
 	doc.draft_blocks = draft_blocks
 	doc.save()
 	return doc.as_dict()
+
+
+def copy_client_script(name: str, script: str | None = None):
+	new_script = frappe.copy_doc(frappe.get_doc("Builder Client Script", name), ignore_no_copy=False)
+	new_script.name = get_copy_script_name(name)
+	if script is not None:
+		new_script.script = script
+	return new_script.insert(ignore_permissions=True)
+
+
+@frappe.whitelist()
+@has_page_write("You do not have permission to edit client scripts")
+def save_client_script_as_copy(page_name: str, script_name: str, script: str) -> str:
+	"""Moves one page off a shared script onto its own copy, which carries the edit."""
+	page = frappe.get_doc("Builder Page", page_name)
+	rows = [row for row in page.client_scripts if row.builder_script == script_name]
+	if not rows:
+		frappe.throw(_("{0} is not attached to this page").format(script_name))
+	new_script = copy_client_script(script_name, script)
+	for row in rows:
+		row.builder_script = new_script.name
+	page.save()
+	new_script.clear_page_cache()
+	return new_script.name
+
+
+@frappe.whitelist()
+@has_page_write("You do not have permission to edit client scripts")
+def save_client_script(name: str, script: str, modified: str | None = None) -> str:
+	"""Saves a script. Pass the `modified` it was loaded with to refuse overwriting a newer save."""
+	doc = frappe.get_doc("Builder Client Script", name)
+	doc.script = script
+	if modified:
+		doc.modified = modified
+	doc.save()
+	return str(doc.modified)
+
+
+def get_copy_script_name(name: str) -> str:
+	"""Swaps the trailing hash for a fresh one, so copies of copies don't keep growing the name."""
+	base = re.sub(r"(-[0-9a-f]{5})+$", "", name)
+	return f"{base}-{frappe.generate_hash(length=5)}"
 
 
 def get_copy_title(title: str) -> str:
@@ -1184,7 +1193,7 @@ def create_page_from_bundle(
 		new_script = frappe.get_doc(
 			{
 				"doctype": "Builder Client Script",
-				"name": f"{cs.get('name')}-{frappe.generate_hash(length=5)}",
+				"name": get_copy_script_name(cs.get("name")),
 				"script_type": cs.get("script_type"),
 				"script": cs.get("script"),
 			}
@@ -1824,8 +1833,13 @@ def get_codemirror_completions():
 @frappe.whitelist()
 @has_page_write("You do not have permission to reorder client scripts")
 def reorder_client_scripts(script_order: list[str]):
+	if not script_order:
+		return
 	for idx, script_name in enumerate(script_order, start=1):
 		frappe.db.set_value("Builder Page Client Script", script_name, "idx", idx)
+	# the rows change without a page save, so the cached page would keep the old order
+	page = frappe.db.get_value("Builder Page Client Script", script_order[0], "parent")
+	frappe.get_doc("Builder Page", page).clear_cache()
 
 
 @frappe.whitelist()

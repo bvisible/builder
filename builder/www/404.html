@@ -41,4 +41,19 @@
 	</div>
 {# //// Neoffice — see the header comment. #}
 </section>
+
+{# //// Neoffice — upstream's script (the editor's preview frame must not load Builder inside itself through "/"), pointed at our
+     markup: the way back is the `.u-404__actions a` link, not `.error-page a`. #}
+<script>
+	// in the editor's preview frame, "/" would load Builder inside it
+	//// Neoffice — our markup: the way back is `.u-404__actions a` (upstream: `.error-page a`)
+	const link = window.self !== window.top && document.querySelector(".u-404__actions a");
+	if (link) {
+		link.textContent = {{ _("Go Back")|tojson }};
+		link.addEventListener("click", (event) => {
+			event.preventDefault();
+			history.back();
+		});
+	}
+</script>
 {% endblock %}

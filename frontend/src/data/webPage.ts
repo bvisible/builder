@@ -49,6 +49,18 @@ const pagesWithUnpublishedChanges = createListResource({
 	pageLength: 9999,
 });
 
+const pageCreators = createListResource({
+	doctype: "Builder Page",
+	fields: ["owner"],
+	filters: {
+		is_template: 0,
+	},
+	groupBy: "owner",
+	orderBy: "owner asc",
+	cache: "page-creators",
+	pageLength: 999,
+});
+
 //// Neoffice — the editor's draft save goes through builder.api.save_page_draft instead of
 //// frappe.client.set_value. set_value RE-READS the document before writing, so frappe's
 //// optimistic lock compares the document to itself and never fires: a draft computed before
@@ -77,4 +89,4 @@ const searchablePages = createListResource({
 });
 
 //// Neoffice — see the block marker above: savePageDraft exported alongside the others
-export { pagesWithUnpublishedChanges, savePageDraft, searchablePages, templateGroups, webPages };
+export { pageCreators, pagesWithUnpublishedChanges, savePageDraft, searchablePages, templateGroups, webPages };
