@@ -43,6 +43,13 @@ def static_file_for(url: str, roots: Optional[dict]) -> Optional[str]:
     return None
 
 
+# //// Neoffice — a generator's capture of its own site answers the cookie notice first (2026-10-24): the notice is fixed at the foot
+# //// of the viewport, so on a full-page capture it sat over the last lines of a short page and the reviewer revised the page of a
+# //// restaurant's terms to "fix" it. A visitor closes the notice once and never sees it again; the capture does the same, with the
+# //// key of templates/includes/data_notice.html. Only a loopback render (headers) is a capture of our own site.
+NOTICE_ANSWERED_SCRIPT = "try { window.localStorage.setItem('neo_data_notice', '1'); } catch (e) {}"
+
+
 class WebsiteScreenshotter:
     """
     Captures screenshots of websites for design inspiration.
@@ -100,6 +107,7 @@ class WebsiteScreenshotter:
                 # a loopback render names its site by header (visual_check.loopback_headers)
                 if headers:
                     await page.set_extra_http_headers({str(k): str(v) for k, v in headers.items()})
+                    await page.add_init_script(NOTICE_ANSWERED_SCRIPT)  # //// Neoffice — see NOTICE_ANSWERED_SCRIPT
 
                 # a loopback render finds its stylesheets and photos on disk (static_file_for)
                 if static_roots:
@@ -796,6 +804,7 @@ async def _measure_async(url: str, widths=MEASURE_WIDTHS, static_roots: Optional
             page = await browser.new_page(viewport={"width": widths[0], "height": 900})
             if headers:
                 await page.set_extra_http_headers({str(k): str(v) for k, v in headers.items()})
+                await page.add_init_script(NOTICE_ANSWERED_SCRIPT)  # //// Neoffice — see NOTICE_ANSWERED_SCRIPT
             if static_roots:
 
                 async def serve_static(route, request):
