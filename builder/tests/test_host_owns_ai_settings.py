@@ -104,7 +104,11 @@ class TestEveryProviderEndpointRefusesAClient(unittest.TestCase):
 		pass this test on the code of before. The guard is replaced by one with a signature of its own."""
 		for name, args in ENDPOINTS.items():
 			with self.subTest(endpoint=name):
-				with patch.object(capabilities, "require_host_ai_settings", side_effect=frappe.PermissionError("host-only")):
+				# no socket either: on the code of before these endpoints ran for real, and one asked a gateway for its models
+				# with the host's key (a red run of this test did, 2026-10-24)
+				with patch.object(capabilities, "require_host_ai_settings", side_effect=frappe.PermissionError("host-only")), patch(
+					"socket.socket.connect", side_effect=AssertionError("an endpoint reached the network")
+				):
 					with self.assertRaises(frappe.PermissionError) as refused:
 						getattr(api, name)(*args)
 				self.assertIn("host-only", str(refused.exception))
