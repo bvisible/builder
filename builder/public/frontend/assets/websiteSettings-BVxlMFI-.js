@@ -1,1 +1,0 @@
-import{t as e}from"./documentResource-DFiqT0v6.js";var t=e({doctype:`Website Settings`,name:`Website Settings`});export{t};
