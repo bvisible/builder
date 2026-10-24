@@ -2069,6 +2069,46 @@ def footer_blurb(text: str) -> str:
     return " ".join(line for line in lines if line)
 
 
+SOCIAL_LINK_FIELDS = ("facebook_url", "twitter_url", "instagram_url", "linkedin_url", "youtube_url")
+
+
+def _host_social_links() -> dict[str, str]:
+    """//// Neoffice — the social links of the host site's Single, the ones a profile's Variant is bootstrapped with
+    (see drop_inherited_social_links)."""
+    links = {}
+    for field in SOCIAL_LINK_FIELDS:
+        try:
+            value = frappe.db.get_single_value("Website Header Footer Config", field)
+        except Exception:
+            continue
+        if isinstance(value, str) and value.strip():
+            links[field] = value.strip()
+    return links
+
+
+def drop_inherited_social_links(config, host_links: dict[str, str]) -> list[str]:
+    """//// Neoffice — a generated site links to the networks it was GIVEN, never to the host's or to a placeholder
+    (2026-10-24, found on a real build: a fiduciary's footer carried Instagram, LinkedIn and YouTube icons that
+    all went to "#"). A profile's Variant is bootstrapped with every field of the host's Single, so it came with
+    the host's links, and the generator never sets one. A link is dropped when it is not an address (`#`, empty,
+    `javascript:`) or when it is the host's own; one the owner typed stays. With none left the row of icons goes
+    too. Returns the fields cleared."""
+    cleared, kept = [], 0
+    for field in SOCIAL_LINK_FIELDS:
+        value = str(config.get(field) or "").strip()
+        if not value:
+            continue
+        is_address = value.lower().startswith(("http://", "https://"))
+        if is_address and value != host_links.get(field):
+            kept += 1
+            continue
+        config.set(field, "")
+        cleared.append(field)
+    if cleared and not kept:
+        config.set("show_social_links", 0)
+    return cleared
+
+
 def apply_navigation(config, created: list[dict], site_type: str, description: str, profile: str | None, lang: str = "fr", site_name: str = "") -> None:
     """Menu, footer and home page from the pages the SITE has (site_pages_for_menu), which is
     the pages this run built plus the published ones it left alone. Labels are translated into
@@ -2150,6 +2190,12 @@ def apply_navigation(config, created: list[dict], site_type: str, description: s
     # //// templates/includes/data_notice.html): the site carries a privacy policy that says it uses technical cookies only
     if hasattr(config, "show_data_notice"):
         config.show_data_notice = 1
+    # //// Neoffice — no icon that goes nowhere, and no network of the host's on a client's site (2026-10-24): see drop_inherited_social_links
+    cleared_links = drop_inherited_social_links(config, _host_social_links() if profile else {})
+    if cleared_links:
+        from builder.site_ai.logging import ai_log
+
+        ai_log("info", "Social links not given by the brief removed", fields=cleared_links)
     # //// Neoffice — a logo that cannot be seen on its ground gives way to the site's name (2026-10-20):
     # //// the chrome put the logo image in the footer whatever colour the footer was, and a dark navy
     # //// mark on a deep brown footer was a barely visible rectangle. Last, with every colour and the
