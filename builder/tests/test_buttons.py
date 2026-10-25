@@ -15,7 +15,7 @@ from builder.site_ai.nora.buttons import (
 PALETTE = {"site-primary": "#1b1f24", "site-secondary": "#e578d1", "site-background": "#1b1f24", "site-text": "#f5f5f5"}
 # a light site whose primary reads on its page: the theme paints the buttons as they are
 LIGHT = {"site-primary": "#2f6f5e", "site-secondary": "#e8d9b0", "site-background": "#ffffff", "site-text": "#1f272e"}
-ROUTES = ["/", "/a-propos", "/nos-marques", "/espace-revendeurs", "/contact", "/login", "/all-products", "/compte-professionnel"]
+ROUTES = ["/", "/a-propos", "/nos-marques", "/espace-revendeurs", "/contact", "/login", "/all-products", "/business-account"]
 
 
 def button(text, variant, block_id="b1"):

@@ -1019,7 +1019,7 @@ def _webshop_installed() -> bool:
 # //// entry"): a B2B site now gets "Request an account" on the theme's request page as its
 # //// CTA instead of doubling the resellers page or the sign-in entry.
 # neoffice_theme/www/compte_professionnel.py: the form that opens a B2B Account Request
-ACCOUNT_REQUEST_ROUTE = "/compte-professionnel"
+ACCOUNT_REQUEST_ROUTE = "/business-account"
 
 
 def _account_request_route() -> str | None:

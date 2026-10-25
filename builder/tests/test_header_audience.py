@@ -28,7 +28,7 @@ def template(name):
 
 class TestButtonAudience(unittest.TestCase):
 	def test_automatic_keeps_an_account_button_for_visitors(self):
-		for url in ("/login", "/login?redirect-to=/cart", "/signup/", "/compte-professionnel", "/#signup"):
+		for url in ("/login", "/login?redirect-to=/cart", "/signup/", "/business-account", "/#signup"):
 			self.assertEqual(chrome(cta_url=url).get_cta_audience(), "visitors", url)
 
 	def test_automatic_shows_any_other_button_to_everyone(self):
