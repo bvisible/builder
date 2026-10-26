@@ -14,11 +14,12 @@
 {% set map_type = type | default("m") %}
 {% set encoded_address = map_address | urlencode %}
 
-{#- //// Neoffice — on a site that shows the cookie and privacy notice (2026-10-22, legal.py) the map waits for a click: loading
+{#- //// Neoffice — on a site that shows the cookie and privacy notice (2026-10-22, legal.py) the map waits for the visitor's agreement: loading
     //// Google's embed sends the visitor's address to Google, in the United States, before they have chosen anything, which neither
     //// the Swiss Federal Act on Data Protection (art. 19: the visitor is told) nor the GDPR allows without their consent. Until the
-    //// click the visitor sees the address and a button; the iframe is built by the click, from the same address. Any other site
-    //// keeps the embed as it was. -#}
+    //// agreement the visitor sees the address and a button; the iframe is built by the click (this page only), or at once for a
+    //// visitor who accepted in the notice (2026-10-26: the key `neo_data_notice` is "accepted"), from the same address. Whoever
+    //// accepted can take it back under the map. Any other site keeps the embed as it was. -#}
 {%- set neo_legal = site_legal() if site_legal is defined else {} -%}
 {% if map_address %}
 {%- set map_src = "https://maps.google.com/maps?q=" ~ encoded_address ~ "&t=" ~ map_type ~ "&z=" ~ map_zoom ~ "&output=embed" -%}
@@ -31,7 +32,7 @@
     box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
 ">
 {%- if neo_legal and neo_legal.notice %}
-    <div class="builder-map-gate" data-map-src="{{ map_src | e }}" data-map-title="{{ map_title | e }}">
+    <div class="builder-map-gate" data-map-src="{{ map_src | e }}" data-map-title="{{ map_title | e }}" data-revoke="{{ _('Stop showing the map automatically') | e }}">
         <p class="builder-map-gate__address">{{ map_address }}</p>
         <p class="builder-map-gate__note">{{ _("The map is provided by Google. Loading it sends your IP address to Google, in the United States.") }}
             {%- if neo_legal.privacy_url %} <a href="{{ neo_legal.privacy_url | e }}">{{ _("Privacy policy") }}</a>{% endif %}</p>
@@ -76,6 +77,8 @@
     background: rgba(127, 127, 127, 0.1);
     color: inherit;
 }
+.builder-map-revoke { margin: 0.5rem 0 0; font-size: 0.8125rem; }
+.builder-map-revoke__button { padding: 0; border: 0; background: none; color: inherit; font: inherit; text-decoration: underline; cursor: pointer; opacity: 0.8; }
 .builder-map-gate__address { margin: 0; font-weight: 600; }
 .builder-map-gate__note { margin: 0; max-width: 32rem; font-size: 0.875rem; line-height: 1.5; opacity: 0.85; }
 .builder-map-gate__note a { color: inherit; text-decoration: underline; }
@@ -97,10 +100,12 @@
 (function () {
     if (window.__neoMapGate) return;
     window.__neoMapGate = true;
-    document.addEventListener("click", function (event) {
-        var button = event.target.closest && event.target.closest(".builder-map-gate__button");
-        if (!button) return;
-        var gate = button.closest(".builder-map-gate");
+    var KEY = "neo_data_notice";
+    var agreed = function () {
+        try { return window.localStorage.getItem(KEY) === "accepted"; } catch (e) { return false; }
+    };
+    var open = function (gate, automatic) {
+        if (!gate.parentNode) return;
         var frame = document.createElement("iframe");
         frame.width = "100%";
         frame.height = "100%";
@@ -109,8 +114,39 @@
         frame.referrerPolicy = "no-referrer-when-downgrade";
         frame.title = gate.getAttribute("data-map-title") || "";
         frame.src = gate.getAttribute("data-map-src");
+        var container = gate.parentNode;
+        var label = gate.getAttribute("data-revoke") || "";
         gate.replaceWith(frame);
+        if (automatic && label && container.parentNode) {
+            var note = document.createElement("p");
+            note.className = "builder-map-revoke";
+            var button = document.createElement("button");
+            button.type = "button";
+            button.className = "builder-map-revoke__button";
+            button.textContent = label;
+            note.appendChild(button);
+            container.parentNode.insertBefore(note, container.nextSibling);
+        }
+    };
+    var openAll = function () {
+        var gates = document.querySelectorAll(".builder-map-gate");
+        for (var i = 0; i < gates.length; i++) open(gates[i], true);
+    };
+    document.addEventListener("click", function (event) {
+        var target = event.target;
+        var show = target.closest && target.closest(".builder-map-gate__button");
+        if (show) { open(show.closest(".builder-map-gate"), false); return; }
+        var revoke = target.closest && target.closest(".builder-map-revoke__button");
+        if (revoke) {
+            try { window.localStorage.setItem(KEY, "declined"); } catch (e) {}
+            window.location.reload();
+        }
     });
+    document.addEventListener("neo-maps-agreed", openAll);
+    if (agreed()) {
+        if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", openAll);
+        else openAll();
+    }
 })();
 </script>
 {%- endif %}

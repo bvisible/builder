@@ -1,15 +1,27 @@
 {# //// Neoffice — added file (no upstream equivalent): the cookie and privacy notice at the foot of a generated site.
    //// What it says is true of every site the generator builds (legal.py): technical cookies only, no measurement, no
    //// advertising, no social widget. It is shown only where the site's chrome asks for it (show_data_notice, set by the
-   //// generator), so a site that carries its own cookie tools or analytics is never told it "does not track". A visitor
-   //// closes it once; the choice stays in the browser's localStorage (a cookie would be one more cookie), and the page is
-   //// complete without JavaScript: the notice is only shown by it. #}
+   //// generator), so a site that carries its own cookie tools or analytics is never told it "does not track". The choice stays
+   //// in the browser's localStorage (a cookie would be one more cookie), and the page is complete without JavaScript: the notice
+   //// is only shown by it.
+   ////
+   //// A site that holds a Google map (site_legal().maps) asks instead of only telling (2026-10-26): Accept shows the map on every
+   //// page without a click, Refuse leaves it behind its button. The map include reads the same key. Values of the key: "accepted",
+   //// "declined", and "1" for the visitor who closed the older notice, which only told: on a site with a map that visitor is asked again. #}
 {%- set neo_legal = site_legal() if site_legal is defined else {} -%}
 {%- if neo_legal and neo_legal.notice %}
-<div class="site-data-notice" id="site-data-notice" role="region" aria-label="{{ _('Cookies and privacy') | e }}" hidden>
+<div class="site-data-notice" id="site-data-notice" role="region" aria-label="{{ _('Cookies and privacy') | e }}"{% if neo_legal.maps %} data-consent="1"{% endif %} hidden>
 	<p class="site-data-notice__text">{{ _("This website only uses technical cookies. It does not track you.") }}
+		{%- if neo_legal.maps %} {{ _("With your agreement it shows a Google map, which sends your IP address to Google, in the United States.") }}{% endif %}
 		{%- if neo_legal.privacy_url %} <a class="site-data-notice__link" href="{{ neo_legal.privacy_url | e }}">{{ _("Privacy policy") }}</a>{% endif %}</p>
-	<button type="button" class="site-data-notice__button">{{ _("OK") }}</button>
+	<div class="site-data-notice__actions">
+		{%- if neo_legal.maps %}
+		<button type="button" class="site-data-notice__button site-data-notice__button--quiet" data-notice-choice="declined">{{ _("Refuse") }}</button>
+		<button type="button" class="site-data-notice__button" data-notice-choice="accepted">{{ _("Accept") }}</button>
+		{%- else %}
+		<button type="button" class="site-data-notice__button" data-notice-choice="seen">{{ _("OK") }}</button>
+		{%- endif %}
+	</div>
 </div>
 <style>
 .site-data-notice {
@@ -49,10 +61,17 @@
 	font-weight: 600;
 	cursor: pointer;
 }
+.site-data-notice__actions { display: flex; flex: none; gap: 0.5rem; }
+.site-data-notice__button--quiet {
+	background: transparent;
+	color: inherit;
+	border: 1px solid currentColor;
+}
 .site-data-notice__button:focus-visible,
 .site-data-notice__link:focus-visible { outline: 2px solid currentColor; outline-offset: 2px; }
 @media (max-width: 480px) {
 	.site-data-notice { flex-direction: column; align-items: stretch; gap: 0.75rem; }
+	.site-data-notice__actions { flex-direction: column-reverse; }
 	.site-data-notice__button { width: 100%; }
 }
 @media print { .site-data-notice { display: none; } }
@@ -62,13 +81,19 @@
 	var notice = document.getElementById("site-data-notice");
 	if (!notice) return;
 	var KEY = "neo_data_notice";
-	var seen = false;
-	try { seen = window.localStorage.getItem(KEY) === "1"; } catch (e) {}
-	if (seen) return;
+	var asks = notice.getAttribute("data-consent") === "1";
+	var stored = null;
+	try { stored = window.localStorage.getItem(KEY); } catch (e) {}
+	var decided = stored === "accepted" || stored === "declined" || (stored !== null && !asks);
+	if (decided) return;
 	notice.hidden = false;
-	notice.querySelector(".site-data-notice__button").addEventListener("click", function () {
+	notice.addEventListener("click", function (event) {
+		var button = event.target.closest && event.target.closest("[data-notice-choice]");
+		if (!button) return;
+		var choice = button.getAttribute("data-notice-choice");
 		notice.hidden = true;
-		try { window.localStorage.setItem(KEY, "1"); } catch (e) {}
+		try { window.localStorage.setItem(KEY, choice === "seen" ? "1" : choice); } catch (e) {}
+		if (choice === "accepted") document.dispatchEvent(new CustomEvent("neo-maps-agreed"));
 	});
 })();
 </script>

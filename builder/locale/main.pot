@@ -10476,3 +10476,19 @@ msgstr ""
 msgid "© {year} {site_name}. All rights reserved."
 msgstr ""
 
+
+#: builder/templates/includes/data_notice.html:15
+msgid "With your agreement it shows a Google map, which sends your IP address to Google, in the United States."
+msgstr ""
+
+#: builder/templates/includes/google_map.html:35
+msgid "Stop showing the map automatically"
+msgstr ""
+
+#: builder/templates/includes/data_notice.html:19
+msgid "Refuse"
+msgstr ""
+
+#: builder/templates/includes/data_notice.html:20
+msgid "Accept"
+msgstr ""

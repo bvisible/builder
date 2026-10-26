@@ -5791,3 +5791,19 @@ msgstr "Il vostro nome"
 #: builder/builder/doctype/website_header_footer_config/website_header_footer_config.py:376
 msgid "© {year} {site_name}. All rights reserved."
 msgstr "© {year} {site_name}. Tutti i diritti riservati."
+
+#: builder/templates/includes/data_notice.html:15
+msgid "With your agreement it shows a Google map, which sends your IP address to Google, in the United States."
+msgstr "Con il vostro consenso viene visualizzata una mappa di Google, che trasmette il vostro indirizzo IP a Google, negli Stati Uniti."
+
+#: builder/templates/includes/google_map.html:35
+msgid "Stop showing the map automatically"
+msgstr "Smettere di mostrare automaticamente la mappa"
+
+#: builder/templates/includes/data_notice.html:19
+msgid "Refuse"
+msgstr "Rifiutare"
+
+#: builder/templates/includes/data_notice.html:20
+msgid "Accept"
+msgstr "Accettare"

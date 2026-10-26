@@ -46,8 +46,9 @@ def static_file_for(url: str, roots: Optional[dict]) -> Optional[str]:
 # //// Neoffice — a generator's capture of its own site answers the cookie notice first (2026-10-24): the notice is fixed at the foot
 # //// of the viewport, so on a full-page capture it sat over the last lines of a short page and the reviewer revised the page of a
 # //// restaurant's terms to "fix" it. A visitor closes the notice once and never sees it again; the capture does the same, with the
-# //// key of templates/includes/data_notice.html. Only a loopback render (headers) is a capture of our own site.
-NOTICE_ANSWERED_SCRIPT = "try { window.localStorage.setItem('neo_data_notice', '1'); } catch (e) {}"
+# //// key of templates/includes/data_notice.html, with the answer that closes it on a site that only tells AND on one that asks (a map
+# //// behind its button, as a visitor who refused sees it). Only a loopback render (headers) is a capture of our own site.
+NOTICE_ANSWERED_SCRIPT = "try { window.localStorage.setItem('neo_data_notice', 'declined'); } catch (e) {}"
 
 
 class WebsiteScreenshotter:
