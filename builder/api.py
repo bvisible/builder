@@ -1483,6 +1483,7 @@ def _contact_context_prompt(data: dict) -> str:
 		("uid", "Company identification number (UID)"),
 	]
 	lines = [f"- {label}: {data[key]}" for key, label in labeled if data.get(key)]
+	# //// Neoffice — the VAT number, printed only when the company is liable to VAT (88149e92 "feat(legal): the map is OpenStreetMap, shown at once; the legal pages are finished, never left for the owner to complete"): a legal page states it
 	if data.get("uid") and data.get("vat_registered"):
 		lines.append(f"- VAT number: {data['uid']} TVA (the company is liable to VAT)")
 	if not lines:
@@ -1490,6 +1491,7 @@ def _contact_context_prompt(data: dict) -> str:
 	return (
 		"\n\n## REAL BUSINESS DATA (use EXACTLY these values)\n"
 		+ "\n".join(lines)
+		# //// Neoffice — never a placeholder or a note for the owner to complete (88149e92 "feat(legal): the map is OpenStreetMap, shown at once; the legal pages are finished, never left for the owner to complete"): a missing detail must be left out, not flagged for later
 		+ "\nNEVER invent contact details. If a detail is not listed above "
 		"(opening hours, extra phone numbers...), leave it out: never a fabricated "
 		"value, and never a placeholder or a note for the owner to complete."
