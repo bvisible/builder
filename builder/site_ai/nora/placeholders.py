@@ -278,9 +278,9 @@ def _card_photo(card: dict) -> tuple[dict, dict] | None:
 def drop_plain_card_photos(blocks: list, failed=frozenset()) -> int:
     """Each card that opens on a photograph the site will draw as a plain block (neutral_image: withheld by neutral_named_slots, an
     image generation that is off, an img with no source), or that `failed` names by block id (the image job gave up on it), is written
-    without the picture: its copy stays. In a row of cards where half of the photographs or more are gone the row has none, so that
-    three cards are alike. A card with a real photograph, or one still waiting for the image job, is only touched by that rule.
-    Returns the number of cards rewritten."""
+    without the picture: its copy stays, centred in the card when the cards beside it keep theirs. In a row of cards where half of the
+    photographs or more are gone the row has none, so that its cards are alike. A card with a real photograph, or one still waiting
+    for the image job, is touched only by that rule. Returns the number of cards rewritten."""
     failed = set(failed or ())
     edits = 0
     for parent in _walk(blocks):
@@ -296,5 +296,8 @@ def drop_plain_card_photos(blocks: list, failed=frozenset()) -> int:
         rewritten = photographed if len(gone) * 2 >= len(photographed) else gone
         for card, (holder, _img) in rewritten:
             card["children"] = [c for c in card["children"] if c is not holder]
+            # beside cards that keep their picture it is stretched to their height: its copy sits in the middle of it, not on an empty panel
+            if len(rewritten) < len(photographed):
+                card.setdefault("baseStyles", {}).setdefault("justifyContent", "center")
             edits += 1
     return edits

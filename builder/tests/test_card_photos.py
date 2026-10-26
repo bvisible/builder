@@ -65,6 +65,12 @@ class TestCardsWithoutAPhotograph(unittest.TestCase):
 		self.assertEqual(drop_plain_card_photos(blocks), 1)
 
 		self.assertEqual([len(pictures(c)) for c in cards], [0, 1, 1])
+		self.assertEqual(
+			cards[0]["baseStyles"].get("justifyContent"),
+			"center",
+			"its copy sits in the middle of the stretched card",
+		)
+		self.assertNotIn("justifyContent", cards[1].get("baseStyles") or {})
 		for card in cards:
 			for image in pictures(card):
 				self.assertIn(
@@ -94,6 +100,10 @@ class TestCardsWithoutAPhotograph(unittest.TestCase):
 		self.assertEqual(len(neutral_named_slots(blocks, PALETTE, "qc")), 2)
 		self.assertEqual(drop_plain_card_photos(blocks), 3)
 		self.assertEqual([len(pictures(c)) for c in cards_of(blocks)], [0, 0, 0])
+		self.assertFalse(
+			any("justifyContent" in (c.get("baseStyles") or {}) for c in cards_of(blocks)),
+			"a row of cards without photographs is not centred",
+		)
 
 	def test_a_page_with_every_photograph_is_left_alone(self):
 		blocks = photo_cards(BENCH, SERVER, "Un atelier de réparation, lumière du matin sur l'établi")
