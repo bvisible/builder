@@ -3,8 +3,9 @@
 
   - `privacy_url`: the route of the site's privacy policy, "" when it has none (a site built before the policy existed): the
     sentence under a form and the link in the cookie notice appear only when there is a page to link to;
-  - `notice`: whether the site shows the cookie and privacy notice (`show_data_notice` of its chrome, set by the generator). The map
-    include waits for a click on such a site, because loading Google's map tells Google who is looking.
+  - `notice`: whether the site shows the cookie and privacy notice (`show_data_notice` of its chrome; the generator no longer turns it on);
+  - `sells`: whether the site is a shop (2026-10-26): a profile of kind Showcase is not, and its account menu has no orders and no wishlist.
+    The host site itself, which has no profile, is one as it always was.
 
 Read from the database without ever creating the profile's chrome variant (api._get_site_chrome_config bootstraps one on a plain
 read, which a visitor's page must not do)."""
@@ -23,6 +24,16 @@ def _notice_on(profile: str | None) -> bool:
 		return False
 
 
+def _sells(profile: str | None) -> bool:
+	try:
+		if profile and frappe.db.exists("Website Profile", profile):
+			kind, gated = frappe.db.get_value("Website Profile", profile, ["site_kind", "b2b_only"]) or (None, 0)
+			return kind != "Showcase" or bool(gated)
+	except Exception:
+		pass
+	return True
+
+
 def _privacy_url(profile: str | None) -> str:
 	try:
 		from builder.hf_utils.header_footer import _legal_pages_of_site
@@ -36,11 +47,11 @@ def _privacy_url(profile: str | None) -> str:
 
 
 def site_legal() -> dict:
-	"""{"privacy_url": str, "notice": bool} for the site being rendered; computed once per request."""
+	"""{"privacy_url": str, "notice": bool, "sells": bool} for the site being rendered; computed once per request."""
 	profile = getattr(frappe.local, "website_profile", None)
 	cached = getattr(frappe.local, "neo_site_legal", None)
 	if cached and cached[0] == profile:
 		return cached[1]
-	value = {"privacy_url": _privacy_url(profile), "notice": _notice_on(profile)}
+	value = {"privacy_url": _privacy_url(profile), "notice": _notice_on(profile), "sells": _sells(profile)}
 	frappe.local.neo_site_legal = (profile, value)
 	return value

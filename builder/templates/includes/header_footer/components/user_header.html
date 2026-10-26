@@ -20,8 +20,12 @@
 		{# Dropdown menu (for logged in users) #}
 		<div id="builder-user-dropdown" class="builder-user-header__dropdown" style="display: none;">
 			<a href="/me" class="builder-user-header__dropdown-item">{{ _("My account") }}</a>
+			{#- //// Neoffice — orders and wishlist are a shop's (2026-10-26): the menu of a signed-in visitor of a showcase site (profile kind Showcase) holds neither -#}
+			{%- set neo_legal = site_legal() if site_legal is defined else {} -%}
+			{%- if not neo_legal or neo_legal.sells is not defined or neo_legal.sells %}
 			<a href="/orders" class="builder-user-header__dropdown-item">{{ _("My orders") }}</a>
 			<a href="/wishlist" class="builder-user-header__dropdown-item">{{ _("My wishlist") }}</a>
+			{%- endif %}
 			<div class="builder-user-header__dropdown-divider"></div>
 			<a href="javascript:void(0);" id="builder-user-logout" class="builder-user-header__dropdown-item builder-user-header__dropdown-item--logout">{{ _("Logout") }}</a>
 		</div>

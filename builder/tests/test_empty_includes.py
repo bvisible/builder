@@ -369,6 +369,43 @@ class TestMapTemplate(unittest.TestCase):
 		self.assertIn("https://www.openstreetmap.org/search?query=Nowhere", page)
 
 
+class TestAccountMenuTemplate(unittest.TestCase):
+	"""user_header.html, rendered alone: a signed-in visitor of a showcase site is offered neither orders nor a wishlist (2026-10-26)."""
+
+	def render(self, **context):
+		from jinja2 import DebugUndefined, DictLoader
+		from jinja2.sandbox import SandboxedEnvironment
+
+		import builder
+
+		path = os.path.join(os.path.dirname(builder.__file__), "templates", "includes", "header_footer", "components", "user_header.html")
+		with open(path) as template:
+			source = template.read()
+		env = SandboxedEnvironment(undefined=DebugUndefined, loader=DictLoader({"builder/templates/includes/header_footer/icons/user.html": ""}))
+		env.globals["_"] = lambda words: words
+		env.filters["to_safe_json"] = lambda value: str(value)  # frappe's filter, for the strings the script is given
+		return env.from_string(source).render(**context)
+
+	def test_a_shop_keeps_its_orders_and_its_wishlist(self):
+		page = self.render(site_legal=lambda: {"sells": True})
+		self.assertIn('href="/orders"', page)
+		self.assertIn('href="/wishlist"', page)
+
+	def test_a_showcase_site_has_neither(self):
+		page = self.render(site_legal=lambda: {"sells": False, "privacy_url": "/privacy-policy"})
+		self.assertNotIn('href="/orders"', page)
+		self.assertNotIn('href="/wishlist"', page)
+		self.assertIn('href="/me"', page)
+		self.assertIn("builder-user-logout", page)
+
+	def test_an_instance_whose_hooks_predate_the_method_keeps_the_menu_as_it_was(self):
+		page = self.render()
+		self.assertIn('href="/orders"', page)
+
+	def test_an_answer_without_the_key_keeps_the_menu(self):
+		self.assertIn('href="/orders"', self.render(site_legal=lambda: {"privacy_url": ""}))
+
+
 # //// Neoffice — added tests (2026-09-15): a carousel shows pictures, so a shop whose articles
 # //// carry none has nothing to show and is not offered the include.
 class TestCarouselsNeedPictures(unittest.TestCase):
