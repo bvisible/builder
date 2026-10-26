@@ -1620,10 +1620,26 @@ def apply_brief_site_chrome(design_brief, website_profile=None) -> list[str]:
 	# //// Neoffice — the values left out are logged, not dropped in silence (see the marker above)
 	if refused:
 		frappe.logger("builder").warning(f"brief chrome values refused by {config.doctype}: {refused}")
+	# //// Neoffice — a chrome with no title band gets the brief's (2026-10-26). The plan writes every interior page under the band the
+	# //// site draws, and the layout check refuses a page that opens with a title of its own: on an instance whose chrome says "None"
+	# //// (the older ones do) every page but the home was refused after its four revisions and un-published, the contact page included.
+	band = title_band_for(config.get("page_header_template"), getattr(design_brief, "page_header_template", None))
+	if band and config.meta.has_field("page_header_template"):
+		config.set("page_header_template", band)
+		applied.append("page_header_template")
 	if applied:
 		config.save(ignore_permissions=True)
 		frappe.db.commit()
 	return applied
+
+
+# //// Neoffice — added helper (see the marker in apply_brief_site_chrome)
+def title_band_for(current, wanted) -> str | None:
+	"""The title band to put on a chrome that has none, or None when it has one (the owner's choice stays, a custom band included).
+	Never "None" itself: every interior page of a generated site is written under a band."""
+	if str(current or "None") != "None":
+		return None
+	return wanted if wanted not in (None, "", "None") else "Standard"
 
 
 # Website Header Footer Config fields a hub template manifest may configure.
