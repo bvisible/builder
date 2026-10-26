@@ -212,6 +212,14 @@ class TestNothingIsLeftForTheOwnerToFillIn(unittest.TestCase):
 		self.assertFalse(legal.facts_from({"company_name": "X", "vat_registered": True}, "X", {}).vat, "a VAT number is the UID's: no UID, no VAT line")
 		self.assertFalse(legal.facts_from({"company_name": "X", "uid": "CHE-123.456.789"}, "X", {}).vat)
 
+	def test_the_address_line_of_the_notice_is_the_address_alone(self):
+		"""It printed "Adresse : , Rue 1" (the address as the policy writes it after the name, with its comma)."""
+		for lang in legal.LANGUAGES:
+			lines = legal.notice_sections(FULL, lang, TODAY)[1][1][0]
+			line = next(line for line in lines if "Sion" in line)
+			self.assertTrue(line.endswith(FULL.address), (lang, line))
+			self.assertNotIn(": ,", line, lang)
+
 	def test_the_notice_points_to_the_privacy_policy(self):
 		sections = legal.notice_sections(FULL, "fr", TODAY)
 		links = [part for _, parts in sections for part in parts if isinstance(part, tuple)]
