@@ -220,6 +220,17 @@ class TestNothingIsLeftForTheOwnerToFillIn(unittest.TestCase):
 			self.assertTrue(line.endswith(FULL.address), (lang, line))
 			self.assertNotIn(": ,", line, lang)
 
+	def test_a_legal_page_says_what_it_is_for_under_its_title(self):
+		"""Its description, which fills the line under the title: the first sentence of the notice's body is the publisher's address."""
+		for lang in legal.LANGUAGES:
+			for kind in ("privacy", "notice"):
+				line = legal.description(kind, lang)
+				self.assertTrue(10 < len(line) < 120, (lang, kind))
+				self.assertNotRegex(line, BRACKETED)
+				self.assertNotIn("{", line)
+		self.assertNotEqual(legal.description("privacy", "fr"), legal.description("notice", "fr"))
+		self.assertEqual(legal.description("privacy", "fr"), legal.description("privacy", "nl"), "an unknown language is French")
+
 	def test_the_notice_points_to_the_privacy_policy(self):
 		sections = legal.notice_sections(FULL, "fr", TODAY)
 		links = [part for _, parts in sections for part in parts if isinstance(part, tuple)]

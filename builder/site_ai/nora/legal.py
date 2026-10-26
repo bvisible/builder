@@ -56,6 +56,8 @@ MONTHS = {
 TEXT = {
 	"fr": {
 		"updated": "Dernière mise à jour : {date}",
+		"d_privacy": "Quelles données personnelles ce site traite, pourquoi, et quels sont vos droits.",
+		"d_notice": "L'éditeur du site, son hébergement et les règles qui s'appliquent à son contenu.",
 		"p_intro": "Cette déclaration explique quelles données personnelles {name} traite lorsque vous visitez ce site, pourquoi, et quels sont vos droits. Elle est établie selon la loi fédérale suisse sur la protection des données (LPD) et, dans la mesure où il s'applique, le règlement général sur la protection des données de l'Union européenne (RGPD).",
 		"p_controller_h": "Responsable du traitement",
 		"p_controller": "{name}{address}. Pour toute question sur vos données personnelles : {contact}.",
@@ -110,6 +112,8 @@ TEXT = {
 	},
 	"en": {
 		"updated": "Last updated: {date}",
+		"d_privacy": "Which personal data this website processes, why, and what your rights are.",
+		"d_notice": "The publisher of this website, its hosting and the rules that apply to its content.",
 		"p_intro": "This statement explains which personal data {name} processes when you visit this website, why, and what your rights are. It is drawn up under the Swiss Federal Act on Data Protection (FADP) and, where it applies, the European Union's General Data Protection Regulation (GDPR).",
 		"p_controller_h": "Controller",
 		"p_controller": "{name}{address}. For any question about your personal data: {contact}.",
@@ -164,6 +168,8 @@ TEXT = {
 	},
 	"de": {
 		"updated": "Letzte Aktualisierung: {date}",
+		"d_privacy": "Welche Personendaten diese Website bearbeitet, wozu, und welche Rechte Sie haben.",
+		"d_notice": "Der Herausgeber dieser Website, ihr Hosting und die für ihren Inhalt geltenden Regeln.",
 		"p_intro": "Diese Erklärung beschreibt, welche Personendaten {name} bearbeitet, wenn Sie diese Website besuchen, wozu und welche Rechte Sie haben. Sie stützt sich auf das schweizerische Bundesgesetz über den Datenschutz (DSG) und, soweit anwendbar, auf die Datenschutz-Grundverordnung der Europäischen Union (DSGVO).",
 		"p_controller_h": "Verantwortliche Stelle",
 		"p_controller": "{name}{address}. Bei Fragen zu Ihren Personendaten: {contact}.",
@@ -218,6 +224,8 @@ TEXT = {
 	},
 	"it": {
 		"updated": "Ultimo aggiornamento: {date}",
+		"d_privacy": "Quali dati personali tratta questo sito, perché, e quali sono i vostri diritti.",
+		"d_notice": "L'editore di questo sito, il suo hosting e le regole che si applicano ai suoi contenuti.",
 		"p_intro": "Questa informativa spiega quali dati personali {name} tratta quando visitate questo sito, perché e quali sono i vostri diritti. È redatta in base alla legge federale svizzera sulla protezione dei dati (LPD) e, nella misura in cui si applica, al regolamento generale sulla protezione dei dati dell'Unione europea (RGPD).",
 		"p_controller_h": "Titolare del trattamento",
 		"p_controller": "{name}{address}. Per qualsiasi domanda sui vostri dati personali: {contact}.",
@@ -306,6 +314,12 @@ def is_mechanical(page: dict) -> bool:
 
 def kind_of(page: dict) -> str:
 	return MECHANICAL_ROUTES[str(page.get("route") or "").strip("/").lower()]
+
+
+def description(kind: str, lang: str) -> str:
+	"""The line under the title of a legal page, and its search snippet: what the page is for. The first sentence of its body (what the page
+	writer's description takes) was the address of the publisher on a notice, under a band that named the page."""
+	return TEXT[language_of(lang)][f"d_{kind}"]
 
 
 def title(kind: str, lang: str) -> str:

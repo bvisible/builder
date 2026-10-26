@@ -1835,6 +1835,8 @@ def _write_page(page: dict, blocks: list, data_script: str, profile: str | None,
     from builder.api import _blocks_fingerprint
 
     payload = compact_json(blocks)
+    # a page that carries its own description (the fixed legal pages: legal.description) keeps it over the one taken from its body
+    description = page.get("description") or description
     scoped = frappe.db.has_column("Builder Page", "neo_website_profile")
     if host_page and frappe.db.exists("Builder Page", host_page):
         name = host_page
@@ -2836,6 +2838,8 @@ def build_site(ctx, spec: dict) -> str:
             yaml_text = legal.page_yaml(legal.kind_of(page), facts, lang_code, handles, palette, datetime.date.today())
             made, made_script = expand_page_yaml(yaml_text)
             if made:
+                # the line under the title is what the page is for, never the first line of its body (see legal.description)
+                page["description"] = legal.description(legal.kind_of(page), lang_code)
                 draw_dividers(made, page, with_lines=False)
             return (made, made_script, None) if made else ([], "", "the legal page could not be expanded")
         # //// Neoffice — a revision REWRITES the page it revises (2026-09-16). It used to be a fresh
