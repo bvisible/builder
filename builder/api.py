@@ -1372,6 +1372,14 @@ def get_site_contact_context(website_profile=None) -> dict:  # //// Neoffice mul
 			# logo (the default file gets replaced per instance) — don't filter it.
 			if company.get("company_logo"):
 				data["logo"] = company.company_logo
+			# //// Neoffice — the company's identification and VAT numbers, so a legal notice states them instead of asking the owner to fill
+			# //// them in (2026-10-26): the Swiss UID (CHE-nnn.nnn.nnn) is the UID-BFS field, else the Tax ID when it is one; a company liable to
+			# //// VAT states its VAT number, which is that same UID followed by "TVA" (legal.py writes the suffix of the language)
+			uid = swiss_uid(company.get("ch_uid_bfs")) or swiss_uid(company.get("tax_id"))
+			if uid:
+				data["uid"] = uid
+				if company.get("is_vat_company"):
+					data["vat_registered"] = True
 			address_name = frappe.db.get_value(
 				"Dynamic Link",
 				{"link_doctype": "Company", "link_name": company_name, "parenttype": "Address"},
@@ -1402,7 +1410,12 @@ def get_site_contact_context(website_profile=None) -> dict:  # //// Neoffice mul
 		# //// settings name them: one company in ERPNext may run a shop under another legal name,
 		# //// without a pickup address to publish (a consumer site asked for its new legal name
 		# //// and its town alone, 2026-09-14). The company record is never renamed for a site.
-		data.update(site_identity(config))
+		identity = site_identity(config)
+		data.update(identity)
+		# //// Neoffice — the company's identification and VAT numbers belong to the company, not to another legal entity the site names (2026-10-26)
+		if identity.get("company_name"):
+			data.pop("uid", None)
+			data.pop("vat_registered", None)
 		# //// Neoffice — a key the site blanked is not "empty", it is absent: every reader tests
 		# //// `data.get(key)`, and a phone left as "" would still read as a field that exists.
 		for key in [k for k, v in data.items() if v == ""]:
@@ -1448,6 +1461,16 @@ def site_identity(config) -> dict:
 	return identity
 
 
+# //// Neoffice — added helper (2026-10-26): the Swiss business identification number, written the way it is printed
+def swiss_uid(value) -> str:
+	"""CHE-123.456.789 from CHE123456789, CHE-123.456.789 TVA, che 123 456 789…; "" when the value is not a Swiss UID (a foreign VAT number, a note)."""
+	text = str(value or "")
+	digits = re.sub(r"\D", "", text)
+	if not re.match(r"^\s*CHE", text, re.I) or len(digits) != 9:
+		return ""
+	return f"CHE-{digits[:3]}.{digits[3:6]}.{digits[6:]}"
+
+
 def _contact_context_prompt(data: dict) -> str:
 	"""Prompt section carrying the verified business data."""
 	labeled = [
@@ -1456,16 +1479,20 @@ def _contact_context_prompt(data: dict) -> str:
 		("phone", "Phone"),
 		("email", "Email"),
 		("website", "Website"),
+		# //// Neoffice — the identification number, and the VAT number of a company liable to VAT (2026-10-26): a legal page states them
+		("uid", "Company identification number (UID)"),
 	]
 	lines = [f"- {label}: {data[key]}" for key, label in labeled if data.get(key)]
+	if data.get("uid") and data.get("vat_registered"):
+		lines.append(f"- VAT number: {data['uid']} TVA (the company is liable to VAT)")
 	if not lines:
 		return ""
 	return (
 		"\n\n## REAL BUSINESS DATA (use EXACTLY these values)\n"
 		+ "\n".join(lines)
 		+ "\nNEVER invent contact details. If a detail is not listed above "
-		"(opening hours, extra phone numbers...), omit it or use an obviously "
-		"neutral placeholder — never a realistic-looking fabricated value."
+		"(opening hours, extra phone numbers...), leave it out: never a fabricated "
+		"value, and never a placeholder or a note for the owner to complete."
 	)
 
 

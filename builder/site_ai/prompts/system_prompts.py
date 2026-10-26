@@ -636,7 +636,7 @@ contact form. Add personality: a short intro message or a "Why reach out?" secti
 
 AVAILABLE SHORTCODES:
 - Contact form: {% include 'builder/templates/includes/contact_form.html' %}
-- Google map: {% set address = "Full address" %}{% set height = "400px" %}{% include 'builder/templates/includes/google_map.html' %}
+- Map (OpenStreetMap): {% set address = "Full address" %}{% set height = "400px" %}{% include 'builder/templates/includes/google_map.html' %}
 - Contact info block: {% include 'builder/templates/includes/contact_info.html' %}
 - Opening hours: {% include 'webshop/templates/includes/opening_hours.html' %}
 

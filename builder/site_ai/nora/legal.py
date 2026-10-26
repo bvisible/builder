@@ -10,14 +10,14 @@ site really does:
   - what the pages of the site contain: a contact form, a map, a newsletter, a shop (`uses_of`), so that the policy never describes a
     processing the site does not have, and never leaves out one it has;
   - the sub-processors of Neoffice (SUBPROCESSORS), the list validated on 2026-10-07 and published at neoffice.ch/fr/sous-traitants.
-Nothing the business did not give is invented: a missing contact line is a visible blank for the owner to fill in, as the legal pages
-of a shop always did.
+Nothing the business did not give is invented, and nothing is left for the owner to fill in (2026-10-26): the identification and VAT numbers
+are read from the company record, and a line the record does not give is left out of the notice, never printed as a blank. A page that
+asks its owner to complete it is a page nobody completes.
 
 The page is built from the same nodes as a recipe (recipes.py) and goes through the same YAML as a page the model wrote, so it is
 saved, linked in the footer and reviewed like any other. No model is called here. The text is a template, to be read by whoever
 answers for the site: it does not replace a lawyer's opinion on a business with particular processing."""
 
-import re
 from dataclasses import dataclass
 
 import frappe
@@ -55,9 +55,6 @@ MONTHS = {
 # {name}, {address}, {contact}, {date}, {what} are filled by `text()`; the two-letter keys are the sections of a document
 TEXT = {
 	"fr": {
-		"blank": "[à compléter : {what}]",
-		"what_contact": "adresse e-mail ou téléphone de contact",
-		"what_uid": "numéro IDE (CHE-…) et numéro de TVA, le cas échéant",
 		"updated": "Dernière mise à jour : {date}",
 		"p_intro": "Cette déclaration explique quelles données personnelles {name} traite lorsque vous visitez ce site, pourquoi, et quels sont vos droits. Elle est établie selon la loi fédérale suisse sur la protection des données (LPD) et, dans la mesure où il s'applique, le règlement général sur la protection des données de l'Union européenne (RGPD).",
 		"p_controller_h": "Responsable du traitement",
@@ -65,7 +62,7 @@ TEXT = {
 		"p_visit_h": "Visite du site",
 		"p_visit": "Lorsque vous consultez ce site, le serveur qui l'héberge enregistre automatiquement des données techniques : votre adresse IP, la date et l'heure de la visite, la page demandée et le type de navigateur. Ces données sont nécessaires pour afficher le site, le sécuriser et le faire fonctionner. Elles ne servent ni à vous identifier ni à établir un profil.",
 		"p_cookies_h": "Cookies",
-		"p_cookies": "Ce site n'utilise que des cookies techniques, indispensables à son fonctionnement (par exemple une session anonyme et vos préférences d'affichage). Il ne pose aucun cookie de mesure d'audience, de publicité ou de réseau social. Le choix que vous faites en fermant l'information sur les cookies est conservé dans votre navigateur.",
+		"p_cookies": "Ce site n'utilise que des cookies techniques, indispensables à son fonctionnement (par exemple une session anonyme et vos préférences d'affichage). Il ne pose aucun cookie de mesure d'audience, de publicité ou de réseau social.",
 		"p_form_h": "Formulaires de contact",
 		"p_form": "Si vous nous écrivez par un formulaire du site, nous traitons les informations que vous y saisissez (par exemple votre nom, votre adresse e-mail, votre numéro de téléphone et votre message) uniquement pour répondre à votre demande. Elles sont conservées le temps nécessaire au traitement de votre demande, puis aussi longtemps que la loi ou nos obligations l'exigent.",
 		"p_form_ai": "Selon la configuration du site, les messages peuvent être lus par un assistant automatisé (intelligence artificielle) qui en rédige un résumé pour faciliter leur traitement. Cet assistant fonctionne sur des serveurs situés en Suisse et ne prend aucune décision à votre sujet : c'est une personne qui répond à votre message.",
@@ -75,12 +72,12 @@ TEXT = {
 		"p_cookies_shop": "Sur ce site de vente, la connexion à votre compte et votre panier utilisent aussi un cookie technique, supprimé à la fin de la session ou à la déconnexion.",
 		"p_shop": "Si vous demandez un compte ou passez commande, nous traitons les données nécessaires à l'exécution du contrat : votre identité, vos adresses de facturation et de livraison, vos coordonnées et le contenu de votre commande. Le paiement est traité par le prestataire de paiement que vous choisissez au moment de la commande, qui est responsable de ses propres traitements. Les pièces comptables sont conservées dix ans, comme la loi suisse l'exige.",
 		"p_map_h": "Carte",
-		"p_map": "La carte Google Maps n'est chargée qu'avec votre accord : lorsque vous acceptez dans le bandeau d'information, ou lorsque vous cliquez sur « Afficher la carte ». Votre adresse IP et des données techniques sont alors transmises à Google, aux États-Unis, qui peut en déduire que vous avez consulté cette page. Vous pouvez retirer votre accord à tout moment sous la carte (« Ne plus afficher la carte automatiquement »). Tant que vous n'avez ni accepté ni cliqué, aucune donnée n'est transmise à Google.",
+		"p_map": "La carte est fournie par OpenStreetMap (fondation OpenStreetMap, Royaume-Uni). Lorsqu'une page affiche la carte, votre navigateur la charge depuis les serveurs d'OpenStreetMap et de son réseau de diffusion de contenu : votre adresse IP et des données techniques leur sont transmises, et la fondation peut en déduire que vous avez consulté cette page. La carte ne pose aucun cookie et ne sert ni à la publicité ni à la mesure d'audience.",
 		"p_recip_h": "Destinataires et hébergement",
 		"p_recip": "Nous ne vendons pas vos données. Elles ne sont communiquées qu'à nos prestataires, pour faire fonctionner ce site : l'hébergement est assuré par {host} ({host_town}, Suisse) et les e-mails de notification peuvent être acheminés par {mail} (France).",
 		"p_abroad_h": "Transferts à l'étranger",
 		"p_abroad": "Vos données sont traitées en Suisse. Les e-mails de notification transitent par la France, un pays reconnu par la Suisse comme offrant une protection adéquate.",
-		"p_abroad_map": " Seule exception : l'affichage de la carte, décrit ci-dessus, qui transmet des données à Google aux États-Unis.",
+		"p_abroad_map": " Seule exception : l'affichage de la carte, décrit ci-dessus, qui transmet des données à la fondation OpenStreetMap, au Royaume-Uni (un pays reconnu par la Suisse comme offrant une protection adéquate), et à son réseau de diffusion de contenu.",
 		"p_abroad_shop": " Le prestataire de paiement que vous choisissez peut traiter vos données à l'étranger ; il vous en informe lors du paiement.",
 		"p_rights_h": "Vos droits",
 		"p_rights": "Vous pouvez demander l'accès à vos données, leur rectification ou leur effacement, vous opposer à leur traitement, en demander la limitation ou la remise dans un format courant, et retirer à tout moment un consentement que vous avez donné. Écrivez-nous : {contact}. Nous répondons dans un délai de 30 jours. Si vous estimez que vos droits ne sont pas respectés, vous pouvez vous adresser au Préposé fédéral à la protection des données et à la transparence (PFPDT, www.edoeb.admin.ch) ou, si vous résidez dans l'Union européenne, à l'autorité de protection des données de votre pays.",
@@ -93,7 +90,10 @@ TEXT = {
 		"n_email": "E-mail : {email}",
 		"n_phone": "Téléphone : {phone}",
 		"n_website": "Site web : {website}",
-		"n_uid": "N° IDE et TVA : {blank}",
+		"n_uid": "N° IDE : {uid}",
+		"n_vat": "TVA : {vat}",
+		"contact_page": "la page de contact de ce site",
+		"vat_suffix": "TVA",
 		"n_content_h": "Responsable du contenu",
 		"n_content": "{name}.",
 		"n_hosting_h": "Hébergement",
@@ -109,9 +109,6 @@ TEXT = {
 		"n_law": "Le droit suisse est applicable.",
 	},
 	"en": {
-		"blank": "[to be completed: {what}]",
-		"what_contact": "contact e-mail address or phone number",
-		"what_uid": "company identification number (CHE-…) and VAT number, if any",
 		"updated": "Last updated: {date}",
 		"p_intro": "This statement explains which personal data {name} processes when you visit this website, why, and what your rights are. It is drawn up under the Swiss Federal Act on Data Protection (FADP) and, where it applies, the European Union's General Data Protection Regulation (GDPR).",
 		"p_controller_h": "Controller",
@@ -119,7 +116,7 @@ TEXT = {
 		"p_visit_h": "Visiting the website",
 		"p_visit": "When you visit this website, the server that hosts it automatically records technical data: your IP address, the date and time of the visit, the page requested and the type of browser. This data is needed to display the website, keep it secure and make it work. It is not used to identify you or to build a profile.",
 		"p_cookies_h": "Cookies",
-		"p_cookies": "This website only uses technical cookies, which are essential to its operation (for example an anonymous session and your display preferences). It sets no audience-measurement, advertising or social-network cookies. The choice you make by closing the cookie notice is kept in your browser.",
+		"p_cookies": "This website only uses technical cookies, which are essential to its operation (for example an anonymous session and your display preferences). It sets no audience-measurement, advertising or social-network cookies.",
 		"p_form_h": "Contact forms",
 		"p_form": "If you write to us through a form on the website, we process the information you enter (for example your name, e-mail address, phone number and message) only to answer your request. It is kept for as long as needed to handle your request, and then for as long as the law or our obligations require.",
 		"p_form_ai": "Depending on how the website is set up, messages may be read by an automated assistant (artificial intelligence) that writes a summary to make them easier to handle. This assistant runs on servers located in Switzerland and takes no decision about you: a person answers your message.",
@@ -129,12 +126,12 @@ TEXT = {
 		"p_cookies_shop": "On this shop, signing in to your account and your basket also use a technical cookie, removed at the end of the session or when you sign out.",
 		"p_shop": "If you request an account or place an order, we process the data needed to perform the contract: your identity, your billing and delivery addresses, your contact details and the content of your order. Payment is handled by the payment provider you choose when you order, which is responsible for its own processing. Accounting records are kept for ten years, as Swiss law requires.",
 		"p_map_h": "Map",
-		"p_map": "The Google Maps map is loaded only with your agreement: when you accept in the information banner, or when you click “Show the map”. Your IP address and technical data are then sent to Google, in the United States, which can tell that you viewed this page. You can withdraw your agreement at any time under the map (“Stop showing the map automatically”). As long as you have neither accepted nor clicked, no data is sent to Google.",
+		"p_map": "The map is provided by OpenStreetMap (the OpenStreetMap Foundation, United Kingdom). When a page shows the map, your browser loads it from the servers of OpenStreetMap and of its content delivery network: your IP address and technical data are sent to them, and the foundation can tell that you viewed this page. The map sets no cookie and is used for neither advertising nor audience measurement.",
 		"p_recip_h": "Recipients and hosting",
 		"p_recip": "We do not sell your data. It is shared only with our providers, to run this website: hosting is provided by {host} ({host_town}, Switzerland) and notification e-mails may be delivered by {mail} (France).",
 		"p_abroad_h": "Transfers abroad",
 		"p_abroad": "Your data is processed in Switzerland. Notification e-mails pass through France, a country that Switzerland recognises as offering adequate protection.",
-		"p_abroad_map": " The only exception is the display of the map, described above, which sends data to Google in the United States.",
+		"p_abroad_map": " The only exception is the display of the map, described above, which sends data to the OpenStreetMap Foundation, in the United Kingdom (a country Switzerland recognises as offering adequate protection), and to its content delivery network.",
 		"p_abroad_shop": " The payment provider you choose may process your data abroad; it informs you when you pay.",
 		"p_rights_h": "Your rights",
 		"p_rights": "You can ask for access to your data, for its correction or erasure, object to its processing, ask for it to be restricted or handed over in a common format, and withdraw at any time a consent you have given. Write to us: {contact}. We answer within 30 days. If you believe your rights are not respected, you can contact the Swiss Federal Data Protection and Information Commissioner (FDPIC, www.edoeb.admin.ch) or, if you live in the European Union, the data protection authority of your country.",
@@ -147,7 +144,10 @@ TEXT = {
 		"n_email": "E-mail: {email}",
 		"n_phone": "Phone: {phone}",
 		"n_website": "Website: {website}",
-		"n_uid": "Company ID and VAT: {blank}",
+		"n_uid": "Company ID (UID): {uid}",
+		"n_vat": "VAT: {vat}",
+		"contact_page": "the contact page of this website",
+		"vat_suffix": "VAT",
 		"n_content_h": "Responsible for the content",
 		"n_content": "{name}.",
 		"n_hosting_h": "Hosting",
@@ -163,9 +163,6 @@ TEXT = {
 		"n_law": "Swiss law applies.",
 	},
 	"de": {
-		"blank": "[zu ergänzen: {what}]",
-		"what_contact": "Kontakt-E-Mail-Adresse oder Telefonnummer",
-		"what_uid": "UID-Nummer (CHE-…) und MWST-Nummer, falls vorhanden",
 		"updated": "Letzte Aktualisierung: {date}",
 		"p_intro": "Diese Erklärung beschreibt, welche Personendaten {name} bearbeitet, wenn Sie diese Website besuchen, wozu und welche Rechte Sie haben. Sie stützt sich auf das schweizerische Bundesgesetz über den Datenschutz (DSG) und, soweit anwendbar, auf die Datenschutz-Grundverordnung der Europäischen Union (DSGVO).",
 		"p_controller_h": "Verantwortliche Stelle",
@@ -173,7 +170,7 @@ TEXT = {
 		"p_visit_h": "Besuch der Website",
 		"p_visit": "Wenn Sie diese Website besuchen, erfasst der Server, der sie hostet, automatisch technische Daten: Ihre IP-Adresse, Datum und Uhrzeit des Besuchs, die aufgerufene Seite und den Browsertyp. Diese Daten sind nötig, um die Website anzuzeigen, zu sichern und zu betreiben. Sie dienen weder dazu, Sie zu identifizieren, noch dazu, ein Profil zu erstellen.",
 		"p_cookies_h": "Cookies",
-		"p_cookies": "Diese Website verwendet nur technische Cookies, die für ihren Betrieb unerlässlich sind (zum Beispiel eine anonyme Sitzung und Ihre Anzeigeeinstellungen). Sie setzt keine Cookies zur Reichweitenmessung, für Werbung oder für soziale Netzwerke. Ihre Wahl beim Schliessen des Cookie-Hinweises wird in Ihrem Browser gespeichert.",
+		"p_cookies": "Diese Website verwendet nur technische Cookies, die für ihren Betrieb unerlässlich sind (zum Beispiel eine anonyme Sitzung und Ihre Anzeigeeinstellungen). Sie setzt keine Cookies zur Reichweitenmessung, für Werbung oder für soziale Netzwerke.",
 		"p_form_h": "Kontaktformulare",
 		"p_form": "Wenn Sie uns über ein Formular der Website schreiben, bearbeiten wir die Angaben, die Sie eingeben (zum Beispiel Ihren Namen, Ihre E-Mail-Adresse, Ihre Telefonnummer und Ihre Nachricht), nur um Ihre Anfrage zu beantworten. Sie werden so lange aufbewahrt, wie es für die Bearbeitung Ihrer Anfrage nötig ist, danach so lange, wie das Gesetz oder unsere Pflichten es verlangen.",
 		"p_form_ai": "Je nach Einrichtung der Website können Nachrichten von einem automatisierten Assistenten (künstliche Intelligenz) gelesen werden, der eine Zusammenfassung verfasst, um die Bearbeitung zu erleichtern. Dieser Assistent läuft auf Servern in der Schweiz und trifft keine Entscheidung über Sie: Eine Person beantwortet Ihre Nachricht.",
@@ -183,12 +180,12 @@ TEXT = {
 		"p_cookies_shop": "In diesem Shop verwenden die Anmeldung bei Ihrem Konto und Ihr Warenkorb ebenfalls ein technisches Cookie, das am Ende der Sitzung oder beim Abmelden gelöscht wird.",
 		"p_shop": "Wenn Sie ein Konto beantragen oder bestellen, bearbeiten wir die Daten, die für die Vertragserfüllung nötig sind: Ihre Identität, Ihre Rechnungs- und Lieferadresse, Ihre Kontaktangaben und den Inhalt Ihrer Bestellung. Die Zahlung wird vom Zahlungsdienstleister abgewickelt, den Sie bei der Bestellung wählen und der für seine eigenen Bearbeitungen verantwortlich ist. Buchungsbelege werden, wie vom schweizerischen Recht verlangt, zehn Jahre aufbewahrt.",
 		"p_map_h": "Karte",
-		"p_map": "Die Google-Maps-Karte wird nur mit Ihrer Zustimmung geladen: wenn Sie im Informationshinweis zustimmen oder auf «Karte anzeigen» klicken. Ihre IP-Adresse und technische Daten werden dann an Google in den USA übermittelt, wo erkannt werden kann, dass Sie diese Seite besucht haben. Sie können Ihre Zustimmung jederzeit unter der Karte widerrufen («Karte nicht mehr automatisch anzeigen»). Solange Sie weder zugestimmt noch geklickt haben, werden keine Daten an Google übermittelt.",
+		"p_map": "Die Karte wird von OpenStreetMap bereitgestellt (OpenStreetMap Foundation, Vereinigtes Königreich). Wenn eine Seite die Karte zeigt, lädt Ihr Browser sie von den Servern von OpenStreetMap und seinem Content-Delivery-Netzwerk: Ihre IP-Adresse und technische Daten werden dorthin übermittelt, und die Stiftung kann erkennen, dass Sie diese Seite besucht haben. Die Karte setzt keine Cookies und dient weder der Werbung noch der Reichweitenmessung.",
 		"p_recip_h": "Empfänger und Hosting",
 		"p_recip": "Wir verkaufen Ihre Daten nicht. Sie werden nur an unsere Dienstleister weitergegeben, damit diese Website funktioniert: Das Hosting erfolgt durch {host} ({host_town}, Schweiz), und Benachrichtigungs-E-Mails können über {mail} (Frankreich) zugestellt werden.",
 		"p_abroad_h": "Übermittlung ins Ausland",
 		"p_abroad": "Ihre Daten werden in der Schweiz bearbeitet. Benachrichtigungs-E-Mails laufen über Frankreich, ein Land, dem die Schweiz einen angemessenen Datenschutz bescheinigt.",
-		"p_abroad_map": " Einzige Ausnahme ist die oben beschriebene Anzeige der Karte, bei der Daten an Google in den USA übermittelt werden.",
+		"p_abroad_map": " Einzige Ausnahme ist die oben beschriebene Anzeige der Karte, bei der Daten an die OpenStreetMap Foundation im Vereinigten Königreich (ein Land, dem die Schweiz ein angemessenes Datenschutzniveau zuerkennt) und an ihr Content-Delivery-Netzwerk übermittelt werden.",
 		"p_abroad_shop": " Der von Ihnen gewählte Zahlungsdienstleister kann Ihre Daten im Ausland bearbeiten; er informiert Sie bei der Zahlung.",
 		"p_rights_h": "Ihre Rechte",
 		"p_rights": "Sie können Auskunft über Ihre Daten verlangen, deren Berichtigung oder Löschung, der Bearbeitung widersprechen, ihre Einschränkung oder die Herausgabe in einem gängigen Format verlangen und eine erteilte Einwilligung jederzeit widerrufen. Schreiben Sie uns: {contact}. Wir antworten innert 30 Tagen. Wenn Sie der Ansicht sind, dass Ihre Rechte nicht gewahrt werden, können Sie sich an den Eidgenössischen Datenschutz- und Öffentlichkeitsbeauftragten (EDÖB, www.edoeb.admin.ch) oder, wenn Sie in der Europäischen Union wohnen, an die Datenschutzbehörde Ihres Landes wenden.",
@@ -201,7 +198,10 @@ TEXT = {
 		"n_email": "E-Mail: {email}",
 		"n_phone": "Telefon: {phone}",
 		"n_website": "Website: {website}",
-		"n_uid": "UID und MWST: {blank}",
+		"n_uid": "UID: {uid}",
+		"n_vat": "MWST: {vat}",
+		"contact_page": "die Kontaktseite dieser Website",
+		"vat_suffix": "MWST",
 		"n_content_h": "Verantwortlich für den Inhalt",
 		"n_content": "{name}.",
 		"n_hosting_h": "Hosting",
@@ -217,9 +217,6 @@ TEXT = {
 		"n_law": "Es gilt schweizerisches Recht.",
 	},
 	"it": {
-		"blank": "[da completare: {what}]",
-		"what_contact": "indirizzo e-mail o numero di telefono di contatto",
-		"what_uid": "numero IDI (CHE-…) e numero IVA, se presenti",
 		"updated": "Ultimo aggiornamento: {date}",
 		"p_intro": "Questa informativa spiega quali dati personali {name} tratta quando visitate questo sito, perché e quali sono i vostri diritti. È redatta in base alla legge federale svizzera sulla protezione dei dati (LPD) e, nella misura in cui si applica, al regolamento generale sulla protezione dei dati dell'Unione europea (RGPD).",
 		"p_controller_h": "Titolare del trattamento",
@@ -227,7 +224,7 @@ TEXT = {
 		"p_visit_h": "Visita del sito",
 		"p_visit": "Quando visitate questo sito, il server che lo ospita registra automaticamente dati tecnici: il vostro indirizzo IP, la data e l'ora della visita, la pagina richiesta e il tipo di browser. Questi dati sono necessari per mostrare il sito, proteggerlo e farlo funzionare. Non servono né a identificarvi né a creare un profilo.",
 		"p_cookies_h": "Cookie",
-		"p_cookies": "Questo sito utilizza soltanto cookie tecnici, indispensabili al suo funzionamento (ad esempio una sessione anonima e le vostre preferenze di visualizzazione). Non installa cookie di misurazione dell'audience, pubblicitari o di reti sociali. La scelta che fate chiudendo l'avviso sui cookie è conservata nel vostro browser.",
+		"p_cookies": "Questo sito utilizza soltanto cookie tecnici, indispensabili al suo funzionamento (ad esempio una sessione anonima e le vostre preferenze di visualizzazione). Non installa cookie di misurazione dell'audience, pubblicitari o di reti sociali.",
 		"p_form_h": "Moduli di contatto",
 		"p_form": "Se ci scrivete tramite un modulo del sito, trattiamo le informazioni che inserite (ad esempio nome, indirizzo e-mail, numero di telefono e messaggio) soltanto per rispondere alla vostra richiesta. Sono conservate per il tempo necessario a gestire la richiesta e poi per il tempo richiesto dalla legge o dai nostri obblighi.",
 		"p_form_ai": "A seconda della configurazione del sito, i messaggi possono essere letti da un assistente automatizzato (intelligenza artificiale) che ne redige un riassunto per facilitarne la gestione. Questo assistente funziona su server situati in Svizzera e non prende alcuna decisione su di voi: è una persona a rispondere al vostro messaggio.",
@@ -237,12 +234,12 @@ TEXT = {
 		"p_cookies_shop": "In questo negozio, l'accesso al vostro account e il carrello utilizzano anch'essi un cookie tecnico, eliminato al termine della sessione o alla disconnessione.",
 		"p_shop": "Se richiedete un account o effettuate un ordine, trattiamo i dati necessari all'esecuzione del contratto: la vostra identità, gli indirizzi di fatturazione e di consegna, i recapiti e il contenuto dell'ordine. Il pagamento è gestito dal fornitore di servizi di pagamento che scegliete al momento dell'ordine, responsabile dei propri trattamenti. I documenti contabili sono conservati per dieci anni, come richiede il diritto svizzero.",
 		"p_map_h": "Mappa",
-		"p_map": "La mappa di Google Maps viene caricata solo con il vostro consenso: quando accettate nell'avviso informativo o cliccate su «Mostra la mappa». Il vostro indirizzo IP e dati tecnici sono allora trasmessi a Google, negli Stati Uniti, che può dedurne che avete consultato questa pagina. Potete ritirare il consenso in qualsiasi momento sotto la mappa («Non mostrare più la mappa automaticamente»). Finché non avete né accettato né cliccato, nessun dato è trasmesso a Google.",
+		"p_map": "La mappa è fornita da OpenStreetMap (OpenStreetMap Foundation, Regno Unito). Quando una pagina mostra la mappa, il vostro browser la carica dai server di OpenStreetMap e della sua rete di distribuzione dei contenuti: il vostro indirizzo IP e dati tecnici vengono loro trasmessi e la fondazione può dedurne che avete consultato questa pagina. La mappa non installa cookie e non serve né alla pubblicità né alla misurazione dell'audience.",
 		"p_recip_h": "Destinatari e hosting",
 		"p_recip": "Non vendiamo i vostri dati. Sono comunicati solo ai nostri fornitori, per far funzionare questo sito: l'hosting è assicurato da {host} ({host_town}, Svizzera) e le e-mail di notifica possono essere recapitate da {mail} (Francia).",
 		"p_abroad_h": "Trasferimenti all'estero",
 		"p_abroad": "I vostri dati sono trattati in Svizzera. Le e-mail di notifica transitano dalla Francia, un paese che la Svizzera riconosce come garante di una protezione adeguata.",
-		"p_abroad_map": " Unica eccezione: la visualizzazione della mappa, descritta sopra, che trasmette dati a Google negli Stati Uniti.",
+		"p_abroad_map": " Unica eccezione: la visualizzazione della mappa, descritta sopra, che trasmette dati alla OpenStreetMap Foundation, nel Regno Unito (un paese riconosciuto dalla Svizzera come offrente una protezione adeguata), e alla sua rete di distribuzione dei contenuti.",
 		"p_abroad_shop": " Il fornitore di pagamento che scegliete può trattare i vostri dati all'estero; vi informa al momento del pagamento.",
 		"p_rights_h": "I vostri diritti",
 		"p_rights": "Potete chiedere l'accesso ai vostri dati, la loro rettifica o cancellazione, opporvi al loro trattamento, chiederne la limitazione o la consegna in un formato comune e revocare in qualsiasi momento un consenso dato. Scriveteci: {contact}. Rispondiamo entro 30 giorni. Se ritenete che i vostri diritti non siano rispettati, potete rivolgervi all'Incaricato federale della protezione dei dati e della trasparenza (IFPDT, www.edoeb.admin.ch) o, se risiedete nell'Unione europea, all'autorità per la protezione dei dati del vostro paese.",
@@ -255,7 +252,10 @@ TEXT = {
 		"n_email": "E-mail: {email}",
 		"n_phone": "Telefono: {phone}",
 		"n_website": "Sito web: {website}",
-		"n_uid": "IDI e IVA: {blank}",
+		"n_uid": "IDI: {uid}",
+		"n_vat": "IVA: {vat}",
+		"contact_page": "la pagina dei contatti di questo sito",
+		"vat_suffix": "IVA",
 		"n_content_h": "Responsabile dei contenuti",
 		"n_content": "{name}.",
 		"n_hosting_h": "Hosting",
@@ -286,6 +286,8 @@ class Facts:
 	email: str = ""
 	phone: str = ""
 	website: str = ""
+	uid: str = ""
+	vat: bool = False
 	form: bool = False
 	map: bool = False
 	newsletter: bool = False
@@ -326,7 +328,6 @@ def text(lang: str, key: str, facts: Facts | None = None, today=None) -> str:
 	"""A paragraph of the library, filled with the facts of the business."""
 	lang = language_of(lang)
 	raw = TEXT[lang][key]
-	blank = TEXT[lang]["blank"]
 	values = {
 		"host": SUBPROCESSORS["host"],
 		"host_town": SUBPROCESSORS["host_town"][lang],
@@ -334,7 +335,8 @@ def text(lang: str, key: str, facts: Facts | None = None, today=None) -> str:
 		"date": date_text(lang, today) if today else "",
 	}
 	if facts is not None:
-		contact = ", ".join(v for v in (facts.email, facts.phone) if v) or blank.format(what=TEXT[lang]["what_contact"])
+		# a business that gave neither e-mail nor phone is reached through the contact page of its site: never a blank to fill in
+		contact = ", ".join(v for v in (facts.email, facts.phone) if v) or TEXT[lang]["contact_page"]
 		values.update(
 			name=facts.name,
 			address=f", {facts.address}" if facts.address else "",
@@ -342,7 +344,8 @@ def text(lang: str, key: str, facts: Facts | None = None, today=None) -> str:
 			email=facts.email,
 			phone=facts.phone,
 			website=facts.website,
-			blank=blank.format(what=TEXT[lang]["what_uid"]),
+			uid=facts.uid,
+			vat=f"{facts.uid} {TEXT[lang]['vat_suffix']}" if facts.uid else "",
 		)
 	return raw.format(**values)
 
@@ -379,6 +382,8 @@ def facts_from(contact: dict, site_name: str, uses: dict) -> Facts:
 		email=str(contact.get("email") or "").strip(),
 		phone=str(contact.get("phone") or "").strip(),
 		website=str(contact.get("website") or "").strip(),
+		uid=str(contact.get("uid") or "").strip(),
+		vat=bool(contact.get("uid") and contact.get("vat_registered")),
 		form=bool(uses.get("form")),
 		map=bool(uses.get("map")),
 		newsletter=bool(uses.get("newsletter")),
@@ -420,7 +425,11 @@ def notice_sections(facts: Facts, lang: str, today) -> list[tuple[str, list]]:
 	for key, value in (("n_address", facts.address), ("n_email", facts.email), ("n_phone", facts.phone), ("n_website", facts.website)):
 		if value:
 			lines.append(t(key))
-	lines.append(t("n_uid"))
+	# the identification number, and the VAT number of a company liable to VAT: from the company record, a row left out when it gives none
+	if facts.uid:
+		lines.append(t("n_uid"))
+		if facts.vat:
+			lines.append(t("n_vat"))
 	return [
 		("", [t("updated")]),
 		(t("n_publisher_h"), [lines]),
@@ -539,8 +548,3 @@ def plain_text(kind: str, facts: Facts, lang: str, today) -> str:
 		for part in parts:
 			lines.extend(part if isinstance(part, list) else [part[2]] if isinstance(part, tuple) else [part])
 	return "\n".join(lines)
-
-
-def has_blank(value: str) -> bool:
-	"""Whether a text still holds a blank for the owner to fill in (a visible `[… : …]`)."""
-	return bool(re.search(r"\[[^\]]+:[^\]]+\]", value))

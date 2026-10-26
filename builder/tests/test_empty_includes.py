@@ -293,8 +293,9 @@ class TestRenderedPage(unittest.TestCase):
 
 
 class TestMapTemplate(unittest.TestCase):
-	"""google_map.html, rendered alone: an instance whose cached hooks predate site_map_address
-	must draw no map rather than fail the page (a contact page answered 417, 2026-09-13)."""
+	"""google_map.html, rendered alone. It keeps its old name and draws OpenStreetMap (2026-10-26): shown at once, no gate, no cookie, no Google.
+	An instance whose cached hooks predate the Jinja methods must draw no map (or the address and a link) rather than fail the page (a contact
+	page answered 417, 2026-09-13)."""
 
 	def render(self, **context):
 		from jinja2 import DebugUndefined
@@ -313,12 +314,59 @@ class TestMapTemplate(unittest.TestCase):
 		self.assertNotIn("<iframe", self.render())
 
 	def test_the_method_gives_the_address(self):
-		self.assertIn("q=Main%20Street%201", self.render(site_map_address=lambda: "Main Street 1"))
+		page = self.render(site_map_address=lambda: "Main Street 1")
+		self.assertIn("Main Street 1", page)
+		self.assertIn("query=Main%20Street%201", page)
 
 	def test_an_address_passed_wins(self):
-		self.assertIn(
-			"q=Elm%20Road", self.render(address="Elm Road", site_map_address=lambda: "Main Street 1")
-		)
+		page = self.render(address="Elm Road", site_map_address=lambda: "Main Street 1")
+		self.assertIn("query=Elm%20Road", page)
+		self.assertNotIn("Main Street", page)
+
+	def test_a_point_draws_the_openstreetmap_embed_at_once_with_its_marker(self):
+		page = self.render(address="Elm Road", lat="45.985196", lon="7.117674")
+		self.assertIn("https://www.openstreetmap.org/export/embed.html?bbox=", page)
+		self.assertIn("marker=45.985196%2C7.117674", page)
+		self.assertIn("<iframe", page)
+		self.assertIn("layer=mapnik", page)
+
+	def test_no_third_party_but_openstreetmap_is_ever_asked(self):
+		page = self.render(address="Elm Road", lat="45.985196", lon="7.117674")
+		for other in ("google", "gstatic", "maps.googleapis"):
+			self.assertNotIn(other, page.lower())
+		self.assertNotIn("data-map-src", page, "no gate: the map is not waiting for a click")
+		self.assertNotIn("<script", page)
+
+	def test_the_box_follows_the_zoom(self):
+		import re
+
+		def width(zoom):
+			bbox = re.search(r"bbox=([-\d.]+)%2C([-\d.]+)%2C([-\d.]+)%2C", self.render(address="x", lat="45.0", lon="7.0", zoom=zoom))
+			return float(bbox.group(3)) - float(bbox.group(1))
+
+		self.assertAlmostEqual(1080 / 2**16, width(16), places=4)
+		self.assertGreater(width(12), 10 * width(16))
+
+	def test_the_method_that_looks_the_point_up_is_used_when_the_page_has_none(self):
+		asked = []
+
+		def geocode(address):
+			asked.append(address)
+			return [46.0, 7.0]
+
+		page = self.render(address="Elm Road", geocode_address=geocode)
+		self.assertEqual(["Elm Road"], asked)
+		self.assertIn("marker=46.000000%2C7.000000", page)
+
+	def test_a_point_of_the_page_is_not_looked_up_again(self):
+		asked = []
+		self.render(address="Elm Road", lat="45.0", lon="7.0", geocode_address=lambda a: asked.append(a) or [1, 2])
+		self.assertEqual([], asked)
+
+	def test_an_address_nobody_can_place_shows_the_address_and_a_link_never_an_empty_frame(self):
+		page = self.render(address="Nowhere", geocode_address=lambda a: None)
+		self.assertNotIn("<iframe", page)
+		self.assertIn("https://www.openstreetmap.org/search?query=Nowhere", page)
 
 
 # //// Neoffice — added tests (2026-09-15): a carousel shows pictures, so a shop whose articles

@@ -1,28 +1,29 @@
-{# //// Neoffice — added file (no upstream equivalent): Jinja block: a Google Maps embed that needs no API
-   //// key. Reusable block the generator may include; Neoffice-only. First commit cddda576 2026-02-04. #}
-{# Google Maps Embed - No API key required #}
-{# Based on: https://github.com/SheeetFace/react-google-map-location #}
+{# //// Neoffice — added file (no upstream equivalent): Jinja block: a map of the business address, no API key needed.
+   //// Reusable block the generator may include; Neoffice-only. First commit cddda576 2026-02-04.
+   ////
+   //// 2026-10-26: it draws OpenStreetMap, at once, and keeps its old file name because the pages written before that (and the
+   //// component catalogue, the generator's prompt) include it by that name. It was a Google embed, then a Google embed behind a
+   //// click: Google's iframe tells Google who is looking, in the United States, and needs the visitor's agreement; a map nobody
+   //// can see until they click or accept is a map nobody sees. OpenStreetMap's embed sets no cookie, builds no advertising
+   //// profile and is run from the United Kingdom; the visitor's address still reaches its servers, which the privacy policy
+   //// says (legal.py). So the map is drawn like any other block, and the site needs no cookie banner for it. #}
 {#- The address the includer passes, else the site's own business address: a page the site
     generator writes includes this block with no address, and it showed every visitor
     "Map placeholder - configure address" (2026-09-13). With no address at all it draws
     nothing, rather than a configuration hint on a public page. -#}
-{#- site_map_address is a Jinja method (hooks.py): an instance still holding hooks cached from
-    before it existed draws no map instead of failing the whole page (2026-09-13). -#}
+{#- site_map_address and geocode_address are Jinja methods (hooks.py): an instance still holding hooks cached from
+    before they existed draws no map (or the address and a link) instead of failing the whole page. -#}
 {% set map_address = (address | default("")) or (site_map_address() if site_map_address is defined else "") %}
 {% set map_height = height | default("400px") %}
-{% set map_zoom = zoom | default("16") %}
-{% set map_type = type | default("m") %}
-{% set encoded_address = map_address | urlencode %}
-
-{#- //// Neoffice — on a site that shows the cookie and privacy notice (2026-10-22, legal.py) the map waits for the visitor's agreement: loading
-    //// Google's embed sends the visitor's address to Google, in the United States, before they have chosen anything, which neither
-    //// the Swiss Federal Act on Data Protection (art. 19: the visitor is told) nor the GDPR allows without their consent. Until the
-    //// agreement the visitor sees the address and a button; the iframe is built by the click (this page only), or at once for a
-    //// visitor who accepted in the notice (2026-10-26: the key `neo_data_notice` is "accepted"), from the same address. Whoever
-    //// accepted can take it back under the map. Any other site keeps the embed as it was. -#}
-{%- set neo_legal = site_legal() if site_legal is defined else {} -%}
+{% set map_zoom = ((zoom | default(16)) | int) if (zoom | default(16)) else 16 %}
+{#- The point: given by the page (`lat`, `lon`, written when the page is built), else looked up once and kept (osm_map.py). -#}
+{% set map_lat = lat | default("") %}
+{% set map_lon = lon | default("") %}
+{% if map_address and not (map_lat and map_lon) and geocode_address is defined %}
+{% set map_point = geocode_address(map_address) %}
+{% if map_point %}{% set map_lat = map_point[0] %}{% set map_lon = map_point[1] %}{% endif %}
+{% endif %}
 {% if map_address %}
-{%- set map_src = "https://maps.google.com/maps?q=" ~ encoded_address ~ "&t=" ~ map_type ~ "&z=" ~ map_zoom ~ "&output=embed" -%}
 {%- set map_title = _("Map showing") ~ " " ~ map_address -%}
 <div class="builder-map-container" style="
     width: 100%;
@@ -31,24 +32,29 @@
     overflow: hidden;
     box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
 ">
-{%- if neo_legal and neo_legal.notice %}
-    <div class="builder-map-gate" data-map-src="{{ map_src | e }}" data-map-title="{{ map_title | e }}" data-revoke="{{ _('Stop showing the map automatically') | e }}">
-        <p class="builder-map-gate__address">{{ map_address }}</p>
-        <p class="builder-map-gate__note">{{ _("The map is provided by Google. Loading it sends your IP address to Google, in the United States.") }}
-            {%- if neo_legal.privacy_url %} <a href="{{ neo_legal.privacy_url | e }}">{{ _("Privacy policy") }}</a>{% endif %}</p>
-        <button type="button" class="builder-map-gate__button">{{ _("Show the map") }}</button>
-    </div>
-{%- else %}
+{%- if map_lat and map_lon %}
+    {#- The embed shows the box it is given: about three tiles wide at the zoom asked for, a third as high. -#}
+    {%- set span = 1080 / (2 ** map_zoom) -%}
+    {%- set lon_a = (map_lon | float) - span / 2 -%}
+    {%- set lon_b = (map_lon | float) + span / 2 -%}
+    {%- set lat_a = (map_lat | float) - span * 0.15 -%}
+    {%- set lat_b = (map_lat | float) + span * 0.15 -%}
     <iframe
         width="100%"
         height="100%"
         style="border: none;"
         loading="lazy"
         allowfullscreen
-        referrerpolicy="no-referrer-when-downgrade"
-        src="{{ map_src }}"
-        title="{{ map_title }}"
+        referrerpolicy="no-referrer"
+        src="https://www.openstreetmap.org/export/embed.html?bbox={{ '%.6f' | format(lon_a) }}%2C{{ '%.6f' | format(lat_a) }}%2C{{ '%.6f' | format(lon_b) }}%2C{{ '%.6f' | format(lat_b) }}&amp;layer=mapnik&amp;marker={{ '%.6f' | format(map_lat | float) }}%2C{{ '%.6f' | format(map_lon | float) }}"
+        title="{{ map_title | e }}"
     ></iframe>
+{%- else %}
+    {#- No point could be found (the lookup is unreachable, or the address is not one): the address and a link, never an empty frame. -#}
+    <div class="builder-map-fallback" style="box-sizing: border-box; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 0.75rem; width: 100%; height: 100%; padding: 1.5rem; text-align: center; background: rgba(127, 127, 127, 0.1);">
+        <p style="margin: 0; font-weight: 600;">{{ map_address }}</p>
+        <a href="https://www.openstreetmap.org/search?query={{ map_address | urlencode }}" target="_blank" rel="noopener noreferrer" style="color: inherit; text-decoration: underline;">{{ _("Open in OpenStreetMap") }}</a>
+    </div>
 {%- endif %}
 </div>
 
@@ -62,92 +68,5 @@
         border-radius: 8px;
     }
 }
-{%- if neo_legal and neo_legal.notice %}
-.builder-map-gate {
-    box-sizing: border-box;
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    justify-content: center;
-    gap: 0.75rem;
-    width: 100%;
-    height: 100%;
-    padding: 1.5rem;
-    text-align: center;
-    background: rgba(127, 127, 127, 0.1);
-    color: inherit;
-}
-.builder-map-revoke { margin: 0.5rem 0 0; font-size: 0.8125rem; }
-.builder-map-revoke__button { padding: 0; border: 0; background: none; color: inherit; font: inherit; text-decoration: underline; cursor: pointer; opacity: 0.8; }
-.builder-map-gate__address { margin: 0; font-weight: 600; }
-.builder-map-gate__note { margin: 0; max-width: 32rem; font-size: 0.875rem; line-height: 1.5; opacity: 0.85; }
-.builder-map-gate__note a { color: inherit; text-decoration: underline; }
-.builder-map-gate__button {
-    min-height: 2.75rem;
-    padding: 0 1.5rem;
-    border: 0;
-    border-radius: 0.5rem;
-    background: #1a1a1a;
-    color: #ffffff;
-    cursor: pointer;
-    font: inherit;
-    font-weight: 600;
-}
-{%- endif %}
 </style>
-{%- if neo_legal and neo_legal.notice %}
-<script>
-(function () {
-    if (window.__neoMapGate) return;
-    window.__neoMapGate = true;
-    var KEY = "neo_data_notice";
-    var agreed = function () {
-        try { return window.localStorage.getItem(KEY) === "accepted"; } catch (e) { return false; }
-    };
-    var open = function (gate, automatic) {
-        if (!gate.parentNode) return;
-        var frame = document.createElement("iframe");
-        frame.width = "100%";
-        frame.height = "100%";
-        frame.style.border = "none";
-        frame.allowFullscreen = true;
-        frame.referrerPolicy = "no-referrer-when-downgrade";
-        frame.title = gate.getAttribute("data-map-title") || "";
-        frame.src = gate.getAttribute("data-map-src");
-        var container = gate.parentNode;
-        var label = gate.getAttribute("data-revoke") || "";
-        gate.replaceWith(frame);
-        if (automatic && label && container.parentNode) {
-            var note = document.createElement("p");
-            note.className = "builder-map-revoke";
-            var button = document.createElement("button");
-            button.type = "button";
-            button.className = "builder-map-revoke__button";
-            button.textContent = label;
-            note.appendChild(button);
-            container.parentNode.insertBefore(note, container.nextSibling);
-        }
-    };
-    var openAll = function () {
-        var gates = document.querySelectorAll(".builder-map-gate");
-        for (var i = 0; i < gates.length; i++) open(gates[i], true);
-    };
-    document.addEventListener("click", function (event) {
-        var target = event.target;
-        var show = target.closest && target.closest(".builder-map-gate__button");
-        if (show) { open(show.closest(".builder-map-gate"), false); return; }
-        var revoke = target.closest && target.closest(".builder-map-revoke__button");
-        if (revoke) {
-            try { window.localStorage.setItem(KEY, "declined"); } catch (e) {}
-            window.location.reload();
-        }
-    });
-    document.addEventListener("neo-maps-agreed", openAll);
-    if (agreed()) {
-        if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", openAll);
-        else openAll();
-    }
-})();
-</script>
-{%- endif %}
 {% endif %}

@@ -2,7 +2,7 @@
 """Every site the generator builds carries a privacy policy and a legal notice, written without a model (legal.py): a fixed document
 in the four languages of the generator, filled with what the business gave and with what the pages of the site hold. What is pinned
 here: the library is complete in every language, a document never describes a processing the site does not have and never leaves out
-one it has, a missing contact line is a visible blank (never an invented one), and the page goes through the writer's own YAML. No
+one it has, a line the company record does not give is left out (never a blank for the owner, never an invented one), and the page goes through the writer's own YAML. No
 model is called."""
 
 import datetime
@@ -52,7 +52,7 @@ class TestTheLibraryIsCompleteInEveryLanguage(unittest.TestCase):
 	def test_every_paragraph_is_filled_for_a_full_business_and_for_a_bare_one(self):
 		for lang in legal.LANGUAGES:
 			for facts in (FULL, BARE):
-				for key in (k for k in legal.TEXT[lang] if k != "blank"):
+				for key in legal.TEXT[lang]:
 					value = legal.text(lang, key, facts, TODAY)
 					self.assertNotIn("{", value, f"{lang}.{key}")
 					self.assertNotIn("}", value, f"{lang}.{key}")
@@ -89,12 +89,25 @@ class TestThePrivacyPolicyDescribesWhatTheSiteDoes(unittest.TestCase):
 			for key in ("p_form_h", "p_news_h", "p_shop_h", "p_map_h"):
 				self.assertIn(legal.TEXT[lang][key], got, f"{lang} {key}")
 
-	def test_google_is_named_only_when_the_site_has_a_map(self):
+	def test_the_map_provider_is_named_only_when_the_site_has_a_map(self):
 		for lang in legal.LANGUAGES:
 			bare = legal.plain_text("privacy", BARE, lang, TODAY)
 			full = legal.plain_text("privacy", FULL, lang, TODAY)
-			self.assertNotIn("Google", bare, lang)
-			self.assertIn("Google", full, lang)
+			self.assertNotIn("OpenStreetMap", bare, lang)
+			self.assertIn("OpenStreetMap", full, lang)
+			self.assertNotIn("Google", full, f"{lang}: the map is no longer Google's")
+
+	def test_the_policy_says_the_map_sets_no_cookie_and_where_the_data_goes(self):
+		self.assertIn("ne pose aucun cookie", legal.TEXT["fr"]["p_map"])
+		self.assertIn("sets no cookie", legal.TEXT["en"]["p_map"])
+		self.assertIn("Royaume-Uni", legal.TEXT["fr"]["p_abroad_map"])
+		self.assertIn("United Kingdom", legal.TEXT["en"]["p_abroad_map"])
+
+	def test_the_policy_no_longer_speaks_of_a_banner_nobody_shows(self):
+		for lang in legal.LANGUAGES:
+			cookies = legal.TEXT[lang]["p_cookies"]
+			for word in ("information sur les cookies", "cookie notice", "Cookie-Hinweises", "avviso sui cookie"):
+				self.assertNotIn(word, cookies, lang)
 
 	def test_a_site_that_sells_speaks_of_the_account_the_basket_and_the_orders(self):
 		for lang in legal.LANGUAGES:
@@ -141,27 +154,63 @@ class TestThePrivacyPolicyDescribesWhatTheSiteDoes(unittest.TestCase):
 		self.assertIn("October 22, 2026", legal.plain_text("privacy", BARE, "en", TODAY))
 
 
-class TestAMissingContactLineIsABlankNeverAnInvention(unittest.TestCase):
-	def test_no_email_and_no_phone_leaves_a_visible_blank(self):
+BRACKETED = r"\[[^\]]+:[^\]]+\]"
+FULL_WITH_NUMBERS = legal.Facts(**{**FULL.__dict__, "uid": "CHE-123.456.789", "vat": True})
+
+
+class TestNothingIsLeftForTheOwnerToFillIn(unittest.TestCase):
+	"""A legal page that asks its owner to complete it is a page nobody completes (2026-10-26: a notice said "[à compléter : numéro IDE et TVA]"
+	for numbers the company record holds). The numbers are read from it, and a line it does not give is left out, never printed as a blank."""
+
+	def test_no_text_of_the_library_is_a_blank(self):
+		self.assertNotIn("blank", legal.TEXT["fr"])
+		for lang in legal.LANGUAGES:
+			for key, value in legal.TEXT[lang].items():
+				self.assertNotRegex(value, BRACKETED, f"{lang}.{key}")
+				self.assertNotIn("compléter", value, f"{lang}.{key}")
+
+	def test_no_email_and_no_phone_sends_the_visitor_to_the_contact_page(self):
 		for lang in legal.LANGUAGES:
 			body = legal.plain_text("privacy", BARE, lang, TODAY)
-			self.assertTrue(legal.has_blank(body), lang)
-			self.assertIn(legal.TEXT[lang]["what_contact"], body)
+			self.assertIn(legal.TEXT[lang]["contact_page"], body, lang)
+			self.assertNotRegex(body, BRACKETED, lang)
 
 	def test_a_phone_alone_is_enough_for_the_contact(self):
 		facts = legal.Facts(name="Atelier", phone="+41 00 000 00 00")
-		self.assertFalse(legal.has_blank(legal.text("fr", "p_controller", facts, TODAY)))
+		self.assertIn("+41 00 000 00 00", legal.text("fr", "p_controller", facts, TODAY))
+		self.assertNotIn(legal.TEXT["fr"]["contact_page"], legal.text("fr", "p_controller", facts, TODAY))
 
-	def test_the_notice_leaves_a_blank_for_the_company_number_it_was_not_given(self):
+	def test_the_notice_states_the_identification_and_the_vat_numbers_of_the_record(self):
+		expected = {"fr": ("N° IDE : CHE-123.456.789", "TVA : CHE-123.456.789 TVA"), "en": ("Company ID (UID): CHE-123.456.789", "VAT: CHE-123.456.789 VAT"),
+			"de": ("UID: CHE-123.456.789", "MWST: CHE-123.456.789 MWST"), "it": ("IDI: CHE-123.456.789", "IVA: CHE-123.456.789 IVA")}
+		for lang, (uid, vat) in expected.items():
+			lines = legal.notice_sections(FULL_WITH_NUMBERS, lang, TODAY)[1][1][0]
+			self.assertIn(uid, lines, lang)
+			self.assertIn(vat, lines, lang)
+
+	def test_a_company_that_owes_no_vat_states_only_its_identification_number(self):
+		facts = legal.Facts(**{**FULL.__dict__, "uid": "CHE-123.456.789", "vat": False})
+		lines = legal.notice_sections(facts, "fr", TODAY)[1][1][0]
+		self.assertIn("N° IDE : CHE-123.456.789", lines)
+		self.assertFalse(any(line.startswith("TVA") for line in lines))
+
+	def test_a_company_with_no_number_states_none_and_leaves_no_blank(self):
 		for lang in legal.LANGUAGES:
-			self.assertTrue(legal.has_blank(legal.plain_text("notice", FULL, lang, TODAY)), lang)
+			body = legal.plain_text("notice", FULL, lang, TODAY)
+			self.assertNotRegex(body, BRACKETED, lang)
+			self.assertNotIn("CHE-", body, lang)
 
 	def test_the_notice_lists_only_the_lines_the_business_gave(self):
 		lines = legal.notice_sections(BARE, "fr", TODAY)[1][1][0]
-		self.assertEqual("Atelier Test Sàrl", lines[0])
-		self.assertEqual(2, len(lines))
-		full = legal.notice_sections(FULL, "fr", TODAY)[1][1][0]
-		self.assertEqual(6, len(full))
+		self.assertEqual(["Atelier Test Sàrl"], lines)
+		self.assertEqual(5, len(legal.notice_sections(FULL, "fr", TODAY)[1][1][0]))
+		self.assertEqual(7, len(legal.notice_sections(FULL_WITH_NUMBERS, "fr", TODAY)[1][1][0]))
+
+	def test_the_numbers_come_from_the_company_record(self):
+		facts = legal.facts_from({"company_name": "X", "uid": "CHE-123.456.789", "vat_registered": True}, "X", {})
+		self.assertEqual(("CHE-123.456.789", True), (facts.uid, facts.vat))
+		self.assertFalse(legal.facts_from({"company_name": "X", "vat_registered": True}, "X", {}).vat, "a VAT number is the UID's: no UID, no VAT line")
+		self.assertFalse(legal.facts_from({"company_name": "X", "uid": "CHE-123.456.789"}, "X", {}).vat)
 
 	def test_the_notice_points_to_the_privacy_policy(self):
 		sections = legal.notice_sections(FULL, "fr", TODAY)

@@ -117,9 +117,8 @@ class TestCritiqueCeiling(unittest.TestCase):
 		self.assertEqual(40000, STRUCTURED_MAX_TOKENS)
 
 
-# //// Neoffice — added tests (2026-09-15): the reviewer is told what is deliberate on a legal page.
-# //// It read the bracketed blanks of a privacy policy as unfinished work, called the page
-# //// unprofessional and spent a revision erasing them — undoing the rule that put them there.
+# //// Neoffice — added tests (2026-09-15, rewritten 2026-10-26): the reviewer is told what a legal page is. It was told its bracketed blanks
+# //// were deliberate; no legal page asks its owner to complete it any more, so a blank is a defect and the reviewer is told so.
 class TestLegalPageContext(unittest.TestCase):
 	def setUp(self):
 		# //// Neoffice — the production log is not this test's (its "Visual check ... model=kimi" lines were read as a build's, 2026-10-20)
@@ -151,13 +150,14 @@ class TestLegalPageContext(unittest.TestCase):
 			visual_check.review_page(page, "A Storefront", "kimi", site_name="A Shop", activity="a shop")
 		return seen.get("context", "")
 
-	def test_a_legal_page_says_its_blanks_are_deliberate(self):
+	def test_a_legal_page_is_told_a_bracketed_blank_is_a_defect(self):
 		context = self._context_for("legal")
-		self.assertIn("DELIBERATE", context)
+		self.assertIn("UNFINISHED PLACEHOLDER", context)
 		self.assertIn("[to be completed", context)
+		self.assertNotIn("DELIBERATE", context)
 
-	def test_any_other_page_is_not_told_about_blanks(self):
-		self.assertNotIn("DELIBERATE", self._context_for("accueil"))
+	def test_any_other_page_is_not_told_about_legal_documents(self):
+		self.assertNotIn("UNFINISHED PLACEHOLDER", self._context_for("accueil"))
 
 
 # //// Neoffice — added tests (2026-09-16): the measured gate runs before the judge, and decides.

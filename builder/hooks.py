@@ -68,8 +68,9 @@ jinja = {
 		"builder.page_header.render_page_header",
 		"builder.page_header.render_builder_page_header",
 		"builder.builder.doctype.builder_component.builder_component.get_component_data",
-		# //// Neoffice — the address the map include falls back to (templates/includes/google_map.html)
+		# //// Neoffice — the address the map include falls back to, and the point it draws (templates/includes/google_map.html)
 		"builder.api.site_map_address",
+		"builder.osm_map.geocode_address",
 		# //// Neoffice — the privacy policy to link and whether the site shows the cookie notice (templates/includes/data_notice.html)
 		"builder.site_legal.site_legal",
 		# //// Neoffice — the definition of a Site Form, read at every display by templates/includes/site_form.html
@@ -285,9 +286,7 @@ website_components = [
 			# //// Neoffice — label, choices and bounds are what the editor's picker shows (2026-10-19)
 			{"name": "height", "label": "Height", "type": "str", "default": "400px", "about": "how tall the map stands"},
 			{"name": "zoom", "label": "Zoom", "min": 1, "max": 20, "type": "int", "default": 16, "about": "1 the world, 20 a street corner"},
-			# //// Neoffice — the template writes this straight into Google's &t= (2026-09-16): it takes
-			# //// Google's own codes, not English words. "roadmap" produced an invalid t=roadmap.
-			{"name": "type", "label": "Map type", "choices": [{"value": "m", "label": "Map"}, {"value": "k", "label": "Satellite"}, {"value": "h", "label": "Hybrid"}, {"value": "p", "label": "Terrain"}], "type": "str", "default": "m", "about": "m map, k satellite, h hybrid, p terrain"},
+			# //// Neoffice — no "Map type" any more (2026-10-26): it took Google's own codes (m, k, h, p) and the map is OpenStreetMap's, which has no satellite
 			# //// Neoffice — the template reads `address`, not `map_address` (2026-09-16). The old name
 			# //// set a variable nobody read, so a chosen address silently fell back to the site's own.
 			# //// It passed the "declared parameter exists in the template" test because the string

@@ -5253,7 +5253,6 @@ msgstr "{0} entfernt"
 msgid "{0} set as primary"
 msgstr "{0} als primär festgelegt"
 
-
 #: website contact form
 msgid "Step"
 msgstr "Schritt"
@@ -5793,22 +5792,10 @@ msgstr "Ihr Name"
 msgid "© {year} {site_name}. All rights reserved."
 msgstr "© {year} {site_name}. Alle Rechte vorbehalten."
 
-#: builder/templates/includes/data_notice.html:15
-msgid "With your agreement it shows a Google map, which sends your IP address to Google, in the United States."
-msgstr "Mit Ihrer Zustimmung wird eine Google-Karte angezeigt, wodurch Ihre IP-Adresse an Google in den USA übermittelt wird."
-
-#: builder/templates/includes/google_map.html:35
-msgid "Stop showing the map automatically"
-msgstr "Automatische Kartenanzeige beenden"
-
-#: builder/templates/includes/data_notice.html:19
-msgid "Refuse"
-msgstr "Ablehnen"
-
-#: builder/templates/includes/data_notice.html:20
-msgid "Accept"
-msgstr ""
-
 #: builder/brief_view.py:33
 msgid "Section dividers"
 msgstr "Abschnittstrenner"
+
+#: builder/templates/includes/google_map.html:56
+msgid "Open in OpenStreetMap"
+msgstr "In OpenStreetMap öffnen"

@@ -381,14 +381,14 @@ REVIEW_CONTEXT = (
     "photo would be are deliberate: ignore them, judge the layout, the copy and the typography of THIS page."
 )
 
-# //// Neoffice — what is deliberate on a legal page (2026-09-15). The reviewer read the bracketed
-# //// blanks of a privacy policy as "unfinished placeholders", called the page unprofessional and
-# //// spent a revision erasing them — undoing the rule that put them there, which exists so the
-# //// model states nothing nobody gave it, and losing the merchant's list of what to fill in.
+# //// Neoffice — what a legal page is (2026-09-15; rewritten 2026-10-26). The reviewer read the bracketed blanks of a privacy policy as
+# //// "unfinished placeholders" and spent a revision erasing them, so it was told they were deliberate. They are not any more: no legal page
+# //// asks its owner to complete it (legal.py reads the company record, the model is told to leave out what it was not given), so a
+# //// bracketed blank on a published page is a defect, and said to be one.
 LEGAL_CONTEXT = (
-    " This page is a LEGAL document (terms, privacy policy, legal notice). Text in square brackets — "
-    "'[to be completed: …]' — is DELIBERATE: it marks what only the merchant can supply, and it must "
-    "stay. Do not report it, and do not judge the page unfinished because of it."
+    " This page is a LEGAL document (terms, privacy policy, legal notice): plain prose in one column is what it should look "
+    "like, with no photograph or ornament. Text in square brackets such as '[to be completed: …]' or '[à compléter : …]' is "
+    "an UNFINISHED PLACEHOLDER, never acceptable on a published page: report it as a high-severity issue."
 )
 
 

@@ -1456,14 +1456,16 @@ def page_brief_text(site: dict, brief, page: dict, handles: dict, contact_prompt
             "clauses, ONE column of reading across the page's full width (never a two-column band, "
             "never a narrow column beside an empty half), no photograph, no icon, no ornament, no "
             "button, no coloured band, and no marker of any kind before a heading. Use ONLY the details "
-            "BUSINESS DATA gives. Everything the law requires that nobody gave you — company "
-            "registration and VAT number, share capital, the payment providers, the host, the court "
-            "and the country whose law applies, the delivery and return windows — is written as a "
-            "visible blank in square brackets for the merchant to fill in, in their language "
-            f"(for example '[{'à compléter' if language == 'French' else 'to be completed'}: …]'). "
-            "Never invent one, and never leave a sentence hanging on a detail you do not have — "
-            "'the shop at is operated by' is worse than either choice: write the blank, or leave the "
-            "phrase out. Close with the date of the last update."
+            "BUSINESS DATA gives, and use them in full (the company and VAT numbers, the address). "
+            # //// Neoffice — never a blank for the owner (2026-10-26): the page asked the owner to complete the registration and VAT numbers
+            # //// the company record holds, and whatever no record holds. A page that asks its owner to finish it is a page nobody finishes.
+            "NEVER leave a placeholder, a blank, a square bracket or a note for the owner to complete: what BUSINESS DATA does not give "
+            "— share capital, payment providers, delivery and return windows, anything else — is LEFT OUT, the clause written without "
+            "it or not written. "
+            f"The site is hosted by {legal.SUBPROCESSORS['host']}, {legal.SUBPROCESSORS['host_town'][legal.language_of(site.get('lang'))]} (Switzerland). "
+            "Swiss law applies, and the courts of the business's seat (the town of its address) are competent, unless BUSINESS DATA says "
+            "otherwise. Never invent a number, a name or a period, and never leave a sentence hanging on a detail you do not have — "
+            "'the shop at is operated by' is worse than leaving the phrase out. Close with the date of the last update."
             if page["type"] == "legal" else ""
         ),
         f"SECTIONS, in order, with real copy written in {language}:\n{sections}",
@@ -2196,10 +2198,10 @@ def apply_navigation(config, created: list[dict], site_type: str, description: s
             if _is_legal_route(page["route"]):
                 continue
             config.append("footer_links", {"column_name": _("Navigation", lang=lang), "label": _("Home", lang=lang) if home else page["title"], "url": "/" if home else page["route"]})
-    # //// Neoffice — a generated site shows the cookie and privacy notice and keeps its map behind a click (2026-10-22, legal.py,
-    # //// templates/includes/data_notice.html): the site carries a privacy policy that says it uses technical cookies only
-    if hasattr(config, "show_data_notice"):
-        config.show_data_notice = 1
+    # //// Neoffice — a generated site no longer turns the cookie and privacy notice on (2026-10-26; it did from 2026-10-22, legal.py,
+    # //// templates/includes/data_notice.html). Its map is OpenStreetMap's, drawn at once, it carries technical cookies only, and the
+    # //// privacy policy is linked from the footer: nothing asks for the visitor's agreement, so nothing asks for a banner. The
+    # //// setting stays the owner's (a site that carries its own cookie tools may still turn the notice on).
     # //// Neoffice — no icon that goes nowhere, and no network of the host's on a client's site (2026-10-24): see drop_inherited_social_links
     cleared_links = drop_inherited_social_links(config, _host_social_links() if profile else {})
     if cleared_links:
@@ -3302,6 +3304,13 @@ def build_site(ctx, spec: dict) -> str:
                         ai_log("info", "Contrast repaired", page=page["title"], fixes=len(fixes), first=fixes[0][:80])
                     # //// Neoffice — the sections meet in a shape, not on a ruler (dividers.py, 2026-10-26): see draw_dividers
                     draw_dividers(blocks, page)
+                    # //// Neoffice — a map is drawn at its point (osm_map.py, 2026-10-26): the point of its address is looked up once, here, and
+                    # //// written beside the include, so the page carries it for good
+                    from builder.osm_map import pin_maps
+
+                    pinned = pin_maps(blocks, contact_data.get("address") or "")
+                    if pinned:
+                        ai_log("info", "Maps pinned", page=page["title"], edits=pinned)
                     # nor the spacing of French punctuation: see punctuation.py
                     if lang_code == "fr":
                         spaced = french_spacing(blocks)
