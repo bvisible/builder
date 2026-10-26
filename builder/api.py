@@ -2637,6 +2637,10 @@ def _generate_images_worker(img_job_id: str, placeholder_images: list):
 				"Image generation failed",
 				f"Prompt: {prompt[:100]}\nPage: {page_name}\nBlock: {block_id}\nError: {str(e)}"
 			)
+			# //// Neoffice — a card whose picture could not be drawn is written without it: the site draws the placeholder
+			# //// nobody filled as a grey block (2026-10-26, a photo card with two of them)
+			if img_info.get("type", "img") == "img":
+				_drop_card_photo_in_page(page_name, block_id)
 			continue
 
 	_update_generation_status(img_job_id, {
@@ -2648,6 +2652,29 @@ def _generate_images_worker(img_job_id: str, placeholder_images: list):
 		"current_image": None,
 		"error": None,
 	})
+
+
+# //// Neoffice — added (2026-10-26): see the call in _generate_images_worker
+def _drop_card_photo_in_page(page_name: str, block_id: str):
+	"""A photograph the image job gave up on, in a card: the card is saved without it (placeholders.drop_plain_card_photos)."""
+	from builder.site_ai.nora.placeholders import drop_plain_card_photos
+
+	try:
+		page = frappe.get_doc("Builder Page", page_name)
+		changed = False
+		for field in ("blocks", "draft_blocks"):
+			blocks_json = page.get(field)
+			if not blocks_json:
+				continue
+			blocks = json.loads(blocks_json)
+			if drop_plain_card_photos(blocks, failed={block_id}):
+				page.set(field, json.dumps(blocks))
+				changed = True
+		if changed:
+			page.save(ignore_permissions=True)
+			frappe.db.commit()
+	except Exception:
+		frappe.log_error("Card photo not taken out", frappe.get_traceback())
 
 
 def _replace_image_in_page(page_name: str, block_id: str, new_src: str, img_type: str = "img"):

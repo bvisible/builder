@@ -16,7 +16,7 @@ import json
 import re
 from urllib.parse import quote, unquote, unquote_plus
 
-from builder.site_ai.nora.layout import _walk
+from builder.site_ai.nora.layout import _is_card, _walk
 
 TEXT_PARAM = re.compile(r"[?&]text=([^&'\")\s]+)")
 
@@ -254,4 +254,47 @@ def neutral_named_slots(blocks: list, palette: dict, prefix: str, names=()) -> l
                 if must_not_be_drawn(text, known):
                     styles[prop] = _replace_css(value, palette, prefix)
                     edits.append(text[:60])
+    return edits
+
+
+# //// Neoffice — added (2026-10-26): a card whose photograph will not be drawn is a card without one. A regenerated site showed its
+# //// photo cards with grey rectangles where two of the three pictures should have been: the guard above had withheld the card whose
+# //// alt named a screen, and the image job had given up on another (the site draws the plain block of a placeholder nobody filled).
+def _card_photo(card: dict) -> tuple[dict, dict] | None:
+    """(the child of the card that carries its photograph, the img) for a card that opens on a picture: the img itself, or a wrapper
+    around it that holds nothing else. None for a card with no copy beside the picture, or that opens on anything else."""
+    kids = [c for c in card.get("children") or [] if isinstance(c, dict)]
+    if len(kids) < 2:
+        return None
+    first = kids[0]
+    if str(first.get("element") or "").lower() == "img":
+        return first, first
+    inside = [c for c in first.get("children") or [] if isinstance(c, dict)]
+    if len(inside) == 1 and str(inside[0].get("element") or "").lower() == "img" and not (first.get("innerHTML") or first.get("innerText")):
+        return first, inside[0]
+    return None
+
+
+def drop_plain_card_photos(blocks: list, failed=frozenset()) -> int:
+    """Each card that opens on a photograph the site will draw as a plain block (neutral_image: withheld by neutral_named_slots, an
+    image generation that is off, an img with no source), or that `failed` names by block id (the image job gave up on it), is written
+    without the picture: its copy stays. In a row of cards where half of the photographs or more are gone the row has none, so that
+    three cards are alike. A card with a real photograph, or one still waiting for the image job, is only touched by that rule.
+    Returns the number of cards rewritten."""
+    failed = set(failed or ())
+    edits = 0
+    for parent in _walk(blocks):
+        photographed = [(card, found) for card in parent.get("children") or [] if isinstance(card, dict) and _is_card(card) and (found := _card_photo(card))]
+        if not photographed:
+            continue
+        gone = [
+            pair for pair in photographed
+            if neutral_paint(str((pair[1][1].get("attributes") or {}).get("src") or "")) is not None or pair[1][1].get("blockId") in failed
+        ]
+        if not gone:
+            continue
+        rewritten = photographed if len(gone) * 2 >= len(photographed) else gone
+        for card, (holder, _img) in rewritten:
+            card["children"] = [c for c in card["children"] if c is not holder]
+            edits += 1
     return edits

@@ -3192,6 +3192,13 @@ def build_site(ctx, spec: dict) -> str:
                     emptied = neutral_empty_slots(blocks, palette, prefix)
                     if emptied:
                         ai_log("info", "Pictures with no source given a plain block", page=page["title"], edits=emptied)
+                    # //// Neoffice — and a card whose photograph will not be drawn is written without it, never a grey block over its
+                    # //// copy (placeholders.drop_plain_card_photos, 2026-10-26: a photo card with two of them)
+                    from builder.site_ai.nora.placeholders import drop_plain_card_photos
+
+                    bare = drop_plain_card_photos(blocks)
+                    if bare:
+                        ai_log("info", "Cards without a photograph written without it", page=page["title"], edits=bare)
                     # //// Neoffice — and every picture has an alt text (alt_text.py): the heading of its card or section, else the page's
                     # //// title, else the site's name, where the writer left none or a file name (2026-10-22)
                     from builder.site_ai.nora.alt_text import ensure_alts

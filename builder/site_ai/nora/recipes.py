@@ -33,9 +33,12 @@ from builder.site_ai.nora.contrast import luminance
 from builder.site_ai.nora.hero import DARK, _hex, _mix, _resolve, _rgba
 
 # the alt text of a photograph is also the prompt of the image generator when the photograph is made after the build: a scene, not a caption
+# //// Neoffice — and never a screen, a sign, a map, a document or a portrait (2026-10-26): the site keeps those from the image job
+# //// (placeholders.must_not_be_drawn, a picture of them states something false), and a card whose alt named a screen lost its photograph
 ALT_GUIDANCE = (
 	"a photographic description of the scene, 10 to 20 words, in the site's language: the subject, the setting, the light, "
-	"specific to this business (its place, its dishes, its people at work); never the name of the business, no text in the picture"
+	"specific to this business (its place, its dishes, its people at work); never the name of the business, no text in the picture, "
+	"and never a screen, a sign, a map, a document or a portrait (they are not drawn: show the place, the hands and the tools instead)"
 )
 # a recipe is drawn on at most this many pages of a site, but for the kinds a site repeats on purpose: the opening of every interior page
 # (the plan says "all interior pages open with the SAME shape") and the closing band
