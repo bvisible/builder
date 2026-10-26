@@ -2335,6 +2335,15 @@ def build_site(ctx, spec: dict) -> str:
         site_type in ("ecommerce", "ecommerce_search")
         or (profile and _profile_sells(profile) and _webshop_installed() and not _other_business(profile, site_name))
     )
+    # //// Neoffice — a showcase on a profile of a selling kind is built as a storefront (2026-10-26): a client's site was written for a
+    # //// service business, its profile still held the default kind (B2C), and it came out with a shop entry and a cart it does not have.
+    # //// The profile's Site Kind decides (Showcase = no shop, the sign-in stays); the build says so rather than guess against it.
+    if profile and site_type == "vitrine" and _sells_here:
+        ai_log(
+            "warning",
+            "A showcase is built on a profile of a selling kind: the site gets a shop entry and a cart. Set its Site Kind to Showcase if it does not sell",
+            profile=profile,
+        )
     job_id = f"site_gen_{frappe.generate_hash(length=10)}"
     # //// Neoffice — what this build spends, counted from here (builder/ai/meter.py, 2026-09-15)
     from builder.ai import meter
