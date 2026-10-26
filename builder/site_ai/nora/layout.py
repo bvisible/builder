@@ -247,6 +247,41 @@ def wrap_phone_rows(blocks: list) -> int:
     return edits
 
 
+# //// Neoffice — added (2026-10-26): a heading that holds inline markup is a line of text, never a flex container. Two headings of a
+# //// regenerated About page carried `display: flex; align-items: center; gap: 0.6rem` (the writer laid them out around a small square)
+# //// and an accent word in <em>: each run of text of a flex container is an item of its own, so the accent word stood apart from the
+# //// heading, at the right of the line.
+HEADING_ELEMENTS = ("h1", "h2", "h3", "h4", "h5", "h6")
+INLINE_MARKUP = re.compile(r"<\s*[a-z][^>]*>", re.I)
+FLEX_ONLY = ("display", "flexDirection", "flexWrap", "alignItems", "alignContent", "justifyContent", "gap", "rowGap", "columnGap")
+TEXT_ALIGN_OF = {"center": "center", "flex-end": "right", "end": "right", "right": "right"}
+
+
+def settle_marked_headings(blocks: list) -> int:
+    """A heading whose own text holds inline markup (an accent word in `<em>`, a square drawn by a `<span>`) and that the page made a
+    flex container loses what makes it one (display, direction, wrap, alignment, gap), on every screen size: it is a line of text, and
+    the inline-block square in it keeps its own place and margin. A heading centred by `justify-content` keeps its centring as
+    `text-align`, unless it states one. A heading of plain text, a heading that is no flex container and any other block are left
+    as they are. Returns the number of headings changed."""
+    edits = 0
+    for block in _walk(blocks):
+        if str(block.get("element") or "").lower() not in HEADING_ELEMENTS or not INLINE_MARKUP.search(str(block.get("innerHTML") or "")):
+            continue
+        sets = [block[key] for key in ("baseStyles", "tabletStyles", "mobileStyles") if isinstance(block.get(key), dict)]
+        if not any("flex" in str(styles.get("display") or "") for styles in sets):
+            continue
+        aligned = any("textAlign" in styles for styles in sets)
+        for styles in sets:
+            align = TEXT_ALIGN_OF.get(str(styles.get("justifyContent") or "").strip())
+            if align and not aligned:
+                styles["textAlign"] = align
+                aligned = True
+            for flex_key in FLEX_ONLY:
+                styles.pop(flex_key, None)
+        edits += 1
+    return edits
+
+
 BARE_FR = re.compile(r"^\d*\.?\d+fr$")
 REPEAT_FR = re.compile(r"^repeat\(\s*(\d+)\s*,\s*(\d*\.?\d+fr)\s*\)$")
 

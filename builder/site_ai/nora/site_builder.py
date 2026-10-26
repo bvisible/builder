@@ -2931,6 +2931,13 @@ def build_site(ctx, spec: dict) -> str:
                     gutters = fit_phone_gutters(blocks, handles.get("gutter"), handles.get("gutter-phone"))
                     if gutters:
                         ai_log("info", "Phone gutters set on containers", page=page["title"], edits=gutters)
+                    # //// Neoffice — and a heading that holds an accent word or a square is a line of text, not a flex container: each run of
+                    # //// its text would be an item of its own and the accent word would fly off to the right (layout.settle_marked_headings, 2026-10-26)
+                    from builder.site_ai.nora.layout import settle_marked_headings
+
+                    unflexed = settle_marked_headings(blocks)
+                    if unflexed:
+                        ai_log("info", "Headings with markup made lines of text", page=page["title"], edits=unflexed)
                     # //// Neoffice — and a flex row that cannot wrap squeezes its items on a phone (layout.wrap_phone_rows)
                     from builder.site_ai.nora.layout import wrap_phone_rows
 
