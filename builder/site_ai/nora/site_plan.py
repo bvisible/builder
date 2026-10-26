@@ -192,7 +192,11 @@ def plan_prompt(site: dict, brief, pages: list[dict], includes_by_route: dict[st
             lines.append(
                 "PHOTOGRAPHS: none from the client. The site GENERATES a photograph for every photo slot after the build (a minute each: use them where "
                 "the photograph is the point of a section, not everywhere). A photo slot is a place for a real photograph of this business, never a plain "
-                "coloured block and never a label; say in `layout` what the photograph shows."
+                "coloured block and never a label; say in `layout` what the photograph shows. "
+                # //// Neoffice — never a person in a generated photograph (2026-10-26, see recipes.ALT_GUIDANCE): a face made up for a one-person business
+                # //// passes for the owner. A local business shows its place: the valley, the town or the region around it links the trade to where it works.
+                "NEVER a person in a generated photograph (no face, nobody at work, not the owner, a team or a client): show the place (the town, the valley, "
+                "the region around the business), its premises, its tools and its products."
             )
         else:
             lines.append("PHOTOGRAPHS: none from the client. Plan sections that do not depend on photographs; a photo slot is a plain block in the palette.")

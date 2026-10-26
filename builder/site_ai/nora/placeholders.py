@@ -25,11 +25,30 @@ TEXT_PARAM = re.compile(r"[?&]text=([^&'\")\s]+)")
 # lettering (the access map of a contact page showed an invented street address, 2026-09-13)
 PORTRAIT = re.compile(r"\b(?:portrait|porträt|ritratto|headshot)s?\b", re.I)
 DOCUMENT = re.compile(
-    r"\b(?:maps?|carte|plans?|itinéraire|itinerary|directions|karte|lageplan|signs?|signage|enseigne|panneau|schild"
+    # //// Neoffice — "arrière-plan", "premier plan", "gros plan" are shots, not floor plans (2026-10-26): a photographic description says them all the
+    # //// time, and a landscape "with mountains in the background" was withheld as a map
+    r"\b(?:maps?|carte|(?<!arrière-)(?<!premier )(?<!second )(?<!gros )(?<!dernier )(?<!deuxième )plans?|itinéraire|itinerary|directions|karte|lageplan|signs?|signage|enseigne|panneau|schild"
     r"|logos?|brochure|flyer|menu|document|certificat|certificate|diplôme|diploma|screen|écran|bildschirm)\b",
     re.I,
 )
 PERSON = re.compile(r"\b[A-ZÀ-Ý][a-zà-ÿ'’]+(?:[ -][A-ZÀ-Ý][a-zà-ÿ'’]+){1,2}\b")
+# //// Neoffice — the words that make a capitalised name a place and not a person (see _names_a_person)
+PLACE_WORDS = frozenset(
+    "val vallée vallee mont monts montagne lac col pic dent pointe aiguille glacier gorges "
+    "mount lake valley peak cape glen loch berg see tal piz horn spitze monte lago valle passo ghiacciaio".split()
+)
+# //// Neoffice — a scene whose subject is a person is not drawn either (2026-10-26, recipes.ALT_GUIDANCE): a generated face is nobody, and on a
+# //// one-person business it passes for the owner. The writer is told never to describe one; this is the guard behind that rule, in the four
+# //// languages of the sites. A slot that names a person becomes the plain block, like a portrait or a map.
+PEOPLE = re.compile(
+    r"\b(?:persons?|people|men|man|women|woman|couples?|families|family|kids?|child|children|teams?|staff|customers?|clients?|"
+    r"technicians?|owners?|employees?|workers?|craftsm[ae]n|entrepreneurs?|founders?|faces?|smiling|"
+    r"personnes?|gens|hommes?|femmes?|enfants?|famille|familles|équipes?|équipe|employé(?:e)?s?|techniciens?|techniciennes?|"
+    r"propriétaires?|patrons?|patronne|artisans?|ouvriers?|entrepreneu(?:r|se)s?|fondateurs?|fondatrice|visages?|souriants?|souriantes?|"
+    r"menschen|leute|mann|männer|frau|frauen|paare?|familie|kinder|mitarbeiter(?:in(?:nen)?)?|kunden?|techniker(?:in(?:nen)?)?|"
+    r"gruppe|gesicht|gesichter|persone|uomo|uomini|donna|donne|coppia|famiglia|bambini|squadra|clienti|tecnici|tecnico|volto|volti)\b",
+    re.I,
+)
 
 
 def neutral_image(width: int, height: int, palette: dict, prefix: str, colour: str | None = None) -> str:
@@ -219,13 +238,18 @@ def _names_a_person(text: str, names: set[str]) -> bool:
     words = re.findall(r"[^\W\d_]{4,}", text)
     if words and all(word[0].isupper() for word in words):
         return False
-    return any(match.group(0).lower() not in names for match in PERSON.finditer(text))
+    # //// Neoffice — a place is not a person (2026-10-26): "Val Ferret", "Mont Dolent", "Lac Léman" are two capitalised words in a row. Now that the
+    # //// writer is told to show the region around the business (recipes.ALT_GUIDANCE), its alt names one, and the guard withheld the photograph.
+    return any(
+        match.group(0).lower() not in names and match.group(0).split()[0].split("-")[0].lower() not in PLACE_WORDS
+        for match in PERSON.finditer(text)
+    )
 
 
 def must_not_be_drawn(text: str, names: set[str] | frozenset = frozenset()) -> bool:
-    """A picture of this would state something false: a portrait, a named person, a map, a sign or
+    """A picture of this would state something false: a portrait, a person, a named person, a map, a sign or
     a document."""
-    return bool(PORTRAIT.search(text) or DOCUMENT.search(text) or _names_a_person(text, names))
+    return bool(PORTRAIT.search(text) or PEOPLE.search(text) or DOCUMENT.search(text) or _names_a_person(text, names))
 
 
 def neutral_named_slots(blocks: list, palette: dict, prefix: str, names=()) -> list[str]:

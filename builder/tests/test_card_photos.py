@@ -23,7 +23,8 @@ from builder.tests.test_recipes import build, tree, walk
 PALETTE = {"qc-background": "#f4f1ea", "qc-secondary": "#2c6e49"}
 SLOT = "https://placehold.co/1200x800/e5e7eb/9ca3af/png?text=Services"
 SCREEN = "Un écran de bureau affichant une session de partage d'écran"
-BENCH = "Un technicien penché sur un ordinateur ouvert, dans un atelier lumineux"
+# no person in it (placeholders.PEOPLE, 2026-10-26): a scene whose subject is a technician is no longer drawn either
+BENCH = "Un établi d'atelier avec un ordinateur ouvert et des outils rangés, dans une lumière claire"
 SERVER = "Une baie de serveurs dans une salle sobre, éclairée par une lumière froide"
 
 
