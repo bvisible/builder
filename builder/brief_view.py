@@ -30,6 +30,7 @@ GROUPS = (
 		(
 			("design_concept", "Concept"),
 			("signature_element", "Signature element"),
+			("section_divider", "Section dividers"),
 			("site_tone", "Tone"),
 			("inspiration_context", "Inspiration"),
 		),

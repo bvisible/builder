@@ -5807,3 +5807,7 @@ msgstr "Rifiutare"
 #: builder/templates/includes/data_notice.html:20
 msgid "Accept"
 msgstr "Accettare"
+
+#: builder/brief_view.py:33
+msgid "Section dividers"
+msgstr "Separatori di sezione"

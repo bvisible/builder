@@ -363,6 +363,13 @@ result feels genuinely designed or like yet another AI template.
 - `signature_element`: ONE memorable visual idea carried across all pages (oversized display
   headline treatment, recurring graphic motif, unexpected accent usage, distinctive image
   treatment, asymmetric layout system...).
+- `section_divider`: how the sections of every page MEET. The site draws the shape itself,
+  one style for the whole site, so do not describe dividers in `signature_element`. Pick ONE
+  of: `peaks` (a ridge of mountains: an alpine or high-country trade), `wave` (water, flow,
+  movement, wellness), `hills` (land, nature, gardens, wine, farm), `torn` (paper, print,
+  craft, bakery, workshop), `tilt` (a sharp diagonal: architecture, tech, industry),
+  `curve` (one sober arc: law, finance, care), `none` (straight edges: strictly
+  minimal/editorial direction). Choose from the business's world, not at random.
 - FORBIDDEN as direction: the generic AI look — diagonal violet gradient hero with centered
   white text, interchangeable 3-card rows, timid evenly-spread palettes.
 
@@ -576,7 +583,7 @@ class BriefGenerator:
 **Pages to generate:**
 {pages_list}
 
-Write the art direction (design_concept + signature_element) for THIS business first,
+Write the art direction (design_concept + signature_element + section_divider) for THIS business first,
 then derive every concrete value of the DesignBrief from it. All pages must share one
 distinctive visual language.
 

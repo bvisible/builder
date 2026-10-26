@@ -1390,6 +1390,13 @@ def page_brief_text(site: dict, brief, page: dict, handles: dict, contact_prompt
     lines = [
         f"DESIGN DIRECTION: {concept or 'a distinctive direction that fits the brand'} (tone: {tone or 'professional'}; hero style: {hero or 'free'}).",
         f"LAYOUT SYSTEM: {layout_system}. SIGNATURE MOVE: {signature or 'choose one that fits the system'}. Keep the SAME system and move on every page of this site.",
+        # //// Neoffice — the sections meet in a shape the site draws (nora/dividers.py, 2026-10-26): the writer drew its own, a row of
+        # //// identical triangles on one page and a hair-thin zigzag on the next, and a signature that spoke of dividers asked for them
+        (
+            "SECTION DIVIDERS: the site draws the shape where two sections meet, the same on every page. Never draw one yourself: no wave, "
+            "zigzag, triangle or ridge line, no decorative svg between sections, no band whose only content is a divider. If the SIGNATURE "
+            "MOVE speaks of dividers, leave that part out."
+        ),
         # //// Neoffice — the ground the client chose, said to the writer on every page and every
         # //// revision (2026-09-17): it was in the brief and the plan, and a revision drifted dark.
         (
@@ -2109,6 +2116,24 @@ def drop_inherited_social_links(config, host_links: dict[str, str]) -> list[str]
     return cleared
 
 
+# //// Neoffice — the page the call to action leads to is not a menu entry (2026-10-26): "Contact" stood in the menu beside a "Contact us"
+# //// button that leads to the same page. The button already says it, and in a menu of five entries a repeated one is the most visible fault.
+def menu_pages(created: list[dict], cta_url: str = "") -> list[dict]:
+    """The pages of the menu, in their order: never the home (the logo is the way home), never a legal page (the footer holds them), never
+    the page the header's call to action leads to, never one twice."""
+    cta = str(cta_url or "").split("#")[0].rstrip("/")
+    seen, kept = set(), []
+    for page in created:
+        route = page["route"]
+        if route in seen or route in ("/", "/home", "/index") or _is_legal_route(route):
+            continue
+        if cta and route.rstrip("/") == cta:
+            continue
+        seen.add(route)
+        kept.append(page)
+    return kept
+
+
 def apply_navigation(config, created: list[dict], site_type: str, description: str, profile: str | None, lang: str = "fr", site_name: str = "") -> None:
     """Menu, footer and home page from the pages the SITE has (site_pages_for_menu), which is
     the pages this run built plus the published ones it left alone. Labels are translated into
@@ -2140,24 +2165,9 @@ def apply_navigation(config, created: list[dict], site_type: str, description: s
         config.menu_items = []
         config.append("menu_items", {"label": _("Home", lang=lang), "url": "/", "is_external": False, "open_in_new_tab": False})
         config.append("menu_items", {"label": shop.label, "url": "/all-products", "is_external": False, "open_in_new_tab": False})
-    seen = set()
-    for page in created:
-        route = page["route"]
-        # the logo is the way home: a "Home" entry only fills a row that fills up fast
-        # (a reseller site, 2026-09-10: "le côté accueil fait trop d'entrées")
-        # //// Neoffice — route no longer aliased to "Home" (8756214d "feat(chrome): a menu
-        # //// that folds by itself, a CTA that reads on its header, no Home entry"): "/",
-        # //// "/home" and "/index" are now skipped instead of relabelled.
-        if route in seen or route in ("/", "/home", "/index"):
-            continue
-        # //// Neoffice — the legal pages belong to the footer, not the menu (2026-09-15): nobody
-        # //// puts their terms between Brands and Contact, and the footer's Legal column already
-        # //// names them (legal_pages).
-        if _is_legal_route(route):
-            continue
-        seen.add(route)
-        # //// Neoffice — see the block marker above: no more Home relabelling
-        config.append("menu_items", {"label": page["title"], "url": route, "is_external": False, "open_in_new_tab": False})
+    # the logo is the way home, the legal pages belong to the footer, and the page the call to action leads to is the button's (menu_pages)
+    for page in menu_pages(created, config.get("cta_url") or ""):
+        config.append("menu_items", {"label": page["title"], "url": page["route"], "is_external": False, "open_in_new_tab": False})
     # //// Neoffice — a mark chosen for the footer stays (2026-09-15): the build copied the header's
     # //// over it at every rebuild, and a site whose footer carries another mark lost it each time.
     # //// But the host's footer logo, inherited by a profile's Variant, is not a mark the client chose
@@ -2780,6 +2790,27 @@ def build_site(ctx, spec: dict) -> str:
     # //// gates the neutral-SVG fallback below (65d8f360 "fix(nora): cards never stack in a column, and photo slots without photos are plain blocks")
     images_on = _image_backend_available()
 
+    # //// Neoffice — the sections of a page, and the page against the band under the header and the footer, meet in a shape (dividers.py,
+    # //// 2026-10-26): one style for the site, chosen by its brief, drawn on the page just written. What the writer drew itself between
+    # //// sections is removed. The fixed legal pages meet the band and the footer too, so no page of a site ends on a ruler.
+    def draw_dividers(blocks: list, page: dict, with_lines: bool = True) -> list[str]:
+        from builder.site_ai.nora import dividers
+
+        style = dividers.style_for(getattr(brief, "section_divider", ""), getattr(brief, "design_concept", ""), getattr(brief, "signature_element", ""), activity)
+        tokens = {**dividers.site_palette(prefix), **palette}
+        accent_token = f"{prefix}-accent" if f"{prefix}-accent" in palette else f"{prefix}-primary"
+        try:
+            top, bottom = dividers.chrome_grounds(_get_site_chrome_config(profile), prefix, page["route"] in ("home", "index"))
+        except Exception as e:
+            ai_log("warning", "Chrome grounds not read for the dividers", error=str(e)[:160])
+            top, bottom = "", ""
+        drawn = dividers.apply_dividers(
+            blocks, tokens, style, seed=f"{prefix}:{page['route']}", accent=f"var(--{accent_token})" if with_lines else "", top=top, bottom=bottom
+        )
+        if drawn:
+            ai_log("info", "Section dividers drawn", page=page["title"], style=style, edits=drawn[:8])
+        return drawn
+
     def write_page(page: dict, photos: list[str], revision: str | None = None, notes: list[str] | None = None) -> tuple[list, str, str | None]:
         """One page through the writer and the mechanical passes: (blocks, data_script, error)."""
         # //// Neoffice — the privacy policy and the legal notice are not written by a model (2026-10-22, legal.py): a fixed
@@ -2793,6 +2824,8 @@ def build_site(ctx, spec: dict) -> str:
             facts = legal.facts_from(contact_data, site_name, uses)
             yaml_text = legal.page_yaml(legal.kind_of(page), facts, lang_code, handles, palette, datetime.date.today())
             made, made_script = expand_page_yaml(yaml_text)
+            if made:
+                draw_dividers(made, page, with_lines=False)
             return (made, made_script, None) if made else ([], "", "the legal page could not be expanded")
         # //// Neoffice — a revision REWRITES the page it revises (2026-09-16). It used to be a fresh
         # //// page from the same brief plus "fix these points and keep everything else" — with
@@ -3245,10 +3278,21 @@ def build_site(ctx, spec: dict) -> str:
                     shrunk = shrink_phone_headings(blocks)
                     if shrunk:
                         ai_log("info", "Phone headings sized to the screen", page=page["title"], edits=shrunk)
+                    # //// Neoffice — and a token the writer invented is replaced by the one it meant (undefined_tokens.py, 2026-10-26): a band
+                    # //// painted with var(--<prefix>-tint) painted nothing, and the rhythm of grounds the page was planned with was gone
+                    from builder.site_ai.nora import dividers
+                    from builder.site_ai.nora.undefined_tokens import repair_undefined_tokens
+
+                    site_tokens = {**dividers.site_palette(prefix), **palette}
+                    invented = repair_undefined_tokens(blocks, site_tokens, prefix)
+                    if invented:
+                        ai_log("info", "Undefined tokens replaced", page=page["title"], edits=invented[:6])
                     # legibility is not left to the model: see contrast.py (#281)
                     fixes = repair_contrast(blocks, palette)
                     if fixes:
                         ai_log("info", "Contrast repaired", page=page["title"], fixes=len(fixes), first=fixes[0][:80])
+                    # //// Neoffice — the sections meet in a shape, not on a ruler (dividers.py, 2026-10-26): see draw_dividers
+                    draw_dividers(blocks, page)
                     # nor the spacing of French punctuation: see punctuation.py
                     if lang_code == "fr":
                         spaced = french_spacing(blocks)

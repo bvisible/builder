@@ -426,6 +426,36 @@ def _plain(text) -> str:
     return re.sub(r"[^a-z0-9]+", " ", text.lower()).strip()
 
 
+# //// Neoffice — the heading that repeats the band's title, however it is written (2026-10-26). "Contact" stood twice, the band's title and
+# //// the first heading under it (the writer's heading was a flex row of a dot and a span: no text of its own, so nothing matched, and
+# //// "Nos services" under "Services" never did either). Compared on the text a heading shows, markup and nesting aside, with its
+# //// article dropped and the ways a page says "contact" taken for one another.
+LEADING_WORDS = frozenset({"nos", "notre", "mes", "mon", "ma", "les", "le", "la", "l", "our", "the", "my", "unsere", "unser", "die", "der", "das", "i", "il"})
+CONTACT_WORDS = frozenset({"contact", "contacts", "contactez nous", "nous contacter", "contact us", "get in touch", "kontakt", "kontaktieren sie uns", "contattaci", "contatti", "contattateci"})
+
+
+def _shown_text(block: dict) -> str:
+    """The text a block shows: its own and that of everything under it."""
+    return " ".join(_plain(b.get("innerHTML")) for b in _walk([block]) if isinstance(b.get("innerHTML"), str) and "<svg" not in b["innerHTML"]).strip()
+
+
+def _core(text: str) -> str:
+    words = text.split()
+    while len(words) > 1 and words[0] in LEADING_WORDS:
+        words.pop(0)
+    return " ".join(words)
+
+
+def repeats_title(heading: str, title: str) -> bool:
+    """Whether a heading (already reduced by _plain) says what the band's title says."""
+    heading, title = " ".join(heading.split()), " ".join(title.split())
+    if not heading or not title:
+        return False
+    if heading == title or _core(heading) == _core(title):
+        return True
+    return heading in CONTACT_WORDS and title in CONTACT_WORDS
+
+
 def strip_title_band(blocks: list, title: str) -> int:
     """Drop the title the model writes at the top of an interior page although the site
     renders its own band there (page_header.py): "À propos" stood twice on the card-driven
@@ -438,7 +468,7 @@ def strip_title_band(blocks: list, title: str) -> int:
     if not wanted or not sections:
         return 0
     first = sections[0]
-    headings = [b for b in _walk([first]) if b.get("element") in ("h1", "h2") and _plain(b.get("innerHTML")) == wanted]
+    headings = [b for b in _walk([first]) if b.get("element") in ("h1", "h2") and repeats_title(_shown_text(b), wanted)]
     if not headings:
         return 0
     texts = [b for b in _walk([first]) if isinstance(b.get("innerHTML"), str) and "<svg" not in b["innerHTML"] and _plain(b["innerHTML"])]

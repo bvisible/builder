@@ -5808,3 +5808,7 @@ msgstr "Ablehnen"
 #: builder/templates/includes/data_notice.html:20
 msgid "Accept"
 msgstr ""
+
+#: builder/brief_view.py:33
+msgid "Section dividers"
+msgstr "Abschnittstrenner"

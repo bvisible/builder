@@ -78,6 +78,15 @@ class DesignBrief(BaseModel):
             "usage, a distinctive section rhythm or image treatment."
         ),
     )
+    # //// Neoffice — how the sections of a page meet (nora/dividers.py, 2026-10-26): the site draws the shape, one style for all its pages
+    section_divider: str = Field(
+        default="",
+        description=(
+            "How the sections of every page meet, drawn by the site itself: one of wave, hills, curve, tilt, peaks, torn, none. "
+            "Choose from the business's world (peaks for a mountain trade, wave for water or movement, hills for land and nature, "
+            "torn for paper and craft, tilt for a sharp modern firm, curve for a sober one); none keeps straight edges."
+        ),
+    )
     inner_page_header: str = Field(
         default="",
         description=(
