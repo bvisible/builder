@@ -2354,6 +2354,18 @@ def build_site(ctx, spec: dict) -> str:
 
     meter.start()
 
+    # //// Neoffice — the blocks of the Builder Hub join the section recipes of this build (hub_blocks.py, 2026-10-30): the registry of a worker
+    # //// outlives a build, so it is made to hold exactly what THIS site asked for (nothing unless `nora_hub_blocks` is set), before the plan reads it
+    try:
+        from builder.site_ai.nora import hub_blocks
+
+        _hub = hub_blocks.sync_registry()
+        if _hub["source"] != "off":
+            ai_log("info", "Hub blocks offered to the plan", source=_hub["source"], blocks=_hub["ids"], left_out=_hub["left_out"])
+    except Exception as e:
+        # a hub that cannot be reached or read never stops a build: the recipes written in code are the library
+        ai_log("warning", "Hub blocks skipped", error=str(e)[:200])
+
     # 1. the site's existing pages
     classes = classify_existing_pages(profile)
     host_page = ctx.page_id if ctx.page_id and frappe.db.exists("Builder Page", ctx.page_id) else None
