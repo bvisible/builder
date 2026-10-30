@@ -2920,6 +2920,10 @@ def build_site(ctx, spec: dict) -> str:
                     scrubbed_slots = section_recipes.scrub_unfilled(blocks)
                     if scrubbed_slots:
                         ai_log("warning", "Recipe slots left in the page removed", page=page["title"], slots=scrubbed_slots)
+                    # //// Neoffice — the movement the writer dropped from a section of a recipe that moves is put back (recipes.restore_motion, 2026-10-30)
+                    restored_motion = section_recipes.restore_motion(blocks, (site.get("recipe_uses") or {}).get(page["route"], {}))
+                    if restored_motion:
+                        ai_log("info", "Motion classes put back", page=page["title"], restored=restored_motion[:8])
                     # //// Neoffice — and a stock-photo address the writer remembered in place of a photograph slot goes back to a placeholder
                     # //// the site fills (recipes.replace_invented_pictures)
                     here = (site.get("recipe_uses") or {}).get(page["route"], {})

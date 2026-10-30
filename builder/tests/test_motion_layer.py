@@ -6,6 +6,7 @@ site that moves as much; the checks that read a page (the capture and the layout
 is there when the site moves. No network, no model."""
 
 import unittest
+from dataclasses import replace
 from types import SimpleNamespace
 from unittest.mock import patch
 
@@ -14,7 +15,7 @@ import frappe
 from builder.site_ai.nora import block_format
 from builder.site_ai.nora import hub_blocks as H
 from builder.site_ai.nora import recipes as R
-from builder.tests.test_hub_blocks import block
+from builder.tests.test_hub_blocks import block, draw
 from builder.tests.test_recipes import HANDLES
 
 
@@ -245,6 +246,163 @@ class TestTheLinterKnowsTheWholeLayer(unittest.TestCase):
 			tree, block_id="steps.rail", kinds=["steps"], photos=1, motion="Calm"
 		)
 		self.assertEqual([], warnings)
+
+
+def counters_block():
+	def figure():
+		return {
+			"el": "div",
+			"name": "figure-item",
+			"c": [
+				{
+					"el": "p",
+					"name": "figure",
+					"classes": ["u-count"],
+					"text": "WRITE figure: one number in digits",
+				},
+				{"el": "p", "name": "figure-label", "text": "WRITE figure-label: what it counts"},
+			],
+		}
+
+	tree = {
+		"el": "section",
+		"name": "counters",
+		"style": {"backgroundColor": "{{ground.background}}", "padding": "7rem 0"},
+		"c": [
+			{
+				"el": "div",
+				"name": "container",
+				"c": [
+					{
+						"el": "div",
+						"name": "head",
+						"classes": ["u-reveal"],
+						"c": [{"el": "h2", "name": "heading", "text": "WRITE heading: 4 to 8 words"}],
+					},
+					{
+						"el": "div",
+						"name": "figures",
+						"classes": ["u-reveal-group"],
+						"c": [figure(), figure(), figure()],
+					},
+				],
+			}
+		],
+	}
+	return block(
+		id="figures.counters",
+		kinds=["figures"],
+		photos=0,
+		motion="Calm",
+		look="three counting figures",
+		tree=tree,
+	)
+
+
+def written_block(name, element="div", classes=None, children=None):
+	"""A block of the page as the writer's YAML becomes it."""
+	node = {"blockName": name, "element": element}
+	if classes is not None:
+		node["classes"] = classes
+	if children:
+		node["children"] = children
+	return node
+
+
+def written_counters(root="figures"):
+	"""What the writer made of the section it was given: the root renamed, the site's own grid for the group, every movement gone."""
+	items = [
+		written_block(
+			"figure-item", children=[written_block("figure", "p"), written_block("figure-label", "p")]
+		)
+		for _ in range(3)
+	]
+	return written_block(
+		root,
+		"section",
+		children=[
+			written_block(
+				"container",
+				children=[
+					written_block("head", children=[written_block("heading", "h2")]),
+					written_block("figures", classes=["u-grid", "u-grid--3"], children=items),
+				],
+			)
+		],
+	)
+
+
+def names(blocks, name):
+	return [b for b in R._walk_blocks(blocks) if b.get("blockName") == name]
+
+
+class TestTheWritersDroppedMovementIsPutBack(unittest.TestCase):
+	def use(self, motion="Calm"):
+		built, why = H.accept(counters_block())
+		assert built is not None, why
+		yaml_text = draw(built, sample=None, component="")
+		return R.Use(replace(built, motion=motion), yaml_text, [])
+
+	def test_the_classes_come_back_on_the_nodes_of_the_same_name(self):
+		page = [written_counters()]
+		restored = R.restore_motion(page, {2: self.use()})
+		self.assertEqual(["u-reveal"], names(page, "head")[0]["classes"])
+		# the root of the written section is named like the group inside it: the group gets the movement, the root does not
+		root = page[0]
+		group = (
+			names(page, "figures")[0] if names(page, "figures")[0] is not root else names(page, "figures")[1]
+		)
+		self.assertNotIn("classes", root)
+		# the site's own grid stays, the group's movement joins it
+		self.assertEqual(["u-grid", "u-grid--3", "u-reveal-group"], group["classes"])
+		self.assertEqual([["u-count"]] * 3, [b["classes"] for b in names(page, "figure")])
+		self.assertNotIn("classes", names(page, "figure-label")[0])
+		self.assertEqual(5, len(restored))
+		self.assertIn("figures.hub-counters: head + u-reveal", restored)
+
+	def test_it_only_adds_and_a_second_pass_changes_nothing(self):
+		page = [written_counters()]
+		R.restore_motion(page, {0: self.use()})
+		self.assertEqual([], R.restore_motion(page, {0: self.use()}))
+
+	def test_a_section_of_another_recipe_that_shares_a_few_names_is_left_alone(self):
+		other = written_block(
+			"features", "section", children=[written_block("head", children=[written_block("figure", "p")])]
+		)
+		page = [other, written_counters(root="stats")]
+		R.restore_motion(page, {0: self.use()})
+		self.assertNotIn("classes", names([other], "head")[0])
+		self.assertNotIn("classes", names([other], "figure")[0])
+		heads = [b for b in names(page, "head") if "classes" in b]
+		self.assertEqual([["u-reveal"]], [h["classes"] for h in heads])
+
+	def test_a_section_that_no_longer_looks_like_the_recipe_gets_nothing(self):
+		page = [written_block("intro", "section", children=[written_block("heading", "h2")])]
+		self.assertEqual([], R.restore_motion(page, {0: self.use()}))
+		self.assertNotIn("classes", page[0]["children"][0])
+
+	def test_a_recipe_that_does_not_move_is_never_touched(self):
+		still = self.use(motion="None")
+		page = [written_counters()]
+		self.assertEqual([], R.restore_motion(page, {0: still}))
+
+	def test_two_uses_do_not_claim_the_same_section(self):
+		page = [written_counters(root="a"), written_counters(root="b")]
+		restored = R.restore_motion(page, {0: self.use(), 1: self.use()})
+		self.assertEqual(10, len(restored))
+
+	def test_a_page_with_nothing_to_restore_or_nothing_written_is_fine(self):
+		self.assertEqual([], R.restore_motion([], {0: self.use()}))
+		self.assertEqual([], R.restore_motion([written_counters()], {}))
+		self.assertEqual([], R.restore_motion([written_counters()], None))
+
+	def test_the_writers_page_goes_through_it_after_the_slots_are_scrubbed(self):
+		text = source("site_ai", "nora", "site_builder.py")
+		self.assertIn("section_recipes.restore_motion(blocks,", text)
+		self.assertLess(
+			text.index("section_recipes.scrub_unfilled(blocks)"),
+			text.index("section_recipes.restore_motion(blocks,"),
+		)
 
 
 if __name__ == "__main__":

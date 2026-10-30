@@ -1537,6 +1537,92 @@ def unfilled_slots(blocks: list) -> list[str]:
 	return found
 
 
+# ---------------------------------------------------------------- the movement of a section that moves
+
+MOTION_PREFIXES = ("u-reveal", "u-marquee", "u-count")
+# a written section is taken for the recipe it came from when it still holds this share of the recipe's named nodes
+SAME_SECTION = 0.6
+
+
+def _motion_of(node: dict) -> list[str]:
+	return [c for c in node.get("classes") or [] if c.startswith(MOTION_PREFIXES)]
+
+
+def _marks(node: dict, marks: dict, names: set) -> None:
+	"""The motion classes each named node below a recipe's root wears (`marks`: name -> classes) and every name it holds (`names`)."""
+	name = node.get("name")
+	if name:
+		names.add(name)
+		for cls in _motion_of(node):
+			if cls not in marks.setdefault(name, []):
+				marks[name].append(cls)
+	for child in node.get("c") or []:
+		if isinstance(child, dict):
+			_marks(child, marks, names)
+
+
+def _names_below(block: dict) -> set:
+	found = set()
+	for b in _walk_blocks([block]):
+		if b.get("blockName"):
+			found.add(b["blockName"])
+	return found
+
+
+def _walk_blocks(blocks: list):
+	from builder.site_ai.nora.layout import _walk
+
+	return _walk(blocks)
+
+
+def restore_motion(blocks: list, uses: dict) -> list[str]:
+	"""Puts back the movement the writer dropped. The writer adapts a section it is given (it may rename its root, swap a grid for the site's own
+	`u-grid`), and in a section that moves it did drop `u-reveal-group` and `u-count` (measured, 2026-10-30): the section was then drawn and never moved.
+	The classes of a recipe that moves are not the writer's to keep: for each use of such a recipe, the written section that still holds most of its
+	named nodes gets the motion classes of the nodes of the same name that lack them. Only ever adds a class. Returns what it put back."""
+	import yaml
+
+	restored: list[str] = []
+	taken: set[int] = set()
+	for use in (uses or {}).values():
+		if getattr(use.recipe, "motion", "None") == "None":
+			continue
+		try:
+			tree = yaml.safe_load(use.yaml)[0]
+		except Exception:
+			continue
+		# the root is found by what is under it, not by its name (the writer renames it, and may give it the name of a node inside it)
+		marks: dict = {}
+		names: set = {tree.get("name")} if tree.get("name") else set()
+		for child in tree.get("c") or []:
+			if isinstance(child, dict):
+				_marks(child, marks, names)
+		root_marks = _motion_of(tree)
+		if not (marks or root_marks) or not names:
+			continue
+		best, best_share = None, 0.0
+		for block in _walk_blocks(blocks):
+			if block.get("element") != "section" or id(block) in taken:
+				continue
+			share = len(names & _names_below(block)) / len(names)
+			if share > best_share:
+				best, best_share = block, share
+		if best is None or best_share < SAME_SECTION:
+			continue
+		taken.add(id(best))
+		for block in _walk_blocks([best]):
+			wanted = root_marks if block is best else marks.get(block.get("blockName") or "")
+			if not wanted:
+				continue
+			have = block.get("classes")
+			have = have if isinstance(have, list) else []
+			missing = [c for c in wanted if c not in have]
+			if missing:
+				block["classes"] = [*have, *missing]
+				restored.extend(f"{use.recipe.id}: {block.get('blockName')} + {c}" for c in missing)
+	return restored
+
+
 def scrub_unfilled(blocks: list) -> int:
 	"""Removes what `unfilled_slots` found: a text block is dropped, an attribute is emptied. Returns the number of slots removed."""
 	from builder.site_ai.nora.layout import _walk
