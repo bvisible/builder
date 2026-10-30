@@ -679,7 +679,7 @@ button:where(.u-btn) {
 	--count-duration: {{ "900ms" if brisk else "1600ms" }};
 }
 
-@media (prefers-reduced-motion: no-preference) {
+@media screen and (prefers-reduced-motion: no-preference) {
 	@supports (animation-timeline: view()) {
 		@keyframes u-reveal-in {
 			from {

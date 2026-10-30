@@ -2924,6 +2924,11 @@ def build_site(ctx, spec: dict) -> str:
                     restored_motion = section_recipes.restore_motion(blocks, (site.get("recipe_uses") or {}).get(page["route"], {}))
                     if restored_motion:
                         ai_log("info", "Motion classes put back", page=page["title"], restored=restored_motion[:8])
+                    # //// Neoffice — every section but the first rises as it comes into view when the site moves at all (recipes.apply_reveals, 2026-10-30)
+                    if (getattr(brief, "motion_style", "") or "Calm") != "None":
+                        revealed = section_recipes.apply_reveals(blocks)
+                        if revealed:
+                            ai_log("info", "Reveals added to the page", page=page["title"], added=len(revealed), first=revealed[:4])
                     # //// Neoffice — and a stock-photo address the writer remembered in place of a photograph slot goes back to a placeholder
                     # //// the site fills (recipes.replace_invented_pictures)
                     here = (site.get("recipe_uses") or {}).get(page["route"], {})

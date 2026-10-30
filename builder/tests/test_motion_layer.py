@@ -79,7 +79,7 @@ class TestTheStylesheet(unittest.TestCase):
 
 	def test_every_movement_sits_inside_no_preference(self):
 		css = theme_css("Calm")
-		media = css.index("@media (prefers-reduced-motion: no-preference)")
+		media = css.index("@media screen and (prefers-reduced-motion: no-preference)")
 		for movement in (
 			"@keyframes u-reveal-in",
 			"animation: u-reveal-in",
@@ -403,6 +403,125 @@ class TestTheWritersDroppedMovementIsPutBack(unittest.TestCase):
 			text.index("section_recipes.scrub_unfilled(blocks)"),
 			text.index("section_recipes.restore_motion(blocks,"),
 		)
+
+
+def wb(name, element="div", classes=None, children=None, styles=None):
+	node = written_block(name, element, classes, children)
+	if styles:
+		node["baseStyles"] = styles
+	return node
+
+
+def section_of(
+	head=None, grid_items=3, name="section", classes=None, styles=None, grid_classes=("u-grid", "u-grid--3")
+):
+	"""A written section as the pipeline holds it: the section, one container, the heading block, then a grid."""
+	kids = []
+	if head is not False:
+		kids.append(head or wb("head", children=[wb("title", "h2")]))
+	if grid_items:
+		kids.append(
+			wb(
+				"cards",
+				classes=list(grid_classes),
+				children=[wb("card", classes=["u-card"]) for _ in range(grid_items)],
+			)
+		)
+	return wb(name, "section", classes=classes, styles=styles, children=[wb("container", children=kids)])
+
+
+def classes_of(blocks, name):
+	return [b.get("classes") for b in names(blocks, name)]
+
+
+class TestEverySectionRises(unittest.TestCase):
+	def test_the_heading_block_and_the_grid_of_each_section_but_the_first_get_their_reveal(self):
+		page = [section_of(name="first"), section_of(name="second"), section_of(name="third")]
+		done = R.apply_reveals(page)
+		# the first section is on the screen when the page opens: it never moves
+		self.assertNotIn("classes", page[0]["children"][0]["children"][0])
+		self.assertNotIn(
+			"u-reveal-group", [c for b in R._walk_blocks([page[0]]) for c in b.get("classes", [])]
+		)
+		for section in page[1:]:
+			head, cards = section["children"][0]["children"]
+			self.assertEqual(["u-reveal"], head["classes"])
+			self.assertEqual(["u-grid", "u-grid--3", "u-reveal-group"], cards["classes"])
+		self.assertEqual(4, len(done))
+
+	def test_a_second_pass_adds_nothing(self):
+		page = [section_of(), section_of()]
+		R.apply_reveals(page)
+		self.assertEqual([], R.apply_reveals(page))
+
+	def test_a_section_over_a_photograph_or_that_already_moves_is_left_alone(self):
+		over = section_of(classes=["u-over-image", "u-over-image--bottom"])
+		moving = section_of()
+		moving["children"][0]["children"][1]["classes"].append("u-reveal-group")
+		page = [section_of(), over, moving]
+		self.assertEqual([], R.apply_reveals(page))
+
+	def test_nothing_is_added_under_a_box_that_clips(self):
+		for key in ("overflow", "overflowX", "overflowY"):
+			boxed = section_of(styles={key: "hidden"})
+			page = [section_of(), boxed]
+			with self.subTest(key):
+				self.assertEqual([], R.apply_reveals(page))
+		# a box inside the section: what is under it is skipped, what is not under it is not
+		clip = wb(
+			"clip",
+			styles={"overflow": "auto"},
+			children=[wb("cards", classes=["u-grid"], children=[wb("a"), wb("b")])],
+		)
+		head = wb("head", children=[wb("title", "h2")])
+		section = wb("s", "section", children=[wb("container", children=[head, clip])])
+		page = [section_of(), section]
+		R.apply_reveals(page)
+		self.assertEqual(["u-reveal"], head["classes"])
+		self.assertEqual(["u-grid"], clip["children"][0]["classes"])
+
+	def test_a_heading_block_with_a_photograph_or_a_grid_does_not_rise_as_a_whole(self):
+		with_photo = wb("head", children=[wb("title", "h2"), wb("photo", "img")])
+		with_grid = wb("head", styles={"display": "grid"}, children=[wb("title", "h2"), wb("text", "p")])
+		page = [
+			section_of(),
+			section_of(head=with_photo, grid_items=0),
+			section_of(head=with_grid, grid_items=0),
+		]
+		self.assertEqual([], R.apply_reveals(page))
+
+	def test_a_block_that_is_not_a_heading_block_is_not_given_the_head_reveal(self):
+		cards_first = section_of(head=wb("lead", children=[wb("text", "p")]))
+		page = [section_of(), cards_first]
+		R.apply_reveals(page)
+		self.assertNotIn("classes", cards_first["children"][0]["children"][0])
+		self.assertIn("u-reveal-group", cards_first["children"][0]["children"][1]["classes"])
+
+	def test_a_grid_of_one_and_a_grid_inside_a_grid_are_not_groups(self):
+		one = section_of(grid_items=1)
+		inner = wb("inner", classes=["u-grid"], children=[wb("a"), wb("b")])
+		outer = wb("outer", classes=["u-grid"], children=[wb("x", children=[inner]), wb("y")])
+		nested = wb(
+			"n", "section", children=[wb("container", children=[wb("head", children=[wb("t", "h2")]), outer])]
+		)
+		page = [section_of(), one, nested]
+		R.apply_reveals(page)
+		self.assertNotIn("u-reveal-group", classes_of([one], "cards")[0])
+		self.assertEqual(["u-grid", "u-reveal-group"], nested["children"][0]["children"][1]["classes"])
+		self.assertEqual(["u-grid"], inner["classes"])
+
+	def test_a_page_of_one_section_or_none_is_left_as_it_is(self):
+		self.assertEqual([], R.apply_reveals([section_of()]))
+		self.assertEqual([], R.apply_reveals([]))
+		self.assertEqual([], R.apply_reveals(None))
+
+	def test_it_runs_after_the_motion_is_restored_and_only_for_a_site_that_moves(self):
+		text = source("site_ai", "nora", "site_builder.py")
+		self.assertLess(
+			text.index("section_recipes.restore_motion(blocks,"),
+			text.index("section_recipes.apply_reveals(blocks)"),
+		)
+		self.assertIn('(getattr(brief, "motion_style", "") or "Calm") != "None"', text)
 
 
 if __name__ == "__main__":

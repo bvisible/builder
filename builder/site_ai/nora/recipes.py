@@ -1623,6 +1623,99 @@ def restore_motion(blocks: list, uses: dict) -> list[str]:
 	return restored
 
 
+# ---------------------------------------------------------------- the reveal of every section
+
+REVEAL_CLIPS = {"hidden", "auto", "scroll"}
+STYLE_SETS = ("baseStyles", "tabletStyles", "mobileStyles")
+HEADING_ELEMENTS = {"h1", "h2", "h3", "h4", "h5", "h6"}
+MEDIA_ELEMENTS = {"img", "picture", "video", "iframe", "svg"}
+
+
+def _classes(block: dict) -> list:
+	have = block.get("classes")
+	return have if isinstance(have, list) else []
+
+
+def _clips(block: dict) -> bool:
+	"""Whether the block is a scroll container (overflow hidden, auto or scroll on any screen): a reveal under it follows it, and it never scrolls."""
+	for key in STYLE_SETS:
+		styles = block.get(key) or {}
+		if any(str(styles.get(k, "")).strip().lower() in REVEAL_CLIPS for k in ("overflow", "overflowX", "overflowY")):
+			return True
+	return False
+
+
+def _moves(block: dict) -> bool:
+	return any(c.startswith(MOTION_PREFIXES) for c in _classes(block))
+
+
+def _in_order(blocks: list):
+	"""The blocks of a page in document order (`layout._walk` is a stack: it yields the last child first)."""
+	for block in blocks or []:
+		if isinstance(block, dict):
+			yield block
+			yield from _in_order(block.get("children") or [])
+
+
+def _add(block: dict, cls: str, where: str, done: list) -> None:
+	block["classes"] = [*_classes(block), cls]
+	done.append(f"{where}: {block.get('blockName') or block.get('element')} + {cls}")
+
+
+def _is_head(block: dict) -> bool:
+	"""A block that is the heading of a section and nothing tall: a heading, or a box that holds one, with no photograph and no grid (a reveal
+	runs over 40% of the height of its element, so a tall one would stay half faded under the reader's eyes)."""
+	inside = list(_in_order([block]))
+	if _moves(block) or _clips(block) or any("u-grid" in _classes(b) or "u-faq" in _classes(b) or "u-media" in _classes(b) for b in inside):
+		return False
+	if any(b.get("element") in MEDIA_ELEMENTS for b in inside):
+		return False
+	if any((b.get("baseStyles") or {}).get("display") == "grid" for b in inside):
+		return False
+	return any(b.get("element") in HEADING_ELEMENTS for b in inside)
+
+
+def _reveal_section(section: dict, done: list) -> None:
+	"""The heading block of a section rises, and so does each item of its grids. Never an element under a box that clips (it would never play),
+	nor one that already moves, nor a grid inside a grid."""
+	where = section.get("blockName") or "section"
+	kids = [c for c in section.get("children") or [] if isinstance(c, dict)]
+	box = kids[0] if len(kids) == 1 and kids[0].get("element") == "div" else section
+
+	def visit(block: dict, in_group: bool) -> None:
+		if _clips(block):
+			return
+		if "u-grid" in _classes(block) and not in_group and len(block.get("children") or []) >= 2 and not _moves(block):
+			_add(block, "u-reveal-group", where, done)
+			return
+		for child in block.get("children") or []:
+			if isinstance(child, dict):
+				visit(child, in_group or _moves(block))
+
+	if not _clips(section):
+		head = next((c for c in box.get("children") or [] if isinstance(c, dict)), None)
+		if head is not None and _is_head(head):
+			_add(head, "u-reveal", where, done)
+		visit(box, False)
+
+
+def apply_reveals(blocks: list) -> list[str]:
+	"""Gives the sections of a written page their reveal (u-reveal on the heading block, u-reveal-group on the grids), the one movement of a page that
+	does not come from a recipe. Not the first section of the page (it is on the screen when the page opens), not a section that lies over a photograph
+	(`u-over-image`) or already moves, and nothing under a box that clips. It only adds classes; the site's stylesheet draws them only when its motion
+	is not None, and every one of them rests where the visitor asked for less motion. Returns what it added."""
+	done: list[str] = []
+	sections = [b for b in _in_order(blocks) if b.get("element") == "section"]
+	# the sections of the page itself, not the ones a section holds
+	nested = {id(b) for s in sections for b in _in_order(s.get("children") or []) if b.get("element") == "section"}
+	top = [s for s in sections if id(s) not in nested]
+	for section in top[1:]:
+		if _moves(section) or any("u-over-image" in c for c in _classes(section)) or any(_moves(b) for b in _in_order(section.get("children") or [])):
+			continue
+		_reveal_section(section, done)
+	return done
+
+
 def scrub_unfilled(blocks: list) -> int:
 	"""Removes what `unfilled_slots` found: a text block is dropped, an attribute is emptied. Returns the number of slots removed."""
 	from builder.site_ai.nora.layout import _walk
