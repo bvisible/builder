@@ -114,6 +114,29 @@ def _publish_group_sync(pages, group, title="", description=""):
     return resp.json().get("message")
 
 
+def _token_rows(names) -> list[dict]:
+    """The design tokens `names` as the hub takes them. Builder Variable was renamed Builder Token, its name field variable_name became
+    token_name; read the doctype this site has and send the rows under the old wire name, as builder_hub.api does, so the hub and any
+    older consumer take them as they are (2026-10-30)."""
+    token_doctype, name_field = ("Builder Token", "token_name") if frappe.db.exists("DocType", "Builder Token") else ("Builder Variable", "variable_name")
+    rows = []
+    for name in names:
+        var = frappe.db.get_value(token_doctype, name, ["name", name_field, "type", "value", "dark_value", "group"], as_dict=True)
+        if var:
+            rows.append(
+                {
+                    "doctype": "Builder Variable",
+                    "name": var.name,
+                    "variable_name": var.get(name_field),
+                    "type": var.type,
+                    "value": var.value,
+                    "dark_value": var.dark_value,
+                    "group": var.group,
+                }
+            )
+    return rows
+
+
 def _build_page_bundle(page_name: str) -> dict:
     """Mirror of builder_hub.api._get_template_bundle, built from local data
     (without URL absolutization — URLs get rewritten hub-local at upload)."""
@@ -142,16 +165,7 @@ def _build_page_bundle(page_name: str) -> dict:
     # only reliable way to collect them.
     blob = frappe.as_json(blocks, indent=0) + "".join(c["block"] for c in components)
     variable_names = sorted(set(VARIABLE_RE.findall(blob)))
-    variables = []
-    for name in variable_names:
-        var = frappe.db.get_value(
-            "Builder Variable",
-            name,
-            ["name", "variable_name", "type", "value", "dark_value", "group"],
-            as_dict=True,
-        )
-        if var:
-            variables.append({"doctype": "Builder Variable", **var})
+    variables = _token_rows(variable_names)
 
     client_scripts = []
     for cs in page_doc.client_scripts:
