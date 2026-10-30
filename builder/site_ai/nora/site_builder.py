@@ -2925,7 +2925,7 @@ def build_site(ctx, spec: dict) -> str:
                     if restored_motion:
                         ai_log("info", "Motion classes put back", page=page["title"], restored=restored_motion[:8])
                     # //// Neoffice — every section but the first rises as it comes into view when the site moves at all (recipes.apply_reveals, 2026-10-30)
-                    if (getattr(brief, "motion_style", "") or "Calm") != "None":
+                    if (getattr(brief, "motion_style", "") or "Calm") != "None" and page["type"] != "legal":
                         revealed = section_recipes.apply_reveals(blocks)
                         if revealed:
                             ai_log("info", "Reveals added to the page", page=page["title"], added=len(revealed), first=revealed[:4])
@@ -3869,6 +3869,16 @@ def build_site(ctx, spec: dict) -> str:
             "Measured on the site's chrome, not on a page: " + "; ".join(f"{c['where']}: {c['detail']}" for c in chrome_findings[:3])
             + ". The header and footer are set in Settings > Theme: tell the user (a logo is uploaded there), do not rewrite a page for it."
         )
+    # //// Neoffice — the sections the judge accepted are kept as drafts in the hub's library (capture.py, 2026-10-30): off unless `nora_capture_blocks` is set
+    try:
+        from builder.site_ai.nora import capture
+
+        if created and not cancelled and capture.enabled():
+            kept = capture.keep_accepted(created, reviews, hidden=hidden, held=held, site_name=site_name, activity=activity)
+            if kept:
+                ai_log("info", "Sections kept as drafts in the hub", count=len(kept), blocks=kept[:8])
+    except Exception as e:
+        ai_log("warning", "Sections not kept in the hub", error=str(e)[:200])
     lines += visual_check.summary_lines(reviews, revised, held)
     rewritten = [r["title"] for r in reviews if r.get("facts") and r["name"] in revised]
     if rewritten:

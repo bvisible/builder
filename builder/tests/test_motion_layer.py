@@ -521,7 +521,7 @@ class TestEverySectionRises(unittest.TestCase):
 			text.index("section_recipes.restore_motion(blocks,"),
 			text.index("section_recipes.apply_reveals(blocks)"),
 		)
-		self.assertIn('(getattr(brief, "motion_style", "") or "Calm") != "None"', text)
+		self.assertIn('(getattr(brief, "motion_style", "") or "Calm") != "None" and page["type"] != "legal"', text)
 
 
 if __name__ == "__main__":
