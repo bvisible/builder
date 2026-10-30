@@ -403,6 +403,9 @@ class Recipe:
 	ground: str = (
 		"plain"  # the ground it asks for when the plan does not say ("plain" alternates with a tint)
 	)
+	# //// Neoffice — how much the section moves (2026-10-30, the motion layer of theme_variables.html): None, Calm (things appear and count) or
+	# //// Brisk (things drift without end). It is offered only to a site whose own motion_style is at least as lively; the recipes written in code do not move.
+	motion: str = "None"
 
 	@property
 	def family(self) -> str:
@@ -1285,15 +1288,24 @@ def enabled(conf=None) -> bool:
 		return True
 
 
-def recipes_for(kind: str, has_component: bool = True) -> list[Recipe]:
-	return [r for r in REGISTRY.values() if kind in r.kinds and (has_component or not r.form)]
+MOTION_RANK = {"None": 0, "Calm": 1, "Brisk": 2}
+
+
+def moves_within(r: Recipe, motion: str) -> bool:
+	"""Whether a site of this `motion_style` may draw the recipe: a section moves no more than its site does. An unknown style allows everything
+	(`Brisk`, what a caller that does not say gets), an unknown recipe motion counts as lively."""
+	return MOTION_RANK.get(r.motion, 2) <= MOTION_RANK.get(motion, 2)
+
+
+def recipes_for(kind: str, has_component: bool = True, motion: str = "Brisk") -> list[Recipe]:
+	return [r for r in REGISTRY.values() if kind in r.kinds and (has_component or not r.form) and moves_within(r, motion)]
 
 
 def eligible_kinds() -> set[str]:
 	return {k for r in REGISTRY.values() for k in r.kinds}
 
 
-def catalogue_lines(seed: str = "", material: str | None = None) -> list[str]:
+def catalogue_lines(seed: str = "", material: str | None = None, motion: str = "Brisk") -> list[str]:
 	"""The lines of the plan's prompt that offer the recipes. With a `seed` (the site's name) the variants of each family come in an order
 	of the site's own: a model reading a list leans on its first entries, and with one order for every site the first variant of a
 	family would be the one every site draws (measured: the same closing band on every page of two sites, 2026-10-21)."""
@@ -1309,7 +1321,8 @@ def catalogue_lines(seed: str = "", material: str | None = None) -> list[str]:
 	]
 	by_family: dict[str, list[Recipe]] = {}
 	for r in REGISTRY.values():
-		by_family.setdefault(r.family, []).append(r)
+		if moves_within(r, motion):
+			by_family.setdefault(r.family, []).append(r)
 	held_back = withheld_families(material)
 	for family, recipes in by_family.items():
 		if family in held_back:
@@ -1324,6 +1337,8 @@ def catalogue_lines(seed: str = "", material: str | None = None) -> list[str]:
 				needs.append(f"{r.photos} photograph{'s' if r.photos > 1 else ''}")
 			if r.form:
 				needs.append("the live form as its component")
+			if r.motion != "None":
+				needs.append("moves, and rests where motion is off")
 			lines.append(f"    {r.id}: {r.look}" + (f" ({'; '.join(needs)})" if needs else ""))
 	return lines
 
@@ -1343,16 +1358,16 @@ def _seed(*parts) -> int:
 	return int(hashlib.sha1("|".join(str(p) for p in parts).encode("utf-8")).hexdigest()[:8], 16)
 
 
-def pick(section, seed: str, taken: dict) -> tuple[Recipe | None, bool]:
+def pick(section, seed: str, taken: dict, motion: str = "Brisk") -> tuple[Recipe | None, bool]:
 	"""The recipe for a plan section and whether the code changed the plan's pick: the plan's own pick when it is a recipe of the section's
 	kind that the section can carry (another variant of the same family when the plan named it on too many pages of the site); the plan's
 	silence stays silence, a free section."""
 	has_component = bool((getattr(section, "component", "") or "").strip())
 	named = (getattr(section, "recipe", "") or "").strip()
-	candidates = recipes_for(section.kind, has_component)
+	candidates = recipes_for(section.kind, has_component, motion)
 	if named:
 		r = REGISTRY.get(named)
-		if r and section.kind in r.kinds and (has_component or not r.form):
+		if r and section.kind in r.kinds and (has_component or not r.form) and moves_within(r, motion):
 			# past MAX_REPEATS pages the same structure is a pattern, not a choice (the local planner kept the first variant of a family it was
 			# offered on four pages of five, whatever the catalogue said): the later pages get another variant of the SAME family, drawn by the site
 			if section.kind not in REPEATED_ON_PURPOSE and taken.get(r.id, 0) >= MAX_REPEATS:
@@ -1425,6 +1440,7 @@ def uses_for_page(
 	left_out: list | None = None,
 	material: str | None = None,
 	skip_kinds=("hero",),
+	motion: str = "Brisk",
 ) -> dict[int, Use]:
 	"""{section index: Use} for the sections of a planned page that carry a recipe. `taken` counts the recipes already used on the
 	site, so that the same structure is not drawn on every page; `budget` ({"left": n}) the generated
@@ -1443,7 +1459,7 @@ def uses_for_page(
 	for i, s in enumerate(planned_page.sections):
 		if s.kind in skip_kinds:
 			continue
-		r, by_code = pick(s, f"{seed}|{planned_page.route}|{i}", taken)
+		r, by_code = pick(s, f"{seed}|{planned_page.route}|{i}", taken, motion)
 		if r is None or r.id in used_here or r.family in held_back:
 			continue
 		missing = max(0, r.photos - len(getattr(s, "photos", None) or []) - len(pool))
@@ -1485,6 +1501,13 @@ def brief_lines(uses: dict[int, Use], handles: dict, language: str) -> list[str]
 		"yours: the proportions, the ground, the order of the inner elements, an ornament, a kicker or an index numeral, the number of items (add or remove rows and cards, "
 		"alike) and the copy; the adaptations the plan states win over the structure where they differ. Keep the grid, the classes and the `m_style` fallbacks working. The site draws the page title above an interior page: a heading that only repeats it is removed, so write the section's own.",
 	]
+	# //// Neoffice — what the writer must not undo in a section that moves (2026-10-30, the motion layer of theme_variables.html)
+	if any(u.recipe.motion != "None" for u in uses.values()):
+		lines.append(
+			"A class that begins `u-reveal`, `u-marquee` or `u-count` is a movement the site draws: keep it on its element. In a strip of words "
+			"(`u-marquee__group`) write ONE group of words, the site repeats it by itself; a figure that counts (`u-count`) holds one number written "
+			"in digits (a quantity, never a year)."
+		)
 	for i in sorted(uses):
 		lines.append(f"Section {i + 1} ({uses[i].recipe.id}):\n{uses[i].yaml}")
 	return lines

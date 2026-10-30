@@ -389,5 +389,117 @@
 })();
 </script>
 {%- endif -%}
+{#- //// Neoffice — the two movements the stylesheet cannot do alone (2026-10-30, theme_variables.html "The motion layer"): a strip
+    //// of words that drifts needs its words twice, and a figure that counts up needs to read its own number. Both are decoration:
+    //// without this script, or with reduced motion asked for, the strip is a centred row of wrapped words and the figure is the
+    //// number the page was written with. Not emitted when the site's motion is None. -#}
+{%- if (config.motion_style or "Calm") != "None" -%}
+<script>
+(function () {
+	if (!window.matchMedia || window.matchMedia("(prefers-reduced-motion: reduce)").matches) return;
+	var each = function (list, fn) { Array.prototype.forEach.call(list, fn); };
+	var style = window.getComputedStyle(document.documentElement);
+	var setting = function (name, fallback) {
+		var value = parseFloat(style.getPropertyValue(name));
+		return value > 0 ? value : fallback;
+	};
+
+	// a strip of words: its group is repeated until the copies fill the widest screen, then the track slides by exactly one group
+	var startStrips = function () {
+		each(document.querySelectorAll(".u-marquee"), function (strip) {
+			var track = strip.querySelector(".u-marquee__track");
+			var group = track && track.querySelector(".u-marquee__group");
+			if (!group || strip.classList.contains("is-moving")) return;
+			strip.classList.add("is-moving");
+			var width = group.getBoundingClientRect().width;
+			if (!(width > 0)) { strip.classList.remove("is-moving"); return; }
+			var copies = Math.max(1, Math.ceil(Math.max(window.screen.width, strip.clientWidth) / width));
+			for (var i = 0; i < copies; i++) {
+				var copy = group.cloneNode(true);
+				copy.setAttribute("aria-hidden", "true");
+				each(copy.querySelectorAll("[id]"), function (node) { node.removeAttribute("id"); });
+				each(copy.querySelectorAll("a, button, input, select, textarea, [tabindex]"), function (node) { node.setAttribute("tabindex", "-1"); });
+				track.appendChild(copy);
+			}
+			track.style.setProperty("--marquee-shift", width + "px");
+			track.style.setProperty("--marquee-duration", (width / setting("--marquee-speed", 45)) + "s");
+		});
+	};
+	if (document.fonts && document.fonts.ready) document.fonts.ready.then(startStrips); else startStrips();
+
+	// a figure: the first number in its text counts up from zero when the figure is seen, in the format it was written in
+	var SEPARATORS = "   ’'";
+	var FIGURE = new RegExp("\\d{1,3}(?:[" + SEPARATORS + "]\\d{3})+(?:[.,]\\d+)?|\\d+(?:[.,]\\d+)?");
+	var read = function (raw) {
+		var group = "";
+		for (var i = 0; i < raw.length; i++) if (SEPARATORS.indexOf(raw.charAt(i)) > -1) { group = raw.charAt(i); break; }
+		var plain = group ? raw.split(group).join("") : raw;
+		var tail = /([.,])(\d+)$/.exec(plain);
+		var point = "", decimals = 0, whole = plain, fraction = "";
+		if (tail) {
+			// "4.8" and "12,50" are decimals; "1.200" and "1,200" are thousands, unless the integer part is a lone zero
+			if (tail[2].length !== 3 || group || /^0[.,]/.test(plain)) {
+				point = tail[1];
+				fraction = tail[2];
+				decimals = fraction.length;
+				whole = plain.slice(0, plain.length - decimals - 1);
+			} else {
+				group = tail[1];
+			}
+		}
+		return { value: parseFloat(whole.replace(/[.,]/g, "") + (decimals ? "." + fraction : "")), decimals: decimals, point: point, group: group };
+	};
+	var write = function (figure, number) {
+		var parts = number.toFixed(figure.decimals).split(".");
+		if (figure.group) parts[0] = parts[0].replace(/\B(?=(\d{3})+(?!\d))/g, figure.group);
+		return parts[0] + (figure.decimals ? figure.point + parts[1] : "");
+	};
+	var counters = [];
+	var firstNumber = function (element) {
+		var walker = document.createTreeWalker(element, NodeFilter.SHOW_TEXT);
+		for (var node = walker.nextNode(); node; node = walker.nextNode()) if (/\d/.test(node.data)) return node;
+		return null;
+	};
+	if ("IntersectionObserver" in window) {
+		var seen = new IntersectionObserver(function (entries) {
+			entries.forEach(function (entry) {
+				if (!entry.isIntersecting) return;
+				seen.unobserve(entry.target);
+				var counter = counters.filter(function (item) { return item.element === entry.target; })[0];
+				if (!counter) return;
+				var begun = null;
+				var duration = setting("--count-duration", 1600);
+				var step = function (now) {
+					if (begun === null) begun = now;
+					var progress = Math.min(1, (now - begun) / duration);
+					var eased = 1 - Math.pow(1 - progress, 3);
+					counter.node.data = counter.before + write(counter.figure, counter.figure.value * eased) + counter.after;
+					if (progress < 1) window.requestAnimationFrame(step); else counter.node.data = counter.original;
+				};
+				window.requestAnimationFrame(step);
+			});
+		}, { threshold: 0.4 });
+		each(document.querySelectorAll(".u-count"), function (element) {
+			try {
+				var node = firstNumber(element);
+				var found = node && FIGURE.exec(node.data);
+				if (!found) return;
+				var figure = read(found[0]);
+				// a year is a name, not a quantity; a figure with no value, or too large to count, stays as written
+				var isYear = !figure.decimals && !figure.group && figure.value >= 1900 && figure.value <= 2100;
+				if (!(figure.value > 0) || figure.value > 1e12 || isYear) return;
+				var original = node.data;
+				var counter = { element: element, node: node, figure: figure, original: original, before: original.slice(0, found.index), after: original.slice(found.index + found[0].length) };
+				counters.push(counter);
+				node.data = counter.before + write(figure, 0) + counter.after;
+				seen.observe(element);
+			} catch (e) { /* a figure that cannot be read keeps its text */ }
+		});
+		// printed before it was seen, a figure prints the number the page was written with
+		window.addEventListener("beforeprint", function () { counters.forEach(function (item) { item.node.data = item.original; }); });
+	}
+})();
+</script>
+{%- endif -%}
 {#- //// Neoffice — the cookie and privacy notice of a generated site (data_notice.html): drawn only where the chrome asks for it -#}
 {% include "builder/templates/includes/data_notice.html" %}

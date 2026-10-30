@@ -634,6 +634,110 @@ button:where(.u-btn) {
 	}
 }
 
+{#- //// Neoffice — the motion layer (2026-10-30). The site's `motion_style` (None / Calm / Brisk) was only the length of a
+    //// hover transition; it now also decides whether the page moves at all, and how much. Three utilities, all decoration:
+    //// the page reads complete without them, which is what a screenshot, a printout, a reader with a stylesheet of their own
+    //// and anyone who asked their system for less motion get.
+    ////   u-reveal / u-reveal-group  an element (or each child of a group, in turn) fades up as it enters the screen.
+    ////                              CSS only: a scroll-driven animation. A browser that lacks them shows the element at rest.
+    ////   u-marquee                  a strip of words that drifts sideways without end. The static layout (the words wrap
+    ////                              and centre) is the base and is always emitted; the footer's script clones the group
+    ////                              and adds `is-moving` once it knows the strip can move (no reduced motion).
+    ////   u-count                    a figure that counts up to itself when it scrolls into view (the footer's script).
+    //// With motion None nothing below is emitted but the static layout and the tabular figures. Every animation sits inside
+    //// `prefers-reduced-motion: no-preference`, and the site checks (the visual check, the layout probe) load the page with
+    //// reduced motion, so they see the page a visitor ends on, never a section caught at opacity 0.
+    //// Why `translate`, not `transform`: a block's own transform (a tilted card, a scaled image) must survive its own reveal.
+    //// Why `backwards` and no `both`: once the entry is over the element goes back to the styles it declares itself. -#}
+{%- set brisk = (motion == "Brisk") %}
+/* ==========================================================================
+   The motion layer: u-reveal, u-reveal-group, u-marquee, u-count.
+   ========================================================================== */
+
+:where(.u-count) {
+	font-variant-numeric: tabular-nums;
+}
+
+:where(.u-marquee__track) {
+	display: flex;
+	flex-wrap: wrap;
+	justify-content: center;
+}
+
+:where(.u-marquee__group) {
+	display: flex;
+	flex-wrap: wrap;
+	align-items: center;
+	justify-content: center;
+	gap: 0.75rem 3rem;
+}
+
+{%- if motion != "None" %}
+:root {
+	--motion-distance: {{ "0.875rem" if brisk else "1.5rem" }};
+	--marquee-speed: {{ "90" if brisk else "45" }};
+	--count-duration: {{ "900ms" if brisk else "1600ms" }};
+}
+
+@media (prefers-reduced-motion: no-preference) {
+	@supports (animation-timeline: view()) {
+		@keyframes u-reveal-in {
+			from {
+				opacity: 0;
+				translate: 0 var(--motion-distance);
+			}
+		}
+
+		:where(.u-reveal, .u-reveal-group > *) {
+			animation: u-reveal-in linear backwards;
+			animation-timeline: view();
+			animation-range: entry 0% entry {{ "28" if brisk else "40" }}%;
+		}
+
+		{%- for n in range(2, 7) %}
+		:where(.u-reveal-group > :nth-child({{ n }})) {
+			animation-range: entry {{ (n - 1) * (4 if brisk else 6) }}% entry {{ (28 if brisk else 40) + (n - 1) * (4 if brisk else 6) }}%;
+		}
+		{%- endfor %}
+	}
+
+	.u-marquee.is-moving {
+		overflow: hidden;
+		-webkit-mask-image: linear-gradient(90deg, transparent, #000 8%, #000 92%, transparent);
+		mask-image: linear-gradient(90deg, transparent, #000 8%, #000 92%, transparent);
+	}
+
+	.u-marquee.is-moving .u-marquee__track {
+		flex-wrap: nowrap;
+		justify-content: flex-start;
+		width: max-content;
+		animation: u-marquee-run var(--marquee-duration, 30s) linear infinite;
+	}
+
+	/* the group's trailing space equals its gap, so the seam between the two copies is one more gap and the loop is invisible */
+	.u-marquee.is-moving .u-marquee__group {
+		flex: none;
+		flex-wrap: nowrap;
+		justify-content: flex-start;
+		gap: 3rem;
+		padding-right: 3rem;
+	}
+
+	/* a strip that never stops can be stopped: by pointing at it or by tabbing into it */
+	.u-marquee.is-moving:hover .u-marquee__track,
+	.u-marquee.is-moving:focus-within .u-marquee__track {
+		animation-play-state: paused;
+	}
+
+	/* the script sets --marquee-shift to the width of one group; without it, two groups slide by half the track */
+	@keyframes u-marquee-run {
+		to {
+			translate: calc(var(--marquee-shift, 50%) * -1) 0;
+		}
+	}
+}
+{%- endif %}
+
 /* ==========================================================================
    Reading over a photograph.
 

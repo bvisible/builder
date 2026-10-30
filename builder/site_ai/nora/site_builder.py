@@ -1299,7 +1299,7 @@ def section_recipes_brief(uses: dict, handles: dict, language: str) -> list[str]
     return section_recipes.brief_lines(uses, handles, language)
 
 
-def _page_recipes(site: dict, planned, page: dict, is_home: bool, hero_line: str, photos: list[str], handles: dict, palette: dict | None, cta: tuple[str, str]) -> dict:
+def _page_recipes(site: dict, planned, page: dict, is_home: bool, hero_line: str, photos: list[str], handles: dict, palette: dict | None, cta: tuple[str, str], motion: str = "Brisk") -> dict:
     """The recipes of a planned page, drawn once and kept for its revisions (so that a plan which ignored the field does not draw
     other variants at every attempt); {} when recipes are switched off or the page is a legal one."""
     from builder.site_ai.logging import ai_log
@@ -1326,6 +1326,8 @@ def _page_recipes(site: dict, planned, page: dict, is_home: bool, hero_line: str
         budget=site.setdefault("recipe_budget", {"left": 10**6 if site.get("images_on") is False else section_recipes.image_budget()}),
         left_out=dropped,
         material=section_recipes.site_material(site),
+        # //// Neoffice — a section moves no more than the site does (recipes.moves_within, 2026-10-30)
+        motion=motion,
     )
     kept[page["route"]] = uses
     if dropped:
@@ -1367,7 +1369,7 @@ def page_brief_text(site: dict, brief, page: dict, handles: dict, contact_prompt
         else ""
     )
     # //// Neoffice — a revision rewrites the previous version, which carries the structure: the recipes are given to the first write only
-    recipe_uses = _page_recipes(site, planned, page, is_home, hero_line, photos, handles, palette, cta) if planned else {}
+    recipe_uses = _page_recipes(site, planned, page, is_home, hero_line, photos, handles, palette, cta, getattr(brief, "motion_style", "") or "Calm") if planned else {}
     given_recipes = {} if revision else recipe_uses
     if planned:
         plan = planner.section_lines(planned, hero_dressed=bool(hero_line), recipes=given_recipes)

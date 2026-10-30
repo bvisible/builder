@@ -199,6 +199,7 @@ def accept(block) -> tuple[Recipe | None, str]:
 			photos=int(block.get("photos") or 0),
 			form=bool(block.get("form")),
 			ground=block.get("ground") or "plain",
+			motion=block.get("motion") or "None",
 		)
 		# drawn once on sample values: a block that cannot be drawn is found here, not in the middle of a page
 		sample = Ctx(

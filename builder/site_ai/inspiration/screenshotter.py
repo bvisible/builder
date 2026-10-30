@@ -99,8 +99,12 @@ class WebsiteScreenshotter:
         async with async_playwright() as p:
             browser = await p.chromium.launch(headless=True)
             try:
+                # //// Neoffice — the page is captured with reduced motion asked for (2026-10-30, theme_variables.html "The motion layer"): a section
+                # //// that fades in as it scrolls into view stays at opacity 0 below the fold of a full-page capture, and the judge reads a page
+                # //// with holes in it. The motion utilities, and most sites' own, are written to rest when this is asked.
                 page = await browser.new_page(
-                    viewport={"width": self.viewport_width, "height": self.viewport_height}
+                    viewport={"width": self.viewport_width, "height": self.viewport_height},
+                    reduced_motion="reduce",
                 )
 
                 # //// Neoffice — send the headers so the loopback render is named by header, not by host (0445cc94 "fix(visual-check): the loopback render names its site by header, not by host")
@@ -801,7 +805,8 @@ async def _measure_async(url: str, widths=MEASURE_WIDTHS, static_roots: Optional
     async with async_playwright() as p:
         browser = await p.chromium.launch(headless=True)
         try:
-            page = await browser.new_page(viewport={"width": widths[0], "height": 900})
+            # //// Neoffice — measured with reduced motion asked for, like the capture (see capture_async): a text caught mid-reveal reads as invisible
+            page = await browser.new_page(viewport={"width": widths[0], "height": 900}, reduced_motion="reduce")
             if headers:
                 await page.set_extra_http_headers({str(k): str(v) for k, v in headers.items()})
                 await page.add_init_script(NOTICE_ANSWERED_SCRIPT)  # //// Neoffice — see NOTICE_ANSWERED_SCRIPT
