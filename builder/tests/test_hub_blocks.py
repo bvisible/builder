@@ -110,6 +110,24 @@ class Cache:
 		self.set_calls.append((key, expires_in_sec))
 
 
+class TestTheLookTheHubPreviewsWith(unittest.TestCase):
+	"""The hub draws a preview of a block with its own copy of the formulas of `Look` (builder_hub/block_preview.py). The same numbers are pinned
+	there (test_block_preview): if `Look` changes, this test fails and the hub's formulas are to follow."""
+
+	def test_the_colours_a_site_derives_from_its_four_colours(self):
+		look = R.Look(
+			{"primary": "#7a2e1d", "secondary": "#d9b26f", "background": "#faf5ee", "text": "#2b1810"}, {}
+		)
+		self.assertEqual("rgba(43, 24, 16, 0.72)", look.muted)
+		self.assertEqual("rgba(43, 24, 16, 0.16)", look.hair)
+		self.assertEqual("rgba(122, 46, 29, 0.08)", look.tint)
+		self.assertEqual("rgba(217, 178, 111, 0.35)", look.frame)
+		self.assertEqual("#7a2e1d", look.deep)
+		self.assertEqual("#faf5ee", look.ink_on_deep)
+		self.assertEqual("rgba(250, 245, 238, 0.8)", look.deep_muted)
+		self.assertEqual("rgba(250, 245, 238, 0.25)", look.deep_hair)
+
+
 class TestDrawn(unittest.TestCase):
 	def setUp(self):
 		self.recipe, why = H.accept(block())
