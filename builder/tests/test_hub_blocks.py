@@ -134,6 +134,15 @@ class TestDrawn(unittest.TestCase):
 		text = draw(self.recipe)
 		self.assertEqual(4, text.count("WRITE "))
 
+	def test_the_alt_of_a_photograph_is_always_the_generators_own_guidance(self):
+		asked = block()
+		asked["tree"]["c"][1]["attrs"]["alt"] = "WRITE alt: a portrait of the owner smiling at the till"
+		recipe, why = H.accept(asked)
+		self.assertEqual("", why)
+		text = draw(recipe)
+		self.assertIn("never a person (no face, nobody at work", text)
+		self.assertNotIn("the owner smiling", text)
+
 	def test_a_node_with_a_ground_draws_itself_and_what_is_under_it_on_that_ground(self):
 		look = R.Look(HANDLES, LIGHT)
 		node = H.instantiate(block()["tree"], R.Ctx(look, R.ground_of(look, "plain"), PHOTOS[:1], "/contact"))

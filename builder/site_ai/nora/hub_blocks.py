@@ -122,6 +122,11 @@ def _values(c: Ctx) -> dict:
 def _text(value, values: dict):
 	if not isinstance(value, str):
 		return value
+	slot = block_format.SLOT.match(value)
+	if slot and slot.group(1) == "alt":
+		# the alt of a photograph is the prompt of the image generator: what it may show is a rule of the generator (recipes.ALT_GUIDANCE: never a
+		# person, a screen, a sign), not something a block, from another server, gets to rephrase
+		return section_recipes.slot("alt", section_recipes.ALT_GUIDANCE)
 	return block_format.TOKEN.sub(lambda m: str(values[m.group(1)]), value)
 
 
