@@ -86,6 +86,20 @@ class TestTheGroupTheTokensLeaveIn(unittest.TestCase):
     def test_with_no_group_a_token_keeps_its_own(self):
         self.assertEqual("Business", self.rows_in(None)[0]["group"])
 
+    def test_a_generated_sites_token_leaves_with_a_label_that_names_the_group_not_its_business(self):
+        row = self.rows_in("garage")[0]
+        self.assertEqual("Garage primary", row["variable_name"])
+
+    def test_with_no_group_the_label_is_the_site_s_own(self):
+        self.assertEqual("Primary", self.rows_in(None)[0]["variable_name"])
+
+    def test_the_label_of_each_role_of_a_generated_site(self):
+        for suffix, words in {"font-heading": "font heading", "font-body": "font body", "gutter-phone": "gutter phone", "container": "container", "text": "text", "accent": "accent"}.items():
+            self.assertEqual(f"Restaurant {words}", hub_publish.token_label(f"qtr-{suffix}", "restaurant"))
+
+    def test_a_token_of_the_editor_keeps_its_label(self):
+        self.assertIsNone(hub_publish.token_label("0824f62b-f051-48a6-b08b-283242b35aa7", "restaurant"))
+
     def test_the_bundle_of_each_page_is_built_for_the_group_it_is_published_in(self):
         built = []
         response = MagicMock(status_code=200)

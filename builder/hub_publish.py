@@ -118,6 +118,19 @@ def _publish_group_sync(pages, group, title="", description=""):
     return resp.json().get("message")
 
 
+# the roles a generated site's token ends in (`<prefix>-primary`), longest first so that `-font-heading` is not read as `-heading`
+TOKEN_ROLES = ("font-heading", "font-body", "gutter-phone", "container", "secondary", "background", "primary", "gutter", "accent", "text")
+
+
+def token_label(name: str, group: str) -> str | None:
+    """The label of a generated site's token as the hub shows it (`Garage primary`), or None for a token that is not one: the label a site gives
+    its own tokens names its business, and a template of the catalog must not."""
+    for role in TOKEN_ROLES:
+        if name.endswith("-" + role):
+            return f"{group.replace('_', ' ').replace('-', ' ').strip().capitalize()} {role.replace('-', ' ')}"
+    return None
+
+
 def referenced_token_names(blob: str) -> list[str]:
     """The names a page's blocks give in `var(--name)`, once each, in order."""
     return sorted(set(VARIABLE_RE.findall(blob)))
@@ -137,7 +150,7 @@ def _token_rows(names, group: str | None = None) -> list[dict]:
                 {
                     "doctype": "Builder Variable",
                     "name": var.name,
-                    "variable_name": var.get(name_field),
+                    "variable_name": (token_label(var.name, group) if group else None) or var.get(name_field),
                     "type": var.type,
                     "value": var.value,
                     "dark_value": var.dark_value,
