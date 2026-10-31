@@ -94,7 +94,9 @@ def _publish_group_sync(pages, group, title="", description=""):
     callable directly via `bench execute` for testing."""
     hub_url, headers = _hub_config()
 
-    bundles = [_build_page_bundle(name, group) for name in pages]
+    sent = [frappe.db.get_value("Builder Page", name, ["page_title", "route"], as_dict=True) or {} for name in pages]
+    links = group_link_map(sent)
+    bundles = [_build_page_bundle(name, group, links) for name in pages]
     payload = {
         "group": group,
         "title": title or group,
@@ -131,6 +133,57 @@ def token_label(name: str, group: str) -> str | None:
     return None
 
 
+# //// Neoffice — the pages of a generated site link to each other by the routes of their own site (`/reserver-une-table`). Installed from
+# //// the hub they sit under a prefix (`restaurant/…`, builder.api.import_group_pages) and take the hub's route (the scrubbed title), so
+# //// every such link led nowhere (2026-10-31). A link to another page of the group is written relative, as the hub's own groups write theirs
+# //// (`la_carte`): it resolves under whatever prefix the pages are installed at. A link to anything else (the contact page, the legal pages,
+# //// a site-level page) is left as it is.
+def group_link_map(pages: list[dict]) -> dict[str, str]:
+    """{"/reserver-une-table": "réserver_une_table", "/": "accueil"} for the pages of a group: each source route and the route the hub gives the
+    page (the scrubbed title, as builder_hub.publish._promote_sync does). The home page also answers to "/"."""
+    links = {}
+    for page in pages:
+        route = (page.get("route") or "").strip("/")
+        target = frappe.scrub(str(page.get("page_title") or ""))
+        if not route or not target:
+            continue
+        links["/" + route] = target
+        if route == "home":
+            links["/"] = target
+    return links
+
+
+def rewrite_links(blocks, links: dict[str, str]):
+    """The blocks with each `href` that names a page of the group (a path, with or without a #fragment or ?query) made relative. Returns how many
+    it changed along with the blocks, which are changed in place."""
+    changed = 0
+
+    def relative(href: str) -> str | None:
+        path, sep, rest = href.partition("#")
+        path, qsep, query = path.partition("?")
+        target = links.get(path)
+        if target is None:
+            return None
+        return target + (qsep + query if qsep else "") + (sep + rest if sep else "")
+
+    def walk(block):
+        nonlocal changed
+        if isinstance(block, list):
+            for item in block:
+                walk(item)
+        elif isinstance(block, dict):
+            attributes = block.get("attributes")
+            if isinstance(attributes, dict) and isinstance(attributes.get("href"), str):
+                new = relative(attributes["href"])
+                if new is not None:
+                    attributes["href"] = new
+                    changed += 1
+            walk(block.get("children"))
+
+    walk(blocks)
+    return blocks, changed
+
+
 def referenced_token_names(blob: str) -> list[str]:
     """The names a page's blocks give in `var(--name)`, once each, in order."""
     return sorted(set(VARIABLE_RE.findall(blob)))
@@ -160,7 +213,7 @@ def _token_rows(names, group: str | None = None) -> list[dict]:
     return rows
 
 
-def _build_page_bundle(page_name: str, group: str | None = None) -> dict:
+def _build_page_bundle(page_name: str, group: str | None = None, links: dict[str, str] | None = None) -> dict:
     """Mirror of builder_hub.api._get_template_bundle, built from local data
     (without URL absolutization — URLs get rewritten hub-local at upload)."""
     from builder.export_import_standard_page import extract_fonts_from_blocks
@@ -168,6 +221,8 @@ def _build_page_bundle(page_name: str, group: str | None = None) -> dict:
 
     page_doc = frappe.get_doc("Builder Page", page_name)
     blocks = frappe.parse_json(page_doc.draft_blocks or page_doc.blocks or "[]")
+    if links:
+        blocks, _changed = rewrite_links(blocks, links)
 
     component_ids = extract_components_from_blocks(blocks)
     components = []

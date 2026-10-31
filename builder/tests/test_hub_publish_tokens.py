@@ -106,12 +106,72 @@ class TestTheGroupTheTokensLeaveIn(unittest.TestCase):
         response.json.return_value = {"message": {"group": "restaurant"}}
         with (
             patch.object(hub_publish, "_hub_config", return_value=("https://hub.test", {})),
-            patch.object(hub_publish, "_build_page_bundle", side_effect=lambda name, group=None: built.append((name, group)) or {"page": {}}),
+            patch.object(hub_publish.frappe, "db", MagicMock(get_value=MagicMock(return_value=frappe._dict(page_title="X", route="x")))),
+            patch.object(hub_publish, "_build_page_bundle", side_effect=lambda name, group=None, links=None: built.append((name, group)) or {"page": {}}),
             patch.object(hub_publish, "_upload_and_rewrite_assets", side_effect=lambda payload, *a: payload),
             patch.object(hub_publish.requests, "post", return_value=response),
         ):
             hub_publish._publish_group_sync(["page-a", "page-b"], "restaurant", "Restaurant")
         self.assertEqual([("page-a", "restaurant"), ("page-b", "restaurant")], built)
+
+
+PAGES = [
+    frappe._dict(page_title="Accueil", route="home"),
+    frappe._dict(page_title="La carte", route="la-carte"),
+    frappe._dict(page_title="Réserver une table", route="reserver-une-table"),
+]
+
+
+class TestTheLinksBetweenThePagesOfAGroup(unittest.TestCase):
+    """An installed group lives under a prefix and its pages under the hub's routes: a link to a sibling page must be relative to resolve there."""
+
+    def test_the_map_gives_each_page_the_route_the_hub_will_give_it(self):
+        links = hub_publish.group_link_map(PAGES)
+        self.assertEqual("accueil", links["/home"])
+        self.assertEqual("la_carte", links["/la-carte"])
+        self.assertEqual("réserver_une_table", links["/reserver-une-table"])
+
+    def test_the_home_page_also_answers_to_the_site_root(self):
+        self.assertEqual("accueil", hub_publish.group_link_map(PAGES)["/"])
+
+    def test_a_page_with_no_route_or_no_title_is_left_out(self):
+        self.assertEqual({}, hub_publish.group_link_map([frappe._dict(page_title="A", route=""), frappe._dict(page_title="", route="a"), {}]))
+
+    def blocks(self):
+        return [
+            {
+                "element": "section",
+                "children": [
+                    {"element": "a", "attributes": {"href": "/reserver-une-table", "class": "x"}},
+                    {"element": "a", "attributes": {"href": "/la-carte#vins"}},
+                    {"element": "a", "attributes": {"href": "/la-carte?saison=hiver"}},
+                    {"element": "a", "attributes": {"href": "/contact"}},
+                    {"element": "a", "attributes": {"href": "https://example.com/la-carte"}},
+                    {"element": "a", "attributes": {"href": "tel:+41000000000"}},
+                    {"element": "div", "children": [{"element": "a", "attributes": {"href": "/"}}]},
+                ],
+            }
+        ]
+
+    def test_a_link_to_a_sibling_page_becomes_relative_wherever_it_is(self):
+        blocks, changed = hub_publish.rewrite_links(self.blocks(), hub_publish.group_link_map(PAGES))
+        hrefs = [c["attributes"]["href"] for c in blocks[0]["children"] if c["element"] == "a"]
+        self.assertEqual(["réserver_une_table", "la_carte#vins", "la_carte?saison=hiver", "/contact", "https://example.com/la-carte", "tel:+41000000000"], hrefs)
+        self.assertEqual("accueil", blocks[0]["children"][-1]["children"][0]["attributes"]["href"])
+        self.assertEqual(4, changed)
+
+    def test_the_other_attributes_of_the_link_are_kept(self):
+        blocks, _ = hub_publish.rewrite_links(self.blocks(), hub_publish.group_link_map(PAGES))
+        self.assertEqual("x", blocks[0]["children"][0]["attributes"]["class"])
+
+    def test_with_no_map_nothing_changes(self):
+        blocks, changed = hub_publish.rewrite_links(self.blocks(), {})
+        self.assertEqual(0, changed)
+        self.assertEqual("/reserver-une-table", blocks[0]["children"][0]["attributes"]["href"])
+
+    def test_a_page_with_no_blocks_is_fine(self):
+        self.assertEqual(([], 0), hub_publish.rewrite_links([], {"/a": "a"}))
+        self.assertEqual((None, 0), hub_publish.rewrite_links(None, {"/a": "a"}))
 
 
 if __name__ == "__main__":
