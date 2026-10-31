@@ -352,3 +352,7 @@ obsolete `#~` entry), translations that were wrong (`Left`, `Right`, `{0} record
 and the Site blocks panel's catalogue (`hooks.py` + the bridge of `site_ai/components.py`), which
 `builder.api.get_site_components` now passes through `_()`. At the upstream merge, keep ours for each of them.
 
+## Auto-marked (fork-markers workflow)
+
+- `scripts/import-launch-ui/package.json` — new file, the manifest for the launch-ui importer's render script (React/Radix/esbuild dependencies); no upstream equivalent — already carries its own `"//"` pseudo-comment marker, the dependency list needs no further note (24eda590 "feat(import): the sections of launch-ui are rendered and imported as draft blocks")
+
