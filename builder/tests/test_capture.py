@@ -375,6 +375,22 @@ class TestAPage(unittest.TestCase):
 		for block in made:
 			self.assertNotIn("var(--t-", json.dumps(block["tree"]))
 
+	def test_the_prefix_of_the_site_is_read_from_any_of_its_handles_not_only_the_primary(self):
+		page = [
+			{
+				"element": "section",
+				"baseStyles": {
+					"backgroundColor": "var(--qc-background)",
+					"color": "var(--qc-text)",
+					"fontFamily": "var(--qc-font-body)",
+				},
+			}
+		]
+		self.assertEqual("qc", capture.prefix_of(page))
+		page.append({"element": "p", "baseStyles": {"padding": "var(--qc-gutter-phone)"}})
+		self.assertEqual("qc", capture.prefix_of(page))
+		self.assertIsNone(capture.prefix_of([{"element": "p", "baseStyles": {"color": "var(--other)"}}]))
+
 	def test_a_page_that_does_not_use_the_tokens_of_a_site_gives_nothing(self):
 		made, why = capture.capture_page([{"element": "section", "children": []}])
 		self.assertEqual([], made)

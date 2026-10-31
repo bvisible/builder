@@ -124,9 +124,13 @@ class Refused(Exception):
 
 
 def prefix_of(blocks) -> str | None:
-	"""The token prefix of the site a page was written for (`qm` of `var(--qm-primary)`)."""
-	found = re.search(r"var\(--([a-z0-9]+)-primary\)", json.dumps(blocks or []))
-	return found.group(1) if found else None
+	"""The token prefix of the site a page was written for (`qm` of `var(--qm-primary)`): the one most of the handles of the page carry. A page may
+	not use the primary at all, so any handle of the site says it."""
+	found = re.findall(
+		r"var\(--([a-z0-9]+)-(?:primary|secondary|background|text|font-heading|font-body|container|gutter(?:-phone)?)\)",
+		json.dumps(blocks or []),
+	)
+	return max(set(found), key=found.count) if found else None
 
 
 def handles_of(prefix: str) -> dict:
