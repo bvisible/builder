@@ -355,5 +355,5 @@ and the Site blocks panel's catalogue (`hooks.py` + the bridge of `site_ai/compo
 
 ## Auto-marked (fork-markers workflow)
 
-- `scripts/import-launch-ui/package.json` — new file, the manifest for the launch-ui importer's render script (React/Radix/esbuild dependencies); no upstream equivalent — already carries its own `"//"` pseudo-comment marker, the dependency list needs no further note (24eda590 "feat(import): the sections of launch-ui are rendered and imported as draft blocks")
+- `scripts/import-react-sections/package.json` — renamed from `scripts/import-launch-ui/package.json` (the renderer now also takes Tailblocks components, not just launch-ui's), package name updated to `import-react-sections`, `prop-types` dependency added; the file's own `"//"` pseudo-comment marker was updated in place to match, the dependency list needs no further note (4cad3fb7 "feat(import): Tailblocks' sections are imported, and the renderer of React sections is not launch-ui's alone")
 
