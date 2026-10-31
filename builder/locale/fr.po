@@ -12132,3 +12132,38 @@ msgstr "Séparateurs de sections"
 #: builder/templates/includes/google_map.html:56
 msgid "Open in OpenStreetMap"
 msgstr "Ouvrir dans OpenStreetMap"
+
+#. Option for the 'Category' (Select) field in DocType 'Block Template'
+#: builder/builder/doctype/block_template/block_template.json
+msgid "Steps"
+msgstr "Étapes"
+
+#. Option for the 'Category' (Select) field in DocType 'Block Template'
+#: builder/builder/doctype/block_template/block_template.json
+msgid "Stats"
+msgstr "Chiffres clés"
+
+#. Option for the 'Category' (Select) field in DocType 'Block Template'
+#: builder/builder/doctype/block_template/block_template.json
+msgid "Testimonials"
+msgstr "Témoignages"
+
+#. Option for the 'Category' (Select) field in DocType 'Block Template'
+#: builder/builder/doctype/block_template/block_template.json
+msgid "Team"
+msgstr "Équipe"
+
+#. Option for the 'Category' (Select) field in DocType 'Block Template'
+#: builder/builder/doctype/block_template/block_template.json
+msgid "FAQ"
+msgstr "FAQ"
+
+#. Option for the 'Category' (Select) field in DocType 'Block Template'
+#: builder/builder/doctype/block_template/block_template.json
+msgid "Gallery"
+msgstr "Galerie"
+
+#. Option for the 'Category' (Select) field in DocType 'Block Template'
+#: builder/builder/doctype/block_template/block_template.json
+msgid "Call to action"
+msgstr "Appel à l'action"
