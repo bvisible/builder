@@ -1716,6 +1716,100 @@ def apply_reveals(blocks: list) -> list[str]:
 	return done
 
 
+# ---------------------------------------------------------------- the count of every figure
+
+# a quantity written alone in a block: `24`, `1 200+`, `98 %`, `4,8/5`, `$4.8m`, `24h`, `3 000 m²` (what is counted is the first number of the text)
+COUNT_TEXT = re.compile(r"^\s*([$€£]?)\s*(\d[\d\s.,'’]*)(?:\s*/\s*\d+)?\s*([+%a-zA-Z²³]{0,4})\s*$")
+# thousands written with a space or an apostrophe: `1 200`, `3'450 000`; anything else with a space in it is a phone number or a code
+COUNT_GROUPS = re.compile(r"^\d{1,3}(?:[\s'’]\d{3})+(?:[.,]\d+)?$")
+# what is written beside a number that makes it a price: `CHF`, `€`, `/ month`, `per year`, a trailing dot and dash
+PRICE_BESIDE = re.compile(r"^\s*(?:CHF|EUR|USD|Fr\.?|[€$£]|/\s*\w+|(?:per|par)\s+\w+|\.[–-])\s*$", re.IGNORECASE)
+COUNT_MIN_REM = 1.75
+
+
+def _plain_text(block: dict) -> str | None:
+	"""The words of a block that is a text and nothing else (no children, no markup), on one line; None for any other block."""
+	import html
+
+	text = block.get("innerHTML")
+	if block.get("children") or not isinstance(text, str) or "<" in text:
+		return None
+	return " ".join(html.unescape(text).split())
+
+
+def _font_rem(block: dict) -> float:
+	"""The largest font size of a block's base style in rem (a px is counted 16 to the rem, a `clamp()` by its largest length); 0 when it has none."""
+	value = str((block.get("baseStyles") or {}).get("fontSize", ""))
+	sizes = [float(n) / (16 if unit == "px" else 1) for n, unit in re.findall(r"([\d.]+)\s*(rem|em|px)", value)]
+	return max(sizes, default=0.0)
+
+
+def _is_quantity(text: str) -> bool:
+	"""Whether a text is a number that counts up from zero: a quantity, not a year, a numeral, a phone number, a price or nothing."""
+	found = COUNT_TEXT.match(text)
+	if not found:
+		return False
+	currency, digits, suffix = found.groups()
+	digits = digits.strip()
+	if re.match(r"0\d", digits):  # `01` is a numeral, `044…` a phone number
+		return False
+	if re.search(r"[\s'’]", digits) and not COUNT_GROUPS.match(digits):  # `123 45 67`
+		return False
+	if currency and not re.search(r"[kKmMbB]", suffix):  # `€49` is a price, `$4.8m` a quantity
+		return False
+	whole = re.sub(r"[\s'’.,]", "", digits)
+	if not whole or int(whole) == 0:
+		return False
+	if re.fullmatch(r"\d{4}", whole) and 1900 <= int(whole) <= 2100 and not re.search(r"[.,]", digits):  # a year is a name
+		return False
+	return True
+
+
+def _bare_integer(text: str) -> int | None:
+	return int(text.strip()) if re.fullmatch(r"\s*\d{1,3}\s*", text) else None
+
+
+def _quantities(block: dict, found: list) -> None:
+	"""The text blocks under `block` that are a quantity of display size, in document order. Nothing is looked for under a quantity."""
+	kids = [c for c in block.get("children") or [] if isinstance(c, dict)]
+	priced = any(PRICE_BESIDE.match(t) for t in (_plain_text(k) or "" for k in kids))
+	for kid in kids:
+		text = _plain_text(kid)
+		if (
+			text is not None
+			and not priced
+			and _is_quantity(text)
+			and _font_rem(kid) >= COUNT_MIN_REM
+			and "u-count" not in _classes(kid)
+		):
+			found.append((kid, text))
+		else:
+			_quantities(kid, found)
+
+
+def apply_counts(blocks: list) -> list[str]:
+	"""Makes the figures of a written page count up (u-count), the second movement of a page that does not come from a recipe. A figure is a text block
+	that holds one quantity (`24`, `1 200+`, `98 %`, `4,8/5`, `$4.8m`) in display size (1.75rem and more): not a year, not a numeral (`01`, or `1 2 3`
+	side by side), not a phone number, not a price (a currency before it, or `CHF` or `/ month` beside it), not a text with markup in it. It only adds
+	a class, to the block that holds the number, after the reveals (a section that moves is skipped by them); the site's script counts it only when its
+	motion is not None, and a figure rests on the number the page was written with where the visitor asked for less motion. Returns what it added."""
+	done: list[str] = []
+	sections = [b for b in _in_order(blocks) if b.get("element") == "section"]
+	nested = {id(b) for s in sections for b in _in_order(s.get("children") or []) if b.get("element") == "section"}
+	for section in (s for s in sections if id(s) not in nested):
+		found: list = []
+		_quantities(section, found)
+		bare = sorted(n for n in (_bare_integer(t) for _b, t in found) if n is not None)
+		if len(found) >= 2 and len(bare) == len(found) and bare in (list(range(1, len(bare) + 1)), list(range(len(bare)))):
+			continue  # 1 2 3: the numbers of a list, not quantities
+		where = section.get("blockName") or "section"
+		for block, text in found:
+			if _bare_integer(text) == 1:  # nothing counts up to one
+				continue
+			_add(block, "u-count", where, done)
+	return done
+
+
 def scrub_unfilled(blocks: list) -> int:
 	"""Removes what `unfilled_slots` found: a text block is dropped, an attribute is emptied. Returns the number of slots removed."""
 	from builder.site_ai.nora.layout import _walk

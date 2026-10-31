@@ -2929,6 +2929,11 @@ def build_site(ctx, spec: dict) -> str:
                         revealed = section_recipes.apply_reveals(blocks)
                         if revealed:
                             ai_log("info", "Reveals added to the page", page=page["title"], added=len(revealed), first=revealed[:4])
+                        # //// Neoffice — and every figure of a written page counts up the same way (recipes.apply_counts, 2026-10-31):
+                        # //// after the reveals, which skip a section that already moves
+                        counting = section_recipes.apply_counts(blocks)
+                        if counting:
+                            ai_log("info", "Counters added to the page", page=page["title"], added=len(counting), first=counting[:4])
                     # //// Neoffice — and a stock-photo address the writer remembered in place of a photograph slot goes back to a placeholder
                     # //// the site fills (recipes.replace_invented_pictures)
                     here = (site.get("recipe_uses") or {}).get(page["route"], {})

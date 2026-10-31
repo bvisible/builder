@@ -521,7 +521,191 @@ class TestEverySectionRises(unittest.TestCase):
 			text.index("section_recipes.restore_motion(blocks,"),
 			text.index("section_recipes.apply_reveals(blocks)"),
 		)
-		self.assertIn('(getattr(brief, "motion_style", "") or "Calm") != "None" and page["type"] != "legal"', text)
+		self.assertIn(
+			'(getattr(brief, "motion_style", "") or "Calm") != "None" and page["type"] != "legal"', text
+		)
+
+
+def figure_block(text, size="3rem", name="figure", element="p", **extra):
+	"""A text block of a written page, as the pipeline holds it: its words in `innerHTML`, its size in `baseStyles`."""
+	return {
+		"blockName": name,
+		"element": element,
+		"innerHTML": text,
+		"baseStyles": {"fontSize": size},
+		**extra,
+	}
+
+
+def stats_page(*cells):
+	"""A first section, then a section of figures (each cell: the texts of one item, the figure first)."""
+	items = [
+		{
+			"blockName": "stat",
+			"element": "div",
+			"children": [
+				figure_block(text) if i == 0 else figure_block(text, "1rem", "label")
+				for i, text in enumerate(cell)
+			],
+		}
+		for cell in cells
+	]
+	grid = {"blockName": "figures", "element": "div", "classes": ["u-grid"], "children": items}
+	return [section_of(name="first"), wb("stats", "section", children=[wb("container", children=[grid])])]
+
+
+def counted(page):
+	return [b["innerHTML"] for b in R._in_order(page) if "u-count" in (b.get("classes") or [])]
+
+
+class TestEveryFigureCounts(unittest.TestCase):
+	def test_a_figure_of_display_size_counts_in_any_written_form(self):
+		for text in ("24", "1 200+", "98 %", "4,8/5", "$4.8m", "24h", "3 000 m\u00b2", "12 ans"):
+			with self.subTest(text):
+				page = stats_page([text, "Label"], ["7", "Label"])
+				self.assertIn(text, counted(page) if R.apply_counts(page) else [])
+
+	def test_the_label_under_a_figure_never_counts(self):
+		page = stats_page(["24", "Official addons"], ["86", "Total addons"])
+		R.apply_counts(page)
+		self.assertEqual(["24", "86"], counted(page))
+
+	def test_what_looks_like_a_number_and_is_not_a_quantity_stays_still(self):
+		for text in (
+			"1987",
+			"2024",
+			"01",
+			"007",
+			"044 123 45 67",
+			"+41 79 123 45 67",
+			"0",
+			"1",
+			"\u20ac49",
+			"12:30",
+			"CHF 49",
+			"Open 7 days",
+		):
+			with self.subTest(text):
+				page = stats_page([text, "Label"], ["x", "Label"])
+				R.apply_counts(page)
+				self.assertEqual([], counted(page))
+
+	def test_a_currency_is_a_quantity_only_when_it_says_how_many(self):
+		page = stats_page(["$4.8m", "Sales"], ["\u20ac2k", "Raised"])
+		R.apply_counts(page)
+		self.assertEqual(["$4.8m", "\u20ac2k"], counted(page))
+
+	def test_a_text_that_is_not_display_size_does_not_count(self):
+		page = [
+			section_of(),
+			wb(
+				"s",
+				"section",
+				children=[
+					wb("container", children=[figure_block("24", "1rem"), figure_block("86", "1.125rem")])
+				],
+			),
+		]
+		R.apply_counts(page)
+		self.assertEqual([], counted(page))
+
+	def test_the_size_is_read_in_px_and_in_clamp(self):
+		page = [
+			section_of(),
+			wb(
+				"s",
+				"section",
+				children=[
+					wb(
+						"container",
+						children=[figure_block("24", "48px"), figure_block("86", "clamp(2rem, 5vw, 4rem)")],
+					)
+				],
+			),
+		]
+		R.apply_counts(page)
+		self.assertEqual(["24", "86"], counted(page))
+
+	def test_the_numerals_of_a_list_do_not_count(self):
+		page = stats_page(["1", "First step"], ["2", "Second step"], ["3", "Third step"])
+		R.apply_counts(page)
+		self.assertEqual([], counted(page))
+		page = stats_page(["0", "Zero"], ["1", "One"], ["2", "Two"])
+		R.apply_counts(page)
+		self.assertEqual([], counted(page))
+
+	def test_a_price_does_not_count(self):
+		card = {
+			"blockName": "plan",
+			"element": "div",
+			"children": [
+				figure_block("49"),
+				figure_block("CHF", "1rem", "currency"),
+				figure_block("/ month", "1rem", "period"),
+			],
+		}
+		page = [section_of(), wb("pricing", "section", children=[wb("container", children=[card])])]
+		R.apply_counts(page)
+		self.assertEqual([], counted(page))
+
+	def test_a_text_with_markup_or_children_is_left_alone(self):
+		with_markup = figure_block("<em>24</em>")
+		with_child = {**figure_block("24"), "children": [wb("inner", "span")]}
+		page = [
+			section_of(),
+			wb("s", "section", children=[wb("container", children=[with_markup, with_child])]),
+		]
+		R.apply_counts(page)
+		self.assertEqual([], counted(page))
+
+	def test_the_first_section_counts_too_but_a_nested_figure_is_counted_once(self):
+		inner = wb("inner", "section", children=[wb("c", children=[figure_block("24")])])
+		first = wb("first", "section", children=[wb("container", children=[figure_block("86"), inner])])
+		page = [first, section_of()]
+		done = R.apply_counts(page)
+		self.assertEqual(["86", "24"], counted(page))
+		self.assertEqual(2, len(done))
+
+	def test_a_figure_that_already_counts_keeps_its_one_class_and_a_second_pass_adds_nothing(self):
+		page = stats_page(["24", "Label"], ["86", "Label"])
+		page[1]["children"][0]["children"][0]["children"][0]["children"][0]["classes"] = ["u-count"]
+		R.apply_counts(page)
+		self.assertEqual(["24", "86"], counted(page))
+		for b in R._in_order(page):
+			if b.get("innerHTML") == "24":
+				self.assertEqual(["u-count"], b["classes"])
+		self.assertEqual([], R.apply_counts(page))
+
+	def test_it_only_adds_a_class_and_says_where(self):
+		page = stats_page(["24", "Label"], ["86", "Label"])
+		before = [{k: v for k, v in b.items() if k not in ("classes", "children")} for b in R._in_order(page)]
+		done = R.apply_counts(page)
+		after = [{k: v for k, v in b.items() if k not in ("classes", "children")} for b in R._in_order(page)]
+		self.assertEqual(before, after)
+		self.assertEqual(["stats: figure + u-count", "stats: figure + u-count"], done)
+		self.assertEqual([], R.apply_counts(None))
+		self.assertEqual([], R.apply_counts([]))
+
+	def test_it_runs_after_the_reveals_and_under_the_same_gate(self):
+		text = source("site_ai", "nora", "site_builder.py")
+		self.assertLess(
+			text.index("section_recipes.apply_reveals(blocks)"),
+			text.index("section_recipes.apply_counts(blocks)"),
+		)
+		gate = '(getattr(brief, "motion_style", "") or "Calm") != "None" and page["type"] != "legal"'
+		self.assertGreater(text.index("section_recipes.apply_counts(blocks)"), text.index(gate))
+		self.assertLess(
+			text.index("section_recipes.apply_counts(blocks)"), text.index("replace_invented_pictures")
+		)
+
+	def test_a_reveal_is_not_lost_to_a_count(self):
+		# the counts run after the reveals: a section that holds a figure still gets its reveals
+		page = stats_page(["24", "Label"], ["86", "Label"])
+		R.apply_reveals(page)
+		R.apply_counts(page)
+		grid = page[1]["children"][0]["children"][0]
+		self.assertIn("u-reveal-group", grid["classes"])
+		self.assertEqual(["24", "86"], counted(page))
 
 
 if __name__ == "__main__":
