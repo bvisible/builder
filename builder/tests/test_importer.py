@@ -267,7 +267,8 @@ class TestAComponentBecomesABlock(unittest.TestCase):
 		self.assertEqual(self.block["motion"], "None")
 		self.assertTrue(self.block["look"].endswith("."))
 		self.assertNotIn("Kept from", self.block["look"])
-		self.assertIn("a heading", self.block["look"])
+		self.assertIn("a centred heading and a short text", self.block["look"])
+		self.assertIn("for what the business offers, at a glance", self.block["look"])
 
 	def test_the_same_component_is_always_the_same_block(self):
 		self.assertEqual(make(FEATURES), self.block)
@@ -522,8 +523,8 @@ class TestFoldingQuestions(unittest.TestCase):
 			page(
 				'<div class="px-4"><details><summary class="text-gray-900">A question here</summary><p class="text-gray-700">An answer here</p></details></div>'
 			),
-			kind="faq",
-			name="faq.hu-test-2",
+			kind="text",
+			name="text.hu-test-2",
 		)
 		self.assertEqual([], find(one["tree"], classes=["u-faq"]))
 
@@ -919,6 +920,118 @@ class TestMerakiUi(unittest.TestCase):
 		):
 			self.assertIn(part, block["notes"])
 		self.assertEqual(["u-btn", "u-btn--primary"], find(block["tree"], el="a")[0]["classes"])
+
+
+class TestTheLineThePlanReads(unittest.TestCase):
+	"""The plan picks a block by one line: a block that says `a band` is a block it never picks."""
+
+	def look(self, markup, kind, name):
+		return make(markup, kind=kind, name=name)["look"]
+
+	def test_a_hero_says_its_alignment_its_text_its_buttons_and_what_it_is_for(self):
+		look = make(DARK_CTA, kind="hero", name="hero.mk-test-1")["look"]
+		self.assertEqual(
+			"a centred heading and a short text, with a button and a quieter one in outline; on a deep band; for the first screen of a page.",
+			look,
+		)
+
+	def test_folding_questions_say_how_many_and_that_they_fold(self):
+		look = make(FAQ, kind="faq", name="faq.hu-test-9")["look"]
+		self.assertIn("2 folding questions in one column", look)
+		self.assertTrue(look.endswith("for practical questions, a reference page."))
+
+	def test_a_grid_says_its_items_its_columns_and_what_each_holds(self):
+		look = self.look(
+			page(
+				'<div class="mx-auto max-w-7xl px-4"><h2 class="text-3xl font-bold text-gray-900 text-center">Our offers</h2><div class="grid grid-cols-3 gap-4">'
+				+ '<div class="rounded-lg border border-gray-200 p-6"><h3 class="text-lg font-bold text-gray-900">A title</h3><p class="text-gray-700">Some words that say what the offer is.</p></div>'
+				* 3
+				+ "</div></div>"
+			),
+			"feature-grid",
+			"features.hu-test-9",
+		)
+		self.assertIn("3 cards in 3 columns, each holding a title and a text", look)
+		self.assertIn("a left-aligned heading" if "left" in look else "a centred heading", look)
+
+	def test_round_portraits_are_named_and_their_photographs_are_not_counted_twice(self):
+		look = make(TestPicturesAndRepeatedGroups.TEAM, kind="team", name="team.hu-test-9")["look"]
+		self.assertIn("2 round portraits", look)
+		self.assertNotIn("photographs", look)
+		self.assertIn("for the people behind the business", look)
+
+	def test_nothing_of_the_source_is_in_the_line(self):
+		look = make(FEATURES, kind="feature-grid", name="features.hu-test-9")["look"]
+		for word in ("Features", "growth", "performance", "gray", "indigo"):
+			self.assertNotIn(word, look)
+		self.assertLess(len(look), 400)
+
+
+class TestAFaqHoldsItsAnswers(unittest.TestCase):
+	def test_questions_without_answers_are_not_a_faq(self):
+		bare = page(
+			'<div class="container mx-auto px-6 py-10"><h1 class="text-2xl font-semibold text-gray-800">Questions</h1>'
+			+ '<div><button class="flex"><h1 class="text-xl text-gray-700">A question one asks</h1></button></div>'
+			* 3
+			+ "</div>"
+		)
+		with self.assertRaises(importer.Refused) as caught:
+			make(bare, kind="faq", name="faq.mk-test-1")
+		self.assertIn("no answers", str(caught.exception))
+
+	def test_a_grid_of_titles_and_texts_is_one(self):
+		grid = page(
+			'<div class="container mx-auto px-6"><div class="grid grid-cols-2 gap-8">'
+			+ '<div><h2 class="text-xl font-semibold text-gray-800">A question one asks</h2><p class="text-gray-500">The answer, in a few words.</p></div>'
+			* 2
+			+ "</div></div>"
+		)
+		self.assertIn("2 items in 2 columns", make(grid, kind="faq", name="faq.mk-test-2")["look"])
+
+	def test_a_testimonial_with_a_round_photograph_is_not_a_team(self):
+		look = make(TestPicturesAndRepeatedGroups.TEAM, kind="testimonials", name="testimonials.hu-test-9")[
+			"look"
+		]
+		self.assertIn("each holding a round photograph", look)
+		self.assertNotIn("round portraits", look)
+
+
+class TestPushingToTheHub(unittest.TestCase):
+	def test_a_hub_that_says_it_is_asked_too_often_is_asked_again_after_a_wait(self):
+		answers = iter(
+			[
+				"not sent: the hub answered 429",
+				"not sent: the hub answered 429",
+				"draft cta.hu-test v1",
+				"draft cta.hu-two v1",
+			]
+		)
+		waits = []
+		import time
+
+		real_push, real_sleep = importer.capture.push_block, time.sleep
+		try:
+			importer.capture.push_block = lambda block: next(answers)
+			time.sleep = lambda seconds: waits.append(seconds)
+			sent = importer.push_all({"a": {"id": "cta.hu-test"}, "b": {"id": "cta.hu-two"}})
+		finally:
+			importer.capture.push_block, time.sleep = real_push, real_sleep
+		self.assertEqual({"a": "draft cta.hu-test v1", "b": "draft cta.hu-two v1"}, sent)
+		self.assertEqual([importer.PUSH_WAIT, importer.PUSH_WAIT], waits)
+
+	def test_it_gives_up_after_its_tries_and_says_so(self):
+		import time
+
+		real_push, real_sleep = importer.capture.push_block, time.sleep
+		calls = []
+		try:
+			importer.capture.push_block = lambda block: calls.append(1) or "not sent: the hub answered 429"
+			time.sleep = lambda seconds: None
+			sent = importer.push_all({"a": {"id": "cta.hu-test"}})
+		finally:
+			importer.capture.push_block, time.sleep = real_push, real_sleep
+		self.assertEqual(importer.PUSH_TRIES, len(calls))
+		self.assertIn("429", sent["a"])
 
 
 class TestWhatCannotBeABlock(unittest.TestCase):

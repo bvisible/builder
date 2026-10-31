@@ -1048,6 +1048,12 @@ class Importer:
 			],
 		}
 		demote_headings(tree)
+		if kind == "faq":
+			group = _largest_group(tree)
+			if not group or len(list(slot_nodes(group[1][0]))) < 2:
+				raise Refused(
+					"questions with no answers: each question of a FAQ block holds its answer (a folding question, or a title and a text)"
+				)
 		if kind in NEEDS_A_GROUP and not has_group(tree):
 			raise Refused(
 				"one card, not a section: nothing in it repeats (a block of this kind is a row or a grid of items)"
@@ -1071,7 +1077,7 @@ class Importer:
 			"id": block_id,
 			"title": title,
 			"kinds": [kind],
-			"look": capture.describe(tree, ground, self.photos).split(". Kept from")[0] + ".",
+			"look": describe_layout(tree, kind, ground, self.photos),
 			"photos": self.photos,
 			"form": False,
 			"ground": ground,
@@ -1559,6 +1565,162 @@ def slot_nodes(node: dict):
 		yield from slot_nodes(child)
 
 
+# what a kind of section is for, said the way the plan's own catalogue says it: the plan reads one line per block and picks by it
+SUITS = {
+	"hero": "the first screen of a page",
+	"cta": "an invitation to act, a closing band",
+	"feature-grid": "what the business offers, at a glance",
+	"figures": "proof in numbers",
+	"testimonials": "what clients say",
+	"team": "the people behind the business",
+	"pricing": "plans or fees side by side",
+	"faq": "practical questions, a reference page",
+	"gallery": "pictures that carry the section",
+	"cards": "articles, projects or products",
+	"product-row": "products in a row",
+	"two-column": "words beside a photograph",
+	"steps": "how it works, in order",
+}
+ROLE_NOUN = {
+	"item-title": "a title",
+	"item-text": "a text",
+	"text": "a text",
+	"caption": "a short line",
+	"label": "a small label",
+	"figure": "a figure",
+	"numeral": "a numeral",
+	"button": "a button",
+	"question": "a question",
+	"answer": "an answer",
+	"lead": "a text",
+	"heading": "a title",
+	"quote": "a quotation",
+}
+
+
+def _walk(node: dict, inherited: str = "left"):
+	"""(node, the text alignment it inherits) for each node of a tree, in reading order."""
+	align = str((node.get("style") or {}).get("textAlign") or inherited)
+	yield node, align
+	for child in node.get("c") or []:
+		yield from _walk(child, align)
+
+
+def _largest_group(node: dict):
+	"""The biggest set of children drawn the same way under one node (the cards of a grid, the entries of a list), as (parent, kids); None when nothing repeats."""
+	best = None
+	groups: dict = {}
+	for kid in node.get("c") or []:
+		if kid.get("c") or kid["el"] == "li":
+			groups.setdefault(signature(kid), []).append(kid)
+	for kids in groups.values():
+		if len(kids) >= 2 and (best is None or len(kids) > len(best[1])):
+			best = (node, kids)
+	for kid in node.get("c") or []:
+		below = _largest_group(kid)
+		if below and (best is None or len(below[1]) > len(best[1])):
+			best = below
+	return best
+
+
+def describe_layout(tree: dict, kind: str, ground: str, photos: int) -> str:
+	"""A line for the plan, from the structure only (nothing of the business, nothing of the source): how the section is laid out and what it suits.
+	The plan chooses a block by reading it, so a line that says only `a band` leaves the plan with the recipes it already knows."""
+	nodes = list(_walk(tree))
+	roles = Counter(
+		block_format.SLOT.match(n["text"]).group(1)
+		for n, _a in nodes
+		if block_format.SLOT.match(n.get("text") or "")
+	)
+	heading = next(((n, a) for n, a in nodes if (n.get("name") == "heading")), None)
+	big_head = heading is not None and capture._size(heading[0].get("style") or {}) >= 3.5
+	opening = ""
+	if heading:
+		opening = f"a {'centred' if heading[1] == 'center' else 'left-aligned'} {'large headline' if big_head else 'heading'}"
+		if roles.get("lead") or roles.get("text"):
+			opening += " and a short text"
+	group = _largest_group(tree)
+	body = ""
+	if group:
+		parent, kids = group
+		first = kids[0]
+		count = len(kids)
+		cls = {c for n, _a in _walk(first) for c in n.get("classes") or []}
+		if first["el"] == "details":
+			noun, shape = "folding questions", ""
+		else:
+			pill = any(
+				n["el"] == "img" and "pill" in str((n.get("style") or {}).get("borderRadius", ""))
+				for n, _a in _walk(first)
+			)
+			noun = (
+				("round portraits" if kind == "team" else "cards")
+				if pill
+				else "cards"
+				if "u-card" in cls or "u-card" in (first.get("classes") or [])
+				else "entries"
+				if first["el"] == "li"
+				else "items"
+			)
+			held = [
+				ROLE_NOUN[r]
+				for r in dict.fromkeys(block_format.SLOT.match(n["text"]).group(1) for n in slot_nodes(first))
+				if r in ROLE_NOUN
+			]
+			if any(n["el"] == "img" for n, _a in _walk(first)):
+				if not pill:
+					held.insert(0, "a photograph")
+				elif kind != "team":
+					held.insert(0, "a round photograph")
+			held = list(dict.fromkeys(held[:4]))
+			shape = (
+				", each holding " + (", ".join(held[:-1]) + " and " + held[-1] if len(held) > 1 else held[0])
+				if held
+				else ""
+			)
+		columns = re.search(r"repeat\((\d+)", str((parent.get("style") or {}).get("gridTemplateColumns", "")))
+		body = (
+			f"{count} {noun}"
+			+ (
+				" in one column"
+				if noun == "folding questions"
+				else f" in {columns.group(1)} columns"
+				if columns and noun != "round portraits"
+				else " side by side"
+				if parent.get("style", {}).get("display") in {"grid", "flex"}
+				else ""
+			)
+			+ shape
+		)
+	inside = {
+		id(n) for kid in (group[1] if group else []) for n, _a in _walk(kid)
+	}  # what the items of the group hold is said by the group
+	buttons = [n for n, _a in nodes if "u-btn" in (n.get("classes") or []) and id(n) not in inside]
+	extras = []
+	if buttons:
+		outlined = sum("u-btn--outline" in (b.get("classes") or []) for b in buttons)
+		if len(buttons) >= 2 and outlined:
+			extras.append("a button and a quieter one in outline")
+		elif len(buttons) >= 2:
+			extras.append(f"{len(buttons)} buttons")
+		else:
+			extras.append("a button")
+	figures = roles.get("figure", 0)
+	if figures and not group:
+		extras.append(f"{figures} large figures")
+	if photos and not any(n["el"] == "img" for kid in (group[1] if group else []) for n, _a in _walk(kid)):
+		extras.append("a photograph" if photos == 1 else f"{photos} photographs")
+	parts = [p for p in [opening, body] if p]
+	line = " over ".join(parts) if opening and body else (opening or body or "a single band")
+	if extras:
+		line += ", with " + " and ".join(extras)
+	ground_phrase = {"plain": "on the plain ground", "tint": "on a tinted ground", "deep": "on a deep band"}[
+		ground
+	]
+	suits = SUITS.get(kind)
+	return f"{line}; {ground_phrase}" + (f"; for {suits}." if suits else ".")
+
+
 # the kinds of section that are a row or a grid of items: a component that is one card is not one
 NEEDS_A_GROUP = {"cards", "product-row"}
 
@@ -1603,6 +1765,27 @@ def without_duplicates(made: dict[str, dict], refused: dict[str, str]) -> None:
 			del made[label]
 		else:
 			seen[print_] = label
+
+
+PUSH_WAIT = 30  # seconds between two tries when the hub says it is asked too often
+PUSH_TRIES = 8
+
+
+def push_all(made: dict[str, dict]) -> dict[str, str]:
+	"""Sends each block to the hub as a draft, one line of what happened per block. The hub limits how often a publisher may ask (HTTP 429): the block
+	is tried again after a wait, so that a long import is not half sent."""
+	import time
+
+	sent: dict[str, str] = {}
+	for label, block in made.items():
+		line = ""
+		for _try in range(PUSH_TRIES):
+			line = capture.push_block(block)
+			if "429" not in line:
+				break
+			time.sleep(PUSH_WAIT)
+		sent[label] = line
+	return sent
 
 
 def import_markup(markup: str, *, kind: str, block_id: str, title: str, source_note: str) -> dict:
@@ -1663,7 +1846,7 @@ def import_hyperui(categories=None, push: bool = False) -> dict:
 				continue
 			made[label] = block
 	without_duplicates(made, refused)
-	sent = {label: capture.push_block(block) for label, block in made.items()} if push else {}
+	sent = push_all(made) if push else {}
 	return {"blocks": {label: block["id"] for label, block in made.items()}, "refused": refused, "sent": sent}
 
 
@@ -1747,7 +1930,7 @@ def import_flowbite(components=None, push: bool = False) -> dict:
 			except Exception as e:
 				refused[label] = f"{title}: not read ({type(e).__name__})"
 	without_duplicates(made, refused)
-	sent = {label: capture.push_block(block) for label, block in made.items()} if push else {}
+	sent = push_all(made) if push else {}
 	return {"blocks": {label: block["id"] for label, block in made.items()}, "refused": refused, "sent": sent}
 
 
@@ -1809,7 +1992,7 @@ def import_launch_ui(folder: str, sections=None, push: bool = False) -> dict:
 		except Exception as e:
 			refused[section] = f"not read ({type(e).__name__})"
 	without_duplicates(made, refused)
-	sent = {label: capture.push_block(block) for label, block in made.items()} if push else {}
+	sent = push_all(made) if push else {}
 	return {"blocks": {label: block["id"] for label, block in made.items()}, "refused": refused, "sent": sent}
 
 
@@ -1926,5 +2109,5 @@ def import_meraki(categories=None, push: bool = False) -> dict:
 			except Exception as e:
 				refused[label] = f"not read ({type(e).__name__})"
 	without_duplicates(made, refused)
-	sent = {label: capture.push_block(block) for label, block in made.items()} if push else {}
+	sent = push_all(made) if push else {}
 	return {"blocks": {label: block["id"] for label, block in made.items()}, "refused": refused, "sent": sent}
