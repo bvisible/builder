@@ -656,6 +656,125 @@ class TestAPictureThatFillsItsCell(unittest.TestCase):
 			self.assertEqual("contain", image["style"]["objectFit"])
 
 
+# what launch-ui renders (written here, in its idioms): a gradient button, a gradient text, a glow, a picture and its dark twin, `max-w-container`
+LAUNCH_HERO = page(
+	"""
+<section data-slot="section" class="line-b px-4 py-12 sm:py-24 md:py-32 group relative overflow-hidden fade-bottom">
+  <div class="max-w-container relative z-10 mx-auto flex flex-col items-center gap-6 text-center sm:gap-8">
+    <h1 class="animate-appear from-foreground to-foreground relative z-10 inline-block bg-linear-to-r bg-clip-text text-4xl font-semibold text-transparent drop-shadow-2xl sm:text-6xl">A headline for the product of the day</h1>
+    <p class="text-md animate-appear text-muted-foreground max-w-[740px] font-medium opacity-0 delay-100 sm:text-xl">A line that says what it does and for whom it does it, in a few words.</p>
+    <div class="animate-appear relative z-10 flex justify-center gap-4 opacity-0 delay-300">
+      <a href="/start" class="inline-flex items-center justify-center gap-2 text-sm font-medium text-primary-foreground shadow-sm hover:from-primary/70 bg-linear-to-b from-primary/60 to-primary/100 dark:from-primary/100 border-t-primary h-10 rounded-md px-5">Get started</a>
+      <a href="/code" class="inline-flex items-center justify-center gap-2 text-sm font-medium glass-4 text-foreground h-10 rounded-md border px-5">Source</a>
+    </div>
+    <div class="relative w-full pt-12">
+      <img src="/shot-light.png" alt="A screen" width="1248" height="765" class="w-full block dark:hidden">
+      <img src="/shot-dark.png" alt="A screen" width="1248" height="765" class="w-full hidden dark:block">
+    </div>
+  </div>
+  <div class="absolute top-0 left-0 h-full w-full translate-y-[1rem] opacity-80 transition-all duration-500">
+    <div data-slot="glow" class="absolute w-full bottom-0"><div class="from-brand/30 to-brand-foreground/0 absolute left-1/2 h-[256px] w-[60%] -translate-x-1/2 scale-[2.5] rounded-[50%] bg-radial from-10% to-60% opacity-20"></div></div>
+  </div>
+</section>
+"""
+)
+
+
+class TestLaunchUi(unittest.TestCase):
+	def setUp(self):
+		self.block = importer.import_launch_ui_markup("hero", LAUNCH_HERO)
+		self.tree = self.block["tree"]
+
+	def test_it_is_a_block_that_lints_with_the_words_and_the_picture_as_slots(self):
+		errors, warnings = block_format.lint(
+			self.tree, block_id=self.block["id"], kinds=["hero"], photos=self.block["photos"], motion="None"
+		)
+		self.assertEqual(([], []), (errors, warnings))
+		self.assertEqual("hero.lu-hero", self.block["id"])
+		self.assertEqual("Hero (Launch UI)", self.block["title"])
+		self.assertNotIn("headline", repr(self.tree))
+
+	def test_a_glow_and_an_animation_are_not_a_block_s(self):
+		blob = repr(self.tree)
+		for word in ("glow", "radial", "animate", "opacity", "translate", "scale", "gradient", "transparent"):
+			self.assertNotIn(word, blob)
+		self.assertEqual(
+			[],
+			[
+				n
+				for n in walk(self.tree)
+				if "absolute" in repr(n.get("style", {})) and "bottom" in n.get("style", {})
+			],
+		)
+
+	def test_the_small_dot_of_a_timeline_is_not_a_veil(self):
+		dot = make(
+			role_page(
+				'<ol class="relative border-s border-default"><li class="mb-10 ms-4"><div class="absolute w-3 h-3 bg-neutral-secondary-medium rounded-full -start-1.5 border border-buffer"></div><h3 class="text-lg text-heading">A step of the story</h3></li></ol>'
+			),
+			kind="steps",
+			name="steps.lu-test-1",
+		)
+		self.assertEqual(
+			1, len(find(dot["tree"], el="div", name="box")) + len(find(dot["tree"], el="div", name="card"))
+		)
+
+	def test_the_picture_with_a_dark_twin_is_one_picture(self):
+		images = find(self.tree, el="img")
+		self.assertEqual(1, len(images))
+		self.assertEqual(1, self.block["photos"])
+		self.assertEqual("{{photo.0}}", images[0]["attrs"]["src"])
+
+	def test_the_first_frame_of_an_entrance_animation_is_not_kept(self):
+		# `opacity-0` + `animate-appear`: invisible until the animation plays; without the animation it would be invisible for good
+		for node in walk(self.tree):
+			self.assertNotIn("opacity", node.get("style", {}))
+		self.assertEqual("{{ground.muted}}", find(self.tree, name="lead")[0]["style"]["color"])
+
+	def test_the_text_of_a_gradient_heading_is_ink_not_transparent(self):
+		heading = find(self.tree, name="heading")[0]
+		self.assertEqual("{{ground.ink}}", heading["style"]["color"])
+		self.assertNotIn("backgroundColor", heading["style"])
+
+	def test_a_button_with_a_gradient_is_the_primary_one_and_a_glass_one_the_outlined_one(self):
+		buttons = find(self.tree, el="a")
+		self.assertEqual(
+			[["u-btn", "u-btn--primary"], ["u-btn", "u-btn--outline"]], [b["classes"] for b in buttons]
+		)
+
+	def test_the_width_of_the_library_is_the_sites_container_and_nothing_clips(self):
+		self.assertEqual("{{container}}", find(self.tree, name="head")[0]["style"]["maxWidth"])
+		self.assertNotIn("overflow", repr(self.tree))
+
+	def test_the_source_and_its_licence_travel_with_the_block(self):
+		for part in (
+			"launch-ui",
+			"components/sections/hero/default.tsx",
+			"b0d4d5bce9",
+			"MIT licence",
+			"Copyright (c) 2024 Mikolaj Dobrucki",
+		):
+			self.assertIn(part, self.block["notes"])
+
+	def test_every_section_is_a_kind_the_plan_knows(self):
+		from builder.site_ai.nora.site_plan import SECTION_KINDS
+
+		for section, kind in importer.LAUNCH_UI_KINDS.items():
+			self.assertIn(kind, SECTION_KINDS, section)
+
+	def test_the_folder_of_rendered_sections_is_read_and_what_is_missing_is_said(self):
+		import tempfile
+
+		with tempfile.TemporaryDirectory() as folder:
+			with open(f"{folder}/hero.html", "w", encoding="utf-8") as f:
+				f.write(LAUNCH_HERO)
+			done = importer.import_launch_ui(folder, ["hero", "faq"], push=False)
+		self.assertEqual({"hero": "hero.lu-hero"}, done["blocks"])
+		self.assertEqual(["faq"], list(done["refused"]))
+		self.assertIn("not rendered", done["refused"]["faq"])
+		self.assertEqual({}, done["sent"])
+
+
 class TestFlowbite(unittest.TestCase):
 	def test_the_examples_of_a_page_are_read_with_their_titles_and_no_shortcode(self):
 		examples = importer.flowbite_examples(FLOWBITE_PAGE)

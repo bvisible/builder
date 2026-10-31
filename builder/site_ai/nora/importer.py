@@ -22,7 +22,7 @@ Pure Python (no Frappe at import), so the tests run anywhere. Fetching the sourc
 import html
 import re
 from collections import Counter
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 from html.parser import HTMLParser
 
 from builder.site_ai.nora import block_format, capture
@@ -370,6 +370,10 @@ SEMANTIC = {
 		"accent": PALE,
 		"primary": BRAND,
 		"destructive": BRAND,
+		"border": PAPER,
+		"input": PAPER,
+		"foreground": DEEP,
+		"brand-foreground": BRAND_PALE,
 	},
 	"border": {
 		# Flowbite
@@ -601,7 +605,11 @@ STATIC = {
 # what a class that only decorates (a transition, a cursor, a focus ring) or only names a font says nothing to a block
 IGNORED = re.compile(
 	r"^(?:transition(?:-.+)?|duration-.+|ease-.+|delay-.+|cursor-.+|select-.+|pointer-events-.+|antialiased|subpixel-antialiased|font-(?:sans|serif|mono)"
-	r"|outline(?:-.+)?|group|peer|will-change-.+|appearance-.+|scroll-.+|dark|stroke-.+|fill-.+|ring-offset-.+|object-(?:top|bottom|left|right)|box-(?:border|content))$"
+	r"|outline(?:-.+)?|group|peer|will-change-.+|appearance-.+|scroll-.+|dark|stroke-.+|fill-.+|ring-offset-.+|object-(?:top|bottom|left|right)|box-(?:border|content)"
+	# what only decorates (a glow, a mask, a gradient text, a transform, an animation) says nothing to a block
+	r"|animate-.+|delay-\d+|text-transparent|bg-radial.*|bg-conic.*|drop-shadow(?:-.+)?|blur(?:-.+)?|backdrop-blur(?:-.+)?|mix-blend-.+|isolate"
+	r"|fade-(?:top|bottom|x|y|left|right)(?:-lg)?|line-(?:b|t|x|y)|-?translate-[xyz]-.+|-?scale(?:-[xy])?-.+|-?rotate-.+|skew-.+"
+	r"|(?:from|via|to)-\d+%|auto-rows-fr|rounded-\[.+\])$"
 )
 # a property that goes back to this, not to `initial`, when a smaller screen does not set it
 RESET_TO = {"display": "block", "position": "static", "flexDirection": "row", "overflow": "visible"}
@@ -649,6 +657,22 @@ def utility(u: str) -> dict | None:
 	negative = u.startswith("-")
 	body = u[1:] if negative else u
 
+	if body in {"max-w-container", "container"}:
+		return {"maxWidth": "{{container}}"}
+	if body == "bg-clip-text":  # a gradient that is the colour of a text, not a surface
+		return {"__clip_text": True}
+	if body == "text-md":
+		return {"fontSize": "1rem", "lineHeight": "1.5"}
+	if re.fullmatch(r"glass-\d", body):  # a surface with a rule round it and a gradient in it: a card
+		return {f"border{side}Width": "1px" for side in ("Top", "Right", "Bottom", "Left")} | {
+			"borderStyle": "solid"
+		}
+	if re.fullmatch(r"bg-(?:linear|gradient)-.+", body):
+		return {"__gradient": True}
+	found = re.fullmatch(r"(from|via|to)-(.+)", body)
+	if found:
+		stop = colour("bg", found.group(2))
+		return {f"__{found.group(1)}": stop} if stop else {}
 	found = re.fullmatch(r"(p|px|py|pt|pr|pb|pl|ps|pe|m|mx|my|mt|mr|mb|ml|ms|me)-(.+)", body)
 	if found:
 		kind, value = found.groups()
@@ -868,6 +892,19 @@ def parse_classes(classes: list[str]):
 			dropped.append(cls)
 			continue
 		levels[level].update(props)
+	for props in levels.values():
+		stop = props.pop("__from", None) or props.pop("__via", None) or props.pop("__to", None)
+		props.pop("__via", None)
+		props.pop("__to", None)
+		if (
+			props.get("opacity") == "0"
+		):  # the first frame of an entrance animation: a text nobody sees says nothing to a block
+			del props["opacity"]
+		clip_text = props.pop("__clip_text", None)
+		if props.pop("__gradient", None) and stop and not clip_text and "backgroundColor" not in props:
+			props["backgroundColor"] = replace(
+				stop, alpha=1.0
+			)  # a gradient of one colour: the button of a library is that colour
 	return levels, dropped, ignored
 
 
@@ -895,6 +932,8 @@ def cleaned(style: dict) -> dict:
 
 
 SHELL = {
+	"position",
+	"overflow",
 	"backgroundColor",
 	"color",
 	"paddingTop",
@@ -1163,7 +1202,7 @@ class Importer:
 			tag = "div"  # the block's own section is the only one
 		if tag not in block_format.TAGS:
 			raise Refused(f"`<{el.tag}>` is not a tag a block may hold")
-		if "sr-only" in el.classes:
+		if "sr-only" in el.classes or self.is_decoration(el):
 			return None
 		levels, dropped, ignored = parse_classes(el.classes)
 		self.dropped.update(dropped)
@@ -1177,6 +1216,21 @@ class Importer:
 
 		if el.tag == "br":
 			return None
+		if all(merged(levels, width).get("display") == "none" for width in (DESKTOP, TABLET, PHONE)):
+			return None  # hidden on every screen (the dark twin of a picture that has a light one)
+		if tag != "img" and not any(isinstance(c, Element) and c.tag == "img" for c in el.children):
+			# a box that clips is a box a reveal never plays under; only the box of a picture needs to clip it
+			levels = {
+				level: {
+					k: v
+					for k, v in props.items()
+					if not (
+						k in {"overflow", "overflowX", "overflowY"}
+						and props[k] in {"hidden", "auto", "scroll"}
+					)
+				}
+				for level, props in levels.items()
+			}
 		desktop = merged(levels, DESKTOP)
 		parent_levels = levels
 		kids_text = self.is_text_run(el)
@@ -1317,6 +1371,27 @@ class Importer:
 			for k in ("el", "name", "classes", "ground", "style", "t_style", "m_style", "attrs", "text", "c")
 			if k in node
 		}
+
+	@staticmethod
+	def is_decoration(el: Element) -> bool:
+		"""A glow, a beam, a mask: an element that is there to be looked at and says nothing (`data-slot="glow"`, `aria-hidden`, or an absolute box with no
+		word and no picture in it)."""
+		if (
+			el.attrs.get("data-slot") in {"glow", "beam", "layout-lines"}
+			or el.attrs.get("aria-hidden") == "true"
+		):
+			return True
+		if (
+			"absolute" in el.classes
+			and not clean(text_of(el))
+			and not any(c.tag == "img" for c in descendants(el))
+		):
+			# an empty box laid over its parent (a veil, a glow), not the small dot of a timeline
+			return any(
+				c in {"w-full", "h-full", "size-full", "pointer-events-none"} or c.startswith("inset-")
+				for c in el.classes
+			)
+		return False
 
 	def is_text_run(self, el: Element) -> bool:
 		"""Whether an element holds words and inline things only (a paragraph with a `<strong>`), so that it is one text, not a group."""
@@ -1637,6 +1712,68 @@ def import_flowbite(components=None, push: bool = False) -> dict:
 				refused[label] = f"{title}: {e}"
 			except Exception as e:
 				refused[label] = f"{title}: not read ({type(e).__name__})"
+	without_duplicates(made, refused)
+	sent = {label: capture.push_block(block) for label, block in made.items()} if push else {}
+	return {"blocks": {label: block["id"] for label, block in made.items()}, "refused": refused, "sent": sent}
+
+
+# ---------------------------------------------------------------- launch-ui
+
+LAUNCH_UI = {
+	"name": "launch-ui",
+	"url": "https://github.com/launch-ui/launch-ui",
+	"licence": "MIT",
+	"holder": "Mikolaj Dobrucki",
+	"ref": "b0d4d5bce91d13523450416ce1797109076b2787",
+}
+# the sections of launch-ui that are a section of a site (its navbar and its footer are the chrome of a site, not one of its sections)
+LAUNCH_UI_KINDS = {
+	"hero": "hero",
+	"cta": "cta",
+	"items": "feature-grid",
+	"faq": "faq",
+	"pricing": "pricing",
+	"stats": "figures",
+	"logos": "brand-row",
+}
+
+
+def launch_ui_note(section: str, source: dict = LAUNCH_UI) -> str:
+	return (
+		f"Imported from {source['name']} (components/sections/{section}/default.tsx at {source['ref'][:10]}, its components run as written and "
+		f"rendered to static HTML, scripts/import-launch-ui), {source['licence']} licence, Copyright (c) 2024 {source['holder']}, {source['url']}."
+	)
+
+
+def import_launch_ui_markup(section: str, markup: str) -> dict:
+	kind = LAUNCH_UI_KINDS[section]
+	return import_markup(
+		markup,
+		kind=kind,
+		block_id=f"{capture.family_of(kind)}.lu-{section}",
+		title=f"{kind.replace('-', ' ').capitalize()} (Launch UI)",
+		source_note=launch_ui_note(section),
+	)
+
+
+def import_launch_ui(folder: str, sections=None, push: bool = False) -> dict:
+	"""For `bench execute`: the sections of launch-ui, rendered to HTML in `folder` (scripts/import-launch-ui/render.mjs, one `<section>.html` each),
+	that can be blocks, and why the others cannot; with `push` they go to the hub as drafts."""
+	import os
+
+	made: dict[str, dict] = {}
+	refused: dict[str, str] = {}
+	for section in sections or LAUNCH_UI_KINDS:
+		path = os.path.join(folder, f"{section}.html")
+		try:
+			with open(path, encoding="utf-8") as f:
+				made[section] = import_launch_ui_markup(section, f.read())
+		except FileNotFoundError:
+			refused[section] = "not rendered (no HTML for it in the folder)"
+		except Refused as e:
+			refused[section] = str(e)
+		except Exception as e:
+			refused[section] = f"not read ({type(e).__name__})"
 	without_duplicates(made, refused)
 	sent = {label: capture.push_block(block) for label, block in made.items()} if push else {}
 	return {"blocks": {label: block["id"] for label, block in made.items()}, "refused": refused, "sent": sent}

@@ -1,0 +1,17 @@
+{
+  "//": "//// Neoffice — added file (no upstream equivalent): renders the sections of launch-ui (MIT) to static HTML for builder/site_ai/nora/importer.py",
+  "name": "import-launch-ui",
+  "private": true,
+  "type": "module",
+  "dependencies": {
+    "@radix-ui/react-icons": "1.3.2",
+    "@radix-ui/react-slot": "1.5.0",
+    "class-variance-authority": "0.7.1",
+    "clsx": "2.1.1",
+    "esbuild": "0.25.12",
+    "lucide-react": "1.66.0",
+    "react": "19.2.8",
+    "react-dom": "19.2.8",
+    "tailwind-merge": "3.7.0"
+  }
+}
