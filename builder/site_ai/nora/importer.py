@@ -210,10 +210,10 @@ def parse(markup: str) -> Element:
 
 
 def text_of(element) -> str:
-	"""The words of an element, one line (an `<svg>` and a `<br>` say nothing, a `<br>` is a space)."""
+	"""The words of an element, one line (an `<svg>` and a `<br>` say nothing, a `<br>` is a space, a `sr-only` text is for screen readers only)."""
 	if isinstance(element, str):
 		return element
-	if element.tag in DROPPED_TAGS:
+	if element.tag in DROPPED_TAGS or "sr-only" in element.classes:
 		return ""
 	if element.tag == "br":
 		return " "
@@ -648,18 +648,27 @@ def utility(u: str) -> dict | None:
 
 	found = re.fullmatch(r"(?:border|ring)(?:-(x|y|t|r|b|l))?(?:-(\d+))?", body)
 	if found:
-		width = f"{found.group(2) or 1}px" if (found.group(2) or "0") != "0" else "0"
+		digits = found.group(2)
+		width = "1px" if digits is None else "0" if int(digits) == 0 else f"{digits}px"
 		names = {
 			None: ("Top", "Right", "Bottom", "Left"),
 			"x": ("Left", "Right"),
 			"y": ("Top", "Bottom"),
 		}.get(found.group(1)) or (SIDES[found.group(1)],)
-		out = {f"border{side}Width": width for side in names}
+		out = {"borderWidth": "0"} if found.group(1) else {}
+		out.update({f"border{side}Width": width for side in names})
 		out["borderStyle"] = "solid"
 		return out
 	found = re.fullmatch(r"divide-(x|y)(?:-(\d+))?", body)
 	if found:
-		return {f"__divide_{found.group(1)}": f"{found.group(2) or 1}px" if found.group(2) != "0" else "0"}
+		digits = found.group(2)
+		return {
+			f"__divide_{found.group(1)}": "1px"
+			if digits is None
+			else "0"
+			if int(digits) == 0
+			else f"{digits}px"
+		}
 
 	found = re.fullmatch(r"(text|bg|border|ring|divide)-(.+)", body)
 	if found:
@@ -978,9 +987,9 @@ class Importer:
 				elif key == "__space_x":
 					rule[level]["marginLeft"] = value
 				elif key == "__divide_y":
-					rule[level].update({"borderTopWidth": value, "borderStyle": "solid"})
+					rule[level].update({"borderWidth": "0", "borderTopWidth": value, "borderStyle": "solid"})
 				elif key == "__divide_x":
-					rule[level].update({"borderLeftWidth": value, "borderStyle": "solid"})
+					rule[level].update({"borderWidth": "0", "borderLeftWidth": value, "borderStyle": "solid"})
 				elif key == "__divide_colour":
 					rule[level]["borderColor"] = value
 		return rule
@@ -1144,7 +1153,10 @@ class Importer:
 		if tag == "a" and is_text and self.looks_like_button(el):
 			return "button"
 		if tag in {"div", "article", "li", "blockquote", "figure", "a"} and "borderRadius" in desktop:
-			bordered = any(k.startswith("border") and k.endswith("Width") for k in desktop)
+			bordered = all(
+				str(desktop.get(f"border{side}Width", "0")) != "0"
+				for side in ("Top", "Right", "Bottom", "Left")
+			)
 			if bordered or "boxShadow" in desktop:
 				return "card"
 		return None

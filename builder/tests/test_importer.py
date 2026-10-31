@@ -390,6 +390,45 @@ class TestSpacingBetweenChildren(unittest.TestCase):
 		self.assertEqual(rows[1]["style"]["borderColor"], "{{ground.hair}}")
 
 
+class TestBordersAndHiddenWords(unittest.TestCase):
+	def test_a_border_on_one_side_leaves_the_others_at_zero(self):
+		# a page without a reset draws a `solid` border at `medium` on the sides nobody set
+		self.assertEqual(
+			importer.utility("border-t"),
+			{"borderWidth": "0", "borderTopWidth": "1px", "borderStyle": "solid"},
+		)
+		self.assertEqual(
+			importer.utility("border"),
+			{
+				"borderTopWidth": "1px",
+				"borderRightWidth": "1px",
+				"borderBottomWidth": "1px",
+				"borderLeftWidth": "1px",
+				"borderStyle": "solid",
+			},
+		)
+
+	def test_a_divider_leaves_the_other_sides_at_zero_too(self):
+		markup = page("""<div class="mx-auto max-w-7xl px-4 py-8"><div class="divide-y divide-gray-200 rounded-lg border border-gray-200">
+		<p class="p-4 text-gray-700">One</p><p class="p-4 text-gray-700">Two</p></div></div>""")
+		block = make(markup, kind="cards", name="cards.hu-test-1")
+		second = find(block["tree"], name="card")[0]["c"][1]
+		self.assertEqual((second["style"]["borderWidth"], second["style"]["borderTopWidth"]), ("0", "1px"))
+
+	def test_a_rounded_box_with_a_side_border_only_is_not_a_card(self):
+		markup = page(
+			'<div class="mx-auto max-w-7xl px-4 py-8"><div class="rounded-lg border-b p-6"><p class="text-gray-700">Some words in a box</p></div></div>'
+		)
+		self.assertEqual(find(make(markup, kind="cards", name="cards.hu-test-1")["tree"], name="card"), [])
+
+	def test_words_for_screen_readers_are_not_the_blocks_words(self):
+		markup = page("""<div class="mx-auto max-w-7xl px-4 py-8"><h3 class="text-lg font-bold text-gray-900">Anna</h3>
+		<a href="#" class="block"><span class="sr-only">Instagram</span><svg class="size-5"></svg></a></div>""")
+		block = make(markup, kind="team", name="team.hu-test-1")
+		self.assertEqual([n["el"] for n in walk(block["tree"]["c"][0])][1:], ["h3"])
+		self.assertNotIn("Instagram", repr(block["tree"]))
+
+
 class TestWhatCannotBeABlock(unittest.TestCase):
 	def refused(self, markup, **kw):
 		with self.assertRaises(importer.Refused) as caught:
