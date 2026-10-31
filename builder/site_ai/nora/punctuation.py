@@ -78,6 +78,35 @@ def french_elisions(blocks: list) -> int:
     return edits
 
 
+# //// Neoffice — a closing apostrophe the model left on a text that never opened one (2026-10-31): the six descriptions of a garage's
+# //// services list each ended in `.'` ("…des trains.'"). A quote the text opened has an apostrophe after a space, a bracket or at its start (an
+# //// elision, "l'expertise", has a letter before it), so a text with no such opening keeps nothing the closing one could close.
+STRAY_END = re.compile(r"(?<=[.!?…])'((?:\s*</[^>]+>)*\s*)$")
+OPENING_QUOTE = re.compile(r"(?:^|[\s(\[«>])['‘]")
+
+
+def _drop_stray_quote(html: str) -> str:
+    text = "".join(part for part in TAG.split(html) if not part.startswith("<"))
+    if not STRAY_END.search(text) or OPENING_QUOTE.search(text):
+        return html
+    return STRAY_END.sub(r"\1", html, count=1)
+
+
+def stray_quotes(blocks: list) -> int:
+    """The closing apostrophe at the end of a text that has no opening one, in every text block (outside Jinja and SVG markup). Returns the
+    number of blocks changed."""
+    edits = 0
+    for block in _walk(blocks):
+        html = block.get("innerHTML")
+        if not isinstance(html, str) or not html or "{%" in html or "{{" in html or "<svg" in html:
+            continue
+        fixed = _drop_stray_quote(html)
+        if fixed != html:
+            block["innerHTML"] = fixed
+            edits += 1
+    return edits
+
+
 def _elide_values(value):
     if isinstance(value, str):
         return _elide(value)

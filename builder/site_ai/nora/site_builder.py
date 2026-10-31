@@ -2310,7 +2310,12 @@ def build_site(ctx, spec: dict) -> str:
     )
     from builder.site_ai.nora.placeholders import neutral_named_slots, neutral_placeholders
     from builder.site_ai.nora.prompts import page_profile
-    from builder.site_ai.nora.punctuation import french_elisions, french_spacing, script_elisions
+    from builder.site_ai.nora.punctuation import (
+        french_elisions,
+        french_spacing,
+        script_elisions,
+        stray_quotes,
+    )
     from builder.site_ai.nora.typography import cap_font_sizes
 
     started = time.time()
@@ -3343,6 +3348,10 @@ def build_site(ctx, spec: dict) -> str:
                     pinned = pin_maps(blocks, contact_data.get("address") or "")
                     if pinned:
                         ai_log("info", "Maps pinned", page=page["title"], edits=pinned)
+                    # //// Neoffice — nor a closing apostrophe the model left on a text that never opened one (punctuation.py, 2026-10-31)
+                    dropped = stray_quotes(blocks)
+                    if dropped:
+                        ai_log("info", "Stray closing quotes removed", page=page["title"], blocks=dropped)
                     # nor the spacing of French punctuation: see punctuation.py
                     if lang_code == "fr":
                         spaced = french_spacing(blocks)
