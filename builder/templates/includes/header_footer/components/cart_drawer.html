@@ -585,6 +585,8 @@
 			if (data.message && data.message.doc) {
 				const doc = data.message.doc;
 				cartState.items = doc.items || [];
+				//// Neoffice — multilingual lot 5: the lines' names in the language of the page (webshop's display_names)
+				cartState.names = data.message.display_names || {};
 				cartState.total = doc.grand_total || 0;
 				//// Neoffice — the subtotal is the amount BEFORE a coupon on the grand
 				//// total: ERPNext folds that discount into net_total, so the drawer
@@ -694,7 +696,7 @@
 			// Quotation Item rows expose `image` (copied from the Item); website_image
 			// is only present on enriched payloads. Try all of them before initials.
 			const image = item.website_image || item.image || item.thumbnail || '';
-			const name = item.item_name || '';
+			const name = (cartState.names && cartState.names[item.item_code]) || item.item_name || '';
 			const brand = item.brand || '';
 			const price = item.rate || 0;
 			const qty = item.qty || 1;
