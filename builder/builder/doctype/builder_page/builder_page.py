@@ -828,6 +828,9 @@ class BuilderPage(WebsiteGenerator):
 		context["__content"] = rendered_content
 
 	def set_meta_tags(self, context, page_data=None):
+		# //// Neoffice — page_text renders metatags in the request's language, by block id
+		# //// (28970a28 "feat(translation): a page and the site chrome are shown in the
+		# //// language of the request by projection (multilingual lot 4, neoffice-maintenance#2032)")
 		from builder.translation import page_text
 
 		if not page_data:
