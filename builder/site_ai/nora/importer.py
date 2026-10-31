@@ -1,0 +1,1324 @@
+# //// Neoffice — added file (no upstream equivalent): a component written in Tailwind becomes a draft block of the Builder Hub.
+"""The hub's library grows from what other people drew well, not only from what a site once wrote: an MIT-licensed component (HyperUI, shadcn/ui,
+Flowbite…) is read as markup and written again as a block (block_format.py), in the language of the site generator.
+
+What the import keeps, and what it does not:
+- the STRUCTURE is kept: the tags, the grid, the flex rows, the spacing, the breakpoints (`sm:` `md:` `lg:` become the block's `t_style`/`m_style`);
+- the DESIGN SYSTEM is applied, nothing of the source's look survives: a Tailwind palette colour becomes the token of the role it plays on its
+  ground (`text-gray-900` is `{{ground.ink}}`, `text-gray-500` `{{ground.muted}}`, `bg-gray-100` `{{tint}}`, `border-gray-200` `{{ground.hair}}`,
+  `text-indigo-700` `{{ground.accent}}`), a dark or coloured surface is a node on the `deep` ground, `rounded-*` and `shadow-*` are the site's
+  `--radius-*` and `--shadow-*`, a button is a `u-btn`, a bordered and rounded box a `u-card`, a font the site's own;
+- every word becomes a SLOT, of the length of the source's (`Lorem ipsum…` is only a measure), every picture a `{{photo.N}}`, every link the
+  site's `{{cta_href}}`; an icon (inline SVG) is dropped, a block has no tag for it;
+- a component that cannot be a block is refused with the reason: a form, a table, a `<details>`, a script, more than six pictures, a gradient or a
+  background image, and anything the linter (block_format.lint) refuses.
+
+The result is a DRAFT of the hub (capture.push_block), never a published block: a person reads it in the hub's desk and publishes it. The source,
+its licence and its copyright holder are written in the block's notes (MIT asks that the notice goes with copies of the work).
+
+Pure Python (no Frappe at import), so the tests run anywhere. Fetching the source and sending the draft are the only parts that touch the network."""
+
+import html
+import re
+from collections import Counter
+from dataclasses import dataclass
+from html.parser import HTMLParser
+
+from builder.site_ai.nora import block_format, capture
+from builder.site_ai.nora import recipes as section_recipes
+
+# ---------------------------------------------------------------- the sources
+
+# every source is MIT: the licence text names the holder, the notes of a block carry both. Pinned to a commit, so that an import can be done again.
+HYPERUI = {
+	"name": "HyperUI",
+	"url": "https://github.com/markmead/hyperui",
+	"licence": "MIT",
+	"holder": "Mark Mead",
+	"ref": "637323c8d3046645ac5f28edc2074d18f22a2b94",
+	"raw": "https://raw.githubusercontent.com/markmead/hyperui/{ref}/public/examples/marketing/{category}/{number}.html",
+}
+# a HyperUI category of the marketing set, and the kind of section its components are
+HYPERUI_KINDS = {
+	"ctas": "cta",
+	"feature-grids": "feature-grid",
+	"stats": "figures",
+	"testimonials": "testimonials",
+	"team-sections": "team",
+	"logo-clouds": "brand-row",
+	"sections": "two-column",
+	"pricing": "pricing",
+	"faqs": "faq",
+}
+HYPERUI_COUNT = {
+	"ctas": 4,
+	"feature-grids": 4,
+	"stats": 3,
+	"testimonials": 3,
+	"team-sections": 3,
+	"logo-clouds": 4,
+	"sections": 4,
+	"pricing": 2,
+	"faqs": 3,
+}
+
+MAX_UNKNOWN_CLASSES = 6
+# a quantity written in digits, with a currency in front or a unit behind ($4.8m, 98%, 1 200+)
+FIGURE_TEXT = re.compile(r"^\s*[$€£]?\s*\d[\d\s.,'’]*\s*[+%a-zA-Z/]{0,4}\s*$")
+SHELL_TAGS = {"div", "section", "main", "article"}
+SECTION_PADDING = "6rem 0"
+SECTION_PADDING_PHONE = "4rem 0"
+
+
+class Refused(Exception):
+	"""A component that cannot be a block, with the reason."""
+
+
+# ---------------------------------------------------------------- the markup
+
+
+VOID = {"area", "base", "br", "col", "embed", "hr", "img", "input", "link", "meta", "source", "track", "wbr"}
+# the tags that are read and thrown away, and the ones that make the whole component impossible
+DROPPED_TAGS = {"svg", "script", "style", "template", "noscript", "link", "meta", "title", "path", "use"}
+REFUSED_TAGS = {
+	"form": "a form is a live component, not a block",
+	"input": "a form field is not a tag a block may hold",
+	"select": "a form field is not a tag a block may hold",
+	"textarea": "a form field is not a tag a block may hold",
+	"table": "a table is not a tag a block may hold",
+	"details": "a `<details>` (a question that opens) is not a tag a block may hold yet",
+	"summary": "a `<details>` (a question that opens) is not a tag a block may hold yet",
+	"iframe": "an embedded page is not a tag a block may hold",
+	"video": "a video is not a tag a block may hold",
+	"audio": "a sound is not a tag a block may hold",
+	"canvas": "a canvas is not a tag a block may hold",
+	"pre": "preformatted code is not a tag a block may hold",
+}
+# the tags of the format, written another way
+RENAMED = {
+	"dl": "div",
+	"dt": "p",
+	"dd": "p",
+	"main": "div",
+	"nav": "div",
+	"button": "a",
+	"label": "span",
+	"time": "span",
+	"abbr": "span",
+	"cite": "span",
+	"code": "span",
+	"mark": "span",
+	"b": "strong",
+	"i": "em",
+	"q": "p",
+	"picture": "div",
+}
+INLINE = {
+	"span",
+	"strong",
+	"em",
+	"b",
+	"i",
+	"small",
+	"a",
+	"br",
+	"time",
+	"abbr",
+	"cite",
+	"label",
+	"code",
+	"mark",
+	"sup",
+	"sub",
+	"u",
+	"s",
+	"svg",
+}
+TEXT_TAGS = {
+	"h1",
+	"h2",
+	"h3",
+	"h4",
+	"h5",
+	"h6",
+	"p",
+	"blockquote",
+	"figcaption",
+	"li",
+	"span",
+	"strong",
+	"em",
+	"small",
+	"a",
+}
+RESET_MARGIN = {"h1", "h2", "h3", "h4", "h5", "h6", "p", "blockquote", "figure", "ul", "ol"}
+
+
+class Element:
+	def __init__(self, tag: str, attrs: dict):
+		self.tag = tag
+		self.attrs = attrs
+		self.children: list = []
+
+	@property
+	def classes(self) -> list[str]:
+		return (self.attrs.get("class") or "").split()
+
+
+class _Parser(HTMLParser):
+	def __init__(self):
+		super().__init__(convert_charrefs=True)
+		self.root = Element("#root", {})
+		self.stack = [self.root]
+
+	def handle_starttag(self, tag, attrs):
+		element = Element(tag, {k: v or "" for k, v in attrs})
+		self.stack[-1].children.append(element)
+		if tag not in VOID:
+			self.stack.append(element)
+
+	def handle_startendtag(self, tag, attrs):
+		self.stack[-1].children.append(Element(tag, {k: v or "" for k, v in attrs}))
+
+	def handle_endtag(self, tag):
+		for index in range(len(self.stack) - 1, 0, -1):
+			if self.stack[index].tag == tag:
+				del self.stack[index:]
+				return
+
+	def handle_data(self, data):
+		self.stack[-1].children.append(data)
+
+
+def parse(markup: str) -> Element:
+	"""The `<body>` of a component page (the page itself when it is a fragment)."""
+	parser = _Parser()
+	parser.feed(markup)
+	parser.close()
+
+	def find(element, tag):
+		for child in element.children:
+			if isinstance(child, Element):
+				if child.tag == tag:
+					return child
+				found = find(child, tag)
+				if found:
+					return found
+		return None
+
+	return find(parser.root, "body") or parser.root
+
+
+def text_of(element) -> str:
+	"""The words of an element, one line (an `<svg>` and a `<br>` say nothing, a `<br>` is a space)."""
+	if isinstance(element, str):
+		return element
+	if element.tag in DROPPED_TAGS:
+		return ""
+	if element.tag == "br":
+		return " "
+	return "".join(text_of(c) for c in element.children)
+
+
+def clean(text: str) -> str:
+	return " ".join(html.unescape(text).split())
+
+
+# ---------------------------------------------------------------- Tailwind
+
+
+@dataclass(frozen=True)
+class Colour:
+	"""A Tailwind colour as the role it plays, before the ground it sits on says which token it is."""
+
+	kind: str  # text | bg | border
+	family: str  # white | black | transparent | current | neutral | chromatic
+	shade: int = 500
+	alpha: float = 1.0
+
+	@property
+	def dark(self) -> bool:
+		"""A surface of this colour is a deep band (black, a dark neutral, a saturated colour)."""
+		if self.alpha < 0.9:
+			return False
+		if self.family == "black":
+			return True
+		if self.family == "neutral":
+			return self.shade >= 800
+		return self.family == "chromatic" and self.shade >= 500
+
+	@property
+	def light(self) -> bool:
+		return self.family == "white" or (self.family in {"neutral", "chromatic"} and self.shade <= 200)
+
+
+NEUTRALS = {"gray", "slate", "zinc", "neutral", "stone"}
+CHROMATICS = {
+	"red", "orange", "amber", "yellow", "lime", "green", "emerald", "teal", "cyan", "sky", "blue", "indigo", "violet", "purple", "fuchsia", "pink", "rose",
+}  # fmt: skip
+SHADES = {50, 100, 200, 300, 400, 500, 600, 700, 800, 900, 950}
+
+
+def colour(kind: str, text: str) -> Colour | None:
+	alpha = 1.0
+	if "/" in text:
+		text, _, tail = text.rpartition("/")
+		if not tail.isdigit():
+			return None
+		alpha = int(tail) / 100
+	if text in {"white", "black"}:
+		return Colour(kind, text, 500, alpha)
+	if text in {"transparent", "current", "inherit"}:
+		return Colour(kind, text, 500, alpha)
+	found = re.fullmatch(r"([a-z]+)-(\d{2,3})", text)
+	if not found or int(found.group(2)) not in SHADES:
+		return None
+	family = (
+		"neutral" if found.group(1) in NEUTRALS else "chromatic" if found.group(1) in CHROMATICS else None
+	)
+	return Colour(kind, family, int(found.group(2)), alpha) if family else None
+
+
+def resolve_colour(c: Colour, ground: str) -> str:
+	"""The token that plays this colour's part on this ground (`plain`, `tint` or `deep`)."""
+	if c.family == "transparent":
+		return "transparent"
+	if c.family in {"current", "inherit"}:
+		return "currentColor" if c.family == "current" else "inherit"
+	deep = ground == "deep"
+	if c.kind == "text":
+		if c.family == "white":
+			return "{{ground.ink}}" if deep else "{{ground.background}}"
+		if c.family == "black":
+			return "{{ground.ink}}"
+		if c.family == "chromatic":
+			return "{{ground.accent}}"
+		if deep:
+			return "{{ground.ink}}" if c.shade <= 200 else "{{ground.muted}}"
+		return "{{ground.ink}}" if c.shade >= 800 else "{{ground.muted}}"
+	if c.kind == "border":
+		if c.family == "black":
+			return "{{ground.ink}}"
+		if c.family == "chromatic" and c.shade >= 400:
+			return "{{ground.accent}}"
+		if c.family == "neutral" and c.shade >= 600:
+			return "{{ground.muted}}"
+		return "{{ground.hair}}"
+	# a surface
+	if c.alpha < 0.9:
+		return "{{ground.hair}}"
+	if c.family == "white":
+		return "{{ground.background}}" if ground == "plain" else "{{background}}"
+	if c.light:
+		return {"plain": "{{tint}}", "tint": "{{background}}", "deep": "{{deep_hair}}"}[ground]
+	if c.dark:
+		return (
+			"{{primary}}"
+			if deep and c.family == "chromatic"
+			else "{{deep_hair}}"
+			if deep
+			else "{{ground.background}}"
+		)
+	return "{{ground.hair}}"
+
+
+def ground_of(c: Colour | None) -> str:
+	"""The ground a surface of this colour is: a band of ink or colour is `deep`, a pale grey `tint`, white and nothing `plain`."""
+	if c is None or c.alpha < 0.9 or c.family in {"white", "transparent", "current", "inherit"}:
+		return "plain"
+	if c.dark:
+		return "deep"
+	return "tint" if c.light and c.family == "neutral" else "plain"
+
+
+BREAKPOINTS = {"sm": 1, "md": 2, "lg": 3, "xl": 4, "2xl": 5}
+# the widest screen a level reaches: the phone sees the base only, the tablet the base up to `md:`, the desktop everything
+PHONE, TABLET, DESKTOP = 0, 2, 5
+
+SIZES = {
+	"xs": ("0.75rem", "1.333"),
+	"sm": ("0.875rem", "1.429"),
+	"base": ("1rem", "1.5"),
+	"lg": ("1.125rem", "1.556"),
+	"xl": ("1.25rem", "1.4"),
+	"2xl": ("1.5rem", "1.333"),
+	"3xl": ("1.875rem", "1.2"),
+	"4xl": ("2.25rem", "1.15"),
+	"5xl": ("3rem", "1.1"),
+	"6xl": ("3.75rem", "1.1"),
+	"7xl": ("4.5rem", "1.1"),
+	"8xl": ("6rem", "1.1"),
+	"9xl": ("8rem", "1.1"),
+}  # fmt: skip
+LEADING = {"none": "1", "tight": "1.25", "snug": "1.375", "normal": "1.5", "relaxed": "1.625", "loose": "2"}
+TRACKING = {
+	"tighter": "-0.05em",
+	"tight": "-0.025em",
+	"normal": "0",
+	"wide": "0.025em",
+	"wider": "0.05em",
+	"widest": "0.1em",
+}
+WEIGHTS = {
+	"thin": "100", "extralight": "200", "light": "300", "normal": "400", "medium": "500", "semibold": "600", "bold": "700", "extrabold": "800", "black": "900",
+}  # fmt: skip
+MAX_W = {
+	"xs": "20rem", "sm": "24rem", "md": "28rem", "lg": "32rem", "xl": "36rem", "2xl": "42rem", "3xl": "48rem", "4xl": "56rem", "5xl": "64rem",
+	"6xl": "72rem", "7xl": "80rem", "prose": "65ch", "none": "none", "full": "100%", "screen-sm": "640px", "screen-md": "768px",
+	"screen-lg": "1024px", "screen-xl": "1280px", "screen-2xl": "1536px", "min": "min-content", "max": "max-content", "fit": "fit-content",
+}  # fmt: skip
+ROUNDED = {
+	"": "var(--radius-sm)", "sm": "var(--radius-sm)", "md": "var(--radius)", "lg": "var(--radius-lg)", "xl": "var(--radius-lg)", "2xl": "var(--radius-lg)",
+	"3xl": "var(--radius-lg)", "full": "var(--radius-pill)", "none": "0",
+}  # fmt: skip
+SHADOWS = {
+	"": "var(--shadow)",
+	"xs": "var(--shadow-sm)",
+	"sm": "var(--shadow-sm)",
+	"md": "var(--shadow)",
+	"lg": "var(--shadow-lg)",
+	"xl": "var(--shadow-lg)",
+	"2xl": "var(--shadow-lg)",
+	"none": "none",
+}
+CORNERS = {
+	"t": ("TopLeft", "TopRight"), "r": ("TopRight", "BottomRight"), "b": ("BottomLeft", "BottomRight"), "l": ("TopLeft", "BottomLeft"),
+	"tl": ("TopLeft",), "tr": ("TopRight",), "bl": ("BottomLeft",), "br": ("BottomRight",),
+}  # fmt: skip
+SIDES = {"t": "Top", "r": "Right", "b": "Bottom", "l": "Left", "s": "Left", "e": "Right"}
+ALIGN = {
+	"start": "flex-start",
+	"end": "flex-end",
+	"center": "center",
+	"baseline": "baseline",
+	"stretch": "stretch",
+}
+JUSTIFY = {
+	"start": "flex-start",
+	"end": "flex-end",
+	"center": "center",
+	"between": "space-between",
+	"around": "space-around",
+	"evenly": "space-evenly",
+	"stretch": "stretch",
+}
+
+STATIC = {
+	"flex": {"display": "flex"},
+	"inline-flex": {"display": "inline-flex"},
+	"grid": {"display": "grid"},
+	"inline-grid": {"display": "inline-grid"},
+	"block": {"display": "block"},
+	"inline-block": {"display": "inline-block"},
+	"inline": {"display": "inline"},
+	"hidden": {"display": "none"},
+	"contents": {"display": "contents"},
+	"flex-col": {"flexDirection": "column"},
+	"flex-row": {"flexDirection": "row"},
+	"flex-col-reverse": {"flexDirection": "column-reverse"},
+	"flex-row-reverse": {"flexDirection": "row-reverse"},
+	"flex-wrap": {"flexWrap": "wrap"},
+	"flex-nowrap": {"flexWrap": "nowrap"},
+	"flex-1": {"flex": "1 1 0%"},
+	"flex-auto": {"flex": "1 1 auto"},
+	"flex-none": {"flex": "none"},
+	"grow": {"flexGrow": "1"},
+	"grow-0": {"flexGrow": "0"},
+	"shrink": {"flexShrink": "1"},
+	"shrink-0": {"flexShrink": "0"},
+	"relative": {"position": "relative"},
+	"absolute": {"position": "absolute"},
+	"fixed": {"position": "fixed"},
+	"sticky": {"position": "sticky"},
+	"static": {"position": "static"},
+	"overflow-hidden": {"overflow": "hidden"},
+	"overflow-clip": {"overflow": "clip"},
+	"overflow-visible": {"overflow": "visible"},
+	"overflow-auto": {"overflow": "auto"},
+	"object-cover": {"objectFit": "cover"},
+	"object-contain": {"objectFit": "contain"},
+	"object-center": {"objectPosition": "center"},
+	"text-left": {"textAlign": "left"},
+	"text-center": {"textAlign": "center"},
+	"text-right": {"textAlign": "right"},
+	"text-justify": {"textAlign": "justify"},
+	"text-pretty": {"textWrap": "pretty"},
+	"text-balance": {"textWrap": "balance"},
+	"uppercase": {"textTransform": "uppercase"},
+	"lowercase": {"textTransform": "lowercase"},
+	"capitalize": {"textTransform": "capitalize"},
+	"italic": {"fontStyle": "italic"},
+	"not-italic": {"fontStyle": "normal"},
+	"underline": {"textDecoration": "underline"},
+	"no-underline": {"textDecoration": "none"},
+	"truncate": {"overflow": "hidden", "textOverflow": "ellipsis", "whiteSpace": "nowrap"},
+	"whitespace-nowrap": {"whiteSpace": "nowrap"},
+	"order-last": {"order": "9999"},
+	"order-first": {"order": "-9999"},
+	"aspect-video": {"aspectRatio": "16 / 9"},
+	"aspect-square": {"aspectRatio": "1 / 1"},
+	"grayscale": {"filter": "grayscale(1)"},
+	"list-disc": {"listStyleType": "disc"},
+	"list-decimal": {"listStyleType": "decimal"},
+	"list-none": {"listStyleType": "none"},
+	"border-solid": {"borderStyle": "solid"},
+	"border-dashed": {"borderStyle": "dashed"},
+	"border-dotted": {"borderStyle": "dotted"},
+}  # fmt: skip
+# what a class that only decorates (a transition, a cursor, a focus ring) or only names a font says nothing to a block
+IGNORED = re.compile(
+	r"^(?:transition(?:-.+)?|duration-.+|ease-.+|delay-.+|cursor-.+|select-.+|pointer-events-.+|antialiased|subpixel-antialiased|font-(?:sans|serif|mono)"
+	r"|outline(?:-.+)?|group|peer|will-change-.+|appearance-.+|scroll-.+|dark|stroke-.+|fill-.+|ring-offset-.+|object-(?:top|bottom|left|right))$"
+)
+# a property that goes back to this, not to `initial`, when a smaller screen does not set it
+RESET_TO = {"display": "block", "position": "static", "flexDirection": "row", "overflow": "visible"}
+
+
+def length(value: str) -> str | None:
+	"""A Tailwind length (`4`, `0.5`, `px`, `1/2`, `full`, `[calc(100%-2rem)]`) as a CSS one."""
+	if value == "px":
+		return "1px"
+	if value in {"auto", "0"}:
+		return value
+	if value == "full":
+		return "100%"
+	if value in {"min", "max", "fit"}:
+		return f"{value}-content"
+	if re.fullmatch(r"\d+(?:\.\d+)?", value):
+		return f"{float(value) * 0.25:g}rem"
+	fraction = re.fullmatch(r"(\d+)/(\d+)", value)
+	if fraction:
+		return f"{int(fraction.group(1)) / int(fraction.group(2)) * 100:g}%"
+	if value.startswith("[") and value.endswith("]"):
+		inner = value[1:-1].replace("_", " ")
+		inner = (
+			re.sub(r"(?<=[\w%)])([+\-*/])(?=[\w(])", r" \1 ", inner) if inner.startswith("calc(") else inner
+		)
+		if re.fullmatch(r"[\w.%()+\-*/ ,]+", inner) and not block_format.CSS_FORBIDDEN.search(inner):
+			return inner
+	return None
+
+
+def _sides(prefix: str, axis: str, value: str):
+	"""padding/margin props of `p-4`, `px-4`, `mt-2`: `axis` is '', x, y or one side letter."""
+	names = {"": ("Top", "Right", "Bottom", "Left"), "x": ("Left", "Right"), "y": ("Top", "Bottom")}.get(
+		axis
+	) or (SIDES[axis],)
+	return {f"{prefix}{side}": value for side in names}
+
+
+def utility(u: str) -> dict | None:
+	"""The CSS (camelCase, a colour as a `Colour`) of one Tailwind utility: `{}` when it says nothing to a block, `None` when it is not known."""
+	if u in STATIC:
+		return dict(STATIC[u])
+	if IGNORED.match(u):
+		return {}
+	negative = u.startswith("-")
+	body = u[1:] if negative else u
+
+	found = re.fullmatch(r"(p|px|py|pt|pr|pb|pl|ps|pe|m|mx|my|mt|mr|mb|ml|ms|me)-(.+)", body)
+	if found:
+		kind, value = found.groups()
+		amount = length(value)
+		if amount is None or (amount == "auto" and kind[0] == "p"):
+			return None
+		if negative and amount not in {"0", "auto"}:
+			amount = "-" + amount
+		return _sides("padding" if kind[0] == "p" else "margin", kind[1:], amount)
+
+	found = re.fullmatch(r"(gap|gap-x|gap-y)-(.+)", body)
+	if found:
+		amount = length(found.group(2))
+		key = {"gap": "gap", "gap-x": "columnGap", "gap-y": "rowGap"}[found.group(1)]
+		return {key: amount} if amount else None
+
+	found = re.fullmatch(r"space-(x|y)-(.+)", body)
+	if found:
+		amount = length(found.group(2))
+		return {f"__space_{found.group(1)}": amount} if amount else None
+
+	found = re.fullmatch(r"(w|h|size|min-w|min-h|max-w|max-h)-(.+)", body)
+	if found:
+		kind, value = found.groups()
+		if kind == "max-w" and value in MAX_W:
+			amount = MAX_W[value]
+		elif value == "screen":
+			amount = "100vh" if kind.endswith("h") else "100%"
+		else:
+			amount = length(value)
+		if amount is None:
+			return None
+		keys = {
+			"w": ("width",),
+			"h": ("height",),
+			"size": ("width", "height"),
+			"min-w": ("minWidth",),
+			"min-h": ("minHeight",),
+			"max-w": ("maxWidth",),
+			"max-h": ("maxHeight",),
+		}[kind]
+		return {key: amount for key in keys}
+
+	found = re.fullmatch(r"(top|right|bottom|left|inset|inset-x|inset-y)-(.+)", body)
+	if found:
+		amount = length(found.group(2))
+		if amount is None:
+			return None
+		if negative and amount not in {"0", "auto"}:
+			amount = "-" + amount
+		keys = {
+			"top": ("top",),
+			"right": ("right",),
+			"bottom": ("bottom",),
+			"left": ("left",),
+			"inset": ("top", "right", "bottom", "left"),
+			"inset-x": ("left", "right"),
+			"inset-y": ("top", "bottom"),
+		}[found.group(1)]
+		return {key: amount for key in keys}
+
+	found = re.fullmatch(r"z-(\d+)", body)
+	if found:
+		return {"zIndex": found.group(1)}
+	found = re.fullmatch(r"grid-cols-(\d+)", body)
+	if found:
+		return {"gridTemplateColumns": f"repeat({found.group(1)}, minmax(0, 1fr))"}
+	if body == "grid-cols-none":
+		return {"gridTemplateColumns": "none"}
+	found = re.fullmatch(r"grid-rows-(\d+)", body)
+	if found:
+		return {"gridTemplateRows": f"repeat({found.group(1)}, minmax(0, 1fr))"}
+	found = re.fullmatch(r"(col|row)-span-(\d+|full)", body)
+	if found:
+		key = "gridColumn" if found.group(1) == "col" else "gridRow"
+		return {
+			key: "1 / -1" if found.group(2) == "full" else f"span {found.group(2)} / span {found.group(2)}"
+		}
+
+	found = re.fullmatch(r"(items|self|justify|place-content|place-items|content)-(.+)", body)
+	if found:
+		kind, value = found.groups()
+		if kind in {"items", "self"} and value in ALIGN | {"auto": ""}:
+			return {"alignItems" if kind == "items" else "alignSelf": ALIGN.get(value, "auto")}
+		if kind == "justify" and value in JUSTIFY:
+			return {"justifyContent": JUSTIFY[value]}
+		if kind == "place-content" and value in JUSTIFY:
+			return {"placeContent": JUSTIFY[value].replace("flex-", "")}
+		if kind == "place-items" and value in ALIGN:
+			return {"placeItems": ALIGN[value].replace("flex-", "")}
+		if kind == "content" and value in JUSTIFY:
+			return {"alignContent": JUSTIFY[value]}
+		return None
+
+	size = re.fullmatch(r"text-(xs|sm|base|lg|xl|[2-9]xl)(?:/(\S+))?", body)
+	if size:
+		font, line = SIZES[size.group(1)]
+		if size.group(2):
+			line = (
+				LEADING.get(size.group(2))
+				or (length(size.group(2)) if re.fullmatch(r"\d+", size.group(2)) else None)
+				or line
+			)
+		return {"fontSize": font, "lineHeight": line}
+	found = re.fullmatch(r"font-(\w+)", body)
+	if found and found.group(1) in WEIGHTS:
+		return {"fontWeight": WEIGHTS[found.group(1)]}
+	found = re.fullmatch(r"leading-(.+)", body)
+	if found:
+		line = LEADING.get(found.group(1)) or (
+			length(found.group(1)) if re.fullmatch(r"\d+", found.group(1)) else None
+		)
+		return {"lineHeight": line} if line else None
+	found = re.fullmatch(r"tracking-(\w+)", body)
+	if found and found.group(1) in TRACKING:
+		return {"letterSpacing": TRACKING[found.group(1)]}
+
+	found = re.fullmatch(r"rounded(?:-(t|r|b|l|tl|tr|bl|br))?(?:-(none|sm|md|lg|xl|2xl|3xl|full))?", body)
+	if found:
+		radius = ROUNDED[found.group(2) or ""]
+		if not found.group(1):
+			return {"borderRadius": radius}
+		return {f"border{corner}Radius": radius for corner in CORNERS[found.group(1)]}
+	found = re.fullmatch(r"shadow(?:-(xs|sm|md|lg|xl|2xl|none))?", body)
+	if found:
+		return {"boxShadow": SHADOWS[found.group(1) or ""]}
+	found = re.fullmatch(r"opacity-(\d+)", body)
+	if found:
+		return {"opacity": f"{int(found.group(1)) / 100:g}"}
+
+	found = re.fullmatch(r"(?:border|ring)(?:-(x|y|t|r|b|l))?(?:-(\d+))?", body)
+	if found:
+		width = f"{found.group(2) or 1}px" if (found.group(2) or "0") != "0" else "0"
+		names = {
+			None: ("Top", "Right", "Bottom", "Left"),
+			"x": ("Left", "Right"),
+			"y": ("Top", "Bottom"),
+		}.get(found.group(1)) or (SIDES[found.group(1)],)
+		out = {f"border{side}Width": width for side in names}
+		out["borderStyle"] = "solid"
+		return out
+	found = re.fullmatch(r"divide-(x|y)(?:-(\d+))?", body)
+	if found:
+		return {f"__divide_{found.group(1)}": f"{found.group(2) or 1}px" if found.group(2) != "0" else "0"}
+
+	found = re.fullmatch(r"(text|bg|border|ring|divide)-(.+)", body)
+	if found:
+		kind = {"text": "text", "bg": "bg", "border": "border", "ring": "border", "divide": "border"}[
+			found.group(1)
+		]
+		tint = colour(kind, found.group(2))
+		if tint is None:
+			return None
+		key = {"text": "color", "bg": "backgroundColor"}.get(
+			found.group(1), "__divide_colour" if found.group(1) == "divide" else "borderColor"
+		)
+		return {key: tint}
+	return None
+
+
+def split_variants(cls: str) -> tuple[list[str], str]:
+	"""`md:hover:bg-red-500` -> (['md', 'hover'], 'bg-red-500'), brackets and the important mark respected."""
+	parts, depth, current = [], 0, ""
+	for char in cls:
+		if char == "[":
+			depth += 1
+		elif char == "]":
+			depth -= 1
+		if char == ":" and depth == 0:
+			parts.append(current)
+			current = ""
+		else:
+			current += char
+	return parts, current.lstrip("!")
+
+
+SHORTHAND = re.compile(r"^-?(?:p|m|gap|inset|rounded|border|ring)(?:-[^\s]*)?$|^size-")
+
+
+def parse_classes(classes: list[str]):
+	"""(the CSS of each level, the unknown classes, the classes left out for a state or a direction we do not draw).
+
+	A level is the first screen width a class applies from (0 = every screen, 1 = `sm:`… 5 = `2xl:`)."""
+	levels: dict[int, dict] = {i: {} for i in range(6)}
+	dropped: list[str] = []
+	ignored: list[str] = []
+	ordered = sorted(classes, key=lambda c: 0 if SHORTHAND.match(split_variants(c)[1]) else 1)
+	for cls in ordered:
+		variants, util = split_variants(cls)
+		level, skip = 0, False
+		for variant in variants:
+			if variant in BREAKPOINTS:
+				level = max(level, BREAKPOINTS[variant])
+			elif variant != "ltr":
+				skip = True
+		if skip:
+			ignored.append(cls)
+			continue
+		props = utility(util)
+		if props is None:
+			dropped.append(cls)
+			continue
+		levels[level].update(props)
+	return levels, dropped, ignored
+
+
+def merged(levels: dict[int, dict], upto: int) -> dict:
+	out: dict = {}
+	for level in range(upto + 1):
+		out.update(levels[level])
+	return out
+
+
+# ---------------------------------------------------------------- the design system
+
+
+def difference(new: dict, old: dict) -> dict:
+	"""What a narrower screen sets on top of a wider one: the keys that change, and the keys that go back to what the browser does."""
+	out = {k: v for k, v in new.items() if old.get(k) != v}
+	for key in old:
+		if key not in new:
+			out[key] = RESET_TO.get(key, "initial")
+	return out
+
+
+def cleaned(style: dict) -> dict:
+	return {k: v for k, v in style.items() if not k.startswith("__")}
+
+
+SHELL = {
+	"backgroundColor",
+	"color",
+	"paddingTop",
+	"paddingBottom",
+	"paddingLeft",
+	"paddingRight",
+	"maxWidth",
+	"marginLeft",
+	"marginRight",
+	"width",
+}
+SURFACE = {
+	"backgroundColor",
+	"borderWidth",
+	"borderTopWidth",
+	"borderRightWidth",
+	"borderBottomWidth",
+	"borderLeftWidth",
+	"borderStyle",
+	"borderColor",
+	"boxShadow",
+	"borderRadius",
+}
+BUTTON_KEEPS = {
+	"marginTop",
+	"marginRight",
+	"marginBottom",
+	"marginLeft",
+	"width",
+	"alignSelf",
+	"flexShrink",
+	"order",
+}
+PADDINGS = ("paddingTop", "paddingRight", "paddingBottom", "paddingLeft")
+
+
+class Importer:
+	"""One component, turned into a block. A new `Importer` for each component (it counts pictures, icons and unknown classes)."""
+
+	def __init__(self):
+		self.words = capture.Words()
+		self.photos = 0
+		self.icons = 0
+		self.dropped: Counter = Counter()
+		self.ignored: Counter = Counter()
+
+	# ------------------------------------------------------------ the component
+
+	def block(self, markup: str, *, kind: str, block_id: str, title: str, source_note: str) -> dict:
+		"""The hub's block (the body of its `publish_block`) for a component's markup. Raises `Refused` with the reason."""
+		body = parse(markup)
+		top = [c for c in body.children if isinstance(c, Element) and c.tag not in DROPPED_TAGS]
+		if len(top) != 1:
+			raise Refused(f"the component has {len(top)} elements at its root, a block is one section")
+		ground, narrow, content = self.peel(top[0])
+		kids = self.children(content, ground)
+		if narrow:
+			wrap = {
+				"el": "div",
+				"name": "narrow",
+				"style": {"maxWidth": narrow, "marginLeft": "auto", "marginRight": "auto", "width": "100%"},
+				"c": kids,
+			}
+			kids = [wrap]
+		if not kids:
+			raise Refused("nothing is left of the component once its icons are dropped")
+		tree = {
+			"el": "section",
+			"name": capture.family_of(kind),
+			"style": {
+				"backgroundColor": "{{ground.background}}",
+				"width": "100%",
+				"padding": SECTION_PADDING,
+			},
+			"m_style": {"padding": SECTION_PADDING_PHONE},
+			"c": [
+				{
+					"el": "div",
+					"name": "container",
+					"style": {
+						"maxWidth": "{{container}}",
+						"width": "100%",
+						"margin": "0 auto",
+						"paddingLeft": "{{gutter}}",
+						"paddingRight": "{{gutter}}",
+					},
+					"m_style": {"paddingLeft": "{{gutter_phone}}", "paddingRight": "{{gutter_phone}}"},
+					"c": kids,
+				}
+			],
+		}
+		demote_headings(tree)
+		if kind == "brand-row" and self.photos < 2:
+			raise Refused(
+				"a row of brands without its logos (the logos are inline SVG, a block has no tag for them)"
+			)
+		if len(self.dropped) > MAX_UNKNOWN_CLASSES:
+			raise Refused(
+				f"{len(self.dropped)} classes are not understood ({', '.join(sorted(self.dropped)[:8])}…)"
+			)
+		if self.photos > block_format.MAX_PHOTOS:
+			raise Refused(f"{self.photos} pictures, a block holds {block_format.MAX_PHOTOS} at most")
+		errors, _warnings = block_format.lint(
+			tree, block_id=block_id, kinds=[kind], photos=self.photos, form=False, motion="None"
+		)
+		if errors:
+			raise Refused(errors[0])
+		return {
+			"id": block_id,
+			"title": title,
+			"kinds": [kind],
+			"look": capture.describe(tree, ground, self.photos).split(". Kept from")[0] + ".",
+			"photos": self.photos,
+			"form": False,
+			"ground": ground,
+			"motion": "None",
+			"notes": self.notes(source_note),
+			"tree": tree,
+		}
+
+	def notes(self, source_note: str) -> str:
+		said = [source_note]
+		if self.icons:
+			said.append(
+				f"{self.icons} icon{'s' if self.icons > 1 else ''} of the source left out (a block has no tag for an icon)."
+			)
+		if self.dropped:
+			said.append(f"Classes not drawn: {', '.join(sorted(self.dropped))}.")
+		said.append(
+			"It carries no words and no picture of the source, only its structure, drawn with the design system. Read it, correct its look line, then publish it."
+		)
+		return " ".join(said)
+
+	# ------------------------------------------------------------ the shell of the component
+
+	def peel(self, root: Element):
+		"""(the ground, a narrow max-width of the shell, the element whose children are the content).
+
+		A component's outer elements only say how wide it is, how much air it has and what it stands on (`mx-auto max-w-7xl px-4 py-8`, `bg-gray-900`): the
+		block's own section and container say that, with the site's tokens. Peeled elements are walked while they hold one element and nothing else."""
+		background, narrow = None, None
+
+		def absorb(props: dict) -> None:
+			nonlocal background, narrow
+			background = background or props.get("backgroundColor")
+			width = props.get("maxWidth")
+			if width and re.fullmatch(r"[\d.]+rem", str(width)) and float(str(width)[:-3]) < 70:
+				narrow = width
+
+		node = root
+		while True:
+			levels, unknown, _ignored = parse_classes(node.classes)
+			self.dropped.update(unknown)
+			props = merged(levels, DESKTOP)
+			kids = [c for c in node.children if isinstance(c, Element) and c.tag not in DROPPED_TAGS]
+			quiet = all(isinstance(c, Element) or not c.strip() for c in node.children)
+			if set(props) <= SHELL and node.tag in SHELL_TAGS and len(kids) == 1 and quiet:
+				absorb(props)
+				node = kids[0]
+				continue
+			break
+		if set(props) <= SHELL and node.tag in SHELL_TAGS:
+			absorb(props)  # the last shell element holds the content itself
+			return ground_of(background), narrow, node
+		# the last element is content: its width and its air are the block's, its other utilities are its own
+		absorb({k: v for k, v in props.items() if k == "maxWidth"})
+		holder = Element("div", {})
+		holder.children = [node]
+		holder.shell_strip = True
+		return ground_of(background), narrow, holder
+
+	# ------------------------------------------------------------ the tree
+
+	def children(self, parent: Element, ground: str, parent_levels: dict | None = None) -> list[dict]:
+		"""The nodes of an element's children, in order. `parent_levels`: the CSS of the parent, whose `space-*` and `divide-*` its children carry."""
+		out: list[dict] = []
+		strip = SHELL if getattr(parent, "shell_strip", False) else None
+		for child in parent.children:
+			if isinstance(child, str):
+				if child.strip():
+					out.append(self.text_node("span", clean(child), {}, ground))
+				continue
+			rule = self.between(parent_levels, len(out)) if out and parent_levels else {}
+			node = self.element(child, ground, rule, strip=strip)
+			if node is not None:
+				out.append(node)
+		if out:
+			for key in ("style", "t_style", "m_style"):
+				if key in out[0]:
+					out[0][key].pop("marginTop", None)
+					if not out[0][key]:
+						del out[0][key]
+		self.unify(out)
+		return out
+
+	@staticmethod
+	def unify(kids: list[dict]) -> None:
+		"""Siblings drawn the same way (the cards of a grid, the rows of a list) ask for the same words: the role most of them have, the length of the
+		first one that has it. The source's placeholder texts are of any length, the block's slots are not."""
+		groups: dict = {}
+		for kid in kids:
+			groups.setdefault(signature(kid), []).append(kid)
+		for same in groups.values():
+			# two paragraphs side by side are a title and a text, not a pair: only containers and the entries of a list repeat
+			if len(same) < 2 or not (same[0].get("c") or same[0]["el"] == "li"):
+				continue
+			columns = list(zip(*[list(slot_nodes(kid)) for kid in same], strict=True))
+			for column in columns:
+				roles = Counter(block_format.SLOT.match(n["text"]).group(1) for n in column)
+				best = max(
+					roles,
+					key=lambda role: (
+						roles[role],
+						-[block_format.SLOT.match(n["text"]).group(1) for n in column].index(role),
+					),
+				)
+				model = next(n["text"] for n in column if block_format.SLOT.match(n["text"]).group(1) == best)
+				for n in column:
+					n["text"] = model
+					n["name"] = best
+
+	@staticmethod
+	def between(levels: dict, index: int) -> dict:
+		"""The CSS the second child onwards of a parent gets from its `space-y-*` / `divide-x`…"""
+		rule: dict[int, dict] = {i: {} for i in range(6)}
+		for level, props in levels.items():
+			for key, value in props.items():
+				if key == "__space_y":
+					rule[level]["marginTop"] = value
+				elif key == "__space_x":
+					rule[level]["marginLeft"] = value
+				elif key == "__divide_y":
+					rule[level].update({"borderTopWidth": value, "borderStyle": "solid"})
+				elif key == "__divide_x":
+					rule[level].update({"borderLeftWidth": value, "borderStyle": "solid"})
+				elif key == "__divide_colour":
+					rule[level]["borderColor"] = value
+		return rule
+
+	def element(self, el: Element, ground: str, inherited: dict, strip=None) -> dict | None:
+		if el.tag == "svg":
+			self.icons += 1
+			return None
+		if el.tag in DROPPED_TAGS:
+			return None
+		if el.tag in REFUSED_TAGS:
+			raise Refused(REFUSED_TAGS[el.tag])
+		tag = RENAMED.get(el.tag, el.tag)
+		if tag == "section":
+			tag = "div"  # the block's own section is the only one
+		if tag not in block_format.TAGS:
+			raise Refused(f"`<{el.tag}>` is not a tag a block may hold")
+		if "sr-only" in el.classes:
+			return None
+		levels, dropped, ignored = parse_classes(el.classes)
+		self.dropped.update(dropped)
+		self.ignored.update(ignored)
+		for level, props in (inherited or {}).items():
+			levels[level] = {**props, **levels[level]}
+		if strip and tag != "img" and not self.is_text_run(el):
+			levels = {
+				level: {k: v for k, v in props.items() if k not in strip} for level, props in levels.items()
+			}
+
+		if el.tag == "br":
+			return None
+		desktop = merged(levels, DESKTOP)
+		parent_levels = levels
+		kids_text = self.is_text_run(el)
+		role = self.pattern(el, tag, desktop, kids_text)
+		surface = desktop.get("backgroundColor")
+		switched = role != "button" and isinstance(surface, Colour) and surface.dark and ground != "deep"
+		own_ground = "deep" if switched else ground
+		node: dict = {"el": tag}
+		classes: list[str] = []
+
+		if role == "button":
+			node["el"] = "a"
+			node["attrs"] = {"href": "{{cta_href}}"}
+			classes = ["u-btn", self.button_class(desktop, own_ground)]
+			levels = {
+				level: {k: v for k, v in props.items() if k in BUTTON_KEEPS}
+				for level, props in levels.items()
+			}
+		elif role == "card":
+			classes = ["u-card"]
+			levels = {
+				level: {
+					k: v
+					for k, v in props.items()
+					if k not in SURFACE or (switched and k == "backgroundColor")
+				}
+				for level, props in levels.items()
+			}
+			if all(desktop.get(p) == "1.5rem" for p in PADDINGS):
+				levels = {
+					level: {k: v for k, v in props.items() if k not in PADDINGS}
+					for level, props in levels.items()
+				}
+
+		if tag == "a" and role != "button":
+			node["attrs"] = {"href": "{{cta_href}}"}
+		if tag == "img":
+			number = self.photos
+			self.photos += 1
+			if number >= block_format.MAX_PHOTOS:
+				return None  # counted: the block is refused for it
+			node["attrs"] = {
+				"src": f"{{{{photo.{number}}}}}",
+				"alt": section_recipes.slot("alt", section_recipes.ALT_GUIDANCE),
+			}
+			base = levels[0]
+			if "width" not in desktop:
+				base["width"] = "auto" if "height" in desktop else "100%"
+			if "objectFit" not in desktop:
+				base["objectFit"] = "contain" if "height" in desktop and "width" not in desktop else "cover"
+			base.setdefault("display", "block")
+		if tag == "hr":
+			levels[0] = {
+				"width": "100%",
+				"borderWidth": "0",
+				"borderTopWidth": "1px",
+				"borderStyle": "solid",
+				**levels[0],
+			}
+
+		text = ""
+		kids: list[dict] = []
+		if tag not in {"img", "hr"}:
+			if kids_text:
+				text = clean(text_of(el))
+				self.icons += sum(1 for c in el.children if isinstance(c, Element) and c.tag == "svg")
+				if not text:
+					return None
+			else:
+				kids = self.children(el, own_ground, parent_levels)
+				if not kids and any(isinstance(c, Element) for c in el.children):
+					return None  # nothing left once the icons are gone: an icon's frame
+
+		resolved = {level: self.paint(props, own_ground, switched) for level, props in levels.items()}
+		if role != "button":
+			self.defaults(resolved, tag, text)
+
+		style_desktop = cleaned(merged(resolved, DESKTOP))
+		tablet = cleaned(merged(resolved, TABLET))
+		phone = cleaned(merged(resolved, PHONE))
+		style, t_style, m_style = style_desktop, difference(tablet, style_desktop), difference(phone, tablet)
+
+		if text:
+			node["text"] = self.slot({"el": node["el"], "classes": classes, "style": style}, text)
+		node["name"] = self.name(node, role, style, kids)
+		if classes:
+			node["classes"] = classes
+		if switched:
+			node["ground"] = "deep"
+		for key, value in (("style", style), ("t_style", t_style), ("m_style", m_style)):
+			if value:
+				node[key] = value
+		if kids:
+			node["c"] = kids
+		return {
+			k: node[k]
+			for k in ("el", "name", "classes", "ground", "style", "t_style", "m_style", "attrs", "text", "c")
+			if k in node
+		}
+
+	def is_text_run(self, el: Element) -> bool:
+		"""Whether an element holds words and inline things only (a paragraph with a `<strong>`), so that it is one text, not a group."""
+		if el.tag in {"img", "hr", "br"}:
+			return False
+		words = False
+		for child in el.children:
+			if isinstance(child, str):
+				words = words or bool(child.strip())
+				continue
+			if child.tag not in INLINE or self.looks_like_button(child):
+				return False
+			if child.tag != "svg" and not self.is_text_run(child) and child.tag != "br":
+				return False
+			words = words or bool(clean(text_of(child)))
+		return words
+
+	def looks_like_button(self, el: Element) -> bool:
+		if el.tag not in {"a", "button"}:
+			return False
+		levels, _d, _i = parse_classes(el.classes)
+		props = merged(levels, DESKTOP)
+		padded = any(k.startswith("padding") for k in props)
+		return (
+			padded
+			and ("backgroundColor" in props or any(k.startswith("border") for k in props))
+			and self.is_text_run(el)
+		)
+
+	def pattern(self, el: Element, tag: str, desktop: dict, is_text: bool) -> str | None:
+		if tag == "a" and is_text and self.looks_like_button(el):
+			return "button"
+		if tag in {"div", "article", "li", "blockquote", "figure", "a"} and "borderRadius" in desktop:
+			bordered = any(k.startswith("border") and k.endswith("Width") for k in desktop)
+			if bordered or "boxShadow" in desktop:
+				return "card"
+		return None
+
+	@staticmethod
+	def button_class(desktop: dict, ground: str) -> str:
+		background = desktop.get("backgroundColor")
+		if isinstance(background, Colour) and background.family != "transparent" and background.alpha >= 0.9:
+			return "u-btn--secondary" if ground == "deep" else "u-btn--primary"
+		return "u-btn--outline"
+
+	@staticmethod
+	def paint(props: dict, ground: str, switched: bool) -> dict:
+		"""The CSS of a level with every colour turned into the token of the role it plays on this ground."""
+		out = {}
+		for key, value in props.items():
+			if isinstance(value, Colour):
+				if key == "backgroundColor" and switched and value.dark:
+					out[key] = "{{ground.background}}"
+				else:
+					out[key] = resolve_colour(value, ground)
+			else:
+				out[key] = value
+		if (
+			any(k.startswith("border") and k.endswith("Width") for k in out)
+			and "borderColor" not in out
+			and "__divide_colour" not in out
+		):
+			out["borderColor"] = "{{ground.hair}}"
+		return out
+
+	def defaults(self, resolved: dict, tag: str, text: str) -> None:
+		"""A text node is drawn with the site's fonts and the ink of its ground, its margins are its own."""
+		base = resolved[0]
+		if text or tag in TEXT_TAGS:
+			heading = tag in {"h1", "h2", "h3", "h4", "h5", "h6"}
+			base.setdefault("fontFamily", "{{font_heading}}" if heading else "{{font_body}}")
+			if not any("color" in props for props in resolved.values()):
+				base["color"] = "{{ground.ink}}"
+		if tag in {"ul", "ol"}:
+			base.setdefault("listStyleType", "none")
+			base.setdefault("paddingLeft", "0")
+		if tag in RESET_MARGIN:
+			resolved[0] = {"margin": "0", **base}
+
+	def slot(self, node: dict, text: str) -> str:
+		plain = capture._plain(text)
+		if FIGURE_TEXT.match(plain) and capture._size(node["style"]) >= 1.75:
+			return section_recipes.slot(
+				"figure", "one number in digits, a quantity the material gives, never a year, never invented"
+			)
+		if node["el"] == "a" and not any(c.startswith("u-btn") for c in node["classes"]):
+			return section_recipes.slot("caption", capture._range(len(plain.split())))
+		return self.words.slot(node, text)
+
+	def text_node(self, tag: str, text: str, style: dict, ground: str) -> dict:
+		node = {"el": tag, "style": {"fontFamily": "{{font_body}}", "color": "{{ground.ink}}", **style}}
+		node["text"] = self.slot({"el": tag, "classes": [], "style": node["style"]}, text)
+		node["name"] = "text"
+		return {k: node[k] for k in ("el", "name", "style", "text")}
+
+	@staticmethod
+	def name(node: dict, role: str | None, style: dict, kids: list[dict]) -> str:
+		"""The name the Builder shows for the node in its layers."""
+		slot = block_format.SLOT.match(node.get("text") or "")
+		if slot:
+			return slot.group(1)
+		el = node["el"]
+		if el == "img":
+			return "photo"
+		if el == "hr":
+			return "rule"
+		if role == "button":
+			return "button"
+		if role == "card":
+			return "card"
+		if el == "div" and kids and kids[0].get("name") in {"heading", "item-title"}:
+			return "head"
+		display = style.get("display")
+		if display in {"grid", "inline-grid"}:
+			return "grid"
+		if display in {"flex", "inline-flex"}:
+			return "column" if style.get("flexDirection") == "column" else "row"
+		return {"ul": "list", "ol": "list", "li": "entry", "figure": "figure", "blockquote": "quote"}.get(
+			el, "box" if el == "div" else el
+		)
+
+
+def signature(node: dict) -> tuple:
+	"""What a node is made of, without its words: two nodes with the same signature are drawn the same way."""
+	return (node["el"], tuple(node.get("classes") or ()), tuple(signature(c) for c in node.get("c") or ()))
+
+
+def slot_nodes(node: dict):
+	"""The nodes of a tree that ask for words, in reading order."""
+	if block_format.SLOT.match(node.get("text") or ""):
+		yield node
+	for child in node.get("c") or []:
+		yield from slot_nodes(child)
+
+
+def demote_headings(node: dict) -> None:
+	"""A heading that is repeated (the title of each card) is an `item-title`: a section has one `heading`."""
+	kids = node.get("c") or []
+	groups: dict = {}
+	for kid in kids:
+		groups.setdefault(signature(kid), []).append(kid)
+	for same in groups.values():
+		if len(same) >= 2:
+			for kid in same:
+				for n in slot_nodes(kid):
+					if n["text"].startswith("WRITE heading:"):
+						n["text"] = n["text"].replace("WRITE heading:", "WRITE item-title:", 1)
+						n["name"] = "item-title"
+	for kid in kids:
+		demote_headings(kid)
+
+
+def import_markup(markup: str, *, kind: str, block_id: str, title: str, source_note: str) -> dict:
+	"""The block of one component's markup. Raises `Refused` with the reason."""
+	return Importer().block(markup, kind=kind, block_id=block_id, title=title, source_note=source_note)
+
+
+# ---------------------------------------------------------------- HyperUI
+
+
+def hyperui_id(category: str, number: int, kind: str) -> str:
+	return f"{capture.family_of(kind)}.hu-{category}-{number}"
+
+
+def hyperui_note(category: str, number: int, source: dict = HYPERUI) -> str:
+	return (
+		f"Imported from {source['name']} (examples/marketing/{category}/{number}.html at {source['ref'][:10]}), {source['licence']} licence, "
+		f"Copyright (c) {source['holder']}, {source['url']}."
+	)
+
+
+def import_hyperui_markup(category: str, number: int, markup: str) -> dict:
+	kind = HYPERUI_KINDS[category]
+	title = f"{kind.replace('-', ' ').capitalize()} {number} ({HYPERUI['name']})"
+	return import_markup(
+		markup,
+		kind=kind,
+		block_id=hyperui_id(category, number, kind),
+		title=title,
+		source_note=hyperui_note(category, number),
+	)
+
+
+def fetch_hyperui(category: str, number: int) -> str:
+	import requests
+
+	response = requests.get(
+		HYPERUI["raw"].format(ref=HYPERUI["ref"], category=category, number=number), timeout=30
+	)
+	response.raise_for_status()
+	return response.text
+
+
+def import_hyperui(categories=None, push: bool = False) -> dict:
+	"""For `bench execute`: the HyperUI marketing components that can be blocks, and why the others cannot; with `push` they go to the hub as drafts."""
+	made: dict[str, dict] = {}
+	refused: dict[str, str] = {}
+	for category in categories or HYPERUI_KINDS:
+		for number in range(1, HYPERUI_COUNT[category] + 1):
+			label = f"{category}/{number}"
+			try:
+				block = import_hyperui_markup(category, number, fetch_hyperui(category, number))
+			except Refused as e:
+				refused[label] = str(e)
+				continue
+			except Exception as e:
+				refused[label] = f"not read ({type(e).__name__})"
+				continue
+			made[label] = block
+	sent = {label: capture.push_block(block) for label, block in made.items()} if push else {}
+	return {"blocks": {label: block["id"] for label, block in made.items()}, "refused": refused, "sent": sent}
