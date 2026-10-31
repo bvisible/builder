@@ -26,6 +26,8 @@ import frappe
 import requests
 from frappe import _
 
+from builder.hub_image import shrink_for_hub
+
 PUBLISH_TIMEOUT = 120
 # //// Neoffice — a page names its design tokens by `var(--<id>)`, and the id of a token the editor makes is a uuid while the id of a
 # //// token of a generated site is `<prefix>-primary` (site_ai/nora/site_builder.py, mint_tokens). The collection only knew the uuid,
@@ -329,6 +331,8 @@ def _upload_one_asset(file_url: str, group: str, hub_url: str, headers: dict) ->
         return None
 
     basename = os.path.basename(unquote(file_url))
+    # the photos of a generated site are PNGs of two megabytes: the hub keeps them in a public repository and every install downloads them
+    content, basename = shrink_for_hub(content, basename)
     mimetype = mimetypes.guess_type(basename)[0] or "application/octet-stream"
     resp = requests.post(
         f"{hub_url}/api/method/builder_hub.publish.upload_template_asset",
