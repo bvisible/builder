@@ -88,7 +88,30 @@ export interface BlockTemplate extends DocType {
 	/** Preview: Data */
 	preview: string;
 	/** Category: Select */
-	category?: "Structure" | "Basic" | "Typography" | "Basic Forms" | "Form parts" | "Media" | "Advanced";
+	//// Neoffice — the options of our `category` (block_template.json), not upstream's.
+	category?:
+		| "Shop"
+		| "Hero"
+		| "Features"
+		| "Steps"
+		| "Stats"
+		| "Testimonials"
+		| "Pricing"
+		| "Team"
+		| "FAQ"
+		| "Gallery"
+		| "Call to action"
+		| "Contact"
+		| "Navbar"
+		| "Content"
+		| "Footer"
+		| "Form"
+		| "Card"
+		| "Structure"
+		| "Basic"
+		| "Typography"
+		| "Media"
+		| "Advanced";
 	/** Preview Width: Int */
 	preview_width?: number;
 	/** Preview Height: Int */

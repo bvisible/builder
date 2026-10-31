@@ -17,13 +17,12 @@
 						@dblclick="is_developer_mode && blockTemplateStore.editBlockTemplate(blockTemplate.name)"
 						@dragstart="(ev) => setBlockTemplateData(ev, blockTemplate)"
 						@dragend="() => canvasStore.handleDragEnd()">
+						<!-- //// Neoffice — a wide thumbnail (the hub's blocks) takes the whole width of its card; a narrow one keeps w-14. -->
 						<div
 							class="flex h-4/5 items-center justify-center"
-							:class="{
-								'w-14': !blockTemplate?.preview_width || blockTemplate?.preview_width == 1,
-							}">
-							<!-- //// Neoffice — preview sizing for the block-template gallery (83b20f91). -->
-							<img :src="blockTemplate.preview" alt="" class="pointer-events-none" style="box-shadow: rgba(60, 64, 67, 0.3) 0px 1px 2px 0px, rgba(60, 64, 67, 0.15) 0px 2px 6px 2px; border-radius: 8px;" />
+							:class="{ 'w-14': !blockTemplate?.preview_width || blockTemplate?.preview_width == 1, 'w-full': blockTemplate?.preview_width === 2 }">
+							<!-- //// Neoffice — preview sizing for the block-template gallery (83b20f91). A wide thumbnail (the hub's blocks) fits its card instead of overflowing it. -->
+							<img :src="blockTemplate.preview" alt="" class="pointer-events-none max-h-full max-w-full object-contain" style="box-shadow: rgba(60, 64, 67, 0.3) 0px 1px 2px 0px, rgba(60, 64, 67, 0.15) 0px 2px 6px 2px; border-radius: 8px;" />
 						</div>
 						<p class="text-wrap text-center text-sm text-ink-gray-6">
 							{{ blockTemplate.template_name }}
@@ -91,7 +90,12 @@ const getFilteredBlockTemplates = (section: string) => {
 };
 
 const sections = computed(() => {
-	const categories = blockTemplateStore.blockTemplateCategoryOptions as string[];
+	//// Neoffice — a category the store does not list (a section a newer hub added) is listed after the known ones instead of hiding its cards.
+	const known = blockTemplateStore.blockTemplateCategoryOptions as string[];
+	const unknown = [...new Set(blockTemplates.value.map((d: BlockTemplate) => d.category as string))].filter(
+		(category) => category && !known.includes(category),
+	);
+	const categories = [...known, ...unknown];
 	return categories
 		.map((category) => {
 			return {

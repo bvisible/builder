@@ -341,7 +341,10 @@ scheduler_events = {
 			"builder.builder_analytics.ingest_web_page_views_to_duckdb",
 			"builder.builder_analytics.ingest_clicks_to_duckdb",
 		],
-	}
+	},
+	# //// Neoffice — the hub's blocks offered in the editor's insertion panel follow the hub (site_ai/nora/hub_templates.py, off unless
+	# //// `builder_hub_templates` is set in site_config)
+	"daily": ["builder.site_ai.nora.hub_templates.sync_quietly"],
 }
 
 # Testing

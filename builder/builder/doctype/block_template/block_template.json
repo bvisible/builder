@@ -13,7 +13,9 @@
   "preview_height",
   "category",
   "description",
-  "sort_order"
+  "sort_order",
+  "hub_block",
+  "hub_hash"
  ],
  "fields": [
   {
@@ -43,7 +45,7 @@
    "fieldtype": "Select",
    "in_list_view": 1,
    "label": "Category",
-   "options": "Shop\nHero\nNavbar\nContent\nFooter\nForm\nCard\nStructure\nBasic\nTypography\nMedia\nAdvanced",
+   "options": "Shop\nHero\nFeatures\nSteps\nStats\nTestimonials\nPricing\nTeam\nFAQ\nGallery\nCall to action\nContact\nNavbar\nContent\nFooter\nForm\nCard\nStructure\nBasic\nTypography\nMedia\nAdvanced",
    "search_index": 1
   },
   {
@@ -67,12 +69,27 @@
    "fieldname": "sort_order",
    "fieldtype": "Int",
    "label": "Sort Order"
+  },
+  {
+   "description": "The id of the block of the Builder Hub this template is drawn from (site_ai/nora/hub_templates.py keeps these rows in line with the hub)",
+   "fieldname": "hub_block",
+   "fieldtype": "Data",
+   "label": "Hub Block",
+   "read_only": 1,
+   "search_index": 1
+  },
+  {
+   "fieldname": "hub_hash",
+   "fieldtype": "Data",
+   "hidden": 1,
+   "label": "Hub Hash",
+   "read_only": 1
   }
  ],
  "in_create": 1,
  "index_web_pages_for_search": 1,
  "links": [],
- "modified": "2024-09-19 13:07:00.935349",
+ "modified": "2026-10-31 15:30:00.000000",
  "modified_by": "Administrator",
  "module": "Builder",
  "name": "Block Template",

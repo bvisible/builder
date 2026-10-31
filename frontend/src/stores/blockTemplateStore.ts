@@ -20,6 +20,18 @@ const useBlockTemplateStore = defineStore("blockTemplateStore", {
 			//// dropped here.
 			"Shop",
 			"Hero",
+			//// Neoffice — the sections of the hub's library (builder_hub/blocks.py, EDITOR_SECTIONS): the blocks the hub keeps for the
+			//// editor are listed under them (site_ai/nora/hub_templates.py). The same names are the options of the doctype's `category`.
+			"Features",
+			"Steps",
+			"Stats",
+			"Testimonials",
+			"Pricing",
+			"Team",
+			"FAQ",
+			"Gallery",
+			"Call to action",
+			"Contact",
 			"Navbar",
 			"Content",
 			"Footer",

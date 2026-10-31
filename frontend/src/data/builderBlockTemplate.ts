@@ -7,7 +7,8 @@ const builderBlockTemplate = createListResource({
 	orderBy: "sort_order asc",
 	cache: "blockTemplates",
 	start: 0,
-	pageLength: 100,
+	//// Neoffice — the hub's library is offered as templates too (site_ai/nora/hub_templates.py): a hundred cards is not the whole panel.
+	pageLength: 500,
 });
 
 export default builderBlockTemplate;

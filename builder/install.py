@@ -48,6 +48,10 @@ def after_migrate():
 	# //// Neoffice — the host's own model providers on an instance that is not managed too (2026-10-21): the local model is
 	# //// reachable from every client, and a route that does not exist cannot be named by `nora_site_model` (see managed.sync_nora_providers).
 	sync_nora_providers()
+	# //// Neoffice — the hub's blocks offered in the editor's insertion panel (off unless `builder_hub_templates` is set; never raises)
+	from builder.site_ai.nora import hub_templates
+
+	hub_templates.sync_quietly()
 
 
 def after_app_install(app_name=None):
