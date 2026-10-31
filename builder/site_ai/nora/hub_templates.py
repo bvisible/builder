@@ -22,18 +22,19 @@ What it never does:
 
 import hashlib
 import json
+import re
 from contextlib import contextmanager
 
 import frappe
 
 from builder.site_ai.nora import block_format, hub_blocks
 from builder.site_ai.nora import recipes as section_recipes
-from builder.site_ai.nora.recipes import Look
+from builder.site_ai.nora.recipes import Ctx, Look, ground_of
 
 CONF_KEY = "builder_hub_templates"
 METHOD = "builder_hub.api.get_editor_block_catalog"
 TIMEOUT = 10
-RENDERER = 1  # raise it when the way a block is drawn here changes: every card is drawn again
+RENDERER = 2  # raise it when the way a block is drawn here changes: every card is drawn again
 PLACEHOLDER_PHOTO = "/assets/builder/images/fallback.png"
 CTA_HREF = "/contact"
 # the card is two columns wide and two rows high: the thumbnail is a wide picture
@@ -111,6 +112,59 @@ def design_signature(handles: dict, palette: dict, language: str) -> str:
 	return hashlib.sha1(text.encode("utf-8")).hexdigest()[:10]
 
 
+# ---------------------------------------------------------------- the sample words
+
+# a slot of a role the generator's sample table has no words for (`caption`, `phrase`: a name, a price, a detail of one to four words) gets the longest of
+# these that fits the number of words its guidance allows: a block of the hub is written by people, and a role the table lacks must not turn into a
+# paragraph in a plan's name
+SHORT_SAMPLES = {
+	"fr": ("Détail", "Un détail", "Un court libellé", "Un libellé court et précis"),
+	"en": ("Detail", "A detail", "A short label", "A short and precise label"),
+}
+MAX_WORDS = (
+	re.compile(r"(\d+)\s*(?:to|-|–|à)\s*(\d+)\s*(?:words|mots)", re.I),
+	re.compile(r"(\d+)\s*(?:words?|mots?)", re.I),
+)
+
+
+def max_words(guidance: str) -> int | None:
+	"""The most words the guidance of a slot allows (`2 to 4 words` -> 4, `1 word` -> 1), None when it says nothing."""
+	for pattern in MAX_WORDS:
+		found = pattern.search(guidance or "")
+		if found:
+			return int(found.groups()[-1])
+	return None
+
+
+def sample_for(text: str, language: str) -> str:
+	"""The sample words for a slot (`WRITE <role>: <guidance>`): the generator's own for the roles its table knows, a short label for the others."""
+	slot = block_format.SLOT.match(text)
+	role = slot.group(1) if slot else "text"
+	table = section_recipes.SAMPLES.get(language) or section_recipes.SAMPLES["fr"]
+	if role in table:
+		return table[role]
+	ladder = SHORT_SAMPLES.get(language) or SHORT_SAMPLES["fr"]
+	cap = max_words(text)
+	fitting = [words for words in ladder if cap is None or len(words.split()) <= cap]
+	return fitting[-1] if fitting else ladder[0]
+
+
+def fill_slots(node, language: str) -> None:
+	"""Puts sample words in place of every slot of a node, in place."""
+
+	def visit(value):
+		items = (
+			value.items() if isinstance(value, dict) else enumerate(value) if isinstance(value, list) else ()
+		)
+		for key, item in list(items):
+			if isinstance(item, str) and block_format.SLOT.match(item):
+				value[key] = sample_for(item, language)
+			else:
+				visit(item)
+
+	visit(node)
+
+
 # ---------------------------------------------------------------- a block, drawn
 
 
@@ -129,8 +183,9 @@ def draw(block: dict, handles: dict, palette: dict, language: str) -> dict:
 		raise Left("it carries the live contact form, which a page of the editor adds by its own component")
 	look = Look(handles, palette)
 	photos = [PLACEHOLDER_PHOTO] * recipe.photos
-	text = section_recipes.render(recipe, look, recipe.ground, photos, CTA_HREF, sample=language)
-	blocks, _script = expand_page_yaml(text, is_root=False)
+	node = recipe.build(Ctx(look, ground_of(look, recipe.ground), photos, CTA_HREF, ""))
+	fill_slots(node, language)
+	blocks, _script = expand_page_yaml(section_recipes.to_yaml(node), is_root=False)
 	if not blocks:
 		raise Left("its tree could not be turned into a block of the editor")
 	return blocks[0]

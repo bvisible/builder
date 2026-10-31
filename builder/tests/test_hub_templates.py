@@ -115,6 +115,50 @@ class TestABlockDrawn(unittest.TestCase):
 		self.assertIn("form", str(why.exception))
 
 
+class TestTheSampleWords(unittest.TestCase):
+	def test_a_role_the_generator_knows_gets_its_own_sample(self):
+		self.assertEqual("Nous écrire", T.sample_for("WRITE button: 2 to 4 words", "fr"))
+		self.assertEqual("Write to us", T.sample_for("WRITE button: 2 to 4 words", "en"))
+
+	def test_a_role_it_does_not_know_gets_a_label_that_fits_the_words_the_slot_allows(self):
+		self.assertEqual("Détail", T.sample_for("WRITE caption: 1 word", "fr"))
+		self.assertEqual("Un court libellé", T.sample_for("WRITE caption: 1 to 3 words", "fr"))
+		self.assertEqual("Un libellé court et précis", T.sample_for("WRITE caption: 2 to 6 words", "fr"))
+		self.assertEqual("A detail", T.sample_for("WRITE caption: 1 to 2 words", "en"))
+		self.assertEqual(
+			"A short and precise label", T.sample_for("WRITE phrase: a speciality of the business", "en")
+		)
+
+	def test_what_the_guidance_allows(self):
+		self.assertEqual(4, T.max_words("2 to 4 words"))
+		self.assertEqual(1, T.max_words("1 word"))
+		self.assertEqual(3, T.max_words("1 to 3 words of the business's own, a speciality"))
+		self.assertIsNone(T.max_words("a name"))
+		self.assertIsNone(T.max_words(""))
+
+	def test_every_slot_of_a_node_is_filled_wherever_it_is(self):
+		node = {
+			"el": "div",
+			"text": "WRITE heading: 3 to 7 words",
+			"attrs": {"alt": "WRITE alt: a scene", "href": "/contact"},
+			"c": [{"el": "p", "text": "WRITE caption: 1 word"}, {"el": "p", "text": "plain"}],
+		}
+		T.fill_slots(node, "fr")
+		self.assertEqual("Détail", node["c"][0]["text"])
+		self.assertEqual("plain", node["c"][1]["text"])
+		self.assertEqual("/contact", node["attrs"]["href"])
+		self.assertNotIn("WRITE", json.dumps(node))
+
+	def test_a_caption_never_becomes_a_paragraph(self):
+		tree = {
+			"el": "section",
+			"name": "plans",
+			"c": [{"el": "p", "name": "plan", "text": "WRITE caption: 1 to 3 words"}],
+		}
+		drawn = T.draw(editor_block(photos=0, tree=tree, kinds=["cards"]), HANDLES, LIGHT, "fr")
+		self.assertLessEqual(len(drawn["children"][0]["innerHTML"].split()), 3)
+
+
 class TestWhenACardIsDrawnAgain(unittest.TestCase):
 	def test_the_hash_follows_the_block_its_thumbnail_its_section_and_the_design(self):
 		signature = T.design_signature(HANDLES, LIGHT, "fr")
