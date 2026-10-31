@@ -1236,10 +1236,12 @@ class Importer:
 				"alt": section_recipes.slot("alt", section_recipes.ALT_GUIDANCE),
 			}
 			base = levels[0]
+			# a picture with a height of its own and no width keeps its proportions (a logo); `h-auto max-w-full` is the picture that fills its cell
+			sized = desktop.get("height") not in (None, "auto") and "width" not in desktop
 			if "width" not in desktop:
-				base["width"] = "auto" if "height" in desktop else "100%"
+				base["width"] = "auto" if sized else "100%"
 			if "objectFit" not in desktop:
-				base["objectFit"] = "contain" if "height" in desktop and "width" not in desktop else "cover"
+				base["objectFit"] = "contain" if sized else "cover"
 			base.setdefault("display", "block")
 		if tag == "hr":
 			levels[0] = {

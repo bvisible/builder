@@ -630,6 +630,32 @@ ACCORDION = """<div id="accordion-collapse" data-accordion="collapse" class="rou
 </div>"""
 
 
+class TestAPictureThatFillsItsCell(unittest.TestCase):
+	def test_height_auto_and_max_width_is_a_picture_that_fills_its_cell(self):
+		block = make(
+			role_page(
+				'<div class="grid grid-cols-2 gap-4"><div><img class="h-auto max-w-full rounded-lg" src="https://example.com/a.jpg" alt=""></div><div><img class="h-auto max-w-full rounded-lg" src="https://example.com/b.jpg" alt=""></div></div>'
+			),
+			kind="gallery",
+			name="gallery.fb-test-1",
+		)
+		for image in find(block["tree"], el="img"):
+			self.assertEqual("100%", image["style"]["width"])
+			self.assertEqual("cover", image["style"]["objectFit"])
+
+	def test_a_picture_with_a_height_and_no_width_keeps_its_proportions(self):
+		block = make(
+			role_page(
+				'<div class="flex"><img class="h-8" src="https://example.com/a.jpg" alt=""><img class="h-8" src="https://example.com/b.jpg" alt=""></div>'
+			),
+			kind="gallery",
+			name="gallery.fb-test-2",
+		)
+		for image in find(block["tree"], el="img"):
+			self.assertEqual("auto", image["style"]["width"])
+			self.assertEqual("contain", image["style"]["objectFit"])
+
+
 class TestFlowbite(unittest.TestCase):
 	def test_the_examples_of_a_page_are_read_with_their_titles_and_no_shortcode(self):
 		examples = importer.flowbite_examples(FLOWBITE_PAGE)
