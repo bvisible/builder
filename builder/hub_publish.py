@@ -19,15 +19,19 @@ Config (pushed by neoffice-devops SiteConfigPhase):
 
 import json
 import mimetypes
-import re
 import os
+import re
 
 import frappe
 import requests
 from frappe import _
 
 PUBLISH_TIMEOUT = 120
-VARIABLE_RE = re.compile(r"var\(--([0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12})\)")
+# //// Neoffice — a page names its design tokens by `var(--<id>)`, and the id of a token the editor makes is a uuid while the id of a
+# //// token of a generated site is `<prefix>-primary` (site_ai/nora/site_builder.py, mint_tokens). The collection only knew the uuid,
+# //// so a generated site reached the hub with none of its colours and fonts (2026-10-31). Every `var(--name)` is looked up now;
+# //// the ones that are no token of this site (a plain CSS variable) are skipped by `_token_rows`.
+VARIABLE_RE = re.compile(r"var\(--([A-Za-z0-9][\w-]*)\)")
 FILES_URL_RE = re.compile(r"/files/[^\"'\\)\s<>]+")
 
 
@@ -90,7 +94,7 @@ def _publish_group_sync(pages, group, title="", description=""):
     callable directly via `bench execute` for testing."""
     hub_url, headers = _hub_config()
 
-    bundles = [_build_page_bundle(name) for name in pages]
+    bundles = [_build_page_bundle(name, group) for name in pages]
     payload = {
         "group": group,
         "title": title or group,
@@ -114,10 +118,16 @@ def _publish_group_sync(pages, group, title="", description=""):
     return resp.json().get("message")
 
 
-def _token_rows(names) -> list[dict]:
+def referenced_token_names(blob: str) -> list[str]:
+    """The names a page's blocks give in `var(--name)`, once each, in order."""
+    return sorted(set(VARIABLE_RE.findall(blob)))
+
+
+def _token_rows(names, group: str | None = None) -> list[dict]:
     """The design tokens `names` as the hub takes them. Builder Variable was renamed Builder Token, its name field variable_name became
     token_name; read the doctype this site has and send the rows under the old wire name, as builder_hub.api does, so the hub and any
-    older consumer take them as they are (2026-10-30)."""
+    older consumer take them as they are (2026-10-30). With `group`, the rows leave in that group: a consumer asks the hub for the tokens of a
+    template group by the group's name, and a token of a generated site sits in a group named after its business (2026-10-31)."""
     token_doctype, name_field = ("Builder Token", "token_name") if frappe.db.exists("DocType", "Builder Token") else ("Builder Variable", "variable_name")
     rows = []
     for name in names:
@@ -131,13 +141,13 @@ def _token_rows(names) -> list[dict]:
                     "type": var.type,
                     "value": var.value,
                     "dark_value": var.dark_value,
-                    "group": var.group,
+                    "group": group or var.group,
                 }
             )
     return rows
 
 
-def _build_page_bundle(page_name: str) -> dict:
+def _build_page_bundle(page_name: str, group: str | None = None) -> dict:
     """Mirror of builder_hub.api._get_template_bundle, built from local data
     (without URL absolutization — URLs get rewritten hub-local at upload)."""
     from builder.export_import_standard_page import extract_fonts_from_blocks
@@ -160,12 +170,11 @@ def _build_page_bundle(page_name: str) -> dict:
             }
         )
 
-    # Variables referenced by var(--<uuid>) in blocks or component blocks.
+    # Variables referenced by var(--<id>) in blocks or component blocks.
     # Locally saved pages have no template_group, so reference-scan is the
     # only reliable way to collect them.
     blob = frappe.as_json(blocks, indent=0) + "".join(c["block"] for c in components)
-    variable_names = sorted(set(VARIABLE_RE.findall(blob)))
-    variables = _token_rows(variable_names)
+    variables = _token_rows(referenced_token_names(blob), group)
 
     client_scripts = []
     for cs in page_doc.client_scripts:

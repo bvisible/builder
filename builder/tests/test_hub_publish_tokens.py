@@ -43,5 +43,62 @@ class TestTheTokensOfAPublishedPage(unittest.TestCase):
         self.assertEqual([], out)
 
 
+class TestWhichTokensAPageNames(unittest.TestCase):
+    def test_a_uuid_token_of_the_editor_and_a_prefixed_token_of_a_generated_site_are_both_named(self):
+        blob = '{"c": "var(--0824f62b-f051-48a6-b08b-283242b35aa7)", "b": "var(--gf-primary)", "t": "var(--gf-font-heading)"}'
+        self.assertEqual(
+            ["0824f62b-f051-48a6-b08b-283242b35aa7", "gf-font-heading", "gf-primary"],
+            hub_publish.referenced_token_names(blob),
+        )
+
+    def test_a_token_named_twice_is_named_once(self):
+        self.assertEqual(["gf-primary"], hub_publish.referenced_token_names("var(--gf-primary) var(--gf-primary)"))
+
+    def test_a_page_without_tokens_names_none(self):
+        self.assertEqual([], hub_publish.referenced_token_names('{"c": "#fff", "d": "var(  --x )"}'))
+
+    def test_a_css_variable_that_is_no_token_of_the_site_is_named_and_then_skipped(self):
+        blob = "var(--gf-primary) var(--some-library-variable)"
+        names = hub_publish.referenced_token_names(blob)
+        self.assertIn("some-library-variable", names)
+        stored = {"gf-primary": frappe._dict(name="gf-primary", token_name="Primary", type="Color", value="#112233", dark_value=None, group="Business")}
+        out, _ = rows(True, stored, names)
+        self.assertEqual(["gf-primary"], [r["name"] for r in out])
+
+
+GENERATED = {"gf-primary": frappe._dict(name="gf-primary", token_name="Primary", type="Color", value="#112233", dark_value=None, group="Business")}
+
+
+class TestTheGroupTheTokensLeaveIn(unittest.TestCase):
+    """The hub serves a template group's tokens by the group's name, and exports them at promotion the same way: a token that stays in the group
+    its source site gave it (a business name) never reaches a client who installs the template."""
+
+    def rows_in(self, group):
+        db = MagicMock()
+        db.exists.return_value = True
+        db.get_value.side_effect = lambda doctype, name, fields, as_dict=True: GENERATED.get(name)
+        with patch.object(hub_publish.frappe, "db", db):
+            return hub_publish._token_rows(["gf-primary"], group)
+
+    def test_the_rows_leave_in_the_template_group(self):
+        self.assertEqual("restaurant", self.rows_in("restaurant")[0]["group"])
+
+    def test_with_no_group_a_token_keeps_its_own(self):
+        self.assertEqual("Business", self.rows_in(None)[0]["group"])
+
+    def test_the_bundle_of_each_page_is_built_for_the_group_it_is_published_in(self):
+        built = []
+        response = MagicMock(status_code=200)
+        response.json.return_value = {"message": {"group": "restaurant"}}
+        with (
+            patch.object(hub_publish, "_hub_config", return_value=("https://hub.test", {})),
+            patch.object(hub_publish, "_build_page_bundle", side_effect=lambda name, group=None: built.append((name, group)) or {"page": {}}),
+            patch.object(hub_publish, "_upload_and_rewrite_assets", side_effect=lambda payload, *a: payload),
+            patch.object(hub_publish.requests, "post", return_value=response),
+        ):
+            hub_publish._publish_group_sync(["page-a", "page-b"], "restaurant", "Restaurant")
+        self.assertEqual([("page-a", "restaurant"), ("page-b", "restaurant")], built)
+
+
 if __name__ == "__main__":
     unittest.main()
