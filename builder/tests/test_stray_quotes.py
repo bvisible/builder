@@ -1,7 +1,7 @@
 # //// Neoffice — added file (no upstream equivalent): the closing apostrophe a text was left with.
-"""The six descriptions of a garage's services list each ended in `.'`: the model closed a quote it never opened. Pinned here: such a closing
-apostrophe goes, in a text with tags after it too; an elision (a letter before the apostrophe) stays, so does a quoted span the text really
-opened, a text with Jinja or SVG is not touched, and the blocks of a whole page are walked."""
+"""The six descriptions of a garage's services list each ended in `.'`, the cards of an electrician's in `."`: the model closed a quote it never
+opened. Pinned here: such a closing apostrophe or double quote goes, in a text with tags after it too; an elision (a letter before the apostrophe)
+stays, so does a quoted span the text really opened, a text with Jinja or SVG is not touched, and the blocks of a whole page are walked."""
 
 import unittest
 
@@ -35,6 +35,28 @@ class TestAClosingQuoteWithNoOpeningOne(unittest.TestCase):
 
     def test_a_trailing_space_is_kept(self):
         self.assertEqual("Un texte. ", fixed("Un texte.' "))
+
+
+class TestADoubleQuote(unittest.TestCase):
+    def test_the_double_quote_after_the_full_stop_goes(self):
+        self.assertEqual("Travaux complets pour bâtiments neufs.", fixed('Travaux complets pour bâtiments neufs."'))
+
+    def test_with_closing_tags_after_it(self):
+        self.assertEqual("Un <em>texte</em>.</p>", fixed('Un <em>texte</em>."</p>'))
+
+    def test_a_double_quoted_span_the_text_opened_stays(self):
+        for text in ('Notre plat "signature".', 'Il a dit "bonjour."', '"Un titre entre guillemets."', '("un mot.")'):
+            self.assertEqual(text, fixed(text))
+
+    def test_an_apostrophe_the_text_opened_does_not_keep_a_stray_double_quote(self):
+        self.assertEqual("Il a dit 'bonjour'.", fixed("Il a dit 'bonjour'.\""))
+
+    def test_a_double_quote_the_text_opened_does_not_keep_a_stray_apostrophe(self):
+        self.assertEqual('Il a dit "bonjour".', fixed('Il a dit "bonjour".\''))
+
+    def test_a_quote_inside_an_attribute_is_not_text(self):
+        text = '<a href="x.">Un lien</a>'
+        self.assertEqual(text, fixed(text))
 
 
 class TestWhatStays(unittest.TestCase):
