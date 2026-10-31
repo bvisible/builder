@@ -1,5 +1,7 @@
-//// Neoffice — added file (no upstream equivalent): renders the sections of launch-ui (MIT) to static HTML.
-// Usage: node render.mjs <launch-ui checkout> <output folder> <section> [<section>…]      (sections: hero cta items faq pricing stats logos)
+//// Neoffice — added file (no upstream equivalent): renders sections written as React components (launch-ui, Tailblocks: MIT) to static HTML.
+// Usage: node render.mjs <checkout> <output folder> <entry> [<entry>…]
+//   launch-ui: an entry is a section name (hero cta items faq pricing stats logos), read at components/sections/<name>/default.tsx
+//   anything else (Tailblocks): an entry is a path in the checkout, `src/blocks/hero/light/a.js`; the page is `<folder>/src__blocks__hero__light__a.html`
 //
 // launch-ui is a library of sections written as React components (words and pictures in the props' defaults, classes built by class-variance-authority
 // and tailwind-merge). To read one as a block (builder/site_ai/nora/importer.py), its own components are run, as written, and their markup is kept:
@@ -59,9 +61,18 @@ const shims = {
 };
 
 for (const name of sections) {
+  // a path in the checkout (Tailblocks: a component with a `theme` prop) or a launch-ui section
+  const isPath = name.includes("/");
+  const file = path.join(
+    work,
+    `${isPath ? name.replace(/\.[a-z]+$/, "").replaceAll("/", "__") : name}.mjs`,
+  );
+  const source = isPath
+    ? path.join(src, name)
+    : path.join(src, "components/sections", name, "default.tsx");
+  const props = isPath ? '{ theme: "indigo" }' : "null";
   // React is bundled with the section, so that the section and the renderer share one copy of it
-  const entry = `import React from "react"; import { renderToStaticMarkup } from "react-dom/server"; import C from ${JSON.stringify(path.join(src, "components/sections", name, "default.tsx"))}; export default () => renderToStaticMarkup(React.createElement(C));`;
-  const file = path.join(work, `${name}.mjs`);
+  const entry = `import React from "react"; import { renderToStaticMarkup } from "react-dom/server"; import C from ${JSON.stringify(source)}; export default () => renderToStaticMarkup(React.createElement(C, ${props}));`;
   await build({
     stdin: { contents: entry, resolveDir: here, loader: "jsx" },
     bundle: true,
@@ -70,6 +81,7 @@ for (const name of sections) {
     outfile: file,
     jsx: "automatic",
     logLevel: "error",
+    loader: { ".js": "jsx" },
     nodePaths: [path.join(here, "node_modules")],
     plugins: [shims],
     define: { "process.env.NODE_ENV": '"production"' },
@@ -78,9 +90,12 @@ for (const name of sections) {
     },
   });
   const markup = (await import(pathToFileURL(file).href)).default();
+  const out = isPath
+    ? name.replace(/\.[a-z]+$/, "").replaceAll("/", "__")
+    : name;
   fs.writeFileSync(
-    path.join(html, `${name}.html`),
+    path.join(html, `${out}.html`),
     `<!doctype html><html><head><meta charset="utf-8"></head><body>${markup}</body></html>\n`,
   );
-  console.log(name, markup.length, "characters");
+  console.log(out, markup.length, "characters");
 }

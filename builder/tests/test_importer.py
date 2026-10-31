@@ -1034,6 +1034,78 @@ class TestPushingToTheHub(unittest.TestCase):
 		self.assertIn("429", sent["a"])
 
 
+TAILBLOCKS_HERO = page(
+	"""
+<section class="text-gray-600 body-font">
+  <div class="container mx-auto flex px-5 py-24 md:flex-row flex-col items-center">
+    <div class="lg:flex-grow md:w-1/2 lg:pr-24 md:pr-16 flex flex-col md:items-start md:text-left mb-16 md:mb-0 items-center text-center">
+      <h1 class="title-font sm:text-4xl text-3xl mb-4 font-medium text-gray-900">A headline over<br class="hidden lg:inline-block">two lines</h1>
+      <p class="mb-8 leading-relaxed">A paragraph that says what the page is about, long enough to be a text of its own.</p>
+      <div class="flex justify-center">
+        <button class="inline-flex text-white bg-indigo-500 border-0 py-2 px-6 focus:outline-none hover:bg-indigo-600 rounded text-lg">Button</button>
+        <button class="ml-4 inline-flex text-gray-700 bg-gray-100 border-0 py-2 px-6 focus:outline-none hover:bg-gray-200 rounded text-lg">Button</button>
+      </div>
+    </div>
+    <div class="lg:max-w-lg lg:w-full md:w-1/2 w-5/6"><img class="object-cover object-center rounded" alt="hero" src="https://dummyimage.com/720x600"></div>
+  </div>
+</section>
+"""
+)
+
+
+class TestTailblocks(unittest.TestCase):
+	def test_a_component_rendered_by_react_becomes_a_block(self):
+		block = importer.import_tailblocks_markup("hero", "a", TAILBLOCKS_HERO)
+		self.assertEqual("hero.tb-hero-a", block["id"])
+		self.assertEqual("Hero A (Tailblocks)", block["title"])
+		self.assertEqual(1, block["photos"])
+		self.assertEqual(
+			["u-btn--primary", "u-btn--outline"], [b["classes"][1] for b in find(block["tree"], el="a")]
+		)
+		for part in (
+			"Tailblocks",
+			"src/blocks/hero/light/a.js",
+			"34943e63da",
+			"MIT licence",
+			"Copyright (c) 2020 Mert Cukuren",
+		):
+			self.assertIn(part, block["notes"])
+		errors, warnings = block_format.lint(
+			block["tree"], block_id=block["id"], kinds=block["kinds"], photos=1, motion="None"
+		)
+		self.assertEqual(([], []), (errors, warnings))
+
+	def test_the_fonts_of_the_library_and_the_old_flex_names_are_read(self):
+		block = importer.import_tailblocks_markup("hero", "a", TAILBLOCKS_HERO)
+		self.assertEqual(importer.Importer().dropped, importer.Counter())
+		self.assertEqual({"flexGrow": "1"}, importer.utility("flex-grow"))
+		self.assertEqual({"flexShrink": "0"}, importer.utility("flex-shrink-0"))
+		self.assertEqual({}, importer.utility("border-opacity-60"))
+		self.assertEqual({}, importer.utility("title-font"))
+		self.assertEqual({}, importer.utility("body-font"))
+		self.assertNotIn("indigo", repr(block["tree"]))
+
+	def test_every_category_is_a_kind_the_plan_knows_and_has_files(self):
+		from builder.site_ai.nora.site_plan import SECTION_KINDS
+
+		self.assertEqual(set(importer.TAILBLOCKS_KINDS), set(importer.TAILBLOCKS_FILES))
+		for category, kind in importer.TAILBLOCKS_KINDS.items():
+			self.assertIn(kind, SECTION_KINDS, category)
+			self.assertTrue(importer.TAILBLOCKS_FILES[category])
+
+	def test_the_folder_of_rendered_components_is_read_and_what_is_missing_is_said(self):
+		import tempfile
+
+		with tempfile.TemporaryDirectory() as folder:
+			with open(f"{folder}/src__blocks__hero__light__a.html", "w", encoding="utf-8") as f:
+				f.write(TAILBLOCKS_HERO)
+			done = importer.import_tailblocks(folder, ["hero"], push=False)
+		self.assertEqual({"hero/a": "hero.tb-hero-a"}, done["blocks"])
+		self.assertEqual({"hero/b", "hero/c", "hero/d", "hero/e", "hero/f"}, set(done["refused"]))
+		self.assertIn("not rendered", done["refused"]["hero/b"])
+		self.assertEqual({}, done["sent"])
+
+
 class TestWhatCannotBeABlock(unittest.TestCase):
 	def refused(self, markup, **kw):
 		with self.assertRaises(importer.Refused) as caught:

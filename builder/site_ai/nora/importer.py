@@ -568,6 +568,11 @@ STATIC = {
 	"flex-auto": {"flex": "1 1 auto"},
 	"flex-none": {"flex": "none"},
 	"grow": {"flexGrow": "1"},
+	"flex-grow": {"flexGrow": "1"},
+	"flex-grow-0": {"flexGrow": "0"},
+	"flex-shrink": {"flexShrink": "1"},
+	"flex-shrink-0": {"flexShrink": "0"},
+	"order-none": {"order": "0"},
 	"grow-0": {"flexGrow": "0"},
 	"shrink": {"flexShrink": "1"},
 	"shrink-0": {"flexShrink": "0"},
@@ -617,7 +622,7 @@ IGNORED = re.compile(
 	# what only decorates (a glow, a mask, a gradient text, a transform, an animation) says nothing to a block
 	r"|animate-.+|delay-\d+|text-transparent|bg-radial.*|bg-conic.*|drop-shadow(?:-.+)?|blur(?:-.+)?|backdrop-blur(?:-.+)?|mix-blend-.+|isolate"
 	r"|fade-(?:top|bottom|x|y|left|right)(?:-lg)?|line-(?:b|t|x|y)|-?translate-[xyz]-.+|-?scale(?:-[xy])?-.+|-?rotate-.+|skew-.+"
-	r"|(?:from|via|to)-\d+%|auto-rows-fr|rounded-\[.+\])$"
+	r"|(?:from|via|to)-\d+%|auto-rows-fr|rounded-\[.+\]|body-font|title-font|(?:bg|border|text|divide|ring)-opacity-\d+)$"
 )
 # a property that goes back to this, not to `initial`, when a smaller screen does not set it
 RESET_TO = {"display": "block", "position": "static", "flexDirection": "row", "overflow": "visible"}
@@ -1958,7 +1963,7 @@ LAUNCH_UI_KINDS = {
 def launch_ui_note(section: str, source: dict = LAUNCH_UI) -> str:
 	return (
 		f"Imported from {source['name']} (components/sections/{section}/default.tsx at {source['ref'][:10]}, its components run as written and "
-		f"rendered to static HTML, scripts/import-launch-ui), {source['licence']} licence, Copyright (c) 2024 {source['holder']}, {source['url']}."
+		f"rendered to static HTML, scripts/import-react-sections), {source['licence']} licence, Copyright (c) 2024 {source['holder']}, {source['url']}."
 	)
 
 
@@ -1974,7 +1979,7 @@ def import_launch_ui_markup(section: str, markup: str) -> dict:
 
 
 def import_launch_ui(folder: str, sections=None, push: bool = False) -> dict:
-	"""For `bench execute`: the sections of launch-ui, rendered to HTML in `folder` (scripts/import-launch-ui/render.mjs, one `<section>.html` each),
+	"""For `bench execute`: the sections of launch-ui, rendered to HTML in `folder` (scripts/import-react-sections/render.mjs, one `<section>.html` each),
 	that can be blocks, and why the others cannot; with `push` they go to the hub as drafts."""
 	import os
 
@@ -2104,6 +2109,89 @@ def import_meraki(categories=None, push: bool = False) -> dict:
 			label = f"{category}/{name}"
 			try:
 				made[label] = import_meraki_markup(category, name, fetch_meraki(category, name))
+			except Refused as e:
+				refused[label] = str(e)
+			except Exception as e:
+				refused[label] = f"not read ({type(e).__name__})"
+	without_duplicates(made, refused)
+	sent = push_all(made) if push else {}
+	return {"blocks": {label: block["id"] for label, block in made.items()}, "refused": refused, "sent": sent}
+
+
+# ---------------------------------------------------------------- Tailblocks
+
+TAILBLOCKS = {
+	"name": "Tailblocks",
+	"url": "https://github.com/mertJF/tailblocks",
+	"licence": "MIT",
+	"holder": "Mert Cukuren",
+	"ref": "34943e63da6a2d45a55a076ea18312a1c1098957",
+}
+# a Tailblocks folder of components (the light ones; the dark ones are the same markup), the kind of section it is, and its components
+TAILBLOCKS_KINDS = {
+	"hero": "hero",
+	"feature": "feature-grid",
+	"cta": "cta",
+	"pricing": "pricing",
+	"team": "team",
+	"testimonial": "testimonials",
+	"statistic": "figures",
+	"step": "steps",
+	"gallery": "gallery",
+	"blog": "cards",
+	"content": "two-column",
+	"ecommerce": "product-row",
+}
+TAILBLOCKS_FILES = {
+	"hero": "abcdef",
+	"feature": "abcdefgh",
+	"cta": "abcd",
+	"pricing": "ab",
+	"team": "abc",
+	"testimonial": "abc",
+	"statistic": "abc",
+	"step": "abc",
+	"gallery": "abc",
+	"blog": "abcde",
+	"content": "abcdefgh",
+	"ecommerce": "abc",
+}
+
+
+def tailblocks_note(category: str, name: str, source: dict = TAILBLOCKS) -> str:
+	return (
+		f"Imported from {source['name']} (src/blocks/{category}/light/{name}.js at {source['ref'][:10]}, the component run as written and rendered to "
+		f"static HTML, scripts/import-react-sections), {source['licence']} licence, Copyright (c) 2020 {source['holder']}, {source['url']}."
+	)
+
+
+def import_tailblocks_markup(category: str, name: str, markup: str) -> dict:
+	kind = TAILBLOCKS_KINDS[category]
+	return import_markup(
+		markup,
+		kind=kind,
+		block_id=f"{capture.family_of(kind)}.tb-{category}-{name}",
+		title=f"{kind.replace('-', ' ').capitalize()} {name.upper()} (Tailblocks)",
+		source_note=tailblocks_note(category, name),
+	)
+
+
+def import_tailblocks(folder: str, categories=None, push: bool = False) -> dict:
+	"""For `bench execute`: the sections of Tailblocks, rendered to HTML in `folder` (scripts/import-react-sections/render.mjs, one
+	`src__blocks__<category>__light__<name>.html` each), that can be blocks, and why the others cannot; with `push` they go to the hub as drafts."""
+	import os
+
+	made: dict[str, dict] = {}
+	refused: dict[str, str] = {}
+	for category in categories or TAILBLOCKS_KINDS:
+		for name in TAILBLOCKS_FILES[category]:
+			label = f"{category}/{name}"
+			path = os.path.join(folder, f"src__blocks__{category}__light__{name}.html")
+			try:
+				with open(path, encoding="utf-8") as f:
+					made[label] = import_tailblocks_markup(category, name, f.read())
+			except FileNotFoundError:
+				refused[label] = "not rendered (no HTML for it in the folder)"
 			except Refused as e:
 				refused[label] = str(e)
 			except Exception as e:

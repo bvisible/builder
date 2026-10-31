@@ -1,6 +1,6 @@
 {
-  "//": "//// Neoffice — added file (no upstream equivalent): renders the sections of launch-ui (MIT) to static HTML for builder/site_ai/nora/importer.py",
-  "name": "import-launch-ui",
+  "//": "//// Neoffice — added file (no upstream equivalent): renders sections written as React components (launch-ui, Tailblocks: MIT) to static HTML for builder/site_ai/nora/importer.py",
+  "name": "import-react-sections",
   "private": true,
   "type": "module",
   "dependencies": {
@@ -10,6 +10,7 @@
     "clsx": "2.1.1",
     "esbuild": "0.25.12",
     "lucide-react": "1.66.0",
+    "prop-types": "15.8.1",
     "react": "19.2.8",
     "react-dom": "19.2.8",
     "tailwind-merge": "3.7.0"
