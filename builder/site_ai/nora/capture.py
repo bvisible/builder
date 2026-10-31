@@ -137,7 +137,7 @@ def handles_of(prefix: str) -> dict:
 	return {key: f"var(--{prefix}-{key})" for key in HANDLE_KEYS}
 
 
-def token_pairs(look, ground: str, handles: dict) -> list[tuple[str, str]]:
+def token_pairs(look, ground: str, handles: dict, palette: dict | None = None) -> list[tuple[str, str]]:
 	"""(value in the site, token of the block), the longest value first so that a longer one is never cut by a shorter. What depends on the
 	ground comes first (`{{ground.ink}}` rather than `{{text}}`)."""
 	by_role: dict[str, str] = {}
@@ -160,14 +160,36 @@ def token_pairs(look, ground: str, handles: dict) -> list[tuple[str, str]]:
 		seen.add(value)
 		token = grounded.get(role) or TOKEN_OF_HANDLE.get(role.replace("_", "-")) or role
 		pairs.append((value, token))
+	# the same colours written as the hex a contrast repair resolves a handle to: a literal that IS a colour of the site is the site's token too
+	token_of_value = {value: token for value, token in pairs}
+	for key, value in (palette or {}).items():
+		role = str(key).split("-", 1)[-1].replace("-", "_")
+		handle = handles.get(role.replace("_", "-"))
+		if (
+			handle in token_of_value
+			and isinstance(value, str)
+			and value.startswith("#")
+			and value.lower() not in seen
+		):
+			pairs.append((value.lower(), token_of_value[handle]))
+			seen.add(value.lower())
 	return sorted(pairs, key=lambda p: -len(p[0]))
 
 
-def ground_of_section(section: dict, look) -> str:
-	background = (section.get("baseStyles") or {}).get("backgroundColor")
-	if background and background == look.deep:
+def _resolved(value, palette: dict | None) -> str:
+	"""A colour as a lowercase string, a handle (`var(--t-primary)`) read as the colour of its token."""
+	text = str(value or "").strip()
+	handle = re.fullmatch(r"var\(--([\w-]+)\)", text)
+	if handle and palette and isinstance(palette.get(handle.group(1)), str):
+		text = palette[handle.group(1)]
+	return text.lower()
+
+
+def ground_of_section(section: dict, look, palette: dict | None = None) -> str:
+	background = _resolved((section.get("baseStyles") or {}).get("backgroundColor"), palette)
+	if background and background == _resolved(look.deep, palette):
 		return "deep"
-	if background and background == look.tint:
+	if background and background == _resolved(look.tint, palette):
 		return "tint"
 	return "plain"
 
@@ -227,6 +249,15 @@ class Words:
 		return section_recipes.slot("text", _range(words))
 
 
+def _lightness(hex_colour: str) -> float:
+	"""The relative lightness (0 black, 1 white) of a `#rgb` or `#rrggbb` colour."""
+	digits = hex_colour.lstrip("#")
+	if len(digits) == 3:
+		digits = "".join(c * 2 for c in digits)
+	r, g, b = (int(digits[i : i + 2], 16) / 255 for i in (0, 2, 4))
+	return 0.2126 * r + 0.7152 * g + 0.0722 * b
+
+
 def _size(style: dict) -> float:
 	"""The font size of a style, in rem (px counted as 16 to the rem); 0 when it is not a plain length."""
 	found = re.match(r"^\s*([\d.]+)\s*(rem|px)\s*$", str(style.get("fontSize", "")))
@@ -240,21 +271,29 @@ def _size(style: dict) -> float:
 
 
 class Capture:
-	def __init__(self, pairs: list[tuple[str, str]], forbidden: set[str]):
+	def __init__(self, pairs: list[tuple[str, str]], forbidden: set[str], ground: str = "plain"):
 		self.pairs = pairs
 		self.forbidden = forbidden
+		self.ground = ground
 		self.photos: dict[str, int] = {}
 		self.words = Words()
 		self.literals = 0
 		self.nodes = 0
 
-	def value(self, raw):
+	def value(self, raw, key: str = ""):
 		if not isinstance(raw, str):
 			return raw
 		out = raw
 		for needle, token in self.pairs:
-			if needle in out:
+			if needle.startswith("#"):
+				out = re.sub(re.escape(needle), "{{" + token + "}}", out, flags=re.IGNORECASE)
+			elif needle in out:
 				out = out.replace(needle, "{{" + token + "}}")
+		# the ink a contrast repair wrote as a literal (an off-white on a deep band, a near-black on a plain one) is the ink of the ground
+		if key == "color" and re.fullmatch(r"#[0-9a-fA-F]{3}(?:[0-9a-fA-F]{3})?", out.strip()):
+			light = _lightness(out.strip())
+			if (self.ground == "deep" and light > 0.6) or (self.ground != "deep" and light < 0.25):
+				out = "{{ground.ink}}"
 		stripped = block_format.TOKEN.sub("", out)
 		if block_format.CSS_FORBIDDEN.search(stripped):
 			if "url(" in stripped.lower():
@@ -268,7 +307,7 @@ class Capture:
 		for key, value in (raw or {}).items():
 			if not block_format.CSS_KEY.match(str(key)) or isinstance(value, (dict, list)) or value is None:
 				continue
-			out[key] = self.value(value)
+			out[key] = self.value(value, str(key))
 		return out or None
 
 	def name(self, name) -> str | None:
@@ -465,8 +504,10 @@ def capture_section(
 	"""The hub's block (the body of its `publish_block`) for one section of a written page. Raises `Refused` with the reason when the section
 	cannot be a block. `forbidden`: words of the business (its name, its activity) that no node name may carry."""
 	look = section_recipes.Look(handles, palette)
-	ground = ground_of_section(section, look)
-	capture = Capture(token_pairs(look, ground, handles), {w.lower() for w in forbidden if len(w) >= 4})
+	ground = ground_of_section(section, look, palette)
+	capture = Capture(
+		token_pairs(look, ground, handles, palette), {w.lower() for w in forbidden if len(w) >= 4}, ground
+	)
 	tree = capture.node(section)
 	if tree.get("el") != "section":
 		raise Refused("it is not a section")

@@ -306,6 +306,51 @@ class TestPhotographsLinksAndNames(unittest.TestCase):
 		self.assertEqual("None", self.cap(self.base())["motion"])
 
 
+class TestColoursWrittenAsLiterals(unittest.TestCase):
+	"""A contrast repair resolves a handle to its hex: the page then holds the site's own colours written out."""
+
+	def block(self, ground_colour, ink, **extra):
+		return {
+			"element": "section",
+			"blockName": "story",
+			"baseStyles": {"backgroundColor": ground_colour, "padding": "4rem 0"},
+			"children": [
+				{
+					"element": "h2",
+					"innerHTML": "Un titre de section",
+					"baseStyles": {"color": ink, "borderBottom": "1px solid #D9B26F", **extra},
+				},
+				{
+					"element": "p",
+					"innerHTML": "Quelques mots pour la suite",
+					"baseStyles": {"color": "#7A2E1D"},
+				},
+			],
+		}
+
+	def cap(self, block):
+		return capture.capture_section(block, handles=capture.handles_of("t"), palette=LIGHT)
+
+	def test_a_hex_that_is_a_colour_of_the_site_is_its_token_whatever_its_case(self):
+		dump = json.dumps(self.cap(self.block("#faf5ee", "#2b1810"))["tree"])
+		self.assertIn("{{secondary}}".replace("secondary", "ground.accent"), dump)
+		self.assertIn("{{primary}}", dump)
+		self.assertNotIn("#", dump.replace("{{", "").replace("}}", ""))
+
+	def test_an_off_white_ink_on_a_deep_band_is_the_ink_of_the_ground(self):
+		block = self.cap(self.block("#7a2e1d", "#f9f7f3"))
+		self.assertEqual("deep", block["ground"])
+		self.assertEqual("{{ground.ink}}", block["tree"]["c"][0]["style"]["color"])
+
+	def test_a_near_black_ink_on_a_plain_ground_is_the_ink_of_the_ground(self):
+		block = self.cap(self.block("#faf5ee", "#1a1a1a"))
+		self.assertEqual("{{ground.ink}}", block["tree"]["c"][0]["style"]["color"])
+
+	def test_a_colour_that_belongs_to_nobody_stays_and_is_counted(self):
+		with self.assertRaises(capture.Refused):
+			self.cap(self.block("#faf5ee", "#2b1810", a="#123456", b="#654321", c="#abcdef", d="#fedcba"))
+
+
 class TestWhatCannotBeABlock(unittest.TestCase):
 	def refused(self, kid, **over):
 		block = {
@@ -347,6 +392,7 @@ class TestWhatCannotBeABlock(unittest.TestCase):
 				"backgroundColor": "#222",
 				"borderColor": "#333",
 				"outlineColor": "#444",
+				"textDecorationColor": "#555",
 			},
 			"innerHTML": "Un mot",
 		}
