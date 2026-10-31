@@ -165,6 +165,7 @@ class TestWhenACardIsDrawnAgain(unittest.TestCase):
 		base = T.card_hash(editor_block(), signature)
 		self.assertEqual(base, T.card_hash(editor_block(), signature))
 		self.assertNotEqual(base, T.card_hash(editor_block(version=2), signature))
+		self.assertNotEqual(base, T.card_hash(editor_block(title="Un autre titre"), signature))
 		self.assertNotEqual(
 			base, T.card_hash(editor_block(preview="https://hub.test/files/other.png"), signature)
 		)
@@ -215,6 +216,7 @@ class TestSyncing(unittest.TestCase):
 		frappe.db.get_value.return_value = taken
 		frappe.db.exists.side_effect = exists
 		inserted, seen = [], []
+		frappe.rename_doc.side_effect = lambda *a, **k: seen.append(("rename", frappe.flags.in_import))
 
 		def get_doc(values):
 			seen.append(frappe.flags.in_import)
@@ -302,6 +304,37 @@ class TestSyncing(unittest.TestCase):
 		call = frappe.db.set_value.call_args
 		self.assertEqual(("Block Template", "Steps on a rail"), call.args[:2])
 		self.assertEqual("steps.rail", call.args[2]["hub_block"])
+
+	def test_a_card_whose_block_the_hub_renamed_is_renamed_without_the_export_and_keeps_its_row(self):
+		rows = [{"name": "Old title", "hub_block": "steps.rail", "hub_hash": "stale"}]
+		result, frappe, inserted, seen, _fetch = self.run_sync(
+			catalogue(editor_block(title="Étapes sur un rail")), rows=rows
+		)
+		self.assertEqual(["steps.rail"], result["updated"])
+		self.assertEqual([], inserted)
+		frappe.rename_doc.assert_called_once_with(
+			"Block Template", "Old title", "Étapes sur un rail", force=True
+		)
+		self.assertEqual([("rename", True)], seen)
+		self.assertFalse(frappe.flags.in_import)
+		call = frappe.db.set_value.call_args
+		self.assertEqual(("Block Template", "Étapes sur un rail"), call.args[:2])
+		self.assertEqual("Étapes sur un rail", call.args[2]["template_name"])
+
+	def test_a_card_that_keeps_its_name_is_not_renamed(self):
+		rows = [{"name": "Steps on a rail", "hub_block": "steps.rail", "hub_hash": "stale"}]
+		_result, frappe, _inserted, _seen, _fetch = self.run_sync(catalogue(editor_block()), rows=rows)
+		frappe.rename_doc.assert_not_called()
+
+	def test_a_new_title_that_another_template_has_is_made_unique_with_the_id(self):
+		rows = [{"name": "Old title", "hub_block": "steps.rail", "hub_hash": "stale"}]
+		_result, frappe, _inserted, _seen, _fetch = self.run_sync(
+			catalogue(editor_block(title="Taken")),
+			rows=rows,
+			taken="",
+			exists=lambda doctype, name: name == "Taken",
+		)
+		self.assertEqual("Taken (steps.rail)", frappe.db.set_value.call_args.args[1])
 
 	def test_a_card_whose_block_the_hub_no_longer_offers_goes_and_only_by_the_database(self):
 		rows = [{"name": "Gone block", "hub_block": "gone.one", "hub_hash": "x"}]

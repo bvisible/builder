@@ -192,9 +192,16 @@ def draw(block: dict, handles: dict, palette: dict, language: str) -> dict:
 
 
 def card_hash(block: dict, signature: str) -> str:
-	"""What a card was drawn from: the block (its version, its section, its thumbnail) and the site's design."""
+	"""What a card was drawn from: the block (its title, its version, its section, its thumbnail) and the site's design."""
 	text = json.dumps(
-		[block.get("id"), block.get("version"), block.get("category"), block.get("preview"), signature],
+		[
+			block.get("id"),
+			block.get("title"),
+			block.get("version"),
+			block.get("category"),
+			block.get("preview"),
+			signature,
+		],
 		sort_keys=True,
 	)
 	return hashlib.sha1(text.encode("utf-8")).hexdigest()[:12]
@@ -243,18 +250,31 @@ def _row_values(block: dict, drawn: dict, hash_: str, rank: int) -> dict:
 	}
 
 
-def _write(existing_name: str | None, block: dict, values: dict) -> None:
-	if existing_name:
-		frappe.db.set_value("Block Template", existing_name, values)
-		return
+def _name_for(block: dict, current: str | None = None) -> str:
+	"""The name of the card of this block: its title, and the title with the id when another template (a person's, or another block's) already has it.
+	`current` is the name the card has now, which is never taken by somebody else."""
 	name = (block.get("title") or block["id"]).strip()[:120]
-	taken = frappe.db.get_value("Block Template", name, "hub_block")
-	if frappe.db.exists("Block Template", name) and taken != block["id"]:
+	if (
+		name != current
+		and frappe.db.exists("Block Template", name)
+		and frappe.db.get_value("Block Template", name, "hub_block") != block["id"]
+	):
 		name = f"{name} ({block['id']})"[:140]
+	return name
+
+
+def _write(existing_name: str | None, block: dict, values: dict) -> None:
+	name = _name_for(block, existing_name)
+	values = {**values, "template_name": name}
+	if existing_name:
+		if name != existing_name:
+			# a block the hub renamed: the card follows it (the name is the document's, so it is renamed, not edited)
+			with _no_export():
+				frappe.rename_doc("Block Template", existing_name, name, force=True)
+		frappe.db.set_value("Block Template", name, values)
+		return
 	with _no_export():
-		frappe.get_doc({"doctype": "Block Template", "template_name": name, **values}).insert(
-			ignore_permissions=True
-		)
+		frappe.get_doc({"doctype": "Block Template", **values}).insert(ignore_permissions=True)
 
 
 def sync(conf=None) -> dict:
