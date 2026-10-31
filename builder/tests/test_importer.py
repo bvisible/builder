@@ -429,6 +429,281 @@ class TestBordersAndHiddenWords(unittest.TestCase):
 		self.assertNotIn("Instagram", repr(block["tree"]))
 
 
+FAQ = page("""
+<div class="space-y-4 mx-auto max-w-3xl p-6">
+  <details class="group rounded-md border border-gray-100 bg-gray-50 p-4" open>
+    <summary class="flex items-center justify-between gap-1.5 text-gray-900">
+      <h2 class="text-lg font-medium">How long does a loaf keep before it goes stale on the shelf?</h2>
+      <svg class="size-5 shrink-0 group-open:-rotate-180"><path d="M0 0"/></svg>
+    </summary>
+    <p class="px-4 pt-4 text-gray-700">A loaf keeps two days on the shelf and a week in the freezer, sliced, and it toasts straight from there without any change.</p>
+  </details>
+  <details class="group rounded-md border border-gray-100 bg-gray-50 p-4">
+    <summary class="flex items-center justify-between gap-1.5 text-gray-900">
+      <h2 class="text-lg font-medium">Do you deliver?</h2>
+      <svg class="size-5 shrink-0"><path d="M0 0"/></svg>
+    </summary>
+    <p class="px-4 pt-4 text-gray-700">Yes, to the whole valley, every morning before eight, for orders sent the evening before.</p>
+  </details>
+</div>
+""")
+
+
+class TestFoldingQuestions(unittest.TestCase):
+	def setUp(self):
+		self.block = make(FAQ, kind="faq", name="faq.hu-test-1")
+		self.tree = self.block["tree"]
+
+	def test_it_lints_with_details_and_summary_in_the_format(self):
+		errors, warnings = block_format.lint(
+			self.tree, block_id=self.block["id"], kinds=["faq"], photos=0, motion="None"
+		)
+		self.assertEqual(([], []), (errors, warnings))
+		self.assertIn("details", block_format.TAGS)
+		self.assertIn("summary", block_format.TAGS)
+
+	def test_the_questions_are_the_sites_accordion(self):
+		faq = find(self.tree, classes=["u-faq"])[0]
+		self.assertEqual("faq", faq["name"])
+		self.assertEqual(["details", "details"], [c["el"] for c in faq["c"]])
+		for item in faq["c"]:
+			self.assertEqual(["summary", "p"], [c["el"] for c in item["c"]])
+
+	def test_a_question_keeps_the_type_of_the_source_and_nothing_of_its_box(self):
+		for item in find(self.tree, name="question", el="details"):
+			self.assertNotIn("style", item)
+			self.assertNotIn("attrs", item)  # `open` is the visitor's
+		summary = find(self.tree, el="summary")[0]
+		self.assertEqual(
+			{
+				"fontSize": "1.125rem",
+				"fontWeight": "500",
+				"lineHeight": "1.556",
+				"color": "{{ground.ink}}",
+				"fontFamily": "{{font_body}}",
+			},
+			summary["style"],
+		)
+
+	def test_a_question_and_an_answer_ask_for_what_they_are(self):
+		summary = find(self.tree, el="summary")[0]
+		answer = find(self.tree, name="answer")[0]
+		self.assertRegex(
+			summary["text"], r"^WRITE question: a real question a customer asks, \d+ to \d+ words$"
+		)
+		self.assertRegex(
+			answer["text"], r"^WRITE answer: an answer of \d+ to \d+ words from the business's own facts$"
+		)
+		self.assertNotIn("How long", repr(self.tree))
+
+	def test_the_answer_has_no_air_of_its_own_the_accordion_gives_it(self):
+		answer = find(self.tree, name="answer")[0]
+		for key in ("margin", "paddingLeft", "paddingTop", "paddingRight"):
+			self.assertNotIn(key, answer["style"])
+		self.assertEqual("{{ground.muted}}", answer["style"]["color"])
+
+	def test_the_spacing_of_the_source_is_not_kept_and_the_width_of_the_page_is(self):
+		faq = find(self.tree, classes=["u-faq"])[0]
+		self.assertNotIn("style", faq)
+		narrow = find(self.tree, name="narrow")[0]
+		self.assertEqual("48rem", narrow["style"]["maxWidth"])  # `max-w-3xl` was on the page's body
+
+	def test_the_questions_of_a_list_ask_for_the_same_words(self):
+		questions = [n["text"] for n in find(self.tree, el="summary")]
+		self.assertEqual(1, len(set(questions)))
+		answers = [n["text"] for n in find(self.tree, name="answer")]
+		self.assertEqual(1, len(set(answers)))
+
+	def test_the_icon_is_left_out_and_said(self):
+		self.assertIn("2 icons", self.block["notes"])
+
+	def test_a_single_details_is_not_an_accordion(self):
+		one = make(
+			page(
+				'<div class="px-4"><details><summary class="text-gray-900">A question here</summary><p class="text-gray-700">An answer here</p></details></div>'
+			),
+			kind="faq",
+			name="faq.hu-test-2",
+		)
+		self.assertEqual([], find(one["tree"], classes=["u-faq"]))
+
+
+def role_page(body):
+	return page(f'<div class="mx-auto max-w-screen-xl px-4 py-8">{body}</div>')
+
+
+class TestColoursNamedByTheirRole(unittest.TestCase):
+	"""Flowbite names a colour by the role it plays (`text-heading`, `bg-neutral-secondary`, `border-default`), shadcn/ui too (`text-muted-foreground`,
+	`bg-primary`, `border-border`): each lands on the token the same role has in the table of Tailwind colours."""
+
+	def token(self, kind, text, ground="plain"):
+		return importer.resolve_colour(importer.colour(kind, text), ground)
+
+	def test_flowbite_roles(self):
+		self.assertEqual("{{ground.ink}}", self.token("text", "heading"))
+		self.assertEqual("{{ground.muted}}", self.token("text", "body"))
+		self.assertEqual("{{ground.accent}}", self.token("text", "fg-brand"))
+		self.assertEqual("{{ground.background}}", self.token("bg", "neutral-primary"))
+		self.assertEqual("{{tint}}", self.token("bg", "neutral-secondary-medium"))
+		self.assertEqual("{{ground.hair}}", self.token("border", "default"))
+		self.assertEqual("{{ground.hair}}", self.token("border", "default-medium"))
+
+	def test_shadcn_roles(self):
+		self.assertEqual("{{ground.ink}}", self.token("text", "foreground"))
+		self.assertEqual("{{ground.muted}}", self.token("text", "muted-foreground"))
+		self.assertEqual("{{ground.accent}}", self.token("text", "primary"))
+		self.assertEqual("{{ground.ink}}", self.token("text", "primary-foreground", "deep"))
+		self.assertEqual("{{ground.background}}", self.token("bg", "background"))
+		self.assertEqual("{{tint}}", self.token("bg", "muted"))
+		self.assertEqual("{{ground.hair}}", self.token("border", "border"))
+
+	def test_a_brand_surface_is_a_deep_one_and_a_pale_one_is_not(self):
+		self.assertEqual("deep", importer.ground_of(importer.colour("bg", "brand")))
+		self.assertEqual("deep", importer.ground_of(importer.colour("bg", "primary")))
+		self.assertEqual("plain", importer.ground_of(importer.colour("bg", "brand-soft")))
+		self.assertEqual("tint", importer.ground_of(importer.colour("bg", "muted")))
+
+	def test_an_opacity_is_kept_and_a_name_that_is_not_a_role_is_unknown(self):
+		self.assertEqual(0.9, importer.colour("bg", "primary/90").alpha)
+		self.assertIsNone(importer.colour("text", "sparkle"))
+
+	def test_a_side_border_colour_and_the_start_and_end_sides(self):
+		self.assertEqual(
+			{"borderColor": importer.colour("border", "default")}, importer.utility("border-b-default")
+		)
+		self.assertEqual(
+			{"borderWidth": "0", "borderLeftWidth": "0", "borderStyle": "solid"},
+			importer.utility("border-s-0"),
+		)
+		self.assertEqual({"borderRadius": "var(--radius)"}, importer.utility("rounded-base"))
+
+	def test_a_component_written_with_roles_takes_the_design_system(self):
+		block = make(
+			role_page(
+				'<h1 class="text-4xl font-bold text-heading">A headline of a few words</h1>'
+				'<p class="text-body">Some words that say what we do and for whom we do it.</p>'
+				'<button type="button" class="text-white bg-brand rounded-base px-5 py-3">Start</button>'
+				'<button type="button" class="text-body bg-neutral-secondary-medium border border-default-medium rounded-base px-5 py-3">More</button>'
+			),
+			kind="hero",
+			name="hero.fb-test-1",
+		)
+		blob = repr(block["tree"])
+		for word in ("brand", "neutral", "default", "text-", "bg-"):
+			self.assertNotIn(word, blob)
+		self.assertEqual(
+			["u-btn--primary", "u-btn--outline"], [b["classes"][1] for b in find(block["tree"], el="a")]
+		)
+		self.assertEqual("{{ground.ink}}", find(block["tree"], name="heading")[0]["style"]["color"])
+
+
+FLOWBITE_PAGE = """---
+title: Tailwind CSS Jumbotron - Flowbite
+---
+
+Some text of the page that is not an example.
+
+## Default jumbotron
+
+{{< example bodyClass="p-0" github="components/jumbotron.md" show_dark=true >}}
+
+<section class="bg-neutral-primary">
+    <div class="py-8 px-4 mx-auto max-w-screen-2xl text-center lg:py-16">
+        <h1 class="mb-6 text-4xl font-bold text-heading md:text-5xl">A headline for a start</h1>
+        <a href="{{< param homepage >}}/docs/" class="text-fg-brand">A link whose address is a shortcode</a>
+    </div>
+</section>
+{{< /example >}}
+
+## Another one
+
+{{< example github="components/jumbotron.md" >}}
+<section class="bg-neutral-primary"><div class="px-4"><p class="text-body">Second example of the page</p></div></section>
+{{< /example >}}
+"""
+
+ACCORDION = """<div id="accordion-collapse" data-accordion="collapse" class="rounded-base border border-default overflow-hidden shadow-xs">
+  <h2 id="h1"><button type="button" class="flex w-full p-5 text-body" data-accordion-target="#b1" aria-expanded="true"><span>What is it?</span><svg data-accordion-icon class="w-5 h-5"></svg></button></h2>
+  <div id="b1" class="hidden" aria-labelledby="h1"><div class="p-4"><p class="mb-2 text-body">It is a library of components for pages.</p><p class="text-body">A second paragraph that is left out.</p></div></div>
+  <h2 id="h2"><button type="button" class="flex w-full p-5 text-body" data-accordion-target="#b2" aria-expanded="false"><span>Is it free?</span><svg class="w-5 h-5"></svg></button></h2>
+  <div id="b2" class="hidden" aria-labelledby="h2"><div class="p-4"><p class="text-body">Yes, it is free to use for all.</p></div></div>
+</div>"""
+
+
+class TestFlowbite(unittest.TestCase):
+	def test_the_examples_of_a_page_are_read_with_their_titles_and_no_shortcode(self):
+		examples = importer.flowbite_examples(FLOWBITE_PAGE)
+		self.assertEqual(["Default jumbotron", "Another one"], [t for t, _m in examples])
+		self.assertNotIn("{{", examples[0][1])
+		self.assertIn("A headline for a start", examples[0][1])
+		self.assertEqual([], importer.flowbite_examples("No example here."))
+
+	def test_an_example_becomes_a_block_with_its_source_in_the_notes(self):
+		title, markup = importer.flowbite_examples(FLOWBITE_PAGE)[0]
+		block = importer.import_flowbite_markup("jumbotron", 1, title, markup)
+		self.assertEqual("hero.fb-jumbotron-1", block["id"])
+		self.assertEqual("Hero 1 (Flowbite)", block["title"])
+		self.assertEqual(["hero"], block["kinds"])
+		for part in (
+			"Flowbite",
+			"content/components/jumbotron.md",
+			"Default jumbotron",
+			"MIT licence",
+			"Copyright (c) Bergside Inc.",
+		):
+			self.assertIn(part, block["notes"])
+		self.assertEqual("{{ground.accent}}", find(block["tree"], el="a")[0]["style"]["color"])
+
+	def test_every_component_is_a_kind_the_plan_knows(self):
+		from builder.site_ai.nora.site_plan import SECTION_KINDS
+
+		for component, kind in importer.FLOWBITE_KINDS.items():
+			self.assertIn(kind, SECTION_KINDS, component)
+
+	def test_an_accordion_drawn_with_a_script_becomes_the_questions_that_fold(self):
+		block = make(page(ACCORDION), kind="faq", name="faq.fb-test-1")
+		faq = find(block["tree"], classes=["u-faq"])
+		self.assertEqual(1, len(faq))
+		items = faq[0]["c"]
+		self.assertEqual(["details", "details"], [i["el"] for i in items])
+		for item in items:
+			self.assertEqual(["summary", "p"], [c["el"] for c in item["c"]])  # one answer paragraph
+		self.assertNotIn("data-accordion", repr(block["tree"]))
+		self.assertNotIn("A second paragraph", repr(block["tree"]))
+
+	def test_a_background_photograph_is_refused_on_the_shell_too(self):
+		markup = page(
+			'<section class="bg-center bg-[url(\'https://example.com/a.jpg\')] bg-dark"><div class="px-4"><h1 class="text-white">Words</h1></div></section>'
+		)
+		with self.assertRaises(importer.Refused) as caught:
+			make(markup, kind="hero", name="hero.fb-test-2")
+		self.assertIn("background", str(caught.exception))
+
+	def test_the_import_reports_what_it_made_and_what_it_refused(self):
+		pages = {
+			"jumbotron": FLOWBITE_PAGE
+			+ """
+## A form
+
+{{< example >}}
+<section><form><input type="text"></form></section>
+{{< /example >}}
+"""
+		}
+		original = importer.fetch_flowbite
+		try:
+			importer.fetch_flowbite = lambda component: pages[component]
+			done = importer.import_flowbite(["jumbotron"], push=False)
+		finally:
+			importer.fetch_flowbite = original
+		self.assertEqual(
+			{"jumbotron/1": "hero.fb-jumbotron-1", "jumbotron/2": "hero.fb-jumbotron-2"}, done["blocks"]
+		)
+		self.assertEqual(["jumbotron/3"], list(done["refused"]))
+		self.assertIn("A form: a form is a live component", done["refused"]["jumbotron/3"])
+		self.assertEqual({}, done["sent"])
+
+
 class TestWhatCannotBeABlock(unittest.TestCase):
 	def refused(self, markup, **kw):
 		with self.assertRaises(importer.Refused) as caught:
@@ -443,12 +718,6 @@ class TestWhatCannotBeABlock(unittest.TestCase):
 					'<div class="px-4"><form><input type="email"><button class="px-4 py-2 bg-gray-900 text-white">Go</button></form></div>'
 				)
 			),
-		)
-
-	def test_a_details(self):
-		self.assertIn(
-			"details",
-			self.refused(page('<div class="px-4"><details><summary>Q</summary><p>A</p></details></div>')),
 		)
 
 	def test_a_table(self):
@@ -530,7 +799,10 @@ class TestHyperUI(unittest.TestCase):
 		sent = []
 		originals = (importer.fetch_hyperui, importer.capture.push_block)
 		try:
-			importer.fetch_hyperui = lambda category, number: DARK_CTA
+			# four components that differ (the length of the invitation of each is not the same)
+			importer.fetch_hyperui = lambda category, number: DARK_CTA.replace(
+				"Get started", "Get started " + "now " * number
+			)
 			importer.capture.push_block = lambda block: sent.append(block["id"]) or "sent"
 			done = importer.import_hyperui(["ctas"], push=False)
 		finally:
@@ -539,6 +811,17 @@ class TestHyperUI(unittest.TestCase):
 		self.assertEqual(done["sent"], {})
 		self.assertEqual(len(done["blocks"]), 4)
 		self.assertTrue(re.fullmatch(r"cta\.hu-ctas-\d", done["blocks"]["ctas/1"]))
+
+	def test_variants_that_come_out_the_same_are_one_block(self):
+		originals = importer.fetch_hyperui
+		try:
+			importer.fetch_hyperui = lambda category, number: DARK_CTA
+			done = importer.import_hyperui(["ctas"], push=False)
+		finally:
+			importer.fetch_hyperui = originals
+		self.assertEqual(["ctas/1"], list(done["blocks"]))
+		self.assertEqual(["ctas/2", "ctas/3", "ctas/4"], sorted(done["refused"]))
+		self.assertTrue(all("the same block as ctas/1" in why for why in done["refused"].values()))
 
 
 if __name__ == "__main__":

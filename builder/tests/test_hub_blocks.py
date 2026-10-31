@@ -7,6 +7,7 @@ did not switch `nora_hub_blocks` on. No network, no model."""
 import unittest
 from unittest.mock import MagicMock, patch
 
+from builder.site_ai.nora import block_format
 from builder.site_ai.nora import hub_blocks as H
 from builder.site_ai.nora import recipes as R
 from builder.tests.test_recipes import HANDLES, LIGHT, PHOTOS
@@ -75,6 +76,31 @@ def block(**over):
 	}
 	data.update(over)
 	return data
+
+
+def folding_tree():
+	"""A FAQ block: the questions fold (`details` with a `summary`), in the site's own accordion (`u-faq`)."""
+
+	def item():
+		return {
+			"el": "details",
+			"name": "question",
+			"c": [
+				{
+					"el": "summary",
+					"name": "question-text",
+					"text": "WRITE question: a real question, 5 to 12 words",
+				},
+				{"el": "p", "name": "answer", "text": "WRITE answer: an answer of 25 to 45 words"},
+			],
+		}
+
+	return {
+		"el": "section",
+		"name": "faq",
+		"style": {"backgroundColor": "{{ground.background}}", "width": "100%", "padding": "6rem 0"},
+		"c": [{"el": "div", "name": "faq", "classes": ["u-faq"], "c": [item(), item(), item()]}],
+	}
 
 
 def catalogue_of(*blocks, fmt=1):
@@ -346,6 +372,23 @@ class TestTheRegistry(unittest.TestCase):
 		result = self.sync(None, source="none")
 		self.assertEqual([], result["ids"])
 		self.assertEqual(code, set(R.REGISTRY))
+
+	def test_a_catalogue_at_format_one_is_still_read_by_a_generator_that_knows_two(self):
+		for fmt in block_format.READABLE:
+			with self.subTest(fmt):
+				self.assertEqual(["steps.hub-rail"], self.sync(catalogue_of(block(), fmt=fmt))["ids"])
+
+	def test_a_block_with_folding_questions_is_read_and_drawn_as_details_the_page_parser_knows(self):
+		from builder.ai.page_writer import expand_page_yaml
+
+		faq = block(id="faq.fold", kinds=["faq"], photos=0, tree=folding_tree())
+		self.assertEqual(["faq.hub-fold"], self.sync(catalogue_of(faq))["ids"])
+		text = draw(R.REGISTRY["faq.hub-fold"])
+		body = "\n".join("    " + line for line in text.splitlines())
+		blocks, _script = expand_page_yaml("el: div\nname: body\nc:\n" + body)
+		found = [b["element"] for b in R._in_order(blocks)]
+		self.assertEqual(3, found.count("details"))
+		self.assertEqual(3, found.count("summary"))
 
 	def test_a_format_the_site_does_not_know_is_not_guessed(self):
 		result = self.sync(catalogue_of(block(), fmt=99))

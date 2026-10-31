@@ -10,7 +10,8 @@ What the import keeps, and what it does not:
   `--radius-*` and `--shadow-*`, a button is a `u-btn`, a bordered and rounded box a `u-card`, a font the site's own;
 - every word becomes a SLOT, of the length of the source's (`Lorem ipsum…` is only a measure), every picture a `{{photo.N}}`, every link the
   site's `{{cta_href}}`; an icon (inline SVG) is dropped, a block has no tag for it;
-- a component that cannot be a block is refused with the reason: a form, a table, a `<details>`, a script, more than six pictures, a gradient or a
+- the questions of a FAQ (`<details>` with its `<summary>`) become the site's own accordion (`u-faq`): the source's box, rule and air are not kept;
+- a component that cannot be a block is refused with the reason: a form, a table, a script, more than six pictures, a gradient or a
   background image, and anything the linter (block_format.lint) refuses.
 
 The result is a DRAFT of the hub (capture.push_block), never a published block: a person reads it in the hub's desk and publishes it. The source,
@@ -86,8 +87,6 @@ REFUSED_TAGS = {
 	"select": "a form field is not a tag a block may hold",
 	"textarea": "a form field is not a tag a block may hold",
 	"table": "a table is not a tag a block may hold",
-	"details": "a `<details>` (a question that opens) is not a tag a block may hold yet",
-	"summary": "a `<details>` (a question that opens) is not a tag a block may hold yet",
 	"iframe": "an embedded page is not a tag a block may hold",
 	"video": "a video is not a tag a block may hold",
 	"audio": "a sound is not a tag a block may hold",
@@ -154,6 +153,12 @@ TEXT_TAGS = {
 RESET_MARGIN = {"h1", "h2", "h3", "h4", "h5", "h6", "p", "blockquote", "figure", "ul", "ol"}
 
 
+HEADING_TAGS = {"h1", "h2", "h3", "h4", "h5", "h6"}
+FAQ_FLOW = {"display", "flexDirection", "gap", "rowGap", "columnGap", "marginTop", "marginBottom"}
+# what a question keeps of the source's type: the accordion of the site draws the rest (its layout, its rule, its sign)
+TYPE_KEYS = {"fontSize", "fontWeight", "lineHeight", "letterSpacing", "color", "textTransform", "fontStyle"}
+
+
 class Element:
 	def __init__(self, tag: str, attrs: dict):
 		self.tag = tag
@@ -209,6 +214,42 @@ def parse(markup: str) -> Element:
 	return find(parser.root, "body") or parser.root
 
 
+def descendants(element):
+	"""The elements under an element, in document order."""
+	for child in element.children:
+		if isinstance(child, Element):
+			yield child
+			yield from descendants(child)
+
+
+def fold_accordions(root: Element) -> None:
+	"""Turns an accordion drawn with a script (Flowbite: a `data-accordion` box of `h2 > button` and `div[aria-labelledby]`) into the questions that fold,
+	`details` > `summary` and the answer: the block has no script, and the site's own accordion (`u-faq`) folds them."""
+	for box in [root, *descendants(root)]:
+		if "data-accordion" not in box.attrs:
+			continue
+		kids = [c for c in box.children if isinstance(c, Element)]
+		folds: list[Element] = []
+		index = 0
+		while index < len(kids):
+			head, body = kids[index], kids[index + 1] if index + 1 < len(kids) else None
+			if head.tag in HEADING_TAGS and body is not None and body.attrs.get("aria-labelledby"):
+				summary = Element("summary", {})
+				summary.children = [clean(text_of(head))]
+				answer = [c for c in body.children if isinstance(c, Element)]
+				if len(answer) == 1 and answer[0].tag == "div":  # the padded wrapper of the body
+					answer = [c for c in answer[0].children if isinstance(c, Element)]
+				fold = Element("details", {})
+				fold.children = [summary, *answer[:1]]  # an answer is one paragraph in the site's accordion
+				folds.append(fold)
+				index += 2
+			else:
+				index += 1
+		if folds:
+			box.children = folds
+			box.attrs = {}
+
+
 def text_of(element) -> str:
 	"""The words of an element, one line (an `<svg>` and a `<br>` say nothing, a `<br>` is a space, a `sr-only` text is for screen readers only)."""
 	if isinstance(element, str):
@@ -259,6 +300,94 @@ CHROMATICS = {
 SHADES = {50, 100, 200, 300, 400, 500, 600, 700, 800, 900, 950}
 
 
+# The libraries that name a colour by the role it plays (Flowbite's `text-heading`, `bg-neutral-secondary`, `border-default`; shadcn/ui's
+# `text-muted-foreground`, `bg-primary`, `border-border`) each give it as the Tailwind colour that plays the same role, so that one table
+# of roles (`resolve_colour`) serves them all. (family, shade) per kind of utility.
+INK, MUTED, WHITE, PALE, PAPER = (
+	("neutral", 900),
+	("neutral", 500),
+	("white", 500),
+	("neutral", 100),
+	("neutral", 200),
+)
+BRAND, BRAND_STRONG, BRAND_PALE, DEEP = (
+	("chromatic", 600),
+	("chromatic", 700),
+	("chromatic", 100),
+	("neutral", 900),
+)
+SEMANTIC = {
+	"text": {
+		# Flowbite
+		"heading": INK,
+		"body": ("neutral", 700),
+		"body-subtle": MUTED,
+		"brand": BRAND,
+		"fg-brand": BRAND,
+		"fg-brand-strong": BRAND_STRONG,
+		"fg-danger": BRAND,
+		"fg-success": BRAND,
+		"fg-warning": BRAND,
+		"fg-heading": INK,
+		"fg-body": ("neutral", 700),
+		# shadcn/ui
+		"foreground": INK,
+		"muted-foreground": MUTED,
+		"card-foreground": INK,
+		"popover-foreground": INK,
+		"secondary-foreground": INK,
+		"accent-foreground": INK,
+		"primary": BRAND,
+		"primary-foreground": WHITE,
+		"destructive": BRAND,
+		"destructive-foreground": WHITE,
+	},
+	"bg": {
+		# Flowbite
+		"neutral-primary": WHITE,
+		"neutral-primary-soft": WHITE,
+		"neutral-primary-medium": WHITE,
+		"neutral-secondary": PALE,
+		"neutral-secondary-soft": PALE,
+		"neutral-secondary-medium": PALE,
+		"neutral-secondary-strong": PAPER,
+		"neutral-tertiary": PALE,
+		"neutral-tertiary-medium": PALE,
+		"neutral-quaternary": PAPER,
+		"brand": BRAND,
+		"brand-strong": BRAND_STRONG,
+		"brand-soft": BRAND_PALE,
+		"brand-subtle": BRAND_PALE,
+		"dark": DEEP,
+		"dark-strong": ("neutral", 950),
+		"neutral-dense": DEEP,
+		# shadcn/ui
+		"background": WHITE,
+		"card": WHITE,
+		"popover": WHITE,
+		"muted": PALE,
+		"secondary": PALE,
+		"accent": PALE,
+		"primary": BRAND,
+		"destructive": BRAND,
+	},
+	"border": {
+		# Flowbite
+		"default": PAPER,
+		"default-medium": PAPER,
+		"default-strong": ("neutral", 300),
+		"brand": BRAND,
+		"neutral": PAPER,
+		# shadcn/ui
+		"border": PAPER,
+		"input": PAPER,
+		"primary": BRAND,
+		"ring": ("chromatic", 400),
+		"destructive": BRAND,
+	},
+}
+
+
 def colour(kind: str, text: str) -> Colour | None:
 	alpha = 1.0
 	if "/" in text:
@@ -266,6 +395,9 @@ def colour(kind: str, text: str) -> Colour | None:
 		if not tail.isdigit():
 			return None
 		alpha = int(tail) / 100
+	role = SEMANTIC.get(kind, {}).get(text)
+	if role:
+		return Colour(kind, role[0], role[1], alpha)
 	if text in {"white", "black"}:
 		return Colour(kind, text, 500, alpha)
 	if text in {"transparent", "current", "inherit"}:
@@ -369,7 +501,8 @@ MAX_W = {
 }  # fmt: skip
 ROUNDED = {
 	"": "var(--radius-sm)", "sm": "var(--radius-sm)", "md": "var(--radius)", "lg": "var(--radius-lg)", "xl": "var(--radius-lg)", "2xl": "var(--radius-lg)",
-	"3xl": "var(--radius-lg)", "full": "var(--radius-pill)", "none": "0",
+	"3xl": "var(--radius-lg)",
+	"base": "var(--radius)", "full": "var(--radius-pill)", "none": "0",
 }  # fmt: skip
 SHADOWS = {
 	"": "var(--shadow)",
@@ -468,7 +601,7 @@ STATIC = {
 # what a class that only decorates (a transition, a cursor, a focus ring) or only names a font says nothing to a block
 IGNORED = re.compile(
 	r"^(?:transition(?:-.+)?|duration-.+|ease-.+|delay-.+|cursor-.+|select-.+|pointer-events-.+|antialiased|subpixel-antialiased|font-(?:sans|serif|mono)"
-	r"|outline(?:-.+)?|group|peer|will-change-.+|appearance-.+|scroll-.+|dark|stroke-.+|fill-.+|ring-offset-.+|object-(?:top|bottom|left|right))$"
+	r"|outline(?:-.+)?|group|peer|will-change-.+|appearance-.+|scroll-.+|dark|stroke-.+|fill-.+|ring-offset-.+|object-(?:top|bottom|left|right)|box-(?:border|content))$"
 )
 # a property that goes back to this, not to `initial`, when a smaller screen does not set it
 RESET_TO = {"display": "block", "position": "static", "flexDirection": "row", "overflow": "visible"}
@@ -633,7 +766,9 @@ def utility(u: str) -> dict | None:
 	if found and found.group(1) in TRACKING:
 		return {"letterSpacing": TRACKING[found.group(1)]}
 
-	found = re.fullmatch(r"rounded(?:-(t|r|b|l|tl|tr|bl|br))?(?:-(none|sm|md|lg|xl|2xl|3xl|full))?", body)
+	found = re.fullmatch(
+		r"rounded(?:-(t|r|b|l|tl|tr|bl|br))?(?:-(none|sm|md|lg|xl|2xl|3xl|full|base))?", body
+	)
 	if found:
 		radius = ROUNDED[found.group(2) or ""]
 		if not found.group(1):
@@ -646,7 +781,7 @@ def utility(u: str) -> dict | None:
 	if found:
 		return {"opacity": f"{int(found.group(1)) / 100:g}"}
 
-	found = re.fullmatch(r"(?:border|ring)(?:-(x|y|t|r|b|l))?(?:-(\d+))?", body)
+	found = re.fullmatch(r"(?:border|ring)(?:-(x|y|t|r|b|l|s|e))?(?:-(\d+))?", body)
 	if found:
 		digits = found.group(2)
 		width = "1px" if digits is None else "0" if int(digits) == 0 else f"{digits}px"
@@ -675,7 +810,12 @@ def utility(u: str) -> dict | None:
 		kind = {"text": "text", "bg": "bg", "border": "border", "ring": "border", "divide": "border"}[
 			found.group(1)
 		]
-		tint = colour(kind, found.group(2))
+		rest = found.group(2)
+		if found.group(1) == "border":
+			rest = re.sub(
+				r"^[xytrbles]-(?=[a-z])", "", rest
+			)  # `border-b-default`: a colour for the side that has a width
+		tint = colour(kind, rest)
 		if tint is None:
 			return None
 		key = {"text": "color", "bg": "backgroundColor"}.get(
@@ -806,11 +946,25 @@ class Importer:
 	def block(self, markup: str, *, kind: str, block_id: str, title: str, source_note: str) -> dict:
 		"""The hub's block (the body of its `publish_block`) for a component's markup. Raises `Refused` with the reason."""
 		body = parse(markup)
+		fold_accordions(body)
+		for element in [body, *descendants(body)]:
+			if any("bg-[url(" in c for c in element.classes):
+				raise Refused("a photograph set as a background would be the same picture on every site")
 		top = [c for c in body.children if isinstance(c, Element) and c.tag not in DROPPED_TAGS]
 		if len(top) != 1:
 			raise Refused(f"the component has {len(top)} elements at its root, a block is one section")
 		ground, narrow, content = self.peel(top[0])
+		if (
+			narrow is None
+		):  # a component page may give its width to the `<body>` (a column of questions: `mx-auto max-w-3xl`)
+			width = merged(parse_classes(body.classes)[0], DESKTOP).get("maxWidth")
+			if width and re.fullmatch(r"[\d.]+rem", str(width)) and float(str(width)[:-3]) < 70:
+				narrow = width
 		kids = self.children(content, ground)
+		if len(kids) >= 2 and all(
+			k["el"] == "details" for k in kids
+		):  # an accordion that was the shell of the component
+			kids = [{"el": "div", "name": "faq", "classes": ["u-faq"], "c": kids}]
 		if narrow:
 			wrap = {
 				"el": "div",
@@ -938,7 +1092,7 @@ class Importer:
 					out.append(self.text_node("span", clean(child), {}, ground))
 				continue
 			rule = self.between(parent_levels, len(out)) if out and parent_levels else {}
-			node = self.element(child, ground, rule, strip=strip)
+			node = self.element(child, ground, rule, strip=strip, fold=parent.tag == "details")
 			if node is not None:
 				out.append(node)
 		if out:
@@ -994,7 +1148,9 @@ class Importer:
 					rule[level]["borderColor"] = value
 		return rule
 
-	def element(self, el: Element, ground: str, inherited: dict, strip=None) -> dict | None:
+	def element(
+		self, el: Element, ground: str, inherited: dict, strip=None, fold: bool = False
+	) -> dict | None:
 		if el.tag == "svg":
 			self.icons += 1
 			return None
@@ -1025,6 +1181,19 @@ class Importer:
 		parent_levels = levels
 		kids_text = self.is_text_run(el)
 		role = self.pattern(el, tag, desktop, kids_text)
+		if tag == "details":
+			# a question that folds is drawn by the site's accordion (`u-faq`): what the source gave its box, its rule and its air is not kept
+			role, kids_text = "fold", False
+			levels = {level: {} for level in levels}
+		elif tag == "summary":
+			# the question is the words of the summary, in the type of the summary or of the heading inside it
+			role, kids_text = "question", True
+			heading = next((c for c in descendants(el) if c.tag in HEADING_TAGS), None)
+			typed = parse_classes(heading.classes)[0] if heading else {i: {} for i in range(6)}
+			levels = {
+				level: {k: v for k, v in {**props, **typed[level]}.items() if k in TYPE_KEYS}
+				for level, props in levels.items()
+			}
 		surface = desktop.get("backgroundColor")
 		switched = role != "button" and isinstance(surface, Colour) and surface.dark and ground != "deep"
 		own_ground = "deep" if switched else ground
@@ -1094,9 +1263,25 @@ class Importer:
 				if not kids and any(isinstance(c, Element) for c in el.children):
 					return None  # nothing left once the icons are gone: an icon's frame
 
+		# the questions of a list are spaced and ruled by the site's accordion, what lays them out in the source is not kept
+		is_faq = len(kids) >= 2 and all(k["el"] == "details" for k in kids)
+		if is_faq:
+			levels = {
+				level: {k: v for k, v in props.items() if k not in FAQ_FLOW}
+				for level, props in levels.items()
+			}
+		if (
+			fold and role != "question"
+		):  # the answer under a question keeps its type, the accordion gives it its air
+			levels = {
+				level: {k: v for k, v in props.items() if k in TYPE_KEYS | {"maxWidth"}}
+				for level, props in levels.items()
+			}
 		resolved = {level: self.paint(props, own_ground, switched) for level, props in levels.items()}
 		if role != "button":
 			self.defaults(resolved, tag, text)
+		if fold and role != "question":
+			resolved[0].pop("margin", None)
 
 		style_desktop = cleaned(merged(resolved, DESKTOP))
 		tablet = cleaned(merged(resolved, TABLET))
@@ -1104,8 +1289,18 @@ class Importer:
 		style, t_style, m_style = style_desktop, difference(tablet, style_desktop), difference(phone, tablet)
 
 		if text:
-			node["text"] = self.slot({"el": node["el"], "classes": classes, "style": style}, text)
+			words = capture._range(len(text.split()))
+			if role == "question":
+				node["text"] = section_recipes.slot("question", f"a real question a customer asks, {words}")
+			elif fold:
+				node["text"] = section_recipes.slot(
+					"answer", f"an answer of {words} from the business's own facts"
+				)
+			else:
+				node["text"] = self.slot({"el": node["el"], "classes": classes, "style": style}, text)
 		node["name"] = self.name(node, role, style, kids)
+		if is_faq:
+			classes, node["name"] = [*classes, "u-faq"], "faq"
 		if classes:
 			node["classes"] = classes
 		if switched:
@@ -1152,7 +1347,14 @@ class Importer:
 	def pattern(self, el: Element, tag: str, desktop: dict, is_text: bool) -> str | None:
 		if tag == "a" and is_text and self.looks_like_button(el):
 			return "button"
-		if tag in {"div", "article", "li", "blockquote", "figure", "a"} and "borderRadius" in desktop:
+		holds = any(isinstance(c, Element) and c.tag != "svg" for c in el.children) or bool(
+			clean(text_of(el))
+		)
+		if (
+			holds
+			and tag in {"div", "article", "li", "blockquote", "figure", "a"}
+			and "borderRadius" in desktop
+		):
 			bordered = all(
 				str(desktop.get(f"border{side}Width", "0")) != "0"
 				for side in ("Top", "Right", "Bottom", "Left")
@@ -1165,6 +1367,8 @@ class Importer:
 	def button_class(desktop: dict, ground: str) -> str:
 		background = desktop.get("backgroundColor")
 		if isinstance(background, Colour) and background.family != "transparent" and background.alpha >= 0.9:
+			if background.light and ground != "deep":
+				return "u-btn--outline"  # a pale button beside the main one is the quiet one
 			return "u-btn--secondary" if ground == "deep" else "u-btn--primary"
 		return "u-btn--outline"
 
@@ -1233,6 +1437,8 @@ class Importer:
 			return "button"
 		if role == "card":
 			return "card"
+		if role == "fold":
+			return "question"
 		if el == "div" and kids and kids[0].get("name") in {"heading", "item-title"}:
 			return "head"
 		display = style.get("display")
@@ -1273,6 +1479,19 @@ def demote_headings(node: dict) -> None:
 						n["name"] = "item-title"
 	for kid in kids:
 		demote_headings(kid)
+
+
+def without_duplicates(made: dict[str, dict], refused: dict[str, str]) -> None:
+	"""Variants that differ only by what the design system replaces (a box, a rule, a colour) come out the same: the first is kept, the others are
+	said to be the same block."""
+	seen: dict[str, str] = {}
+	for label in list(made):
+		print_ = capture.fingerprint(made[label]["tree"])
+		if print_ in seen:
+			refused[label] = f"the same block as {seen[print_]} once the design system is applied"
+			del made[label]
+		else:
+			seen[print_] = label
 
 
 def import_markup(markup: str, *, kind: str, block_id: str, title: str, source_note: str) -> dict:
@@ -1332,5 +1551,90 @@ def import_hyperui(categories=None, push: bool = False) -> dict:
 				refused[label] = f"not read ({type(e).__name__})"
 				continue
 			made[label] = block
+	without_duplicates(made, refused)
+	sent = {label: capture.push_block(block) for label, block in made.items()} if push else {}
+	return {"blocks": {label: block["id"] for label, block in made.items()}, "refused": refused, "sent": sent}
+
+
+# ---------------------------------------------------------------- Flowbite
+
+FLOWBITE = {
+	"name": "Flowbite",
+	"url": "https://github.com/themesberg/flowbite",
+	"licence": "MIT",
+	"holder": "Bergside Inc.",
+	"ref": "232ebdb33a9e37b31b293b9988d89b862ee121e5",
+	"raw": "https://raw.githubusercontent.com/themesberg/flowbite/{ref}/content/components/{component}.md",
+}
+# the components of Flowbite that are a section of a site (the others are the pieces of an application: a modal, a dropdown, a table), and the
+# kind of section each one is. Its marketing blocks are a paid product and are not here.
+FLOWBITE_KINDS = {"jumbotron": "hero", "accordion": "faq", "timeline": "steps", "gallery": "gallery"}
+# a page of the documentation holds its examples between two shortcodes, each under a `##` title
+FLOWBITE_EXAMPLE = re.compile(
+	r"\{\{<\s*example\b[^>]*>\}\}[ \t]*\n(.*?)\n[ \t]*\{\{<\s*/example\s*>\}\}", re.DOTALL
+)
+FLOWBITE_TITLE = re.compile(r"^##\s+(.+?)\s*$", re.MULTILINE)
+FLOWBITE_SHORTCODE = re.compile(r"\{\{<.*?>\}\}|\{\{%.*?%\}\}", re.DOTALL)
+
+
+def flowbite_examples(markdown: str) -> list[tuple[str, str]]:
+	"""(title, markup) of each example of a Flowbite component page: the title is the `##` heading above it, the markup has no shortcode left."""
+	found = []
+	for match in FLOWBITE_EXAMPLE.finditer(markdown):
+		titles = FLOWBITE_TITLE.findall(markdown[: match.start()])
+		found.append((titles[-1] if titles else "", FLOWBITE_SHORTCODE.sub("", match.group(1))))
+	return found
+
+
+def flowbite_id(component: str, number: int, kind: str) -> str:
+	return f"{capture.family_of(kind)}.fb-{component}-{number}"
+
+
+def flowbite_note(component: str, number: int, title: str, source: dict = FLOWBITE) -> str:
+	return (
+		f"Imported from {source['name']} (content/components/{component}.md, example {number}, \u00ab {title} \u00bb, at {source['ref'][:10]}), "
+		f"{source['licence']} licence, Copyright (c) {source['holder']}, {source['url']}."
+	)
+
+
+def import_flowbite_markup(component: str, number: int, title: str, markup: str) -> dict:
+	kind = FLOWBITE_KINDS[component]
+	return import_markup(
+		markup,
+		kind=kind,
+		block_id=flowbite_id(component, number, kind),
+		title=f"{kind.replace('-', ' ').capitalize()} {number} (Flowbite)",
+		source_note=flowbite_note(component, number, title),
+	)
+
+
+def fetch_flowbite(component: str) -> str:
+	import requests
+
+	response = requests.get(FLOWBITE["raw"].format(ref=FLOWBITE["ref"], component=component), timeout=30)
+	response.raise_for_status()
+	return response.text
+
+
+def import_flowbite(components=None, push: bool = False) -> dict:
+	"""For `bench execute`: the examples of Flowbite's section components that can be blocks, and why the others cannot; with `push` they go to the
+	hub as drafts."""
+	made: dict[str, dict] = {}
+	refused: dict[str, str] = {}
+	for component in components or FLOWBITE_KINDS:
+		try:
+			examples = flowbite_examples(fetch_flowbite(component))
+		except Exception as e:
+			refused[component] = f"not read ({type(e).__name__})"
+			continue
+		for number, (title, markup) in enumerate(examples, start=1):
+			label = f"{component}/{number}"
+			try:
+				made[label] = import_flowbite_markup(component, number, title, markup)
+			except Refused as e:
+				refused[label] = f"{title}: {e}"
+			except Exception as e:
+				refused[label] = f"{title}: not read ({type(e).__name__})"
+	without_duplicates(made, refused)
 	sent = {label: capture.push_block(block) for label, block in made.items()} if push else {}
 	return {"blocks": {label: block["id"] for label, block in made.items()}, "refused": refused, "sent": sent}

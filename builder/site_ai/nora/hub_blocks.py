@@ -239,7 +239,8 @@ def sync_registry(conf=None) -> dict:
 	body, source = catalogue()
 	if body is None:
 		return {"ids": [], "source": source, "left_out": []}
-	if body.get("format") != block_format.FORMAT:
+	# //// Neoffice — a catalogue at format 1 is still read by a site generator that knows 2 (block_format.READABLE: 2 only added tags)
+	if body.get("format") not in block_format.READABLE:
 		return {"ids": [], "source": f"{source}, format {body.get('format')} not understood", "left_out": []}
 	ids, left_out = [], []
 	for block in body["blocks"]:
