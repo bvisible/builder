@@ -687,7 +687,10 @@ class BuilderPage(WebsiteGenerator):
 		# //// page without one fell back to the route name in <title>, e.g. "Homepage" (6fef27d8).
 		# page_data may override the title; otherwise the page's own title is the
 		# <title> (it previously fell back to the route name, e.g. "Homepage").
-		context.title = page_data.get("title") or self.page_title
+		# //// Neoffice — in another language of the site the title is the page's translated one (builder/translation.py)
+		from builder.translation import localize_blocks, page_text
+
+		context.title = page_data.get("title") or page_text(self, "page_title")
 
 		blocks = self.blocks
 
@@ -721,6 +724,10 @@ class BuilderPage(WebsiteGenerator):
 		from builder.site_ai.nora.placeholders import neutral_for_render
 
 		blocks = neutral_for_render(blocks)
+		# //// Neoffice — multilingual lot 4 (neoffice-maintenance#2032): in another language of the site the page is the
+		# //// same page with its texts replaced by their translation, found by block id. Last of the render transforms, so
+		# //// they all see the page as it was written; a site with no additional language gets its blocks back untouched.
+		blocks = localize_blocks(blocks, self.name)
 		content, style, fonts, has_dual_mode_image = get_block_html(blocks)
 
 		# Propagate the root block's background to html/body. Otherwise a full-bleed
@@ -821,12 +828,15 @@ class BuilderPage(WebsiteGenerator):
 		context["__content"] = rendered_content
 
 	def set_meta_tags(self, context, page_data=None):
+		from builder.translation import page_text
+
 		if not page_data:
 			page_data = {}
 
 		metatags = {
-			"title": self.page_title or "My Page",
-			"description": self.meta_description or self.page_title,
+			# //// Neoffice — the page's title and description in the language of the request (builder/translation.py)
+			"title": page_text(self, "page_title") or "My Page",
+			"description": page_text(self, "meta_description") or page_text(self, "page_title"),
 			"image": self.meta_image or self.preview,
 		}
 		metatags.update(page_data.get("metatags", {}))

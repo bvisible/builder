@@ -35,6 +35,9 @@
 
 {%- macro render_icons(icons) -%}
 <div class="site-header__icons">
+	{#- //// Neoffice — the language selector's place, beside the cart and the account (multilingual lot 4): the theme fills
+	    //// it, on a site that has an additional language only; on a phone the icons stay in the bar, so does it -#}
+	{%- if icons.languages -%}<span class="site-header__languages" data-ml-slot></span>{%- endif -%}
 	{# Search icon (triggers overlay) #}
 	{%- if icons.search and not icons.search_bar -%}
 	<button class="header-icon header-icon--search" aria-label="{{ _('Search') }}">

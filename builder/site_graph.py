@@ -71,6 +71,11 @@ def site_graph(config=None) -> dict | None:
 		"name": name,
 		"publisher": {"@id": organization["@id"]},
 	}
+	# //// Neoffice — in another language of the site the graph says which one (builder/translation.py, multilingual lot 4)
+	from builder.translation import language_tag
+
+	if language_tag():
+		website["inLanguage"] = language_tag()
 	return {"@context": "https://schema.org", "@graph": [website, organization, *nodes]}
 
 

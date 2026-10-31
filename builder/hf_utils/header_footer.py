@@ -19,6 +19,7 @@ from frappe.utils import cstr
 
 # //// Neoffice — the guard the two editor endpoints below carry.
 from builder.site_ai.config import get_powered_by
+from builder.translation import has_languages, localize_chrome, page_label
 from builder.utils import builder_role_required
 
 # the English strings the newsletter fields once shipped as defaults; blank, footer.html
@@ -71,12 +72,13 @@ def get_header_footer_config():
 		profile = getattr(frappe.local, "website_profile", None)
 		if profile and frappe.db.exists("DocType", "Website Header Footer Variant"):
 			if frappe.db.exists("Website Header Footer Variant", profile):
-				return _fresh_variant(profile)
+				# //// Neoffice — in another language of the site the chrome's texts are their translations (builder/translation.py)
+				return localize_chrome(_fresh_variant(profile))
 
 		# Check if the DocType exists first
 		if not frappe.db.exists("DocType", "Website Header Footer Config"):
 			return None
-		return frappe.get_single("Website Header Footer Config")
+		return localize_chrome(frappe.get_single("Website Header Footer Config"))
 	except Exception:
 		# Catch any error (DoesNotExistError, SQL errors, etc.)
 		return None
@@ -106,6 +108,9 @@ def render_header(config=None) -> str:
 	layout = config.get_layout_type()
 	menu_position = config.get_menu_position()
 	icons = config.get_visible_icons()
+	# //// Neoffice — the selector's place in the icons, when the site has an additional language (builder/translation.py)
+	if has_languages():
+		icons = {**icons, "languages": True}
 	logo = config.get_logo_data()
 	cta = config.get_cta_data()
 	colors = config.get_header_colors()
@@ -176,13 +181,14 @@ def _legal_pages_of_site(profile: str | None) -> list[dict]:
 		if profile and doctype == "Builder Page":
 			filters["neo_website_profile"] = profile
 		try:
-			rows = frappe.get_all(doctype, filters=filters, fields=["route", title_field])
+			rows = frappe.get_all(doctype, filters=filters, fields=["name", "route", title_field])
 		except Exception:
 			continue
 		for row in rows:
 			route = str(row.get("route") or "").strip("/").lower()
 			if route in LEGAL_FOOTER_ROUTES and route not in found:
-				found[route] = row.get(title_field) or route
+				# //// Neoffice — the legal pages' titles in the language of the request (builder/translation.py)
+				found[route] = page_label(doctype, row.get("name"), row.get(title_field)) or route
 	return [{"label": found[route], "url": f"/{route}"} for route in LEGAL_FOOTER_ROUTES if route in found]
 
 

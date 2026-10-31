@@ -680,6 +680,10 @@ def render_builder_page_header(doc=None, own_top=None) -> str:
 	)
 	if not title:
 		return ""
+	# //// Neoffice — the band writes the page's title and subtitle in the language of the request (builder/translation.py)
+	from builder.translation import page_text
+
+	title = page_text(doc, "page_title")
 
 	def _field(name):
 		return (doc.get(name) if hasattr(doc, "get") else getattr(doc, name, None)) or ""
@@ -693,7 +697,9 @@ def render_builder_page_header(doc=None, own_top=None) -> str:
 	# //// Neoffice — ...unless the page prints that line itself (neoffice-maintenance#393, see
 	# //// _page_prints). A subtitle written for the band is kept as it is.
 	if not subtitle and description and not _page_prints(blocks, description):
-		subtitle = description
+		subtitle = page_text(doc, "meta_description")
+	elif subtitle:
+		subtitle = page_text(doc, "page_header_subtitle")
 
 	# //// Neoffice — a page that opens on its own title keeps it, and the band writes in the
 	# //// page's faces (2026-09-14, see _opens_with_own_title and _page_fonts).
