@@ -411,7 +411,7 @@ class TestBordersAndHiddenWords(unittest.TestCase):
 	def test_a_divider_leaves_the_other_sides_at_zero_too(self):
 		markup = page("""<div class="mx-auto max-w-7xl px-4 py-8"><div class="divide-y divide-gray-200 rounded-lg border border-gray-200">
 		<p class="p-4 text-gray-700">One</p><p class="p-4 text-gray-700">Two</p></div></div>""")
-		block = make(markup, kind="cards", name="cards.hu-test-1")
+		block = make(markup, kind="text", name="text.hu-test-1")
 		second = find(block["tree"], name="card")[0]["c"][1]
 		self.assertEqual((second["style"]["borderWidth"], second["style"]["borderTopWidth"]), ("0", "1px"))
 
@@ -419,7 +419,7 @@ class TestBordersAndHiddenWords(unittest.TestCase):
 		markup = page(
 			'<div class="mx-auto max-w-7xl px-4 py-8"><div class="rounded-lg border-b p-6"><p class="text-gray-700">Some words in a box</p></div></div>'
 		)
-		self.assertEqual(find(make(markup, kind="cards", name="cards.hu-test-1")["tree"], name="card"), [])
+		self.assertEqual(find(make(markup, kind="text", name="text.hu-test-1")["tree"], name="card"), [])
 
 	def test_words_for_screen_readers_are_not_the_blocks_words(self):
 		markup = page("""<div class="mx-auto max-w-7xl px-4 py-8"><h3 class="text-lg font-bold text-gray-900">Anna</h3>
@@ -847,6 +847,78 @@ class TestFlowbite(unittest.TestCase):
 		self.assertEqual(["jumbotron/3"], list(done["refused"]))
 		self.assertIn("A form: a form is a live component", done["refused"]["jumbotron/3"])
 		self.assertEqual({}, done["sent"])
+
+
+class TestTheChromeAndTheLoneCard(unittest.TestCase):
+	def test_the_navigation_a_component_page_draws_above_its_section_is_left_out(self):
+		block = make(
+			page(
+				'<section class="bg-white"><nav class="container p-6 mx-auto flex"><a href="#" class="text-gray-700">Home</a><a href="#" class="text-gray-700">Pricing</a></nav>'
+				'<header class="px-4"><nav><a href="#">Docs</a></nav></header>'
+				'<div class="container mx-auto px-6 py-16 text-center"><h1 class="text-4xl font-bold text-gray-800">A headline for the page</h1><p class="mt-4 text-gray-500">A line that says what it is for.</p></div></section>'
+			),
+			kind="hero",
+			name="hero.mk-test-1",
+		)
+		blob = repr(block["tree"])
+		self.assertNotIn("Home", blob)
+		self.assertEqual(
+			["h1", "p"], [n["el"] for n in walk(block["tree"]) if n["el"] in {"h1", "p", "nav", "a"}]
+		)
+
+	def test_one_card_is_not_a_row_of_cards(self):
+		one = page(
+			'<div class="mx-auto max-w-sm"><article class="rounded-lg border border-gray-200 p-6"><h3 class="text-lg font-bold text-gray-900">A title</h3><p class="text-gray-700">Some words of a card.</p></article></div>'
+		)
+		with self.assertRaises(importer.Refused) as caught:
+			make(one, kind="cards", name="cards.hu-test-1")
+		self.assertIn("one card", str(caught.exception))
+		self.assertEqual(
+			1, len(find(make(one, kind="text", name="text.hu-test-1")["tree"], name="card"))
+		)  # as a text section it is allowed
+
+	def test_a_row_of_cards_is_one(self):
+		three = page(
+			'<div class="grid grid-cols-3 gap-4">'
+			+ '<article class="rounded-lg border border-gray-200 p-6"><h3 class="text-lg font-bold text-gray-900">A title</h3><p class="text-gray-700">Some words of a card.</p></article>'
+			* 3
+			+ "</div>"
+		)
+		self.assertEqual(3, len(find(make(three, kind="cards", name="cards.hu-test-2")["tree"], name="card")))
+
+
+class TestMerakiUi(unittest.TestCase):
+	def test_the_slug_the_id_and_the_title(self):
+		self.assertEqual("center-content-with-trusted-by", importer.meraki_slug("CenterContentWithTrustedBy"))
+		self.assertEqual("e-commerce", importer.meraki_slug("E-commerce"))
+		self.assertEqual("hero.mk-heros-side-image", importer.meraki_id("heros", "SideImage", "hero"))
+		self.assertRegex(importer.meraki_id("faq", "CollapseWithSideLinks", "faq"), block_format.BLOCK_ID)
+
+	def test_every_category_has_files_and_is_a_kind_the_plan_knows(self):
+		from builder.site_ai.nora.site_plan import SECTION_KINDS
+
+		self.assertEqual(set(importer.MERAKI_KINDS), set(importer.MERAKI_FILES))
+		for category, kind in importer.MERAKI_KINDS.items():
+			self.assertIn(kind, SECTION_KINDS, category)
+			self.assertTrue(importer.MERAKI_FILES[category])
+
+	def test_a_component_becomes_a_block_with_its_source_in_the_notes(self):
+		markup = page(
+			'<section class="bg-white dark:bg-gray-900"><div class="container px-6 py-10 mx-auto text-center"><h1 class="text-3xl font-semibold text-gray-800 dark:text-white">A title that says it</h1>'
+			'<p class="max-w-lg mx-auto mt-6 text-gray-500 dark:text-gray-400">A short text under it.</p><a href="#" class="px-5 py-2 mt-6 text-sm text-white bg-blue-600 rounded-lg">Start</a></div></section>'
+		)
+		block = importer.import_meraki_markup("heros", "CenterContent", markup)
+		self.assertEqual("hero.mk-heros-center-content", block["id"])
+		self.assertEqual("Hero, center content (Meraki UI)", block["title"])
+		for part in (
+			"Meraki UI",
+			"components/heros/CenterContent.html",
+			"fe0472efe9",
+			"MIT licence",
+			"Copyright (c) 2021 Khatab Wedaa",
+		):
+			self.assertIn(part, block["notes"])
+		self.assertEqual(["u-btn", "u-btn--primary"], find(block["tree"], el="a")[0]["classes"])
 
 
 class TestWhatCannotBeABlock(unittest.TestCase):

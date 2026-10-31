@@ -50,6 +50,10 @@ HYPERUI_KINDS = {
 	"sections": "two-column",
 	"pricing": "pricing",
 	"faqs": "faq",
+	"blog-cards": "cards",
+	"cards": "cards",
+	"product-collections": "product-row",
+	"banners": "cta",
 }
 HYPERUI_COUNT = {
 	"ctas": 4,
@@ -61,6 +65,10 @@ HYPERUI_COUNT = {
 	"sections": 4,
 	"pricing": 2,
 	"faqs": 3,
+	"blog-cards": 7,
+	"cards": 9,
+	"product-collections": 4,
+	"banners": 3,
 }
 
 MAX_UNKNOWN_CLASSES = 6
@@ -1040,6 +1048,10 @@ class Importer:
 			],
 		}
 		demote_headings(tree)
+		if kind in NEEDS_A_GROUP and not has_group(tree):
+			raise Refused(
+				"one card, not a section: nothing in it repeats (a block of this kind is a row or a grid of items)"
+			)
 		if kind == "brand-row" and self.photos < 2:
 			raise Refused(
 				"a row of brands without its logos (the logos are inline SVG, a block has no tag for them)"
@@ -1202,7 +1214,7 @@ class Importer:
 			tag = "div"  # the block's own section is the only one
 		if tag not in block_format.TAGS:
 			raise Refused(f"`<{el.tag}>` is not a tag a block may hold")
-		if "sr-only" in el.classes or self.is_decoration(el):
+		if "sr-only" in el.classes or self.is_decoration(el) or self.is_chrome(el):
 			return None
 		levels, dropped, ignored = parse_classes(el.classes)
 		self.dropped.update(dropped)
@@ -1373,6 +1385,12 @@ class Importer:
 		}
 
 	@staticmethod
+	def is_chrome(el: Element) -> bool:
+		"""The navigation of a site (a `<nav>`): a component page often draws it above its hero, the block is the section. A `<header>` that held only
+		the navigation is empty once it is gone and goes with it; one that holds the hero's words stays."""
+		return el.tag == "nav"
+
+	@staticmethod
 	def is_decoration(el: Element) -> bool:
 		"""A glow, a beam, a mask: an element that is there to be looked at and says nothing (`data-slot="glow"`, `aria-hidden`, or an absolute box with no
 		word and no picture in it)."""
@@ -1539,6 +1557,22 @@ def slot_nodes(node: dict):
 		yield node
 	for child in node.get("c") or []:
 		yield from slot_nodes(child)
+
+
+# the kinds of section that are a row or a grid of items: a component that is one card is not one
+NEEDS_A_GROUP = {"cards", "product-row"}
+
+
+def has_group(node: dict) -> bool:
+	"""Whether some node of a tree holds two or more children drawn the same way (the cards of a grid, the entries of a list)."""
+	kids = node.get("c") or []
+	seen: set = set()
+	for kid in kids:
+		sig = signature(kid)
+		if (kid.get("c") or kid["el"] == "li") and sig in seen:
+			return True
+		seen.add(sig)
+	return any(has_group(kid) for kid in kids)
 
 
 def demote_headings(node: dict) -> None:
@@ -1774,6 +1808,123 @@ def import_launch_ui(folder: str, sections=None, push: bool = False) -> dict:
 			refused[section] = str(e)
 		except Exception as e:
 			refused[section] = f"not read ({type(e).__name__})"
+	without_duplicates(made, refused)
+	sent = {label: capture.push_block(block) for label, block in made.items()} if push else {}
+	return {"blocks": {label: block["id"] for label, block in made.items()}, "refused": refused, "sent": sent}
+
+
+# ---------------------------------------------------------------- Meraki UI
+
+MERAKI = {
+	"name": "Meraki UI",
+	"url": "https://github.com/merakiuilabs/merakiui",
+	"licence": "MIT",
+	"holder": "Khatab Wedaa",
+	"ref": "fe0472efe93f6cd275424ecbdfa7f6cb8da6f908",
+	"raw": "https://raw.githubusercontent.com/merakiuilabs/merakiui/{ref}/components/{category}/{name}.html",
+}
+# a category of Meraki UI's components, the kind of section it is, and its files (pinned to the commit above)
+MERAKI_KINDS = {
+	"heros": "hero",
+	"features": "feature-grid",
+	"faq": "faq",
+	"cta": "cta",
+	"pricing": "pricing",
+	"teams": "team",
+	"testimonials": "testimonials",
+	"portfolio": "gallery",
+	"blog": "cards",
+}
+MERAKI_FILES = {
+	"heros": [
+		"BackgroundImage",
+		"CenterContent",
+		"CenterContentWithTrustedBy",
+		"ComingSoon",
+		"E-commerce",
+		"Image",
+		"ImageWithNewsletter",
+		"NewsletterForm",
+		"Pattern",
+		"SideImage",
+		"Slide",
+	],
+	"features": ["Cards", "Centered", "GrdiList", "GridListWithImage", "Media", "Simple", "TrustedBy"],
+	"faq": ["Cards", "Centered", "Collapse", "CollapseWithSideLinks", "Grid"],
+	"cta": ["Card", "Centered", "Form", "Grid", "Image", "Simple"],
+	"pricing": [
+		"Centered",
+		"Checkbox",
+		"CheckboxWithDetails",
+		"Navigation",
+		"Popular",
+		"SideBySide",
+		"Simple",
+	],
+	"teams": ["Background", "Cards", "Cards2x2", "Filter", "GridList", "SideBySide", "Simple"],
+	"testimonials": [
+		"Card",
+		"Centered",
+		"Centered2",
+		"FullPage",
+		"FullPageCards",
+		"Single",
+		"Single2",
+		"Slider",
+	],
+	"portfolio": ["Cards", "Centered", "Filter", "HoverEffect", "SideLinks"],
+	"blog": ["Cards", "Centered", "Grid", "RecentPosts", "SinglePost", "SinglePostWithRecent"],
+}
+
+
+def meraki_slug(name: str) -> str:
+	"""`CenterContentWithTrustedBy` -> `center-content-with-trusted-by`, `E-commerce` -> `e-commerce`."""
+	return re.sub(r"(?<=[a-z0-9])(?=[A-Z])", "-", name).lower()
+
+
+def meraki_id(category: str, name: str, kind: str) -> str:
+	return f"{capture.family_of(kind)}.mk-{category}-{meraki_slug(name)}"
+
+
+def meraki_note(category: str, name: str, source: dict = MERAKI) -> str:
+	return (
+		f"Imported from {source['name']} (components/{category}/{name}.html at {source['ref'][:10]}), {source['licence']} licence, "
+		f"Copyright (c) 2021 {source['holder']}, {source['url']}."
+	)
+
+
+def import_meraki_markup(category: str, name: str, markup: str) -> dict:
+	kind = MERAKI_KINDS[category]
+	return import_markup(
+		markup,
+		kind=kind,
+		block_id=meraki_id(category, name, kind),
+		title=f"{kind.replace('-', ' ').capitalize()}, {meraki_slug(name).replace('-', ' ')} (Meraki UI)",
+		source_note=meraki_note(category, name),
+	)
+
+
+def fetch_meraki(category: str, name: str) -> str:
+	import requests
+
+	response = requests.get(MERAKI["raw"].format(ref=MERAKI["ref"], category=category, name=name), timeout=30)
+	response.raise_for_status()
+	return response.text
+
+
+def import_meraki(categories=None, push: bool = False) -> dict:
+	"""For `bench execute`: the section components of Meraki UI that can be blocks, and why the others cannot; with `push` they go to the hub as drafts."""
+	made: dict[str, dict] = {}
+	refused: dict[str, str] = {}
+	for category in categories or MERAKI_KINDS:
+		for name in MERAKI_FILES[category]:
+			label = f"{category}/{name}"
+			try:
+				made[label] = import_meraki_markup(category, name, fetch_meraki(category, name))
+			except Refused as e:
+				refused[label] = str(e)
+			except Exception as e:
+				refused[label] = f"not read ({type(e).__name__})"
 	without_duplicates(made, refused)
 	sent = {label: capture.push_block(block) for label, block in made.items()} if push else {}
 	return {"blocks": {label: block["id"] for label, block in made.items()}, "refused": refused, "sent": sent}
