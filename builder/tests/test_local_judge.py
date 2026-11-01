@@ -225,7 +225,7 @@ class TestTwoReadsAndAFallback(unittest.TestCase):
 	def test_a_verdict_with_issues_and_no_overall_line_is_a_reading(self):
 		issue = SimpleNamespace(severity="high", area="a", problem="b", fix="c")
 		report, _ = self.review([self.read(True, issue, overall="")], fallback=None)
-		self.assertNotIn("error", report)
+		self.assertFalse(report["error"])
 
 	def test_a_lane_with_another_lane_behind_it_waits_ninety_seconds_not_five_minutes_for_its_slot(self):
 		from contextlib import nullcontext
