@@ -92,11 +92,16 @@ export function componentPreview(text: string, page: string | null): Promise<Com
 
 /**
  * The HTML of a preview as the canvas draws it, in a shadow root: its stylesheets stay in, and the editor's stay out. There `:root` matches nothing, and
- * the tokens a component declares on it belong on `:host`; a script does not run from innerHTML, and goes. The reset stands for the one of the site's page.
+ * the tokens a component declares on it belong on `:host`; a script does not run from innerHTML, and goes. A width in a stylesheet asks about the window,
+ * which the phone canvas of the editor is not: it asks about the block instead, or a phone would be shown the desktop layout, squeezed. The reset stands
+ * for the one of the site's page.
  */
 export function shadowHtml(html: string): string {
-	const body = html.replace(/<script\b[\s\S]*?<\/script>/gi, "").replace(/:root\b/g, ":host");
-	return `<style>:host{display:block}*,*::before,*::after{box-sizing:border-box}a{color:inherit;text-decoration:none}img{max-width:100%}</style>${body}`;
+	const body = html
+		.replace(/<script\b[\s\S]*?<\/script>/gi, "")
+		.replace(/:root\b/g, ":host")
+		.replace(/@media\s+(?:(?:only\s+)?screen\s+and\s+)?(\((?:max|min)-width)/gi, "@container $1");
+	return `<style>:host{display:block;container-type:inline-size}*,*::before,*::after{box-sizing:border-box}a{color:inherit;text-decoration:none}img{max-width:100%}</style>${body}`;
 }
 
 /** The catalogue, loaded once for whoever needs the labels (the canvas card); the panel reloads it per page. */

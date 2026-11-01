@@ -4,6 +4,7 @@ import {
 	chosenOptions,
 	formFromValues,
 	readComponentTag,
+	shadowHtml,
 	summarize,
 	type Param,
 	type SiteComponent,
@@ -123,3 +124,25 @@ describe("formFromValues", () => {
 		expect(formFromValues(component, null)).toEqual({ typed: {}, flags: {} });
 	});
 });
+
+describe("a preview in the canvas", () => {
+	it("keeps the tokens a component declares on the root", () => {
+		expect(shadowHtml("<style>:root{--a:1}</style>")).toContain(":host{--a:1}");
+	});
+
+	it("drops what would not run anyway", () => {
+		expect(shadowHtml("<div>a</div><script>alert(1)</script>")).not.toContain("alert");
+	});
+
+	it("asks the width of the block, not of the window", () => {
+		const html = shadowHtml("<style>@media (max-width: 576px){a{b:c}}@media screen and (min-width:768px){d{e:f}}</style>");
+		expect(html).toContain("@container (max-width: 576px)");
+		expect(html).toContain("@container (min-width:768px)");
+		expect(html).not.toContain("@media");
+	});
+
+	it("leaves what is not a width alone", () => {
+		expect(shadowHtml("<style>@media (prefers-reduced-motion: reduce){a{b:c}}</style>")).toContain("@media (prefers-reduced-motion");
+	});
+});
+
