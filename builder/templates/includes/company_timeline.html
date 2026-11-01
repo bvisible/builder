@@ -16,11 +16,10 @@
                 {% if item.year %}
                 <span class="timeline-year">{{ item.year }}</span>
                 {% endif %}
-                {% if item.title %}
-                <h3 class="timeline-title">{{ item.title }}</h3>
-                {% endif %}
-                {% if item.description %}
-                <p class="timeline-description">{{ item.description }}</p>
+                {#- //// Neoffice — `highlight` is the words of a milestone (2026-11-01): this read `title` and `description`, which Company
+                    //// History does not have, so every timeline showed its years and nothing else. -#}
+                {% if item.highlight %}
+                <p class="timeline-description">{{ item.highlight | e }}</p>
                 {% endif %}
             </div>
         </div>
@@ -86,12 +85,6 @@
     font-weight: 600;
     border-radius: 9999px;
     margin-bottom: 0.75rem;
-}
-.builder-timeline .timeline-title {
-    margin: 0 0 0.5rem 0;
-    font-size: 1.25rem;
-    font-weight: 600;
-    color: var(--text-color, #1f2937);
 }
 .builder-timeline .timeline-description {
     margin: 0;

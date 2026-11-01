@@ -35,12 +35,17 @@
 </div>
 
 <style>
+/* //// Neoffice — a centred row (2026-11-01): the grid's auto-fill kept the tracks of the people a team does not have, so two
+   //// people sat on the left of three columns under a centred heading, and one person on a tablet filled the whole width. */
 .builder-team-grid {
-    display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: center;
     gap: 2rem;
 }
 .builder-team-grid .team-card {
+    flex: 0 1 20rem;
+    min-width: 0;
     background: var(--surface-color, #ffffff);
     border-radius: 16px;
     overflow: hidden;
@@ -95,7 +100,7 @@
     line-height: 1.5;
 }
 .builder-team-grid .no-team {
-    grid-column: 1 / -1;
+    width: 100%;
     text-align: center;
     color: var(--muted-color, #6b7280);
     padding: 2rem;

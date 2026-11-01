@@ -369,6 +369,45 @@ class TestMapTemplate(unittest.TestCase):
 		self.assertIn("https://www.openstreetmap.org/search?query=Nowhere", page)
 
 
+class TestTimelineTemplate(unittest.TestCase):
+	"""company_timeline.html, rendered alone, on the two fields a row of Company History has. It read `title` and `description`, which no row has,
+	so every timeline showed its years and nothing else (found on 2026-11-01, drawing the block of the hub that carries it)."""
+
+	def render(self, rows):
+		from types import SimpleNamespace
+
+		from jinja2 import DebugUndefined
+		from jinja2.sandbox import SandboxedEnvironment
+
+		import builder
+
+		path = os.path.join(os.path.dirname(builder.__file__), "templates", "includes", "company_timeline.html")
+		with open(path) as template:
+			source = template.read()
+		env = SandboxedEnvironment(undefined=DebugUndefined)
+		env.globals["_"] = lambda words: words
+		frappe_stub = SimpleNamespace(
+			db=SimpleNamespace(exists=lambda *a: True),
+			get_doc=lambda *a: SimpleNamespace(company_history=rows),
+			session=SimpleNamespace(user="Guest"),
+		)
+		return env.from_string(source).render(frappe=frappe_stub)
+
+	def test_a_milestone_shows_its_year_and_its_words_escaped(self):
+		from types import SimpleNamespace
+
+		page = self.render([SimpleNamespace(year="2015", highlight="The workshop & its <b>first</b> order")])
+		self.assertIn('<span class="timeline-year">2015</span>', page)
+		self.assertIn("The workshop &amp; its &lt;b&gt;first&lt;/b&gt; order", page)
+
+	def test_a_year_with_no_words_draws_no_empty_paragraph(self):
+		from types import SimpleNamespace
+
+		page = self.render([SimpleNamespace(year="2017", highlight="")])
+		self.assertIn("2017", page)
+		self.assertNotIn('<p class="timeline-description">', page)
+
+
 class TestAccountMenuTemplate(unittest.TestCase):
 	"""user_header.html, rendered alone: a signed-in visitor of a showcase site is offered neither orders nor a wishlist (2026-10-26)."""
 
