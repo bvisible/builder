@@ -73,6 +73,32 @@ export function loadSiteComponents(page: string | null = null): Promise<void> {
 	return inflight;
 }
 
+export type ComponentPreview = { state: "ok" | "empty" | "unknown" | "error"; html: string };
+
+// a tag draws the same thing for as long as the editor is open, and a canvas redraws its blocks often: one request per tag
+const previews = new Map<string, Promise<ComponentPreview>>();
+
+/** What a tag draws on the published page, rendered by the server. A failed request is forgotten, so the next look asks again. */
+export function componentPreview(text: string, page: string | null): Promise<ComponentPreview> {
+	const key = `${page ?? ""}|${text}`;
+	let preview = previews.get(key);
+	if (!preview) {
+		preview = createResource({ url: "builder.api.render_component_preview" }).submit({ text, page });
+		previews.set(key, preview as Promise<ComponentPreview>);
+		(preview as Promise<ComponentPreview>).catch(() => previews.delete(key));
+	}
+	return preview as Promise<ComponentPreview>;
+}
+
+/**
+ * The HTML of a preview as the canvas draws it, in a shadow root: its stylesheets stay in, and the editor's stay out. There `:root` matches nothing, and
+ * the tokens a component declares on it belong on `:host`; a script does not run from innerHTML, and goes. The reset stands for the one of the site's page.
+ */
+export function shadowHtml(html: string): string {
+	const body = html.replace(/<script\b[\s\S]*?<\/script>/gi, "").replace(/:root\b/g, ":host");
+	return `<style>:host{display:block}*,*::before,*::after{box-sizing:border-box}a{color:inherit;text-decoration:none}img{max-width:100%}</style>${body}`;
+}
+
 /** The catalogue, loaded once for whoever needs the labels (the canvas card); the panel reloads it per page. */
 export function ensureSiteComponents(): Promise<void> {
 	if (siteComponentsLoaded.value) return Promise.resolve();

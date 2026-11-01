@@ -354,6 +354,38 @@ def render_component_tag(path: str, values: str | dict | None = None) -> str:
 	return lawful
 
 
+# //// Neoffice — what a component's tag draws, for the editor's canvas (2026-11-01): the canvas cannot run Jinja and showed a grey card where a person
+# //// wanted to see the carousel, so a change of option could only be judged on the published page. Only a lawful tag reaches the template engine:
+# //// any other text is refused before it, and is never rendered.
+@frappe.whitelist()
+@builder_role_required()
+def render_component_preview(text: str | None = None, page: str | None = None) -> dict:
+	"""{"state", "html"} for a block's text: "ok" with the HTML the published page would draw, "empty" when the site has nothing for it to show,
+	"unknown" when the text is not a lawful tag of a catalogued component, "error" when it could not be drawn (the card of the canvas stands in)."""
+	from frappe.utils.jinja import render_template
+
+	from builder.site_ai import components
+
+	tag = components.lawful_tag(text or "")
+	parsed = components.parse_tag(tag) if tag else None
+	if not parsed:
+		return {"state": "unknown", "html": ""}
+	component = parsed[0]
+	previous = (getattr(frappe.local, "website_profile", None), getattr(frappe.local, "website_profile_doc", None))
+	try:
+		# the page's own profile: a page of a secondary site draws that site's address, not the default one's
+		if page and frappe.db.exists("Builder Page", page):
+			frappe.get_cached_doc("Builder Page", page)._name_website_profile()
+		if components.has_data(component, getattr(frappe.local, "website_profile", None)) is False:
+			return {"state": "empty", "html": ""}
+		return {"state": "ok", "html": render_template(tag, {})}
+	except Exception as e:
+		frappe.log_error("Component preview failed", f"{component.path}: {type(e).__name__}: {e}"[:500])
+		return {"state": "error", "html": ""}
+	finally:
+		frappe.local.website_profile, frappe.local.website_profile_doc = previous
+
+
 @frappe.whitelist()
 @builder_role_required()
 def read_component_tag(text: str | None = None) -> dict | None:

@@ -1,13 +1,12 @@
 //// Neoffice — added file (no upstream equivalent): from a selected component block to its options.
 //
-// A block that carries a component's tag is drawn as a card in the canvas (ComponentTagBlock.vue), and its raw HTML is
-// the Jinja the person should not have to write: the options are in the Site blocks tab. Selecting the block from the
-// canvas leaves the left panel on whatever tab it was on, so this puts the way there in the block's own properties.
-import useBuilderStore from "@/stores/builderStore";
+// A block that carries a component's tag draws its component in the canvas (ComponentTagBlock.vue), and its raw HTML is
+// the Jinja the person should not have to write. Click the block and its options are here, in the block's own
+// properties, and each change shows in the canvas as it is made (SiteComponentOptions.vue).
+import SiteComponentOptions from "@/components/SiteComponentOptions.vue";
 import { __ } from "@/translation";
 import blockController from "@/utils/blockController";
 import { readComponentTag } from "@/utils/siteComponents";
-import { Button } from "frappe-ui";
 
 const isComponentBlock = () =>
 	blockController.getSelectedBlocks().length === 1 &&
@@ -17,16 +16,9 @@ export default {
 	name: __("Component"),
 	properties: [
 		{
-			component: Button,
-			getProps: () => ({ class: "text-base w-full", variant: "subtle" }),
-			innerText: __("Change its options"),
+			component: SiteComponentOptions,
 			searchKeyWords: "Component, Options, Site block, Contact form, Map, Carousel, Shortcode",
 			condition: isComponentBlock,
-			events: {
-				click: () => {
-					useBuilderStore().leftPanelActiveTab = "SiteBlocks";
-				},
-			},
 		},
 	],
 	condition: isComponentBlock,

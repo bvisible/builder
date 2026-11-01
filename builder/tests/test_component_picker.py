@@ -170,6 +170,60 @@ class TestRenderComponentTag(FrappeTestCase):
 				api.render_component_tag(FORM, payload)
 
 
+class TestPreviewInTheCanvas(FrappeTestCase):
+	"""What the canvas shows for a component's tag. The template engine runs on the text of a block, so what matters most is what never reaches it."""
+
+	ENGINE = "frappe.utils.jinja.render_template"
+
+	def setUp(self):
+		frappe.set_user("Administrator")
+
+	def test_a_lawful_tag_draws_what_the_published_page_draws(self):
+		tag = form().tag()
+		with patch(self.ENGINE, return_value="<form>drawn</form>") as engine:
+			self.assertEqual({"state": "ok", "html": "<form>drawn</form>"}, api.render_component_preview(tag))
+		self.assertEqual(tag, engine.call_args.args[0])
+
+	def test_any_other_text_never_reaches_the_template_engine(self):
+		for text in (
+			"{{ frappe.session.user }}",
+			"{% set x = 1 %}{{ x }}",
+			'{% include "builder/templates/includes/not_catalogued.html" %}',
+			form().tag() + "{{ 7 * 7 }}",
+			"",
+			None,
+		):
+			with self.subTest(text), patch(self.ENGINE) as engine:
+				self.assertEqual({"state": "unknown", "html": ""}, api.render_component_preview(text))
+				engine.assert_not_called()
+
+	def test_a_component_with_nothing_to_show_says_so_without_drawing(self):
+		with patch.object(components, "has_data", return_value=False), patch(self.ENGINE) as engine:
+			self.assertEqual({"state": "empty", "html": ""}, api.render_component_preview(form().tag()))
+		engine.assert_not_called()
+
+	def test_a_component_that_cannot_be_drawn_leaves_the_card_and_a_trace(self):
+		with (
+			patch(self.ENGINE, side_effect=RuntimeError("boom")),
+			patch.object(frappe, "log_error") as log,
+		):
+			self.assertEqual({"state": "error", "html": ""}, api.render_component_preview(form().tag()))
+		self.assertEqual("Component preview failed", log.call_args.args[0])
+
+	def test_the_profile_of_the_request_comes_back_after_a_preview_of_another_page(self):
+		frappe.local.website_profile, frappe.local.website_profile_doc = "before", {"name": "before"}
+		self.addCleanup(lambda: setattr(frappe.local, "website_profile", None))
+		self.addCleanup(lambda: setattr(frappe.local, "website_profile_doc", None))
+		page = frappe._dict(_name_website_profile=lambda: setattr(frappe.local, "website_profile", "other"))
+		with (
+			patch.object(frappe.db, "exists", return_value=True),
+			patch.object(frappe, "get_cached_doc", return_value=page),
+			patch(self.ENGINE, return_value=""),
+		):
+			api.render_component_preview(form().tag(), "a-page")
+		self.assertEqual("before", frappe.local.website_profile)
+
+
 class TestReadComponentTag(FrappeTestCase):
 	def setUp(self):
 		frappe.set_user("Administrator")
@@ -276,12 +330,13 @@ class TestComponentsOfAPage(FrappeTestCase):
 
 
 class TestWhoMayUseIt(FrappeTestCase):
-	"""The editor is behind a role: anonymous and portal user are refused, on all three entry points."""
+	"""The editor is behind a role: anonymous and portal user are refused, on all its entry points."""
 
 	CALLS = (
 		lambda: api.get_site_components(),
 		lambda: api.render_component_tag(FORM, {}),
 		lambda: api.read_component_tag(f'{{% include "{FORM}" %}}'),
+		lambda: api.render_component_preview(f'{{% include "{FORM}" %}}'),
 	)
 
 	def tearDown(self):
