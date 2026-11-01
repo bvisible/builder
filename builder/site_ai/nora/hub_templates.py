@@ -34,7 +34,7 @@ from builder.site_ai.nora.recipes import Ctx, Look, ground_of
 CONF_KEY = "builder_hub_templates"
 METHOD = "builder_hub.api.get_editor_block_catalog"
 TIMEOUT = 10
-RENDERER = 4  # raise it when the way a block is drawn here changes: every card is drawn again
+RENDERER = 5  # raise it when the way a block is drawn here changes: every card is drawn again
 # a sand well that says « Photo »: fallback.png is white, and a card's photographs were invisible on a white page (2026-11-01)
 PLACEHOLDER_PHOTO = "/assets/builder/images/hub-photo-placeholder.svg"
 CTA_HREF = "/contact"
@@ -175,6 +175,33 @@ class Left(Exception):
 	"""A block that is not offered, and why."""
 
 
+def site_component(block: dict):
+	"""(the site's component a block carries, "") or (None, why the site cannot carry it). A block names the live component it holds (opening
+	hours, a carousel, the map, the form…): the card is offered where the site has that component, switched on, with something to show; the
+	dropped section then holds the component's own tag, which the editor shows as a component card and a published page draws with the site's
+	data. The site's form is left out: which of the site's forms is a choice its own component asks for."""
+	from builder.site_ai import components
+
+	name = str(block.get("component") or "").strip().rsplit("/", 1)[-1] or "contact_form.html"
+	if name == "site_form.html":
+		return None, "it carries the site's form, which a page of the editor adds by its own component (the form is chosen there)"
+	live = next((c for c in components.enabled_catalogue() if c.file == name), None)
+	if live is None:
+		return None, f"its component {name} is not on this site"
+	if components.has_data(live, None) is False:
+		return None, f"the site has nothing for its component {name} to show"
+	return live, ""
+
+
+def component_state(block: dict) -> str:
+	"""What the card of a block depends on in the site's components ("" for a block that carries none): a card is drawn again, or taken away,
+	when its component appears or goes."""
+	if not block.get("form"):
+		return ""
+	live, why = site_component(block)
+	return why or live.path
+
+
 def draw(block: dict, handles: dict, palette: dict, language: str) -> dict:
 	"""The block of the editor (the `block` of a Block Template) for a hub block, on this site's tokens and with sample words. Raises `Left`."""
 	from builder.ai.page_writer import expand_page_yaml
@@ -182,11 +209,15 @@ def draw(block: dict, handles: dict, palette: dict, language: str) -> dict:
 	recipe, why = hub_blocks.accept(block)
 	if recipe is None:
 		raise Left(why)
+	component = ""
 	if recipe.form:
-		raise Left("it carries the live contact form, which a page of the editor adds by its own component")
+		live, why = site_component(block)
+		if live is None:
+			raise Left(why)
+		component = live.path
 	look = Look(handles, palette, live=True)
 	photos = [PLACEHOLDER_PHOTO] * recipe.photos
-	node = recipe.build(Ctx(look, ground_of(look, recipe.ground), photos, CTA_HREF, ""))
+	node = recipe.build(Ctx(look, ground_of(look, recipe.ground), photos, CTA_HREF, component))
 	fill_slots(node, language)
 	blocks, _script = expand_page_yaml(section_recipes.to_yaml(node), is_root=False)
 	if not blocks:
@@ -325,7 +356,7 @@ def sync(conf=None) -> dict:
 		if not isinstance(block, dict) or not block.get("id") or not block.get("preview"):
 			left_out.append(f"{block.get('id') if isinstance(block, dict) else '?'}: no id or no thumbnail")
 			continue
-		wanted[block["id"]] = card_hash(block, signature)
+		wanted[block["id"]] = card_hash(block, signature + component_state(block))
 		blocks[block["id"]] = block
 
 	rows = frappe.get_all(
@@ -345,6 +376,10 @@ def sync(conf=None) -> dict:
 			_write(names.get(block_id), block, _row_values(block, drawn, wanted[block_id], rank))
 		except Left as why:
 			left_out.append(f"{block_id}: {why}")
+			# a card the site can no longer carry (its component went, its data emptied) is taken away, not left as it was drawn
+			if names.get(block_id):
+				frappe.db.delete("Block Template", {"name": names[block_id]})
+				done["removed"].append(block_id)
 			continue
 		except Exception as e:
 			frappe.log_error(f"Hub block {block_id} not offered", f"{type(e).__name__}: {e}"[:500])

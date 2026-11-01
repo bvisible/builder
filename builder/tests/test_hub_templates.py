@@ -100,19 +100,78 @@ class TestABlockDrawn(unittest.TestCase):
 			T.draw(bad, HANDLES, LIGHT, "fr")
 		self.assertIn("fixed words", str(why.exception).lower())
 
-	def test_a_block_that_carries_the_live_form_is_left_out(self):
-		with_form = editor_block(id="contact.card", kinds=["contact-form"], photos=0, form=True)
-		with_form["tree"] = {
-			"el": "section",
-			"name": "card",
-			"c": [
-				{"el": "h2", "text": "WRITE heading: 3 to 7 words"},
-				{"el": "div", "name": "form", "text": "{{include_component}}"},
-			],
-		}
+	def test_a_block_whose_component_the_site_does_not_have_is_left_out(self):
+		with patch("builder.site_ai.components.enabled_catalogue", return_value=[]):
+			with self.assertRaises(T.Left) as why:
+				T.draw(component_block("opening_hours.html"), HANDLES, LIGHT, "fr")
+		self.assertIn("opening_hours.html", str(why.exception))
+
+
+def component_block(component, **over):
+	"""A hub block that carries a live component where its tree says {{include_component}}."""
+	variant = (component.split(".")[0] or "form").replace("_", "-")
+	block = editor_block(id=f"contact.{variant}", kinds=["hours"], photos=0, form=True, component=component, **over)
+	block["tree"] = {
+		"el": "section",
+		"name": "card",
+		"c": [
+			{"el": "h2", "name": "heading", "text": "WRITE heading: 3 to 7 words"},
+			{"el": "div", "name": "component", "text": "{{include_component}}"},
+		],
+	}
+	return block
+
+
+def site_has(*paths, data=True):
+	from builder.site_ai.components import Component
+
+	catalogue = [Component(path, path, "", data_check="x.y" if data is not None else "") for path in paths]
+	return (
+		patch("builder.site_ai.components.enabled_catalogue", return_value=catalogue),
+		patch("builder.site_ai.components.has_data", return_value=data),
+	)
+
+
+class TestACardWithALiveComponent(unittest.TestCase):
+	HOURS = "webshop/templates/includes/opening_hours.html"
+
+	def draw(self, component, *paths, data=True):
+		catalogue, has_data = site_has(*paths, data=data)
+		with catalogue, has_data:
+			return T.draw(component_block(component), HANDLES, LIGHT, "fr")
+
+	def test_the_section_holds_the_tag_of_the_sites_own_component(self):
+		drawn = json.dumps(self.draw("opening_hours.html", self.HOURS))
+		self.assertIn('{% include \\"webshop/templates/includes/opening_hours.html\\" %}', drawn)
+
+	def test_a_component_with_nothing_to_show_is_not_offered(self):
 		with self.assertRaises(T.Left) as why:
-			T.draw(with_form, HANDLES, LIGHT, "fr")
-		self.assertIn("form", str(why.exception))
+			self.draw("opening_hours.html", self.HOURS, data=False)
+		self.assertIn("nothing", str(why.exception))
+
+	def test_a_component_without_a_data_check_is_offered(self):
+		self.assertTrue(self.draw("opening_hours.html", self.HOURS, data=None))
+
+	def test_a_block_that_names_none_carries_the_contact_form(self):
+		block = component_block("")
+		catalogue, has_data = site_has("builder/templates/includes/contact_form.html", data=None)
+		with catalogue, has_data:
+			drawn = json.dumps(T.draw(block, HANDLES, LIGHT, "fr"))
+		self.assertIn("contact_form.html", drawn)
+
+	def test_the_sites_form_is_left_to_its_own_component(self):
+		with self.assertRaises(T.Left):
+			self.draw("site_form.html", "builder/templates/includes/site_form.html")
+
+	def test_the_card_depends_on_whether_the_site_has_its_component(self):
+		block = component_block("opening_hours.html")
+		catalogue, has_data = site_has(self.HOURS)
+		with catalogue, has_data:
+			there = T.component_state(block)
+		with patch("builder.site_ai.components.enabled_catalogue", return_value=[]):
+			gone = T.component_state(block)
+		self.assertNotEqual(there, gone)
+		self.assertEqual("", T.component_state(editor_block()))
 
 
 class TestWhatACardFollows(unittest.TestCase):

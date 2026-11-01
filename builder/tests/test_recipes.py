@@ -880,3 +880,42 @@ class TestALiveLook(unittest.TestCase):
 	def test_a_site_without_palette_values_keeps_the_fallbacks(self):
 		look = R.Look({}, {}, live=True)
 		self.assertEqual("rgba(0,0,0,0.65)", look.muted)
+
+
+class TestARecipeCarriesItsOwnComponent(unittest.TestCase):
+	"""A recipe that carries a live component is drawn only for a section that carries that same component (any form for a form): a section's
+	opening hours drawn in a form recipe would have put them where the form goes."""
+
+	HOURS = R.Recipe("contact.hub-hours", ("hours",), "hours on a card", None, form=True, component="opening_hours.html")
+	FORM = R.Recipe("contact.hub-form", ("contact-form",), "a form beside its promise", None, form=True)
+	PLAIN = R.Recipe("text.hub-plain", ("text",), "a text", None)
+
+	def test_a_recipe_without_a_component_fits_any_section(self):
+		self.assertTrue(R.carries(self.PLAIN, ""))
+		self.assertTrue(R.carries(self.PLAIN, "webshop/templates/includes/opening_hours.html"))
+
+	def test_a_component_recipe_needs_its_own_component(self):
+		self.assertTrue(R.carries(self.HOURS, "webshop/templates/includes/opening_hours.html"))
+		self.assertFalse(R.carries(self.HOURS, "builder/templates/includes/contact_form.html"))
+		self.assertFalse(R.carries(self.HOURS, ""))
+
+	def test_a_form_recipe_takes_either_form_and_nothing_else(self):
+		self.assertTrue(R.carries(self.FORM, "builder/templates/includes/contact_form.html"))
+		self.assertTrue(R.carries(self.FORM, "builder/templates/includes/site_form.html"))
+		self.assertFalse(R.carries(self.FORM, "webshop/templates/includes/opening_hours.html"))
+
+	def test_the_plan_reads_which_component_a_recipe_carries(self):
+		with patch.dict(R.REGISTRY, {self.HOURS.id: self.HOURS}):
+			lines = "\n".join(R.catalogue_lines(seed="a site"))
+		self.assertIn("contact.hub-hours: hours on a card (the live opening hours as its component)", lines)
+
+	def test_the_plan_s_pick_is_kept_only_for_a_section_with_that_component(self):
+		def section(component):
+			return SimpleNamespace(kind="hours", recipe=self.HOURS.id, component=component, photos=[], purpose="")
+
+		with patch.dict(R.REGISTRY, {self.HOURS.id: self.HOURS}):
+			kept, _ = R.pick(section("webshop/templates/includes/opening_hours.html"), "seed", {})
+			dropped, _ = R.pick(section("builder/templates/includes/contact_form.html"), "seed", {})
+		self.assertEqual(self.HOURS.id, kept.id)
+		self.assertIsNone(dropped)
+

@@ -443,6 +443,14 @@ class TestTheRestOfTheGeneratorSeesThemAsRecipes(unittest.TestCase):
 		other_site = [line.split(":")[0].strip() for line in R.catalogue_lines(seed="another site") if H.HUB_MARK in line]
 		self.assertEqual(R.HUB_PER_FAMILY, len(other_site))
 
+	def test_a_block_carries_the_component_the_hub_names(self):
+		hours = block(id="contact.hours", kinds=["hours"], photos=0, form=True, component="opening_hours.html")
+		hours["tree"] = {"el": "section", "name": "s", "c": [{"el": "h2", "name": "h", "text": "WRITE heading: 3 to 6 words"}, {"el": "div", "name": "c", "text": "{{include_component}}"}]}
+		recipe, why = H.accept(hours)
+		self.assertEqual("", why)
+		self.assertEqual("opening_hours.html", recipe.component)
+		self.assertEqual("", H.accept(dict(hours, component=None))[0].component)
+
 	def test_the_plan_is_told_it_may_design_its_own_section(self):
 		self.assertIn("design your own", R.catalogue_lines(seed="a site")[0])
 

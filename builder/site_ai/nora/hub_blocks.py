@@ -200,6 +200,8 @@ def accept(block) -> tuple[Recipe | None, str]:
 			form=bool(block.get("form")),
 			ground=block.get("ground") or "plain",
 			motion=block.get("motion") or "None",
+			# the include it carries, named by the hub since 2026-11-01 (none named: the contact form, recipes.carries)
+			component=str(block.get("component") or "").strip().rsplit("/", 1)[-1] if block.get("form") else "",
 		)
 		# drawn once on sample values: a block that cannot be drawn is found here, not in the middle of a page
 		sample = Ctx(

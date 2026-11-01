@@ -413,6 +413,9 @@ class Recipe:
 	# //// Neoffice — how much the section moves (2026-10-30, the motion layer of theme_variables.html): None, Calm (things appear and count) or
 	# //// Brisk (things drift without end). It is offered only to a site whose own motion_style is at least as lively; the recipes written in code do not move.
 	motion: str = "None"
+	# //// Neoffice — the live component it carries when `form` is set (2026-11-01): the file name of the site's include (opening_hours.html,
+	# //// product_carousel.html…); "" is the contact form, the only component a recipe carried until a hub block could name its own
+	component: str = ""
 
 	@property
 	def family(self) -> str:
@@ -1304,8 +1307,40 @@ def moves_within(r: Recipe, motion: str) -> bool:
 	return MOTION_RANK.get(r.motion, 2) <= MOTION_RANK.get(motion, 2)
 
 
-def recipes_for(kind: str, has_component: bool = True, motion: str = "Brisk") -> list[Recipe]:
-	return [r for r in REGISTRY.values() if kind in r.kinds and (has_component or not r.form) and moves_within(r, motion)]
+FORM_FILES = ("contact_form.html", "site_form.html")
+# what the plan reads a recipe's component as, by the file of the include
+COMPONENT_LABELS = {
+	"contact_form.html": "form",
+	"site_form.html": "form",
+	"opening_hours.html": "opening hours",
+	"product_carousel.html": "products carousel",
+	"brand_carousel.html": "brands carousel",
+	"google_map.html": "map",
+	"team_grid.html": "team",
+	"company_timeline.html": "company timeline",
+	"blog_listing.html": "blog posts",
+	"contact_info.html": "contact details",
+}
+
+
+def carries(r: Recipe, component) -> bool:
+	"""Whether a section that carries `component` (the include path the plan gave it, "" for none) can be drawn with the recipe: a recipe that
+	needs no component always; one that carries a component only with that same component, any of the forms for a form. A section's opening hours
+	drawn in a form recipe would have put the hours where the form goes (any component was enough until 2026-11-01). `True` is the old
+	question, whether the section has any component at all."""
+	if not r.form:
+		return True
+	if component is True:
+		return True
+	name = str(component or "").strip().rsplit("/", 1)[-1]
+	if not name:
+		return False
+	wanted = r.component or "contact_form.html"
+	return name == wanted or (wanted in FORM_FILES and name in FORM_FILES)
+
+
+def recipes_for(kind: str, component="", motion: str = "Brisk") -> list[Recipe]:
+	return [r for r in REGISTRY.values() if kind in r.kinds and carries(r, component) and moves_within(r, motion)]
 
 
 def eligible_kinds() -> set[str]:
@@ -1363,7 +1398,7 @@ def catalogue_lines(seed: str = "", material: str | None = None, motion: str = "
 			if r.photos:
 				needs.append(f"{r.photos} photograph{'s' if r.photos > 1 else ''}")
 			if r.form:
-				needs.append("the live form as its component")
+				needs.append(f"the live {COMPONENT_LABELS.get(r.component or 'contact_form.html', 'component')} as its component")
 			if r.motion != "None":
 				needs.append("moves, and rests where motion is off")
 			lines.append(f"    {r.id}: {r.look}" + (f" ({'; '.join(needs)})" if needs else ""))
@@ -1389,12 +1424,12 @@ def pick(section, seed: str, taken: dict, motion: str = "Brisk") -> tuple[Recipe
 	"""The recipe for a plan section and whether the code changed the plan's pick: the plan's own pick when it is a recipe of the section's
 	kind that the section can carry (another variant of the same family when the plan named it on too many pages of the site); the plan's
 	silence stays silence, a free section."""
-	has_component = bool((getattr(section, "component", "") or "").strip())
+	component = (getattr(section, "component", "") or "").strip()
 	named = (getattr(section, "recipe", "") or "").strip()
-	candidates = recipes_for(section.kind, has_component, motion)
+	candidates = recipes_for(section.kind, component, motion)
 	if named:
 		r = REGISTRY.get(named)
-		if r and section.kind in r.kinds and (has_component or not r.form) and moves_within(r, motion):
+		if r and section.kind in r.kinds and carries(r, component) and moves_within(r, motion):
 			# past MAX_REPEATS pages the same structure is a pattern, not a choice (the local planner kept the first variant of a family it was
 			# offered on four pages of five, whatever the catalogue said): the later pages get another variant of the SAME family, drawn by the site
 			if section.kind not in REPEATED_ON_PURPOSE and taken.get(r.id, 0) >= MAX_REPEATS:
