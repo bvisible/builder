@@ -23,6 +23,13 @@ from builder.site_ai.schemas.page_critique import PageCritique
 # //// a long page with two pictures may take twice that), and the timeout now reaches the call
 CRITIQUE_TIMEOUT = 300
 
+# //// Neoffice — the live components hold the business's own records (2026-11-01): the judge read the brands of a shop's records, found them foreign to its
+# //// trade and called it a [high] defect; the revision took the component away and wrote brands of its own. What they list is not the judge's to weigh.
+LIVE_RECORDS = (
+    "Product cards, brand logos, opening hours, the team, the timeline, the map and the contact details are live "
+    "components that show the business's own records: judge how they look, never what they list. "
+)
+
 _CRITIQUE_SYSTEM = (
     "You are a senior web designer doing a final review of a SCREENSHOT of a "
     "generated web page before it goes live for a client. Judge it as a human "
@@ -31,7 +38,7 @@ _CRITIQUE_SYSTEM = (
     "match the business, broken or squished/stretched images, unreadable text "
     "or poor contrast, misalignment, content that clearly doesn't belong. Be "
     "concrete and specific to what you actually SEE. If it looks good, return "
-    "few or no issues."
+    "few or no issues. " + LIVE_RECORDS
 )
 
 
@@ -57,7 +64,7 @@ EVIDENCE_SYSTEM = (
     "deliberate. A row of cards that scrolls sideways, with arrows or dots, shows part of its next card at the edge of "
     "the screen on purpose: that is not text cut off. Every issue must name the visible element and quote the exact words you can read on it (leave the "
     "quote empty only for a problem that is not text, such as a gap or an overlap): if you cannot quote it, do not "
-    "report it. Prefer a few certain issues to many doubtful ones; a page without such a defect has no issues."
+    "report it. Prefer a few certain issues to many doubtful ones; a page without such a defect has no issues. " + LIVE_RECORDS
 )
 SYSTEMS = {"default": _CRITIQUE_SYSTEM, "evidence": EVIDENCE_SYSTEM}
 

@@ -509,7 +509,10 @@ def clean_tag(text: str) -> str | None:
 	kept = [f"{{%- set {name} = {value} -%}}" for name, value in given if name in declared]
 	# //// Neoffice — a tag that already means what it should is left exactly as it is: rewriting
 	# //// it to change a quote style is churn, and it inflates the count the build reports.
-	nothing_changed = len(kept) == len(given) and found.group(1) == component.path
+	# //// Neoffice — and nothing lies around its statements (2026-11-01): the generator wrote a literal backslash-n between them, which the page
+	# //// printed as text above the form, the map and the hours
+	residue = INCLUDE_PATH.sub("", SET_PARAM.sub("", text)).strip()
+	nothing_changed = len(kept) == len(given) and found.group(1) == component.path and not residue
 	return text.strip() if nothing_changed else "".join(kept) + f'{{% include "{component.path}" %}}'
 
 

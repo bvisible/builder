@@ -131,7 +131,7 @@ def revision_instructions(issues: list[dict], gate: list[dict] | None = None) ->
     lines = [
         "REVISION (the page was rendered, measured in the browser at 1440, 768 and 375 px, and a designer reviewed "
         "its screenshots; fix exactly these points and keep everything else, the structure, the copy and the photos "
-        "included):"
+        "included; every `{% include %}` tag stays as it is, a live component is never removed or written out by hand):"
     ]
     # //// Neoffice — the gate's findings lead (2026-09-16): a number the browser measured beats a
     # //// sentence a model wrote, and the writer must not argue with it.

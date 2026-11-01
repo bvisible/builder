@@ -585,3 +585,78 @@ class TestALinkThatDrawsItsUnderline(unittest.TestCase):
 			with self.subTest(path):
 				for name in ("background-image", "background-size", "background-position", "background-repeat"):
 					self.assertRegex(rule, rf"{name}:\s*inherit")
+
+
+class TestARevisionNeverTakesAComponentAway(unittest.TestCase):
+	BRANDS = "webshop/templates/includes/brand_carousel.html"
+
+	def section(self, name, html):
+		return {"element": "section", "blockName": name, "children": [{"element": "div", "innerHTML": html, "children": []}]}
+
+	def page(self, *sections):
+		return [{"element": "div", "blockName": "body", "children": list(sections)}]
+
+	def test_the_section_that_held_it_goes_back_in_place_of_the_one_written_by_hand(self):
+		from builder.site_ai.nora import site_builder as S
+
+		live = self.section("brands", '{% include "' + self.BRANDS + '" %}')
+		before = self.page(self.section("hero", "Words"), live)
+		after = self.page(self.section("hero", "Better words"), self.section("brands", "Six brands nobody gave"))
+		self.assertEqual(["brand_carousel.html"], S.restore_lost_components(before, after))
+		self.assertEqual(["hero", "brands"], [b["blockName"] for b in after[0]["children"]])
+		self.assertEqual("Better words", after[0]["children"][0]["children"][0]["innerHTML"])
+		self.assertIn(self.BRANDS, after[0]["children"][1]["children"][0]["innerHTML"])
+
+	def test_a_section_the_revision_dropped_comes_back_where_it_was(self):
+		from builder.site_ai.nora import site_builder as S
+
+		before = self.page(self.section("hero", "Words"), self.section("brands", '{% include "' + self.BRANDS + '" %}'), self.section("cta", "Go"))
+		after = self.page(self.section("hero", "Words"), self.section("cta", "Go"))
+		self.assertEqual(["brand_carousel.html"], S.restore_lost_components(before, after))
+		self.assertEqual(["hero", "brands", "cta"], [b["blockName"] for b in after[0]["children"]])
+
+	def test_a_revision_that_kept_it_is_left_alone_even_when_it_moved(self):
+		from builder.site_ai.nora import site_builder as S
+
+		tag = '{% include "' + self.BRANDS + '" %}'
+		before = self.page(self.section("brands", tag), self.section("cta", "Go"))
+		after = self.page(self.section("cta", "Go"), self.section("marks", tag))
+		self.assertEqual([], S.restore_lost_components(before, after))
+		self.assertEqual(["cta", "marks"], [b["blockName"] for b in after[0]["children"]])
+
+
+class TestATagIsNothingButATag(unittest.TestCase):
+	TAG = '{%- set zoom = 16 -%}{% include "builder/templates/includes/google_map.html" %}'
+
+	def clean(self, text):
+		from builder.site_ai import components
+		from builder.site_ai.components import Component
+
+		map_ = Component("builder/templates/includes/google_map.html", "Map", "", params=({"name": "zoom", "type": "int", "default": 16},))
+		with patch.object(components, "by_file", return_value=map_):
+			return components.clean_tag(text)
+
+	def test_a_clean_tag_is_left_as_it_is(self):
+		self.assertEqual(self.TAG, self.clean(self.TAG))
+
+	def test_a_literal_backslash_n_between_the_statements_does_not_reach_the_page(self):
+		self.assertEqual(self.TAG, self.clean(self.TAG.replace("-%}{%", "-%}\\n{%")))
+
+	def test_a_real_newline_between_the_statements_is_left_alone(self):
+		written = self.TAG.replace("-%}{%", "-%}\n{%")
+		self.assertEqual(written, self.clean(written))
+
+
+class TestTheJudgeLeavesTheRecordsAlone(unittest.TestCase):
+	def test_both_judges_are_told_a_component_shows_the_businesss_own_records(self):
+		from builder.site_ai.ingestion import visual_critique as V
+
+		for system in (V._CRITIQUE_SYSTEM, V.EVIDENCE_SYSTEM):
+			self.assertIn("judge how they look, never what they list", system)
+
+	def test_a_revision_is_told_to_keep_every_component(self):
+		from builder.site_ai.nora import visual_check
+
+		text = visual_check.revision_instructions([{"severity": "high", "area": "a", "problem": "b", "fix": "c"}])
+		self.assertIn("a live component is never removed", text)
+

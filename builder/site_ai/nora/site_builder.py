@@ -930,6 +930,43 @@ def repair_includes(blocks: list, allowed) -> tuple[int, int]:
 # //// Neoffice ▲▲▲
 
 
+# //// Neoffice — added (2026-11-01): a revision answers a judge, and a judge that disliked the brands of a shop's records got them replaced by a hand-written
+# //// row of brands nobody gave: the component is the site's own truth, a revision never takes it away
+def _included_files(block: dict) -> set[str]:
+    from builder.site_ai import components as catalogue
+    from builder.site_ai.nora.layout import _walk
+
+    found = (catalogue.INCLUDE_PATH.search(b.get("innerHTML")) for b in _walk([block]) if isinstance(b.get("innerHTML"), str))
+    return {m.group(1).rsplit("/", 1)[-1] for m in found if m}
+
+
+def _top_sections(blocks: list) -> list:
+    """The list that holds a page's sections: the children of its root block when it has one."""
+    if len(blocks) == 1 and isinstance(blocks[0].get("children"), list) and blocks[0].get("element") != "section":
+        return blocks[0]["children"]
+    return blocks
+
+
+def restore_lost_components(before: list, after: list) -> list[str]:
+    """Puts back in `after` the sections of `before` that held a live component `after` no longer has: in place of the section of that name, else at
+    their old position. Returns the file names of the components it put back."""
+    was, now = _top_sections(before), _top_sections(after)
+    kept = {file for block in now for file in _included_files(block)}
+    back: list[str] = []
+    for index, section in enumerate(was):
+        lost = _included_files(section) - kept
+        if not lost:
+            continue
+        same = next((i for i, block in enumerate(now) if block.get("blockName") and block.get("blockName") == section.get("blockName")), None)
+        if same is None:
+            now.insert(min(index, len(now)), section)
+        else:
+            now[same] = section
+        kept |= lost
+        back.extend(sorted(lost))
+    return back
+
+
 # //// Neoffice — added (2026-11-01): what a recipe carries survives repair_includes
 def recipe_includes(page: dict, site: dict) -> list:
     """The components the section recipes of this page carry, whatever the page's type is offered. A title the table of pages does not know makes a
@@ -3540,6 +3577,10 @@ def build_site(ctx, spec: dict) -> str:
                 if not fixed:
                     ai_log("warning", "The look found points but the fix failed", page=page["title"], error=fix_error)
                     break
+                # //// Neoffice — see restore_lost_components
+                restored = restore_lost_components(stored_page(name)[0], fixed)
+                if restored:
+                    ai_log("warning", "A revision took live components away: they are back", page=page["title"], components=restored)
                 _write_page(page, fixed, fixed_script, profile, name, _describe(fixed))
                 site["headlines_by_route"][page["route"]] = page_headlines(fixed, categories)
                 reviewed_already.pop(name, None)
