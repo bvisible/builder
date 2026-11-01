@@ -314,6 +314,17 @@ class TestTheHeroIsNeverLeftABlockForItsDescription(unittest.TestCase):
 		self.assertEqual(2, len(rescue_photo_alts(blocks, [], "conseil", "fr")))
 		self.assertIn("sans personnes", blocks[0]["children"][1]["children"][0]["attributes"]["alt"])
 
+	def test_the_scene_answers_to_the_guard_too(self):
+		from builder.site_ai.nora.hero import rescue_photo_alts
+		from builder.site_ai.nora.placeholders import must_not_be_drawn
+
+		blocks = self.home("L'équipe de la maison")
+		rescue_photo_alts(blocks, [], "Restaurant de saison : une carte courte et un menu du jour", "fr")
+		alt = blocks[0]["children"][0]["children"][0]["attributes"]["alt"]
+		self.assertIn("Restaurant de saison", alt)
+		self.assertNotIn("carte", alt)
+		self.assertFalse(must_not_be_drawn(alt))
+
 	def test_a_picture_of_the_team_becomes_a_scene_and_not_a_blank_box(self):
 		from builder.site_ai.nora.hero import rescue_photo_alts
 		from builder.site_ai.nora.placeholders import must_not_be_drawn

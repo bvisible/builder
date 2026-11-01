@@ -17,6 +17,8 @@ How the copy sits (the composition), one per site, from the brief's hero style a
 
 No model is called."""
 
+import re
+
 from builder.site_ai.nora.contrast import luminance, parse_color
 
 LIGHT_STYLES = ("minimal", "split", "asymmetric", "cards")
@@ -211,8 +213,13 @@ def rescue_photo_alts(blocks: list, names, activity: str, lang: str = "fr") -> l
 	from builder.site_ai.nora.layout import _walk
 	from builder.site_ai.nora.placeholders import must_not_be_drawn
 
-	scene = HERO_SCENE.get(str(lang or "fr")[:2], HERO_SCENE["fr"]).format(activity=" ".join(str(activity or "").split())[:80] or "services")
 	known = {str(n).strip().lower() for n in names or () if str(n).strip()}
+	template = HERO_SCENE.get(str(lang or "fr")[:2], HERO_SCENE["fr"])
+	subject = " ".join(str(activity or "").split())[:80]
+	# //// Neoffice — the scene answers to the guard too (2026-11-01): a restaurant's activity says "carte", which the guard reads as a map, and the picture stayed a blank
+	# //// box with its scene for a description. The first clause says what the business is; failing that, the scene says nothing of it.
+	subjects = (subject, re.split(r"[:,;(]", subject)[0].strip(), "services")
+	scene = next((text for text in (template.format(activity=part) for part in subjects if part) if not must_not_be_drawn(text, known)), template.format(activity="services"))
 	replaced: list[str] = []
 	for block in _walk(blocks):
 		attrs = block.get("attributes") or {}
