@@ -231,10 +231,27 @@ def forget() -> int:
 	return len(gone)
 
 
-def sync_registry(conf=None) -> dict:
+def site_component(block: dict, profile=None, allow=None):
+	"""(the site's component a block carries, "") or (None, why the site cannot carry it). A block names the live component it holds (opening
+	hours, a carousel, the map, the form…): it is offered where the site has that component, switched on, with something to show. `allow` is
+	the build's own rule about this site (site_builder.include_rule): no shop on a showcase, none of the host's data on a site for another."""
+	from builder.site_ai import components
+
+	name = str(block.get("component") or "").strip().rsplit("/", 1)[-1] or "contact_form.html"
+	live = next((c for c in components.enabled_catalogue() if c.file == name), None)
+	if live is None:
+		return None, f"its component {name} is not on this site"
+	if allow is not None and not allow(live):
+		return None, f"its component {name} is not for this site"
+	if components.has_data(live, profile) is False:
+		return None, f"the site has nothing for its component {name} to show"
+	return live, ""
+
+
+def sync_registry(conf=None, profile=None, allow=None) -> dict:
 	"""Makes the registry hold exactly the hub recipes this build is allowed: none when `nora_hub_blocks` is off (and any left from the build
-	before in this worker are taken out), else the accepted blocks of the catalogue. Returns {"ids": [...], "source": ..., "left_out":
-	[...]}, which the build logs."""
+	before in this worker are taken out), else the accepted blocks of the catalogue that the site can carry. Returns {"ids": [...], "source":
+	..., "left_out": [...]}, which the build logs."""
 	forget()
 	if not enabled(conf):
 		return {"ids": [], "source": "off", "left_out": []}
@@ -250,6 +267,13 @@ def sync_registry(conf=None) -> dict:
 		if built is None:
 			left_out.append(f"{(block or {}).get('id') if isinstance(block, dict) else '?'}: {why}")
 			continue
+		# a recipe whose component the site lacks is not offered: the plan would name a carousel on a site with no shop, pick() would refuse it
+		# for want of the component, and the section would be written free, with products of its own
+		if built.form:
+			_live, why = site_component(block, profile, allow)
+			if why:
+				left_out.append(f"{block['id']}: {why}")
+				continue
 		if built.id in section_recipes.REGISTRY:
 			left_out.append(f"{block['id']}: {built.id} is already a recipe")
 			continue

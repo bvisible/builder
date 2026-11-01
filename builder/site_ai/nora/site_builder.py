@@ -1041,6 +1041,12 @@ def available_includes(page_type: str, site_type: str = "vitrine", profile: str 
     about the component: whose data it would show, and which sites may show a shop at all."""
     from builder.site_ai import components
 
+    return components.for_page(page_type, profile, allow=include_rule(site_type, profile, site_name, generator))
+
+
+# //// Neoffice — a rule of its own (2026-11-01): the blocks of the hub that carry a component are offered by the same one (hub_blocks.sync_registry)
+def include_rule(site_type: str = "vitrine", profile: str | None = None, site_name: str = "", generator: bool = False):
+    """allowed(component): whether THIS site may show a component, whatever the page."""
     shop_data = not _other_business(profile, site_name)
     sells = site_type in ("ecommerce", "ecommerce_search") or _profile_is_b2b(profile) or _profile_sells(profile)
 
@@ -1059,7 +1065,7 @@ def available_includes(page_type: str, site_type: str = "vitrine", profile: str 
         # belong on the contact page of a plain showcase too
         return not (component.needs_shop and not sells)
 
-    return components.for_page(page_type, profile, allow=allowed)
+    return allowed
 
 
 def page_sections(page: dict, minimal: bool, contact_verified: bool = True, others=(), brands=(), sells: bool = False) -> list[str]:
@@ -2366,7 +2372,7 @@ def build_site(ctx, spec: dict) -> str:
     try:
         from builder.site_ai.nora import hub_blocks
 
-        _hub = hub_blocks.sync_registry()
+        _hub = hub_blocks.sync_registry(profile=profile, allow=include_rule(site_type, profile, site_name))
         if _hub["source"] != "off":
             ai_log("info", "Hub blocks offered to the plan", source=_hub["source"], blocks=_hub["ids"], left_out=_hub["left_out"])
     except Exception as e:

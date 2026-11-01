@@ -361,6 +361,53 @@ class TestTheRegistry(unittest.TestCase):
 		self.sync(catalogue_of(block()), on=False)
 		self.assertFalse([i for i in R.REGISTRY if H.is_hub_recipe(i)])
 
+	def carrying(self, component):
+		carried = block(id="hours.band", kinds=["hours"], photos=0, form=True, component=component)
+		carried["tree"] = {"el": "section", "name": "s", "c": [{"el": "h2", "name": "h", "text": "WRITE heading: 3 to 6 words"}, {"el": "div", "name": "c", "text": "{{include_component}}"}]}
+		return carried
+
+	def on_a_site_with(self, *files, data=True):
+		from builder.site_ai.components import Component
+
+		catalogue = [Component(f"app/templates/includes/{f}", f, "", data_check="x.y") for f in files]
+		return (
+			patch("builder.site_ai.components.enabled_catalogue", return_value=catalogue),
+			patch("builder.site_ai.components.has_data", return_value=data),
+		)
+
+	def test_a_block_is_offered_to_the_plan_only_where_the_site_can_carry_its_component(self):
+		# the plan would name a carousel on a site with no shop, pick() would refuse it, and the section would be written free, with products of its own
+		enabled, data = self.on_a_site_with("opening_hours.html")
+		with enabled, data:
+			result = self.sync(catalogue_of(self.carrying("opening_hours.html")))
+		self.assertEqual(["hours.hub-band"], result["ids"])
+
+		enabled, data = self.on_a_site_with("google_map.html")
+		with enabled, data:
+			result = self.sync(catalogue_of(self.carrying("opening_hours.html")))
+		self.assertEqual([], result["ids"])
+		self.assertIn("opening_hours.html is not on this site", result["left_out"][0])
+
+		enabled, data = self.on_a_site_with("opening_hours.html", data=False)
+		with enabled, data:
+			result = self.sync(catalogue_of(self.carrying("opening_hours.html")))
+		self.assertEqual([], result["ids"])
+		self.assertIn("nothing for its component", result["left_out"][0])
+
+	def test_the_site_a_build_is_for_is_the_one_asked_about_its_component(self):
+		enabled, data = self.on_a_site_with("opening_hours.html")
+		with enabled, data as has_data, patch.object(H, "catalogue", return_value=(catalogue_of(self.carrying("opening_hours.html")), "hub")):
+			H.sync_registry({"nora_hub_blocks": 1}, "A profile")
+		self.assertEqual("A profile", has_data.call_args.args[1])
+
+	def test_the_rule_of_the_build_about_this_site_decides_too(self):
+		# a showcase whose instance has products: the carousel has data, and no place on this site
+		enabled, data = self.on_a_site_with("product_carousel.html")
+		with enabled, data, patch.object(H, "catalogue", return_value=(catalogue_of(self.carrying("product_carousel.html")), "hub")):
+			result = H.sync_registry({"nora_hub_blocks": 1}, allow=lambda component: False)
+		self.assertEqual([], result["ids"])
+		self.assertIn("product_carousel.html is not for this site", result["left_out"][0])
+
 	def test_a_block_withdrawn_from_the_hub_leaves_the_registry_at_the_next_build(self):
 		self.sync(catalogue_of(block(), block(id="steps.zigzag")))
 		self.assertEqual(2, len([i for i in R.REGISTRY if H.is_hub_recipe(i)]))

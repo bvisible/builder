@@ -180,17 +180,9 @@ def site_component(block: dict):
 	hours, a carousel, the map, the form…): the card is offered where the site has that component, switched on, with something to show; the
 	dropped section then holds the component's own tag, which the editor shows as a component card and a published page draws with the site's
 	data. The site's form is left out: which of the site's forms is a choice its own component asks for."""
-	from builder.site_ai import components
-
-	name = str(block.get("component") or "").strip().rsplit("/", 1)[-1] or "contact_form.html"
-	if name == "site_form.html":
+	if str(block.get("component") or "").strip().rsplit("/", 1)[-1] == "site_form.html":
 		return None, "it carries the site's form, which a page of the editor adds by its own component (the form is chosen there)"
-	live = next((c for c in components.enabled_catalogue() if c.file == name), None)
-	if live is None:
-		return None, f"its component {name} is not on this site"
-	if components.has_data(live, None) is False:
-		return None, f"the site has nothing for its component {name} to show"
-	return live, ""
+	return hub_blocks.site_component(block)
 
 
 def component_state(block: dict) -> str:
