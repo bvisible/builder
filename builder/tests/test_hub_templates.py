@@ -132,6 +132,9 @@ class TestWhatACardFollows(unittest.TestCase):
 			svg = f.read()
 		self.assertIn('fill="#ECE7DE"', svg)
 		self.assertIn(">Photo<", svg)
+		import xml.dom.minidom
+
+		xml.dom.minidom.parseString(svg)  # a double hyphen in its comment made it a broken image
 
 	def heading_of(self, element, **over):
 		block = editor_block(**over)

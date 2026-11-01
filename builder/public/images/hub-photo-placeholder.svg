@@ -1,6 +1,7 @@
 <!-- //// Neoffice — added file (no upstream equivalent): the photograph a card of the editor's panel holds until it is replaced (site_ai/nora/hub_templates.py).
      //// fallback.png is white: on a white page a card's photographs were invisible, and nothing said where to put one. A sand well with the word, as the
-     //// design system shows an article without a photo (--sand-100 well, --sand-400 word, never a placeholder icon). -->
+     //// design system shows an article without a photo (sand 100 well, sand 400 word, never a placeholder icon). No double hyphen in this comment:
+     //// XML forbids it there, and the browser then shows a broken image. -->
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 1000" preserveAspectRatio="xMidYMid slice">
 	<rect width="1600" height="1000" fill="#ECE7DE"/>
 	<text x="800" y="500" dy="0.35em" text-anchor="middle" font-family="Karla, -apple-system, 'Segoe UI', Arial, sans-serif" font-size="64" letter-spacing="4" fill="#968C7C">Photo</text>
