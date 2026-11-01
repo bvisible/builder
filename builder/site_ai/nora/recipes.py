@@ -121,7 +121,10 @@ def slot(role: str, guidance: str) -> str:
 class Look:
 	"""The colours and the type of a site, as a recipe writes them: handles only, and rgba() tints derived from them."""
 
-	def __init__(self, handles: dict, palette: dict | None = None):
+	def __init__(self, handles: dict, palette: dict | None = None, live: bool = False):
+		"""`live`: the tints follow the site's tokens (`color-mix()` of the handle) instead of being the literal rgba() of their value today: a
+		section a person drops on a page from the editor's panel keeps the site's colours when a token is edited later (hub_templates.py). The
+		generator's pages keep the literals its contrast checks read."""
 		palette = palette or {}
 		self.primary = handles.get("primary") or "currentColor"
 		self.secondary = handles.get("secondary") or self.primary
@@ -134,27 +137,31 @@ class Look:
 		self.gutter_phone = handles.get("gutter-phone") or "24px"
 		p, s, b, t = (_resolve(handles, palette, k) for k in ("primary", "secondary", "background", "text"))
 		s = s or p
-		self.muted = _rgba(t, 0.72) if t else "rgba(0,0,0,0.65)"
-		self.hair = _rgba(t, 0.16) if t else "rgba(0,0,0,0.12)"
-		self.tint = _rgba(p or s, 0.08) if (p or s) else "rgba(0,0,0,0.04)"
-		self.frame = _rgba(s, 0.35) if s else "rgba(0,0,0,0.12)"
+
+		def tone(handle: str, rgb, alpha: float, fallback: str) -> str:
+			if live and rgb and handle.startswith("var("):
+				return f"color-mix(in srgb, {handle} {round(alpha * 100)}%, transparent)"
+			return _rgba(rgb, alpha) if rgb else fallback
+
+		self.muted = tone(self.text, t, 0.72, "rgba(0,0,0,0.65)")
+		self.hair = tone(self.text, t, 0.16, "rgba(0,0,0,0.12)")
+		self.tint = tone(self.primary if p else self.secondary, p or s, 0.08, "rgba(0,0,0,0.04)")
+		self.frame = tone(self.secondary, s, 0.35, "rgba(0,0,0,0.12)")
 		# a deep band: the primary when it is dark, else the ink when it is dark, else a deep shade of the primary
 		if p and luminance(p) <= DARK:
 			self.deep = self.primary
 		elif t and luminance(t) <= DARK:
 			self.deep = self.text
+		elif p and live and self.primary.startswith("var("):
+			self.deep = f"color-mix(in srgb, {self.primary} 45%, #000)"
 		else:
 			self.deep = _hex(_mix(p, (0, 0, 0), 0.55)) if p else "#1a1a1a"
 		self.ink_on_deep = self.background if (b is None or luminance(b) > DARK) else self.text
 		deep_ink = (
 			_resolve({"x": self.ink_on_deep}, palette, "x") if self.ink_on_deep.startswith("var(") else None
 		)
-		self.deep_muted = (
-			_rgba(deep_ink or b or (255, 255, 255, 1), 0.8) if (deep_ink or b) else "rgba(255,255,255,0.8)"
-		)
-		self.deep_hair = (
-			_rgba(deep_ink or b or (255, 255, 255, 1), 0.25) if (deep_ink or b) else "rgba(255,255,255,0.25)"
-		)
+		self.deep_muted = tone(self.ink_on_deep, deep_ink or b, 0.8, "rgba(255,255,255,0.8)")
+		self.deep_hair = tone(self.ink_on_deep, deep_ink or b, 0.25, "rgba(255,255,255,0.25)")
 
 
 @dataclass
@@ -1305,13 +1312,32 @@ def eligible_kinds() -> set[str]:
 	return {k for r in REGISTRY.values() for k in r.kinds}
 
 
+# the hub's library holds dozens of blocks of a family (34 of `features` on 2026-11-01): the plan reads at most this many of them for a family, the
+# first in the site's own order, so that each site meets a different handful and the prompt stays the size of a catalogue, not of a library
+HUB_PER_FAMILY = 5
+
+
+def with_hub_share(recipes: list[Recipe]) -> list[Recipe]:
+	"""The recipes of a family as the plan reads them: every recipe of the code, and the first HUB_PER_FAMILY of the hub's (`<family>.hub-…`)."""
+	kept, hub = [], 0
+	for r in recipes:
+		if ".hub-" in r.id:
+			hub += 1
+			if hub > HUB_PER_FAMILY:
+				continue
+		kept.append(r)
+	return kept
+
+
 def catalogue_lines(seed: str = "", material: str | None = None, motion: str = "Brisk") -> list[str]:
 	"""The lines of the plan's prompt that offer the recipes. With a `seed` (the site's name) the variants of each family come in an order
 	of the site's own: a model reading a list leans on its first entries, and with one order for every site the first variant of a
 	family would be the one every site draws (measured: the same closing band on every page of two sites, 2026-10-21)."""
 	lines = [
-		"SECTION RECIPES (optional). For a section of one of these kinds you may set `recipe` to one id below when its look serves the "
-		"concept; otherwise leave `recipe` empty and design the section yourself, in `layout`, as you would without a catalogue. A recipe is a "
+		"SECTION RECIPES (optional). A library of sections that work, each with what it looks like and what it suits: reuse one when it serves "
+		"the section's job (set `recipe` to its id), and design your own when none fits or a fresh composition serves this business better "
+		"(leave `recipe` empty and describe the section in `layout`, as you would without a catalogue): the library is a help, never the limit "
+		"of what a page may be. A recipe is a "
 		"starting structure the writer adapts, not a template: say in `layout` what you change (reverse the columns, the ground, the proportions, "
 		"an ornament, a different order). Choose for the concept and the rhythm of the page: never the same recipe twice on a page, and do not "
 		"give every page the same variants: apart from what the site repeats on purpose (the opening of every interior page, the closing band), a recipe is "
@@ -1329,6 +1355,7 @@ def catalogue_lines(seed: str = "", material: str | None = None, motion: str = "
 			continue
 		if seed:
 			recipes = sorted(recipes, key=lambda r: _seed(seed, r.id))
+		recipes = with_hub_share(recipes)
 		kinds = "/".join(sorted({k for r in recipes for k in r.kinds}))
 		lines.append(f"- for kind {kinds}:")
 		for r in recipes:

@@ -115,6 +115,43 @@ class TestABlockDrawn(unittest.TestCase):
 		self.assertIn("form", str(why.exception))
 
 
+class TestWhatACardFollows(unittest.TestCase):
+	"""A card dropped on a page keeps the site's colours when a token changes later, and names its heading below the page's own."""
+
+	def test_the_tints_follow_the_tokens_instead_of_their_value_today(self):
+		drawn = json.dumps(T.draw(editor_block(), HANDLES, LIGHT, "fr"))
+		self.assertIn("color-mix(in srgb, var(--t-background) 80%, transparent)", drawn)
+		self.assertNotIn("rgba(", drawn)
+
+	def heading_of(self, element, **over):
+		block = editor_block(**over)
+		block["tree"]["c"][0]["el"] = element
+		drawn = T.draw(block, HANDLES, LIGHT, "fr")
+		elements = []
+
+		def walk(node):
+			elements.append(node.get("element"))
+			for child in node.get("children") or []:
+				walk(child)
+
+		walk(drawn)
+		return [e for e in elements if e in T.HEADINGS]
+
+	def test_a_section_that_is_not_an_opening_names_its_h1_as_h2(self):
+		self.assertEqual(["h2"], self.heading_of("h1"))
+
+	def test_a_section_without_an_h1_keeps_its_headings(self):
+		self.assertEqual(["h2"], self.heading_of("h2"))
+
+	def test_an_opening_keeps_its_h1(self):
+		self.assertEqual(["h1"], self.heading_of("h1", kinds=["hero"], category="Hero"))
+
+	def test_every_heading_goes_down_with_it_and_none_below_h6(self):
+		block = {"element": "section", "children": [{"element": "h1"}, {"element": "div", "children": [{"element": "h3"}, {"element": "h6"}]}]}
+		T.one_level_down(block)
+		self.assertEqual(["h2", "h4", "h6"], [block["children"][0]["element"]] + [c["element"] for c in block["children"][1]["children"]])
+
+
 class TestTheSampleWords(unittest.TestCase):
 	def test_a_role_the_generator_knows_gets_its_own_sample(self):
 		self.assertEqual("Nous écrire", T.sample_for("WRITE button: 2 to 4 words", "fr"))
@@ -128,6 +165,15 @@ class TestTheSampleWords(unittest.TestCase):
 		self.assertEqual(
 			"A short and precise label", T.sample_for("WRITE phrase: a speciality of the business", "en")
 		)
+
+	def test_a_known_role_in_a_short_slot_gets_a_label_that_fits_not_the_generators_sentence(self):
+		short = T.sample_for("WRITE text: 2 to 4 words", "fr")
+		self.assertLessEqual(len(short.split()), 4)
+		self.assertNotEqual(T.section_recipes.SAMPLES["fr"]["text"], short)
+		self.assertEqual(1, len(T.sample_for("WRITE text: 1 word", "fr").split()))
+
+	def test_a_known_role_with_room_keeps_the_generators_sample(self):
+		self.assertEqual(T.section_recipes.SAMPLES["fr"]["text"], T.sample_for("WRITE text: one sentence", "fr"))
 
 	def test_what_the_guidance_allows(self):
 		self.assertEqual(4, T.max_words("2 to 4 words"))

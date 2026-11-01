@@ -854,3 +854,29 @@ class TestTheLayoutPassesAcceptThem(unittest.TestCase):
 
 if __name__ == "__main__":
 	unittest.main()
+
+
+class TestALiveLook(unittest.TestCase):
+	"""The tints of a card the editor offers follow the site's tokens; the generator's pages keep the literal colours its checks read."""
+
+	def test_the_tints_are_literal_by_default(self):
+		look = R.Look(HANDLES, LIGHT)
+		self.assertTrue(look.muted.startswith("rgba("))
+		self.assertTrue(look.hair.startswith("rgba("))
+
+	def test_a_live_look_mixes_the_handle(self):
+		look = R.Look(HANDLES, LIGHT, live=True)
+		self.assertEqual("color-mix(in srgb, var(--t-text) 72%, transparent)", look.muted)
+		self.assertEqual("color-mix(in srgb, var(--t-text) 16%, transparent)", look.hair)
+		self.assertEqual("color-mix(in srgb, var(--t-primary) 8%, transparent)", look.tint)
+		self.assertEqual("color-mix(in srgb, var(--t-secondary) 35%, transparent)", look.frame)
+		self.assertEqual("color-mix(in srgb, var(--t-background) 80%, transparent)", look.deep_muted)
+
+	def test_a_light_primary_on_a_light_ink_deepens_by_mixing_when_live_and_by_a_hex_otherwise(self):
+		pale = {"t-primary": "#e8d5b0", "t-secondary": "#f0e0c0", "t-background": "#ffffff", "t-text": "#9a9a9a"}
+		self.assertEqual("color-mix(in srgb, var(--t-primary) 45%, #000)", R.Look(HANDLES, pale, live=True).deep)
+		self.assertTrue(R.Look(HANDLES, pale).deep.startswith("#"))
+
+	def test_a_site_without_palette_values_keeps_the_fallbacks(self):
+		look = R.Look({}, {}, live=True)
+		self.assertEqual("rgba(0,0,0,0.65)", look.muted)

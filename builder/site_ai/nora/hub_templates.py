@@ -34,7 +34,7 @@ from builder.site_ai.nora.recipes import Ctx, Look, ground_of
 CONF_KEY = "builder_hub_templates"
 METHOD = "builder_hub.api.get_editor_block_catalog"
 TIMEOUT = 10
-RENDERER = 2  # raise it when the way a block is drawn here changes: every card is drawn again
+RENDERER = 3  # raise it when the way a block is drawn here changes: every card is drawn again
 PLACEHOLDER_PHOTO = "/assets/builder/images/fallback.png"
 CTA_HREF = "/contact"
 # the card is two columns wide and two rows high: the thumbnail is a wide picture
@@ -141,10 +141,12 @@ def sample_for(text: str, language: str) -> str:
 	slot = block_format.SLOT.match(text)
 	role = slot.group(1) if slot else "text"
 	table = section_recipes.SAMPLES.get(language) or section_recipes.SAMPLES["fr"]
-	if role in table:
+	cap = max_words(text)
+	# the generator's sample for a role is a sentence or two: a slot that allows `2 to 4 words` got it anyway, and a narrow column of the block
+	# (a date, a label beside a card) was drawn holding a paragraph, a nowrap line of 1200px on a phone (2026-11-01)
+	if role in table and (cap is None or len(table[role].split()) <= cap):
 		return table[role]
 	ladder = SHORT_SAMPLES.get(language) or SHORT_SAMPLES["fr"]
-	cap = max_words(text)
 	fitting = [words for words in ladder if cap is None or len(words.split()) <= cap]
 	return fitting[-1] if fitting else ladder[0]
 
@@ -181,14 +183,36 @@ def draw(block: dict, handles: dict, palette: dict, language: str) -> dict:
 		raise Left(why)
 	if recipe.form:
 		raise Left("it carries the live contact form, which a page of the editor adds by its own component")
-	look = Look(handles, palette)
+	look = Look(handles, palette, live=True)
 	photos = [PLACEHOLDER_PHOTO] * recipe.photos
 	node = recipe.build(Ctx(look, ground_of(look, recipe.ground), photos, CTA_HREF, ""))
 	fill_slots(node, language)
 	blocks, _script = expand_page_yaml(section_recipes.to_yaml(node), is_root=False)
 	if not blocks:
 		raise Left("its tree could not be turned into a block of the editor")
+	if "hero" not in (block.get("kinds") or []) and block.get("category") != "Hero":
+		one_level_down(blocks[0])
 	return blocks[0]
+
+
+HEADINGS = ("h1", "h2", "h3", "h4", "h5", "h6")
+
+
+def one_level_down(block: dict) -> None:
+	"""A section that is not the opening of a page names its heading `h2`: the imported blocks name theirs `h1` (160 cards of 161 on
+	2026-11-01), and a page built from five cards had five. Every heading of a block that has an `h1` goes one level down, in place."""
+
+	def headings(node):
+		if node.get("element") in HEADINGS:
+			yield node
+		for child in node.get("children") or []:
+			yield from headings(child)
+
+	found = list(headings(block))
+	if not any(node["element"] == "h1" for node in found):
+		return
+	for node in found:
+		node["element"] = HEADINGS[min(HEADINGS.index(node["element"]) + 1, len(HEADINGS) - 1)]
 
 
 def card_hash(block: dict, signature: str) -> str:

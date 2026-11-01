@@ -429,6 +429,23 @@ class TestTheRestOfTheGeneratorSeesThemAsRecipes(unittest.TestCase):
 		self.assertIn("steps.hub-rail: the heading on the left", lines)
 		self.assertIn("1 photograph", lines.split("steps.hub-rail:")[1].splitlines()[0])
 
+	def test_the_plan_reads_a_handful_of_a_family_the_hub_holds_dozens_of_and_every_recipe_of_the_code(self):
+		H.forget()
+		many = [block(id=f"steps.v{i}", title=f"Steps {i}") for i in range(R.HUB_PER_FAMILY + 4)]
+		with patch.object(H, "catalogue", return_value=(catalogue_of(*many), "hub")):
+			H.sync_registry({"nora_hub_blocks": 1})
+		lines = R.catalogue_lines(seed="a site")
+		offered = [line.split(":")[0].strip() for line in lines if line.strip().startswith("steps.")]
+		self.assertEqual(R.HUB_PER_FAMILY, len([i for i in offered if H.HUB_MARK in i]))
+		code = [i for i in R.REGISTRY if i.startswith("steps.") and H.HUB_MARK not in i]
+		self.assertTrue(code)
+		self.assertTrue(all(i in offered for i in code))
+		other_site = [line.split(":")[0].strip() for line in R.catalogue_lines(seed="another site") if H.HUB_MARK in line]
+		self.assertEqual(R.HUB_PER_FAMILY, len(other_site))
+
+	def test_the_plan_is_told_it_may_design_its_own_section(self):
+		self.assertIn("design your own", R.catalogue_lines(seed="a site")[0])
+
 	def test_the_plan_can_name_one_and_the_page_gets_its_structure(self):
 		section = type(
 			"S",
