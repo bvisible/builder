@@ -105,6 +105,7 @@ def _publish_group_sync(pages, group, title="", description=""):
         "description": description,
         "replace": True,
         "pages": bundles,
+        "chrome": site_chrome(pages),
     }
 
     payload = _upload_and_rewrite_assets(payload, group, hub_url, headers)
@@ -120,6 +121,26 @@ def _publish_group_sync(pages, group, title="", description=""):
             _("Hub rejected the publish ({0}): {1}").format(resp.status_code, resp.text[:500])
         )
     return resp.json().get("message")
+
+
+# //// Neoffice — the settings of the site's chrome travel with its pages (2026-11-01): the pages lean on it (the theme stylesheet holds the classes they use, the band
+# //// their title), and the hub, where a template page has no chrome of its own, showed them stripped. Its menu is not sent, the hub makes it from the pages; neither
+# //// is what belongs to the instance: the brief of the build and the address list of a newsletter.
+CHROME_LEFT_BEHIND = ("website_profile", "newsletter_email_group", "menu_items", "footer_links")
+
+
+def site_chrome(pages) -> dict:
+    """The settings of the chrome the pages are shown in: the variant of their site, else the site's one chrome. Only what is set."""
+    profile = frappe.db.get_value("Builder Page", pages[0], "neo_website_profile") if pages else None
+    if profile and frappe.db.exists("Website Header Footer Variant", profile):
+        config = frappe.get_doc("Website Header Footer Variant", profile)
+    else:
+        config = frappe.get_single("Website Header Footer Config")
+    return {
+        field: value
+        for field, value in config.as_dict(no_default_fields=True).items()
+        if value not in (None, "", 0) and field not in CHROME_LEFT_BEHIND and not field.startswith(("ai_", "__")) and field != "doctype"
+    }
 
 
 # the roles a generated site's token ends in (`<prefix>-primary`), longest first so that `-font-heading` is not read as `-heading`

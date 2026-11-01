@@ -371,6 +371,48 @@ def _settle_plain_slots(
 
 
 # //// Neoffice ▲▲▲
+# //// Neoffice ▼▼▼ — what the walker could not see (2026-11-01). A heading's accent word is written INLINE, <em style="color: var(--x-secondary)">, and no block
+# //// colour says so: a gold word on a cream page read 1.6:1 on every site whose secondary is pale. A hero on a gradient had no ground at all to be judged on.
+INLINE_COLOUR = re.compile(r'(<[a-z][a-z0-9]*\b[^>]*\bstyle="(?:[^"]*?[;\s])?)(color\s*:\s*)([^;"]+)', re.I)
+GRADIENT_STOP = re.compile(r"var\(--[A-Za-z0-9_-]+(?:\s*,\s*[^()]+)?\)|rgba?\([^)]*\)|#[0-9a-fA-F]{3,8}\b")
+
+
+def _repair_inline_colours(block: dict, bg: Color, palette: dict[str, str], minimum: float, fixes: list[str]) -> None:
+    """Every colour written inside the block's html, judged on the block's ground. An accent keeps its hue, deepened until it reads; what has no shade that
+    reads takes the ink of the ground."""
+    html = block.get("innerHTML")
+    if not isinstance(html, str) or "style=" not in html:
+        return
+
+    def swap(match: re.Match) -> str:
+        raw = match.group(3).strip()
+        ink = parse_color(raw, palette)
+        if ink is None:
+            return match.group(0)
+        ratio = _seen_on(ink, bg)
+        if ratio >= minimum:
+            return match.group(0)
+        shade = accent_shade(raw, ink, bg, minimum) if VAR.match(raw) else None
+        replacement = (shade or best_text(bg, palette, minimum))[0]
+        fixes.append(f"inline colour: {ratio:.1f}:1 -> {replacement}")
+        return f"{match.group(1)}{match.group(2)}{replacement}"
+
+    block["innerHTML"] = INLINE_COLOUR.sub(swap, html)
+
+
+def _gradient_ground(image: str, under: Color | None, palette: dict[str, str]) -> Color | None:
+    """The colour a plain gradient averages to over what is under it. None for anything else: a picture is the judge's to read."""
+    if "gradient(" not in image or "url(" in image:
+        return None
+    stops = [parse_color(stop, palette) for stop in GRADIENT_STOP.findall(image)]
+    if not stops or None in stops:
+        return None
+    base = under or NAMED["white"]
+    painted = [composite(stop, base) for stop in stops]
+    return (*(sum(colour[i] for colour in painted) / len(painted) for i in range(3)), 1.0)
+# //// Neoffice ▲▲▲
+
+
 def _walk(block: dict, bg: Color | None, fg: Color | None, palette: dict[str, str], minimum: float, fixes: list[str], judge: bool = True) -> None:
     styles = block.get("baseStyles") or {}
     # //// Neoffice — lettering filled with a photograph (a transparent text colour over a background
@@ -418,8 +460,10 @@ def _walk(block: dict, bg: Color | None, fg: Color | None, palette: dict[str, st
         else:
             ground = composite(parsed, ground) if ground is not None else None
     if styles.get("backgroundImage"):
-        bg = None
-        photographic = True
+        # //// Neoffice — a plain gradient is a ground like another (see _gradient_ground); a picture stays unjudged
+        bg = None if photographic else _gradient_ground(str(styles["backgroundImage"]), bg, palette)
+        ground = bg if bg is not None else ground
+        photographic = bg is None
     children = block.get("children") or []
     if any(_covers_parent(child) for child in children):
         # a section built as photo + overlay + copy: the copy reads on the photo
@@ -446,6 +490,9 @@ def _walk(block: dict, bg: Color | None, fg: Color | None, palette: dict[str, st
             block["baseStyles"] = styles
             fg = value
             fixes.append(f"{block.get('blockName') or block.get('element') or 'block'}: {ratio:.1f}:1 -> {replacement}")
+    # //// Neoffice — see _repair_inline_colours
+    if judge and bg is not None:
+        _repair_inline_colours(block, bg, palette, minimum, fixes)
     for child in children:
         _walk(child, bg, fg, palette, minimum, fixes, judge)
 

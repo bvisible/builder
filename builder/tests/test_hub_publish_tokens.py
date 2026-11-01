@@ -112,10 +112,12 @@ class TestTheGroupTheTokensLeaveIn(unittest.TestCase):
             patch.object(hub_publish.frappe, "db", MagicMock(get_value=MagicMock(return_value=frappe._dict(page_title="X", route="x")))),
             patch.object(hub_publish, "_build_page_bundle", side_effect=lambda name, group=None, links=None: built.append((name, group)) or {"page": {}}),
             patch.object(hub_publish, "_upload_and_rewrite_assets", side_effect=lambda payload, *a: payload),
-            patch.object(hub_publish.requests, "post", return_value=response),
+            patch.object(hub_publish, "site_chrome", return_value={"logo_text": "X"}),
+            patch.object(hub_publish.requests, "post", return_value=response) as post,
         ):
             hub_publish._publish_group_sync(["page-a", "page-b"], "restaurant", "Restaurant")
         self.assertEqual([("page-a", "restaurant"), ("page-b", "restaurant")], built)
+        self.assertEqual({"logo_text": "X"}, post.call_args.kwargs["json"]["chrome"])
 
 
 PAGES = [
@@ -179,3 +181,40 @@ class TestTheLinksBetweenThePagesOfAGroup(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class TestTheChromeOfThePublishedSite(unittest.TestCase):
+    """The pages lean on the chrome of their site: its settings go with them, and what belongs to the instance stays."""
+
+    class Config:
+        def as_dict(self, no_default_fields=False):
+            return {
+                "doctype": "Website Header Footer Variant",
+                "website_profile": "Site",
+                "logo_text": "Garage du Centre",
+                "radius_style": "Subtle",
+                "token_prefix": "qtg",
+                "ai_brief": "{}",
+                "newsletter_email_group": "Footer",
+                "menu_items": [{"label": "x"}],
+                "footer_links": [{"label": "x"}],
+                "show_cta": 0,
+                "logo_image": None,
+            }
+
+    def test_the_variant_of_the_site_is_sent_without_what_belongs_to_the_instance(self):
+        db = MagicMock()
+        db.get_value.return_value = "Site"
+        db.exists.return_value = True
+        with patch.object(hub_publish.frappe, "db", db), patch.object(hub_publish.frappe, "get_doc", return_value=self.Config()) as get_doc:
+            chrome = hub_publish.site_chrome(["page-1"])
+        self.assertEqual(("Website Header Footer Variant", "Site"), get_doc.call_args.args)
+        self.assertEqual({"logo_text": "Garage du Centre", "radius_style": "Subtle", "token_prefix": "qtg"}, chrome)
+
+    def test_a_site_with_no_variant_sends_its_one_chrome(self):
+        db = MagicMock()
+        db.get_value.return_value = None
+        with patch.object(hub_publish.frappe, "db", db), patch.object(hub_publish.frappe, "get_single", return_value=self.Config()) as get_single:
+            self.assertEqual("qtg", hub_publish.site_chrome(["page-1"])["token_prefix"])
+        get_single.assert_called_once_with("Website Header Footer Config")
+

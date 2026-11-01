@@ -511,7 +511,9 @@ LAYOUT_PROBE = r"""
   // //// own grey: every glyph is the link's black. The p was measured at 4.0:1 all the same and
   // //// reported unreadable on three revisions in a row, with nothing there to repair. The p is
   // //// skipped only when the elements carrying its text are ones this probe judges on their own.
-  const JUDGED = /^(h1|h2|h3|p|a|li|span)$/i;
+  // //// Neoffice — em and strong are judged too (2026-11-01): a heading's accent word is one of them, and its own colour was never read: a pale gold word on a cream
+  // //// page, 1.6:1, passed on five sites out of five. So is a div that holds its own words: a kicker is one.
+  const JUDGED = /^(h1|h2|h3|p|a|li|span|em|strong)$/i;
   const ownText = (el) => [...el.childNodes].filter(n => n.nodeType === 3).map(n => n.textContent).join(' ').trim();
   const carriedByChildren = (el) => {
     if (ownText(el).length >= 3) return false;
@@ -519,9 +521,10 @@ LAYOUT_PROBE = r"""
     return speaking.length > 0 && speaking.every(c => JUDGED.test(c.tagName));
   };
   let faint = 0;
-  for (const el of body.querySelectorAll('h1, h2, h3, p, a, li, span')) {
+  for (const el of body.querySelectorAll('h1, h2, h3, p, a, li, span, em, strong, div')) {
     if (faint >= 4 || chrome(el) || !visible(el)) continue;
     const t = text(el);
+    if (el.tagName === 'DIV' && ownText(el).length < 3) continue;
     if (t.length < 3 || carriedByChildren(el) || [...el.children].some(c => /^(h1|h2|h3|p|div|ul|ol|section)$/i.test(c.tagName))) continue;
     const s = getComputedStyle(el);
     if (onPicture(el.getBoundingClientRect())) continue;

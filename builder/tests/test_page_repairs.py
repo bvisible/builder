@@ -952,3 +952,57 @@ class TestReadOverPhotos(unittest.TestCase):
 		section["baseStyles"] = {"color": "#ffffff"}
 		self.assertEqual([], read_over_photos([section], self.PALETTE))
 
+
+
+class TestColoursTheWalkerCouldNotSee(unittest.TestCase):
+	"""A heading's accent word is coloured inside its html and a hero may lie on a gradient: neither was judged, and a pale gold read 1.6:1 on five sites of five."""
+
+	PALETTE = {"xx-background": "#faf6f2", "xx-text": "#1a1a1a", "xx-primary": "#8b3a62", "xx-secondary": "#e8c07a"}
+	ACCENT = '<em style="font-style: italic; color: var(--xx-secondary)">douceur</em>'
+
+	def section(self, *children, **styles):
+		return {"element": "section", "baseStyles": {"backgroundColor": "var(--xx-background)", **styles}, "children": list(children)}
+
+	def test_a_pale_accent_word_is_deepened_and_keeps_its_hue(self):
+		heading = {"element": "h2", "innerHTML": f"Un moment de {self.ACCENT}.", "baseStyles": {"color": "var(--xx-primary)"}}
+		fixes = repair_contrast([self.section(heading)], self.PALETTE)
+		self.assertEqual(1, len(fixes), fixes)
+		self.assertIn("color: color-mix(in srgb, var(--xx-secondary)", heading["innerHTML"])
+		self.assertIn("font-style: italic", heading["innerHTML"])
+		self.assertIn("douceur</em>.", heading["innerHTML"])
+
+	def test_the_same_word_on_a_dark_band_is_left_alone(self):
+		heading = {"element": "h2", "innerHTML": self.ACCENT, "baseStyles": {"color": "#ffffff"}}
+		self.assertEqual([], repair_contrast([self.section(heading, backgroundColor="var(--xx-primary)", color="#ffffff")], self.PALETTE))
+		self.assertEqual(self.ACCENT, heading["innerHTML"])
+
+	def test_a_literal_colour_takes_the_ink_of_its_ground(self):
+		heading = {"element": "p", "innerHTML": 'Appelez le <a href="tel:1" style="color:#f0e0c0">021</a>', "baseStyles": {"color": "#1a1a1a"}}
+		repair_contrast([self.section(heading)], self.PALETTE)
+		self.assertNotIn("#f0e0c0", heading["innerHTML"])
+		self.assertIn('href="tel:1"', heading["innerHTML"])
+
+	def test_a_background_colour_inside_the_html_is_not_taken_for_the_ink(self):
+		html = '<span style="background-color: #f0e0c0">mot</span>'
+		heading = {"element": "p", "innerHTML": html, "baseStyles": {"color": "#1a1a1a"}}
+		repair_contrast([self.section(heading)], self.PALETTE)
+		self.assertEqual(html, heading["innerHTML"])
+
+	def test_a_kicker_on_a_plain_gradient_is_judged_on_it(self):
+		kicker = {"element": "div", "innerHTML": "Institut", "baseStyles": {"color": "var(--xx-secondary)"}}
+		gradient = "linear-gradient(160deg, var(--xx-background) 0%, rgba(232, 192, 122, 0.3) 100%)"
+		fixes = repair_contrast([self.section(kicker, backgroundImage=gradient)], self.PALETTE)
+		self.assertEqual(1, len(fixes), fixes)
+		self.assertNotEqual("var(--xx-secondary)", kicker["baseStyles"]["color"])
+
+	def test_a_picture_stays_the_judges_to_read(self):
+		kicker = {"element": "div", "innerHTML": "Institut", "baseStyles": {"color": "var(--xx-secondary)"}}
+		image = "linear-gradient(rgba(0, 0, 0, 0.1), rgba(0, 0, 0, 0.1)), url(/files/photo.jpg)"
+		self.assertEqual([], repair_contrast([self.section(kicker, backgroundImage=image)], self.PALETTE))
+		self.assertEqual("var(--xx-secondary)", kicker["baseStyles"]["color"])
+
+	def test_copy_marked_over_an_image_keeps_its_ink_on_a_scrim(self):
+		line = {"element": "p", "innerHTML": "Sur la photo", "baseStyles": {"color": "#ffffff"}}
+		section = self.section(line, backgroundImage="linear-gradient(rgba(255, 255, 255, 0.1), rgba(255, 255, 255, 0.2))")
+		section["classes"] = ["u-over-image"]
+		self.assertEqual([], repair_contrast([section], self.PALETTE))
