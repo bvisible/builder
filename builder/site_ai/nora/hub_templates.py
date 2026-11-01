@@ -34,8 +34,9 @@ from builder.site_ai.nora.recipes import Ctx, Look, ground_of
 CONF_KEY = "builder_hub_templates"
 METHOD = "builder_hub.api.get_editor_block_catalog"
 TIMEOUT = 10
-RENDERER = 3  # raise it when the way a block is drawn here changes: every card is drawn again
-PLACEHOLDER_PHOTO = "/assets/builder/images/fallback.png"
+RENDERER = 4  # raise it when the way a block is drawn here changes: every card is drawn again
+# a sand well that says « Photo »: fallback.png is white, and a card's photographs were invisible on a white page (2026-11-01)
+PLACEHOLDER_PHOTO = "/assets/builder/images/hub-photo-placeholder.svg"
 CTA_HREF = "/contact"
 # the card is two columns wide and two rows high: the thumbnail is a wide picture
 CARD_WIDTH, CARD_HEIGHT = 2, 2

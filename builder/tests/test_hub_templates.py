@@ -123,6 +123,16 @@ class TestWhatACardFollows(unittest.TestCase):
 		self.assertIn("color-mix(in srgb, var(--t-background) 80%, transparent)", drawn)
 		self.assertNotIn("rgba(", drawn)
 
+	def test_the_photograph_to_replace_is_a_file_of_the_app_that_shows_on_a_white_page(self):
+		import os
+
+		self.assertTrue(T.PLACEHOLDER_PHOTO.startswith("/assets/builder/images/"))
+		path = os.path.join(os.path.dirname(os.path.dirname(__file__)), "public", "images", os.path.basename(T.PLACEHOLDER_PHOTO))
+		with open(path, encoding="utf-8") as f:
+			svg = f.read()
+		self.assertIn('fill="#ECE7DE"', svg)
+		self.assertIn(">Photo<", svg)
+
 	def heading_of(self, element, **over):
 		block = editor_block(**over)
 		block["tree"]["c"][0]["el"] = element
