@@ -134,10 +134,10 @@ describe("a preview in the canvas", () => {
 		expect(shadowHtml("<div>a</div><script>alert(1)</script>")).not.toContain("alert");
 	});
 
-	it("asks the width of the block, not of the window", () => {
+	it("asks the width of the canvas, not of the window", () => {
 		const html = shadowHtml("<style>@media (max-width: 576px){a{b:c}}@media screen and (min-width:768px){d{e:f}}</style>");
-		expect(html).toContain("@container (max-width: 576px)");
-		expect(html).toContain("@container (min-width:768px)");
+		expect(html).toContain("@container site-canvas (max-width: 576px)");
+		expect(html).toContain("@container site-canvas (min-width:768px)");
 		expect(html).not.toContain("@media");
 	});
 

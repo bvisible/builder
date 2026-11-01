@@ -55,7 +55,9 @@
 				</div>
 			</div>
 			<!-- //// Neoffice — flex-col on the canvas: the editor now stacks the site header preview, the page,
-			     //// and the footer preview (9b804199). Upstream's canvas holds the page alone. -->
+			     //// and the footer preview (9b804199). Upstream's canvas holds the page alone.
+			     //// Neoffice — the canvas is a size container (2026-11-01): the canvas is the screen a component's preview is
+			     //// drawn for, and its stylesheet's widths ask about it (siteComponents.shadowHtml), not about the window. -->
 			<div
 				class="canvas relative flex flex-col h-full bg-surface-base shadow-xl contain-layout dark:selection:!bg-gray-200"
 				:data-breakpoint="breakpoint.device"
@@ -63,6 +65,8 @@
 					...canvasStyles,
 					background: canvasProps.background,
 					width: `${breakpoint.width}px`,
+					containerType: 'inline-size',
+					containerName: 'site-canvas',
 				}"
 				v-for="breakpoint in renderedBreakpoints"
 				v-show="breakpoint.visible"
