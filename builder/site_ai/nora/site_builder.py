@@ -3355,14 +3355,15 @@ def build_site(ctx, spec: dict) -> str:
                     # a picture that would state something false is not drawn: a stranger's face
                     # for the practitioner the page names, a map with made-up streets (placeholders.py)
                     else:
-                        # //// Neoffice — the hero of the home is never left a plain block because its description named someone: it is
-                        # //// described by the scene of the business instead (hero.rescue_hero_alt, 2026-10-22)
-                        if page["type"] == "accueil":
-                            from builder.site_ai.nora.hero import rescue_hero_alt
+                        # //// Neoffice — a picture is never left a plain block because its description named someone: it is described by the scene of the
+                        # //// business instead (hero.rescue_photo_alts). The hero of the home since 2026-10-22; every picture since 2026-11-01: an About page
+                        # //// asks for the team, the guard refused it, and a blank box the size of a section stayed on the page.
+                        if page["type"] != "legal":
+                            from builder.site_ai.nora.hero import rescue_photo_alts
 
-                            scened = rescue_hero_alt(blocks, [site_name, *categories], activity, lang_code)
+                            scened = rescue_photo_alts(blocks, [site_name, *categories], activity, lang_code)
                             if scened:
-                                ai_log("info", "Hero photograph described by the scene", page=page["title"], was=scened)
+                                ai_log("info", "Photographs described by the scene", page=page["title"], was=scened)
                         withheld = neutral_named_slots(blocks, palette, prefix, names=[site_name, *categories])
                         if withheld:
                             ai_log("info", "Photo slots kept from the image job", page=page["title"], slots=withheld)

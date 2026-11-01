@@ -284,48 +284,57 @@ class TestTheHeroIsNeverLeftABlockForItsDescription(unittest.TestCase):
 		return [{"element": "div", "children": [{"element": "section", "children": [img]}, {"element": "section", "children": [later]}]}]
 
 	def test_a_description_that_names_the_business_becomes_the_scene(self):
-		from builder.site_ai.nora.hero import rescue_hero_alt
+		from builder.site_ai.nora.hero import rescue_photo_alts
 
 		blocks = self.home("Maître Jean Dupont dans son cabinet")
-		got = rescue_hero_alt(blocks, ["Cabinet Dupont"], "conseil juridique aux PME", "fr")
+		got = rescue_photo_alts(blocks, ["Cabinet Dupont"], "conseil juridique aux PME", "fr")
 		self.assertEqual(["Maître Jean Dupont dans son cabinet"], got)
 		alt = blocks[0]["children"][0]["children"][0]["attributes"]["alt"]
 		self.assertIn("conseil juridique aux PME", alt)
 		self.assertIn("sans personnes", alt)
 
 	def test_a_description_the_guard_accepts_is_left_alone(self):
-		from builder.site_ai.nora.hero import rescue_hero_alt
+		from builder.site_ai.nora.hero import rescue_photo_alts
 
 		blocks = self.home("une salle de réunion claire avec une grande table en bois")
-		self.assertEqual([], rescue_hero_alt(blocks, ["Cabinet Dupont"], "conseil", "fr"))
+		self.assertEqual([], rescue_photo_alts(blocks, ["Cabinet Dupont"], "conseil", "fr"))
 		self.assertEqual("une salle de réunion claire avec une grande table en bois", blocks[0]["children"][0]["children"][0]["attributes"]["alt"])
 
 	def test_a_real_photograph_is_never_touched(self):
-		from builder.site_ai.nora.hero import rescue_hero_alt
+		from builder.site_ai.nora.hero import rescue_photo_alts
 
 		blocks = self.home("Maître Jean Dupont dans son cabinet", src="/files/cabinet.jpg")
-		self.assertEqual([], rescue_hero_alt(blocks, [], "conseil", "fr"))
+		self.assertEqual([], rescue_photo_alts(blocks, [], "conseil", "fr"))
 
-	def test_only_the_first_section_is_dressed(self):
-		from builder.site_ai.nora.hero import rescue_hero_alt
+	def test_every_picture_of_the_page_is_dressed(self):
+		from builder.site_ai.nora.hero import rescue_photo_alts
 
 		blocks = self.home("Maître Jean Dupont dans son cabinet")
-		rescue_hero_alt(blocks, [], "conseil", "fr")
-		self.assertEqual("Cabinet Dupont & Associés", blocks[0]["children"][1]["children"][0]["attributes"]["alt"])
+		blocks[0]["children"][1]["children"][0]["attributes"]["alt"] = "L'équipe du cabinet en réunion"
+		self.assertEqual(2, len(rescue_photo_alts(blocks, [], "conseil", "fr")))
+		self.assertIn("sans personnes", blocks[0]["children"][1]["children"][0]["attributes"]["alt"])
+
+	def test_a_picture_of_the_team_becomes_a_scene_and_not_a_blank_box(self):
+		from builder.site_ai.nora.hero import rescue_photo_alts
+		from builder.site_ai.nora.placeholders import must_not_be_drawn
+
+		blocks = self.home("L'équipe du garage au travail")
+		rescue_photo_alts(blocks, ["Garage du Centre"], "garage indépendant", "fr")
+		self.assertFalse(must_not_be_drawn(blocks[0]["children"][0]["children"][0]["attributes"]["alt"], {"garage du centre"}))
 
 	def test_the_scene_is_written_in_the_language_of_the_site(self):
-		from builder.site_ai.nora.hero import HERO_SCENE, rescue_hero_alt
+		from builder.site_ai.nora.hero import HERO_SCENE, rescue_photo_alts
 
 		self.assertEqual({"fr", "en", "de", "it"}, set(HERO_SCENE))
 		blocks = self.home("Maître Jean Dupont dans son cabinet")
-		rescue_hero_alt(blocks, [], "Beratung", "de")
+		rescue_photo_alts(blocks, [], "Beratung", "de")
 		self.assertIn("Heller", blocks[0]["children"][0]["children"][0]["attributes"]["alt"])
 
 	def test_an_empty_page_is_left_alone(self):
-		from builder.site_ai.nora.hero import rescue_hero_alt
+		from builder.site_ai.nora.hero import rescue_photo_alts
 
-		self.assertEqual([], rescue_hero_alt([], [], "conseil", "fr"))
-		self.assertEqual([], rescue_hero_alt([{"element": "div", "children": []}], [], "conseil", "fr"))
+		self.assertEqual([], rescue_photo_alts([], [], "conseil", "fr"))
+		self.assertEqual([], rescue_photo_alts([{"element": "div", "children": []}], [], "conseil", "fr"))
 
 
 

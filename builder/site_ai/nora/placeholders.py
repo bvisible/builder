@@ -26,8 +26,9 @@ TEXT_PARAM = re.compile(r"[?&]text=([^&'\")\s]+)")
 PORTRAIT = re.compile(r"\b(?:portrait|porträt|ritratto|headshot)s?\b", re.I)
 DOCUMENT = re.compile(
     # //// Neoffice — "arrière-plan", "premier plan", "gros plan" are shots, not floor plans (2026-10-26): a photographic description says them all the
-    # //// time, and a landscape "with mountains in the background" was withheld as a map
-    r"\b(?:maps?|carte|(?<!arrière-)(?<!premier )(?<!second )(?<!gros )(?<!dernier )(?<!deuxième )plans?|itinéraire|itinerary|directions|karte|lageplan|signs?|signage|enseigne|panneau|schild"
+    # //// time, and a landscape "with mountains in the background" was withheld as a map. "Plan de travail" is a worktop (2026-11-01): two pages of the
+    # //// complete sites were left with a blank box the size of a section.
+    r"\b(?:maps?|carte|(?<!arrière-)(?<!premier )(?<!second )(?<!gros )(?<!dernier )(?<!deuxième )plans?(?! de travail)|itinéraire|itinerary|directions|karte|lageplan|signs?|signage|enseigne|panneau|schild"
     r"|logos?|brochure|flyer|menu|document|certificat|certificate|diplôme|diploma|screen|écran|bildschirm)\b",
     re.I,
 )
@@ -240,15 +241,22 @@ def _names_a_person(text: str, names: set[str]) -> bool:
         return False
     # //// Neoffice — a place is not a person (2026-10-26): "Val Ferret", "Mont Dolent", "Lac Léman" are two capitalised words in a row. Now that the
     # //// writer is told to show the region around the business (recipes.ALT_GUIDANCE), its alt names one, and the guard withheld the photograph.
+    # //// Neoffice — and a piece of the site's own name is not someone (2026-11-01): "La Table" of "La Table des Saisons"
     return any(
-        match.group(0).lower() not in names and match.group(0).split()[0].split("-")[0].lower() not in PLACE_WORDS
+        not any(match.group(0).lower() in name for name in names) and match.group(0).split()[0].split("-")[0].lower() not in PLACE_WORDS
         for match in PERSON.finditer(text)
     )
+
+
+# //// Neoffice — a description that says there is nobody in the picture is not a picture of someone (2026-11-01): the scene a refused picture is given (hero.HERO_SCENE) says
+# //// "sans personnes", the guard read "personnes", and every rescued picture was refused all the same, the hero of a home included.
+NOBODY = re.compile(r"\b(?:sans|no|without|ohne|senza)\s+(?:personnes?|people|persons?|personen|persone)\b", re.I)
 
 
 def must_not_be_drawn(text: str, names: set[str] | frozenset = frozenset()) -> bool:
     """A picture of this would state something false: a portrait, a person, a named person, a map, a sign or
     a document."""
+    text = NOBODY.sub(" ", text)
     return bool(PORTRAIT.search(text) or PEOPLE.search(text) or DOCUMENT.search(text) or _names_a_person(text, names))
 
 

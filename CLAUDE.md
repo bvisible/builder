@@ -5,10 +5,14 @@
      //// only French left in a file that is not a UI string). At the merge, keep ours. -->
 # RÈGLES DE TRAVAIL — Génération de sites clients (PRIORITAIRES)
 
-Ces deux règles s'appliquent à TOUT travail sur le Builder AI (chat, génération, ingestion) :
+Ces règles s'appliquent à TOUT travail sur le Builder AI (chat, génération, ingestion) :
 
 1. **TOUJOURS tester avec Chrome.** Les `bench execute` / console sont OK pour les premiers tests de logique backend, mais la validation finale se fait DANS Chrome, sur l'interface réelle (`/app/builder-chat`, l'éditeur `/builder`, et les pages publiées rendues). Chrome est l'interface que les **clients** utilisent — donc ça doit être solide là, pas seulement « ça répond en console ». Pas de « c'est bon » sans avoir vu le résultat dans le navigateur.
 2. **TOUJOURS documenter dans Obsidian.** Toute décision durable, gotcha, ou avancée du projet va dans le vault Obsidian (`~/Documents/Obsidian/Obsidian/Neoffice/Builder/...`) — en plus de la mémoire projet. Si le vault est inaccessible (lock sandbox), créer une note dédiée (l'écriture de nouveaux fichiers passe même quand la lecture est bloquée) et le signaler.
+
+<!-- //// Neoffice — deux règles de plus demandées par Jérémy le 2026-11-01, après les sites d'exemple : une page À propos partout, et ce que « voir une page » veut dire. -->
+3. **TOUT SITE GÉNÉRÉ A SA PAGE « À PROPOS ».** Sans elle, le menu d'un site de quatre pages se réduit à deux liens et le site paraît vide. Le générateur l'ajoute seul (`with_about_page`) : à une liste de pages donnée à la main ou par Nora, on ne la retire pas. Seule exception : le site d'une seule page, qui la porte en section.
+4. **« VU À L'ÉCRAN » VEUT DIRE LA PAGE ENTIÈRE.** Chaque page photographiée en entier, à 1440 et 390 px, à l'adresse du visiteur, et regardée.
 
 # Git Configuration
 

@@ -204,19 +204,17 @@ HERO_SCENE = {
 }
 
 
-def rescue_hero_alt(blocks: list, names, activity: str, lang: str = "fr") -> list[str]:
-	"""Gives the picture of the first section of the home a scene to draw when its own description would keep it from the image job.
-	Only a placeholder (a photograph still to be made) is touched; a real photograph and a description the guard accepts are left as
-	they are. Returns the descriptions it replaced."""
+def rescue_photo_alts(blocks: list, names, activity: str, lang: str = "fr") -> list[str]:
+	"""Gives every picture of a page a scene to draw when its own description would keep it from the image job. Only a placeholder (a
+	photograph still to be made) is touched; a real photograph and a description the guard accepts are left as they are. Returns the
+	descriptions it replaced."""
 	from builder.site_ai.nora.layout import _walk
 	from builder.site_ai.nora.placeholders import must_not_be_drawn
 
 	scene = HERO_SCENE.get(str(lang or "fr")[:2], HERO_SCENE["fr"]).format(activity=" ".join(str(activity or "").split())[:80] or "services")
 	known = {str(n).strip().lower() for n in names or () if str(n).strip()}
-	roots = [b for b in blocks or [] if isinstance(b, dict)]
-	first = next(iter(roots[0].get("children") or []), None) if roots else None
 	replaced: list[str] = []
-	for block in _walk([first] if isinstance(first, dict) else []):
+	for block in _walk(blocks):
 		attrs = block.get("attributes") or {}
 		src = attrs.get("src")
 		if str(block.get("element") or "").lower() == "img" and isinstance(src, str) and "placehold.co" in src:

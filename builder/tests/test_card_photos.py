@@ -223,6 +223,19 @@ class TestTheImageJobGivingUp(unittest.TestCase):
 class TestTheWriterIsToldWhatIsNotDrawn(unittest.TestCase):
 	"""The writer chose the alt that the guard then refused: nobody had told it that a screen, a sign, a map, a document or a portrait is never drawn."""
 
+	def test_a_picture_with_nobody_in_it_is_drawn(self):
+		for language in ("sans personnes", "no people", "ohne Personen", "senza persone"):
+			self.assertFalse(must_not_be_drawn(f"Bright interior, natural light, {language}"), language)
+		self.assertTrue(must_not_be_drawn("Bright interior with people at a table"))
+
+	def test_a_worktop_is_no_floor_plan(self):
+		self.assertFalse(must_not_be_drawn("Plan de travail d'un cabinet dentaire, propre et lumineux"))
+		self.assertTrue(must_not_be_drawn("Le plan du quartier"))
+
+	def test_a_piece_of_the_name_of_the_site_is_nobody(self):
+		self.assertFalse(must_not_be_drawn("La salle de La Table des Saisons, dressée en lumière naturelle", {"la table des saisons"}))
+		self.assertTrue(must_not_be_drawn("La salle et Jean Dupont en lumière naturelle", {"la table des saisons"}))
+
 	def test_a_recipe_photograph_says_what_the_site_does_not_draw(self):
 		text = R.ALT_GUIDANCE.lower()
 		for word in ("screen", "sign", "map", "document", "portrait"):
