@@ -202,6 +202,7 @@ markers.** At a merge, rebuild rather than resolve.
 
 | Artifact | Why it carries no marker |
 |---|---|
+| `builder/public/reset.css` | written from `frontend/src/reset.css` by `yarn build:reset` (minified, and `scripts/strip-css-comments.js` strips every comment): the marker lives in the source |
 | `builder/www/_builder.html` | the SPA shell vite rewrites from `frontend/index.html` at every build: a marker written in it is gone at the next one (`4d66cb31`) |
 | `frontend/components.d.ts` | written by `unplugin-vue-components` at every build: its only divergence is the list of the `.vue` files we added, and a marker written in it is wiped by the next `vite` run (2026-09-16) |
 
