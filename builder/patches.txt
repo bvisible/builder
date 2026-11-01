@@ -49,3 +49,4 @@ builder.builder.patches.rewire_connected_forms # //// Neoffice — the forms the
 builder.builder.patches.use_the_host_model_for_site_generation # //// Neoffice — the local model writes the sites of every instance that holds the host's endpoint (2026-10-21)
 builder.builder.patches.use_the_host_model_for_the_assistant # //// Neoffice — the editor's assistant runs on the host's model where the host has one (2026-10-21)
 builder.builder.patches.enable_image_generation_where_the_host_has_it # //// Neoffice — the flag says what the endpoint already does (2026-10-21)
+builder.builder.patches.enable_the_hub_library_where_the_hub_is_set # //// Neoffice — the hub's blocks in the editor and in the sites Nora builds, on every instance that names a hub (2026-11-01)
