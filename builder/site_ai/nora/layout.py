@@ -11,6 +11,7 @@ forgotten child across the row is what the author meant.
 Pure functions over the block tree."""
 
 import copy
+import itertools
 import math
 import re
 import unicodedata
@@ -236,6 +237,68 @@ def flex_rows_off_the_grid(blocks: list) -> int:
             block["classes"] = kept
             edits += 1
     return edits
+
+
+# //// Neoffice ▼▼▼ — three things the eye calls misaligned and no measure caught (the five complete sites, 2026-11-01): a row of label and price that shrinks to its words
+# //// in a column of `align-items: flex-start`, so the prices of a list stand at five different places; a button told to fill a column that centres what it holds; a title
+# //// at the left of a form the section centres under it.
+LAID_OUT = ("flex-start", "start", "center", "flex-end", "end")
+
+
+def spread_rows_fill_their_column(blocks: list) -> int:
+    """A row that spreads its children apart has room to spread only if it fills its column: in a column that does not stretch what it holds, it takes the width. Returns
+    the edit count."""
+    edits = 0
+    for block in _walk(blocks):
+        styles = block.get("baseStyles") or {}
+        if styles.get("display") not in ("flex", "inline-flex") or styles.get("flexDirection") != "column" or styles.get("alignItems") not in LAID_OUT:
+            continue
+        for child in block.get("children") or []:
+            inner = (child or {}).get("baseStyles") or {}
+            spreads = inner.get("display") == "flex" and inner.get("justifyContent") in ("space-between", "space-around", "space-evenly")
+            if spreads and inner.get("flexDirection") != "column" and not inner.get("width"):
+                inner["width"] = "100%"
+                edits += 1
+    return edits
+
+
+def buttons_keep_their_size_in_a_centred_column(blocks: list) -> int:
+    """A button with `width: 100%` in a column that centres what it holds runs from edge to edge of the page. It takes its own width from the tablet up; on a phone it may
+    fill the line, which is what `mobileStyles` says. Returns the edit count."""
+    edits = 0
+    for block in _walk(blocks):
+        styles = block.get("baseStyles") or {}
+        if styles.get("flexDirection") != "column" or styles.get("alignItems") != "center":
+            continue
+        for child in block.get("children") or []:
+            inner = (child or {}).get("baseStyles") or {}
+            if "u-btn" in ((child or {}).get("classes") or []) and inner.get("width") == "100%":
+                del inner["width"]
+                child.setdefault("mobileStyles", {}).setdefault("width", "100%")
+                edits += 1
+    return edits
+
+
+FORM_INCLUDE = re.compile(r"(?:site_form|contact_form)")
+
+
+def titles_follow_a_centred_form(blocks: list) -> int:
+    """A form the section centres (a narrow column with `margin: 0 auto`) under a title left at the start of the line reads as two things. The title takes the form's axis.
+    Returns the edit count."""
+    edits = 0
+    for block in _walk(blocks):
+        children = [child for child in block.get("children") or [] if isinstance(child, dict)]
+        for above, form in itertools.pairwise(children):
+            styles = form.get("baseStyles") or {}
+            holds_form = any(FORM_INCLUDE.search(str(inner.get("innerHTML") or "")) for inner in _walk([form]))
+            if not holds_form or str(styles.get("margin") or "").strip() != "0 auto" or not styles.get("maxWidth"):
+                continue
+            title = above.setdefault("baseStyles", {})
+            if str(above.get("element") or "").lower() in ("h1", "h2", "h3") and not title.get("textAlign"):
+                title["textAlign"] = "center"
+                edits += 1
+    return edits
+# //// Neoffice ▲▲▲
 
 
 def wrap_phone_rows(blocks: list) -> int:

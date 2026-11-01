@@ -3081,12 +3081,22 @@ def build_site(ctx, spec: dict) -> str:
                     if unflexed:
                         ai_log("info", "Headings with markup made lines of text", page=page["title"], edits=unflexed)
                     # //// Neoffice — and a flex row that cannot wrap squeezes its items on a phone (layout.wrap_phone_rows)
-                    from builder.site_ai.nora.layout import flex_rows_off_the_grid, wrap_phone_rows
+                    from builder.site_ai.nora.layout import (
+                        buttons_keep_their_size_in_a_centred_column,
+                        flex_rows_off_the_grid,
+                        spread_rows_fill_their_column,
+                        titles_follow_a_centred_form,
+                        wrap_phone_rows,
+                    )
 
                     wrapped = wrap_phone_rows(blocks)
                     if wrapped:
                         ai_log("info", "Flex rows allowed to wrap on the phone", page=page["title"], edits=wrapped)
                     # //// Neoffice — see layout.flex_rows_off_the_grid (2026-11-01)
+                    # //// Neoffice — see the three passes of layout.py (2026-11-01): what the eye calls misaligned
+                    aligned = spread_rows_fill_their_column(blocks) + buttons_keep_their_size_in_a_centred_column(blocks) + titles_follow_a_centred_form(blocks)
+                    if aligned:
+                        ai_log("info", "Rows, buttons and titles aligned", page=page["title"], edits=aligned)
                     ungridded = flex_rows_off_the_grid(blocks)
                     if ungridded:
                         ai_log("info", "Grid classes taken off rows laid out by hand", page=page["title"], edits=ungridded)

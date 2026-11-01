@@ -934,6 +934,47 @@ class TestPhoneRows(unittest.TestCase):
 		self.assertEqual(block["classes"], ["u-reveal-group"])
 		self.assertEqual(layout.flex_rows_off_the_grid([block]), 0)
 
+	def test_a_row_that_spreads_fills_a_column_that_does_not_stretch(self):
+		row = {"baseStyles": {"display": "flex", "justifyContent": "space-between"}}
+		column = {"baseStyles": {"display": "flex", "flexDirection": "column", "alignItems": "flex-start"}, "children": [row]}
+		self.assertEqual(layout.spread_rows_fill_their_column([column]), 1)
+		self.assertEqual(row["baseStyles"]["width"], "100%")
+		self.assertEqual(layout.spread_rows_fill_their_column([column]), 0)
+
+	def test_a_row_in_a_column_that_stretches_or_a_row_with_a_width_is_left_alone(self):
+		row = {"baseStyles": {"display": "flex", "justifyContent": "space-between"}}
+		stretching = {"baseStyles": {"display": "flex", "flexDirection": "column"}, "children": [row]}
+		sized = {"baseStyles": {"display": "flex", "justifyContent": "space-between", "width": "60%"}}
+		column = {"baseStyles": {"display": "flex", "flexDirection": "column", "alignItems": "center"}, "children": [sized]}
+		self.assertEqual(layout.spread_rows_fill_their_column([stretching, column]), 0)
+		self.assertNotIn("width", row["baseStyles"])
+
+	def test_a_button_keeps_its_size_in_a_centred_column_and_fills_the_phone(self):
+		button = {"classes": ["u-btn", "u-btn--secondary"], "baseStyles": {"width": "100%"}}
+		column = {"baseStyles": {"flexDirection": "column", "alignItems": "center"}, "children": [button]}
+		self.assertEqual(layout.buttons_keep_their_size_in_a_centred_column([column]), 1)
+		self.assertNotIn("width", button["baseStyles"])
+		self.assertEqual(button["mobileStyles"]["width"], "100%")
+
+	def test_a_button_that_fills_a_card_stays_as_it_is(self):
+		button = {"classes": ["u-btn"], "baseStyles": {"width": "100%"}}
+		card = {"baseStyles": {"flexDirection": "column"}, "children": [button]}
+		self.assertEqual(layout.buttons_keep_their_size_in_a_centred_column([card]), 0)
+
+	def test_a_title_takes_the_axis_of_the_form_centred_under_it(self):
+		title = {"element": "h2", "baseStyles": {}}
+		form = {"baseStyles": {"maxWidth": "600px", "margin": "0 auto"}, "children": [{"innerHTML": '{% include "builder/templates/includes/site_form.html" %}'}]}
+		self.assertEqual(layout.titles_follow_a_centred_form([{"children": [title, form]}]), 1)
+		self.assertEqual(title["baseStyles"]["textAlign"], "center")
+
+	def test_a_title_over_anything_else_or_with_its_own_alignment_is_left_alone(self):
+		title = {"element": "h2", "baseStyles": {}}
+		text = {"baseStyles": {"maxWidth": "600px", "margin": "0 auto"}, "children": [{"innerHTML": "Un texte"}]}
+		aligned = {"element": "h2", "baseStyles": {"textAlign": "right"}}
+		form = {"baseStyles": {"maxWidth": "600px", "margin": "0 auto"}, "children": [{"innerHTML": "site_form"}]}
+		self.assertEqual(layout.titles_follow_a_centred_form([{"children": [title, text]}, {"children": [aligned, form]}]), 0)
+		self.assertNotIn("textAlign", title["baseStyles"])
+
 	def test_a_real_grid_keeps_its_classes(self):
 		block = self.row()
 		block["baseStyles"]["display"] = "grid"
