@@ -557,7 +557,8 @@ class TestCarouselsNeedPictures(unittest.TestCase):
 			self.assertIs(False, include_has_data("webshop/templates/includes/product_carousel.html"))
 
 	# //// Neoffice — the frozen list became the catalogue (site_ai/components.py, 2026-09-15)
-	def test_the_carousels_leave_out_a_product_with_no_picture_by_default(self):
+	def test_the_box_of_the_carousels_says_what_an_untouched_tag_does(self):
+		# //// Neoffice — an untouched box writes nothing, and the includes read a missing option as off (2026-11-01): the box was declared ticked
 		from builder.site_ai import components
 
 		for component in components.BRIDGE:
@@ -565,4 +566,4 @@ class TestCarouselsNeedPictures(unittest.TestCase):
 				continue
 			switch = next((p for p in component.params if p["name"] == "hide_without_image"), None)
 			self.assertIsNotNone(switch, component.path)
-			self.assertTrue(switch["default"], component.path)
+			self.assertFalse(switch["default"], component.path)

@@ -209,7 +209,9 @@ BRIDGE: list[Component] = [
 			{"name": "carousel_brand", "label": "Only this brand", "type": "str", "default": "", "about": "only the products of that brand, by its exact name"},
 			{"name": "carousel_item_group", "label": "Only this category", "type": "str", "default": "", "about": "only the products of that category, by its exact name"},
 			{"name": "show_discounted_only", "label": "Discounted products only", "type": "bool", "default": False, "about": "only the products on sale"},
-			{"name": "hide_without_image", "label": "Hide products without a photo", "type": "bool", "default": True, "about": "leave out a product with no photograph"},
+			# //// Neoffice — False, what the include does when the option is left out (2026-11-01): declared True, the editor showed the box ticked, an
+			# //// untouched box wrote nothing in the tag, and the carousel drew its products without a photo under a box that said otherwise
+			{"name": "hide_without_image", "label": "Hide products without a photo", "type": "bool", "default": False, "about": "leave out a product with no photograph"},
 			{"name": "view_more_link", "label": "'View more' link", "type": "str", "default": "", "about": "where the 'View more' button goes, e.g. /all-products"},
 			{"name": "view_more_text", "label": "'View more' text", "type": "str", "default": "View More", "about": "what that button reads, in the site's language"},
 		],
@@ -234,7 +236,7 @@ BRIDGE: list[Component] = [
 			{"name": "carousel_limit", "label": "How many brands", "min": 1, "type": "int", "default": 20, "about": "how many brands at most; leave it out for the default, never 0 — 0 draws none"},
 			{"name": "carousel_sort_by", "label": "Sorted by", "choices": [{"value": "brand_name", "label": "Name"}, {"value": "product_count", "label": "Number of products"}], "type": "str", "default": "brand_name", "about": "brand_name or product_count"},
 			{"name": "show_product_count", "label": "Show the number of products", "type": "bool", "default": False, "about": "show how many products each brand has"},
-			{"name": "hide_without_image", "label": "Hide brands without a logo", "type": "bool", "default": True, "about": "leave out a brand with no logo"},
+			{"name": "hide_without_image", "label": "Hide brands without a logo", "type": "bool", "default": False, "about": "leave out a brand with no logo"},
 			{"name": "view_more_link", "label": "'View more' link", "type": "str", "default": "", "about": "where the 'View more' button goes"},
 			{"name": "view_more_text", "label": "'View more' text", "type": "str", "default": "View More", "about": "what that button reads, in the site's language"},
 		],
