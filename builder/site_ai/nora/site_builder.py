@@ -393,6 +393,22 @@ def normalise_pages(pages: list, site_type: str) -> list[dict]:
     return out
 
 
+# //// Neoffice — every site has an About page (Jérémy, 2026-11-01: the five first complete sites had none under that name, their menus held two links and read empty). A list
+# //// of pages that holds none gets one, before its contact page; the single-page site carries it as a section of its own.
+ABOUT_TITLES = {"fr": "À propos", "en": "About", "de": "Über uns", "it": "Chi siamo"}
+
+
+def with_about_page(pages: list[dict], site_type: str, language: str) -> list[dict]:
+    """The pages of a site, its About page among them."""
+    if site_type == "one_page" or any(page.get("type") == "about" for page in pages):
+        return pages
+    about = {"title": ABOUT_TITLES.get((language or "").split("-")[0], ABOUT_TITLES["en"]), "route": "about", "type": "about"}
+    if any(page.get("route") == about["route"] for page in pages):
+        return pages
+    place = next((i for i, page in enumerate(pages) if page.get("type") == "contact"), len(pages))
+    return [*pages[:place], about, *pages[place:]]
+
+
 def token_prefix(name: str) -> str:
     words = [w for w in re.split(r"[^a-z0-9]+", _bare(name)) if w]
     if len(words) >= 2:
@@ -2400,6 +2416,9 @@ def build_site(ctx, spec: dict) -> str:
     # //// Neoffice — a run that writes only the pages it names, leaving the rest of the site — and
     # //// the rest of its chrome — alone (2026-09-15). Read here: the chrome step needs it too.
     building_part = str(spec.get("scope") or "site") == "pages"
+    # //// Neoffice — see with_about_page; a run that writes a few pages writes those it was asked for
+    if not building_part:
+        pages = with_about_page(pages, site_type, lang_code)
     # //// Neoffice — a site that sells says so to every page (2026-09-15): its home shows real
     # //// products taken from the shop, and its footer is the centred one. Read here, before the
     # //// chrome step, which runs long before the pages.

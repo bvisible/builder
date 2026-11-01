@@ -1150,3 +1150,41 @@ class TestTheStarvedTextRule(unittest.TestCase):
 
 		self.assertIn("lines > 3.5 || (lines > 2.5 && r.width < 150)", LAYOUT_PROBE)
 		self.assertIn("r.width < Math.max(200, fs * 7)", LAYOUT_PROBE)
+
+
+class TestEverySiteHasAnAboutPage(unittest.TestCase):
+	"""The five first complete sites had no page of that name and their menus held two links: a list of pages that holds none gets one."""
+
+	HOME = {"title": "Accueil", "route": "home", "type": "accueil"}
+	SERVICES = {"title": "Prestations", "route": "prestations", "type": "generic"}
+	CONTACT = {"title": "Contact", "route": "contact", "type": "contact"}
+
+	def about_of(self, pages, site_type="vitrine", language="fr"):
+		from builder.site_ai.nora.site_builder import with_about_page
+
+		return with_about_page(pages, site_type, language)
+
+	def test_it_comes_before_the_contact_page(self):
+		pages = self.about_of([self.HOME, self.SERVICES, self.CONTACT])
+		self.assertEqual(["home", "prestations", "about", "contact"], [page["route"] for page in pages])
+		self.assertEqual({"title": "À propos", "route": "about", "type": "about"}, pages[2])
+
+	def test_it_closes_a_list_with_no_contact_page(self):
+		self.assertEqual("about", self.about_of([self.HOME, self.SERVICES])[-1]["route"])
+
+	def test_it_is_named_in_the_language_of_the_site(self):
+		self.assertEqual("Über uns", self.about_of([self.HOME], language="de")[-1]["title"])
+		self.assertEqual("About", self.about_of([self.HOME], language="pt")[-1]["title"])
+
+	def test_a_site_that_has_one_keeps_its_own(self):
+		pages = [self.HOME, {"title": "L'entreprise", "route": "l-entreprise", "type": "about"}]
+		self.assertEqual(pages, self.about_of(pages))
+
+	def test_a_page_named_that_way_is_not_written_twice(self):
+		pages = [self.HOME, {"title": "Qui ?", "route": "about", "type": "generic"}]
+		self.assertEqual(pages, self.about_of(pages))
+
+	def test_a_single_page_site_stays_a_single_page(self):
+		pages = [{"title": "Accueil", "route": "home", "type": "one_page"}]
+		self.assertEqual(pages, self.about_of(pages, site_type="one_page"))
+
