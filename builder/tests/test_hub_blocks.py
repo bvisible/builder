@@ -528,3 +528,60 @@ class TestTheRestOfTheGeneratorSeesThemAsRecipes(unittest.TestCase):
 
 if __name__ == "__main__":
 	unittest.main()
+
+
+class TestABuildKeepsWhatItsRecipesCarry(unittest.TestCase):
+	TIMELINE = "builder/templates/includes/company_timeline.html"
+
+	def test_the_french_titles_of_a_company_page_make_an_about_page(self):
+		from builder.site_ai.nora import site_builder as S
+
+		for title in ("L'entreprise", "L\u2019entreprise", "Entreprise", "Notre entreprise", "Notre histoire", "Qui nous sommes"):
+			with self.subTest(title):
+				self.assertEqual(("about", "about"), S.KNOWN_PAGES[S._bare(title)])
+		for title in ("L'équipe", "Notre équipe"):
+			with self.subTest(title):
+				self.assertEqual(("team", "team"), S.KNOWN_PAGES[S._bare(title)])
+
+	def test_the_component_of_a_recipe_survives_on_a_page_whose_type_is_not_offered_it(self):
+		from types import SimpleNamespace as NS
+
+		from builder.site_ai.components import Component
+		from builder.site_ai.nora import site_builder as S
+
+		live = Component(self.TIMELINE, "The timeline", "")
+		other = Component("builder/templates/includes/team_grid.html", "The team", "")
+		uses = {2: NS(recipe=NS(form=True, component="company_timeline.html")), 3: NS(recipe=NS(form=False, component=""))}
+		site = {"recipe_uses": {"/l-entreprise": uses}}
+		tag = '{% include "' + self.TIMELINE + '" %}'
+		blocks = [{"children": [{"innerHTML": tag, "children": []}]}]
+		with (
+			patch("builder.site_ai.components.enabled_catalogue", return_value=[live, other]),
+			patch("builder.site_ai.components.clean_tag", side_effect=lambda html: html),
+		):
+			allowed = S.recipe_includes({"route": "/l-entreprise"}, site)
+			self.assertEqual([live], allowed)
+			self.assertEqual((0, 0), S.repair_includes(blocks, allowed))
+			self.assertEqual(1, len(blocks[0]["children"]))
+			self.assertEqual([], S.recipe_includes({"route": "/other"}, site))
+			self.assertEqual((0, 1), S.repair_includes(blocks, []))
+		self.assertEqual([], blocks[0]["children"])
+
+
+class TestALinkThatDrawsItsUnderline(unittest.TestCase):
+	def test_the_children_of_a_text_block_take_the_size_of_the_picture_with_the_picture(self):
+		import os
+		import re
+
+		import builder
+
+		for path in ("public/reset.css", "../frontend/src/reset.css"):
+			full = os.path.join(os.path.dirname(builder.__file__), path)
+			if not os.path.exists(full):  # the bench holds the built file without the sources
+				continue
+			with open(full, encoding="utf-8") as f:
+				text = f.read()
+			rule = re.search(r"\.__text_block__\s*>\s*\*\s*\{([^}]*)\}", text).group(1)
+			with self.subTest(path):
+				for name in ("background-image", "background-size", "background-position", "background-repeat"):
+					self.assertRegex(rule, rf"{name}:\s*inherit")

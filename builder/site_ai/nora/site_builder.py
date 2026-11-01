@@ -31,10 +31,14 @@ PLACEHOLDER = "https://placehold.co/{w}x{h}/e5e7eb/9ca3af/png?text={text}"
 KNOWN_PAGES = {
     "accueil": ("home", "accueil"), "home": ("home", "accueil"), "index": ("home", "accueil"),
     "a propos": ("about", "about"), "about": ("about", "about"), "qui sommes-nous": ("about", "about"),
+    # //// Neoffice — the French titles of a company page (2026-11-01): the table knew the German "das Unternehmen" and not "L'entreprise", which came out a
+    # //// generic page, offered neither the team nor the timeline. `_bare` drops the apostrophe, hence "lentreprise"
+    "lentreprise": ("about", "about"), "entreprise": ("about", "about"), "notre entreprise": ("about", "about"),
+    "notre histoire": ("about", "about"), "qui nous sommes": ("about", "about"),
     "services": ("services", "services"), "prestations": ("services", "services"),
     "contact": ("contact", "contact"),
     "faq": ("faq", "faq"),
-    "equipe": ("team", "team"), "team": ("team", "team"),
+    "equipe": ("team", "team"), "team": ("team", "team"), "lequipe": ("team", "team"), "notre equipe": ("team", "team"),
     "blog": ("blog", "blog"), "articles": ("blog", "blog"), "actualites": ("blog", "blog"),
     "temoignages": ("testimonials", "testimonials"), "testimonials": ("testimonials", "testimonials"),
     "boutique": ("shop", "shop"), "shop": ("shop", "shop"), "produits": ("shop", "shop"),
@@ -926,6 +930,19 @@ def repair_includes(blocks: list, allowed) -> tuple[int, int]:
 # //// Neoffice ▲▲▲
 
 
+# //// Neoffice — added (2026-11-01): what a recipe carries survives repair_includes
+def recipe_includes(page: dict, site: dict) -> list:
+    """The components the section recipes of this page carry, whatever the page's type is offered. A title the table of pages does not know makes a
+    generic page, which is offered none; the plan gave a section of one the company's timeline all the same, the recipe drew its tag, repair_includes
+    took it away, and the section stood as a heading over an empty column. A recipe carrying a component reached the registry because this site can
+    show it (hub_blocks.sync_registry)."""
+    from builder.site_ai import components
+
+    uses = (site.get("recipe_uses") or {}).get(page["route"]) or {}
+    files = {use.recipe.component for use in uses.values() if use.recipe.form and use.recipe.component}
+    return [c for c in components.enabled_catalogue() if c.file in files] if files else []
+
+
 def components_prompt(components) -> str:
     """The COMPONENTS section of a page brief, written from the catalogue."""
     from builder.site_ai import components as catalogue
@@ -1391,6 +1408,7 @@ def page_brief_text(site: dict, brief, page: dict, handles: dict, contact_prompt
     held = {u for use in recipe_uses.values() for u in use.photos}
     photo_lines = "\n".join(f"{i}. {u}" + (f"  ({notes[i - 1]})" if i - 1 < len(notes) else "") for i, u in enumerate(photos, 1) if u not in held)
     includes = available_includes(page["type"], site.get("site_type") or "vitrine", site.get("profile"), site.get("site_name") or "", lang=site.get("lang") or "fr", generator=True)
+    includes = [*includes, *[c for c in recipe_includes(page, site) if c.file not in {i.file for i in includes}]]
     page_role = (
         "the HOME page: open with the hero" if is_home
         else "an INTERIOR page: the site renders a title band with the page title above the content, so start directly with the first content section, no hero banner and no repeated page title"
@@ -2974,7 +2992,7 @@ def build_site(ctx, spec: dict) -> str:
                     # //// Neoffice — a page made to be written to carries the site's form whatever the plan and the writer did (page_form.ensure_form)
                     if ensure_form(blocks, page, _bare(page["title"]), handles, palette):
                         ai_log("info", "Contact form added to a page made to be written to", page=page["title"])
-                    fixed, dropped = repair_includes(blocks, available_includes(page["type"], site["site_type"], site["profile"], site["site_name"], lang=site.get("lang") or "fr", generator=True))
+                    fixed, dropped = repair_includes(blocks, [*available_includes(page["type"], site["site_type"], site["profile"], site["site_name"], lang=site.get("lang") or "fr", generator=True), *recipe_includes(page, site)])
                     if fixed or dropped:
                         ai_log("info", "Includes repaired", page=page["title"], rewritten=fixed, removed=dropped)
                     # //// Neoffice — where the site keeps forms, the contact form the page was written with becomes a Site
@@ -3026,11 +3044,15 @@ def build_site(ctx, spec: dict) -> str:
                     if unflexed:
                         ai_log("info", "Headings with markup made lines of text", page=page["title"], edits=unflexed)
                     # //// Neoffice — and a flex row that cannot wrap squeezes its items on a phone (layout.wrap_phone_rows)
-                    from builder.site_ai.nora.layout import wrap_phone_rows
+                    from builder.site_ai.nora.layout import flex_rows_off_the_grid, wrap_phone_rows
 
                     wrapped = wrap_phone_rows(blocks)
                     if wrapped:
                         ai_log("info", "Flex rows allowed to wrap on the phone", page=page["title"], edits=wrapped)
+                    # //// Neoffice — see layout.flex_rows_off_the_grid (2026-11-01)
+                    ungridded = flex_rows_off_the_grid(blocks)
+                    if ungridded:
+                        ai_log("info", "Grid classes taken off rows laid out by hand", page=page["title"], edits=ungridded)
                     # //// Neoffice — and a bare `1fr` track grows to its widest word: minmax(0, 1fr) (layout.fluid_tracks)
                     from builder.site_ai.nora.layout import fluid_tracks
 

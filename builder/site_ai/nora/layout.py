@@ -218,6 +218,26 @@ def fit_phone_gutters(blocks: list, gutter: str, phone_gutter: str) -> int:
 SCROLLING_ROW = re.compile(r"carousel|slider|marquee|scroll", re.I)
 
 
+GRID_CLASS = re.compile(r"^u-grid(--[\w-]+)?$")
+
+
+def flex_rows_off_the_grid(blocks: list) -> int:
+    """A row a recipe lays out by hand (a flex row, boxes of 33.3333% with their own padding) that the writer also dressed in `u-grid u-grid--3`: the
+    utility is written with :where(), so the row's own `display: flex` wins and the class leaves only its gap, three thirds plus two gaps are more than
+    the row, and the third card falls alone on a line of its own, at every width (a home page, 2026-11-01). The row's own layout is the one that was
+    designed: the grid classes go. Returns the edit count."""
+    edits = 0
+    for block in _walk(blocks):
+        classes = block.get("classes")
+        if not isinstance(classes, list) or (block.get("baseStyles") or {}).get("display") not in ("flex", "inline-flex"):
+            continue
+        kept = [c for c in classes if not GRID_CLASS.match(str(c))]
+        if len(kept) != len(classes):
+            block["classes"] = kept
+            edits += 1
+    return edits
+
+
 def wrap_phone_rows(blocks: list) -> int:
     """A flex row that cannot wrap squeezes its items on a phone: a number and its sentence side by
     side, the sentence 116 px wide on four lines and the page refused as "starved" (2026-10-19).

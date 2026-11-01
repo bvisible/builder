@@ -212,6 +212,21 @@ class TestTwoReadsAndAFallback(unittest.TestCase):
 		report, _ = self.review([RuntimeError("account suspended")], style="default", fallback=None)
 		self.assertEqual(report["error"], "account suspended")
 
+	def test_an_answer_that_says_nothing_goes_to_the_other_reader(self):
+		report, _ = self.review([self.read(True, overall=""), self.read(True)], fallback=LOCAL)
+		self.assertEqual(report["judge"], LOCAL)
+		self.assertTrue(report["professional"])
+
+	def test_an_answer_that_says_nothing_with_no_other_reader_is_not_a_verdict(self):
+		report, _ = self.review([self.read(True, overall="")], fallback=None)
+		self.assertEqual(report["error"], "the judge answered nothing")
+		self.assertFalse(report.get("overall"))
+
+	def test_a_verdict_with_issues_and_no_overall_line_is_a_reading(self):
+		issue = SimpleNamespace(severity="high", area="a", problem="b", fix="c")
+		report, _ = self.review([self.read(True, issue, overall="")], fallback=None)
+		self.assertNotIn("error", report)
+
 	def test_a_lane_with_another_lane_behind_it_waits_ninety_seconds_not_five_minutes_for_its_slot(self):
 		from contextlib import nullcontext
 
@@ -299,3 +314,5 @@ class TestTheInstructions(unittest.TestCase):
 		# the verdict starts from "professional", and the judge does not proof-read
 		self.assertIn("default verdict is PROFESSIONAL", visual_critique.EVIDENCE_SYSTEM)
 		self.assertIn("Do NOT proof-read", visual_critique.EVIDENCE_SYSTEM)
+		# the half card a row that scrolls shows on a phone is deliberate
+		self.assertIn("part of its next card", visual_critique.EVIDENCE_SYSTEM)

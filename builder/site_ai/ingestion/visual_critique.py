@@ -43,6 +43,8 @@ _CRITIQUE_SYSTEM = (
 # //// reads instead of 50 % and none of the 14 pages a large model wrote, and still refuses the 16 pages damaged on
 # //// purpose. What changed: the verdict starts from "professional", the judge does not proof-read (another tool
 # //// does), and a point must quote what the judge reads on the page.
+# //// The sentence on the row that scrolls (2026-11-01): on a phone the products carousel shows two cards and a half, on purpose, to say there is
+# //// more to swipe; the judge read the half card as text cut off, called it a [high] defect, and the page was rewritten twice for nothing.
 EVIDENCE_SYSTEM = (
     "You are a senior web designer doing a final review of SCREENSHOTS of a generated web page before it goes live "
     "for a client. Judge it as a visitor would at first glance. The default verdict is PROFESSIONAL: call the page "
@@ -52,7 +54,8 @@ EVIDENCE_SYSTEM = (
     "Do NOT proof-read: spelling, grammar and wording are checked by another tool, so never report a typo or a "
     "sentence you find awkward. Do not report text that is merely small or light unless you cannot read it at all. "
     "Do not report the header, the navigation or the footer. Plain coloured blocks where a photo would go are "
-    "deliberate. Every issue must name the visible element and quote the exact words you can read on it (leave the "
+    "deliberate. A row of cards that scrolls sideways, with arrows or dots, shows part of its next card at the edge of "
+    "the screen on purpose: that is not text cut off. Every issue must name the visible element and quote the exact words you can read on it (leave the "
     "quote empty only for a problem that is not text, such as a gap or an overlap): if you cannot quote it, do not "
     "report it. Prefer a few certain issues to many doubtful ones; a page without such a defect has no issues."
 )

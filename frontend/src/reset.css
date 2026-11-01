@@ -93,8 +93,14 @@ p:not(:where(.prose,.ProseMirror) *) {
 /* Clipped/gradient text (background-clip: text) is set on the text block element,
    but the text lives in a child (<p>/<div>). background-image and background-clip
    don't inherit, so without this the clipped text renders invisible. */
+/* //// Neoffice — the size, the position and the repeat come with the picture (2026-11-01): a link with an underline that grows on hover
+   (`linear-gradient(currentColor, currentColor)`, `background-size: 0% 1px`) passed its picture to its span and its icon without its size, and each
+   painted itself solid in its own colour: a bar where the words were. */
 .__text_block__ > * {
 	background-image: inherit;
+	background-size: inherit;
+	background-position: inherit;
+	background-repeat: inherit;
 	-webkit-background-clip: inherit;
 	background-clip: inherit;
 }

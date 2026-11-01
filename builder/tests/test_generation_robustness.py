@@ -927,6 +927,20 @@ class TestPhoneRows(unittest.TestCase):
 			block["mobileStyles"] = mobile
 		return block
 
+	def test_a_row_laid_out_by_hand_loses_the_grid_classes_that_only_add_their_gap(self):
+		block = self.row()
+		block["classes"] = ["u-grid", "u-grid--3", "u-reveal-group"]
+		self.assertEqual(layout.flex_rows_off_the_grid([block]), 1)
+		self.assertEqual(block["classes"], ["u-reveal-group"])
+		self.assertEqual(layout.flex_rows_off_the_grid([block]), 0)
+
+	def test_a_real_grid_keeps_its_classes(self):
+		block = self.row()
+		block["baseStyles"]["display"] = "grid"
+		block["classes"] = ["u-grid", "u-grid--3"]
+		self.assertEqual(layout.flex_rows_off_the_grid([block]), 0)
+		self.assertEqual(block["classes"], ["u-grid", "u-grid--3"])
+
 	def test_a_row_of_two_items_may_wrap_on_the_phone(self):
 		block = self.row()
 		self.assertEqual(layout.wrap_phone_rows([block]), 1)

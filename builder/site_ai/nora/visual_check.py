@@ -592,7 +592,12 @@ def review_page(page: dict, profile: str | None, model: str, site_name: str = ""
             from builder.ai import llm
 
             with llm.busy_wait_limit(patient):
-                return critique_screenshot(picture, model=judge, context=context, extra_images=[phone_picture] if phone_picture else None, style=style)
+                critique, label = critique_screenshot(picture, model=judge, context=context, extra_images=[phone_picture] if phone_picture else None, style=style)
+            # //// Neoffice — an answer that says nothing is not a reading (2026-11-01): the schema's defaults made it « professional », and a page
+            # //// with a section gone blank and its links painted over passed unread. It takes the road of a judge that failed.
+            if not (critique.overall or "").strip() and not critique.issues:
+                raise ValueError("the judge answered nothing")
+            return critique, label
 
         style = judge_style(model)
         try:
