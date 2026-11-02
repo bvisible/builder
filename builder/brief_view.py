@@ -209,10 +209,13 @@ def get_latest_brief(website_profile: str | None = None) -> dict:
 
 	raw, generated_on = None, None
 	if website_profile and frappe.db.exists("Website Header Footer Variant", website_profile):
-		raw, generated_on = frappe.db.get_value("Website Header Footer Variant", website_profile, ["ai_brief", "modified"])
+		raw, generated_on = frappe.db.get_value(
+			"Website Header Footer Variant", website_profile, ["ai_brief", "modified"]
+		)
 	else:
 		raw = frappe.db.get_single_value("Website Header Footer Config", "ai_brief")
-		generated_on = frappe.db.get_single_value("Website Header Footer Config", "modified")
+		# get_single_value refuses a field the meta does not list, and `modified` is not one
+		generated_on = frappe.db.get_value("Website Header Footer Config", None, "modified")
 	if not raw:
 		return {"exists": False}
 	data = _grouped(raw)
