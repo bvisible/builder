@@ -77,7 +77,9 @@ class TestTheCaptureIsDropped(unittest.TestCase):
 		return report
 
 	def test_after_the_critique_and_after_a_failure(self):
-		read = SimpleNamespace(looks_professional=True, overall="", issues=[])
+		# //// Neoffice — a reading says something (2026-11-02): an answer with no overall line and no issue is no verdict
+		# //// and takes the road of a judge that failed (see read() in review_page), so the stub gives one line
+		read = SimpleNamespace(looks_professional=True, overall="fine", issues=[])
 		self.assertTrue(self.review(return_value=(read, "model"))["professional"])
 		self.assertEqual(self.review(side_effect=RuntimeError("model down"))["error"], "model down")
 
