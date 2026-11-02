@@ -52,20 +52,12 @@
 						@update:modelValue="(v: string) => (state.motion_style = v)" />
 				</div>
 				<div class="grid grid-cols-2 gap-3">
-					<div v-for="color in themeColors" :key="color.field" class="flex items-end gap-2">
-						<FormControl
-							size="sm"
-							:label="color.label"
-							:modelValue="state[color.field]"
-							@update:modelValue="(v: string) => (state[color.field] = v)"
-							placeholder="#000000"
-							class="flex-1" />
-						<input
-							type="color"
-							class="h-7 w-9 shrink-0 cursor-pointer rounded border border-outline-gray-2 bg-transparent"
-							:value="state[color.field] || '#000000'"
-							@input="(e: Event) => (state[color.field] = (e.target as HTMLInputElement).value)" />
-					</div>
+					<ThemeColorField
+						v-for="color in themeColors"
+						:key="color.field"
+						:label="color.label"
+						:modelValue="state[color.field]"
+						@update:modelValue="(v: string) => (state[color.field] = v)" />
 				</div>
 				<div class="grid grid-cols-2 gap-3">
 					<FormControl
@@ -187,10 +179,8 @@
 						:modelValue="state.search_type"
 						@update:modelValue="(v: string) => (state.search_type = v)" />
 					<!-- //// Neoffice — the band of the full width search bar takes a colour of the site (header_styles.html) -->
-					<FormControl
+					<ThemeColorField
 						v-if="state.search_type === 'Search Bar (full width bottom)'"
-						type="color"
-						size="sm"
 						:label="__('Search band colour')"
 						:description="__('The colour of the band under the header. Empty: dark.')"
 						:modelValue="state.search_band_color"
@@ -488,10 +478,8 @@
 					:options="options.page_header_background"
 					:modelValue="state.page_header_background"
 					@update:modelValue="(v: string) => (state.page_header_background = v)" />
-				<FormControl
+				<ThemeColorField
 					v-if="['Solid', 'Tinted'].includes(state.page_header_background)"
-					type="color"
-					size="sm"
 					:label="__('Background colour')"
 					:description="__('Empty: a wash of the site\'s primary colour')"
 					:modelValue="state.page_header_bg_color"
@@ -657,6 +645,7 @@
 import { __ } from "@/translation";
 import { watchDebounced } from "@vueuse/core";
 import { Button, createResource, FileUploadHandler, FormControl, Switch, toast } from "frappe-ui";
+import ThemeColorField from "@/components/Settings/ThemeColorField.vue";
 import { computed, reactive, ref, watch } from "vue";
 import usePageStore from "@/stores/pageStore";
 //// Neoffice — the top page component is opened in the canvas the way the Components panel opens one
