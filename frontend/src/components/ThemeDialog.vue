@@ -4,14 +4,18 @@
 <template>
 	<!-- The theme is not a setting. It is the thing a site owner touches most,
 	     and it was three clicks deep under Settings — same reasoning as Media. -->
-	<Dialog v-model="show" :options="{ size: '4xl' }">
-		<template #body>
+	<!-- frappe-ui 1.0 dropped the `options` prop and the `#body` slot: this screen opened empty -->
+	<Dialog v-model="show" size="4xl" bare>
+		<template #default>
+			<DialogDescription class="sr-only">
+				{{ __("The site's colours, fonts, header, footer and top page.") }}
+			</DialogDescription>
 			<div class="flex h-[80vh] flex-col gap-4 p-5">
 				<div class="flex items-center gap-2">
 					<span class="lucide-palette size-4 text-ink-gray-8" aria-hidden="true" />
-					<h2 class="text-lg font-semibold text-ink-gray-9">
+					<DialogTitle as="h2" class="text-lg font-semibold text-ink-gray-9">
 						{{ __("Theme, Header & Footer") }}
-					</h2>
+					</DialogTitle>
 				</div>
 				<div class="min-h-0 flex-1 overflow-y-auto overflow-x-hidden pr-1">
 					<GlobalTheme v-if="show" />
@@ -23,6 +27,7 @@
 <script setup lang="ts">
 import { __ } from "@/translation";
 import { Dialog } from "frappe-ui";
+import { DialogDescription, DialogTitle } from "reka-ui";
 import { defineAsyncComponent } from "vue";
 
 // only loaded when the dialog is opened

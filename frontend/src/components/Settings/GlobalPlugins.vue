@@ -95,14 +95,12 @@
 
 		<Dialog
 			v-model="confirmRemove"
-			:options="{
-				title: __('Remove this plugin?'),
-				message: removeMessage,
-				actions: [
-					{ label: __('Remove'), variant: 'solid', theme: 'red', onClick: doRemove },
-					{ label: __('Cancel'), onClick: () => (confirmRemove = false) },
-				],
-			}" />
+			:title="__('Remove this plugin?')"
+			:message="removeMessage"
+			:actions="[
+				{ label: __('Remove'), variant: 'solid', theme: 'red', onClick: doRemove },
+				{ label: __('Cancel'), onClick: () => (confirmRemove = false) },
+			]" />
 
 		<p class="text-xs text-ink-gray-5">
 			{{ __("More plugins will come from the community hub. This list is where they land.") }}

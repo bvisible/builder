@@ -12183,3 +12183,11 @@ msgstr "Couleur de la bande de recherche"
 #: frontend/src/components/Settings/GlobalTheme.vue
 msgid "The colour of the band under the header. Empty: dark."
 msgstr "La couleur de la bande située sous l’en-tête. Par défaut : foncée."
+
+#: frontend/src/components/ThemeDialog.vue
+msgid "The site's colours, fonts, header, footer and top page."
+msgstr "Cette fenêtre vous permet de régler les couleurs, les polices, l’en-tête, le pied de page et l’en-tête de page de votre site."
+
+#: frontend/src/components/MediaLibrary.vue
+msgid "The site's images, and where each one is used."
+msgstr "Cette fenêtre vous présente les images de votre site et indique où chacune est utilisée."

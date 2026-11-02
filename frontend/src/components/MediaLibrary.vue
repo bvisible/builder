@@ -1,13 +1,17 @@
 <!-- //// Neoffice — added file (no upstream equivalent): the Media screen: images and where each one is
      //// used. Neoffice-only screen. First commit 798e7817 2026-08-03. -->
 <template>
-	<Dialog v-model="show" :options="{ size: '5xl' }">
-		<template #body>
+	<!-- frappe-ui 1.0 dropped the `options` prop and the `#body` slot: this screen opened empty -->
+	<Dialog v-model="show" size="5xl" bare>
+		<template #default>
+			<DialogDescription class="sr-only">
+				{{ __("The site's images, and where each one is used.") }}
+			</DialogDescription>
 			<div class="flex h-[80vh] flex-col gap-4 p-5">
 				<div class="flex items-center justify-between gap-3">
 					<div class="flex items-center gap-2">
 						<span class="lucide-image size-4 text-ink-gray-8" aria-hidden="true" />
-						<h2 class="text-lg font-semibold text-ink-gray-9">{{ __("Media") }}</h2>
+						<DialogTitle as="h2" class="text-lg font-semibold text-ink-gray-9">{{ __("Media") }}</DialogTitle>
 					</div>
 					<div class="flex items-center gap-1 rounded-md bg-surface-gray-2 p-0.5">
 						<button
@@ -232,6 +236,7 @@
 import { __ } from "@/translation";
 import { watchDebounced } from "@vueuse/core";
 import { Button, createResource, Dialog, FormControl, Switch, toast } from "frappe-ui";
+import { DialogDescription, DialogTitle } from "reka-ui";
 import { computed, ref, watch } from "vue";
 
 const API = "builder.media";
