@@ -231,3 +231,37 @@ class TestOverImageRule(unittest.TestCase):
 		# the scrim comes after the children, so a photograph laid in the section sits under it
 		self.assertIn(".u-over-image::after", css)
 		self.assertNotIn(".u-over-image::before", css)
+
+
+class TestTheSearchBand(unittest.TestCase):
+	"""The band of the full width search bar is black unless the site gives it a colour, and its field stays readable on that colour."""
+
+	def colours(self, **fields):
+		config = SimpleNamespace(header_bg_color="#ffffff", header_text_color="#1a1a1a", primary_color="#171717", secondary_color=None, **fields)
+		return WebsiteHeaderFooterConfig.get_header_colors(config)
+
+	def styles(self, band):
+		from pathlib import Path
+
+		from jinja2 import Environment
+
+		import builder
+
+		text = (Path(builder.__file__).parent / "templates/includes/header_footer/header_styles.html").read_text(encoding="utf-8")
+		start = text.index("{%- if colors and colors.search_band %}")
+		end = text.index("{%- endif %}", start) + len("{%- endif %}")
+		return Environment().from_string(text[start:end]).render(colors={"search_band": band})
+
+	def test_a_site_that_set_nothing_keeps_its_band_as_it_is(self):
+		self.assertEqual("", self.colours()["search_band"])
+		self.assertEqual("", self.colours(search_band_color=None)["search_band"])
+		self.assertEqual("", self.styles("").strip())
+
+	def test_the_colour_reaches_the_band(self):
+		self.assertEqual("#d26e4b", self.colours(search_band_color="#d26e4b")["search_band"])
+		self.assertIn("background: #d26e4b;", self.styles("#d26e4b"))
+
+	def test_on_a_colour_the_field_is_white_with_dark_text(self):
+		css = self.styles("#d26e4b")
+		self.assertIn("background: #ffffff !important;", css)
+		self.assertIn("color: #1a1a1a !important;", css)

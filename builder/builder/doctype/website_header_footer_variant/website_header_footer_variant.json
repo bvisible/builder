@@ -33,6 +33,7 @@
   "logo_default_info",
   "icons_section",
   "search_type",
+  "search_band_color",
   "column_break_icons_1",
   "show_user",
   "show_wishlist",
@@ -400,6 +401,13 @@
    "fieldtype": "Select",
    "label": "Search",
    "options": "None\nIcon (overlay)\nSearch Bar (inline)\nSearch Bar (full width bottom)"
+  },
+  {
+   "depends_on": "eval:doc.search_type=='Search Bar (full width bottom)'",
+   "description": "The colour of the band under the header. Empty: dark.",
+   "fieldname": "search_band_color",
+   "fieldtype": "Color",
+   "label": "Search band colour"
   },
   {
    "fieldname": "column_break_icons_1",
@@ -1131,7 +1139,7 @@
  "index_web_pages_for_search": 1,
  "issingle": 0,
  "links": [],
- "modified": "2026-10-22 11:00:00.000000",
+ "modified": "2026-11-02 21:40:00.000000",
  "modified_by": "Administrator",
  "module": "Builder",
  "name": "Website Header Footer Variant",

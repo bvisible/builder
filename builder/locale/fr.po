@@ -12167,3 +12167,19 @@ msgstr "Galerie"
 #: builder/builder/doctype/block_template/block_template.json
 msgid "Call to action"
 msgstr "Appel à l'action"
+
+#. Label of the search_band_color (Color) field in DocType 'Website Header
+#. Footer Config'
+#. Label of the search_band_color (Color) field in DocType 'Website Header
+#. Footer Variant'
+#: frontend/src/components/Settings/GlobalTheme.vue
+msgid "Search band colour"
+msgstr "Couleur de la bande de recherche"
+
+#. Description of the 'Search band colour' (Color) field in DocType 'Website
+#. Header Footer Config'
+#. Description of the 'Search band colour' (Color) field in DocType 'Website
+#. Header Footer Variant'
+#: frontend/src/components/Settings/GlobalTheme.vue
+msgid "The colour of the band under the header. Empty: dark."
+msgstr "La couleur de la bande située sous l’en-tête. Par défaut : foncée."

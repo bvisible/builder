@@ -40,6 +40,8 @@ SIMPLE_FIELDS = (
 	# //// Neoffice — who sees the header's button and its cart (website_header_footer_config.get_cta_audience)
 	"cta_audience",
 	"search_type",
+	# //// Neoffice — the colour of the full width search bar (see header_styles.html)
+	"search_band_color",
 	"show_user",
 	"show_wishlist",
 	"show_cart",

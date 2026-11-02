@@ -688,6 +688,46 @@ html:not(.is-signed-in) .site-header [data-audience="signed-in"] {
 	background: #ffffff !important;
 }
 
+{#- //// Neoffice — a site may give the band its own colour (search_band_color, 2026-11-02): the orange band of a migrated shop was part of its identity, and the
+    rules above paint it black. The translucent field only reads on a dark band: on a colour of the site it turns solid white, with dark text, whatever the colour. -#}
+{%- if colors and colors.search_band %}
+.site-header__search-bar-full {
+	background: {{ colors.search_band }};
+	border-top: none;
+}
+
+.site-header__search-bar-full .builder-search-bar__wrapper,
+.site-header__search-bar-full .builder-search-bar__wrapper:hover {
+	background: #ffffff !important;
+	border-color: transparent !important;
+}
+
+.site-header__search-bar-full .builder-search-bar__wrapper:focus-within {
+	background: #ffffff !important;
+	border-color: transparent !important;
+	box-shadow: 0 0 0 3px rgba(255,255,255,0.45) !important;
+}
+
+.site-header__search-bar-full .builder-search-bar__input {
+	color: #1a1a1a !important;
+}
+
+.site-header__search-bar-full .builder-search-bar__input::placeholder {
+	color: rgba(26,26,26,0.6) !important;
+}
+
+.site-header__search-bar-full .builder-search-bar__icon,
+.site-header__search-bar-full .builder-search-bar__wrapper:focus-within .builder-search-bar__icon {
+	color: rgba(26,26,26,0.6) !important;
+}
+
+.site-header__search-bar-full .builder-search-bar__clear,
+.site-header__search-bar-full .builder-search-bar__clear:hover {
+	background: rgba(26,26,26,0.12) !important;
+	color: #1a1a1a !important;
+}
+{%- endif %}
+
 .site-header__search-bar-full-container {
 	max-width: var(--container-width, 1280px);
 	margin: 0 auto;

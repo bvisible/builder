@@ -51,8 +51,9 @@ class WebsiteHeaderFooterConfig(Document):
 
 	if TYPE_CHECKING:
 		from frappe.types import DF
-		from builder.builder.doctype.website_menu_item.website_menu_item import WebsiteMenuItem
+
 		from builder.builder.doctype.website_footer_link.website_footer_link import WebsiteFooterLink
+		from builder.builder.doctype.website_menu_item.website_menu_item import WebsiteMenuItem
 
 		cart_audience: DF.Literal["Automatic", "Everyone", "Signed-in users only"]
 		copyright_text: DF.Data | None
@@ -82,6 +83,7 @@ class WebsiteHeaderFooterConfig(Document):
 		menu_items: DF.Table[WebsiteMenuItem]
 		newsletter_placeholder: DF.Data | None
 		newsletter_title: DF.Data | None
+		search_band_color: DF.Color | None
 		search_type: DF.Literal["None", "Icon (overlay)", "Search Bar (inline)", "Search Bar (full width bottom)"]
 		show_cart: DF.Check
 		show_cta: DF.Check
@@ -230,6 +232,8 @@ class WebsiteHeaderFooterConfig(Document):
 		return {
 			"bg": bg,
 			"text": text,
+			# //// Neoffice — the band of the full width search bar, when the site gives it a colour (header_styles.html)
+			"search_band": getattr(self, "search_band_color", None) or "",
 			"cta_bg": cta_bg,
 			# the label colour that reads best on the button: dark on pink or on a pale
 			# header text, white on indigo

@@ -186,6 +186,15 @@
 						:options="options.search_type"
 						:modelValue="state.search_type"
 						@update:modelValue="(v: string) => (state.search_type = v)" />
+					<!-- //// Neoffice — the band of the full width search bar takes a colour of the site (header_styles.html) -->
+					<FormControl
+						v-if="state.search_type === 'Search Bar (full width bottom)'"
+						type="color"
+						size="sm"
+						:label="__('Search band colour')"
+						:description="__('The colour of the band under the header. Empty: dark.')"
+						:modelValue="state.search_band_color"
+						@update:modelValue="(v: string) => (state.search_band_color = v)" />
 				</div>
 				<div class="flex items-center gap-5">
 					<Switch
