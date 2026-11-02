@@ -247,11 +247,13 @@
 /* //// Neoffice — the label reads on the primary (--primary-text: dark on a pale primary), and
    the hover is the chrome's --primary-hover. --primary-color-dark is defined nowhere, so the
    button turned blue (#2563eb) under the pointer on every site. */
+/* //// Neoffice — the chrome's button colours, not the raw primary (2026-11-01): on a site whose primary is its background the header had already moved to the secondary
+   (button_colours), and this button melted into a dark card, its label floating on nothing. */
 .builder-contact-form button[type="submit"] {
     width: 100%;
     padding: 1rem 2rem;
-    background: var(--primary-color, #111111);
-    color: var(--primary-text, #ffffff);
+    background: var(--btn-primary, var(--primary-color, #111111));
+    color: var(--btn-primary-text, var(--primary-text, #ffffff));
     border: none;
     border-radius: 8px;
     font-size: 1rem;
@@ -260,7 +262,7 @@
     transition: background 0.2s, transform 0.1s;
 }
 .builder-contact-form button[type="submit"]:hover {
-    background: var(--primary-hover, var(--primary-color, #111111));
+    background: var(--btn-primary-hover, var(--primary-hover, var(--primary-color, #111111)));
     transform: translateY(-1px);
 }
 .builder-contact-form button[type="submit"]:disabled {
@@ -421,8 +423,8 @@ html:has(.builder-contact-form__dialog[open]) {
 .builder-contact-form button.builder-contact-form__next {
     width: 100%;
     padding: 1rem 2rem;
-    background: var(--primary-color, #111111);
-    color: var(--primary-text, #ffffff);
+    background: var(--btn-primary, var(--primary-color, #111111));
+    color: var(--btn-primary-text, var(--primary-text, #ffffff));
     border: none;
     border-radius: 8px;
     font-size: 1rem;
