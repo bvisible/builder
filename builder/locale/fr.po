@@ -12191,3 +12191,27 @@ msgstr "Cette fenêtre vous permet de régler les couleurs, les polices, l’en-
 #: frontend/src/components/MediaLibrary.vue
 msgid "The site's images, and where each one is used."
 msgstr "Cette fenêtre vous présente les images de votre site et indique où chacune est utilisée."
+
+#: frontend/src/components/SiteBlocksPanel.vue
+msgid "Forms"
+msgstr "Formulaires"
+
+#: frontend/src/components/SiteBlocksPanel.vue
+msgid "New form"
+msgstr "Nouveau formulaire"
+
+#: builder/hooks.py
+msgid "a form of this site (contact, quote request, call back...), its answers kept in the site's inbox"
+msgstr "un formulaire de ce site (contact, demande de devis, demande de rappel…), dont les réponses arrivent dans la boîte de réception « Messages du site »"
+
+#: builder/hooks.py
+msgid "Pick one of the forms of the site, or create one in this panel. With the window option the form waits behind a button, and any link to #contact opens it."
+msgstr "Choisissez l’un des formulaires du site, ou créez-en un dans ce panneau. Avec l’option « fenêtre », le formulaire est caché derrière un bouton, et tout lien vers #contact l’ouvre."
+
+#: builder/hooks.py
+msgid "the identifier of the form to draw; leave it out for the contact form of the site"
+msgstr "l’identifiant du formulaire à afficher, à laisser vide pour le formulaire de contact du site"
+
+#: builder/hooks.py
+msgid "which form to draw: \"simple\" (name, e-mail, message), \"steps\" (the same in two, one question at a time) or \"questions\" (what the request is about, the budget and the timing before the message)"
+msgstr "quel formulaire afficher : \"simple\" (nom, e-mail, message), \"steps\" (les mêmes champs en deux étapes, une question à la fois) ou \"questions\" (le sujet de la demande, le budget et le délai, avant le message)"
