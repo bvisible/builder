@@ -116,8 +116,6 @@ class EditorDemo:
 				"Builder Page Client Script",
 				filters={"parent": self.page.name, "parenttype": "Builder Page"},
 				fields=["builder_script.script_type as script_type", "builder_script.script as script"],
-				# //// Neoffice — qualified: on frappe v15 the join with Builder Client Script makes a bare
-				# //// "idx" ambiguous (error 1052), and the demo failed to open on every opted-in page.
 				order_by="`tabBuilder Page Client Script`.idx",
 			),
 		}

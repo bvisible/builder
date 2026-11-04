@@ -1,5 +1,3 @@
-import frappe
-
 app_name = "builder"
 app_title = "Frappe Builder"
 app_publisher = "Frappe Technologies Pvt Ltd"
@@ -407,17 +405,6 @@ scheduler_events = {
 # "builder.auth.validate"
 # ]
 
-try:
-	builder_path = frappe.conf.builder_path or "builder"
-except RuntimeError:
-	# frappe.conf is unbound when hooks are imported without a site,
-	# as done by `bench generate-pot-file --app builder`.
-	builder_path = "builder"
-website_route_rules = [
-	{"from_route": f"/{builder_path}/<path:app_path>", "to_route": "_builder"},
-	{"from_route": f"/{builder_path}", "to_route": "_builder"},
-]
-
 website_path_resolver = "builder.builder.doctype.builder_page.builder_page.resolve_path"
 # //// Neoffice — a list: SiteIconRenderer answers /favicon.ico and /site-icon.png (site_icon.py),
 # //// first so the Builder page lookup never runs for them. Upstream: the Builder renderer alone.
@@ -440,7 +427,8 @@ add_to_apps_screen = [
 		# //// Neoffice — the apps screen shows the Neoffice Website icon, not the Frappe Builder logo.
 		"logo": "/assets/builder/icon-builder-website.jpg",
 		"title": "Builder",
-		"route": f"/{builder_path}",
+		# builder_path is per-site config, a hook value is shared by every site on the bench
+		"route": "/api/method/builder.api.open_editor",
 		"has_permission": "builder.api.check_app_permission",
 	}
 ]
