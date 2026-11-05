@@ -26,7 +26,7 @@ def get_context(context):
 	# //// Builder Page write permission): frappe renders its 403 page. A Guest goes straight
 	# //// to the login page the router would have sent them to, without loading the app.
 	if frappe.session.user == "Guest":
-		frappe.local.flags.redirect_location = f"/login?redirect-to=/{builder_path}"
+		frappe.local.flags.redirect_location = f"/login?redirect-to=/{context.builder_path}"
 		raise frappe.Redirect
 	if not frappe.has_permission("Builder Page", "write"):
 		raise frappe.PermissionError(frappe._("You do not have permission to use the site builder"))
