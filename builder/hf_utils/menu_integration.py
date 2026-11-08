@@ -44,12 +44,15 @@ def update_menu_after_page_creation(page_doc, add_to_menu: bool = True):
 
 	label = page_doc.page_title or page_doc.page_name
 
-	config.append("menu_items", {
-		"label": label,
-		"url": url,
-		"is_external": False,
-		"open_in_new_tab": False,
-	})
+	config.append(
+		"menu_items",
+		{
+			"label": label,
+			"url": url,
+			"is_external": False,
+			"open_in_new_tab": False,
+		},
+	)
 	config.save(ignore_permissions=True)
 
 	return {
@@ -91,12 +94,15 @@ def update_menu_from_generated_pages(pages: list[dict]):
 
 		label = page.get("menu_label") or page.get("title", "Page")
 
-		config.append("menu_items", {
-			"label": label,
-			"url": url,
-			"is_external": False,
-			"open_in_new_tab": False,
-		})
+		config.append(
+			"menu_items",
+			{
+				"label": label,
+				"url": url,
+				"is_external": False,
+				"open_in_new_tab": False,
+			},
+		)
 		added.append({"label": label, "url": url})
 
 	if added:
@@ -124,7 +130,7 @@ def sync_menu_with_pages(replace: bool = False):
 		"Builder Page",
 		filters={"published": 1},
 		fields=["name", "page_title", "route"],
-		order_by="modified desc"
+		order_by="modified desc",
 	)
 
 	if replace:
@@ -143,12 +149,15 @@ def sync_menu_with_pages(replace: bool = False):
 			continue
 
 		label = page.page_title or page.name
-		config.append("menu_items", {
-			"label": label,
-			"url": url,
-			"is_external": False,
-			"open_in_new_tab": False,
-		})
+		config.append(
+			"menu_items",
+			{
+				"label": label,
+				"url": url,
+				"is_external": False,
+				"open_in_new_tab": False,
+			},
+		)
 		added.append(url)
 		existing_urls.add(url)
 
@@ -175,13 +184,21 @@ def sync_from_website_settings(doc, method):
 		config = frappe.get_single("Website Header Footer Config")
 		config._syncing = True
 		config.menu_items = []
-		for item in (doc.top_bar_items or []):
-			config.append("menu_items", {
-				"label": item.label,
-				"url": item.url,
-				"is_external": 0,
-				"open_in_new_tab": item.get("open_in_new_tab", 0),
-			})
+		for item in doc.top_bar_items or []:
+			config.append(
+				"menu_items",
+				{
+					"label": item.label,
+					"url": item.url,
+					"is_external": 0,
+					"open_in_new_tab": item.get("open_in_new_tab", 0),
+				},
+			)
+		if not config.get("header_layout"):
+			# A site that never configured the chrome keeps an empty layout (a Single's default is not written
+			# to a record saved before the field existed), and site_chrome reads that as "keep frappe's navbar".
+			# The menu is still kept in step; filling the layout here would redecorate the site.
+			config.flags.ignore_mandatory = True
 		config.save(ignore_permissions=True)
 	except Exception:
 		frappe.log_error("Menu sync from Website Settings failed", frappe.get_traceback())
