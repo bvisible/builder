@@ -172,3 +172,17 @@ class TestAPageCarriesThePointOfItsMap(unittest.TestCase):
 
 if __name__ == "__main__":
 	unittest.main()
+
+
+class TestAPinnedMapIsStillAComponent(unittest.TestCase):
+	"""The point a page is given beside its map must not make the map a stranger to the catalogue. `pin_maps` writes `lat` and `lon`,
+	the template reads them, and the catalogue did not declare them: `lawful_tag` refused every generated map, so the editor drew no map of
+	any generated site and its picker could not change one (2026-11-08)."""
+
+	def test_the_tag_a_built_page_carries_is_lawful(self):
+		from builder.site_ai import components
+
+		block = holder(include('{% set address = "Rue 1, 1950 Sion" %}', '{% set height = "400px" %}'))
+		with patch.object(osm_map, "geocode_address", return_value=[46.2, 7.35]):
+			osm_map.pin_maps([block])
+		self.assertIsNotNone(components.lawful_tag(block["innerHTML"]))

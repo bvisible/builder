@@ -169,11 +169,12 @@ const getComponentName = (block: Block) => {
 	}
 	if (block.isText() || block.isLink() || block.isButton()) {
 		return TextBlock;
-	} else if (block.isHTML()) {
-		return BlockHTML;
-		//// Neoffice — a component's tag draws a card instead of an empty div (see isComponentTagBlock above)
+		//// Neoffice — a component's tag draws a card instead of an empty div (see isComponentTagBlock above). Asked before
+		//// isHTML: an "Embed HTML" block that holds nothing but a tag is the component too, and was drawn as its Jinja text (2026-11-08)
 	} else if (isComponentTagBlock(block)) {
 		return ComponentTagBlock;
+	} else if (block.isHTML()) {
+		return BlockHTML;
 	} else {
 		return block.getTag();
 	}

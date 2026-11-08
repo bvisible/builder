@@ -290,6 +290,11 @@ website_components = [
 			# //// It passed the "declared parameter exists in the template" test because the string
 			# //// map_address does appear there — as the template's own local variable.
 			{"name": "address", "label": "Another address", "type": "str", "default": "", "about": "another address than the business's"},
+			# //// Neoffice — the point, declared (2026-11-08): osm_map.pin_maps writes lat and lon beside every map of a built page and the
+			# //// template reads them, but the catalogue did not know them, so lawful_tag refused every generated map and the editor could
+			# //// neither draw nor change one. Empty, the template looks the address up.
+			{"name": "lat", "label": "Latitude", "type": "str", "default": "", "about": "the latitude of the point; empty, the address is looked up"},
+			{"name": "lon", "label": "Longitude", "type": "str", "default": "", "about": "the longitude of the point; empty, the address is looked up"},
 		],
 	},
 	{
