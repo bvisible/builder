@@ -85,10 +85,13 @@
 				     //// so the editor shows it too, greyed and inert — otherwise what you design is not what ships
 				     //// (9b804199, 5233329b). -->
 				<!-- Editor Header Preview -->
+				<!-- //// Neoffice — zIndex: a Floating or Transparent header gives its height back to the page (a negative
+				     //// margin, header_styles.html) and sits over the first section; without it that section painted over the
+				     //// bar and the editor showed no header at all (2026-11-08). -->
 				<div
 					v-if="configuredHeaderHtml?.configured && showBlocks"
 					class="editor-preview-block editor-header-preview pointer-events-none relative opacity-60"
-					:style="{ borderBottom: '2px dashed var(--outline-gray-3)' }">
+					:style="{ borderBottom: '2px dashed var(--outline-gray-3)', zIndex: 1 }">
 					<component :is="'style'" v-if="configuredHeaderHtml.css">{{ configuredHeaderHtml.css }}</component>
 					<div v-html="configuredHeaderHtml.html"></div>
 					<div class="absolute bottom-2 right-2 z-10 rounded bg-surface-gray-2 px-2 py-0.5 text-xs text-ink-gray-5">

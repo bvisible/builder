@@ -591,6 +591,15 @@ def _editor_chrome_config(website_profile=None):
 	return get_header_footer_config()
 
 
+# //// Neoffice — the editor writes the css of its previews into a <style> element of its own. The template's
+# //// <style> tags, left in, were read as the selector of the first rule, and that rule was dropped: the :root
+# //// colours of the header, so the editor drew every header without its own colours (2026-11-08).
+def style_text(css: str) -> str:
+	"""The CSS inside the <style> elements of a rendered template, for a caller that writes it into its own <style>."""
+	blocks = re.findall(r"<style\b[^>]*>(.*?)</style\s*>", css or "", flags=re.S | re.I)
+	return "\n".join(blocks) if blocks else (css or "")
+
+
 @frappe.whitelist()
 # //// Neoffice — allow_guest dropped + builder role required. BuilderCanvas.vue calls
 # //// this from the editor, so the door stays; nobody outside the editor needs it.
@@ -608,7 +617,7 @@ def get_editor_header_html(website_profile=None):
 		return {"configured": False, "html": "", "css": ""}
 
 	html = render_header(config)
-	css = get_header_css(config)
+	css = style_text(get_header_css(config))  # //// Neoffice — bare CSS, see style_text
 
 	return {
 		"configured": True,
@@ -633,7 +642,9 @@ def get_editor_footer_html(website_profile=None):
 		return {"configured": False, "html": "", "css": ""}
 
 	html = render_footer(config)
-	css = get_footer_css()
+	# //// Neoffice — bare CSS (see style_text), and the colours of the site being edited: without the config the
+	# //// footer took the colours of the site the editor was opened on, the main site for a secondary one
+	css = style_text(get_footer_css(config))
 
 	return {
 		"configured": True,
