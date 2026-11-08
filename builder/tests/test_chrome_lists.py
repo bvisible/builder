@@ -7,11 +7,17 @@ import unittest
 HERE = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 
 
-def _selects(doctype_folder: str) -> dict[str, list[str]]:
+def _fields(doctype_folder: str) -> list[dict]:
 	path = os.path.join(HERE, "builder", "doctype", doctype_folder, f"{doctype_folder}.json")
 	with open(path) as f:
-		fields = json.load(f)["fields"]
-	return {f["fieldname"]: (f.get("options") or "").split("\n") for f in fields if f.get("fieldtype") == "Select"}
+		return json.load(f)["fields"]
+
+
+def _selects(doctype_folder: str) -> dict[str, list[str]]:
+	fields = _fields(doctype_folder)
+	return {
+		f["fieldname"]: (f.get("options") or "").split("\n") for f in fields if f.get("fieldtype") == "Select"
+	}
 
 
 class TestTwinLists(unittest.TestCase):
@@ -26,3 +32,24 @@ class TestTwinLists(unittest.TestCase):
 			if name in variant and set(options) - set(variant[name])
 		}
 		self.assertEqual(missing, {})
+
+	def test_a_profile_has_every_field_the_site_has(self):
+		"""A field the Variant lacks is a setting every secondary site loses in silence: the
+		bootstrap copies only the Variant's own fields, and a save sets the value without a column
+		to keep it. The header style and its scroll behaviour were missing for three months, and
+		the style a brief chose for a secondary site ("Transparent", "Floating") never reached it
+		(2026-11-08)."""
+		site = {f["fieldname"] for f in _fields("website_header_footer_config")}
+		variant = {f["fieldname"] for f in _fields("website_header_footer_variant")}
+		self.assertEqual(sorted(site - variant), [])
+
+	def test_a_profile_field_says_what_the_site_field_says(self):
+		"""Same type, same default: a Variant bootstrapped from the Single, or a value written on
+		both by a brief, means the same thing on either side."""
+		site = {f["fieldname"]: f for f in _fields("website_header_footer_config")}
+		variant = {f["fieldname"]: f for f in _fields("website_header_footer_variant")}
+		differing = {
+			name: [key for key in ("fieldtype", "default") if site[name].get(key) != variant[name].get(key)]
+			for name in site.keys() & variant.keys()
+		}
+		self.assertEqual({name: keys for name, keys in differing.items() if keys}, {})

@@ -16,7 +16,9 @@
   "header_tab",
   "header_section",
   "header_layout",
+  "header_style",
   "sticky_header",
+  "header_scroll",
   "header_height",
   "header_border",
   "column_break_header_1",
@@ -233,11 +235,27 @@
    "reqd": 1
   },
   {
+   "default": "Classic",
+   "description": "Classic: full-width bar. Floating: detached, rounded, above the content. Transparent: blends into the hero, solid once scrolled. Minimal: no background, no border.",
+   "fieldname": "header_style",
+   "fieldtype": "Select",
+   "label": "Header style",
+   "options": "Classic\nFloating\nTransparent\nMinimal"
+  },
+  {
    "default": "1",
    "description": "Header stays fixed at top when scrolling",
    "fieldname": "sticky_header",
    "fieldtype": "Check",
    "label": "Sticky Header"
+  },
+  {
+   "default": "Hide going down",
+   "description": "Always visible: the bar never moves. Hide going down: it slips away as you read and comes back the moment you scroll up. Shrink: it stays, but slimmer.",
+   "fieldname": "header_scroll",
+   "fieldtype": "Select",
+   "label": "On scroll",
+   "options": "Always visible\nHide going down\nShrink"
   },
   {
    "default": "Standard",
@@ -1139,7 +1157,7 @@
  "index_web_pages_for_search": 1,
  "issingle": 0,
  "links": [],
- "modified": "2026-11-02 21:40:00.000000",
+ "modified": "2026-11-08 16:00:00.000000",
  "modified_by": "Administrator",
  "module": "Builder",
  "name": "Website Header Footer Variant",
