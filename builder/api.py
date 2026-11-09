@@ -1118,6 +1118,13 @@ def duplicate_page(page_name: str):
 # page from it. Point at the hub via `template_hub_url` in the site config (or
 # common_site_config for the whole bench).
 DEFAULT_HUB_URL = "https://preview.frappe.cloud"
+# //// Neoffice — added constants for get_template_groups below (see the note there): how long a
+# //// failed hub call is remembered (as long as a good answer is cached, 600 s) and how often
+# //// the failure is written to the Error Log.
+TEMPLATE_HUB_DOWN_KEY = "builder:template_hub_down"
+TEMPLATE_HUB_DOWN_SECONDS = 600
+TEMPLATE_HUB_ERROR_LOGGED_KEY = "builder:template_hub_error_logged"
+TEMPLATE_HUB_ERROR_LOG_SECONDS = 3600
 
 
 def hub_url() -> str:
@@ -1145,10 +1152,25 @@ def hub_get(method: str, **params):
 def get_template_groups() -> list[dict]:
 	"""Template groups for the picker, fetched live from the hub. Empty (just
 	Blank page) if the hub is unreachable."""
+	# //// Neoffice — upstream (v1.35+) prefetches the gallery at every opening of the editor
+	# //// and of the dashboard. A hub that cannot answer (unreachable, or a server without the
+	# //// builder_hub app: HTTP 417) is never cached, so every page load called it again and
+	# //// wrote two Error Log rows (ours, plus the one frappe's make_request writes with the
+	# //// stack). The gallery stays empty either way, so a failure is remembered for
+	# //// TEMPLATE_HUB_DOWN_SECONDS (the hub is not called meanwhile) and our own row is
+	# //// written at most once an hour. Remove when upstream stops logging on every failure.
+	cache = frappe.cache()
+	down_key = f"{TEMPLATE_HUB_DOWN_KEY}:{hub_url()}"
+	if cache.get_value(down_key):
+		return []
 	try:
 		return hub_get("get_catalog") or []  # type: ignore[return-value]
 	except Exception:
-		frappe.log_error("Failed to fetch templates from hub")
+		# //// Neoffice — remember the failure, and log it once an hour only (see the note above).
+		cache.set_value(down_key, 1, expires_in_sec=TEMPLATE_HUB_DOWN_SECONDS)
+		if not cache.get_value(TEMPLATE_HUB_ERROR_LOGGED_KEY):
+			frappe.log_error("Failed to fetch templates from hub")
+			cache.set_value(TEMPLATE_HUB_ERROR_LOGGED_KEY, 1, expires_in_sec=TEMPLATE_HUB_ERROR_LOG_SECONDS)
 		return []
 
 
