@@ -19,6 +19,9 @@ import frappe
 from builder.ai.agent import pending
 from builder.ai.agent.registry import Tool
 
+# //// Neoffice — which site the agent's reads belong to (neoffice-maintenance#474)
+from builder.ai.agent.tools import site_scope
+
 logger = frappe.logger("builder.ai.agent.data")
 logger.setLevel(logging.INFO)
 
@@ -67,12 +70,22 @@ def query_records(ctx, args: dict) -> str:
 	fields = args.get("fields") or ["name"]
 	filters = args.get("filters") if isinstance(args.get("filters"), dict) else {}
 	limit = min(int(args.get("limit") or 20), 100)
+	# //// Neoffice — an instance can host several sites and its Builder Pages are all visible here.
+	# //// With a site resolved, the pages of ANOTHER site come back marked `belongs_to_another_site`
+	# //// (labelled, not hidden: "why does this route answer elsewhere?" needs them), so the model
+	# //// cannot take them for its own (neoffice-maintenance#474). No site resolved: unchanged.
+	site, owner_added = site_scope.scope_listing(ctx, dt, fields, filters)
 	try:
 		# get_list, not get_all — reads answer with the session user's permissions.
-		rows = frappe.get_list(dt, filters=filters, fields=fields, limit=limit)
+		# //// Neoffice — the owner column rides along when the rows must be labelled (#474)
+		query_fields = [*fields, site_scope.PROFILE_FIELD] if owner_added else fields
+		rows = frappe.get_list(dt, filters=filters, fields=query_fields, limit=limit)
 	except Exception as e:
 		return json.dumps({"error": str(e)})
 	meta = frappe.get_meta(dt)
+	if site:
+		# //// Neoffice — mark the rows owned by another site (#474)
+		rows = site_scope.label_rows(rows, site, drop_owner_field=owner_added)
 	return json.dumps([truncate_record(dt, meta, dict(r)) for r in rows], default=str)
 
 

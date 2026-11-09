@@ -615,6 +615,20 @@ class AgentRunner:
 				f" The user is viewing it in {self.canvas_theme} mode in the editor, so what they "
 				f"describe seeing is the {self.canvas_theme}-mode rendering."
 			)
+		# //// Neoffice — an instance can host several sites. When the open page belongs to one, say so,
+		# //// and say that a page the tools mark as another site's is not this site's to change: the
+		# //// agent once told the operator to delete another client's home page (neoffice-maintenance#474).
+		# //// Nothing is added when no site resolves, so a one-site instance's prompt is unchanged.
+		from builder.ai.agent.tools import site_scope
+
+		if site := site_scope.current_profile(self):
+			context += (
+				f" This page belongs to the site '{site}'; the instance may host other sites. A page the "
+				f"tools mark `{site_scope.OTHER_SITE_KEY}`, or that read_page says belongs to another "
+				"site, is NOT part of this site: never propose to change, move or delete it, never name "
+				"its id in an instruction to the user, and never treat a route or title it shares with "
+				"this site's pages as something to clear by touching it."
+			)
 		return context
 
 	def build_memory_context(self) -> str:

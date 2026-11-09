@@ -25,6 +25,9 @@ from builder.ai.agent.selectors import (
 	render_skeleton,
 	walk_blocks,
 )
+
+# //// Neoffice — which site the agent's reads belong to (neoffice-maintenance#474)
+from builder.ai.agent.tools import site_scope
 from builder.ai.block_codec import BlockCodec
 from builder.utils import to_compact_yaml
 
@@ -155,7 +158,9 @@ read_block = Tool(
 MAX_PAGE_READS_PER_TURN = 3  # each read is thousands of tokens — bound a sweep of the whole site
 
 
-def resolve_page_reference(ref: str) -> tuple[str | None, str]:
+# //// Neoffice — `ctx` added: the site the agent works for decides which page a shared route or
+# //// title means (neoffice-maintenance#474). Callers without a context get the unscoped lookups.
+def resolve_page_reference(ref: str, ctx=None) -> tuple[str | None, str]:
 	"""A page named ANY way users name pages — doc id, route, page title, or a
 	pasted URL (editor link or published address) — resolved to a Builder Page id.
 	Uniform addressing keeps ONE general read tool instead of a tool per shape.
@@ -183,6 +188,19 @@ def resolve_page_reference(ref: str) -> tuple[str | None, str]:
 	# route — published, most recently touched — is the one a reference means.
 	prefer_live = "published desc, modified desc"
 	bare = ref.lstrip("/")
+	# //// Neoffice — two sites of one instance often share a route ("/") or a title ("Accueil"):
+	# //// the lookups below would answer with whichever page is the more recently touched, i.e.
+	# //// silently with the OTHER site's. With a site resolved, this site's own pages are asked
+	# //// first, then the shared (untagged) ones; another site's page only answers when this site
+	# //// has none (a diagnosis may need it, and read_page then says whose it is). An id given
+	# //// above stays resolvable. No site resolved: the lookups below, unchanged (#474).
+	if site := site_scope.current_profile(ctx):
+		for scope in site_scope.own_site_filters(site):
+			for lookup in ({"route": ("in", (bare, f"/{bare}"))}, {"page_title": ref}):
+				if names := frappe.get_all(
+					"Builder Page", filters={**lookup, **scope}, order_by=prefer_live, limit=1, pluck="name"
+				):
+					return names[0], ""
 	if name := frappe.db.get_value(
 		"Builder Page", {"route": ("in", (bare, f"/{bare}"))}, order_by=prefer_live
 	):
@@ -193,7 +211,8 @@ def resolve_page_reference(ref: str) -> tuple[str | None, str]:
 
 
 def run_read_page(ctx, args: dict) -> str:
-	page_id, why = resolve_page_reference(args.get("page_id") or "")
+	# //// Neoffice — resolved for the site the agent works for (#474)
+	page_id, why = resolve_page_reference(args.get("page_id") or "", ctx)
 	if page_id is None:
 		return (
 			f"FAILED: {why} — list the site's pages with "
@@ -209,6 +228,11 @@ def run_read_page(ctx, args: dict) -> str:
 
 	title, route = frappe.db.get_value("Builder Page", page_id, ["page_title", "route"])
 	label = f"Page '{title or page_id}' (route: {route})"
+	# //// Neoffice — a page of ANOTHER site is read-only reference and nothing more: the model must
+	# //// not mistake it for this site's own, nor name it in a change or a deletion. The warning
+	# //// opens every shape of the answer, and the generation step's reference reads (#474).
+	if owner := site_scope.other_site_of(page_id, ctx):
+		label = f"{other_site_warning(owner)}\n{label}"
 	root = load_page_root(page_id)
 	if root is None:
 		return f"{label} has no blocks yet."
@@ -231,6 +255,16 @@ def run_read_page(ctx, args: dict) -> str:
 		sections = (f"{label}:", layout_scaffold(root), digest, fonts_missing, components)
 		reads.append("\n".join(section for section in sections if section))
 	return "\n".join(parts)
+
+
+# //// Neoffice — added (#474): the line that opens a read of another site's page
+def other_site_warning(owner: str) -> str:
+	"""The line that opens a read of a page tagged for another site (neoffice-maintenance#474)."""
+	return (
+		f"THIS PAGE BELONGS TO ANOTHER SITE ({owner}): it is not part of the site you are working on. "
+		"Read-only reference: never propose to change, move or delete it, and never name its id in an "
+		"instruction to the user."
+	)
 
 
 # A reference read is a ONE-TIME tool result, not per-round context — it affords a

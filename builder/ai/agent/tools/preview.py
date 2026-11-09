@@ -126,7 +126,8 @@ def run_preview_page(ctx, args: dict) -> str:
 
 	page_id = ctx.page_id
 	if ref := (args.get("page_id") or "").strip():
-		page_id, why = resolve_page_reference(ref)
+		# //// Neoffice — resolved for the site the agent works for (neoffice-maintenance#474)
+		page_id, why = resolve_page_reference(ref, ctx)
 		if page_id is None:
 			return f"FAILED: {why}."
 	if not page_id or not frappe.db.exists("Builder Page", page_id):
