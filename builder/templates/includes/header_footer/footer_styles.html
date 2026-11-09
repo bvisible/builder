@@ -144,6 +144,10 @@
 }
 
 .site-footer__column-title {
+	/* //// Neoffice — the title is an h2 (an h4 after the page's h1/h2 fails the heading-order
+	   //// audit); the class already pins size, weight, colour and margin, and `line-height:
+	   //// inherit` keeps the theme's h2 line height off it, so it looks as the h4 did. */
+	line-height: inherit;
 	font-size: 0.875rem;
 	font-weight: 600;
 	color: var(--footer-text);
@@ -204,6 +208,8 @@
 }
 
 .site-footer__newsletter-title {
+	/* //// Neoffice — an h2 like the column titles; see .site-footer__column-title. */
+	line-height: inherit;
 	font-size: 0.9375rem;
 	font-weight: 600;
 	color: var(--footer-text);

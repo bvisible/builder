@@ -29,7 +29,7 @@
 			<div class="site-footer__columns">
 				{%- for column_name, links in footer_columns.items() -%}
 				<div class="site-footer__column">
-					<h4 class="site-footer__column-title">{{ column_name }}</h4>
+					<h2 class="site-footer__column-title">{{ column_name }}</h2>
 					<ul class="site-footer__links">
 						{%- for link in links -%}
 						<li>
@@ -47,7 +47,7 @@
 
 			{%- if show_newsletter and config.newsletter_email_group -%}
 			<div class="site-footer__newsletter">
-				<h4 class="site-footer__newsletter-title">{{ newsletter_title or _("Subscribe to our newsletter") }}</h4>
+				<h2 class="site-footer__newsletter-title">{{ newsletter_title or _("Subscribe to our newsletter") }}</h2>
 				<form class="newsletter-form" id="newsletter-form" data-email-group="{{ config.newsletter_email_group }}">
 					<input type="email" name="email" class="newsletter-form__input" id="newsletter-email"
 					       placeholder="{{ newsletter_placeholder or _('Enter your email') }}" required>
@@ -75,7 +75,7 @@
 			<div class="site-footer__columns">
 				{%- for column_name, links in footer_columns.items() -%}
 				<div class="site-footer__column">
-					<h4 class="site-footer__column-title">{{ column_name }}</h4>
+					<h2 class="site-footer__column-title">{{ column_name }}</h2>
 					<ul class="site-footer__links">
 						{%- for link in links -%}
 						<li>
@@ -93,7 +93,7 @@
 
 			{%- if show_newsletter and config.newsletter_email_group -%}
 			<div class="site-footer__newsletter site-footer__newsletter--standard">
-				<h4 class="site-footer__newsletter-title">{{ newsletter_title or _("Subscribe to our newsletter") }}</h4>
+				<h2 class="site-footer__newsletter-title">{{ newsletter_title or _("Subscribe to our newsletter") }}</h2>
 				<form class="newsletter-form" id="newsletter-form" data-email-group="{{ config.newsletter_email_group }}">
 					<input type="email" name="email" class="newsletter-form__input" id="newsletter-email"
 					       placeholder="{{ newsletter_placeholder or _('Enter your email') }}" required>
