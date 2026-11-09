@@ -1343,8 +1343,9 @@ msgstr "Capitaliser"
 
 #. Label of a Section Break field in DocType 'Builder Site Inspiration'
 #: builder/builder/doctype/builder_site_inspiration/builder_site_inspiration.json
+# //// Neoffice — left empty on purpose: the core (frappe) says "Capture" as "Capturer", and the desk keeps ONE word per msgid across apps, so an identity entry here replaced it on every screen (neoffice-maintenance#1651)
 msgid "Capture"
-msgstr "Capture"
+msgstr ""
 
 #. Label of a Datetime field in DocType 'Builder Site Inspiration'
 #: builder/builder/doctype/builder_site_inspiration/builder_site_inspiration.json
@@ -1735,8 +1736,9 @@ msgid "Concept"
 msgstr "Concept"
 
 #: frontend/src/components/BlockPropertySections/OptionsSection.ts:30
+# //// Neoffice — left empty on purpose: the core (frappe and erpnext) says "Condition" as "Conditions", and the desk keeps ONE word per msgid across apps, so an identity entry here replaced it on every screen (neoffice-maintenance#1651)
 msgid "Condition"
-msgstr "Condition"
+msgstr ""
 
 #. Description of the 'Icons & Search' (Section Break) field in DocType
 #. 'Website Header Footer Config'
@@ -2395,8 +2397,9 @@ msgid "Dimensions"
 msgstr "Dimensions"
 
 #: frontend/src/components/BlockFlexLayoutHandler.vue:6
+# //// Neoffice — left empty on purpose: the core (neoffice_theme) says "Direction" as "Sens", and the desk keeps ONE word per msgid across apps, so an identity entry here replaced it on every screen (neoffice-maintenance#1651)
 msgid "Direction"
-msgstr "Direction"
+msgstr ""
 
 #: builder/builder/doctype/builder_settings/builder_settings.json
 #: frontend/src/components/Settings/GlobalGeneral.vue:77
@@ -4240,8 +4243,9 @@ msgid "Internal tool / dashboard"
 msgstr "Outil interne / tableau de bord"
 
 #: frontend/src/components/BlogManager.vue:146
+# //// Neoffice — left empty on purpose: the core (frappe) says "Intro" as "Introduction", and the desk keeps ONE word per msgid across apps, so an identity entry here replaced it on every screen (neoffice-maintenance#1651)
 msgid "Intro"
-msgstr "Intro"
+msgstr ""
 
 #: builder/api.py:326
 #: builder/api.py:2204
@@ -4338,8 +4342,9 @@ msgstr "Largeur de l'élément"
 
 #: frontend/src/components/PageClientScriptManager.vue:75
 #: frontend/src/components/PageScript.vue:193
+# //// Neoffice — left empty on purpose: the core (frappe) says "JavaScript" as "Javascript", and the desk keeps ONE word per msgid across apps, so an identity entry here replaced it on every screen (neoffice-maintenance#1651)
 msgid "JavaScript"
-msgstr "JavaScript"
+msgstr ""
 
 #. Label of a Code field in DocType 'Builder AI Shortcode'
 #: builder/builder/doctype/builder_ai_shortcode/builder_ai_shortcode.json
@@ -5242,8 +5247,9 @@ msgstr "Nouveau token créé"
 #. Label of a Section Break field in DocType 'Website Header Footer Variant'
 #: builder/builder/doctype/website_header_footer_config/website_header_footer_config.json
 #: builder/builder/doctype/website_header_footer_variant/website_header_footer_variant.json
+# //// Neoffice — left empty on purpose: the core (frappe) says "Newsletter" as "Bulletin d'information", and the desk keeps ONE word per msgid across apps, so an identity entry here replaced it on every screen (neoffice-maintenance#1651)
 msgid "Newsletter"
-msgstr "Newsletter"
+msgstr ""
 
 #. Label of a Data field in DocType 'Website Header Footer Config'
 #. Label of a Data field in DocType 'Website Header Footer Variant'
@@ -5590,8 +5596,9 @@ msgstr "Remarque : les scripts de bloc sont exécutés dans un environnement en
 
 #. Label of a Section Break field in DocType 'Builder Site Inspiration'
 #: builder/builder/doctype/builder_site_inspiration/builder_site_inspiration.json
+# //// Neoffice — left empty on purpose: the core (erpnext) says "Notes" as "Remarques", and the desk keeps ONE word per msgid across apps, so an identity entry here replaced it on every screen (neoffice-maintenance#1651)
 msgid "Notes"
-msgstr "Notes"
+msgstr ""
 
 #: frontend/src/components/MediaLibrary.vue:148
 msgid "Nowhere — safe to delete."
@@ -6883,8 +6890,9 @@ msgstr "Robots"
 
 #: frontend/src/components/Settings/index.ts:111
 #: frontend/src/components/Settings/index.ts:113
+# //// Neoffice — left empty on purpose: the core (frappe) says "Robots.txt" as "robots.txt", and the desk keeps ONE word per msgid across apps, so an identity entry here replaced it on every screen (neoffice-maintenance#1651)
 msgid "Robots.txt"
-msgstr "Robots.txt"
+msgstr ""
 
 #: frontend/src/components/Settings/PageRobots.vue:30
 msgid "Robots.txt Guide"
@@ -9852,8 +9860,9 @@ msgstr "Vous êtes prêt{0}. Choisissez un point de départ"
 
 #: frontend/src/pages/PagePersonaSurvey.vue:116
 #: frontend/src/components/Settings/GlobalSocial.vue:54
+# //// Neoffice — left empty on purpose: the core (frappe and erpnext) says "YouTube" as "Youtube", and the desk keeps ONE word per msgid across apps, so an identity entry here replaced it on every screen (neoffice-maintenance#1651)
 msgid "YouTube"
-msgstr "YouTube"
+msgstr ""
 
 #. Label of a Data field in DocType 'Website Header Footer Config'
 #. Label of a Data field in DocType 'Website Header Footer Variant'

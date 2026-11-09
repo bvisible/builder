@@ -1419,8 +1419,9 @@ msgid "Doctype name is required"
 msgstr "DocType-Name ist erforderlich"
 
 #: frontend/src/components/Settings/TopReferrersList.vue:12
+# //// Neoffice — left empty on purpose: the core (frappe) says "Domain" as "Domäne", and the desk keeps ONE word per msgid across apps, so an identity entry here replaced it on every screen (neoffice-maintenance#1651)
 msgid "Domain"
-msgstr "Domain"
+msgstr ""
 
 #: frontend/src/components/Settings/GlobalDomains.vue:177
 #: frontend/src/components/Settings/GlobalDomains.vue:192

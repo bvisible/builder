@@ -1,0 +1,15 @@
+# //// Neoffice — added file (no upstream equivalent): read by the night translator (neoffice-ci scripts/translate_po.py).
+# Left empty on purpose (neoffice-maintenance#1651): the core apps of the bench already translate these bare msgids, and
+# Frappe keeps ONE word per msgid across apps (the last app loaded wins), so a catalogue entry of ours that says the
+# English word again replaces the core's French or German word on every screen of the desk. The night must not fill
+# them. A human's translation of them is never touched.
+Capture
+Condition
+Direction
+Intro
+JavaScript
+Newsletter
+Notes
+Robots.txt
+YouTube
+Domain
