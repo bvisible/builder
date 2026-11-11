@@ -123,12 +123,32 @@ def _headers():
     return {"Authorization": f"Bearer {key}"}
 
 
+# //// Neoffice — every call names its own output (neoffice-maintenance#2052). The workflows saved under a
+# //// fixed prefix ("gen", "cutout", "upscaled") and ComfyUI numbered the files itself: two site builds
+# //// generating at once on one instance got the SAME bytes back for two different prompts (osiris, 31.10:
+# //// two File rows with one content hash, 9 s and 2 s apart, a loaf of bread on a coffee roaster's page),
+# //// and nothing on our side tells two calls apart but that file name. Each call now saves under a prefix
+# //// of its own, and only a picture carrying it is taken: another call's picture is refused (the image
+# //// worker then leaves the slot to its placeholder) instead of landing in the wrong site.
+def _own_output_prefix(workflow: dict) -> str:
+    """Give the workflow's SaveImage nodes a prefix no other call shares; return it."""
+    prefix = ""
+    for node in workflow.values():
+        if node.get("class_type") == "SaveImage":
+            kind = node["inputs"].get("filename_prefix") or "image"
+            prefix = prefix or f"{kind}_{frappe.generate_hash(length=12)}"
+            node["inputs"]["filename_prefix"] = prefix
+    return prefix
+
+
 def _run_workflow(workflow: dict) -> bytes:
     """Queue a workflow and return the first output image's bytes."""
     base, key = _settings()
     if not base or not key:
         raise RuntimeError("ComfyUI not configured (set comfyui_url and comfyui_api_key)")
 
+    workflow = copy.deepcopy(workflow)
+    prefix = _own_output_prefix(workflow)
     pid = requests.post(
         f"{base}/prompt",
         headers={**_headers(), "Content-Type": "application/json"},
@@ -158,11 +178,14 @@ def _run_workflow(workflow: dict) -> bytes:
                 )
             for node in hist[pid].get("outputs", {}).values():
                 for im in node.get("images", []):
+                    # //// Neoffice — only this call's own picture (see _own_output_prefix)
+                    if prefix and not str(im.get("filename") or "").startswith(prefix + "_"):
+                        continue
                     q = f"filename={im['filename']}&subfolder={im.get('subfolder', '')}&type={im.get('type', 'output')}"
                     resp = requests.get(f"{base}/view?{q}", headers=_headers(), timeout=60)
                     if resp.ok and resp.content:
                         return resp.content
-            raise RuntimeError("ComfyUI finished with no output image")
+            raise RuntimeError("ComfyUI finished with no output image of this call")
         time.sleep(1)
     raise TimeoutError("ComfyUI generation timed out")
 
