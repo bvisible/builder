@@ -41,6 +41,17 @@ class TestProbesParse(unittest.TestCase):
 		self.assertIn("[data-neo-honeypot]", LAYOUT_PROBE)
 		self.assertIn("r.right < -500", LAYOUT_PROBE)
 
+	def test_the_layout_probe_reads_overlapping_and_cut_words(self):
+		# a section number drawn over its heading and a caption cut in a fixed-width box, on a phone: two
+		# defects nothing measured (neoffice-maintenance#1750). Behaviour is proved in Chromium on a synthetic
+		# page, positive and negative cases (neoffice-devops scripts/nora-eval/probe_control_overlap.py); this
+		# keeps the two rules, and their reading of the glyphs rather than of the element's box, in the probe.
+		from builder.site_ai.inspiration.screenshotter import LAYOUT_PROBE
+
+		self.assertIn("kind: 'overlapping-text'", LAYOUT_PROBE)
+		self.assertIn("kind: 'text-cut'", LAYOUT_PROBE)
+		self.assertIn("getClientRects()", LAYOUT_PROBE)
+
 	def test_the_photo_text_probe_parses(self):
 		from builder.site_ai.inspiration.screenshotter import PHOTO_TEXT_PROBE
 

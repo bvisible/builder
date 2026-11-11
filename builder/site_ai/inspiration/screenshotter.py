@@ -561,6 +561,65 @@ LAYOUT_PROBE = r"""
     if (rest < 40 && r.height > 24) out.push({kind: 'heading-over-nothing', severity: 'high', where: 'section "' + (heads.length ? text(heads[0]) : all.slice(0, 40)) + '"', detail: 'the section is ' + (heads.length ? 'its heading' : 'a label') + ' and nothing else (' + Math.max(0, rest) + ' characters under it, ' + Math.round(r.height) + 'px tall): the content it announces never rendered — a repeater without data, or a section left unwritten; write the content inline or drop the section'});
   }
 
+  // //// Neoffice — 7 and 8 added (neoffice-maintenance#1750): two defects a phone showed on pages of the local
+  // //// model and nothing measured. A section number drawn over the first line of its heading, and a caption
+  // //// cut on both sides inside a fixed-width box. Both are read on the glyphs (a Range over the text), not on
+  // //// the element's box: a block p spans its whole column even when its words are three.
+  const range = (el) => { const g = document.createRange(); g.selectNodeContents(el); return g; };
+  const glyphs = (el) => range(el).getBoundingClientRect();
+  // one rectangle per line: two inline texts that wrap side by side share a bounding box, never a line
+  const lines = (el) => [...range(el).getClientRects()].filter(r => r.width > 1 && r.height > 1);
+  // what a visitor sees of an element: a numeral set faint behind a title on purpose is not a defect
+  const shown = (el) => { let o = 1; for (let p = el; p && p !== document.documentElement; p = p.parentElement) o *= parseFloat(getComputedStyle(p).opacity) || 0; const ink = rgba(getComputedStyle(el).color); return o * (ink ? ink.a : 1); };
+  const carousel = (el) => !!el.closest('[class*="carousel"], [class*="slider"], [class*="scroller"], [class*="marquee"]');
+  const words = [...body.querySelectorAll('h1, h2, h3, h4, p, li, a, span, em, strong, div')].filter((el) => {
+    if (chrome(el) || !visible(el) || carousel(el) || el.closest('[data-neo-honeypot]')) return false;
+    if (el.tagName === 'DIV' ? ownText(el).length < 1 : !text(el)) return false;
+    if ([...el.children].some(c => /^(h1|h2|h3|h4|p|div|ul|ol|li|section|table)$/i.test(c.tagName))) return false;
+    const r = glyphs(el);
+    return r.width > 0 && r.height > 0 && r.right > -500 && shown(el) >= 0.5;
+  }).slice(0, 600);
+
+  // 7. two texts drawn over each other: a section number over its heading (an inn's "La carte", 375px, 2026-10-20)
+  let overlaps = 0;
+  const lineSets = words.map(lines);
+  const common = (ra, rb) => {
+    const w = Math.min(ra.right, rb.right) - Math.max(ra.left, rb.left);
+    const h = Math.min(ra.bottom, rb.bottom) - Math.max(ra.top, rb.top);
+    return w > 2 && h > 2 && w * h >= 0.25 * Math.min(ra.width * ra.height, rb.width * rb.height) ? [w, h] : null;
+  };
+  for (let i = 0; i < words.length && overlaps < 4; i++) {
+    const a = words[i];
+    for (let j = i + 1; j < words.length && overlaps < 4; j++) {
+      const b = words[j];
+      if (a.contains(b) || b.contains(a)) continue;
+      let hit = null;
+      for (const ra of lineSets[i]) { for (const rb of lineSets[j]) { hit = common(ra, rb); if (hit) break; } if (hit) break; }
+      if (!hit) continue;
+      const [w, h] = hit;
+      overlaps++;
+      out.push({kind: 'overlapping-text', severity: 'high', where: where(a) + ' / ' + where(b), detail: 'the two texts are drawn over each other (' + Math.round(w) + 'x' + Math.round(h) + 'px in common on a ' + vw + 'px screen): one is placed on top of the other, often an absolutely positioned number or label over a heading; put it in the flow above the heading, or give it the room it covers'});
+    }
+  }
+
+  // 8. a text wider than the box that clips it: a caption cut at both edges of a fixed-width square (an
+  // accounting firm's home, 375px, 2026-10-20). Rule 2 reads element boxes; here the words themselves.
+  let clippedText = 0;
+  for (const el of words) {
+    if (clippedText >= 4) break;
+    if (reported.some(p => p.contains(el) || el.contains(p))) continue;
+    if (getComputedStyle(el).textOverflow === 'ellipsis') continue;  // cut on purpose, with its ellipsis
+    const s = getComputedStyle(el);
+    const c = /hidden|clip/.test(s.overflowX + ' ' + s.overflow) ? {el: el, scrolls: false} : clipper(el);
+    if (!c || c.scrolls) continue;
+    const r = glyphs(el), box = c.el.getBoundingClientRect();
+    const left = box.left - r.left, right = r.right - box.right;
+    if (left <= 2 && right <= 2) continue;
+    if (text(el).length < 3) continue;
+    clippedText++;
+    out.push({kind: 'text-cut', severity: 'high', where: where(el), detail: 'its words span ' + Math.round(r.left) + 'px to ' + Math.round(r.right) + 'px but the box that clips them runs ' + Math.round(box.left) + 'px to ' + Math.round(box.right) + 'px: ' + (left > 2 && right > 2 ? 'cut on both sides' : 'cut at one edge') + ' — a box of fixed width (or a text that does not wrap) narrower than its words; let the box grow with its text, or let the text wrap'});
+  }
+
   // the ground of the page: sections painted dark, for a site that asked for a light ground
   const dark = [];
   for (const sec of body.querySelectorAll('section')) {
