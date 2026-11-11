@@ -312,13 +312,9 @@ class BuilderPage(WebsiteGenerator):
 			return
 		if not self.blocks or self.blocks == "[]":
 			return
-		frappe.enqueue_doc(
-			self.doctype,
-			self.name,
-			"generate_page_preview_image",
-			queue="short",
-			enqueue_after_commit=True,
-		)
+		# //// Neoffice — through enqueue_preview_image(), which queues one job per page and per request
+		# //// (publish() saves, so it came here and then queued a second one, neoffice-maintenance#2368).
+		self.enqueue_preview_image()
 
 
 	def set_route(self):
@@ -547,6 +543,13 @@ class BuilderPage(WebsiteGenerator):
 		self.draft_blocks = None
 
 	def enqueue_preview_image(self):
+		# //// Neoffice — one thumbnail job per page and per request. publish() saves the page, so on_update's
+		# //// ensure_preview() queued a job when the page still had the fallback thumbnail, then publish() queued
+		# //// a second one: the two rendered the same page at once on the shared Chromium, and one of them died
+		# //// waiting for it ("The PDF engine did not respond in time", neoffice-maintenance#2368).
+		if self.flags.get("preview_enqueued"):
+			return
+		self.flags.preview_enqueued = True
 		frappe.enqueue_doc(
 			self.doctype,
 			self.name,
@@ -954,11 +957,25 @@ class BuilderPage(WebsiteGenerator):
 		if not html:
 			html = self.get_preview_html()
 
-		generate_preview(
-			html,
-			local_path,
-		)
+		# //// Neoffice — a thumbnail the engine could not draw is not an error. Upstream let the failure
+		# //// out of the job: every publish of a page whose render timed out on the shared Chromium (a shop
+		# //// page that calls the cart) wrote a failed run_doc_method to the Error Log, plus the engine's own
+		# //// "Timeout waiting for event", and the shop's real errors drowned (neoffice-maintenance#2368).
+		# //// Now the page keeps the thumbnail it had, the rows the failed render wrote go back with the
+		# //// savepoint (the caller's own writes stay), and the miss is a warning in the builder log. A render
+		# //// error of the page itself (get_preview_html above) still raises: visitors would see that one.
+		frappe.db.savepoint("builder_page_preview")
+		try:
+			generate_preview(
+				html,
+				local_path,
+			)
+		except Exception:
+			frappe.db.rollback(save_point="builder_page_preview")
+			frappe.logger("builder").warning(f"Preview of Builder Page {self.name} not drawn", exc_info=True)
+			return False
 		self.db_set("preview", public_path, commit=True, update_modified=False)
+		return True  # //// Neoffice — drawn (False above when the engine could not draw it)
 
 	def get_preview_html(self, color_scheme: str | None = None) -> str:
 		"""Render this page in preview mode (uses draft_blocks when present), so a
