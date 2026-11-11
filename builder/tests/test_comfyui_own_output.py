@@ -115,3 +115,48 @@ class TestComfyUIOwnOutput(unittest.TestCase):
 		):
 			with self.assertRaises(RuntimeError):
 				comfyui_client._run_workflow(json.loads(json.dumps(comfyui_client._WF_GENERATE)))
+
+
+class TestComfyUIPromptIdOutput(unittest.TestCase):
+	"""The fleet's ComfyUI server ignores `filename_prefix` and names every output `<prompt_id>.png` (osiris,
+	11.11.2026, neoffice-maintenance#2573): the own-prefix check alone refused every picture, so no site photo and no
+	logo came back. A file named by this call's prompt id is this call's; another call's is still refused."""
+
+	def run_with_outputs(self, filenames):
+		history = {
+			"p1": {
+				"status": {"status_str": "success"},
+				"outputs": {
+					"10": {
+						"images": [
+							{"filename": name, "subfolder": "", "type": "output"} for name in filenames
+						]
+					}
+				},
+			}
+		}
+		served = []
+
+		def get(url, **kw):
+			if "/history/" in url:
+				return Response(history)
+			name = url.split("filename=", 1)[1].split("&", 1)[0]
+			served.append(name)
+			return Response(content=f"bytes of {name}".encode())
+
+		with (
+			patch.object(comfyui_client, "_settings", return_value=("https://comfy.test", "key")),
+			patch.object(comfyui_client.requests, "post", return_value=Response({"prompt_id": "p1"})),
+			patch.object(comfyui_client.requests, "get", side_effect=get),
+		):
+			result = comfyui_client._run_workflow(json.loads(json.dumps(comfyui_client._WF_GENERATE)))
+		return result, served
+
+	def test_a_picture_named_by_its_own_prompt_id_is_taken(self):
+		result, served = self.run_with_outputs(["p1.png"])
+		self.assertEqual(result, b"bytes of p1.png")
+		self.assertEqual(served, ["p1.png"])
+
+	def test_a_picture_named_by_another_prompt_id_is_still_refused(self):
+		with self.assertRaises(RuntimeError):
+			self.run_with_outputs(["p2.png"])

@@ -141,6 +141,19 @@ def _own_output_prefix(workflow: dict) -> str:
     return prefix
 
 
+# //// Neoffice — a picture is this call's when it carries the call's own prefix (a stock ComfyUI saves
+# //// `<prefix>_00001_.png`) OR the call's prompt id: the fleet's ComfyUI server ignores `filename_prefix` and names
+# //// every output `<prompt_id>.png` (osiris, 11.11.2026, neoffice-maintenance#2573). The prefix check alone then
+# //// refused every picture ("no output image of this call": no site photo, no logo). A prompt id belongs to one
+# //// call only, so another call's picture is still refused (neoffice-maintenance#2052).
+def _is_own_output(filename: str, prefix: str, prompt_id: str) -> bool:
+    """True when `filename` is a picture of the call that saved under `prefix` and was queued as `prompt_id`."""
+    if not prefix or filename.startswith(prefix + "_"):
+        return True
+    stem = filename.rsplit("/", 1)[-1].split(".", 1)[0]
+    return bool(prompt_id) and (stem == prompt_id or stem.startswith(prompt_id + "_"))
+
+
 def _run_workflow(workflow: dict) -> bytes:
     """Queue a workflow and return the first output image's bytes."""
     base, key = _settings()
@@ -178,8 +191,8 @@ def _run_workflow(workflow: dict) -> bytes:
                 )
             for node in hist[pid].get("outputs", {}).values():
                 for im in node.get("images", []):
-                    # //// Neoffice — only this call's own picture (see _own_output_prefix)
-                    if prefix and not str(im.get("filename") or "").startswith(prefix + "_"):
+                    # //// Neoffice — only this call's own picture (see _own_output_prefix, _is_own_output)
+                    if not _is_own_output(str(im.get("filename") or ""), prefix, pid):
                         continue
                     q = f"filename={im['filename']}&subfolder={im.get('subfolder', '')}&type={im.get('type', 'output')}"
                     resp = requests.get(f"{base}/view?{q}", headers=_headers(), timeout=60)
