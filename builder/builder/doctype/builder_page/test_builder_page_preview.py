@@ -22,6 +22,13 @@ def engine_times_out(html, output_path, **kwargs):
 	frappe.throw("The PDF engine did not respond in time. Please try again.")
 
 
+def error_log_is_transactional() -> bool:
+	engine = frappe.db.sql(
+		"select engine from information_schema.tables where table_schema = database() and table_name = 'tabError Log'"
+	)
+	return bool(engine) and engine[0][0] == "InnoDB"
+
+
 def delete_test_pages():
 	# frappe names a Builder Page itself (page-<hash>): the route is what the test knows it by
 	for name in frappe.get_all("Builder Page", {"route": PAGE}, pluck="name"):
@@ -65,6 +72,9 @@ class TestBuilderPagePreview(FrappeTestCase):
 		self.assertEqual(
 			frappe.db.get_value("Builder Page", self.page.name, "preview"), "/files/an-older-preview.webp"
 		)
-		self.assertEqual(frappe.db.count("Error Log", {"method": "Timeout waiting for event"}), logged)
+		# the failed render's own rows go back with the savepoint where the Error Log is transactional, as it is
+		# on the fleet's sites (InnoDB); a site created now gets frappe's MyISAM table, which no rollback touches
+		if error_log_is_transactional():
+			self.assertEqual(frappe.db.count("Error Log", {"method": "Timeout waiting for event"}), logged)
 		# the page itself is still there: only the failed render's rows went back
 		self.assertTrue(frappe.db.exists("Builder Page", self.page.name))

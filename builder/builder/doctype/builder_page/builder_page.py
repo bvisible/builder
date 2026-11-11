@@ -964,6 +964,8 @@ class BuilderPage(WebsiteGenerator):
 		# //// Now the page keeps the thumbnail it had, the rows the failed render wrote go back with the
 		# //// savepoint (the caller's own writes stay), and the miss is a warning in the builder log. A render
 		# //// error of the page itself (get_preview_html above) still raises: visitors would see that one.
+		# //// The savepoint reaches the engine's Error Log row only where that table is InnoDB, as on the fleet's
+		# //// sites; frappe now declares it MyISAM, so a site created since keeps that one line.
 		frappe.db.savepoint("builder_page_preview")
 		try:
 			generate_preview(
