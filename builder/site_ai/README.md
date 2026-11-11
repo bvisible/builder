@@ -7,7 +7,7 @@ AI-powered page generation for Frappe Builder using a multi-pass pipeline archit
 
 ## Overview
 
-The AI module provides intelligent page generation capabilities that create Frappe Builder-compatible blocks using LLM providers (OpenAI, Ollama). The system uses a template-based approach where AI generates content and templates provide structure, ensuring consistent, high-quality output.
+The AI module provides intelligent page generation capabilities that create Frappe Builder-compatible blocks using LLM providers (OpenAI-compatible, through litellm). The system uses a template-based approach where AI generates content and templates provide structure, ensuring consistent, high-quality output.
 
 ## Architecture
 
@@ -53,8 +53,7 @@ builder/site_ai/
 │
 ├── providers/            # LLM Provider implementations
 │   ├── base.py           # BaseProvider abstract class
-│   ├── openai_provider.py
-│   └── ollama_provider.py
+│   └── openai_provider.py
 │
 ├── generators/           # Content generators
 │   ├── page_generator.py    # Main orchestrator
@@ -156,11 +155,10 @@ footer = footer_gen.generate(
 All AI settings live in `sites/<site>/site_config.json` (pushed by
 the operator, e.g. by a fleet provisioning tool). Recognised keys:
 
-- **ai_provider**: `openai` (default) or `ollama`
+- **ai_provider**: `openai` (default)
 - **openai_api_key**: Moonshot / OpenAI-compatible API key
 - **openai_base_url**: e.g. `https://api.moonshot.ai/v1`
 - **openai_model**: e.g. `kimi-k2.5`
-- **ollama_base_url** / **ollama_model** / **ollama_api_key**: for local dev
 - **ai_temperature**: 0.0-1.0 (default 0.6)
 - **ai_max_tokens**, **ai_request_timeout**
 - **ai_default_theme**, **ai_default_site_type**, **ai_output_language**
@@ -177,8 +175,8 @@ config = get_ai_settings()
 
 # Or create custom config
 config = AIConfig(
-    provider="ollama",
-    model="llama3.1:8b",
+    provider="openai",
+    model="kimi-k2.5",
     temperature=0.7,
 )
 ```
@@ -353,5 +351,5 @@ def build_section_from_content(section_type, content, theme_styles):
 1. **Always validate output** - Use BlockValidator before using generated blocks
 2. **Use appropriate themes** - Match theme to site purpose
 3. **Provide context** - Better prompts = better output
-4. **Use Ollama for privacy** - Self-hosted, no data leaves your server
-5. **Test with different providers** - Ollama and OpenAI may produce different results
+4. **Self-host for privacy** - An OpenAI-compatible server of your own keeps the data on your machines
+5. **Test with different providers** - Two models may produce different results

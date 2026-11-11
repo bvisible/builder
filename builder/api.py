@@ -2381,8 +2381,9 @@ def generate_image(
 	callback_name: str = None,
 	callback_field: str = None,
 ):
+	# //// Neoffice — wording only: Ollama is retired (11.11.2026); the images endpoint is any OpenAI-compatible host.
 	"""
-	Generate an image using AI (Flux via Ollama).
+	Generate an image using AI (Flux, through an OpenAI-compatible images endpoint).
 
 	Args:
 		prompt: Text description of the image to generate
@@ -2686,8 +2687,9 @@ def _walk_blocks_for_placeholders(blocks, page_name, results, subject: str = "",
 
 
 def _generate_images_worker(img_job_id: str, placeholder_images: list):
+	# //// Neoffice — wording only: the fallback generator is no longer an Ollama one (retired, 11.11.2026).
 	"""Background worker that fills placeholder images. Prefers the self-hosted
-	ComfyUI server (FLUX.2, our GPU) when configured; falls back to the Ollama
+	ComfyUI server (FLUX.2, our GPU) when configured; falls back to the OpenAI-compatible
 	ImageGenerator otherwise."""
 	import re as _re
 	from builder.site_ai.generators.image_generator import ImageGenerator

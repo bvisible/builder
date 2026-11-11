@@ -47,8 +47,8 @@ def is_configured() -> bool:
     When the shared GPU is busy the graph dies with an out-of-memory error that
     the worker swallows per-image — sites silently kept their placeholders
     (observed on a managed fleet). ComfyUI now requires an explicit opt-in
-    (comfyui_url or comfyui_api_key); everything else takes the Ollama/Flux
-    path, which loads and unloads the model per request.
+    (comfyui_url or comfyui_api_key); everything else takes the OpenAI-compatible
+    ImageGenerator path, which loads and unloads the model per request.
     """
     url, key = _settings()
     return bool(url and key)

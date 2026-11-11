@@ -3,7 +3,8 @@
 # //// frappe/builder ships no such module. First commit d26b6fb8 2026-02-03.
 """
 Image Generator
-Generates images using Ollama's OpenAI-compatible API with Flux models.
+Generates images through an OpenAI-compatible /v1/images/generations endpoint (Flux models, OpenAI, a gateway).
+The endpoint comes from the site's image settings (see builder.site_ai.config.get_image_settings): none is assumed.
 """
 
 import base64
@@ -28,9 +29,9 @@ class GeneratedImage:
 
 class ImageGenerator:
     """
-    Generate images using Ollama's image generation models (Flux).
+    Generate images with an OpenAI-compatible image generation endpoint (Flux).
 
-    Uses the OpenAI-compatible API endpoint /v1/images/generations.
+    Uses the API endpoint /v1/images/generations of the configured host.
     """
 
     DEFAULT_MODEL = "x/flux2-klein:latest"
@@ -52,17 +53,20 @@ class ImageGenerator:
         Initialize the image generator.
 
         Args:
-            model: Ollama image model (default: x/flux2-klein:latest)
-            base_url: Ollama server URL
-            api_key: API key for remote servers
+            model: Image model (default: x/flux2-klein:latest)
+            base_url: URL of the OpenAI-compatible server (no default: see get_image_settings)
+            api_key: API key for the server
             size: Image size (e.g., "1024x1024", "512x512")
             quality: Image quality ("standard" or "hd")
         """
         settings = self._get_settings()
 
         self.model = model or settings.get("model") or self.DEFAULT_MODEL
-        self.base_url = base_url or settings.get("base_url") or "http://localhost:11434"
-        self.api_key = api_key or settings.get("api_key") or "ollama"
+        # //// Neoffice — no default host any more: `http://localhost:11434` (a local Ollama) and the key "ollama" stood
+        # //// here, and Ollama is retired (11.11.2026). A site without an image endpoint gets a clear error in
+        # //// generate(), not a refused connection to a port nobody serves.
+        self.base_url = base_url or settings.get("base_url")
+        self.api_key = api_key or settings.get("api_key")
         self.size = size or settings.get("size") or self.DEFAULT_SIZE
         self.quality = quality or self.DEFAULT_QUALITY
 
@@ -122,9 +126,11 @@ class ImageGenerator:
         # Plain HTTP against the OpenAI-compatible /v1/images/generations
         # endpoint — the `openai` SDK is NOT a dependency of this app, so
         # importing it made this whole path an ImportError away from dead.
+        if not self.base_url:
+            raise RuntimeError("No image endpoint is configured: set image_base_url in the site configuration.")
         url = f"{self.base_url.rstrip('/')}/v1/images/generations"
         headers = {"Content-Type": "application/json"}
-        if self.api_key and self.api_key != "ollama":
+        if self.api_key:
             headers["Authorization"] = f"Bearer {self.api_key}"
             headers["X-API-Key"] = self.api_key
 

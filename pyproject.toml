@@ -16,9 +16,9 @@ dependencies = [
     "duckdb==1.4.3",
     "litellm==1.100.4",
     "json-repair>=0.30",
-    # //// Neoffice — runtime dependencies of builder/site_ai/** (litellm and json-repair now come
-    # //// from upstream above; the Ollama client stays until site_ai moves onto builder.ai.llm).
-    "ollama>=0.4.0",
+    # //// Neoffice — runtime dependencies of builder/site_ai/** (litellm and json-repair come from
+    # //// upstream above). The `ollama` client is gone: nothing imports it (site_ai's Ollama provider was removed
+    # //// on 2026-09-07) and Ollama is retired (11.11.2026).
     # //// Neoffice — the ingestion and visual-verification dependencies, plus the
     # //// scikit-learn extra below. None of this exists upstream.
     # Client content ingestion + visual verification loop (now core features,
