@@ -65,6 +65,8 @@ jinja = {
 		"builder.hf_utils.header_footer.render_site_footer",
 		"builder.page_header.render_page_header",
 		"builder.page_header.render_builder_page_header",
+		# //// Neoffice — the band after a navigation the page draws itself (templates/generators/webpage.html, #2115)
+		"builder.page_header.place_page_band",
 		"builder.builder.doctype.builder_component.builder_component.get_component_data",
 		# //// Neoffice — the address the map include falls back to, and the point it draws (templates/includes/google_map.html)
 		"builder.api.site_map_address",

@@ -1047,3 +1047,54 @@ def clear_band_cache(doc, method=None) -> None:
 			clear_cache()
 			return
 
+
+
+# //// Neoffice — the band goes after a navigation the page draws itself (neoffice-maintenance#2115). A page
+# //// whose menu is a block of its own (an imported page, a page from the first generator that drew its menu
+# //// with a web template) got the band printed before its content, so the title and the trail sat ABOVE the
+# //// site's navigation bar. When the first element of the page is that menu (it holds a header or a nav and
+# //// no h1), the band now follows it; any other page keeps the band first, as before.
+_PAGE_ROOT = re.compile(r"<div\b[^>]*\bclass=[\"'][^\"']*\bbuilder-page-content\b[^>]*>", re.I)
+_OPAQUE = re.compile(r"<script\b.*?</script\s*>|<style\b.*?</style\s*>|<!--.*?-->", re.I | re.S)
+_START_TAG = re.compile(r"<([a-zA-Z][a-zA-Z0-9-]*)\b[^>]*>")
+_VOID_TAGS = {"area", "base", "br", "col", "embed", "hr", "img", "input", "link", "meta", "source", "track", "wbr"}
+_CHROME = re.compile(r"<(?:header|nav)\b", re.I)
+_PAGE_TITLE = re.compile(r"<h1\b", re.I)
+
+
+def _own_chrome_end(content: str) -> int:
+	"""Where the page's first element ends when it is a navigation the page draws itself, else -1."""
+	# scripts, styles and comments may hold markup-like text: blank them out, offsets unchanged
+	masked = _OPAQUE.sub(lambda m: " " * len(m.group()), content)
+	root = _PAGE_ROOT.search(masked)
+	if not root:
+		return -1
+	first = _START_TAG.search(masked, root.end())
+	if not first or masked[root.end() : first.start()].strip():
+		return -1
+	name = first.group(1).lower()
+	if name in _VOID_TAGS or first.group(0).endswith("/>"):
+		return -1
+	# the end of that element: count its own tag only, so an unclosed <p> or <li> inside cannot shift it
+	tags = re.compile(rf"<(/?){re.escape(name)}\b[^>]*>", re.I)
+	depth = 0
+	for tag in tags.finditer(masked, first.start()):
+		depth += -1 if tag.group(1) else 1
+		if depth == 0:
+			element = masked[first.start() : tag.end()]
+			if _CHROME.search(element) and not _PAGE_TITLE.search(element):
+				return tag.end()
+			return -1
+	return -1
+
+
+def place_page_band(content: str, band: str) -> str:
+	"""A Builder page's rendered markup with the band at its top: after the page's own navigation when the
+	page opens on one, before everything otherwise."""
+	content = content or ""
+	if not band:
+		return content
+	at = _own_chrome_end(content)
+	if at < 0:
+		return band + content
+	return content[:at] + band + content[at:]
