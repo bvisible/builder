@@ -239,8 +239,12 @@ def _norm_size(width: int, height: int, max_dim: int = 1024):
     return rnd(w), rnd(h)
 
 
-def generate_image(prompt: str, width: int = 1024, height: int = 1024, seed: int = None) -> str:
-    """Workflow A — text→image. Returns the saved /files/ URL."""
+# //// Neoffice — the picture's bytes, saved nowhere, for a caller that works on them before it saves anything
+# //// (neoffice-maintenance#2573: an app's logo is made transparent and trimmed first). generate_image() saves the
+# //// raw picture as a public File, which such a caller would have to read back and delete. Same workflow, same size
+# //// rule, same seed rule: generate_image() is this plus the save.
+def generate_image_bytes(prompt: str, width: int = 1024, height: int = 1024, seed: int | None = None) -> bytes:
+    """Workflow A — text→image. Returns the PNG bytes; nothing is saved."""
     wf = copy.deepcopy(_WF_GENERATE)
     # //// Neoffice — no negation words in the fallback prompt: on this cfg=1.0 model, "no text"
     # //// in a positive prompt draws exactly that (77601a8e "fix(images): prompts with photographic direction only, and budgets sized on the slot count")
@@ -251,7 +255,12 @@ def generate_image(prompt: str, width: int = 1024, height: int = 1024, seed: int
     # shared seed 42 and identical prompts produced byte-identical pictures
     wf["8"]["inputs"]["seed"] = int(seed) if seed is not None else int(frappe.generate_hash(length=8), 16) % (2**31)
     ai_log("info", "ComfyUI generate", w=w, h=h, prompt=(prompt or "")[:60])
-    return _save_png(_run_workflow(wf), prefix="gen")
+    return _run_workflow(wf)
+
+
+def generate_image(prompt: str, width: int = 1024, height: int = 1024, seed: int | None = None) -> str:
+    """Workflow A — text→image. Returns the saved /files/ URL."""
+    return _save_png(generate_image_bytes(prompt, width, height, seed), prefix="gen")
 
 
 def remove_background(file_url: str) -> str:
