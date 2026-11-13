@@ -12778,3 +12778,21 @@ msgstr "Écrire à {0}…"
 #: frontend/src/components/EmptyDraftHint.vue:16
 msgid "Your site is built here"
 msgstr "Votre site se construit ici"
+
+#: frontend/src/components/ai/AIUISpec.vue:172
+#, python-brace-format
+msgid "Add more ({0})"
+msgstr "En ajouter d'autres ({0})"
+
+#: frontend/src/components/ai/AIUISpec.vue:235
+msgid "Pick a colour"
+msgstr "Choisir une couleur"
+
+#: frontend/src/components/ai/AIUISpec.vue:174
+msgid "Upload photos"
+msgstr "Ajouter des photos"
+
+#: frontend/src/components/ai/AIUISpec.vue:170
+#, python-brace-format
+msgid "Uploading {0}/{1}…"
+msgstr "Envoi {0}/{1}…"
