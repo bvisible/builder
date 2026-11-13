@@ -140,7 +140,8 @@ import { createResource, KeyboardShortcutsDialog, useKeyboardShortcut } from "fr
 import { computed, onActivated, onDeactivated, onMounted, provide, ref, watch, watchEffect } from "vue";
 import { useRoute, useRouter } from "vue-router";
 //// Neoffice — see onMounted below.
-import { isSiteCreationRoute } from "@/composables/useSiteCreation";
+//// Neoffice — ?nora=chat opens the agent's tab too (opensTheAssistant, useSiteCreation).
+import { opensTheAssistant } from "@/composables/useSiteCreation";
 import CodeEditor from "../components/Controls/CodeEditor.vue";
 import { prefetchBuilderSettings, prefetchTemplateGallery } from "@/utils/prefetch";
 
@@ -329,7 +330,7 @@ onMounted(() => {
 	}
 	// //// Neoffice — arriving with ?nora=site (Create with AI on the dashboard) opens the agent's
 	// //// tab; the panel seeds the site conversation from the same query (useSiteCreation).
-	if (isSiteCreationRoute(route)) {
+	if (opensTheAssistant(route)) {
 		builderStore.showLeftPanel = true;
 		builderStore.leftPanelActiveTab = "Chat";
 	}

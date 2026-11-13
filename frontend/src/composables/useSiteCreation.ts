@@ -16,6 +16,13 @@ export const siteCreationSeed = () => __("I want to create a new website. Guide 
 export const isSiteCreationRoute = (route: RouteLocationNormalizedLoaded) =>
 	route.query[SITE_CREATION_QUERY] === SITE_CREATION_VALUE;
 
+//// Neoffice — "Edit with Nora" in the Website space opens a site's page with ?nora=chat: the agent's tab is
+//// open and waiting for what to change, and nothing is sent (the "new website" sentence of ?nora=site would
+//// send an existing site down the whole-site playbook).
+export const SITE_CHAT_VALUE = "chat";
+export const opensTheAssistant = (route: RouteLocationNormalizedLoaded) =>
+	isSiteCreationRoute(route) || route.query[SITE_CREATION_QUERY] === SITE_CHAT_VALUE;
+
 /** the profile's home page (or first page, or a fresh blank draft), then the editor on it */
 export async function startSiteCreation(websiteProfile?: string) {
 	try {
