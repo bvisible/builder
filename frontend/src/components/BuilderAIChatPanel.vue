@@ -350,6 +350,19 @@
 					{{ __("Back to page") }}
 				</button>
 			</div>
+			<!-- //// Neoffice — three doors for a person who does not know what to ask: their text, their images,
+			     finding images. Each says a sentence to the assistant (useDoor); the cards it answers with are the
+			     playbook's own (the upload cards, search_images). -->
+			<div v-if="builderStore.isAIEnabled && isEditingPage && !isSubmitting" class="mb-2 flex flex-wrap gap-1.5">
+				<Button
+					v-for="door in doors"
+					:key="door.key"
+					variant="subtle"
+					size="xs"
+					:icon-left="door.icon"
+					:label="door.label"
+					@click="useDoor(door)" />
+			</div>
 			<!-- one box: the field on top, its controls along the bottom edge -->
 			<div
 				class="relative rounded-6 border border-outline-gray-2 bg-surface-base transition-colors hover:border-outline-gray-3 hover:shadow-sm focus-within:border-outline-gray-4 focus-within:shadow-sm"
@@ -357,6 +370,7 @@
 				@dragover.prevent="isDragging = isVisionModel ? true : isDragging"
 				@dragleave="isDragging = false"
 				@drop.prevent="handleDrop">
+				<!-- //// Neoffice — Enter sends (onComposerKeydown); upstream sends only on Ctrl/Cmd+Enter -->
 				<!-- grows with the prompt (see autoGrow) up to max-h, then scrolls -->
 				<Textarea
 					ref="promptInput"
@@ -367,9 +381,7 @@
 					class="no-scrollbar max-h-60 min-h-14 resize-none placeholder-ink-gray-4 disabled:border-0 disabled:bg-transparent"
 					:disabled="isSubmitting || !isEditingPage"
 					:placeholder="composerPlaceholder"
-					@keydown="menu.onKeydown"
-					@keydown.meta.enter="submitPrompt"
-					@keydown.ctrl.enter="submitPrompt" />
+					@keydown="onComposerKeydown" />
 				<div class="flex items-center gap-0.5 p-1.5">
 					<!-- //// Neoffice — translated: the upstream panel is English only (neoffice-maintenance#1200) -->
 					<Button
@@ -412,9 +424,11 @@
 								<KeyboardShortcut combo="Mod+Enter" class="!text-xs !text-ink-gray-4" />
 							</span>
 						</template>
+						<!-- //// Neoffice — the button says Send: an arrow alone is not read as the way to talk to her -->
 						<Button
 							variant="solid"
-							icon="lucide-arrow-up"
+							icon-left="lucide-arrow-up"
+							:label="__('Send')"
 							class="ml-auto"
 							:disabled="!canSubmit"
 							@click="submitPrompt" />
@@ -432,6 +446,10 @@
 					</div>
 				</Transition>
 			</div>
+			<!-- //// Neoffice — says what the keys do, as the ERP's Nora bar does ("Entrée envoie") -->
+			<p class="mt-1.5 px-1 text-p-xs text-ink-gray-5">
+				{{ __("Enter sends, Shift+Enter makes a new line. Type / for commands.") }}
+			</p>
 		</div>
 		<!-- //// Neoffice — translated: the upstream panel is English only (neoffice-maintenance#1200) -->
 		<Dialog :title="__('Turn debug')" size="3xl" v-model="debugOpen">
@@ -877,7 +895,8 @@ const composerPlaceholder = computed(() =>
 	menuLevel.value && !menuLevel.value.input
 		//// Neoffice — translated: the upstream panel is English only (neoffice-maintenance#1200)
 		? __("Type to filter")
-		: __("Ask to create or edit this page, or type / for commands"),
+		//// Neoffice — the field says whom one writes to, as the ERP bar does ("Écrire à Nora…")
+		: __("Write to {0}…", [assistantLabel]),
 );
 
 // a key or URL is typed into a field inside the menu; hand focus back after
@@ -890,6 +909,44 @@ const submitPrompt = () => {
 	if (menuOpen.value) return;
 	chat.submitPrompt();
 };
+
+//// Neoffice — Enter sends and Shift+Enter makes a new line, as the editor's earlier creation window did
+//// (@keydown.enter.exact) and as Nora's chat does everywhere else in the ERP; upstream sends only on Ctrl/Cmd+Enter,
+//// which a person who does not know the editor never finds. The "/" menu keeps its keys (Enter chooses an item) and a
+//// key typed while an input method composes is not ours (neoffice-maintenance#2614).
+function onComposerKeydown(event: KeyboardEvent) {
+	if (menu.onKeydown(event) || event.isComposing) return;
+	if (event.key !== "Enter" || event.shiftKey) return;
+	event.preventDefault();
+	submitPrompt();
+}
+
+//// Neoffice — the three doors: what a person who does not know what to ask can say. The text is written into the
+//// field for them to continue; the two others send their sentence, and the assistant answers with the playbook's own
+//// upload card or with search_images (neoffice-maintenance#2614).
+type Door = { key: string; icon: string; label: string; prompt: string; send: boolean };
+const doors = computed<Door[]>(() => [
+	{ key: "text", icon: "lucide-pen-line", label: __("My text"), prompt: __("Here is the text for my site:") + "\n", send: false },
+	{
+		key: "images",
+		icon: "lucide-image-plus",
+		label: __("My images"),
+		prompt: __("I want to give you my images (logo, photos). Show me where to add them."),
+		send: true,
+	},
+	{
+		key: "find",
+		icon: "lucide-search",
+		label: __("Find images"),
+		prompt: __("Find images for my site and suggest a few for me to choose from."),
+		send: true,
+	},
+]);
+function useDoor(door: Door) {
+	prompt.value = door.prompt;
+	if (door.send) submitPrompt();
+	else promptInput.value?.focus();
+}
 
 const messageContainer = ref<HTMLElement | null>(null);
 watch(

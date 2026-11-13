@@ -70,6 +70,8 @@
 				right: `${builderStore.showRightPanel ? builderStore.builderLayout.rightPanelWidth : 0}px`,
 			}"
 			class="canvas-container absolute bottom-0 flex justify-center overflow-hidden bg-surface-gray-1 p-10"></BuilderCanvas>
+		<!-- //// Neoffice — a word over the empty first page of a site being built (EmptyDraftHint) -->
+		<EmptyDraftHint />
 
 		<!-- Panels layer (middle) - comes after canvas in DOM -->
 		<BuilderLeftPanel
@@ -118,6 +120,8 @@ import BuilderCommandPalette from "@/components/BuilderCommandPalette.vue";
 import BuilderLeftPanel from "@/components/BuilderLeftPanel.vue";
 import BuilderRightPanel from "@/components/BuilderRightPanel.vue";
 import BuilderToolbar from "@/components/BuilderToolbar.vue";
+//// Neoffice — see the template, EmptyDraftHint.
+import EmptyDraftHint from "@/components/EmptyDraftHint.vue";
 import { installEditorDemo } from "@/components/EditorDemo";
 import Dialog from "@/components/Controls/Dialog.vue";
 import PageListModal from "@/components/Modals/PageListModal.vue";
