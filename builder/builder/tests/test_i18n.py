@@ -9,7 +9,8 @@ from frappe.tests.utils import FrappeTestCase
 
 # //// Neoffice — cockpit_catalogs: the catalogs the boot carries (test_boot_carries_only_builder_translations);
 # //// nora_chat_boot, strings_of: Nora's one conversation in the Chat tab (13.11).
-from builder.www._builder import cockpit_catalogs, get_boot, nora_chat_boot, strings_of
+# //// desk_defaults: what the cards to validate read of the desk (13.11).
+from builder.www._builder import cockpit_catalogs, desk_defaults, get_boot, nora_chat_boot, strings_of
 
 FRONTEND_SRC = os.path.join("frontend", "src")
 
@@ -93,6 +94,8 @@ class TestI18n(FrappeTestCase):
 				"/assets/nora/js/nora_chat/nora_chat_core.js?v=9",
 				# //// Neoffice — the conversation's modules (13.11)
 				"/assets/nora/js/nora_chat/nora_chat_features.js?v=3",
+				# //// Neoffice — the cards to validate, a module too (13.11)
+				"/assets/nora/js/nora_chat/nora_chat_cards.js?v=3",
 			],
 			("app_include_css", "nora"): [
 				"/assets/nora/css/nora_tokens.css?v=2",
@@ -110,6 +113,11 @@ class TestI18n(FrappeTestCase):
 				"frappe.get_hooks", side_effect=lambda hook, app_name=None: hooks.get((hook, app_name), [])
 			),
 			patch("builder.www._builder.nora_chat_messages", return_value={"Stop": "Arrêter"}),
+			# //// Neoffice — the desk's defaults the cards read (13.11)
+			patch(
+				"builder.www._builder.desk_defaults",
+				return_value={"defaults": {"currency": "CHF"}, "currency": None},
+			),
 		):
 			boot = nora_chat_boot("fr")
 		# the desk's entry before the conversation, which looks for it when it draws its own
@@ -120,6 +128,8 @@ class TestI18n(FrappeTestCase):
 				"/assets/nora/js/nora_chat/nora_chat_core.js?v=9",
 				# //// Neoffice — the conversation's modules come after it (13.11)
 				"/assets/nora/js/nora_chat/nora_chat_features.js?v=3",
+				# //// Neoffice — then the cards, which are one of them (13.11)
+				"/assets/nora/js/nora_chat/nora_chat_cards.js?v=3",
 			],
 		)
 		# //// Neoffice — and the modules' sheet after the conversation's (13.11)
@@ -132,6 +142,29 @@ class TestI18n(FrappeTestCase):
 			],
 		)
 		self.assertEqual(boot["messages"], {"Stop": "Arrêter"})
+		# //// Neoffice — the cards read the desk's defaults (13.11)
+		self.assertEqual(boot["desk"], {"defaults": {"currency": "CHF"}, "currency": None})
+
+	# //// Neoffice — the cards to validate write a figure, an amount and a date as the desk does (13.11)
+	def test_the_cards_read_only_the_desk_defaults_they_write_with(self):
+		everything = {
+			"currency": "CHF",
+			"number_format": "#'###.##",
+			"date_format": "dd.mm.yyyy",
+			"hide_currency_symbol": "",
+			"smtp_server": "mail.example.com",
+		}
+		record = {"name": "CHF", "symbol": "CHF", "symbol_on_right": 0, "number_format": "#'###.##"}
+		with (
+			patch("frappe.defaults.get_defaults", return_value=everything),
+			patch("frappe.db.get_value", return_value=record) as get_value,
+		):
+			desk = desk_defaults()
+		self.assertEqual(
+			desk["defaults"], {"currency": "CHF", "number_format": "#'###.##", "date_format": "dd.mm.yyyy"}
+		)
+		self.assertEqual(desk["currency"], record)
+		self.assertEqual(get_value.call_args.args[:2], ("Currency", "CHF"))
 
 	def test_the_boot_carries_only_the_strings_the_conversation_says(self):
 		code = '__("Stop"); __("{0} steps", [n], "Nora\'s steps"); __("Working…", null, "Nora");'

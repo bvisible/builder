@@ -124,7 +124,10 @@ def nora_chat_boot(lang: str) -> dict | None:
 	# 13.11: « si on fait partout la même chose, c'est mieux »); they draw with the quick chat's sheet, scoped to the
 	# conversation
 	features = hook_asset("nora", "app_include_js", "/nora_chat_features.js")
-	scripts = [url for url in (entry, core, features) if url]
+	# //// Neoffice — the cards to validate, a module of the conversation too, after the modules (they read what the
+	# desk's defaults say: desk_defaults)
+	cards = hook_asset("nora", "app_include_js", "/nora_chat_cards.js") if features else None
+	scripts = [url for url in (entry, core, features, cards) if url]
 	styles = [
 		url
 		for url in (
@@ -141,7 +144,37 @@ def nora_chat_boot(lang: str) -> dict | None:
 		"scripts": scripts,
 		"lang": lang,
 		"messages": nora_chat_messages(lang, scripts),
+		# //// Neoffice — what the cards read of the desk (see desk_defaults)
+		"desk": desk_defaults() if cards else None,
 	}
+
+
+# //// Neoffice — added (see nora_chat_boot): the defaults the cards to validate read as the desk does (frappe.defaults,
+# //// frappe.boot.sysdefaults, the default currency's record), to write a figure, an amount and a date as it does.
+DESK_DEFAULTS = (
+	"currency",
+	"number_format",
+	"date_format",
+	"float_precision",
+	"currency_precision",
+	"hide_currency_symbol",
+	"use_number_format_from_currency",
+)
+
+
+def desk_defaults() -> dict:
+	"""The desk's defaults the conversation's cards read, and the default currency as the desk knows it."""
+	everything = frappe.defaults.get_defaults() or {}
+	defaults = {key: everything.get(key) for key in DESK_DEFAULTS if everything.get(key) not in (None, "")}
+	currency = None
+	if defaults.get("currency"):
+		currency = frappe.db.get_value(
+			"Currency",
+			defaults["currency"],
+			["name", "symbol", "symbol_on_right", "number_format"],
+			as_dict=True,
+		)
+	return {"defaults": defaults, "currency": currency}
 
 
 def hook_asset(app: str, hook: str, name: str) -> str | None:

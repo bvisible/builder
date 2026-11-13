@@ -6,12 +6,16 @@
 //// together. Where nora is not installed, or a file does not load, the tab stays upstream's panel.
 import { toast } from "frappe-ui";
 
+import { type NoraChatDesk, provideDeskCards, showAlert } from "@/utils/noraChatDesk";
+
 /** What the boot says of Nora's conversation (builder/www/_builder.py, nora_chat_boot); null without nora. */
 export type NoraChatBoot = {
 	jquery: string;
 	styles: string[];
 	scripts: string[];
 	lang: string;
+	// the desk's defaults the cards to validate read (nora_chat_cards.js), where the boot loads them
+	desk?: NoraChatDesk | null;
 };
 
 declare global {
@@ -56,10 +60,8 @@ function provideDesk(boot: NoraChatBoot) {
 	if (!("csrf_token" in frappe))
 		Object.defineProperty(frappe, "csrf_token", { get: () => (window as any).csrf_token || "" });
 	frappe.msgprint = frappe.msgprint || ((message: unknown) => toast.error(String(message ?? "")));
-	frappe.show_alert =
-		frappe.show_alert ||
-		((alert: { message?: string } | string) =>
-			toast.info(typeof alert === "string" ? alert : String(alert?.message ?? "")));
+	// in the colour its indicator says (a card's « Sent » green, its refusal orange)
+	frappe.show_alert = frappe.show_alert || showAlert;
 	frappe.session = frappe.session || { user: cookie("user_id"), user_fullname: cookie("full_name") };
 	frappe.user_info = frappe.user_info || (() => ({}));
 	frappe.get_abbr =
@@ -74,6 +76,8 @@ function provideDesk(boot: NoraChatBoot) {
 	frappe.boot = frappe.boot || {};
 	frappe.boot.lang = frappe.boot.lang || boot.lang;
 	frappe.boot.versions = { ...(frappe.boot.versions || {}), nora: frappe.boot.versions?.nora || "1" };
+	// the cards to validate: a call to the server, a desk page, a field's type, how a figure is written (noraChatDesk.ts)
+	if (boot.desk) provideDeskCards(frappe, boot.desk);
 }
 
 function loadScript(src: string): Promise<void> {

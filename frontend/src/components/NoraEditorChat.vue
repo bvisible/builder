@@ -476,8 +476,10 @@ const debugData = ref<Record<string, any> | null>(null);
 /** The conversation's modules, on as everywhere (Jérémy, 13.11: « si on fait partout la même chose, c'est mieux »); each
  * shows only when it serves. « Aide » and the blocks of an answer as on the desk; the drop zone's files go up as the
  * door « Mes images » sends them. `resume` keeps which chat of the page this is, and never offers its banner: the editor
- * reopens the page's last chat from the server by itself. `use` is once per conversation: a module the conversation
- * already turned on keeps its options. */
+ * reopens the page's last chat from the server by itself. The cards to validate are the person's waiting ones (an
+ * e-mail to send, a dunning…): the editor has no chat of Nora's of its own, so they are read as anywhere else Nora is
+ * and decided on the card. `use` is once per conversation: a module the conversation already turned on keeps its
+ * options. */
 function modules() {
 	if (!core || !window.nora?.chat?.features) return;
 	core.use("blocks", { help: true });
@@ -487,9 +489,12 @@ function modules() {
 		offer: false,
 		state: { session_id: sessionId.value },
 	});
+	core.use("action_cards", { conversation: () => null });
 	core.on("files", ({ files }: { files: File[] }) => sendImages(files || []));
 	core.on("resume", ({ state }: { state?: { session_id?: string } }) => {
 		painter?.reset();
+		// the conversation drawn again from nothing: the cards still waiting come back with it
+		core?.features?.action_cards?.load();
 		if (state?.session_id) switchSession(state.session_id);
 	});
 }
