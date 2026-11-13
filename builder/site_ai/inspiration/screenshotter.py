@@ -362,10 +362,21 @@ LAYOUT_PROBE = r"""
   const vw = window.innerWidth;
   const out = [];
   const text = (el) => ((el && (el.innerText || el.textContent)) || '').trim().replace(/\s+/g, ' ').slice(0, 60);
+  // //// Neoffice — words kept for screen readers only (.sr-only, .visually-hidden: a 1px box that clips them on
+  // //// purpose, or clip: rect(0 0 0 0)) are not on the page a visitor sees. A « Book » button's hidden service
+  // //// name was measured as text cut at its edges, and a pricing page was refused four times (13.11, osiris).
+  const screenReaderOnly = (el) => {
+    for (let p = el, i = 0; p && i < 4; p = p.parentElement, i++) {
+      const b = p.getBoundingClientRect(), c = getComputedStyle(p);
+      if (b.width <= 1 && b.height <= 1 && /hidden|clip/.test(c.overflow + ' ' + c.overflowX)) return true;
+      if (/^rect\(0(px)?,? 0(px)?,? 0(px)?,? 0(px)?\)$/.test(c.clip) || /inset\(50%\)/.test(c.clipPath)) return true;
+    }
+    return false;
+  };
   const visible = (el) => {
     const r = el.getBoundingClientRect();
     const s = getComputedStyle(el);
-    return r.width > 0 && r.height > 0 && s.visibility !== 'hidden' && s.display !== 'none' && s.opacity !== '0';
+    return r.width > 0 && r.height > 0 && s.visibility !== 'hidden' && s.display !== 'none' && s.opacity !== '0' && !screenReaderOnly(el);
   };
   const chrome = (el) => !!el.closest('header, footer, nav, .site-page-header, .navbar, #navbar, [data-chrome]');
   const clipped = (el) => {

@@ -41,6 +41,14 @@ class TestProbesParse(unittest.TestCase):
 		self.assertIn("[data-neo-honeypot]", LAYOUT_PROBE)
 		self.assertIn("r.right < -500", LAYOUT_PROBE)
 
+	def test_the_layout_probe_ignores_words_kept_for_screen_readers(self):
+		# a « Book » button's .sr-only service name was measured as text cut at its edges, and a pricing page
+		# was refused four times (13.11). Behaviour proved in Chromium on a synthetic page; this keeps the guard.
+		from builder.site_ai.inspiration.screenshotter import LAYOUT_PROBE
+
+		self.assertIn("const screenReaderOnly", LAYOUT_PROBE)
+		self.assertIn("!screenReaderOnly(el)", LAYOUT_PROBE)
+
 	def test_the_layout_probe_reads_overlapping_and_cut_words(self):
 		# a section number drawn over its heading and a caption cut in a fixed-width box, on a phone: two
 		# defects nothing measured (neoffice-maintenance#1750). Behaviour is proved in Chromium on a synthetic

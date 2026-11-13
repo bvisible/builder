@@ -87,6 +87,38 @@ class TestBareButtons(unittest.TestCase):
 		self.assertIsNone(parse_card("The brief says so in the second email [1]"))
 
 
+class TestChoicesWrittenAsACall(unittest.TestCase):
+	"""After a build, the question about three refused pages came as text, its choices written as the tool's arguments,
+	and the card showed every piece between two commas as a choice: « en gardant vos tarifs) » (13.11, osiris)."""
+
+	REFUSED = (
+		"Trois pages n'ont pas passé mon contrôle qualité.\n"
+		"[choices: Tarifs — que faire? options=[Reconstruire avec une autre direction (description: je réécris la page, "
+		"en gardant vos tarifs), Publier telle quelle (description: elle reste avec les défauts), Je la finis moi-même "
+		"(description: elle reste dans le brouillon, hors du menu)]]\n"
+		"[choices: À propos — que faire? options=[Reconstruire (description: je réécris la page, en gardant votre histoire), "
+		"Publier telle quelle]]\n"
+		"[buttons: Continuer]"
+	)
+
+	def test_each_page_is_a_question_with_its_three_answers(self):
+		card = parse_card(self.REFUSED)
+		groups = [el for el in card["ui"] if el["kind"] == "choices"]
+		self.assertEqual([g["label"] for g in groups], ["Tarifs — que faire?", "À propos — que faire?"])
+		first = groups[0]["options"]
+		self.assertEqual([o["label"] for o in first], ["Reconstruire avec une autre direction", "Publier telle quelle", "Je la finis moi-même"])
+		self.assertEqual(first[0]["description"], "je réécris la page, en gardant vos tarifs")
+		self.assertEqual(first[2]["description"], "elle reste dans le brouillon, hors du menu")
+		self.assertEqual([o["label"] for o in groups[1]["options"]], ["Reconstruire", "Publier telle quelle"])
+		self.assertNotIn("description", groups[1]["options"][1])
+
+	def test_a_comma_between_parentheses_never_splits_a_choice(self):
+		card = parse_card("Quel ton ?\n[choices: Chaleureux (proche, simple), Sobre]\n[buttons: Continuer]")
+		self.assertEqual([o["label"] for o in card["ui"][0]["options"]], ["Chaleureux (proche, simple)", "Sobre"])
+		card = parse_card("[choices: A, B, C]\n[buttons: OK]")
+		self.assertEqual([o["label"] for o in card["ui"][0]["options"]], ["A", "B", "C"])
+
+
 class TestCardEcho(unittest.TestCase):
 	"""The question written as the message, then again as the card's text: shown twice."""
 

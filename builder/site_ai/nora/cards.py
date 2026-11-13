@@ -56,6 +56,43 @@ def _lines(body: str) -> list[str]:
     return [line.strip() for line in body.split("\n") if line.strip()]
 
 
+def _parts(text: str) -> list[str]:
+    """`text` split at its commas outside parentheses and brackets: « A (x, y), B » is two options, not three. The
+    question about three refused pages came cut at every comma of its descriptions, « en gardant vos tarifs) » a
+    choice of its own (13.11, osiris)."""
+    parts, depth, start = [], 0, 0
+    for i, ch in enumerate(text):
+        if ch in "([{":
+            depth += 1
+        elif ch in ")]}":
+            depth = max(0, depth - 1)
+        elif ch == "," and depth == 0:
+            parts.append(text[start:i])
+            start = i + 1
+    parts.append(text[start:])
+    return [part.strip() for part in parts if part.strip()]
+
+
+# the tool's arguments written as a call: « Tarifs — que faire? options=[A (description: …), B (description: …)] »
+PSEUDO_OPTIONS = re.compile(r"^(?P<label>.*?)\s*\boptions\s*[=:]\s*\[(?P<body>.*)\]\s*$", re.IGNORECASE | re.DOTALL)
+DESCRIBED = re.compile(r"^(?P<label>.+?)\s*\(\s*description\s*[:=]\s*(?P<description>.*)\)\s*$", re.IGNORECASE | re.DOTALL)
+
+
+def _pseudo_options(body: str) -> tuple[str, list[dict]] | None:
+    """The label and options of a choices group written as `<question> options=[A (description: x), B]`, or None."""
+    found = PSEUDO_OPTIONS.match(body.strip())
+    if not found:
+        return None
+    options = []
+    for part in _parts(found["body"]):
+        described = DESCRIBED.match(part)
+        if described:
+            options.append({"label": described["label"].strip()[:80], "description": described["description"].strip()[:200]})
+        else:
+            options.append({"label": part.strip(" '\"")[:80]})
+    return found["label"].strip(" ,;:"), [o for o in options if o["label"]]
+
+
 def _option(line: str) -> dict:
     """'- Label: description [colors: #a, #b]' -> an option dict."""
     line = line.lstrip("-•* ").strip()
@@ -251,11 +288,15 @@ def parse_card(text: str) -> dict | None:
         if kind == "choices":
             label = None
             options: list[dict] = []
+            pseudo = _pseudo_options(" ".join(lines))
+            if pseudo:
+                label, options = pseudo
+                lines = []
             if lines and not lines[0].startswith(("-", "•", "*")):
                 head = lines[0]
                 # '[choices multi: A, B, C]' on one line, or a question followed by options
                 if len(lines) == 1 and "," in head:
-                    options = [{"label": part.strip()} for part in head.split(",") if part.strip()]
+                    options = [{"label": part} for part in _parts(head)]
                 else:
                     label = head.rstrip(":").strip()
                     lines = lines[1:]
@@ -276,13 +317,13 @@ def parse_card(text: str) -> dict | None:
                         continue
                     if bare.startswith(("options:", "choices:", "valeurs:")) and "," in line:
                         # "options: A, B, C" is a list on one line, not one option
-                        options += [{"label": part.strip()} for part in line.split(":", 1)[1].split(",") if part.strip()]
+                        options += [{"label": part} for part in _parts(line.split(":", 1)[1])]
                         continue
                     options.append(_option(line))
                 options = [o for o in options if o.get("label")]
                 if len(options) == 1 and "," in options[0].get("label", "") and not options[0].get("description"):
                     # a single "A, B, C" line under a label is the list itself
-                    options = [{"label": part.strip()} for part in options[0]["label"].split(",") if part.strip()]
+                    options = [{"label": part} for part in _parts(options[0]["label"])]
             if not options:
                 continue
             element = {"kind": "choices", "options": options[:12]}

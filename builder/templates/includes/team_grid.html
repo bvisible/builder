@@ -74,7 +74,8 @@
     justify-content: center;
     font-size: 3rem;
     font-weight: 700;
-    color: var(--primary-color, #3b82f6);
+    /* //// Neoffice — the site's link colour: the primary only where it reads on the page (13.11, a sand primary) */
+    color: var(--link-color, var(--primary-color, #3b82f6));
     background: linear-gradient(135deg, var(--surface-color, #f3f4f6) 0%, var(--border-color, #e5e7eb) 100%);
 }
 .builder-team-grid .team-info {
@@ -90,7 +91,7 @@
 .builder-team-grid .team-role {
     margin: 0 0 0.75rem 0;
     font-size: 0.875rem;
-    color: var(--primary-color, #3b82f6);
+    color: var(--link-color, var(--primary-color, #3b82f6));
     font-weight: 500;
 }
 .builder-team-grid .team-bio {

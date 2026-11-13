@@ -87,7 +87,9 @@
     align-items: center;
     justify-content: center;
     background: var(--primary-color, #3b82f6);
-    color: white;
+    /* //// Neoffice — what reads on the primary (--primary-text, chosen by contrast), not white: a pale sand primary
+       //// left the icons and values at 2.1:1, the build refused the page four times, and the site went without it (13.11) */
+    color: var(--primary-text, white);
     border-radius: 12px;
 }
 .builder-contact-info .contact-icon svg {
@@ -107,7 +109,8 @@
     color: var(--muted-color, #6b7280);
 }
 .builder-contact-info .contact-content a {
-    color: var(--primary-color, #3b82f6);
+    /* //// Neoffice — the site's link colour: the primary only where it reads on the page (theme_variables.html) */
+    color: var(--link-color, var(--primary-color, #3b82f6));
     text-decoration: none;
 }
 .builder-contact-info .contact-content a:hover {
