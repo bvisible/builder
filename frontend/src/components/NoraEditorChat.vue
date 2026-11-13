@@ -352,17 +352,20 @@ const pageHasContent = computed(() => (canvasStore.activeCanvas?.getRootBlock()?
 function welcome() {
 	if (!core) return;
 	const edit = pageHasContent.value;
+	// the POT's extractor loses a call whose list of values opens on its line and closes on another (`__("…", [`)
+	const named = [assistantLabel];
+	const knows = __(
+		"{0} knows this page and the style of the site. Say it in your own words: she does it in the draft, before your eyes.",
+		named,
+	);
+	const describe = __(
+		"Describe the page in your own words: {0} builds it in the draft, before your eyes.",
+		named,
+	);
 	core.showWelcome({
 		place: "center",
 		title: edit ? __("What should we change?") : __("Tell me what you're building"),
-		text: edit
-			? __(
-					"{0} knows this page and the style of the site. Say it in your own words: she does it in the draft, before your eyes.",
-					[assistantLabel],
-				)
-			: __("Describe the page in your own words: {0} builds it in the draft, before your eyes.", [
-					assistantLabel,
-				]),
+		text: edit ? knows : describe,
 		suggestions: (edit ? editPicks : buildPicks).map((s) => ({ label: s.label, value: s.prompt })),
 	});
 }

@@ -12842,3 +12842,88 @@ msgstr "Écrivez d'abord un message à Nora."
 #: builder/site_ai/nora/site_chat.py:88
 msgid "You cannot work on this site"
 msgstr "Vous ne pouvez pas travailler sur ce site."
+
+#: frontend/src/components/ai/noraEditorChat.ts:130
+msgid "button"
+msgstr "bouton"
+
+#: frontend/src/components/AIChatController.ts:875
+msgid "Could not apply the change"
+msgstr "Impossible d'appliquer la modification"
+
+#: frontend/src/components/AIChatController.ts:1022
+msgid "Could not send the message"
+msgstr "Impossible d'envoyer le message"
+
+#: frontend/src/components/NoraEditorChat.vue:73
+#, python-brace-format
+msgid "For {0}:"
+msgstr "Pour {0} :"
+
+#: frontend/src/components/ai/noraEditorChat.ts:198
+msgctxt "Nora's answer"
+msgid "Go back"
+msgstr "Revenir en arrière"
+
+#: frontend/src/components/ai/noraEditorChat.ts:203
+msgid "Inspect this turn"
+msgstr "Inspecter ce tour"
+
+#: frontend/src/components/ai/noraEditorChat.ts:115
+msgid "look on a phone"
+msgstr "apparence sur téléphone"
+
+#: frontend/src/components/ai/noraEditorChat.ts:116
+msgid "look on a tablet"
+msgstr "apparence sur tablette"
+
+#: frontend/src/components/ai/noraEditorChat.ts:173
+msgctxt "Website"
+msgid "Online"
+msgstr "En ligne"
+
+#: frontend/src/components/ai/noraEditorChat.ts:193
+msgid "Open the script"
+msgstr "Ouvrir le script"
+
+#: frontend/src/components/AIChatController.ts:1036
+msgid "Revert this AI edit? The page (blocks and scripts) returns to how it was just before this turn, and this message and everything after it are removed from the chat. Your live page won't change until you publish."
+msgstr "Revenir en arrière sur cette modification de l'IA ? La page (blocs et scripts) revient à son état juste avant ce tour, et ce message ainsi que tous ceux qui suivent sont retirés de la conversation. Votre page en ligne ne changera pas avant que vous ne la publiez."
+
+#: frontend/src/components/AIChatController.ts:917
+msgid "That run is no longer active."
+msgstr "Cette exécution n'est plus active."
+
+#: frontend/src/components/ai/noraEditorChat.ts:209
+msgid "Visitors see it once the page is published."
+msgstr "Les visiteurs le verront une fois la page publiée."
+
+#: frontend/src/components/ai/noraEditorChat.ts:207
+#, python-brace-format
+msgid "What {0} changed"
+msgstr "Ce que {0} a modifié"
+
+#: frontend/src/components/NoraEditorChat.vue:422
+#, python-brace-format
+msgid "{0} is working…"
+msgstr "{0} travaille…"
+
+#: frontend/src/components/NoraEditorChat.vue:359
+#, python-brace-format
+msgid "{0} knows this page and the style of the site. Say it in your own words: she does it in the draft, before your eyes."
+msgstr "{0} connaît cette page et le style du site. Dites-le dans vos propres mots : elle le fait dans le brouillon, sous vos yeux."
+
+#: frontend/src/components/NoraEditorChat.vue:417
+#, python-brace-format
+msgid "{0} stops…"
+msgstr "{0} s'arrête…"
+
+#: frontend/src/components/NoraEditorChat.vue:13
+#, python-brace-format
+msgid "{0} works on"
+msgstr "{0} travaille sur"
+
+#: frontend/src/components/NoraEditorChat.vue:361
+#, python-brace-format
+msgid "Describe the page in your own words: {0} builds it in the draft, before your eyes."
+msgstr "Décrivez la page avec vos propres mots : {0} la compose dans le brouillon, sous vos yeux."
