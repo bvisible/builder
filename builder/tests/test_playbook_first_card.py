@@ -63,7 +63,8 @@ class TestThePersonsLanguage(unittest.TestCase):
 		with (
 			mock.patch.object(frappe.db, "get_value", side_effect=get_value),
 			mock.patch.object(frappe.db, "get_single_value", side_effect=get_single_value),
-			mock.patch.object(frappe.session, "user", "someone@example.test"),
+			# frappe.session is a proxy of the request's session: the local object is what holds it
+			mock.patch.object(frappe.local, "session", frappe._dict(user="someone@example.test"), create=True),
 		):
 			return prompts.person_language_line()
 
