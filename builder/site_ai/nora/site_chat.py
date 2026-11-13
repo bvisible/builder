@@ -186,7 +186,9 @@ def open_chat(website_profile: str | None = None, session_id: str | None = None)
 		"page": page,
 		"sessions": sessions,
 		"session": current,
-		"messages": AISession(frappe.get_doc(AISession.DOCTYPE, current)).get_messages() if current else [],
+		"messages": with_live_states(AISession(frappe.get_doc(AISession.DOCTYPE, current)).get_messages())
+		if current
+		else [],
 		"running": bool(current) and AISession.is_session_running(current),
 		"ready": ai_ready(),
 		"assistant": get_assistant_name(),
@@ -210,6 +212,39 @@ def site_page_count(profile: str | None) -> int:
 	return sum(frappe.db.count("Builder Page", {"is_template": 0, **scope}) for scope in site_scopes(profile))
 
 
+def with_live_states(messages: list[dict]) -> list[dict]:
+	"""The conversation with each page card's state and links as the page is NOW: a card is written when its turn
+	ends, and the page is published, edited again or deleted afterwards (« Publish the pages » must turn its cards
+	to « Online » with the link to the page online). A page gone keeps its card, without links."""
+	site = next(
+		(
+			(m.get("metadata") or {}).get(MARK)
+			for m in messages
+			if m.get("role") == "user" and (m.get("metadata") or {}).get(MARK)
+		),
+		None,
+	)
+	fields = ["name", "route", "published", "draft_blocks", "blocks"]
+	if frappe.db.has_column("Builder Page", site_scope.PROFILE_FIELD):
+		fields.append(site_scope.PROFILE_FIELD)
+	pages: dict = {}
+	for message in messages:
+		for card in (message.get("metadata") or {}).get("changes") or []:
+			if card.get("kind") != "page" or not card.get("page"):
+				continue
+			name = card["page"]
+			if name not in pages:
+				pages[name] = frappe.db.get_value("Builder Page", name, fields, as_dict=True)
+			doc = pages[name]
+			if not doc:
+				card["state"], card["links"] = "deleted", {}
+				continue
+			first = next((s.get("block_id") for s in card.get("sections") or [] if s.get("block_id")), None)
+			card["state"] = site_changes.page_state(doc)
+			card["links"] = site_changes.page_links(doc, doc.get(site_scope.PROFILE_FIELD) or site, first)
+	return messages
+
+
 @frappe.whitelist()
 @builder_role_required()
 def get_messages(session_id: str) -> dict:
@@ -217,7 +252,7 @@ def get_messages(session_id: str) -> dict:
 	if not is_site_session(session_id):
 		frappe.throw(_("This conversation is not one of the Website space"), frappe.PermissionError)
 	return {
-		"messages": AISession(frappe.get_doc(AISession.DOCTYPE, session_id)).get_messages(),
+		"messages": with_live_states(AISession(frappe.get_doc(AISession.DOCTYPE, session_id)).get_messages()),
 		"running": AISession.is_session_running(session_id),
 	}
 
@@ -355,7 +390,7 @@ def revert(session_id: str, message_id: str) -> dict:
 		doc.restore_snapshot(snapshot)
 	session = AISession.get(session_id)
 	session.truncate_from_turn(message_id)
-	return {"messages": session.get_messages(), "reverted": sorted(snapshots)}
+	return {"messages": with_live_states(session.get_messages()), "reverted": sorted(snapshots)}
 
 
 # ─────────────────────────── the runner ───────────────────────────

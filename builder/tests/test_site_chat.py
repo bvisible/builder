@@ -249,3 +249,37 @@ class TestWholeSiteChanges(unittest.TestCase):
 		):
 			self.assertEqual(runner.site_changes(), [])
 		logged.assert_called_once()
+
+
+class TestLiveStates(unittest.TestCase):
+	def test_a_card_tells_the_page_as_it_is_now(self):
+		"""Published after the turn, a page's card says « online » and leads to the page online."""
+		page_now = frappe._dict(name="p1", route="contact", published=1, draft_blocks=None, blocks="[1]")
+		messages = [
+			{"role": "user", "metadata": {"siteChat": "Main"}},
+			{
+				"role": "assistant",
+				"metadata": {
+					"changes": [
+						{"kind": "page", "page": "p1", "state": "draft", "sections": [{"block_id": "b1"}]},
+						{"kind": "page", "page": "gone", "state": "draft"},
+						{"kind": "chrome", "state": "site"},
+					]
+				},
+			},
+		]
+		with (
+			patch.object(site_chat.frappe.db, "has_column", return_value=False),
+			patch.object(
+				site_chat.frappe.db,
+				"get_value",
+				side_effect=lambda dt, name, *a, **k: page_now if name == "p1" else None,
+			),
+			patch.object(site_changes, "site_origin", return_value="https://example.test"),
+		):
+			cards = site_chat.with_live_states(messages)[1]["metadata"]["changes"]
+		self.assertEqual(cards[0]["state"], "published")
+		self.assertEqual(cards[0]["links"]["online"], "https://example.test/contact")
+		self.assertTrue(cards[0]["links"]["editor"].endswith("/page/p1?block=b1"))
+		self.assertEqual((cards[1]["state"], cards[1]["links"]), ("deleted", {}))
+		self.assertEqual(cards[2]["state"], "site", "a whole-site card is left as it was")
