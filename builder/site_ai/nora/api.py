@@ -129,6 +129,18 @@ def turn_state(session_id: str) -> dict:
 
 
 TURN_JOB_KEY = "builder_turn_job:"
+AGENT_QUEUES = ("short", "default", "long")
+
+
+def agent_queue() -> str:
+	"""The queue a turn of Nora waits in: « short », not « default », where everything the instance does in the background
+	waits its turn (13.11: thousands of deletions queued on osiris, and a turn of Nora waited behind them for an hour).
+	A bench's short worker serves « short » before « default », and its long worker serves it after « long » and
+	« default »: Nora answers at once however full the instance's own queue is. Jérémy, 13.11: « mets la file prioritaire
+	pour Nora ». The price: a long turn (a whole site built) holds a worker that also serves the short jobs, which the other
+	worker still serves. A site may name another queue (`builder_agent_queue`)."""
+	queue = str(frappe.conf.get("builder_agent_queue") or "short")
+	return queue if queue in AGENT_QUEUES else "short"
 
 
 def turn_job_id(session_id: str) -> str:

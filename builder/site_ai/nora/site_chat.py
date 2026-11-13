@@ -345,11 +345,12 @@ def send(
 		meta["attachedImageUrl"] = image_file_url or image_url
 	session.append_message("user", prompt, message_type="chat", task_type="agent", metadata=meta)
 
-	from builder.site_ai.nora.api import turn_job_id
+	from builder.site_ai.nora.api import agent_queue, turn_job_id
 
 	frappe.enqueue(
 		run_site_job,
-		queue="default",
+		# Nora's queue, served before the instance's own « default » (agent_queue)
+		queue=agent_queue(),
 		# named, so that a turn still in the queue is seen as running (turn_running), not as ended
 		job_id=turn_job_id(session_id),
 		timeout=frappe.utils.cint(frappe.conf.get("builder_agent_job_timeout")) or 14400,

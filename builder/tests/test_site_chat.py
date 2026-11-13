@@ -308,3 +308,26 @@ class TestATurnWaitingInTheQueueIsRunning(unittest.TestCase):
 		):
 			self.assertFalse(site_chat.turn_running("s1"))
 		self.assertFalse(site_chat.turn_running(None))
+
+
+class TestNoraWaitsInHerOwnQueue(unittest.TestCase):
+	"""Jérémy, 13.11: « mets la file prioritaire pour Nora ». A turn waited an hour behind thousands of deletions queued in the
+	instance's « default »; Nora's turns go to « short », which the workers serve first."""
+
+	def test_short_unless_the_site_names_another(self):
+		from builder.site_ai.nora import api
+
+		with patch.dict(frappe.local.conf, {"builder_agent_queue": None}):
+			self.assertEqual(api.agent_queue(), "short")
+		with patch.dict(frappe.local.conf, {"builder_agent_queue": "long"}):
+			self.assertEqual(api.agent_queue(), "long")
+		with patch.dict(frappe.local.conf, {"builder_agent_queue": "nowhere"}):
+			self.assertEqual(api.agent_queue(), "short", "a queue no worker serves would never run the turn")
+
+	def test_every_turn_of_nora_is_queued_there(self):
+		import builder.ai.api as editor
+
+		for module in (editor, site_chat):
+			source = open(module.__file__, encoding="utf-8").read()
+			self.assertNotIn('queue="default"', source, module.__name__)
+			self.assertIn("queue=agent_queue()", source, module.__name__)
