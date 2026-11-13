@@ -12,6 +12,8 @@ import { defineAsyncComponent, type Component } from "vue";
 import { __ } from "@/translation";
 //// Neoffice — see the Chat tab below.
 import { assistantName } from "@/utils/neofficeBoot";
+import NoraOrb from "@/components/Icons/NoraOrb.vue";
+import { hasNoraChat } from "@/utils/noraChatHost";
 
 export type LeftPanelTab = RegistryItem & {
 	label: string;
@@ -102,9 +104,13 @@ leftPanelTabs.register({
 	name: "Chat",
 	//// Neoffice — the assistant is named by the instance (boot), upstream's label is the fallback.
 	label: assistantName(__("Bob AI")),
-	icon: "lucide-sparkle",
+	//// Neoffice — where nora is installed, the tab is Nora's one conversation (NoraEditorChat.vue, 13.11): her orb, and
+	//// upstream's panel only where nora is not (or its files do not load).
+	icon: hasNoraChat() ? NoraOrb : "lucide-sparkle",
 	// the panel brings its own markdown, yaml and sanitiser stack, so it waits to be opened
-	component: defineAsyncComponent(() => import("@/components/BuilderAIChatPanel.vue")),
+	component: defineAsyncComponent(() =>
+		hasNoraChat() ? import("@/components/NoraEditorChat.vue") : import("@/components/BuilderAIChatPanel.vue"),
+	),
 	shortcut: "Mod+Shift+O",
 	// the composer's controls and the chat bubbles stop fitting below this
 	//// Neoffice — 420, not 300 (neoffice-maintenance#2614): a person who writes their site's text, reads Nora's cards and

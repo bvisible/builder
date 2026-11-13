@@ -55,6 +55,11 @@ def get_boot() -> dict:
 	# //// Builder's own catalog comes last, so its words keep its translations.
 	messages = get_translations_from_apps(lang, cockpit_catalogs())
 	messages.update(get_user_translations(lang) or {})
+	# //// Neoffice — the Chat tab draws Nora's one conversation (see nora_chat_boot): its files, and only
+	# //// its own strings, under the cockpit's and Builder's, which keep their words.
+	nora_chat = nora_chat_boot(lang)
+	if nora_chat:
+		messages = {**nora_chat.pop("messages"), **messages}
 	# //// Neoffice — the assistant's name and what this instance allows (managed models, tools
 	# //// kept off, Users tab) ride the boot so a registry condition can read them at module load,
 	# //// before any request. See builder/site_ai/capabilities.py and builder/plugins.py.
@@ -69,6 +74,8 @@ def get_boot() -> dict:
 		# //// on a v15 bench that call fails with a 417 on every load. The flag tells main.ts
 		# //// whether the endpoint exists. Drop with the flag once the fleet is on v16.
 		"telemetry_pulse": _has_pulse(),
+		# //// Neoffice — None where nora is not installed: the Chat tab is then upstream's panel.
+		"nora_chat": nora_chat,
 	}
 
 
@@ -88,3 +95,94 @@ def cockpit_catalogs() -> list:
 	"""The apps whose translations /builder carries: the cockpit's, then Builder's own."""
 	installed = set(frappe.get_installed_apps())
 	return [app for app in ("frappe", "neoffice_theme") if app in installed] + ["builder"]
+
+
+# //// Neoffice — added functions (see get_boot). Nora's one conversation in the editor's Chat tab.
+# //// The desk's pages that talk with Nora share one conversation, nora.chat.Core (app nora), so that what
+# //// improves it improves them all (13.11). The editor is no desk: the tab loads that conversation's files
+# //// at run time (frontend/src/utils/noraChatHost.ts) with what they need of frappe. This says where they
+# //// are, as the apps' own hooks name them (their ?v= included), and carries their translated strings only:
+# //// the whole catalogues of nora and neoffice_activity would add some 800 KB to every opening of the editor.
+NORA_CHAT_JQUERY = "/assets/frappe/js/lib/jquery/jquery.min.js"
+
+
+def nora_chat_boot(lang: str) -> dict | None:
+	"""Where the editor finds Nora's conversation, or None (nora not installed: upstream's panel)."""
+	installed = set(frappe.get_installed_apps())
+	if "nora" not in installed:
+		return None
+	core = hook_asset("nora", "app_include_js", "/nora_chat_core.js")
+	if not core:
+		return None
+	# the desk's one entry (its orb, its microphone), where neoffice_activity is installed
+	entry = (
+		hook_asset("neoffice_activity", "app_include_js", "/nora_input.js")
+		if "neoffice_activity" in installed
+		else None
+	)
+	scripts = [url for url in (entry, core) if url]
+	styles = [
+		url
+		for url in (
+			hook_asset("nora", "app_include_css", "/nora_tokens.css"),
+			hook_asset("nora", "app_include_css", "/nora-chat-core.css"),
+		)
+		if url
+	]
+	return {
+		"jquery": NORA_CHAT_JQUERY,
+		"styles": styles,
+		"scripts": scripts,
+		"lang": lang,
+		"messages": nora_chat_messages(lang, scripts),
+	}
+
+
+def hook_asset(app: str, hook: str, name: str) -> str | None:
+	"""The url an app's own hook gives one of its files (``?v=`` included), or None."""
+	for url in frappe.get_hooks(hook, app_name=app) or []:
+		if name in url.split("?")[0]:
+			return url
+	return None
+
+
+def nora_chat_messages(lang: str, scripts: list[str]) -> dict:
+	"""The translations of the strings these files say, from their apps' catalogues (cached per language and versions)."""
+	if not lang or lang == "en" or not scripts:
+		return {}
+
+	def build() -> dict:
+		import frappe.translate
+
+		apps = sorted({url.split("/")[2] for url in scripts})
+		catalog = frappe.translate.get_translations_from_apps(lang, apps)
+		codes = [read_asset(url) for url in scripts]
+		return strings_of(codes, catalog)
+
+	return frappe.cache().hget("builder_nora_chat_messages", f"{lang}|{'|'.join(scripts)}", build)
+
+
+def read_asset(url: str) -> str:
+	"""The text of an app's public file named by its /assets url."""
+	app, _, rest = url.split("?")[0].removeprefix("/assets/").partition("/")
+	try:
+		with open(frappe.get_app_path(app, "public", rest), encoding="utf-8") as handle:
+			return handle.read()
+	except OSError:
+		return ""
+
+
+def strings_of(codes: list[str], catalog: dict) -> dict:
+	"""The part of ``catalog`` these JavaScript sources look up, keyed as the editor's __ reads it."""
+	from frappe.translate import extract_messages_from_javascript_code
+
+	out = {}
+	for code in codes:
+		for _line, message, context in extract_messages_from_javascript_code(code):
+			key = f"{message}:{context}" if context else message
+			# a string said with a context falls back to the plain one, as __ does
+			for found in (key, message):
+				if found in catalog:
+					out[found] = catalog[found]
+					break
+	return out

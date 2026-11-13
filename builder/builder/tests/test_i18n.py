@@ -7,8 +7,9 @@ from babel.messages.extract import DEFAULT_KEYWORDS, extract_from_dir
 from frappe.gettext.translate import get_method_map
 from frappe.tests.utils import FrappeTestCase
 
-# //// Neoffice — cockpit_catalogs: the catalogs the boot carries (test_boot_carries_only_builder_translations).
-from builder.www._builder import cockpit_catalogs, get_boot
+# //// Neoffice — cockpit_catalogs: the catalogs the boot carries (test_boot_carries_only_builder_translations);
+# //// nora_chat_boot, strings_of: Nora's one conversation in the Chat tab (13.11).
+from builder.www._builder import cockpit_catalogs, get_boot, nora_chat_boot, strings_of
 
 FRONTEND_SRC = os.path.join("frontend", "src")
 
@@ -79,3 +80,57 @@ class TestI18n(FrappeTestCase):
 		from_apps.assert_called_once_with(frappe.local.lang, cockpit_catalogs())
 		self.assertEqual(cockpit_catalogs()[-1], "builder")
 		self.assertLessEqual(set(cockpit_catalogs()), {"frappe", "neoffice_theme", "builder"})
+
+	# //// Neoffice — the Chat tab draws Nora's one conversation (nora_chat_boot, 13.11).
+	def test_without_nora_the_chat_tab_is_upstreams(self):
+		with patch("frappe.get_installed_apps", return_value=["frappe", "builder"]):
+			self.assertIsNone(nora_chat_boot("fr"))
+
+	def test_nora_chat_files_come_from_the_apps_own_hooks(self):
+		hooks = {
+			("app_include_js", "nora"): [
+				"/assets/nora/js/other.js",
+				"/assets/nora/js/nora_chat/nora_chat_core.js?v=9",
+			],
+			("app_include_css", "nora"): [
+				"/assets/nora/css/nora_tokens.css?v=2",
+				"/assets/nora/css/nora_chat/nora-chat-core.css?v=6",
+			],
+			("app_include_js", "neoffice_activity"): ["/assets/neoffice_activity/js/nora_input.js?v=2"],
+		}
+		with (
+			patch(
+				"frappe.get_installed_apps", return_value=["frappe", "neoffice_activity", "nora", "builder"]
+			),
+			patch(
+				"frappe.get_hooks", side_effect=lambda hook, app_name=None: hooks.get((hook, app_name), [])
+			),
+			patch("builder.www._builder.nora_chat_messages", return_value={"Stop": "Arrêter"}),
+		):
+			boot = nora_chat_boot("fr")
+		# the desk's entry before the conversation, which looks for it when it draws its own
+		self.assertEqual(
+			boot["scripts"],
+			[
+				"/assets/neoffice_activity/js/nora_input.js?v=2",
+				"/assets/nora/js/nora_chat/nora_chat_core.js?v=9",
+			],
+		)
+		self.assertEqual(
+			boot["styles"],
+			["/assets/nora/css/nora_tokens.css?v=2", "/assets/nora/css/nora_chat/nora-chat-core.css?v=6"],
+		)
+		self.assertEqual(boot["messages"], {"Stop": "Arrêter"})
+
+	def test_the_boot_carries_only_the_strings_the_conversation_says(self):
+		code = '__("Stop"); __("{0} steps", [n], "Nora\'s steps"); __("Working…", null, "Nora");'
+		catalog = {
+			"Stop": "Arrêter",
+			"{0} steps:Nora's steps": "{0} étapes",
+			"Working…": "Au travail…",
+			"Other": "Autre",
+		}
+		self.assertEqual(
+			strings_of([code], catalog),
+			{"Stop": "Arrêter", "{0} steps:Nora's steps": "{0} étapes", "Working…": "Au travail…"},
+		)

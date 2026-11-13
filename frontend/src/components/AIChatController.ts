@@ -13,6 +13,8 @@ import { useLocalStorage } from "@vueuse/core";
 import { createResource, toast } from "frappe-ui";
 import { computed, inject, nextTick, ref, shallowRef, watch } from "vue";
 import { useRoute } from "vue-router";
+//// Neoffice — the messages a person reads, translated (see the lines marked below)
+import { __ } from "@/translation";
 
 /**
  * Orchestrates the Builder AI chat: holds UI state, sends each user turn to the
@@ -865,10 +867,12 @@ export class AIChatController {
 				method: "POST",
 			}).submit({ message_id: message.id, decision });
 			await this.loadSession();
-			if (decision === "apply") toast.success(res?.message || "Applied");
+			//// Neoffice — translated: the panel speaks the person's language (Nora's conversation in the Chat tab, 13.11)
+			if (decision === "apply") toast.success(res?.message || __("Applied"));
 			if (res?.resumed) this.beginResumedTurn();
 		} catch (e: any) {
-			toast.error(e?.messages?.[0] || "Could not apply the change");
+			//// Neoffice — translated: the panel speaks the person's language (Nora's conversation in the Chat tab, 13.11)
+			toast.error(e?.messages?.[0] || __("Could not apply the change"));
 		}
 	};
 
@@ -909,7 +913,8 @@ export class AIChatController {
 			this.endCanvasBuild(!!this.pageStreamContent.value);
 			this.resetTransientState();
 			await this.loadSession();
-			toast.info("That run is no longer active.");
+			//// Neoffice — translated: the panel speaks the person's language (Nora's conversation in the Chat tab, 13.11)
+			toast.info(__("That run is no longer active."));
 		};
 		try {
 			const res: any = await createResource({ url: "builder.ai.api.cancel" }).submit({
@@ -1013,7 +1018,8 @@ export class AIChatController {
 		this.pendingAssistantId.value = null;
 		this.isSubmitting.value = false;
 		if (!this.prompt.value.trim()) this.prompt.value = userText;
-		toast.error(getErrorMessage(error, "Could not send the message"));
+		//// Neoffice — translated: the panel speaks the person's language (Nora's conversation in the Chat tab, 13.11)
+		toast.error(getErrorMessage(error, __("Could not send the message")));
 	}
 
 	/** Revert an AI turn in ONE go: restore the page to the snapshot taken just before it
@@ -1026,7 +1032,10 @@ export class AIChatController {
 		// restoring reloads the page onto the active canvas, a component's while one is open
 		if (!snapshot || !this.sessionId.value || this.isSubmitting.value || !this.isEditingPage.value) return;
 		const confirmed = await confirm(
-			"Revert this AI edit? The page (blocks and scripts) returns to how it was just before this turn, and this message and everything after it are removed from the chat. Your live page won't change until you publish.",
+			//// Neoffice — translated: the panel speaks the person's language (Nora's conversation in the Chat tab, 13.11)
+			__(
+				"Revert this AI edit? The page (blocks and scripts) returns to how it was just before this turn, and this message and everything after it are removed from the chat. Your live page won't change until you publish.",
+			),
 		);
 		if (!confirmed) return;
 		// 1. Rewind the conversation server-side (delete this turn + everything after).
