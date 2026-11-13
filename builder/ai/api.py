@@ -200,8 +200,12 @@ def resume_after_action(session_id: str, outcome: str) -> bool:
 		resolved_model = ModelRegistry.get_default(model or "openrouter")
 		# A job that can't find its key fails out of sight, so check before queueing it.
 		resolve_api_key(resolved_model)
+		# //// Neoffice — a conversation of the Website space's Nora tab goes on in its own runner (site_chat), so the
+		# //// rest of the turn reaches the tab and not an editor open on the site's home page.
+		from builder.site_ai.nora.site_chat import resume_job
+
 		frappe.enqueue(
-			run_agent_job,
+			resume_job(session_id) or run_agent_job,  # //// Neoffice — the tab's own runner, see above
 			queue="default",
 			timeout=600,
 			# run_agent_job does not persist its prompt, so no phantom "continue" in the chat

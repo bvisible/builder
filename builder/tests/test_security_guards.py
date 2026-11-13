@@ -133,6 +133,12 @@ class TestGuardedEndpoints(FrappeTestCase):
 		("builder.site_ai.ingestion.image_matcher", "chat_apply_client_images"),
 		("builder.hf_utils.header_footer", "get_editor_header_html"),
 		("builder.hf_utils.header_footer", "get_editor_footer_html"),
+		# //// Neoffice — Nora's conversation about the whole site, the Website space's tab (2026-11-13)
+		("builder.site_ai.nora.site_chat", "open_chat"),
+		("builder.site_ai.nora.site_chat", "get_messages"),
+		("builder.site_ai.nora.site_chat", "send"),
+		("builder.site_ai.nora.site_chat", "publish"),
+		("builder.site_ai.nora.site_chat", "revert"),
 	]
 
 	def test_api_endpoints_carry_the_guard(self):
