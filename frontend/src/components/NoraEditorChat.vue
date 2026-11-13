@@ -475,30 +475,31 @@ const debugOpen = ref(false);
 const debugData = ref<Record<string, any> | null>(null);
 
 /** The conversation's modules, on as everywhere (Jérémy, 13.11: « si on fait partout la même chose, c'est mieux »); each
- * shows only when it serves. « Aide » and the blocks of an answer as on the desk; the drop zone's files go up as the
- * door « Mes images » sends them. `resume` keeps which chat of the page this is, and never offers its banner: the editor
- * reopens the page's last chat from the server by itself. The cards to validate are the person's waiting ones (an
- * e-mail to send, a dunning…): the editor has no chat of Nora's of its own, so they are read as anywhere else Nora is
- * and decided on the card. `use` is once per conversation: a module the conversation already turned on keeps its
- * options. */
+ * shows only when it serves. Their options ride the conversation's construction: from nora.chat.Core 12 every module
+ * starts with it and `use` is once per conversation, so an option given after would be lost. « Aide » and the blocks of
+ * an answer as on the desk; the drop zone takes images, which go up as the door « Mes images » sends them. `resume`
+ * keeps which chat of the page this is and never offers its banner: the editor reopens the page's last chat from the
+ * server by itself. The cards to validate are the editor's chat's own (the page's, until its chat has an id): asked with
+ * none, the server gave the person's twenty last ones, decided or not. The voice is the page's (its default): what is
+ * said leaves as a message to her, her answer is said. */
+function features() {
+	const page = `builder:${route.params.pageId || ""}`;
+	return {
+		blocks: { help: true },
+		dropzone: { accept: "image/*", multiple: true },
+		resume: { key: page, offer: false, state: { session_id: sessionId.value } },
+		action_cards: { conversation: () => sessionId.value || page },
+	};
+}
+
+/** What the page does with what its modules give it. */
 function modules() {
-	if (!core || !window.nora?.chat?.features) return;
-	core.use("blocks", { help: true });
-	core.use("dropzone", { accept: "image/*", multiple: true });
-	core.use("resume", {
-		key: `builder:${route.params.pageId || ""}`,
-		offer: false,
-		state: { session_id: sessionId.value },
-	});
-	// the editor's chat is the conversation the cards belong to (the page's, until its chat has an id): the server then
-	// gives the cards still waiting and that chat's own, never the person's decided ones of every other conversation
-	// (asked with none, it gave the twenty last ones, decided or not)
-	core.use("action_cards", { conversation: () => sessionId.value || `builder:${route.params.pageId || ""}` });
+	if (!core) return;
 	watchCards();
 	core.on("files", ({ files }: { files: File[] }) => sendImages(files || []));
 	core.on("resume", ({ state }: { state?: { session_id?: string } }) => {
 		painter?.reset();
-		// the conversation drawn again from nothing: the cards still waiting come back with it
+		// the conversation drawn again from nothing: its cards come back with it
 		core?.features?.action_cards?.load();
 		if (state?.session_id) switchSession(state.session_id);
 	});
@@ -541,6 +542,7 @@ async function start() {
 		enable_upload: true,
 		upload_accept: "image/*",
 		max_upload_size: 10 * 1024 * 1024,
+		features: features(),
 	});
 	painter = new Painter(core);
 	above.value = core.slot("above");

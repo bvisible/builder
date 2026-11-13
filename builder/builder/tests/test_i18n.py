@@ -96,12 +96,16 @@ class TestI18n(FrappeTestCase):
 				"/assets/nora/js/nora_chat/nora_chat_features.js?v=3",
 				# //// Neoffice — the cards to validate, a module too (13.11)
 				"/assets/nora/js/nora_chat/nora_chat_cards.js?v=3",
+				# //// Neoffice — and the page's voice (13.11)
+				"/assets/nora/js/nora_chat/nora_chat_voice.js?v=2",
 			],
 			("app_include_css", "nora"): [
 				"/assets/nora/css/nora_tokens.css?v=2",
 				# //// Neoffice — the modules' sheet (13.11)
 				"/assets/nora/css/nora_quick_chat.css?v=49",
 				"/assets/nora/css/nora_chat/nora-chat-core.css?v=6",
+				# //// Neoffice — the voice's band (13.11)
+				"/assets/nora/css/nora_voice_overlay.css?v=16",
 			],
 			("app_include_js", "neoffice_activity"): ["/assets/neoffice_activity/js/nora_input.js?v=2"],
 		}
@@ -130,6 +134,8 @@ class TestI18n(FrappeTestCase):
 				"/assets/nora/js/nora_chat/nora_chat_features.js?v=3",
 				# //// Neoffice — then the cards, which are one of them (13.11)
 				"/assets/nora/js/nora_chat/nora_chat_cards.js?v=3",
+				# //// Neoffice — and the voice (13.11)
+				"/assets/nora/js/nora_chat/nora_chat_voice.js?v=2",
 			],
 		)
 		# //// Neoffice — and the modules' sheet after the conversation's (13.11)
@@ -139,6 +145,8 @@ class TestI18n(FrappeTestCase):
 				"/assets/nora/css/nora_tokens.css?v=2",
 				"/assets/nora/css/nora_chat/nora-chat-core.css?v=6",
 				"/assets/nora/css/nora_quick_chat.css?v=49",
+				# //// Neoffice — then the voice's band (13.11)
+				"/assets/nora/css/nora_voice_overlay.css?v=16",
 			],
 		)
 		self.assertEqual(boot["messages"], {"Stop": "Arrêter"})

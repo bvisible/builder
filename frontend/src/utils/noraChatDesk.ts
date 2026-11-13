@@ -1,8 +1,9 @@
 //// Neoffice — added file (no upstream equivalent). What the cards to validate of Nora's conversation (nora_chat_cards.js
 //// of the app nora, a module of the one conversation, 13.11) use of the desk, where the editor has no desk: a call to the
 //// server, a desk page (opened in a new tab, the way the desk opens one with its options), a field's type, the defaults,
-//// and how the desk writes a figure, an amount and a date. noraChatHost.ts gives them to the conversation with the rest
-//// of its seam; nora's test of the seam holds the same list: widen them together. Only what is missing is set.
+//// how the desk writes a figure, an amount and a date, and its charts. noraChatHost.ts gives them to the conversation
+//// with the rest of its seam; nora's test of the seam holds the same list: widen them together. Only what is missing
+//// is set.
 import { toast } from "frappe-ui";
 
 import { __ } from "@/translation";
@@ -202,6 +203,42 @@ function docfield(doctype: string, fieldname: string) {
 	return (meta?.fields || []).find((field: any) => field.fieldname === fieldname);
 }
 
+// frappe-charts, the desk's library of charts, as frappe serves it (its node_modules under /assets): loaded with the
+// first chart a card draws, never with the editor
+const CHARTS = "/assets/frappe/node_modules/frappe-charts/dist/frappe-charts.esm.js";
+const CHARTS_STYLE = "/assets/frappe/node_modules/frappe-charts/dist/frappe-charts.min.css";
+export const charts = {
+	load: (): Promise<any> => import(/* @vite-ignore */ CHARTS).then((lib) => lib.Chart),
+};
+let chartClass: Promise<any> | null = null;
+
+/** frappe.Chart of the desk: the chart is drawn once its library is in, and, as the desk's own
+ * (frappe/public/js/frappe/ui/chart.js), a chart drawn again on the same element ends the one before. Where the
+ * library does not load, the card keeps its title. */
+export class DeskChart {
+	constructor(parent: Element | string, options: Record<string, unknown>) {
+		const host: any = typeof parent === "string" ? document.querySelector(parent) : parent;
+		if (!host) return;
+		if (!document.querySelector(`link[data-nora-chat="${CHARTS_STYLE}"]`)) {
+			const link = document.createElement("link");
+			link.rel = "stylesheet";
+			link.href = CHARTS_STYLE;
+			link.dataset.noraChat = CHARTS_STYLE;
+			document.head.appendChild(link);
+		}
+		chartClass = chartClass || charts.load();
+		chartClass
+			.then((Chart) => {
+				if (!host.isConnected) return;
+				host.__frappe_chart?.destroy?.();
+				host.__frappe_chart = new Chart(host, options);
+			})
+			.catch(() => {
+				chartClass = null;
+			});
+	}
+}
+
 /** What the cards use of the desk, set where the page has none of it. */
 export function provideDeskCards(frappe: any, desk: NoraChatDesk) {
 	frappe.call =
@@ -219,6 +256,7 @@ export function provideDeskCards(frappe: any, desk: NoraChatDesk) {
 	frappe.boot.sysdefaults = frappe.boot.sysdefaults || { ...desk.defaults };
 	frappe.datetime = frappe.datetime || {};
 	frappe.datetime.str_to_user = frappe.datetime.str_to_user || ((value: unknown) => dateToUser(desk, value));
+	frappe.Chart = frappe.Chart || DeskChart;
 	const page = window as any;
 	page.format_number =
 		page.format_number ||

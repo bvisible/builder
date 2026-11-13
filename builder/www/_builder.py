@@ -127,7 +127,10 @@ def nora_chat_boot(lang: str) -> dict | None:
 	# //// Neoffice — the cards to validate, a module of the conversation too, after the modules (they read what the
 	# desk's defaults say: desk_defaults)
 	cards = hook_asset("nora", "app_include_js", "/nora_chat_cards.js") if features else None
-	scripts = [url for url in (entry, core, features, cards) if url]
+	# //// Neoffice — the page's voice, a module too: what is said leaves as a message to the page's Nora, her answer is
+	# said (Jérémy, 13.11: the page's Nora answers, never the general one); its band draws with the voice's sheet
+	voice = hook_asset("nora", "app_include_js", "/nora_chat_voice.js") if features else None
+	scripts = [url for url in (entry, core, features, cards, voice) if url]
 	styles = [
 		url
 		for url in (
@@ -135,6 +138,8 @@ def nora_chat_boot(lang: str) -> dict | None:
 			hook_asset("nora", "app_include_css", "/nora-chat-core.css"),
 			# //// Neoffice — the modules' sheet, with them (see features above)
 			hook_asset("nora", "app_include_css", "/nora_quick_chat.css") if features else None,
+			# //// Neoffice — the voice's band (see voice above)
+			hook_asset("nora", "app_include_css", "/nora_voice_overlay.css") if voice else None,
 		)
 		if url
 	]
