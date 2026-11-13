@@ -373,10 +373,14 @@ LAYOUT_PROBE = r"""
     }
     return false;
   };
+  // //// Neoffice — the answers of a closed <details> are not drawn, yet Chromium keeps their box and their textContent:
+  // //// two folded FAQ answers were measured as texts drawn over the next questions, and a pricing page was refused four
+  // //// times (13.11, osiris). checkVisibility() also answers for content-visibility: hidden and display: none ancestors.
+  const foldedAway = (el) => !!el.closest('details:not([open]) > :not(summary)') || (typeof el.checkVisibility === 'function' && !el.checkVisibility());
   const visible = (el) => {
     const r = el.getBoundingClientRect();
     const s = getComputedStyle(el);
-    return r.width > 0 && r.height > 0 && s.visibility !== 'hidden' && s.display !== 'none' && s.opacity !== '0' && !screenReaderOnly(el);
+    return r.width > 0 && r.height > 0 && s.visibility !== 'hidden' && s.display !== 'none' && s.opacity !== '0' && !screenReaderOnly(el) && !foldedAway(el);
   };
   const chrome = (el) => !!el.closest('header, footer, nav, .site-page-header, .navbar, #navbar, [data-chrome]');
   const clipped = (el) => {

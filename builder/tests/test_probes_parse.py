@@ -49,6 +49,14 @@ class TestProbesParse(unittest.TestCase):
 		self.assertIn("const screenReaderOnly", LAYOUT_PROBE)
 		self.assertIn("!screenReaderOnly(el)", LAYOUT_PROBE)
 
+	def test_the_layout_probe_ignores_the_answers_of_a_closed_details(self):
+		# two folded FAQ answers, not drawn but boxed by Chromium, were measured as texts drawn over the next questions
+		# (13.11). Behaviour proved in Chromium on a synthetic page; this keeps the guard.
+		from builder.site_ai.inspiration.screenshotter import LAYOUT_PROBE
+
+		self.assertIn("details:not([open]) > :not(summary)", LAYOUT_PROBE)
+		self.assertIn("!foldedAway(el)", LAYOUT_PROBE)
+
 	def test_the_layout_probe_reads_overlapping_and_cut_words(self):
 		# a section number drawn over its heading and a caption cut in a fixed-width box, on a phone: two
 		# defects nothing measured (neoffice-maintenance#1750). Behaviour is proved in Chromium on a synthetic
