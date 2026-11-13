@@ -133,14 +133,24 @@ AGENT_QUEUES = ("short", "default", "long")
 
 
 def agent_queue() -> str:
-	"""The queue a turn of Nora waits in: « short », not « default », where everything the instance does in the background
-	waits its turn (13.11: thousands of deletions queued on osiris, and a turn of Nora waited behind them for an hour).
-	A bench's short worker serves « short » before « default », and its long worker serves it after « long » and
-	« default »: Nora answers at once however full the instance's own queue is. Jérémy, 13.11: « mets la file prioritaire
-	pour Nora ». The price: a long turn (a whole site built) holds a worker that also serves the short jobs, which the other
-	worker still serves. A site may name another queue (`builder_agent_queue`)."""
-	queue = str(frappe.conf.get("builder_agent_queue") or "short")
-	return queue if queue in AGENT_QUEUES else "short"
+	"""The queue a turn of Nora waits in: the emptier of « short » and « default », both served by every worker of a bench
+	(its short worker serves short then default, its long worker long, default, then short).
+
+	Jérémy, 13.11: « mets la file prioritaire pour Nora ». A turn always queued in « default » waited an hour behind
+	thousands of deletions there; the same evening « short » held 24 000 jobs of a mass import of customers (a contact
+	pushed, an address geocoded, for each one) while « default » was empty: a mass job fills the one its hooks name, never
+	both, so the emptier one is where Nora is served first. A site may name its own queue (`builder_agent_queue`); a queue
+	that cannot be read leaves Nora in « short »."""
+	named = frappe.conf.get("builder_agent_queue")
+	if named in AGENT_QUEUES:
+		return named
+	try:
+		from frappe.utils.background_jobs import get_queue
+
+		waiting = {queue: get_queue(queue).count for queue in ("short", "default")}
+	except Exception:
+		return "short"
+	return min(waiting, key=lambda queue: (waiting[queue], queue != "short"))
 
 
 def turn_job_id(session_id: str) -> str:

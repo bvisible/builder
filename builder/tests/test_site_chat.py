@@ -311,18 +311,36 @@ class TestATurnWaitingInTheQueueIsRunning(unittest.TestCase):
 
 
 class TestNoraWaitsInHerOwnQueue(unittest.TestCase):
-	"""Jérémy, 13.11: « mets la file prioritaire pour Nora ». A turn waited an hour behind thousands of deletions queued in the
-	instance's « default »; Nora's turns go to « short », which the workers serve first."""
+	"""Jérémy, 13.11: « mets la file prioritaire pour Nora ». A turn waited an hour behind thousands of deletions queued in
+	« default »; that evening « short » held 24 000 jobs of an import: Nora takes the emptier of the two."""
 
-	def test_short_unless_the_site_names_another(self):
+	def queue_with(self, short, default, named=None):
 		from builder.site_ai.nora import api
 
-		with patch.dict(frappe.local.conf, {"builder_agent_queue": None}):
+		counts = {"short": short, "default": default}
+		with (
+			patch.dict(frappe.local.conf, {"builder_agent_queue": named}),
+			patch("frappe.utils.background_jobs.get_queue", side_effect=lambda q: SimpleNamespace(count=counts[q])),
+		):
+			return api.agent_queue()
+
+	def test_the_emptier_of_short_and_default(self):
+		self.assertEqual(self.queue_with(short=0, default=5400), "short", "a mass deletion fills default")
+		self.assertEqual(self.queue_with(short=24000, default=0), "default", "a mass import fills short")
+		self.assertEqual(self.queue_with(short=3, default=3), "short", "even: short, served first by the short worker")
+
+	def test_a_queue_the_site_names_wins_and_an_unknown_one_is_ignored(self):
+		self.assertEqual(self.queue_with(short=0, default=0, named="long"), "long")
+		self.assertEqual(self.queue_with(short=9, default=0, named="nowhere"), "default", "a queue no worker serves is never taken")
+
+	def test_a_queue_that_cannot_be_read_leaves_nora_in_short(self):
+		from builder.site_ai.nora import api
+
+		with (
+			patch.dict(frappe.local.conf, {"builder_agent_queue": None}),
+			patch("frappe.utils.background_jobs.get_queue", side_effect=ConnectionError("redis")),
+		):
 			self.assertEqual(api.agent_queue(), "short")
-		with patch.dict(frappe.local.conf, {"builder_agent_queue": "long"}):
-			self.assertEqual(api.agent_queue(), "long")
-		with patch.dict(frappe.local.conf, {"builder_agent_queue": "nowhere"}):
-			self.assertEqual(api.agent_queue(), "short", "a queue no worker serves would never run the turn")
 
 	def test_every_turn_of_nora_is_queued_there(self):
 		import builder.ai.api as editor
