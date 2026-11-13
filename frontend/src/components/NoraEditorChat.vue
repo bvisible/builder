@@ -384,6 +384,7 @@ const inspect =
 const context = (): PaintContext => ({
 	assistant: assistantLabel,
 	working: isSubmitting.value,
+	cancelling: isCancelling.value,
 	editingPage: isEditingPage.value,
 	pageHasDraft: Boolean(pageStore.activePage?.draft_blocks) || !pageStore.activePage?.published,
 	blockExists: (id: string) => Boolean(canvasStore.activeCanvas?.findBlock(id)),

@@ -12,6 +12,8 @@ export type PaintContext = {
 	assistant: string;
 	/** a turn of this tab is running */
 	working: boolean;
+	/** Stop was asked: the pill says it, the answer waits (the controller writes « Cancelling… » there) */
+	cancelling: boolean;
 	/** the canvas shows the page (not a component): what Nora edits */
 	editingPage: boolean;
 	/** the page has changes visitors do not see yet */
@@ -91,14 +93,21 @@ export function applyLabel(kind?: string): string {
 }
 
 /** Nora's words of a message: a card's lead-in, a pending action's question, a stopped turn said as such. */
-export function assistantText(message: ChatMessage): string {
+export function assistantText(message: ChatMessage, cancelling = false): string {
 	const meta = message.metadata || {};
 	if (meta.status === "pending_action") return pendingQuestion(meta);
+	// a stopped turn is said as the Website space's tab says it (the stored answer is English)
+	if (meta.status === "cancelled") return __("Stopped. What was done so far is kept.");
+	if (cancelling && meta.status === "running") return "";
 	if (meta.status === "ui") return meta.text ?? message.content;
 	return message.content || "";
 }
 
 // ─────────────── what she changed ───────────────
+
+// The short words of what changed carry a context of their own: a bare « text » or « look » is another app's word
+// on the desk, and the editor carries only Builder's catalogue (with the cockpit's), not the desk's.
+const SAID = "Nora's answer";
 
 /** What changed in a block, said for a person (the tools record CSS and attribute names). */
 export function changedWords(props: string[]): string {
@@ -106,32 +115,34 @@ export function changedWords(props: string[]): string {
 	for (const raw of props || []) {
 		const prop = String(raw);
 		const bare = prop.replace(/^[mt]:/, "");
-		if (prop === "text" || prop === "html") words.add(__("text"));
-		else if (prop === "removed") words.add(__("removed"));
-		else if (prop === "moved") words.add(__("moved"));
-		else if (prop.startsWith("added")) words.add(__("added"));
-		else if (["src", "srcset", "alt"].includes(bare)) words.add(__("photo"));
-		else if (["href", "target"].includes(bare)) words.add(__("link"));
-		else if (prop.startsWith("m:")) words.add(__("look on a phone"));
-		else if (prop.startsWith("t:")) words.add(__("look on a tablet"));
-		else if (["element", "classes", "props", "client_script"].includes(prop)) words.add(__("content"));
-		else words.add(__("look"));
+		if (prop === "text" || prop === "html") words.add(__("text", [], SAID));
+		else if (prop === "removed") words.add(__("removed", [], SAID));
+		else if (prop === "moved") words.add(__("moved", [], SAID));
+		else if (prop.startsWith("added")) words.add(__("content added", [], SAID));
+		else if (["src", "srcset", "alt"].includes(bare)) words.add(__("photo", [], SAID));
+		else if (["href", "target"].includes(bare)) words.add(__("link", [], SAID));
+		else if (prop.startsWith("m:")) words.add(__("look on a phone", [], SAID));
+		else if (prop.startsWith("t:")) words.add(__("look on a tablet", [], SAID));
+		else if (["element", "classes", "props", "client_script"].includes(prop))
+			words.add(__("content", [], SAID));
+		else words.add(__("look", [], SAID));
 	}
-	const said = [...words].join(" · ");
-	return said ? said.charAt(0).toUpperCase() + said.slice(1) : "";
+	return capitalized([...words].join(" · "));
 }
 
-const capitalized = (word: string) => (word ? word.charAt(0).toUpperCase() + word.slice(1) : "");
+function capitalized(word: string): string {
+	return word ? word.charAt(0).toUpperCase() + word.slice(1) : "";
+}
 
 /** What kind of block it is, in a word (no word for a plain container). */
 export function elementWord(element?: string): string {
 	const tag = String(element || "").toLowerCase();
-	if (tag === "section") return __("section");
-	if (tag === "button" || tag === "a") return __("button");
-	if (tag === "img" || tag === "picture") return __("photo");
-	if (/^h[1-6]$/.test(tag)) return __("title");
-	if (["p", "span", "li"].includes(tag)) return __("text");
-	if (tag === "form") return __("form");
+	if (tag === "section") return __("section", [], SAID);
+	if (tag === "button" || tag === "a") return __("button", [], SAID);
+	if (tag === "img" || tag === "picture") return __("photo", [], SAID);
+	if (/^h[1-6]$/.test(tag)) return __("title", [], SAID);
+	if (["p", "span", "li"].includes(tag)) return __("text", [], SAID);
+	if (tag === "form") return __("form", [], SAID);
 	return "";
 }
 
@@ -175,20 +186,25 @@ export function changeCards(message: ChatMessage, isLast: boolean, ctx: PaintCon
 		...blocks.map((block) => {
 			const here = ctx.blockExists(block.block_id);
 			// a block the agent did not name is said by its words on the canvas (« <p> » says nothing)
-			const label = block.blockName || (here ? ctx.blockLabel(block.block_id) : "");
+			// the page's root (« body »): what was added to the page itself
+			const root = block.blockName === "body" || block.element === "body";
+			const label = root
+				? __("The whole page", [], SAID)
+				: block.blockName || (here ? ctx.blockLabel(block.block_id) : "");
 			return {
 				icon: "block",
-				title: label || capitalized(elementWord(block.element)) || __("Block"),
-				meta: label ? elementWord(block.element) : "",
+				title: label || capitalized(elementWord(block.element)) || __("Block", [], SAID),
+				meta: label && !root ? elementWord(block.element) : "",
 				lines: [changedWords(block.changedProps)].filter(Boolean),
-				pill: here ? pill : { tone: "muted", label: __("Removed") },
-				buttons: here ? [{ label: __("Select"), value: `block:${block.block_id}`, icon: "pointer" }] : [],
+				pill: here ? pill : { tone: "muted", label: __("Removed", [], SAID) },
+				buttons:
+					here && !root ? [{ label: __("Select"), value: `block:${block.block_id}`, icon: "pointer" }] : [],
 			};
 		}),
 		...scripts.map((script) => ({
 			icon: "code",
 			title: script.script_name,
-			meta: __("script"),
+			meta: __("script", [], SAID),
 			lines: [],
 			buttons: [{ label: __("Open the script"), value: `script:${script.script_name}`, icon: "code" }],
 		})),
@@ -265,7 +281,7 @@ export class Painter {
 				meta.attachedImageUrl,
 			]);
 		return JSON.stringify([
-			assistantText(message),
+			assistantText(message, isLast && ctx.cancelling),
 			(meta.steps || []).map((s: AITurnStep) => [
 				s.id,
 				s.status,
@@ -315,7 +331,7 @@ export class Painter {
 		ctx: PaintContext,
 	) {
 		const meta = message.metadata || {};
-		this.core.setMessageText(coreId, assistantText(message));
+		this.core.setMessageText(coreId, assistantText(message, isLast && ctx.cancelling));
 		this.core.setSteps(coreId, meta.steps || []);
 		if (meta.status === "ui" && meta.ui?.length) {
 			this.core.setForm(coreId, meta.ui, {

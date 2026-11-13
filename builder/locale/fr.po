@@ -12927,3 +12927,78 @@ msgstr "{0} travaille sur"
 #, python-brace-format
 msgid "Describe the page in your own words: {0} builds it in the draft, before your eyes."
 msgstr "Décrivez la page avec vos propres mots : {0} la compose dans le brouillon, sous vos yeux."
+
+#: frontend/src/components/ai/noraEditorChat.ts
+msgctxt "Nora's answer"
+msgid "Block"
+msgstr "Bloc"
+
+#: frontend/src/components/ai/noraEditorChat.ts
+msgctxt "Nora's answer"
+msgid "button"
+msgstr "bouton"
+
+#: frontend/src/components/ai/noraEditorChat.ts
+msgctxt "Nora's answer"
+msgid "content"
+msgstr "contenu"
+
+#: frontend/src/components/ai/noraEditorChat.ts
+msgctxt "Nora's answer"
+msgid "content added"
+msgstr "contenu ajouté"
+
+#: frontend/src/components/ai/noraEditorChat.ts
+msgctxt "Nora's answer"
+msgid "form"
+msgstr "formulaire"
+
+#: frontend/src/components/ai/noraEditorChat.ts
+msgctxt "Nora's answer"
+msgid "link"
+msgstr "lien"
+
+#: frontend/src/components/ai/noraEditorChat.ts
+msgctxt "Nora's answer"
+msgid "look"
+msgstr "apparence"
+
+#: frontend/src/components/ai/noraEditorChat.ts
+msgctxt "Nora's answer"
+msgid "look on a phone"
+msgstr "apparence sur téléphone"
+
+#: frontend/src/components/ai/noraEditorChat.ts
+msgctxt "Nora's answer"
+msgid "look on a tablet"
+msgstr "apparence sur tablette"
+
+#: frontend/src/components/ai/noraEditorChat.ts
+msgctxt "Nora's answer"
+msgid "moved"
+msgstr "déplacé"
+
+#: frontend/src/components/ai/noraEditorChat.ts
+msgctxt "Nora's answer"
+msgid "Removed"
+msgstr "Retiré"
+
+#: frontend/src/components/ai/noraEditorChat.ts
+msgctxt "Nora's answer"
+msgid "removed"
+msgstr "retiré"
+
+#: frontend/src/components/ai/noraEditorChat.ts
+msgctxt "Nora's answer"
+msgid "text"
+msgstr "texte"
+
+#: frontend/src/components/ai/noraEditorChat.ts
+msgctxt "Nora's answer"
+msgid "The whole page"
+msgstr "Toute la page"
+
+#: frontend/src/components/ai/noraEditorChat.ts
+msgctxt "Nora's answer"
+msgid "title"
+msgstr "titre"
