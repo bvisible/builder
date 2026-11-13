@@ -12736,3 +12736,45 @@ msgstr "{0} blocs sélectionnés"
 #, python-brace-format
 msgid "{0} was saved somewhere else (another tab or another person) after you opened it. Overwrite that version with yours, or load it and drop your edit?"
 msgstr "{0} a été enregistré ailleurs (dans un autre onglet ou par une autre personne) après que vous l’avez ouvert. Écraser cette version avec la vôtre, ou charger celle-ci et abandonner votre modification ?"
+
+#: frontend/src/components/BuilderAIChatPanel.vue:451
+msgid "Enter sends, Shift+Enter makes a new line. Type / for commands."
+msgstr "Entrée envoie, Maj+Entrée ajoute une ligne. Tapez / pour afficher les commandes."
+
+#: frontend/src/components/BuilderAIChatPanel.vue:940
+msgid "Find images"
+msgstr "Trouver des images"
+
+#: frontend/src/components/BuilderAIChatPanel.vue:941
+msgid "Find images for my site and suggest a few for me to choose from."
+msgstr "Trouvez des images pour mon site et proposez-m'en quelques-unes à choisir."
+
+#: frontend/src/components/BuilderAIChatPanel.vue:929
+msgid "Here is the text for my site:"
+msgstr "Voici le texte de mon site :"
+
+#: frontend/src/components/BuilderAIChatPanel.vue:934
+msgid "I want to give you my images (logo, photos). Show me where to add them."
+msgstr "Je veux vous donner mes images (logo, photos). Montrez-moi où les ajouter."
+
+#: frontend/src/components/BuilderAIChatPanel.vue:933
+msgid "My images"
+msgstr "Mes images"
+
+#: frontend/src/components/BuilderAIChatPanel.vue:929
+msgid "My text"
+msgstr "Mon texte"
+
+#: frontend/src/components/EmptyDraftHint.vue:19
+#, python-brace-format
+msgid "This is the first page, still empty. Answer {0}'s questions on the left: she writes this page, then creates the other pages and the menu."
+msgstr "Ceci est la première page, encore vide. Répondez aux questions de {0} à gauche : elle rédige cette page, puis crée les autres pages et le menu."
+
+#: frontend/src/components/BuilderAIChatPanel.vue:899
+#, python-brace-format
+msgid "Write to {0}…"
+msgstr "Écrire à {0}…"
+
+#: frontend/src/components/EmptyDraftHint.vue:16
+msgid "Your site is built here"
+msgstr "Votre site se construit ici"
