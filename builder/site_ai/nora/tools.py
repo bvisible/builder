@@ -99,6 +99,8 @@ generate_site = Tool(
                 "enum": ["auto", "force", "keep_edited", "none"],
                 "description": "What to do with the site's existing pages: auto (replace untouched AI pages, ask before touching hand-made ones), force (replace all), keep_edited (keep the hand-made pages, replace the untouched AI pages: the answer 'keep them' to a CONFIRM_NEEDED), none (keep every existing page and add the new ones beside, only when the user asks for exactly that).",
             },
+            # //// Neoffice — the texts of the pages a rebuild replaces, kept when the person says so (page_texts, #2624)
+            "keep_texts": {"type": "boolean", "description": "True when the person answered 'keep my texts': every new page is written from the words of the page it replaces (same route or title), their prices, dates, names, people and testimonials kept. Default false: the site is written from the brief alone."},
         },
         "required": ["site_name", "activity", "pages", "language"],
     },

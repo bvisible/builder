@@ -1416,6 +1416,23 @@ def _page_recipes(site: dict, planned, page: dict, is_home: bool, hero_line: str
     return uses
 
 
+# //// Neoffice — the client's own words for a page, from the page it replaces (page_texts, neoffice-maintenance#2624): a rebuild
+# //// that kept them writes the new page FROM them, and drops none of the facts they state.
+def client_words_line(site: dict, page: dict) -> str:
+    from builder.site_ai.nora.page_texts import words_for
+
+    words = words_for(page, site.get("client_texts") or [])
+    if not words:
+        return ""
+    return (
+        "THE CLIENT'S OWN WORDS for this page (from the page it replaces; the client asked to keep them):\n"
+        f"<<<\n{words}\n>>>\n"
+        "Write this page FROM them: keep every fact they state (prices, dates and years, names, people, quotes, figures, opening "
+        "hours) and what they mean; reorder and reword them to fit the sections and the site's language; drop none, and add no "
+        "fact they do not give."
+    )
+
+
 def page_brief_text(site: dict, brief, page: dict, handles: dict, contact_prompt: str, layout_system: str, language: str, photos: list[str], cta: tuple[str, str], palette: dict | None = None, revision: str | None = None, photo_notes: list[str] | None = None) -> str:
     from builder.site_ai.nora.facts import FACTS_RULE, today_line
     from builder.site_ai.nora.hero import hero_recipe
@@ -1497,6 +1514,8 @@ def page_brief_text(site: dict, brief, page: dict, handles: dict, contact_prompt
         today_line(frappe.utils.today()),
         f"BRAND: {site['site_name']}. Activity: {site['activity']}",
         f"POSITIONING: {site.get('differentiators') or 'derive it from the activity'}",
+        # //// Neoffice — the words of the page this one replaces, kept at the client's request (page_texts, #2624)
+        client_words_line(site, page),
         contact_prompt.strip() if contact_prompt else "",
         FACTS_RULE,
         (
@@ -2486,6 +2505,14 @@ def build_site(ctx, spec: dict) -> str:
         routes={str(p["route"]).strip("/") for p in pages} if building_part else None,
     )
     host_reusable = host_page and (host_is_blank or host_page in to_delete)
+    # //// Neoffice — the words of the pages about to be replaced, read before they are deleted, when the person asked to keep
+    # //// them (page_texts, neoffice-maintenance#2624): every new page is written from the page it replaces
+    client_texts = []
+    if spec.get("keep_texts"):
+        from builder.site_ai.nora import page_texts
+
+        client_texts = page_texts.read_pages(list(to_delete) + ([host_page] if host_page and not host_is_blank else []))
+        ai_log("info", "Texts of the replaced pages kept", pages=[t["title"] or t["route"] for t in client_texts])
     to_delete = [n for n in to_delete if n != host_page]
     _progress(ctx, job_id, _("Preparing the site"), 3)
     for name in to_delete:
@@ -2839,6 +2866,10 @@ def build_site(ctx, spec: dict) -> str:
             # //// Neoffice — the brand's own mark, offered to the pages as an ornament (2026-09-15):
             # //// the footer's emblem when the client gave one, else the header's logo.
             "mark": footer_logo_image or logo_image or "",
+            # //// Neoffice — the words of the replaced pages the person kept (page_texts, #2624): each page's own (page_brief_text),
+            # //// and all of them as what a page may state (facts.known_text)
+            "client_texts": client_texts,
+            "client_words": "\n".join(t["text"] for t in client_texts),
             # //// Neoffice — the site's language reaches the includes too (2026-09-15)
             "lang": lang_code,
             # //// Neoffice — and the ground the client chose reaches every page brief (2026-09-17)

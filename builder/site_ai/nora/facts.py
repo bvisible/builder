@@ -213,7 +213,9 @@ def facts_issues(found: list[dict]) -> list[dict]:
 
 def known_text(site: dict, contact_prompt: str = "") -> str:
     """Everything the page writer was given about the business: what a page may state."""
-    parts = [site.get("site_name"), site.get("activity"), site.get("differentiators"), " ".join(site.get("categories") or []), " ".join(site.get("brands") or []), contact_prompt]
+    # //// Neoffice — the words of the replaced pages the client kept are what the client says too (page_texts, #2624): their prices,
+    # //// years and people are not invented facts, and the pass would have taken them out
+    parts = [site.get("site_name"), site.get("activity"), site.get("differentiators"), " ".join(site.get("categories") or []), " ".join(site.get("brands") or []), contact_prompt, site.get("client_words")]
     return " ".join(str(part) for part in parts if part)
 
 
