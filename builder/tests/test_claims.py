@@ -112,6 +112,46 @@ class TestChoicesWrittenAsACall(unittest.TestCase):
 		self.assertEqual([o["label"] for o in groups[1]["options"]], ["Reconstruire", "Publier telle quelle"])
 		self.assertNotIn("description", groups[1]["options"][1])
 
+	def test_bullets_above_the_buttons_are_the_choices(self):
+		"""The next turn wrote its question as bullets over « [buttons: Continuer] »: present_ui bounced the card (one button
+		under listed choices) and the raw text stayed on screen (13.11). The bullets become the card's choices."""
+		from builder.ai.agent.tools.conversation import listed_choices_over_one_button
+
+		text = (
+			"Tarifs n'a pas passé le contrôle qualité. Que faire ?\n"
+			"* Reconstruire avec une autre direction — je réécris la page, en gardant vos tarifs\n"
+			"* Publier telle quelle — elle reste avec les défauts\n"
+			"* Je la finis moi-même — elle reste dans le brouillon, hors du menu\n"
+			"[buttons: Continuer]"
+		)
+		card = parse_card(text)
+		self.assertEqual(card["text"], "Tarifs n'a pas passé le contrôle qualité. Que faire ?")
+		self.assertEqual(card["ui"][0]["kind"], "choices")
+		self.assertEqual(card["ui"][0]["options"][1], {"label": "Publier telle quelle", "description": "elle reste avec les défauts"})
+		self.assertFalse(listed_choices_over_one_button(card["text"], card["ui"]), "present_ui takes it")
+
+	def test_the_broken_card_copied_back_is_joined_again(self):
+		"""The model copied the broken card of its history, pieces and all: they are joined back into one question."""
+		text = (
+			"À propos est construite et publiée. Tarifs n'a pas passé le contrôle qualité. Que faire ?\n"
+			"* Tarifs — que faire? options=[Reconstruire avec une autre direction (description: je réécris la page\n"
+			"* en gardant vos tarifs)\n"
+			"* Publier telle quelle (description: elle reste avec les défauts)\n"
+			"* Je la finis moi-même (description: elle reste dans le brouillon\n"
+			"* hors du menu)]\n"
+			"[buttons: Continuer]"
+		)
+		card = parse_card(text)
+		self.assertTrue(card["text"].endswith("Que faire ?"))
+		group = card["ui"][0]
+		self.assertEqual(group["label"], "Tarifs — que faire?")
+		self.assertEqual([o["label"] for o in group["options"]], ["Reconstruire avec une autre direction", "Publier telle quelle", "Je la finis moi-même"])
+		self.assertEqual(group["options"][0]["description"], "je réécris la page, en gardant vos tarifs")
+
+	def test_a_report_over_one_button_stays_a_report(self):
+		card = parse_card("J'ai fait trois choses.\n- Accueil réécrite\n- Photos placées\n- Menu mis à jour\n[buttons: Continuer]")
+		self.assertNotIn("choices", [el["kind"] for el in card["ui"]])
+
 	def test_a_comma_between_parentheses_never_splits_a_choice(self):
 		card = parse_card("Quel ton ?\n[choices: Chaleureux (proche, simple), Sobre]\n[buttons: Continuer]")
 		self.assertEqual([o["label"] for o in card["ui"][0]["options"]], ["Chaleureux (proche, simple)", "Sobre"])

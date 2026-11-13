@@ -270,6 +270,30 @@ def _bullet_choices(text: str) -> dict | None:
 # //// Neoffice ▲▲▲
 
 
+def _listed_above(lead: str) -> tuple[str, dict] | None:
+    """The text above a card's buttons without its closing bullet list, and that list as a choices group, or None. Bullets
+    that carry the tool's arguments cut at their commas (copied from an earlier card that came out broken) are joined
+    back first: « * Tarifs — que faire? options=[A (description: x » / « * y) » is one question with its choices."""
+    lines = [line.rstrip() for line in (lead or "").split("\n")]
+    first = next((i for i, line in enumerate(lines) if BULLET.match(line)), None)
+    if first is None or any(line.strip() and not BULLET.match(line) for line in lines[first:]):
+        return None  # the bullets close the text, right above the buttons
+    head = "\n".join(lines[:first]).strip()
+    bullets = [BULLET.match(line).group(1).strip() for line in lines[first:] if line.strip()]
+    pseudo = _pseudo_options(", ".join(bullets))
+    if pseudo and len(pseudo[1]) >= 2:
+        label, options = pseudo
+        element = {"kind": "choices", "options": options[:12]}
+        if label:
+            element["label"] = label[:120]
+        return head, element
+    card = _bullet_choices(lead)
+    if not card:
+        return None
+    # the question stays the card's text, said once
+    return head, {"kind": "choices", "options": card["ui"][0]["options"][:12]}
+
+
 def parse_card(text: str) -> dict | None:
     """The present_ui arguments for a card written as text (JSON, braces or brackets, or a
     question followed by a bullet list), or None when the text carries no card."""
@@ -378,6 +402,15 @@ def parse_card(text: str) -> dict | None:
                 ui.append({"kind": "swatches", "colors": colors[:8]})
         elif kind == "divider":
             ui.append({"kind": "divider"})
+    # //// Neoffice — a question and its bullets written ABOVE the card's buttons: the bullets are its choices. Left in the
+    # //// text, present_ui bounced the card (one button under listed choices) and the raw text stayed, « [buttons:
+    # //// Continuer] » on screen (13.11, osiris).
+    if not any(el.get("kind") == "choices" for el in ui):
+        listed = _listed_above(lead)
+        if listed:
+            lead, element = listed
+            ui.insert(0, element)
+            has_control = True
     if not has_control:
         return None
     # a card with inputs or multi-select needs a submit button; the model's own is used first
