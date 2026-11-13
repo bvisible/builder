@@ -40,6 +40,18 @@ class TestTheFirstCard(unittest.TestCase):
 		self.assertIn("in the user's language", self.first_card())
 
 
+class TestPicturesSentInAMessage(unittest.TestCase):
+	"""« My images » hands the assistant the addresses of the pictures the person chose. Without a rule, the model took them for
+	a request to put the picture on the page and applied thirty-seven changes to a blank draft (13.11, on osiris)."""
+
+	def test_they_are_kept_for_the_site_and_never_put_on_the_page(self):
+		text = prompts.site_playbook(None)
+		self.assertIn("are THEIR OWN pictures", text)
+		self.assertIn("do NOT edit or read any block", text)
+		self.assertIn("keep their addresses for generate_site", text)
+		self.assertIn("logo_image for a logo, photos for the others", text)
+
+
 class TestThePersonsLanguage(unittest.TestCase):
 	def say(self, user_language, system_language=None, builder_language=None, language_name="français"):
 		def get_value(doctype, name, field=None, *args, **kwargs):
