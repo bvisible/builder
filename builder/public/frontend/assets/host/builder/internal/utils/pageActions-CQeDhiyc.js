@@ -1,0 +1,1 @@
+import{C as e,D as t,E as n,O as r,S as i,T as a,b as o,w as s,x as c}from"../../../../Settings~58-Cl5_Z7hJ.js";export{o as FOLDER_PAGE_LIMIT,c as createPageIn,i as deletePage,e as folderPages,s as notifyPagesChanged,a as openPage,n as pageMenu,t as pagesVersion,r as shortTitle};

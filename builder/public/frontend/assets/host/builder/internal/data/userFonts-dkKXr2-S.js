@@ -1,0 +1,1 @@
+import{pt as e}from"../../../../toast~93-CLRFlYo4.js";var t=e({method:`GET`,doctype:`User Font`,fields:[`font_name`,`font_file`],cache:`userFonts`,start:0,pageLength:50,auto:!0});export{t as default};
