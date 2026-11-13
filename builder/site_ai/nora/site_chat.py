@@ -442,8 +442,11 @@ class SiteChatRunner(AgentRunner):
 			if card := site_changes.page_card(page, None, self.site_profile):
 				card["whole"] = "created" if created else "updated"
 				cards.append(card)
-		for kind in self.site_wide_kinds():
-			cards.append(site_changes.site_card(kind, self.site_profile))
+		try:
+			cards += [site_changes.site_card(kind, self.site_profile) for kind in self.site_wide_kinds()]
+		except Exception:
+			# the pages' cards are worth more than the whole site's: a failure here never takes them away
+			frappe.log_error("Site conversation: whole-site changes not read", frappe.get_traceback())
 		return cards
 
 	def pages_written_meanwhile(self, seen: set[str]) -> list[tuple[str, bool]]:
@@ -464,11 +467,7 @@ class SiteChatRunner(AgentRunner):
 		for doctype, kind in SITE_WIDE:
 			if kind in kinds or not frappe.db.exists("DocType", doctype):
 				continue
-			if frappe.get_meta(doctype).issingle:
-				changed = (frappe.db.get_single_value(doctype, "modified") or "") >= str(self.site_started)
-			else:
-				changed = bool(frappe.db.exists(doctype, {"modified": [">=", self.site_started]}))
-			if changed:
+			if changed_since(doctype, self.site_started):
 				kinds.append(kind)
 		return kinds
 
@@ -501,6 +500,21 @@ class SiteChatRunner(AgentRunner):
 			update_modified=False,
 		)
 		self.emit("changes", message_id=row.name, changes=cards, after_commit=True)
+
+
+def changed_since(doctype: str, since) -> bool:
+	"""Whether a record of `doctype` was written since `since`. A single doctype keeps its `modified` in tabSingles, which
+	get_single_value refuses to read (it is no field of the doctype's meta)."""
+	if frappe.get_meta(doctype).issingle:
+		singles = frappe.qb.DocType("Singles")
+		stamp = (
+			frappe.qb.from_(singles)
+			.select(singles.value)
+			.where((singles.doctype == doctype) & (singles.field == "modified"))
+			.run(pluck=True)
+		)
+		return bool(stamp and stamp[0] and str(stamp[0]) >= str(since))
+	return bool(frappe.db.exists(doctype, {"modified": [">=", since]}))
 
 
 # ─────────────────────────── open_page ───────────────────────────

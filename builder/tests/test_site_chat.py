@@ -230,3 +230,22 @@ class TestSiteScopes(unittest.TestCase):
 			self.assertEqual(site_chat.site_scopes(None), [{"neo_website_profile": ("is", "not set")}])
 		with patch.object(site_chat.frappe.db, "has_column", return_value=False):
 			self.assertEqual(site_chat.site_scopes("Main"), [{}])
+
+
+class TestWholeSiteChanges(unittest.TestCase):
+	def test_a_single_doctype_is_read_from_its_singles_row(self):
+		"""get_single_value refuses `modified` (no field of the meta): the cards of the pages were lost with it (13.11)."""
+		since = frappe.utils.add_to_date(frappe.utils.now_datetime(), days=-36500)
+		self.assertTrue(site_chat.changed_since("System Settings", since))
+		self.assertFalse(site_chat.changed_since("System Settings", frappe.utils.add_to_date(None, days=1)))
+
+	def test_the_pages_cards_survive_a_failure_of_the_whole_sites(self):
+		runner = site_chat.SiteChatRunner.__new__(site_chat.SiteChatRunner)
+		runner.site_before, runner.site_profile, runner.site_started = {}, None, frappe.utils.now_datetime()
+		with (
+			patch.object(runner, "pages_written_meanwhile", return_value=[]),
+			patch.object(runner, "site_wide_kinds", side_effect=frappe.ValidationError("boom")),
+			patch.object(site_chat.frappe, "log_error") as logged,
+		):
+			self.assertEqual(runner.site_changes(), [])
+		logged.assert_called_once()
