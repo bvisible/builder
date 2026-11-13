@@ -12809,3 +12809,36 @@ msgstr "Envoi {0}/{1}…"
 #: frontend/src/components/BuilderAIChatPanel.vue:982
 msgid "Your images could not be sent."
 msgstr "Vos images n'ont pas pu être envoyées."
+
+#: builder/site_ai/nora/site_changes.py:84
+msgid "A section"
+msgstr "Une section"
+
+#: builder/site_ai/nora/site_chat.py:324
+msgid "No page to publish"
+msgstr "Aucune page à publier"
+
+#: builder/site_ai/nora/site_chat.py:253
+msgid "Nora is still working on your last message."
+msgstr "Nora travaille encore sur votre dernier message."
+
+#: builder/site_ai/nora/site_chat.py:345
+msgid "Nora is still working: wait for her answer before going back."
+msgstr "Nora travaille encore : attendez sa réponse avant de revenir en arrière."
+
+#: builder/site_ai/nora/site_chat.py:96
+msgid "the site"
+msgstr "le site"
+
+#: builder/site_ai/nora/site_chat.py:218 builder/site_ai/nora/site_chat.py:248
+#: builder/site_ai/nora/site_chat.py:343
+msgid "This conversation is not one of the Website space"
+msgstr "Cette conversation ne fait pas partie de l'espace Site web."
+
+#: builder/site_ai/nora/site_chat.py:243
+msgid "Write something for Nora first"
+msgstr "Écrivez d'abord un message à Nora."
+
+#: builder/site_ai/nora/site_chat.py:88
+msgid "You cannot work on this site"
+msgstr "Vous ne pouvez pas travailler sur ce site."
