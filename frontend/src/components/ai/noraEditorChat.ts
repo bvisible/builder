@@ -18,6 +18,8 @@ export type PaintContext = {
 	pageHasDraft: boolean;
 	/** a block still on the canvas (a removed one has nothing to select) */
 	blockExists: (id: string) => boolean;
+	/** what a block says on the canvas, for a block without a name (its words, its image) */
+	blockLabel: (id: string) => string;
 	/** « Inspect this turn » (Administrator, developer mode) */
 	inspect: boolean;
 };
@@ -119,6 +121,8 @@ export function changedWords(props: string[]): string {
 	return said ? said.charAt(0).toUpperCase() + said.slice(1) : "";
 }
 
+const capitalized = (word: string) => (word ? word.charAt(0).toUpperCase() + word.slice(1) : "");
+
 /** What kind of block it is, in a word (no word for a plain container). */
 export function elementWord(element?: string): string {
 	const tag = String(element || "").toLowerCase();
@@ -170,10 +174,12 @@ export function changeCards(message: ChatMessage, isLast: boolean, ctx: PaintCon
 	const cards: Card[] = [
 		...blocks.map((block) => {
 			const here = ctx.blockExists(block.block_id);
+			// a block the agent did not name is said by its words on the canvas (« <p> » says nothing)
+			const label = block.blockName || (here ? ctx.blockLabel(block.block_id) : "");
 			return {
 				icon: "block",
-				title: block.blockName || `<${block.element || "div"}>`,
-				meta: block.blockName ? elementWord(block.element) : "",
+				title: label || capitalized(elementWord(block.element)) || __("Block"),
+				meta: label ? elementWord(block.element) : "",
 				lines: [changedWords(block.changedProps)].filter(Boolean),
 				pill: here ? pill : { tone: "muted", label: __("Removed") },
 				buttons: here ? [{ label: __("Select"), value: `block:${block.block_id}`, icon: "pointer" }] : [],
@@ -277,7 +283,10 @@ export class Painter {
 			ctx.working,
 			ctx.editingPage,
 			ctx.pageHasDraft,
-			(meta.affectedBlocks || []).map((b: AffectedBlock) => ctx.blockExists(b.block_id)),
+			(meta.affectedBlocks || []).map((b: AffectedBlock) => [
+				ctx.blockExists(b.block_id),
+				ctx.blockLabel(b.block_id),
+			]),
 		]);
 	}
 

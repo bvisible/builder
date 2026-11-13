@@ -384,6 +384,11 @@ const context = (): PaintContext => ({
 	editingPage: isEditingPage.value,
 	pageHasDraft: Boolean(pageStore.activePage?.draft_blocks) || !pageStore.activePage?.published,
 	blockExists: (id: string) => Boolean(canvasStore.activeCanvas?.findBlock(id)),
+	blockLabel: (id: string) => {
+		// « p | C'est ce regard… »: the words, without the element the canvas puts first
+		const said = String(canvasStore.activeCanvas?.findBlock(id)?.getBlockDescription?.() || "");
+		return said.includes(" | ") ? said.split(" | ").slice(1).join(" | ") : "";
+	},
 	inspect,
 });
 
