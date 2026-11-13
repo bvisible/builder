@@ -161,6 +161,7 @@
 </template>
 
 <script setup lang="ts">
+import { contextUsageOf } from "@/components/ai/contextUsage";
 import { computed, ref } from "vue";
 
 const props = defineProps<{ debug: Record<string, any> | null }>();
@@ -209,16 +210,9 @@ const primaryStats = computed(() => {
 	];
 });
 
-// The latest call's prompt is the conversation's current size in the window.
 const context = computed(() => {
-	const d = props.debug || {};
-	const lastPrompt = perCall.value.at(-1)?.prompt || 0;
-	if (!d.contextWindow || !lastPrompt) return null;
-	return {
-		used: fmt(lastPrompt),
-		total: fmt(d.contextWindow),
-		pct: Math.round((lastPrompt / d.contextWindow) * 100),
-	};
+	const usage = contextUsageOf(props.debug);
+	return usage && { used: fmt(usage.used), total: fmt(usage.total), pct: usage.pct };
 });
 
 const signals = computed(() => {
@@ -241,26 +235,21 @@ const AMBER = "bg-surface-amber-2 text-ink-amber-8"; // mutate
 const RED = "bg-surface-red-2 text-ink-red-8"; // delete
 const GRAY = "bg-surface-gray-3 text-ink-gray-7"; // converse / misc
 const TOOL_TONES: Record<string, string> = {
-	read_block: BLUE,
-	query_blocks: BLUE,
 	query_records: BLUE,
 	get_page_scripts: BLUE,
 	get_document: BLUE,
 	list_doctypes: BLUE,
 	preview_page: BLUE,
-	add_block: GREEN,
 	set_page_script: GREEN,
 	generate_page: GREEN,
 	extract_component: GREEN,
 	set_design_token: GREEN,
-	update_block: AMBER,
-	update_blocks: AMBER,
+	edit_page: AMBER,
 	update_script: AMBER,
 
 	edit_component: AMBER,
-	move_block: AMBER,
 	set_page_settings: AMBER,
-	remove_block: RED,
+	detach_page_script: RED,
 	present_ui: GRAY,
 };
 const toolTone = (name: string) => TOOL_TONES[name] || GRAY;

@@ -2,7 +2,8 @@
 //// Settings dialog, applied by ./index.ts right after upstream's own panes so the dialog, the command
 //// palette and the idle prefetch see it without any other change to upstream:
 //// - three Global panes upstream does not have: Theme, Header & Footer (050b8aa3), Social Accounts
-////   (3a033121) and Plugins (45e67b23);
+////   (3a033121) and Site plugins (45e67b23; "Plugins" under the name global_plugins until upstream 1.38.0
+////   brought a Plugins pane of its own, for its editor plugins, under that name: both are shown since);
 //// - on a managed instance, the AI pane becomes read-only (same registry name, so every
 ////   openBuilderSettings("global_ai") still lands on it) and the Users tab is hidden, because
 ////   invitations create users outside the licence quota. Both are boot capabilities
@@ -36,12 +37,12 @@ const panes: SettingsPane[] = [
 		load: () => import("@/components/Settings/GlobalSocial.vue"),
 	},
 	{
-		name: "global_plugins",
-		label: __("Plugins"),
-		title: __("Plugins"),
+		name: "global_site_plugins",
+		label: __("Site plugins"),
+		title: __("Site plugins"),
 		icon: "lucide-puzzle",
 		group: "Global",
-		load: () => import("@/components/Settings/GlobalPlugins.vue"),
+		load: () => import("@/components/Settings/GlobalSitePlugins.vue"),
 	},
 ];
 

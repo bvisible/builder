@@ -22,11 +22,15 @@ ENDPOINTS = {
 	"import_provider_models": ("Managed",),
 	"delete_ai_provider": ("Managed",),
 	"get_provider_credits": ("Managed",),
-	"verify_ai_key": ("custom", "k", "https://example.invalid/v1", "m"),
+	# //// Neoffice — upstream 1.38 folded verify_ai_key and setup_ai_provider into connect_ai_provider, and added the
+	# //// browser-link sign-in and the hand-picked models (get_addable_models, add_ai_model): each is the host's too
+	"connect_ai_provider": ("openai", "k"),
 	"start_codex_login": (),
 	"poll_codex_login": ("state",),
+	"start_codex_browser_login": (),
 	"finish_codex_login": ("http://localhost/cb",),
-	"setup_ai_provider": ("custom", "k", "https://example.invalid/v1", ["m"]),
+	"get_addable_models": ("Managed",),
+	"add_ai_model": ("Managed", "m"),
 	"test_api_key": ("Managed", "k"),
 }
 
@@ -94,7 +98,8 @@ class TestTheDecorator(unittest.TestCase):
 	def test_it_keeps_the_signature_frappe_reads(self):
 		import inspect
 
-		self.assertEqual(list(inspect.signature(api.setup_ai_provider).parameters)[:3], ["preset", "api_key", "api_base"])
+		# //// Neoffice — connect_ai_provider since upstream 1.38 (setup_ai_provider is gone)
+		self.assertEqual(list(inspect.signature(api.connect_ai_provider).parameters)[:2], ["preset", "api_key"])
 		self.assertEqual(api.save_ai_provider.__name__, "save_ai_provider")
 
 
@@ -117,13 +122,14 @@ class TestEveryProviderEndpointRefusesAClient(unittest.TestCase):
 		"""A new endpoint of this family must be added above, or this fails: it reads the module."""
 		import inspect
 
-		families = ("provider", "codex_login", "ai_key", "api_key")
+		families = ("provider", "codex_login", "ai_key", "api_key", "addable", "add_ai_model")  # //// Neoffice — 1.38's two
 		found = {
 			name
 			for name, fn in inspect.getmembers(api, inspect.isfunction)
 			if fn.__module__ == api.__name__
 			and any(word in name for word in families)
-			and name not in {"resolve_api_key", "settings_api_key"}
+			# //// Neoffice — sync_one_provider (upstream 1.38) is the helper of sync_ai_models, not an endpoint
+			and name not in {"resolve_api_key", "settings_api_key", "sync_one_provider"}
 		}
 		self.assertTrue(found <= set(ENDPOINTS), found - set(ENDPOINTS))
 

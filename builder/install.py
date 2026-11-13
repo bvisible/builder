@@ -1,3 +1,4 @@
+import frappe
 from frappe.core.api.file import create_new_folder
 
 # //// Neoffice — the subsystems upstream does not have: the plugin registry, the chrome Web
@@ -5,6 +6,7 @@ from frappe.core.api.file import create_new_folder
 from builder.plugins import sync_plugins
 from builder.site_ai.managed import sync_managed_ai_provider, sync_nora_providers
 from builder.web_chrome import ensure_web_chrome_templates
+from builder.ai.presets import sync_site_provider
 from builder.export_import_standard_page import sync_standard_builder_pages
 from builder.utils import (
 	add_composite_index_to_web_page_view,
@@ -29,6 +31,7 @@ def after_install():
 	sync_standard_builder_pages()
 	# //// Neoffice — the chrome templates on a fresh site.
 	ensure_web_chrome_templates()
+	sync_site_provider()
 
 
 def after_migrate():
@@ -52,6 +55,7 @@ def after_migrate():
 	from builder.site_ai.nora import hub_templates
 
 	hub_templates.sync_quietly()
+	sync_site_provider()
 
 
 def after_app_install(app_name=None):

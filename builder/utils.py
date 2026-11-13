@@ -8,7 +8,6 @@ from os.path import join
 from urllib.parse import parse_qs, unquote
 
 import frappe
-import yaml
 from frappe.model.document import Document
 from frappe.modules.import_file import (
 	import_doc,
@@ -437,7 +436,7 @@ def safer_exec(
 
 	with safe_exec_flags():
 		# execute script compiled by RestrictedPython
-		exec(
+		exec(  # nosemgrep
 			compile_restricted(script, filename=filename, policy=FrappeTransformer),
 			exec_globals,
 			_locals,
@@ -731,7 +730,7 @@ def execute_script(script, _locals, script_filename):
 	for name, value in (("true", True), ("false", False), ("null", None)):
 		_locals.setdefault(name, value)
 	if is_safe_exec_enabled():
-		safe_exec(script, None, _locals, script_filename=script_filename)
+		safe_exec(script, None, _locals, script_filename=script_filename)  # nosemgrep
 	else:
 		safer_exec(script, None, _locals, script_filename=script_filename)
 
@@ -966,46 +965,3 @@ def hash(s):
 
 def to_safe_json(data):
 	return frappe.as_json(data or {}).replace("</", r"<\/")
-
-
-class CompactDumper(yaml.Dumper):
-	"""Minimal-whitespace YAML dumper.
-
-	Two optimizations over the default Dumper:
-	1. indentless=True — removes the extra 2-space indent on list items inside
-	   mappings, which compounds in deeply nested block trees.
-	2. Flow style for flat dicts — turns multi-line style blocks into single-line
-	   {k: v, k: v} inline mappings, saving ~60% of style-dict tokens.
-	"""
-
-	def increase_indent(self, flow=False, indentless=False):
-		return super().increase_indent(flow=flow, indentless=True)
-
-	def represent_mapping(self, tag, mapping, flow_style=None):
-		# Use flow style {k: v} only for flat dicts (no nested dicts or lists)
-		if flow_style is None:
-			flow_style = all(not isinstance(v, (dict, list)) for v in mapping.values())
-		return super().represent_mapping(tag, mapping, flow_style=flow_style)
-
-
-def _str_representer(dumper, data):
-	"""Use plain scalars where safe; single-quote only when the value contains
-	characters that would confuse the YAML parser."""
-	if any(c in data for c in (":", "{", "}", "[", "]", "#", "&", "*", "!", "|", ">", "'", '"', "\n")):
-		return dumper.represent_scalar("tag:yaml.org,2002:str", data, style="'")
-	return dumper.represent_scalar("tag:yaml.org,2002:str", data)
-
-
-CompactDumper.add_representer(str, _str_representer)
-
-
-def to_compact_yaml(data) -> str:
-	"""Serialize data to minimal YAML for LLM context."""
-	return yaml.dump(
-		data,
-		Dumper=CompactDumper,
-		sort_keys=False,
-		default_flow_style=False,
-		allow_unicode=True,
-		width=1000,  # prevent wrapping long values mid-token
-	)

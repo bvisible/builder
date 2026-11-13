@@ -283,6 +283,45 @@ the lazy `__getattr__` that replaced eager imports.
 - `builder/www/__pycache__/__init__.py` — an accidentally committed `__pycache__`
   file that upstream still carries at BASE; we deleted it. Take our side.
 
+### Merge of upstream v1.38.0 (2026-11-13)
+
+Upstream moved 249 commits from v1.36.6; 24 files conflicted. What the merge decided, beyond the hunks it marked:
+
+- **Two "plugins", two things.** Upstream 1.38 has *editor plugins*: code a Builder Hub serves, installed as
+  `Builder Plugin` rows, run in the editor (package `builder/plugins/`, the editor's Plugins tab, the Settings pane
+  `global_plugins` / `Settings/GlobalPlugins.vue`; Bob's `write_plugin` is off on a managed instance, see
+  `MANAGED_DISABLED_TOOLS` in `builder/site_ai/capabilities.py`). Ours is the *plugin registry*: a capability of the site turned on
+  or off (`Website Plugin`, 45e67b23). Our registry lived in the module `builder/plugins.py`, which upstream's package
+  shadows: it moved into `builder/plugins/__init__.py` (upstream's is empty), so `builder.plugins.route_guard`
+  (`before_request`), `get_capabilities` and `list_plugins` keep their paths. Our Settings pane became
+  `global_site_plugins`, "Site plugins", `Settings/GlobalSitePlugins.vue`; upstream's keeps its name, file and label.
+- **Bob writes page markup now, our site generator still writes YAML.** Upstream replaced the YAML its agent read and
+  wrote with a line format (`builder/ai/markup.py`, `expand_page_markup`, `edit_page`). Our pipeline
+  (`builder/site_ai/nora`) and its section recipes produce YAML: `parse_generation_yaml`, `unwrap_root` and
+  `expand_page_yaml` are kept in `builder/ai/page_writer.py`, as upstream had them in 1.36.6, and both paths land in
+  `convert_node`. `frontend/src/components/ai/yaml.ts` is deleted with upstream's YAML parser; its two changes of ours
+  that still matter (`STYLE_BINDINGS`) moved to `ai/blockFields.ts`, where upstream moved `bindingEntry`.
+- **LiteLLM stays at 1.100.4** (CVE-2026-114612); upstream's range would let an install resolve below the fix.
+- **The host-only guard** (`builder.site_ai.capabilities.host_ai_settings_only`) follows upstream's renames:
+  `connect_ai_provider` replaces `verify_ai_key` and `setup_ai_provider`, and the browser-link sign-in and the
+  hand-picked models (`get_addable_models`, `add_ai_model`) are the host's too. `builder/tests/test_host_owns_ai_settings.py`
+  lists them and fails on a new endpoint of the family.
+- **Frappe Cloud v2 panels** (billing, trial card, domains, website clone) need Cloud Settings, which Frappe v15 does
+  not have: the editor's boot says `cloud_settings = {enabled: false}` and every one of them stays hidden, with no
+  request. Nothing to mask. The server refuses too: `builder/clone_onboarding.py` (the website clone) answers only
+  where Cloud Settings is on, and it would make a System Manager service user with API keys (`clone-service@example.com`),
+  which our rule forbids (System Manager is Administrator alone). Decide both at the move to Frappe v16.
+- `yarn.lock` regenerated from upstream's, without the `frappe-ui` workspace (the submodule a CI checkout does not
+  fetch), as before.
+
+| Contract | Rule | Pattern | Why |
+| --- | --- | --- | --- |
+| `pyproject.toml` | absent | `"litellm>=` | CVE-2026-114612: LiteLLM stays pinned to 1.100.4, the first version past the fix; upstream 1.38.0 allows >=1.95.1 again. |
+| `pyproject.toml` | present | `"litellm==1\.1\d\d\.` | same: an exact version, 1.100 or later (move the pin up on purpose, never back to a range). |
+| `builder/plugins/__init__.py` | present | `^def route_guard\(` | the plugin registry lives in the package since 1.38.0 (a package shadows a module of its name): before_request calls builder.plugins.route_guard on every request. |
+| `builder/ai/skills/forms-and-data.md` | absent | `\(contact,` | a contact form is the site's contact_form include, never connect_form: upstream's skill lists contact among the forms to connect. |
+| `builder/ai/prompts.py` | present | `a CONTACT form` | the same rule in the agent's instructions (a second contact form opened a DocType nobody read, 2026-10-19). |
+
 ### Merge forecast
 
 **36 files are modified on both sides** since BASE (built assets excluded — none

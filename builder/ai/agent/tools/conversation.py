@@ -94,6 +94,8 @@ def run_present_ui(ctx, args: dict) -> str | None:
 		# //// panel showed it twice, as the narration and as the card's text (2026-09-13).
 		timeline = _without_echo(timeline, text)
 		metadata["steps"] = timeline  # research done before asking survives a reload
+	if ctx.web_sources:
+		metadata["sources"] = ctx.web_sources
 	# after_commit: the event triggers a session reload on the client, which must
 	# see this message already in the DB.
 	AISession.try_append_message(

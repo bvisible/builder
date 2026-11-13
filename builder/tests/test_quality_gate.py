@@ -307,12 +307,14 @@ class TestTheCallersTimeout(unittest.TestCase):
 	def test_complete_hands_it_to_litellm_and_keeps_120_by_default(self):
 		from unittest.mock import MagicMock
 
+		import litellm  # //// Neoffice — builder.ai.llm imports litellm at the call since upstream 1.38 (324d508c): patch the module
+
 		from builder.ai import llm
 
 		answer = MagicMock()
 		answer.choices = [MagicMock(message=MagicMock(content="ok"))]
 		answer.usage = None
-		with patch.object(llm.litellm, "completion", return_value=answer) as call, patch.object(llm, "route", return_value=("openai/x", {}, "k")):
+		with patch.object(litellm, "completion", return_value=answer) as call, patch.object(llm, "route", return_value=("openai/x", {}, "k")):
 			llm.complete("openai/x", [{"role": "user", "content": "hi"}], {"timeout": 900, "max_tokens": 10}, stream=False)
 			self.assertEqual(call.call_args.kwargs["timeout"], 900)
 			self.assertNotIn("timeout", {k: v for k, v in call.call_args.kwargs.items() if k == "params"})

@@ -13,3 +13,21 @@ Notes
 Robots.txt
 YouTube
 Domain
+# The same word in French, left untranslated on purpose (merge of upstream 1.38.0, 2026-11-13): names (Bob, Builder,
+# its two plugin DocTypes) and words French writes the same way.
+Bob
+Builder
+Builder Plugin
+Builder Plugin State
+Catalogue
+Compact
+Date
+E-mail
+ID
+Installation
+OK
+photo
+Question {0}
+Questions
+script
+section

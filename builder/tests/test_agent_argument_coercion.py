@@ -6,7 +6,6 @@ import json
 import unittest
 
 from builder.ai.agent.coerce import coerce_arguments
-from builder.ai.agent.tools.blocks import add_block
 from builder.ai.agent.tree import WorkingTree
 
 SCHEMA = {
@@ -80,7 +79,9 @@ class TestCoerceArguments(unittest.TestCase):
 	def test_the_real_add_block_places_a_block_sent_as_text(self):
 		tree = WorkingTree({"blockId": "root", "element": "div", "children": []})
 		args = {"parent_block_id": "root", "block": json.dumps({"el": "section", "name": "booking", "c": []})}
-		self.assertEqual(coerce_arguments(add_block.parameters, args), 1)
+		# //// Neoffice — upstream 1.38 removed the add_block TOOL (its edit_page script compiles to the add_block op the
+		# //// tree still applies): the op's own arguments are SCHEMA's parent_block_id and block
+		self.assertEqual(coerce_arguments(SCHEMA, args), 1)
 		self.assertIn("Added block", tree.apply("add_block", args))
 		self.assertEqual(len(tree.root["children"]), 1)
 

@@ -124,13 +124,14 @@ class FakeBuilderPages:
 		found = self.select(filters)[: limit or None]
 		return [row["name"] for row in found] if pluck == "name" else found
 
-	def get_list(self, doctype, filters=None, fields=None, limit=None):
+	def get_list(self, doctype, filters=None, fields=None, limit=None, start=0):  # start: upstream 1.38 pages the listing
 		self.listed_with.append(fields)
 		columns = None if "*" in fields else fields
-		return [
+		rows = [
 			Row({k: v for k, v in row.items() if columns is None or k in columns})
 			for row in self.select(filters)
 		]
+		return rows[start : start + limit] if limit else rows[start:]
 
 	def patches(self, profile_of_the_request=None):
 		stack = ExitStack()

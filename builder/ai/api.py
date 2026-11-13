@@ -6,16 +6,16 @@ endpoints are flow-agnostic session/model helpers.
 """
 
 import logging
-import re
 
 import frappe
-import litellm
 from frappe import _
 
 from builder.ai.agent.loop import run_agent_job
 from builder.ai.block_codec import BlockCodec
-from builder.ai.llm import resolve_api_key, settings_api_key
-from builder.ai.models import GatewayListing, ModelRegistry
+from builder.ai.discovery import Discovery
+from builder.ai.llm import Effort, resolve_api_key, settings_api_key
+from builder.ai.models import GatewayListing, ModelRegistry, fetch_credits
+from builder.ai.presets import get_credits_url, get_site_ai_key
 from builder.ai.session import AISession
 from builder.site_ai.capabilities import (  # //// Neoffice — the endpoints that set up providers refuse a client of a managed instance
 	host_ai_settings_only,
@@ -62,6 +62,7 @@ def run(
 	selected_block_context: list | None = None,
 	display_text: str | None = None,
 	canvas_theme: str | None = None,
+	effort: str | None = None,
 ):
 	"""Single entry point: run the agent for one user turn of the in-editor chat.
 
@@ -78,13 +79,13 @@ def run(
 
 	image_url = BlockCodec.validate_image_data(image_data) if image_data else None
 	canvas_theme = canvas_theme if canvas_theme in ("light", "dark") else None
+	thinking = Effort(effort)
 
 	# Guard concurrency for an established session first — nothing may persist on the
 	# busy path. The worker takes the atomic run lock; this check just gives a fast
 	# 429 instead of a queued rejection.
 	if session_id and AISession.is_session_running(session_id):
-		frappe.local.response.http_status_code = 429
-		return {"status": "busy", "message": _("Another AI request is still processing. Please wait.")}
+		frappe.throw(_("Another AI request is still processing. Please wait."), frappe.TooManyRequestsError)
 
 	# A pasted image is a one-turn data URI: saved as a site file it gains a real URL
 	# that later turns can replay and a generation brief can carry as REFERENCE IMAGE.
@@ -98,6 +99,8 @@ def run(
 		msg_meta: dict = {"selectedBlockContext": selected_block_context or []}
 		if canvas_theme:
 			msg_meta["canvasTheme"] = canvas_theme
+		if thinking.level:
+			msg_meta["effort"] = thinking.level
 		if image_data:
 			msg_meta["attachedImageUrl"] = image_file_url or image_data
 		# A card-composed reply (option tap, form submit) shows as this compact line
@@ -134,8 +137,9 @@ def run(
 		# //// than upstream's 600 s; the ceiling is configurable per site. Four hours since
 		# //// 2026-09-17: a site built under the gate (a thinking writer, up to three looked-at
 		# //// revisions per page) takes ninety minutes and more, and a client's rebuild was killed
-		# //// by the job's own ceiling at page five, its old pages already deleted.
-		timeout=frappe.utils.cint(frappe.conf.get("builder_agent_job_timeout")) or 14400,
+		# //// by the job's own ceiling at page five, its old pages already deleted. Upstream 1.38 sizes
+		# //// the job by the turn's effort (`thinking.job_timeout`, an hour at most): ours stays above it.
+		timeout=frappe.utils.cint(frappe.conf.get("builder_agent_job_timeout")) or max(14400, thinking.job_timeout),
 		prompt=prompt,
 		model=resolved_model,
 		user=frappe.session.user,
@@ -146,6 +150,7 @@ def run(
 		image_url=image_url,
 		image_file_url=image_file_url,
 		canvas_theme=canvas_theme,
+		effort=thinking.level,
 	)
 	frappe.local.response.http_status_code = 202
 	return {"status": "accepted", "session_id": session_id}
@@ -216,24 +221,49 @@ def resume_after_action(session_id: str, outcome: str) -> bool:
 		from builder.site_ai.nora.api import turn_job_id
 		from builder.site_ai.nora.site_chat import resume_job
 
+		turn = AISession.latest_turn_metadata(session_id)
+		thinking = Effort(turn.get("effort"))
 		frappe.enqueue(
 			resume_job(session_id) or run_agent_job,  # //// Neoffice — the tab's own runner, see above
 			queue="default",
 			job_id=turn_job_id(session_id),  # //// Neoffice — named for the watchdog, as in run
-			timeout=600,
+			timeout=thinking.job_timeout,
 			# run_agent_job does not persist its prompt, so no phantom "continue" in the chat
 			prompt=f"{outcome}\n\nContinue with what you were doing. Do not repeat this step.",
 			model=resolved_model,
 			user=frappe.session.user,
 			page_id=page_id,
 			session_id=session_id,
-			canvas_theme=AISession.latest_canvas_theme(session_id),
+			canvas_theme=turn.get("canvasTheme"),
+			effort=thinking.level,
 			enqueue_after_commit=True,
 		)
 		return True
 	except Exception:
 		logger.warning(f"could not resume session {session_id} after a confirmed action", exc_info=True)
 		return False
+
+
+@frappe.whitelist()
+def steer(session_id: str, prompt: str = "", now: bool = False):
+	"""Queue a message for the running turn; the loop reads it in at its next round,
+	or with `now` drops the step it is on to read it straight away. With no turn
+	running nothing would read it, so the chat sends it as a turn."""
+	ensure_session_owner(session_id)
+	if not (prompt.strip() or now) or not AISession.is_session_running(session_id):
+		return {"status": "not_running"}
+	if prompt.strip():
+		AISession.queue_note(session_id, prompt.strip())
+	if now:
+		AISession.send_notes_now(session_id)
+	return {"status": "queued"}
+
+
+@frappe.whitelist()
+def take_back_notes(session_id: str):
+	"""The notes the running turn hasn't read yet, out of its queue, to edit or drop."""
+	ensure_session_owner(session_id)
+	return {"notes": AISession.pop_notes(session_id)}
 
 
 @frappe.whitelist()
@@ -335,16 +365,36 @@ def delete_ai_provider(provider: str) -> None:
 
 
 @frappe.whitelist()
-def sync_ai_models() -> None:
-	"""Pick up models the gateways added or retired since the last sync."""
-	if frappe.has_permission("Builder AI Model", "create"):
-		GatewayListing.sync_all(force=True)
+def sync_ai_models(provider: str | None = None) -> None:
+	"""Pick up models the providers added or retired since the last sync: one
+	provider right now (its errors reach the user), or every gateway, with the
+	stale discovered providers queued so opening /providers never waits on them."""
+	if not frappe.has_permission("Builder AI Model", "create"):
+		return
+	if provider:
+		sync_one_provider(frappe.get_doc("Builder AI Provider", provider))
+		return
+	GatewayListing.sync_all(force=True)
+	Discovery.refresh_in_background()
+
+
+def sync_one_provider(doc) -> None:
+	from builder.ai.presets import readable_error
+
+	discovery = Discovery(doc)
+	try:
+		if doc.api_base:
+			GatewayListing(doc).sync()
+		elif discovery.preset:
+			discovery.sync()
+	except Exception as e:
+		frappe.throw(readable_error(str(e))[0])
 
 
 @frappe.whitelist()
 @host_ai_settings_only  # //// Neoffice — the host's key sits on a managed provider row
 def get_provider_credits(provider: str) -> dict | None:
-	"""The balance a gateway reports at <api_base>/credits, or None when it reports none."""
+	"""The balance a gateway reports at its credits_url, or None when it reports none."""
 	if not frappe.has_permission("Builder AI Provider", "read"):
 		frappe.throw(_("You are not permitted to view AI providers"), frappe.PermissionError)
 
@@ -353,17 +403,29 @@ def get_provider_credits(provider: str) -> dict | None:
 
 
 @frappe.whitelist()
+def get_site_ai_credits() -> dict | None:
+	"""The balance of the AI credits Frappe Cloud gives this site, or None when it gives none."""
+	frappe.has_permission("Builder AI Provider", "read", throw=True)
+	if not (entry := get_site_ai_key(fresh=True)):
+		return None
+	headers = {"Authorization": f"Bearer {entry['api_key']}"}
+	return fetch_credits(get_credits_url(entry["gateway_url"]), headers)
+
+
+@frappe.whitelist()
 @has_page_write()
 def get_ai_models():
+	# a stale list is refreshed behind the picker, which shows what is stored meanwhile
 	GatewayListing.refresh_in_background()
+	Discovery.refresh_in_background()
 	return ModelRegistry.available()
 
 
 @frappe.whitelist()
 @has_page_write()
 def ai_setup_state():
-	"""What the setup flow needs to decide whether to run: the provider catalogue,
-	and whether anything usable is already configured. Never returns a key."""
+	"""What the connect menu needs: the providers on offer, and whether anything
+	usable is already connected. Never returns a key."""
 	from builder.ai import presets
 
 	# An install that hasn't migrated has no provider table at all. Say so plainly
@@ -371,11 +433,14 @@ def ai_setup_state():
 	if not frappe.db.exists("DocType", "Builder AI Provider"):
 		return {"configured": False, "models": 0, "providers": 0, "needs_migrate": True, "presets": []}
 
-	providers = frappe.get_all("Builder AI Provider", filters={"enabled": 1}, fields=["name", "api_key"])
+	presets.sync_site_provider()
+	providers = frappe.get_all("Builder AI Provider", filters={"enabled": 1}, pluck="name")
 	settings_key = settings_api_key()
 	# A provider carrying its own key is enough on its own — a self-hosted gateway
 	# never needs the shared OpenRouter one.
-	has_key = bool(settings_key) or any(p.api_key for p in providers)
+	has_key = bool(settings_key) or any(
+		frappe.get_cached_doc("Builder AI Provider", name).resolved_key() for name in providers
+	)
 	return {
 		"configured": has_key and bool(frappe.db.count("Builder AI Model", {"enabled": 1})),
 		"models": frappe.db.count("Builder AI Model", {"enabled": 1}),
@@ -387,57 +452,65 @@ def ai_setup_state():
 @frappe.whitelist()
 @host_ai_settings_only  # //// Neoffice — the host's key sits on a managed provider row
 @has_page_write()
-def verify_ai_key(preset: str, api_key: str = "", api_base: str = "", model_id: str = ""):
-	"""Make one small real call so a bad key fails here, not on the first build."""
+def connect_ai_provider(preset: str, api_key: str = ""):
+	"""Connect a provider by its key: checked, saved, and its frontier models found.
+	Returns the provider and the models now on offer, best first."""
 	from builder.ai import presets
 
 	found = presets.find_preset(preset)
-	if not found:
-		frappe.throw(_("Unknown provider: {0}").format(preset))
-	model = model_id or next((m[0] for m in found["models"] if m[3]), "")
-	if not model:
-		return {"success": False, "severity": "error", "message": _("Enter a model id to test with")}
-	# Re-entering setup for a provider that's already connected shows an empty key
-	# box, because a stored key is never sent back. Test the stored one rather than
-	# making someone dig out a key the site already has.
-	if not api_key and found["name"] and frappe.db.exists("Builder AI Provider", found["name"]):
-		api_key = frappe.get_cached_doc("Builder AI Provider", found["name"]).resolved_key() or ""
-	return presets.verify_key(found, api_key, api_base, model)
+	if not found or found.get("custom") or found.get("oauth"):
+		frappe.throw(_("{0} doesn't connect with a key").format(preset))
+	return presets.connect(found, api_key)
+
+
+@frappe.whitelist()
+# //// Neoffice — lists what a provider serves with its key (the host's, on a managed instance): upstream 1.38
+@host_ai_settings_only
+@has_page_write()
+def get_addable_models(provider: str):
+	"""Everything a provider serves that Bob could use and isn't offering, newest
+	first: the way to a model the frontier leaves out, like an open-weights one."""
+	from builder.ai.catalog import ProviderCatalog
+	from builder.ai.presets import readable_error
+
+	try:
+		models = ProviderCatalog(frappe.get_doc("Builder AI Provider", provider)).offered()
+	except Exception as e:
+		frappe.throw(readable_error(str(e))[0])
+	return [
+		{
+			"model_id": m["id"],
+			"label": m["label"],
+			"released": m.get("released"),
+			"context": m.get("context"),
+			# unknown for a gateway's models, which nothing describes
+			"vision": "image" in m["input"] if m.get("input") else None,
+		}
+		for m in models
+	]
+
+
+@frappe.whitelist()
+# //// Neoffice — switches a model of a provider on (the host's, on a managed instance): upstream 1.38
+@host_ai_settings_only
+@has_page_write()
+def add_ai_model(provider: str, model_id: str):
+	"""Switch a model on by hand. Discovery never switches it off again."""
+	from builder.ai.catalog import ProviderCatalog
+
+	return ProviderCatalog(frappe.get_doc("Builder AI Provider", provider)).add(model_id)
 
 
 @frappe.whitelist()
 @host_ai_settings_only  # //// Neoffice — the host's key sits on a managed provider row
 @has_page_write()
 def start_codex_login():
-	"""Begin a ChatGPT browser sign-in: the URL to open, the state to poll on,
-	and whether the localhost redirect can be captured from here."""
-	from builder.ai import codex_login
-
-	return codex_login.start()
-
-
-@frappe.whitelist()
-@host_ai_settings_only  # //// Neoffice — the host's key sits on a managed provider row
-@has_page_write()
-def poll_codex_login(state: str):
-	"""Where a started sign-in stands: pending, connected, failed or expired.
-	Connecting installs the ChatGPT provider; models come from setup_ai_provider."""
-	from builder.ai import codex_login
-
-	return codex_login.poll(state)
-
-
-@frappe.whitelist()
-@host_ai_settings_only  # //// Neoffice — the host's key sits on a managed provider row
-@has_page_write()
-def finish_codex_login(redirect_url: str):
-	"""Complete a sign-in from the pasted redirect URL, for when the localhost
-	listener couldn't see it (remote server, port in use)."""
+	"""Begin a ChatGPT sign-in: the code to show, the page to enter it on, and the state to poll."""
 	from builder.ai import codex_login
 	from builder.ai.codex import CodexError
 
 	try:
-		return codex_login.finish(redirect_url)
+		return codex_login.start()
 	except CodexError as e:
 		return {"status": "failed", "message": str(e)}
 
@@ -445,63 +518,40 @@ def finish_codex_login(redirect_url: str):
 @frappe.whitelist()
 @host_ai_settings_only  # //// Neoffice — the host's key sits on a managed provider row
 @has_page_write()
-def setup_ai_provider(
-	preset: str,
-	api_key: str = "",
-	api_base: str = "",
-	models: list | str | None = None,
-	provider_name: str = "",
-):
-	"""Finish setup: save the provider and switch on the chosen models."""
-	from builder.ai import presets
+def poll_codex_login(state: str):
+	"""Where a ChatGPT sign-in stands: pending, connected (with its models), failed or expired."""
+	from builder.ai import codex_login
+	from builder.ai.codex import CodexError
 
-	found = presets.find_preset(preset)
-	if not found:
-		frappe.throw(_("Unknown provider: {0}").format(preset))
-	chosen = parse_model_ids(models)
-	if not chosen:
-		frappe.throw(_("Pick at least one model"))
-	name = presets.install_preset(found, api_key, api_base, chosen, provider_name)
-	# `installed` is what THIS call switched on, not the site total: when the two
-	# disagree with what was ticked, the client can say so instead of reporting
-	# success over a selection that never arrived.
-	return {
-		"provider": name,
-		"installed": chosen,
-		"models": frappe.db.count("Builder AI Model", {"enabled": 1}),
-	}
+	try:
+		return codex_login.poll(state)
+	except CodexError as e:
+		return {"status": "failed", "message": str(e)}
 
 
-def parse_model_ids(models) -> list[str]:
-	"""Take the selected ids in whatever shape they survived the request in.
+@frappe.whitelist()
+@host_ai_settings_only  # //// Neoffice — as start_codex_login: a sign-in of the host's provider (upstream 1.38)
+@has_page_write()
+def start_codex_browser_login():
+	"""The fallback sign-in, for a workspace without device codes: a link to open,
+	whose localhost redirect the user pastes into finish_codex_login."""
+	from builder.ai import codex_login
 
-	A list does not cross the wire intact: form encoding collapses it to its first
-	value, and a JSON body can hand back the raw string. Both used to be iterated
-	as-is, so three ticked models became one, and a JSON string became one model
-	per CHARACTER ('anthropic/[', 'anthropic/"', …)."""
-	if not models:
-		return []
-	if isinstance(models, str):
-		text = models.strip()
-		try:
-			parsed = frappe.parse_json(text)
-		except Exception:
-			parsed = None
-		if isinstance(parsed, list):
-			models = parsed
-		elif isinstance(parsed, str):
-			models = [parsed]
-		else:
-			models = re.split(r"[,\n]", text)
-	if not isinstance(models, list | tuple):
-		models = [models]
-	seen, out = set(), []
-	for m in models:
-		mid = str(m).strip()
-		if mid and mid not in seen:
-			seen.add(mid)
-			out.append(mid)
-	return out
+	return codex_login.start_browser()
+
+
+@frappe.whitelist()
+@host_ai_settings_only  # //// Neoffice — the host's key sits on a managed provider row
+@has_page_write()
+def finish_codex_login(redirect_url: str):
+	"""Complete a browser-link sign-in from the pasted redirect URL."""
+	from builder.ai import codex_login
+	from builder.ai.codex import CodexError
+
+	try:
+		return codex_login.finish(redirect_url)
+	except CodexError as e:
+		return {"status": "failed", "message": str(e)}
 
 
 @frappe.whitelist()
@@ -532,6 +582,7 @@ def get_ai_session(page_id: str, model: str | None = None, session_id: str | Non
 		"selected_model": session.selected_model,
 		"last_task_type": session.last_task_type,
 		"messages": session.get_messages(),
+		"is_running": AISession.is_session_running(session.name),
 	}
 
 
@@ -542,6 +593,7 @@ def blank_session(page_id: str, model: str | None) -> dict:
 		"selected_model": model or "",
 		"last_task_type": None,
 		"messages": [],
+		"is_running": False,
 	}
 
 
@@ -620,6 +672,8 @@ def test_api_key(provider: str | None = None, api_key: str | None = None):
 			return {"success": False, "message": _("Please set an OpenRouter API key")}
 		actual_model = ModelRegistry.get_default("openrouter")
 
+	import litellm
+
 	from builder.ai.llm import route
 
 	# route() prefers the provider's stored key, and the typed one is what's under test
@@ -631,6 +685,7 @@ def test_api_key(provider: str | None = None, api_key: str | None = None):
 			messages=[{"role": "user", "content": "Say 'OK' if you can read this"}],
 			max_tokens=10,
 			api_key=typed_key or routed_key,
+			drop_params=True,
 		)
 		return {"success": True, "message": _("API key is valid")}
 	except Exception as e:

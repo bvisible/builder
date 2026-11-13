@@ -1,4 +1,5 @@
 import { chatsLevel } from "@/components/ai/commands/chats";
+import { effortLevel } from "@/components/ai/commands/effort";
 import { modelLevel } from "@/components/ai/commands/models";
 import { providersLevel } from "@/components/ai/commands/providers";
 import type { BobContext } from "@/components/ai/commands/shared";
@@ -17,6 +18,14 @@ export function registerBobCommands(ctx: BobContext): () => void {
 			run: (arg) => modelLevel(ctx, arg),
 		},
 		{
+			name: "effort",
+			aliases: ["thinking", "think"],
+			description: "How hard Bob thinks",
+			icon: "lucide-brain",
+			submenu: true,
+			run: () => effortLevel(ctx),
+		},
+		{
 			name: "providers",
 			submenu: true,
 			aliases: ["credits", "connect", "setup"],
@@ -31,6 +40,21 @@ export function registerBobCommands(ctx: BobContext): () => void {
 			description: "Chats on this page",
 			icon: "lucide-history",
 			run: () => chatsLevel(ctx),
+		},
+		{
+			name: "plugin",
+			aliases: ["tool", "extend"],
+			description: "Build a tool for this editor",
+			icon: "lucide-plug",
+			run: (arg) => {
+				const build = (idea: string) => ctx.chat.selectOption(`Build an editor plugin: ${idea.trim()}`);
+				if (arg.trim()) return build(arg);
+				return {
+					title: "New editor plugin",
+					note: "Only you get it, until you share it.",
+					input: { placeholder: "What should it do? e.g. list images without alt text", submit: build },
+				};
+			},
 		},
 		{
 			name: "new",

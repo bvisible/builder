@@ -78,9 +78,10 @@ def ensure_form(blocks: list, page: dict, bare_title: str, handles: dict, palett
 		return False
 	if not blocks or not isinstance(blocks[0], dict) or has_form(blocks):
 		return False
-	from builder.ai.page_writer import convert_yaml_block
+	# //// Neoffice — convert_node: upstream 1.38's name for convert_yaml_block (one converter for YAML and markup)
+	from builder.ai.page_writer import convert_node
 
-	section = convert_yaml_block(form_node(handles, palette, form_model(bare_title)))
+	section = convert_node(form_node(handles, palette, form_model(bare_title)))
 	if not section:
 		return False
 	root = blocks[0]

@@ -30,8 +30,22 @@ class BuilderAIProvider(Document):
 		return prefix
 
 	def resolved_key(self) -> str | None:
-		"""This provider's key, or None when it has none."""
+		"""This provider's key, or None when it has none. Site config owns the Frappe provider's key.
+		A cached config can miss a key that a fresh read just connected, so a miss reads the files."""
+		if self.from_site_config:
+			from builder.ai.presets import get_site_ai_key
+
+			return (get_site_ai_key() or get_site_ai_key(fresh=True) or {}).get("api_key")
 		return self.get_password("api_key", raise_exception=False)
+
+	@property
+	def credits_url(self) -> str:
+		"""Where the gateway reports its balance."""
+		if self.from_site_config:
+			from builder.ai.presets import get_credits_url
+
+			return get_credits_url(self.api_base)
+		return f"{self.api_base.rstrip('/')}/credits"
 
 	def on_update(self):
 		clear_registry_cache()

@@ -1,5 +1,15 @@
+# //// Neoffice — our plugin registry (the Website Plugin rows: a capability of the site turned on or off),
+# //// which lived in the module builder/plugins.py since 45e67b23 (2026-08-04). Upstream 1.38.0 added a
+# //// package of the same name, builder/plugins/ (the editor plugins of its Builder Hub), with an empty
+# //// __init__.py. A package shadows a module of the same name, so after the merge `builder.plugins` would
+# //// have been upstream's empty package: hooks.before_request ("builder.plugins.route_guard") would have
+# //// failed on every request, install.py's sync_plugins on every migrate, and the Studio's calls to
+# //// builder.plugins.get_capabilities / list_plugins with them. The registry moved here unchanged, so
+# //// every dotted path stays what it was; upstream's modules (builder.plugins.hub, .installations…)
+# //// sit beside it and import nothing from it. Moved at the merge of upstream 1.38.0 (2026-11-13).
 # //// Neoffice — added file (no upstream equivalent): the plugin registry: Frappe has no 'installed but
-# //// off', this adds one without dropping tables. Neoffice-only; frappe/builder has no plugin notion.
+# //// off', this adds one without dropping tables. Neoffice-only: frappe/builder's own plugins (1.38.0) are
+# //// something else, code that runs in the editor (Builder Plugin), see the header above.
 # //// First commit 45e67b23 2026-08-04.
 """The plugin registry.
 

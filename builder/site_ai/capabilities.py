@@ -19,7 +19,10 @@ from builder.site_ai.config import MANAGED_KEY, get_assistant_name
 # Agent tools that write schema or run code. On a managed instance an
 # administrator must not be able to have a model write an ERP schema or execute
 # Python from the site editor; the confirm card is not enough of a gate there.
-MANAGED_DISABLED_TOOLS = ("run_python", "create_doctype", "seed_sample_data")
+# write_plugin (upstream 1.38): the model writes an editor plugin, JavaScript that "loads the next time each user opens the
+# editor", the host's Administrator included, with no confirm card. On a managed instance a client's request is not
+# enough to put code in everyone's editor (2026-11-13, merge of upstream 1.38.0; plugins installed from the Hub stay).
+MANAGED_DISABLED_TOOLS = ("run_python", "create_doctype", "seed_sample_data", "write_plugin")
 
 
 def is_managed() -> bool:

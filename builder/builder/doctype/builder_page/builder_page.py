@@ -151,7 +151,7 @@ class BuilderPageRenderer(DocumentPage):
 		elif self.doc.is_home_page():
 			context["canonical_url"] = frappe.utils.get_url()
 		elif self.doc.canonical_url:
-			context["canonical_url"] = render_template(self.doc.canonical_url, context)
+			context["canonical_url"] = render_template(self.doc.canonical_url, context)  # nosemgrep
 		else:
 			context["canonical_url"] = frappe.utils.get_url(self.path)
 		self.context = context
@@ -362,7 +362,7 @@ class BuilderPage(WebsiteGenerator):
 		if self.has_value_changed("published") and not self.published:
 			# if this is homepage then clear homepage from builder settings
 			if frappe.get_cached_value("Builder Settings", "Builder Settings", "home_page") == self.route:
-				frappe.db.set_value("Builder Settings", "Builder Settings", "home_page", None)
+				frappe.db.set_single_value("Builder Settings", "home_page", None)
 
 		if (
 			frappe.conf.developer_mode
@@ -770,7 +770,7 @@ class BuilderPage(WebsiteGenerator):
 
 		context.font_urls = local_urls(get_google_font_urls(fonts))
 		context.__content = content
-		context.style = render_template(style, page_data)
+		context.style = render_template(style, page_data)  # nosemgrep
 		context.editor_link = f"/{get_builder_path()}/page/{self.name}"
 		if frappe.form_dict and self.dynamic_route:
 			query_string = "&".join(
@@ -807,7 +807,7 @@ class BuilderPage(WebsiteGenerator):
 		# //// the page in the site chrome), so a page's own <body> would nest one inside another.
 		# //// Rewrite it into div.builder-page-content — which is also the anchor the tests scope
 		# //// to (36cbdc0b, re-applied while resolving merge 721cf013).
-		rendered_content = render_template(context.__content, context)
+		rendered_content = render_template(context.__content, context)  # nosemgrep
 		# Replace <body> tags with <div> to avoid nested body elements
 		# when the template already provides a body tag
 		import re
@@ -877,8 +877,9 @@ class BuilderPage(WebsiteGenerator):
 			frappe.log_error("Site structured data failed", frappe.get_traceback())
 
 	def set_language(self, context):
-		# Set page-specific language or fall back to default language from Builder Settings
-		context.language = self.language
+		# Set page-specific language, then one set by the page data script,
+		# or fall back to default language from Builder Settings
+		context.language = self.language or context.get("language")
 		if not context.language:
 			context.default_language = (
 				# //// Neoffice — fall back to the request language before "en": a French bench served
@@ -925,8 +926,18 @@ class BuilderPage(WebsiteGenerator):
 		if self.body_html:
 			context._body_html += self.body_html
 
-		context["_head_html"] = render_template(context._head_html, context)
-		context["_body_html"] = render_template(context._body_html, context)
+		context["_head_html"] = render_template(context._head_html, context)  # nosemgrep
+		context["_body_html"] = render_template(context._body_html, context)  # nosemgrep
+
+	def get_app_page_data(self) -> dict:
+		"""Data installed apps give this page through the builder_page_data hook, each under its app's name,
+		so bindings read `<app>.<key>`. The page's own data script runs after, with this data already in `data`."""
+		app_data = {}
+		for app in frappe.get_installed_apps():
+			for method in frappe.get_hooks("builder_page_data", app_name=app):
+				if data := frappe.get_attr(method)(self):
+					app_data.setdefault(app, {}).update(data)
+		return app_data
 
 	@frappe.whitelist()
 	def get_page_data(self, route_variables: dict | None = None) -> dict:
@@ -935,7 +946,8 @@ class BuilderPage(WebsiteGenerator):
 	def _get_page_data(self, route_variables: dict | None = None, for_render: bool = False) -> dict:
 		if route_variables:
 			frappe.form_dict.update({k: v for k, v in route_variables.items()})
-		page_data = frappe._dict()
+		# the page's script sees what apps gave, so it can read or change it
+		page_data = frappe._dict(self.get_app_page_data())
 		if self.page_data_script:
 
 			def redirect(location: str, http_status_code: int = 302):
@@ -943,7 +955,7 @@ class BuilderPage(WebsiteGenerator):
 					frappe.local.flags.redirect_location = location
 					raise frappe.Redirect(http_status_code)
 
-			_locals = dict(data=frappe._dict(), redirect=redirect)
+			_locals = dict(data=page_data, redirect=redirect)
 			execute_script(self.page_data_script, _locals, self.name)
 			page_data.update(_locals["data"])
 

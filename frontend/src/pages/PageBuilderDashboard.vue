@@ -49,7 +49,6 @@ import router, { sessionUser } from "@/router";
 import { prefetchBuilderSettings, prefetchTemplateGallery } from "@/utils/prefetch";
 //// Neoffice — for the Settings dialog above (575f427e).
 import { Dialog } from "frappe-ui";
-import { useTelemetry } from "@framework/ui/telemetry";
 //// Neoffice — moved here with the dialog, together with defineAsyncComponent for BuilderSettings
 //// (575f427e).
 import { DialogDescription, DialogTitle } from "reka-ui";
@@ -58,7 +57,6 @@ import { defineAsyncComponent, onMounted, watch } from "vue";
 const BuilderSettings = defineAsyncComponent(() => import("@/components/BuilderSettings.vue"));
 const { showSettingsDialog, settingsTab } = useDashboardState();
 
-const telemetry = useTelemetry();
 const route = useRoute(); //// Neoffice — read by the ?chat= entry below
 
 onMounted(() => {
@@ -67,13 +65,15 @@ onMounted(() => {
 	//// Neoffice — the ?chat= entry from the desk shortcut (see the import above).
 	if (route.query.chat) startSiteCreation();
 });
-// Dev benches have telemetry (and thus the survey) off; ?persona_survey=test forces the redirect.
+// The survey runs on Frappe Cloud sites only; ?persona_survey=test forces the redirect elsewhere.
 const devForceShow = new URLSearchParams(window.location.search).get("persona_survey") === "test";
+// is_fc_site reads a key only Frappe Cloud V1 sites have, and V2 sites carry Cloud Settings instead
+const isCloudSite = window.is_fc_site === "True" || Boolean(window.cloud_settings?.enabled);
 
 watch(
-	[() => telemetry.isEnabled, () => builderSettings.doc, sessionUser],
+	[() => builderSettings.doc, sessionUser],
 	() => {
-		if (!telemetry.isEnabled && !devForceShow) return;
+		if (!isCloudSite && !devForceShow) return;
 		if (!builderSettings.doc) return;
 		if (builderSettings.doc.persona_survey_done && !devForceShow) return;
 		if (!sessionUser.value || sessionUser.value === "Guest") return;

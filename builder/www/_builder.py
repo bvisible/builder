@@ -3,6 +3,7 @@ from frappe.integrations.frappe_providers.frappecloud_billing import is_fc_site
 from frappe.pulse.utils import get_app_version
 from frappe.translate import get_translations_from_apps, get_user_translations
 from frappe.utils.telemetry import capture
+from frappe.utils.telemetry.pulse.client import is_enabled as is_telemetry_enabled
 
 from builder.editor_demo import EditorDemo
 from builder.utils import get_builder_path
@@ -31,7 +32,7 @@ def get_context(context):
 	if not frappe.has_permission("Builder Page", "write"):
 		raise frappe.PermissionError(frappe._("You do not have permission to use the site builder"))
 	csrf_token = frappe.sessions.get_csrf_token()
-	frappe.db.commit()
+	frappe.db.commit()  # nosemgrep
 	context.csrf_token = csrf_token
 	context.site_name = frappe.local.site
 	if frappe._dev_server:
@@ -68,8 +69,12 @@ def get_boot() -> dict:
 
 	return {
 		"translated_messages": messages,
-		"assistant_name": ai_capabilities()["assistant_name"],
+		"assistant_name": ai_capabilities()["assistant_name"],  # //// Neoffice — see above
 		"capabilities": {**get_capabilities(), "ai": ai_capabilities()},
+		# the trial card opens Cloud Settings with this context, so the SDK skips its own lookup
+		"cloud_settings": get_cloud_settings(),
+		# content blockers stop the Pulse client, so onboarding reads the server's verdict instead
+		"telemetry_enabled": is_telemetry_enabled(),
 		# //// Neoffice — the Studio's telemetry plugin calls frappe.utils.telemetry.pulse (v16);
 		# //// on a v15 bench that call fails with a 417 on every load. The flag tells main.ts
 		# //// whether the endpoint exists. Drop with the flag once the fleet is on v16.
@@ -79,6 +84,7 @@ def get_boot() -> dict:
 	}
 
 
+# //// Neoffice — added function: the flag telemetry_pulse of get_boot (see there)
 def _has_pulse() -> bool:
 	# find_spec raises on a v15 bench, where frappe.utils.telemetry is a module, not a
 	# package (the first deploy of the flag answered 500 on every Studio page)
@@ -88,6 +94,14 @@ def _has_pulse() -> bool:
 		return importlib.util.find_spec("frappe.utils.telemetry.pulse") is not None
 	except (ImportError, ValueError, AttributeError):
 		return False
+
+
+def get_cloud_settings() -> dict:
+	try:
+		from frappe.integrations.frappe_providers.cloud_settings import get_boot_context
+	except ImportError:  # Cloud Settings shipped with frappe v16
+		return {"enabled": False}
+	return get_boot_context()
 
 
 # //// Neoffice — added function (see get_boot).

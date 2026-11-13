@@ -21,7 +21,7 @@ from types import SimpleNamespace
 from unittest.mock import patch
 
 import frappe
-import litellm
+import litellm  # //// Neoffice — patched on the module itself: builder.ai.llm imports it at the call since upstream 1.38
 from frappe.tests.utils import FrappeTestCase
 
 from builder.ai import llm
@@ -149,7 +149,7 @@ class TestBusyProvider(unittest.TestCase):
 				raise value
 			return value
 
-		with patch.object(llm.litellm, "completion", completion), patch.object(llm.time, "sleep") as sleep:
+		with patch.object(litellm, "completion", completion), patch.object(llm.time, "sleep") as sleep:
 			self.assertEqual(llm.completion_waiting_for_a_busy_provider(model="m"), "answer")
 		self.assertEqual(sleep.call_count, 2)
 
@@ -159,7 +159,7 @@ class TestBusyProvider(unittest.TestCase):
 				message="account suspended due to insufficient balance", llm_provider="openai", model="m"
 			)
 
-		with patch.object(llm.litellm, "completion", completion), patch.object(llm.time, "sleep") as sleep:
+		with patch.object(litellm, "completion", completion), patch.object(llm.time, "sleep") as sleep:
 			with self.assertRaises(litellm.RateLimitError):
 				llm.completion_waiting_for_a_busy_provider(model="m")
 		sleep.assert_not_called()
@@ -169,7 +169,7 @@ class TestBusyProvider(unittest.TestCase):
 			raise self.busy()
 
 		with (
-			patch.object(llm.litellm, "completion", completion),
+			patch.object(litellm, "completion", completion),
 			patch.object(llm.time, "sleep"),
 			patch.object(llm, "BUSY_WAIT_SECONDS", -1),
 		):
@@ -187,7 +187,7 @@ class TestBusyProvider(unittest.TestCase):
 			clock[0] += seconds
 
 		with (
-			patch.object(llm.litellm, "completion", completion),
+			patch.object(litellm, "completion", completion),
 			patch.object(llm.time, "sleep", side_effect=sleep),
 			patch.object(llm.time, "time", side_effect=lambda: clock[0]),
 		):

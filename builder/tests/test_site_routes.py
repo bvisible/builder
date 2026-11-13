@@ -78,7 +78,7 @@ class TestBesideKeptPages(unittest.TestCase):
 	def test_a_bind_written_inside_attrs_binds(self):
 		"""A repeated tile's image and link carried their bind inside `attrs`, bound nothing,
 		and rendered as an empty frame and a dead link."""
-		from builder.ai.page_writer import convert_yaml_block
+		from builder.ai.page_writer import convert_node as convert_yaml_block  # //// Neoffice — renamed upstream (1.38)
 
 		block = convert_yaml_block({"el": "img", "attrs": {"bind": {"src": "image", "alt": "alt"}, "loading": "lazy"}})
 		self.assertEqual(block["attributes"], {"loading": "lazy"})
@@ -123,7 +123,7 @@ class TestBesideKeptPages(unittest.TestCase):
 	def test_a_bind_to_a_css_property_binds_a_style(self):
 		"""A tile's photograph bound as backgroundImage went out as an HTML attribute and the
 		tile rendered empty."""
-		from builder.ai.page_writer import convert_yaml_block
+		from builder.ai.page_writer import convert_node as convert_yaml_block  # //// Neoffice — renamed upstream (1.38)
 
 		block = convert_yaml_block({"el": "a", "bind": {"backgroundImage": "image", "href": "href", "text": "label"}})
 		bound = {(d["property"], d["type"]) for d in block["dynamicValues"]}

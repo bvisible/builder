@@ -25,6 +25,7 @@ builder.builder.patches.move_ai_keys_to_providers
 builder.builder.patches.seed_new_ai_models
 builder.builder.patches.upgrade_ai_models
 builder.builder.patches.delete_empty_ai_sessions
+builder.builder.patches.adopt_discovered_ai_models
 execute:frappe.call("builder.builder_analytics.enqueue_web_page_view_ingesion")
 execute:frappe.call("builder.builder_analytics.setup_duckdb_table")
 # //// Neoffice — our patches, appended after upstream's list so a merge keeps both sides.

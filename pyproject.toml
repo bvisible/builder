@@ -14,6 +14,11 @@ dependencies = [
     "csscompressor>=0.9.5",
     "pandas (>=2.3.2,<3.0.0)",
     "duckdb==1.4.3",
+    # //// Neoffice — the exact version, not upstream's range (>=1.95.1,<1.104, since 1.38.0): 1.100.4 is the first
+    # //// LiteLLM past CVE-2026-114612 and the one the fleet runs (osiris `pip check` clean on 2026-11-04, note 51
+    # //// of Projet-Builder-v15); the range would let an install resolve below the fix. Upstream's reason for the
+    # //// range was: Frappe develop pins its own litellm, v15's boto3~=1.34 needs <1.98, and 1.104+ caps filelock
+    # //// below its CVE fixes.
     "litellm==1.100.4",
     "json-repair>=0.30",
     # //// Neoffice — runtime dependencies of builder/site_ai/** (litellm and json-repair come from

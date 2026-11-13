@@ -626,7 +626,8 @@ def pages_line(profile: str | None) -> str:
 
 
 def run_open_page(ctx, args: dict) -> str:
-	from builder.ai.agent.loop import render_skeleton_context
+	# //// Neoffice — render_page_context: upstream 1.38's page context in markup, which replaced render_skeleton_context
+	from builder.ai.agent.loop import render_page_context
 	from builder.ai.agent.tools import site_scope
 	from builder.ai.agent.tools.query import resolve_page_reference
 
@@ -645,7 +646,7 @@ def run_open_page(ctx, args: dict) -> str:
 	failed = ctx.switch_page(page_id)
 	if failed:
 		return failed
-	outline = render_skeleton_context(ctx.tree.root) if ctx.tree and ctx.tree.root else "(the page is empty)"
+	outline = render_page_context(ctx.tree.root) if ctx.tree and ctx.tree.root else "(the page is empty)"
 	return (
 		f'OPEN: "{title or page_id}" ({site_changes.visitor_route(route)}) is now the page your block, script and '
 		f"page tools work on. Its outline:\n{outline}"
@@ -657,8 +658,8 @@ OPEN_PAGE = Tool(
 	side="server",
 	handler=run_open_page,
 	description=(
-		"Move to another page of THIS site: its title, its route or its id. From then on query_blocks, read_block, "
-		"the block tools, the script tools and set_page_settings work on that page, until you open another. Call it "
+		"Move to another page of THIS site: its title, its route or its id. From then on read_page, edit_page, "
+		"the script tools and set_page_settings work on that page, until you open another. Call it "
 		"before changing anything on a page other than the one open, and whenever the person names a page."
 	),
 	parameters={

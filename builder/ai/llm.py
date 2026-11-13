@@ -11,14 +11,12 @@ import logging
 import re
 import threading  # //// Neoffice — see busy_wait_limit
 import time  # //// Neoffice — see completion_waiting_for_a_busy_provider
+from typing import ClassVar
 
 import frappe
-import litellm
 from frappe import _
 
 from builder.ai.models import ModelRegistry
-
-litellm.drop_params = True
 
 # Sent for a provider with no key of its own (as presets.verify_key does): a
 # keyless gateway (Ollama, vLLM) ignores it, anything else rejects it.
@@ -112,14 +110,52 @@ def loads_tolerant(raw: str) -> tuple[object | None, bool]:
 # Token/temperature budgets per task tier.
 TASK_PARAMS = {
 	"simple": {"max_tokens": 1000, "temperature": 0.5},
-	"complex": {"max_tokens": 40000, "temperature": 0.7},
+	# a ceiling the model may not reach, but without it GPT thought less than at medium
+	"complex": {"max_tokens": 40000, "temperature": 0.7, "reasoning_effort": "high"},
 	"clarify": {"max_tokens": 700, "temperature": 0.1},
 	# 0.7 (not 0.3): the agent tier also composes the creative option cards
 	# (layout directions, font pairings) — at 0.3 every session got the same
 	# three flat options and the same famous fonts. Matches the "complex"
 	# generation tier, which already proves 0.7 is safe for structured output.
-	"agent": {"max_tokens": 16000, "temperature": 0.7},
+	# medium, not high: high added ~10s to every round, mechanical ones included,
+	# with no page-quality gain the eval could see (low broke 2 of 3 builds)
+	"agent": {"max_tokens": 16000, "temperature": 0.7, "reasoning_effort": "medium"},
 }
+
+
+class Effort:
+	"""The thinking effort picked in the chat; with none, each tier keeps its own.
+	Thinking counts against max_tokens and can go quiet for minutes at xhigh, so the
+	deeper levels also get room left to answer, a longer stall allowance and a
+	longer job."""
+
+	LEVELS = ("low", "medium", "high", "xhigh")
+	MAX_TOKENS: ClassVar[dict[str, int]] = {"high": 64000, "xhigh": 64000}
+	STALL_TIMEOUT: ClassVar[dict[str, int]] = {"high": 300, "xhigh": 600}
+	JOB_TIMEOUT: ClassVar[dict[str, int]] = {"high": 1800, "xhigh": 3600}
+
+	def __init__(self, level: str | None = None):
+		self.level = level if level in self.LEVELS else None
+
+	def params(self, tier: str) -> dict:
+		params = TASK_PARAMS[tier]
+		if not self.level:
+			return params
+		max_tokens = max(params["max_tokens"], self.MAX_TOKENS.get(self.level, 0))
+		return {**params, "reasoning_effort": self.level, "max_tokens": max_tokens}
+
+	@property
+	def stall_timeout(self) -> int:
+		return self.STALL_TIMEOUT.get(self.level, 120)
+
+	@property
+	def job_timeout(self) -> int:
+		return self.JOB_TIMEOUT.get(self.level, 600)
+
+	@property
+	def lock_ttl(self) -> int:
+		"""Just past the job's own deadline, so a dead worker's locks still expire."""
+		return self.job_timeout + 60
 
 
 def patch_messages_for_provider(model: str, messages: list[dict]) -> None:
@@ -163,10 +199,15 @@ def reasoning_effort() -> str:
 
 
 def patch_params_for_provider(model: str, params: dict) -> dict:
-	"""Moonshot's Kimi rejects every temperature but 1, so coerce it instead of
-	failing the whole turn over a tuning knob."""
-	if "kimi" in model and params.get("temperature") not in (None, 1):
+	"""Moonshot's Kimi rejects every temperature but 1, and so does Anthropic's own API
+	once thinking is on, so coerce it instead of failing the whole turn over a tuning knob.
+	OpenRouter takes any temperature with thinking."""
+	direct_claude = "claude-" in model and not model.startswith("openrouter/")
+	needs_one = "kimi" in model or (direct_claude and params.get("reasoning_effort"))
+	if needs_one and params.get("temperature") not in (None, 1):
 		params = {**params, "temperature": 1}
+	if direct_claude and params.get("reasoning_effort") and thinks_adaptively(model):
+		params = {**params, "thinking": SUMMARIZED_THINKING}
 	# //// Neoffice — K3's thinking is set per request (`reasoning_effort`, see reasoning_effort()
 	# //// above); K2.x's `thinking` parameter is refused by K3, so nothing else is sent.
 	if "kimi-k3" in model:
@@ -174,6 +215,19 @@ def patch_params_for_provider(model: str, params: dict) -> dict:
 		extra.setdefault("reasoning_effort", reasoning_effort())
 		params = {**params, "extra_body": extra}
 	return params
+
+
+# Newer Claude models stream empty thinking by default: minutes of silence in which
+# a cancel goes unnoticed and the stall timeout fires. A summary keeps chunks coming.
+SUMMARIZED_THINKING = {"type": "adaptive", "display": "summarized"}
+
+
+def thinks_adaptively(model: str) -> bool:
+	"""Claude 4.6 and later; older models take a thinking budget instead."""
+	from litellm import AnthropicConfig
+
+	check = getattr(AnthropicConfig, "_is_adaptive_thinking_model", None)
+	return bool(check and check(model, "anthropic"))
 
 
 # --- provider routing --------------------------------------------------------
@@ -252,6 +306,8 @@ BUSY_WAIT_SECONDS = 300
 
 def busy_pause(exc: Exception) -> float | None:
 	"""How long to wait before asking again when `exc` is a provider saying it is busy, else None."""
+	import litellm  # //// Neoffice — imported at the call since upstream 1.38 (see completion_waiting_for_a_busy_provider)
+
 	if not isinstance(exc, litellm.ServiceUnavailableError) or "busy" not in str(exc).lower():
 		return None
 	retry_after = None
@@ -290,6 +346,10 @@ def busy_wait_limit(seconds: float | None):
 def completion_waiting_for_a_busy_provider(**kwargs):
 	# //// Neoffice — the caller's own limit (busy_wait_limit) when it set one, the five minutes otherwise
 	deadline = time.time() + (getattr(_busy_limit, "seconds", None) or BUSY_WAIT_SECONDS)
+	# //// Neoffice — imported here since upstream 1.38 dropped the module-level import (324d508c:
+	# //// `bench migrate` and every web request no longer load LiteLLM); ours relied on it.
+	import litellm
+
 	while True:
 		try:
 			return litellm.completion(**kwargs)
@@ -329,7 +389,15 @@ def resolve_api_key(model: str | None = None) -> str:
 	)
 
 
-def complete(model: str, messages: list, params: dict, *, stream: bool, api_key: str | None = None):
+def complete(
+	model: str,
+	messages: list,
+	params: dict,
+	*,
+	stream: bool,
+	api_key: str | None = None,
+	timeout: int = 120,
+):
 	"""Plain completion. Returns the response iterator when streaming, else the
 	text content. Transient failures are retried by litellm (and, for streaming
 	rounds, by the agent loop's own retry layer — litellm can't fall back mid-stream)."""
@@ -343,7 +411,9 @@ def complete(model: str, messages: list, params: dict, *, stream: bool, api_key:
 	# //// Neoffice — a caller's own timeout wins (2026-09-16): a non-streamed call to a thinking
 	# //// model (the site plan, the design brief) is minutes of reasoning before one answer, and
 	# //// 120 s cut it every time. The provider passes what it was configured with (litellm_provider._params).
-	timeout = int(params.pop("timeout", 0) or 0) or 120
+	# //// Since upstream 1.38 the keyword `timeout` carries the turn's effort (Effort.stall_timeout):
+	# //// it is the fallback, where ours used a fixed 120 s that would have cut a high-effort turn.
+	timeout = int(params.pop("timeout", 0) or 0) or timeout
 	# //// Neoffice — _loggable: a vision prompt carries its pictures as base64, and logging those
 	# //// bytes left megabytes of rotated log per build (2026-09-15)
 	logger.info(
@@ -356,11 +426,11 @@ def complete(model: str, messages: list, params: dict, *, stream: bool, api_key:
 		messages=messages,
 		stream=stream,
 		api_key=api_key,
+		drop_params=True,
 		num_retries=1,
 		# Read timeout (max stall between bytes, not total duration): a wedged
 		# provider connection otherwise blocks the worker forever — the loop only
 		# checks cancellation between chunks, so a silent stall is uncancellable.
-		# //// Neoffice — the caller's timeout when it gave one, 120 s otherwise (see above)
 		timeout=timeout,
 		# Emit a final usage chunk while streaming so the loop can tally tokens per
 		# turn (dropped automatically for providers that don't support it).
@@ -391,6 +461,7 @@ def complete_with_tools(
 	*,
 	api_key: str | None = None,
 	stream: bool = False,
+	timeout: int = 120,
 ):
 	"""Tool-calling completion. Returns the raw response (iterator when streaming)."""
 	if target := codex_route(model):
@@ -400,24 +471,41 @@ def complete_with_tools(
 	model, overrides, api_key = route(model, api_key)
 	patch_messages_for_provider(model, messages)
 	params = patch_params_for_provider(model, params)
-	# //// Neoffice — see complete(): a caller's timeout wins (2026-09-16)
-	timeout = int(params.pop("timeout", 0) or 0) or 120
+	# //// Neoffice — see complete(): a caller's timeout wins (2026-09-16), the keyword's otherwise
+	timeout = int(params.pop("timeout", 0) or 0) or timeout
 	logger.info(
 		f"LLM tools | model={model} stream={stream} tools={[t['function']['name'] for t in tools]}\n"
 		+ "\n".join(f"[{m['role']}] {m['content']}" for m in messages)
 	)
-	resp = litellm.completion(
+	import litellm
+
+	request = dict(
 		model=model,
 		messages=messages,
 		tools=tools,
 		stream=stream,
 		api_key=api_key,
+		drop_params=True,
 		num_retries=1,
-		timeout=timeout,  # //// Neoffice — the caller's, see above  # see complete() — a stalled connection must fail, not wedge the turn
+		timeout=timeout,  # see complete() — a stalled connection must fail, not wedge the turn
 		# Final usage chunk while streaming — see complete().
 		**({"stream_options": {"include_usage": True}} if stream else {}),
 		**provider_kwargs(model),
 		**overrides,
 		**params,
 	)
-	return resp
+	try:
+		return litellm.completion(**request)
+	except litellm.NotFoundError as exc:
+		if not (
+			model.startswith("openai/")
+			and overrides.get("api_base")
+			and params.get("reasoning_effort")
+			and "does not serve /v1/responses" in str(exc)
+		):
+			raise
+		# LiteLLM bridges reasoning + function tools to Responses, which some
+		# chat-compatible gateways cannot serve. Keep reasoning when they can.
+		logger.warning("Gateway does not serve Responses; retrying the tool call without reasoning effort")
+		request.pop("reasoning_effort")
+		return litellm.completion(**request)

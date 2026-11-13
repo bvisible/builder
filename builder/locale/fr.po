@@ -13098,3 +13098,757 @@ msgstr "Cette page est vide. Demandez-moi d'abord, en une seule question, à quo
 #, python-brace-format
 msgid "{0} can design it with you: she asks what the page is for, then draws it in the style of your site."
 msgstr "{0} peut la concevoir avec vous : elle vous demande à quoi sert la page, puis la dessine dans le style de votre site."
+
+#: builder/plugins/state.py:105
+msgid "\"state\" must be an object."
+msgstr "« state » doit être un objet."
+
+#: builder/plugins/updates.py:106
+#, python-brace-format
+msgid "\"{0}\" did not come from a Builder Hub, so it cannot update."
+msgstr "« {0} » ne vient pas d'un Builder Hub : il ne peut pas être mis à jour."
+
+#: builder/plugins/hub.py:140
+#, python-brace-format
+msgid "\"{0}\" has no published release on this Hub."
+msgstr "« {0} » n'a aucune version publiée sur ce Hub."
+
+#: builder/plugins/hub.py:334
+#, python-brace-format
+msgid "\"{0}\" is already installed from {1}."
+msgstr "« {0} » est déjà installée depuis {1}."
+
+#: builder/plugins/hub.py:332
+#, python-brace-format
+msgid "\"{0}\" is already installing."
+msgstr "« {0} » est déjà en cours d'installation."
+
+#: builder/plugins/updates.py:56
+#, python-brace-format
+msgid "\"{0}\" is already updating."
+msgstr "« {0} » est déjà en cours de mise à jour."
+
+#: builder/plugins/development.py:41
+#, python-brace-format
+msgid "\"{0}\" is installed on this site. Disable it to load its dev server."
+msgstr "« {0} » est installée sur ce site. Désactivez-la pour charger son serveur de développement."
+
+#: builder/plugins/access.py:44 builder/plugins/installations.py:136
+#, python-brace-format
+msgid "\"{0}\" is not installed on this site."
+msgstr "« {0} » n'est pas installée sur ce site."
+
+#: builder/plugins/hub.py:164
+#, python-brace-format
+msgid "\"{0}\" needs a newer Builder to run."
+msgstr "« {0} » nécessite une version plus récente de Builder pour fonctionner."
+
+#: builder/plugins/state.py:113
+#, python-brace-format
+msgid "\"{0}\" state is larger than {1} kB."
+msgstr "L'état de « {0} » dépasse {1} ko."
+
+#: builder/plugins/hub.py:334
+msgid "a dev server"
+msgstr "un serveur de développement"
+
+#: frontend/src/components/Onboarding/CloneLookStep.vue:39
+msgid "A faithful copy of how your site looks today."
+msgstr "Une copie fidèle de l'apparence actuelle de votre site."
+
+#. Description of the 'Checksum' (Data) field in DocType 'Builder Plugin'
+#: builder/builder/doctype/builder_plugin/builder_plugin.json:96
+msgid "A hash of the installed package. Builder uses it as the name of the release folder, so each release has different file URLs."
+msgstr "Une empreinte du paquet installé. Builder l'utilise comme nom du dossier de chaque version, afin que chaque version ait des URL de fichiers différentes."
+
+#. Description of the 'Persona Survey Done' (Check) field in DocType 'Builder
+#. Settings'
+#: builder/builder/doctype/builder_settings/builder_settings.json:141
+msgid "A hidden flag. Builder sets it after it shows the persona survey. Builder Settings is a Single, so the flag applies to the whole site. On a trial site with one user, this is the same as one flag for each user."
+msgstr "Un indicateur masqué. Builder le règle après l'affichage du sondage sur le profil. Builder Settings est un Single : l'indicateur vaut pour tout le site. Sur un site d'essai avec un seul utilisateur, cela revient à un indicateur par utilisateur."
+
+#: builder/plugins/package.py:135
+msgid "A package path holds a null byte."
+msgstr "Un chemin du paquet contient un octet nul."
+
+#: frontend/src/components/BuilderAIChatPanel.vue:808
+msgid "A panel for images missing alt text"
+msgstr "Un panneau pour les images sans texte alternatif"
+
+#: builder/plugins/bob.py:47
+msgid "A plugin name holds lowercase letters, digits and hyphens."
+msgstr "Un nom d'extension ne contient que des lettres minuscules, des chiffres et des tirets."
+
+#: builder/plugins/hub.py:325
+msgid "A plugin name reads as publisher/name, in lowercase."
+msgstr "Un nom d'extension s'écrit éditeur/nom, en minuscules."
+
+#. Description of a DocType
+#: builder/builder/doctype/builder_plugin/builder_plugin.json:4
+msgid "A plugin that is installed on this site. The editor runs it with the permissions of the user who uses the editor."
+msgstr "Une extension installée sur ce site. L'éditeur l'exécute avec les droits de l'utilisateur qui l'utilise."
+
+#: builder/builder/doctype/builder_plugin/builder_plugin.py:123
+#, python-brace-format
+msgid "A README may hold {0} bytes at most."
+msgstr "Un README ne peut pas dépasser {0} octets."
+
+#. Description of the 'Description' (Small Text) field in DocType 'Builder
+#. Plugin'
+#: builder/builder/doctype/builder_plugin/builder_plugin.json:69
+msgid "A short summary. The Plugins panel shows it below the label."
+msgstr "Un bref résumé. Le panneau des Extensions l'affiche sous le libellé."
+
+#: frontend/src/components/BuilderAIChatPanel.vue:980
+#, python-brace-format
+msgid "Add a note for {0} while the work goes on"
+msgstr "Ajouter une note pour {0} pendant que le travail continue"
+
+#: frontend/src/components/Settings/GlobalBilling.vue:10
+msgid "AI credits left"
+msgstr "Crédits IA restants"
+
+#: frontend/src/components/Onboarding/StartChoice.vue:18
+msgid "An empty page and a free hand."
+msgstr "Une page vierge et toute liberté."
+
+#: frontend/src/components/Onboarding/CloneLookStep.vue:39
+msgid "As it is"
+msgstr "Tel quel"
+
+#: frontend/src/components/Onboarding/StartChoice.vue:5
+msgid "Bring your website"
+msgstr "Apportez votre site web"
+
+#: frontend/src/components/BuilderAIChatPanel.vue:809
+msgid "Build an editor plugin: a left bar panel that lists every image on this page that has no alt text, with a thumbnail of each. Clicking one selects it on the canvas."
+msgstr "Créez une extension de l'éditeur : un panneau dans la barre de gauche qui liste chaque image de cette page sans texte alternatif, avec une vignette de chacune. Un clic la sélectionne sur le canevas."
+
+#: builder/plugins/safe_requests.py:29
+msgid "Builder sends plugin requests only to HTTPS URLs."
+msgstr "Builder n'envoie les requêtes des extensions qu'à des URL HTTPS."
+
+#: frontend/src/components/BuilderAIChatPanel.vue:459
+msgid "Cancelling…"
+msgstr "Annulation…"
+
+#: builder/builder/doctype/builder_plugin/builder_plugin.py:115
+msgid "Checksum must be 12 lowercase hex digits."
+msgstr "La somme de contrôle doit comporter 12 chiffres hexadécimaux en minuscules."
+
+#: frontend/src/pages/PagePersonaSurvey.vue:19
+msgid "Choose one to get a head start, or start from scratch."
+msgstr "Choisissez un modèle pour bien démarrer, ou partez de zéro."
+
+#: frontend/src/components/Onboarding/CloneLookStep.vue:36
+msgid "Clean it up"
+msgstr "Épurer"
+
+#: builder/clone_onboarding.py:29
+msgid "Cloning a website is available on Frappe Cloud sites."
+msgstr "La copie d'un site web est disponible sur les sites Frappe Cloud."
+
+#: frontend/src/components/DashboardCloneCard.vue:30
+#: frontend/src/pages/PagePersonaSurvey.vue:268
+#, python-brace-format
+msgid "Cloning {0}"
+msgstr "Copie de {0} en cours"
+
+#: frontend/src/components/BuilderAIChatPanel.vue:59
+msgid "Connect a model"
+msgstr "Connecter un modèle"
+
+#: frontend/src/components/DashboardCloneCard.vue:39
+msgid "Connect your domain"
+msgstr "Connectez votre domaine"
+
+#: frontend/src/components/Onboarding/StartChoice.vue:6
+msgid "Copy pages, text and images from your website."
+msgstr "Copiez les pages, textes et images de votre site web."
+
+#: builder/plugins/hub.py:227
+msgid "Could not download the plugin package."
+msgstr "Impossible de télécharger le paquet de l'extension."
+
+#: builder/plugins/hub.py:181
+#, python-brace-format
+msgid "Could not reach the Builder Hub at {0}."
+msgstr "Impossible de joindre le Builder Hub à {0}."
+
+#: frontend/src/components/DashboardCloneCard.vue:29
+#, python-brace-format
+msgid "Couldn't clone {0}"
+msgstr "Impossible de copier {0}"
+
+#: frontend/src/pages/PagePersonaSurvey.vue:328
+msgid "Couldn't start cloning. Try again in a moment."
+msgstr "Impossible de lancer la copie. Réessayez dans un instant."
+
+#. Label of a Data field in DocType 'Builder Settings'
+#: builder/builder/doctype/builder_settings/builder_settings.json:137
+msgid "Default AI Model"
+msgstr "Modèle d'IA par défaut"
+
+#. Option for the 'Source' (Select) field in DocType 'Builder Plugin'
+#: builder/builder/doctype/builder_plugin/builder_plugin.json:41
+msgid "Development"
+msgstr "Développement"
+
+#: builder/plugins/development.py:80
+msgid "Development plugins are unavailable outside developer mode."
+msgstr "Les extensions de développement ne sont pas disponibles hors du mode développeur."
+
+#: frontend/src/components/Settings/GlobalPlugins.vue:6
+msgid "Disable Plugins"
+msgstr "Désactiver les extensions"
+
+#. Label of a Check field in DocType 'Builder AI Model'
+#: builder/builder/doctype/builder_ai_model/builder_ai_model.json:63
+msgid "Discovered"
+msgstr "Détecté"
+
+#. Description of the 'Discovered' (Check) field in DocType 'Builder AI Model'
+#: builder/builder/doctype/builder_ai_model/builder_ai_model.json:65
+msgid "Found and managed by Builder: switched on while the model is on the frontier, off once newer ones replace it. Switching it on or off by hand makes it yours."
+msgstr "Détecté et géré par Builder : activé tant que le modèle fait partie de la pointe, désactivé dès que des modèles plus récents le remplacent. L'activer ou le désactiver à la main vous le rend propre."
+
+#. Description of the 'From Site Config' (Check) field in DocType 'Builder AI
+#. Provider'
+#: builder/builder/doctype/builder_ai_provider/builder_ai_provider.json:75
+msgid "Frappe Cloud sets this provider's API base and key in site config (ai_keys). The key is never stored here."
+msgstr "Frappe Cloud règle la base d'API et la clé de ce fournisseur dans la configuration du site (ai_keys). La clé n'est jamais stockée ici."
+
+#. Label of a Check field in DocType 'Builder AI Provider'
+#: builder/builder/doctype/builder_ai_provider/builder_ai_provider.json:78
+msgid "From Site Config"
+msgstr "Depuis la configuration du site"
+
+#. Label of a Int field in DocType 'Builder AI Model'
+#: builder/builder/doctype/builder_ai_model/builder_ai_model.json:92
+msgid "Frontier Rank"
+msgstr "Rang de pointe"
+
+#: frontend/src/components/BuilderLeftPanel.vue:104
+msgid "Hide from left bar"
+msgstr "Masquer de la barre de gauche"
+
+#: frontend/src/pages/PagePersonaSurvey.vue:250
+msgid "How should it look?"
+msgstr "Quelle apparence doit-il avoir ?"
+
+#: frontend/src/pages/PagePersonaSurvey.vue:240
+msgid "How would you like to start?"
+msgstr "Comment souhaitez-vous commencer ?"
+
+#. Label of a Data field in DocType 'Builder Plugin'
+#: builder/builder/doctype/builder_plugin/builder_plugin.json:50
+msgid "Hub URL"
+msgstr "URL du Hub"
+
+#: builder/builder/doctype/builder_plugin/builder_plugin.py:119
+msgid "Icon must name one SVG file in the install root, such as icon.svg."
+msgstr "L'icône doit désigner un seul fichier SVG à la racine de l'installation, par exemple icon.svg."
+
+#. Label of a Small Text field in DocType 'Builder Plugin'
+#: builder/builder/doctype/builder_plugin/builder_plugin.json:123
+msgid "Install Error"
+msgstr "Erreur d'installation"
+
+#. Label of a Select field in DocType 'Builder Plugin'
+#: builder/builder/doctype/builder_plugin/builder_plugin.json:114
+msgid "Install State"
+msgstr "État de l'installation"
+
+#. Label of a Datetime field in DocType 'Builder Plugin'
+#: builder/builder/doctype/builder_plugin/builder_plugin.json:105
+msgid "Installed On"
+msgstr "Installée le"
+
+#. Option for the 'Install State' (Select) field in DocType 'Builder Plugin'
+#: builder/builder/doctype/builder_plugin/builder_plugin.json:115
+msgid "Installing"
+msgstr "Installation en cours"
+
+#: frontend/src/components/DashboardCloneCard.vue:33
+msgid "Its pages are in your dashboard, ready to edit."
+msgstr "Ses pages sont dans votre tableau de bord, prêtes à être modifiées."
+
+#: frontend/src/pages/PagePersonaSurvey.vue:260
+msgid "Its pages, text and images are ready to edit."
+msgstr "Ses pages, textes et images sont prêts à être modifiés."
+
+#: frontend/src/components/Onboarding/CloneProgressStep.vue:33
+msgid "Look around meanwhile"
+msgstr "Explorez en attendant"
+
+#: builder/plugins/access.py:55
+msgid "Only a System Manager or a Website Manager can change plugins."
+msgstr "Seul un Responsable Système ou un Responsable du Site Web peut modifier les extensions."
+
+#: frontend/src/components/Onboarding/CloneProgressStep.vue:19
+msgid "Open your pages"
+msgstr "Ouvrez vos pages"
+
+#: frontend/src/composables/useCloudBilling.ts:60
+msgid "Over spending limit"
+msgstr "Limite de dépenses dépassée"
+
+#: builder/plugins/package.py:164
+#, python-brace-format
+msgid "Package file is larger than allowed: {0}."
+msgstr "Le fichier du paquet dépasse la taille autorisée : {0}."
+
+#: builder/ai/presets.py:212
+msgid "Paste a key first"
+msgstr "Collez d'abord une clé"
+
+#: frontend/src/components/Onboarding/StartChoice.vue:12
+msgid "Pick a design and make it yours."
+msgstr "Choisissez un design et personnalisez-le."
+
+#: frontend/src/pages/PagePersonaSurvey.vue:18
+msgid "Pick a template"
+msgstr "Choisissez un modèle"
+
+#: builder/clone_onboarding.py:31
+msgid "Pick how the copy should look."
+msgstr "Choisissez l'apparence de la copie."
+
+#. Label of a Data field in DocType 'Builder Plugin'
+#: builder/builder/doctype/builder_plugin/builder_plugin.json:29
+msgid "Plugin"
+msgstr "Extension"
+
+#: builder/builder/doctype/builder_plugin/builder_plugin.py:109
+msgid "Plugin must read as publisher/name, in lowercase."
+msgstr "L'extension s'écrit éditeur/nom, en minuscules."
+
+#: frontend/src/components/Settings/GlobalPlugins.vue:3
+msgid "Plugins are experimental. They can change between releases."
+msgstr "Les extensions sont expérimentales. Elles peuvent changer d'une version à l'autre."
+
+#: frontend/src/components/Settings/index.ts:173
+msgid "Plugins Settings"
+msgstr "Réglages des extensions"
+
+#: frontend/src/components/BuilderAIChatPanel.vue:979
+#, python-brace-format
+msgid "Press ↑ to edit what {0} hasn't read"
+msgstr "Appuyez sur ↑ pour modifier ce que {0} n'a pas encore lu"
+
+#: frontend/src/components/Onboarding/CloneLookStep.vue:42
+msgid "Redesign"
+msgstr "Nouveau design"
+
+#: builder/ai/agent/loop.py:1234
+msgid "removed a script"
+msgstr "a supprimé un script"
+
+#: builder/plugins/hub.py:322
+msgid "Sign in to install plugins."
+msgstr "Connectez-vous pour installer des extensions."
+
+#: builder/plugins/access.py:38
+msgid "Sign in to use plugins."
+msgstr "Connectez-vous pour utiliser les extensions."
+
+#: frontend/src/components/BuilderAIChatPanel.vue:56
+msgid "Sign in with ChatGPT, or paste an API key."
+msgstr "Connectez-vous avec ChatGPT, ou collez une clé d'API."
+
+#: frontend/src/components/Settings/neoffice.ts:41
+#: frontend/src/components/Settings/neoffice.ts:42
+msgid "Site plugins"
+msgstr "Extensions du site"
+
+#: frontend/src/components/DashboardCloneCard.vue:34
+#: frontend/src/pages/PagePersonaSurvey.vue:265
+msgid "Something went wrong on our side."
+msgstr "Une erreur s'est produite de notre côté."
+
+#: frontend/src/components/Onboarding/StartChoice.vue:17
+msgid "Start blank"
+msgstr "Commencer à vide"
+
+#: frontend/src/components/Onboarding/CloneLookStep.vue:17
+msgid "Start cloning"
+msgstr "Lancer la copie"
+
+#: frontend/src/components/ai/noraEditorChat.ts:104
+msgid "Stopped. What was done so far is kept."
+msgstr "Arrêté. Ce qui a été fait jusqu'ici est conservé."
+
+#: frontend/src/components/Settings/GlobalPlugins.vue:8
+msgid "Stops all plugins and hides the Plugins tab, only for you. It applies from the next reload."
+msgstr "Arrête toutes les extensions et masque l'onglet Extensions, pour vous seul. Effectif au prochain rechargement."
+
+#: frontend/src/pages/PagePersonaSurvey.vue:264
+msgid "That didn't work"
+msgstr "Cela n'a pas fonctionné."
+
+#: builder/plugins/hub.py:207
+#, python-brace-format
+msgid "The Builder Hub returned an error ({0})."
+msgstr "Le Builder Hub a renvoyé une erreur ({0})."
+
+#: frontend/src/components/Settings/GlobalPlugins.vue:16
+msgid "The catalog comes from the Builder Hub. To use another Hub, set builder_hub_url in the site config."
+msgstr "Le catalogue provient du Builder Hub. Pour utiliser un autre Hub, définissez builder_hub_url dans la configuration du site."
+
+#: builder/clone_onboarding.py:116
+msgid "The clone service couldn't do that right now."
+msgstr "Le service de copie n'a pas pu le faire pour le moment."
+
+#: builder/plugins/hub.py:230
+msgid "The downloaded package does not match the release checksum."
+msgstr "Le paquet téléchargé ne correspond pas à la somme de contrôle de la version."
+
+#: builder/plugins/hub.py:148
+#, python-brace-format
+msgid "The Hub release is missing {0}."
+msgstr "La version du Hub ne contient pas {0}."
+
+#: builder/plugins/hub.py:187 builder/plugins/hub.py:195
+msgid "The Hub response was not in the form Builder expects."
+msgstr "La réponse du Hub n'a pas le format attendu par Builder."
+
+#: builder/plugins/hub.py:127
+#, python-brace-format
+msgid "The Hub returned no release for \"{0}\"."
+msgstr "Le Hub n'a renvoyé aucune version pour « {0} »."
+
+#: builder/plugins/hub.py:173
+msgid "The Hub sent more than a release listing should need."
+msgstr "Le Hub a envoyé plus que ne devrait contenir une liste de versions."
+
+#: builder/plugins/hub.py:302
+msgid "The install failed."
+msgstr "L'installation a échoué."
+
+#: builder/plugins/bob.py:161
+msgid "The load report is not valid."
+msgstr "Le rapport de chargement n'est pas valide."
+
+#: builder/plugins/package.py:200
+#, python-brace-format
+msgid "The manifest entry must be {0}."
+msgstr "L'entrée du manifeste doit être {0}."
+
+#: builder/plugins/package.py:219
+msgid "The manifest icon must name one root SVG file."
+msgstr "L'icône du manifeste doit désigner un seul fichier SVG à la racine."
+
+#: builder/plugins/package.py:196
+msgid "The manifest name must read as publisher/name, in lowercase."
+msgstr "Le nom du manifeste doit s'écrire éditeur/nom, en minuscules."
+
+#: builder/plugins/package.py:150
+#, python-brace-format
+msgid "The manifest names {0}, which the package does not hold."
+msgstr "Le manifeste désigne {0}, que le paquet ne contient pas."
+
+#: builder/plugins/package.py:194
+#, python-brace-format
+msgid "The manifest needs protocol {0}."
+msgstr "Le manifeste exige le protocole {0}."
+
+#: builder/plugins/package.py:198
+msgid "The manifest version holds a character it may not."
+msgstr "La version du manifeste contient un caractère interdit."
+
+#: builder/plugins/package.py:210
+#, python-brace-format
+msgid "The manifest {0} must be 1 to {1} characters."
+msgstr "Le champ {0} du manifeste doit comporter de 1 à {1} caractères."
+
+#: builder/plugins/package.py:212
+#, python-brace-format
+msgid "The manifest {0} must be plain text."
+msgstr "Le champ {0} du manifeste doit être du texte brut."
+
+#. Description of the 'Default AI Model' (Data) field in DocType 'Builder
+#. Settings'
+#: builder/builder/doctype/builder_settings/builder_settings.json:134
+msgid "The model Bob uses until a user picks another one, for example frappe/openai/gpt-5.6-terra. When this model is not available, Bob uses the first available model."
+msgstr "Le modèle qu'utilise Bob tant qu'un utilisateur n'en choisit pas un autre, par exemple frappe/openai/gpt-5.6-terra. Si ce modèle n'est pas disponible, Bob utilise le premier modèle disponible."
+
+#. Description of the 'Icon' (Data) field in DocType 'Builder Plugin'
+#: builder/builder/doctype/builder_plugin/builder_plugin.json:75
+msgid "The name of an SVG file in the root folder of the package, such as icon.svg. The editor shows this icon next to the plugin."
+msgstr "Le nom d'un fichier SVG à la racine du paquet, par exemple icon.svg. L'éditeur affiche cette icône à côté de l'extension."
+
+#: builder/plugins/hub.py:223
+#, python-brace-format
+msgid "The package download failed ({0})."
+msgstr "Le téléchargement du paquet a échoué ({0})."
+
+#: builder/plugins/package.py:123
+#, python-brace-format
+msgid "The package holds a symbolic link: {0}."
+msgstr "Le paquet contient un lien symbolique : {0}."
+
+#: builder/plugins/package.py:125
+#, python-brace-format
+msgid "The package holds an encrypted file: {0}."
+msgstr "Le paquet contient un fichier chiffré : {0}."
+
+#: builder/plugins/package.py:156
+#, python-brace-format
+msgid "The package holds an unexpected file: {0}."
+msgstr "Le paquet contient un fichier inattendu : {0}."
+
+#: builder/plugins/package.py:129
+#, python-brace-format
+msgid "The package holds an unsupported file: {0}."
+msgstr "Le paquet contient un fichier non pris en charge : {0}."
+
+#: builder/plugins/package.py:98
+#, python-brace-format
+msgid "The package holds more than {0} files."
+msgstr "Le paquet contient plus de {0} fichiers."
+
+#: builder/plugins/package.py:117
+#, python-brace-format
+msgid "The package is missing {0}."
+msgstr "Il manque {0} dans le paquet."
+
+#: builder/plugins/package.py:226
+#, python-brace-format
+msgid "The package is version {0}, not {1}."
+msgstr "Le paquet est en version {0}, et non {1}."
+
+#: builder/plugins/package.py:224
+#, python-brace-format
+msgid "The package is {0}, not {1}."
+msgstr "Le paquet est {0}, et non {1}."
+
+#: builder/plugins/package.py:127
+#, python-brace-format
+msgid "The package names {0} twice."
+msgstr "Le paquet désigne {0} deux fois."
+
+#: builder/plugins/package.py:112
+msgid "The package unpacks to more than Builder allows."
+msgstr "Le paquet se décompresse en une taille supérieure à celle que Builder autorise."
+
+#. Description of the 'Installation' (Link) field in DocType 'Builder Plugin
+#. State'
+#: builder/builder/doctype/builder_plugin_state/builder_plugin_state.json:14
+msgid "The plugin installation that owns this state."
+msgstr "L'installation de l'extension à laquelle appartient cet état."
+
+#: builder/plugins/hub.py:224
+msgid "The plugin package is larger than its release says."
+msgstr "Le paquet de l'extension est plus volumineux que ce qu'annonce sa version."
+
+#: builder/plugins/package.py:91
+msgid "The plugin package is not a valid ZIP file."
+msgstr "Le paquet de l'extension n'est pas un fichier ZIP valide."
+
+#. Description of the 'Readme' (Long Text) field in DocType 'Builder Plugin'
+#: builder/builder/doctype/builder_plugin/builder_plugin.json:81
+msgid "The README of the plugin, in Markdown. The Builder Hub supplies it. For a development server, Builder reads it from the plugin folder of the author."
+msgstr "Le README de l'extension, en Markdown. Le Builder Hub le fournit. Pour un serveur de développement, Builder le lit dans le dossier de l'extension chez son auteur."
+
+#. Description of the 'Install Error' (Small Text) field in DocType 'Builder
+#. Plugin'
+#: builder/builder/doctype/builder_plugin/builder_plugin.json:120
+msgid "The reason that the last Hub install failed. The Plugins panel shows it with a Retry button."
+msgstr "La raison de l'échec de la dernière installation depuis le Hub. Le panneau des Extensions l'affiche avec un bouton Réessayer."
+
+#. Description of a DocType
+#: builder/builder/doctype/builder_plugin_state/builder_plugin_state.json:4
+msgid "The state that a plugin keeps for one user."
+msgstr "L'état qu'une extension conserve pour un utilisateur."
+
+#. Description of the 'Install State' (Select) field in DocType 'Builder
+#. Plugin'
+#: builder/builder/doctype/builder_plugin/builder_plugin.json:110
+msgid "The status of a Hub install. It is Installing while a background job downloads the package. Then it changes to Ready or Failed."
+msgstr "L'état d'une installation depuis le Hub. Il reste « Installation en cours » pendant que la tâche de fond télécharge le paquet, puis passe à Prête ou Échec."
+
+#. Description of the 'Plugin' (Data) field in DocType 'Builder Plugin'
+#: builder/builder/doctype/builder_plugin/builder_plugin.json:24
+msgid "The unique name of the plugin, in the form \"publisher/name\"."
+msgstr "Le nom unique de l'extension, sous la forme « éditeur/nom »."
+
+#: builder/plugins/updates.py:89
+msgid "The update failed."
+msgstr "La mise à jour a échoué."
+
+#. Description of the 'Hub URL' (Data) field in DocType 'Builder Plugin'
+#: builder/builder/doctype/builder_plugin/builder_plugin.json:47
+msgid "The URL of the Builder Hub that supplied the files. The Plugins panel shows it. Builder does not use it to identify the plugin."
+msgstr "L'URL du Builder Hub qui a fourni les fichiers. Le panneau des Extensions l'affiche. Builder ne s'en sert pas pour identifier l'extension."
+
+#. Description of the 'User' (Link) field in DocType 'Builder Plugin State'
+#: builder/builder/doctype/builder_plugin_state/builder_plugin_state.json:25
+msgid "The user that owns this state. The server sets this value from the session. It does not accept a value from the request."
+msgstr "L'utilisateur à qui appartient cet état. Le serveur remplit cette valeur à partir de la session ; il n'accepte pas de valeur venant de la requête."
+
+#. Description of the 'Version' (Data) field in DocType 'Builder Plugin'
+#: builder/builder/doctype/builder_plugin/builder_plugin.json:88
+msgid "The version of the plugin that this site uses."
+msgstr "La version de l'extension utilisée par ce site."
+
+#: builder/plugins/package.py:184
+msgid "This package is built for sandboxed plugins, so this Builder cannot run it."
+msgstr "Ce paquet est conçu pour des extensions isolées : ce Builder ne peut pas l'exécuter."
+
+#: builder/plugins/hub.py:166
+msgid "This release is larger than Builder installs."
+msgstr "Cette version est plus volumineuse que ce que Builder installe."
+
+#: builder/plugins/hub.py:162
+#, python-brace-format
+msgid "This release is {0}, so it cannot be installed."
+msgstr "Cette version est {0} : elle ne peut pas être installée."
+
+#: frontend/src/pages/PagePersonaSurvey.vue:269
+msgid "This takes about fifteen minutes. Look around meanwhile; it keeps going."
+msgstr "Cela prend une quinzaine de minutes. Explorez en attendant : la copie continue."
+
+#: frontend/src/composables/useCloudBilling.ts:50
+msgid "Trial ended"
+msgstr "Essai terminé"
+
+#: frontend/src/composables/useCloudBilling.ts:69
+#, python-brace-format
+msgid "Trial: {0} days left"
+msgstr "Essai : {0} jours restants"
+
+#: builder/plugins/package.py:139 builder/plugins/package.py:143
+#, python-brace-format
+msgid "Unsafe package path: {0}."
+msgstr "Chemin du paquet dangereux : {0}."
+
+#: builder/builder/doctype/builder_plugin/builder_plugin.py:111
+msgid "Version must hold only letters, digits, dots, plus signs and hyphens."
+msgstr "La version ne peut contenir que des lettres, des chiffres, des points, des signes plus et des tirets."
+
+#: frontend/src/pages/PagePersonaSurvey.vue:246
+msgid "We copy its pages, text and images into Builder. Your current site isn't touched."
+msgstr "Nous copions ses pages, textes et images dans Builder. Votre site actuel n'est pas modifié."
+
+#: frontend/src/pages/PagePersonaSurvey.vue:245
+msgid "What's your website?"
+msgstr "Quel est votre site web ?"
+
+#. Description of the 'Enabled' (Check) field in DocType 'Builder Plugin'
+#: builder/builder/doctype/builder_plugin/builder_plugin.json:55
+msgid "When this is off, the plugin does not run for any user."
+msgstr "Désactivée, l'extension ne s'exécute pour aucun utilisateur."
+
+#. Description of the 'Frontier Rank' (Int) field in DocType 'Builder AI Model'
+#: builder/builder/doctype/builder_ai_model/builder_ai_model.json:94
+msgid "Where discovery placed it among its provider's models, best first."
+msgstr "Rang attribué par la détection parmi les modèles du fournisseur, du meilleur au moins bon."
+
+#. Description of the 'Source' (Select) field in DocType 'Builder Plugin'
+#: builder/builder/doctype/builder_plugin/builder_plugin.json:35
+msgid "Where the plugin files come from: a Builder Hub, a Frappe app, a development server or Bob."
+msgstr "D'où viennent les fichiers de l'extension : un Builder Hub, une application Frappe, un serveur de développement ou Bob."
+
+#: frontend/src/pages/PagePersonaSurvey.vue:241
+#, python-brace-format
+msgid "You're all set{0}. You can add pages any of these ways later too."
+msgstr "Tout est prêt{0}. Vous pourrez aussi ajouter des pages de l'une de ces façons plus tard."
+
+#: frontend/src/components/Onboarding/CloneLookStep.vue:37
+msgid "Your design, tidied, and made to work well on phones."
+msgstr "Votre design, épuré et adapté aux téléphones."
+
+#: frontend/src/components/Onboarding/CloneLookStep.vue:43
+msgid "Your pages and words in a fresh, modern design."
+msgstr "Vos pages et vos textes dans un design neuf et moderne."
+
+#: frontend/src/composables/useCloudBilling.ts:43
+#, python-brace-format
+msgid "Your site will be deleted on {0}. Choose a plan to keep it."
+msgstr "Votre site sera supprimé le {0}. Choisissez un forfait pour le conserver."
+
+#: frontend/src/pages/PagePersonaSurvey.vue:251
+msgid "Your words and images come across either way."
+msgstr "Vos textes et images sont repris dans tous les cas."
+
+#: builder/plugins/bob.py:77
+#, python-brace-format
+msgid "{0} came from {1}, so Bob cannot change it."
+msgstr "{0} vient de {1}, donc Bob ne peut pas le modifier."
+
+#: builder/ai/api.py:462
+#, python-brace-format
+msgid "{0} doesn't connect with a key"
+msgstr "{0} ne se connecte pas avec une clé"
+
+#: builder/ai/catalog.py:35
+#, python-brace-format
+msgid "{0} doesn't serve {1}"
+msgstr "{0} ne fournit pas {1}"
+
+#: builder/plugins/package.py:191
+#, python-brace-format
+msgid "{0} has an unsupported field: {1}."
+msgstr "{0} contient un champ non pris en charge : {1}."
+
+#: builder/plugins/package.py:256
+#, python-brace-format
+msgid "{0} has no <svg> root."
+msgstr "{0} n'a pas de racine <svg>."
+
+#: builder/plugins/package.py:246
+#, python-brace-format
+msgid "{0} holds a forbidden declaration."
+msgstr "{0} contient une déclaration interdite."
+
+#: builder/plugins/package.py:263
+#, python-brace-format
+msgid "{0} holds a forbidden element."
+msgstr "{0} contient un élément interdit."
+
+#: builder/plugins/package.py:267
+#, python-brace-format
+msgid "{0} holds an event attribute."
+msgstr "{0} contient un attribut d'événement."
+
+#: builder/plugins/package.py:248 builder/plugins/package.py:269
+#: builder/plugins/package.py:271
+#, python-brace-format
+msgid "{0} holds an external reference."
+msgstr "{0} contient une référence externe."
+
+#: frontend/src/components/DashboardCloneCard.vue:28
+#: frontend/src/pages/PagePersonaSurvey.vue:259
+#, python-brace-format
+msgid "{0} is in Builder"
+msgstr "{0} est dans Builder"
+
+#: builder/plugins/package.py:188
+#, python-brace-format
+msgid "{0} is missing {1}."
+msgstr "{0} : il manque {1}."
+
+#: builder/plugins/package.py:243
+#, python-brace-format
+msgid "{0} is not UTF-8 SVG."
+msgstr "{0} n'est pas un SVG en UTF-8."
+
+#: builder/plugins/package.py:253
+#, python-brace-format
+msgid "{0} is not valid SVG."
+msgstr "{0} n'est pas un SVG valide."
+
+#: builder/plugins/package.py:172
+#, python-brace-format
+msgid "{0} must be valid UTF-8 JSON."
+msgstr "{0} doit être un JSON valide en UTF-8."
+
+#: builder/plugins/package.py:179
+#, python-brace-format
+msgid "{0} must hold a JSON object."
+msgstr "{0} doit contenir un objet JSON."
+
+#: frontend/src/components/Settings/GlobalBilling.vue:16
+#, python-brace-format
+msgid "{0} spent"
+msgstr "{0} dépensés"

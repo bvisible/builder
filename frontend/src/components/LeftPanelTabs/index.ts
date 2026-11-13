@@ -2,9 +2,11 @@ import LayersIcon from "@/components/Icons/Layers.vue";
 import AssetsTab from "@/components/LeftPanelTabs/AssetsTab.vue";
 import BlocksTab from "@/components/LeftPanelTabs/BlocksTab.vue";
 import CodeTab from "@/components/LeftPanelTabs/CodeTab.vue";
+import PluginsTab from "@/components/LeftPanelTabs/PluginsTab.vue";
 import LayersTab from "@/components/LeftPanelTabs/LayersTab.vue";
 //// Neoffice — see the Site blocks tab below.
 import SiteBlocksPanel from "@/components/SiteBlocksPanel.vue";
+import { pluginsDisabled } from "@/data/plugins";
 import useBuilderStore from "@/stores/builderStore";
 import { createRegistry, type RegistryItem } from "@/utils/createRegistry";
 import type { KeyboardShortcutCombo } from "frappe-ui";
@@ -18,6 +20,8 @@ import { hasNoraChat } from "@/utils/noraChatHost";
 export type LeftPanelTab = RegistryItem & {
 	label: string;
 	icon: string | Component;
+	/** selecting a block keeps this tab open, where another tab gives way to the layers */
+	keepOpenOnSelection?: boolean;
 	component?: Component;
 	props?: () => Record<string, unknown>;
 	/** binding that opens the tab; the panel labels the button with it */
@@ -65,6 +69,7 @@ leftPanelTabs.register({
 
 leftPanelTabs.register({
 	name: "Code",
+	keepOpenOnSelection: true,
 	label: __("Code"),
 	icon: "lucide-code",
 	component: CodeTab,
@@ -102,6 +107,7 @@ leftPanelTabs.register({
 
 leftPanelTabs.register({
 	name: "Chat",
+	keepOpenOnSelection: true,
 	//// Neoffice — the assistant is named by the instance (boot), upstream's label is the fallback.
 	label: assistantName(__("Bob AI")),
 	//// Neoffice — where nora is installed, the tab is Nora's one conversation (NoraEditorChat.vue, 13.11): her orb, and
@@ -117,4 +123,12 @@ leftPanelTabs.register({
 	//// answers them needs room for long lines; the panel opens at least this wide on the assistant's tab and the person
 	//// can still resize it (the panel's own maximum is 500).
 	minWidth: 420,
+});
+
+leftPanelTabs.register({
+	name: "Plugins",
+	label: __("Plugins"),
+	icon: "lucide-plug",
+	component: PluginsTab,
+	condition: () => !pluginsDisabled.value,
 });

@@ -26,9 +26,10 @@ class TestSiteGrid(unittest.TestCase):
 		"""SITE_GRIDS copies the containers the layout recipes write: a merge that changes them must change it."""
 		with open(frappe.get_app_path("builder", "ai", "prompts.py"), encoding="utf-8") as f:
 			recipes = f.read()
-		self.assertIn("maxWidth '1440px', margin '0 auto', padding '0 48px'", recipes)
-		self.assertIn("maxWidth '1200px', margin '0 auto', padding '0 64px'", recipes)
-		self.assertIn("section padding '64px 24px'", recipes)
+		# the recipes are written in CSS since upstream 1.38 (page markup), in camelCase YAML before
+		self.assertIn("max-width:1440px;margin:0 auto;padding:0 48px", recipes)
+		self.assertIn("max-width:1200px;margin:0 auto;padding:0 64px", recipes)
+		self.assertIn("section padding 64px 24px", recipes)
 
 	def test_the_page_brief_names_the_grid_handles(self):
 		handles = {"container": "var(--xx-container)", "gutter": "var(--xx-gutter)", "gutter-phone": "var(--xx-gutter-phone)"}

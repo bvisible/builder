@@ -53,12 +53,10 @@
 			<div class="flex flex-col items-center gap-1 text-center">
 				<!-- //// Neoffice — translated: the upstream panel is English only (neoffice-maintenance#1200) -->
 				<p class="text-sm font-medium text-ink-gray-8">{{ __("Build pages by describing them") }}</p>
-				<p class="text-p-xs text-ink-gray-5">
-					{{ __("Connect a model first. Takes a minute if you already have an API key.") }}
-				</p>
+				<p class="text-p-xs text-ink-gray-5">{{ __("Sign in with ChatGPT, or paste an API key.") }}</p>
 			</div>
 			<!-- //// Neoffice — translated: the upstream panel is English only (neoffice-maintenance#1200) -->
-			<Button variant="solid" size="sm" @click="menu.open(connectLevel(bob))">{{ __("Set up AI") }}</Button>
+			<Button variant="solid" size="sm" @click="menu.open(connectLevel(bob))">{{ __("Connect a model") }}</Button>
 		</div>
 
 		<template v-else>
@@ -115,6 +113,9 @@
 								v-if="assistantText(message)"
 								class="ai-prose prose prose-sm max-w-none break-words text-p-sm"
 								v-html="renderMarkdown(assistantText(message))" />
+							<div v-if="cardPlugins(message).length" class="mt-2 flex flex-col gap-2">
+								<AIPluginCard v-for="plugin in cardPlugins(message)" :key="plugin" :plugin="plugin" />
+							</div>
 							<!-- Turn running, nothing on the clock. Between rounds the shimmer is
 							     the timeline's own tail row (same geometry as the steps, so the
 							     next step replaces it in place, no layout shift); this standalone
@@ -323,6 +324,25 @@
 					</span>
 				</div>
 			</Transition>
+			<div
+				v-for="(note, i) in queuedNotes"
+				:key="i"
+				class="mb-2 flex items-center gap-2 rounded-5 bg-surface-gray-2 px-2.5 py-1.5 text-p-xs text-ink-gray-6">
+				<span class="lucide-clock size-3.5 shrink-0" />
+				<span class="flex-1 truncate">{{ note }}</span>
+				<span class="shrink-0 text-ink-gray-4">Bob reads this next</span>
+				<Tooltip v-if="i === queuedNotes.length - 1">
+					<template #content>
+						<span class="flex items-center gap-1.5">
+							Stop the step Bob is on and read this now
+							<KeyboardShortcut combo="Mod+Enter" class="!text-xs !text-ink-gray-4" />
+						</span>
+					</template>
+					<button class="shrink-0 font-medium underline underline-offset-2" @click="sendNotesNow">
+						Send now
+					</button>
+				</Tooltip>
+			</div>
 			<!-- Say it before a prompt is typed, not after the send fails on the server. -->
 			<div
 				v-if="selectedModelUnusable"
@@ -369,12 +389,11 @@
 			</div>
 			<!-- one box: the field on top, its controls along the bottom edge -->
 			<div
-				class="relative rounded-6 border border-outline-gray-2 bg-surface-base transition-colors hover:border-outline-gray-3 hover:shadow-sm focus-within:border-outline-gray-4 focus-within:shadow-sm"
+				class="relative rounded-6 border border-outline-gray-2 bg-surface-base transition-colors focus-within:border-outline-gray-4 focus-within:shadow-sm hover:border-outline-gray-3 hover:shadow-sm"
 				@paste.stop="handlePaste"
 				@dragover.prevent="isDragging = isVisionModel ? true : isDragging"
 				@dragleave="isDragging = false"
 				@drop.prevent="handleDrop">
-				<!-- //// Neoffice — Enter sends (onComposerKeydown); upstream sends only on Ctrl/Cmd+Enter -->
 				<!-- grows with the prompt (see autoGrow) up to max-h, then scrolls -->
 				<Textarea
 					ref="promptInput"
@@ -383,9 +402,14 @@
 					size="md"
 					:rows="1"
 					class="no-scrollbar max-h-60 min-h-14 resize-none placeholder-ink-gray-4 disabled:border-0 disabled:bg-transparent"
-					:disabled="isSubmitting || !isEditingPage"
+					:disabled="!isEditingPage"
 					:placeholder="composerPlaceholder"
-					@keydown="onComposerKeydown" />
+					@keydown="menu.onKeydown"
+					@keydown.enter.exact="onEnter"
+					@keydown.enter.ctrl.exact="onSendNow"
+					@keydown.enter.meta.exact="onSendNow"
+					@keydown.up.exact="onArrow"
+					@keydown.down.exact="onArrow" />
 				<div class="flex items-center gap-0.5 p-1.5">
 					<!-- //// Neoffice — translated: the upstream panel is English only (neoffice-maintenance#1200) -->
 					<Button
@@ -413,10 +437,24 @@
 					</span>
 					<!-- //// Neoffice — translated: the upstream panel is English only (neoffice-maintenance#1200) -->
 					<Button
+						variant="ghost"
+						size="xs"
+						:icon="selectedEffort ? undefined : 'lucide-brain'"
+						:icon-left="selectedEffort ? 'lucide-brain' : undefined"
+						:label="selectedEffort ? effortLabel(selectedEffort) : undefined"
+						tooltip="Thinking effort"
+						class="shrink-0"
+						@click="menu.open(effortLevel(bob))" />
+					<Tooltip v-if="credits" :text="credits.spent === null ? '' : `${money(credits.spent)} spent`">
+						<Badge variant="subtle" :theme="creditsTheme(credits)" :label="creditsLabel(credits)" />
+					</Tooltip>
+					<span class="flex-1" />
+					<AIContextMeter v-if="contextUsage" :usage="contextUsage" />
+					<!-- //// Neoffice — translated: the upstream panel is English only (neoffice-maintenance#1200) -->
+					<Button
 						v-if="isSubmitting"
 						variant="solid"
 						icon="lucide-square"
-						class="ml-auto"
 						:loading="isCancelling"
 						:tooltip="isCancelling ? __('Cancelling…') : __('Cancel generation')"
 						@click="chat.cancel" />
@@ -425,7 +463,7 @@
 							<span class="flex items-center gap-1.5">
 								<!-- //// Neoffice — translated: the upstream panel is English only (neoffice-maintenance#1200) -->
 								{{ __("Send") }}
-								<KeyboardShortcut combo="Mod+Enter" class="!text-xs !text-ink-gray-4" />
+								<KeyboardShortcut combo="Enter" class="!text-xs !text-ink-gray-4" />
 							</span>
 						</template>
 						<!-- //// Neoffice — the button says Send: an arrow alone is not read as the way to talk to her -->
@@ -433,7 +471,6 @@
 							variant="solid"
 							icon-left="lucide-arrow-up"
 							:label="__('Send')"
-							class="ml-auto"
 							:disabled="!canSubmit"
 							@click="submitPrompt" />
 					</Tooltip>
@@ -472,17 +509,22 @@ import { assistantName, showModelPicker } from "@/utils/neofficeBoot";
 import { isSiteCreationRoute, siteCreationSeed, SITE_CREATION_QUERY } from "@/composables/useSiteCreation";
 import { useRoute, useRouter } from "vue-router";
 import AIAffectedItems from "@/components/AIAffectedItems.vue";
+import AIPluginCard from "@/components/ai/AIPluginCard.vue";
 import AICommandMenu from "@/components/ai/AICommandMenu.vue";
+import AIContextMeter from "@/components/ai/AIContextMeter.vue";
 import AITurnTimeline from "@/components/ai/AITurnTimeline.vue";
 import { registerBobCommands } from "@/components/ai/bobCommands";
 import { useCommandMenu } from "@/components/ai/commandMenu";
 import { connectLevel } from "@/components/ai/commands/connect";
+import { effortLabel, effortLevel } from "@/components/ai/commands/effort";
 import { modelLevel } from "@/components/ai/commands/models";
+import { caretAtEdge, usePromptHistory } from "@/components/ai/promptHistory";
 import { providersLevel } from "@/components/ai/commands/providers";
-import type { BobContext } from "@/components/ai/commands/shared";
+import { type BobContext, creditsLabel, creditsTheme, money } from "@/components/ai/commands/shared";
 import AIUISpec from "@/components/ai/AIUISpec.vue";
 import BobOrb from "@/components/ai/BobOrb.vue";
 import { AIChatController } from "@/components/AIChatController";
+import { useAIStatePoll } from "@/composables/useAIStatePoll";
 import AIDebugPanel from "@/components/AIDebugPanel.vue";
 import Dialog from "@/components/Controls/Dialog.vue";
 import SparklesIcon from "@/components/Icons/Sparkles.vue";
@@ -493,7 +535,7 @@ import { reloadAIRegistry } from "@/data/aiModels";
 import useBuilderStore from "@/stores/builderStore";
 import useCanvasStore from "@/stores/canvasStore";
 //// Neoffice — toast: the images door says when its upload failed (pickImages)
-import { Button, Dropdown, KeyboardShortcut, Textarea, Tooltip, toast } from "frappe-ui";
+import { Badge, Button, Dropdown, KeyboardShortcut, Textarea, Tooltip, toast } from "frappe-ui";
 import { computed, nextTick, onMounted, onUnmounted, ref, watch } from "vue";
 
 //// Neoffice — the panel title, see the template.
@@ -503,7 +545,8 @@ const modelPicker = showModelPicker();
 
 const chat = new AIChatController();
 
-const { prompt, isSubmitting, isCancelling, messages, modelLabel, canSubmit } = chat;
+const { prompt, isSubmitting, isCancelling, messages, modelLabel, canSubmit, credits } = chat;
+const { selectedEffort, contextUsage, queuedNotes, sentPrompts } = chat;
 //// Neoffice — translated: the upstream panel is English only (neoffice-maintenance#1200)
 const cannotReadImages = computed(() => __("{0} can't read images", [modelLabel.value]));
 const { isEditingPage } = chat;
@@ -762,6 +805,14 @@ const BUILD_POOL: Suggestion[] = [
 const EDIT_POOL: Suggestion[] = [
 	{
 		//// Neoffice — translated: the upstream panel is English only (neoffice-maintenance#1200)
+		label: __("A panel for images missing alt text"),
+		prompt: __(
+			"Build an editor plugin: a left bar panel that lists every image on this page that has no alt text, with a thumbnail of each. Clicking one selects it on the canvas.",
+		//// Neoffice — translated: the upstream panel is English only (neoffice-maintenance#1200)
+		),
+	},
+	{
+		//// Neoffice — translated: the upstream panel is English only (neoffice-maintenance#1200)
 		label: __("Add a testimonials section"),
 		prompt: __(
 			"Add a testimonials section with three or four short customer quotes, each with a name and role, styled to match the rest of the page.",
@@ -838,6 +889,31 @@ function useSuggestion(suggestion: Suggestion) {
 	promptInput.value?.focus();
 }
 
+// one card per plugin, on the turn that last changed it: the card shows the plugin as it is now
+const lastPluginMessage = computed(() => {
+	const last = new Map<string, string>();
+	for (const message of messages.value) {
+		for (const plugin of message.metadata?.plugins ?? []) last.set(plugin, message.id);
+	}
+	return last;
+});
+const cardPlugins = (message: ChatMessage): string[] =>
+	(message.metadata?.plugins ?? []).filter(
+		(plugin: string) => lastPluginMessage.value.get(plugin) === message.id,
+	);
+
+// a sentence another panel started for the user, like "Build with Bob" in Plugins; they finish it here
+watch(
+	() => builderStore.aiPromptDraft,
+	(draft) => {
+		if (draft === null) return;
+		builderStore.aiPromptDraft = null;
+		prompt.value = draft;
+		nextTick(() => promptInput.value?.focus());
+	},
+	{ immediate: true },
+);
+
 /** Size the box to its content. Reset to auto first — scrollHeight only ever
  * grows while an explicit height is set, so without it the box could never
  * shrink back after the prompt is sent or cleared. The min/max come from the
@@ -863,9 +939,9 @@ function debugHasSignal(debug: Record<string, any>): boolean {
 	if (!debug) return false;
 	return Boolean(
 		(debug.argsRepaired ?? 0) > 0 ||
-		(debug.toolFailures?.length ?? 0) > 0 ||
-		(debug.finishReasons || []).includes("length") ||
-		debug.stopReason === "max_rounds",
+			(debug.toolFailures?.length ?? 0) > 0 ||
+			(debug.finishReasons || []).includes("length") ||
+			debug.stopReason === "max_rounds",
 	);
 }
 
@@ -896,13 +972,15 @@ onUnmounted(registerBobCommands(bob));
 // runs the open level's cleanup, like a sign-in still polling
 onUnmounted(menu.close);
 
-const composerPlaceholder = computed(() =>
-	menuLevel.value && !menuLevel.value.input
-		//// Neoffice — translated: the upstream panel is English only (neoffice-maintenance#1200)
-		? __("Type to filter")
-		//// Neoffice — the field says whom one writes to, as the ERP bar does ("Écrire à Nora…")
-		: __("Write to {0}…", [assistantLabel]),
-);
+const composerPlaceholder = computed(() => {
+	//// Neoffice — translated: the upstream panel is English only (neoffice-maintenance#1200); the assistant is named by
+	//// the instance (assistantLabel), not "Bob"
+	if (menuLevel.value && !menuLevel.value.input) return __("Type to filter");
+	if (isSubmitting.value && queuedNotes.value.length) return __("Press ↑ to edit what {0} hasn't read", [assistantLabel]);
+	if (isSubmitting.value) return __("Add a note for {0} while the work goes on", [assistantLabel]);
+	//// Neoffice — the field says whom one writes to, as the ERP bar does ("Écrire à Nora…")
+	return __("Write to {0}…", [assistantLabel]);
+});
 
 // a key or URL is typed into a field inside the menu; hand focus back after
 watch(menuLevel, (level) => {
@@ -910,21 +988,44 @@ watch(menuLevel, (level) => {
 });
 
 const submitPrompt = () => {
-	// the menu took this Enter already
+	// while the menu is open, the prompt is a "/" command or a filter, not a message
 	if (menuOpen.value) return;
-	chat.submitPrompt();
+	if (isSubmitting.value) chat.steer();
+	else chat.submitPrompt();
 };
 
-//// Neoffice — Enter sends and Shift+Enter makes a new line, as the editor's earlier creation window did
-//// (@keydown.enter.exact) and as Nora's chat does everywhere else in the ERP; upstream sends only on Ctrl/Cmd+Enter,
-//// which a person who does not know the editor never finds. The "/" menu keeps its keys (Enter chooses an item) and a
-//// key typed while an input method composes is not ours (neoffice-maintenance#2614).
-function onComposerKeydown(event: KeyboardEvent) {
-	if (menu.onKeydown(event) || event.isComposing) return;
-	if (event.key !== "Enter" || event.shiftKey) return;
+// Enter sends. Shift+Enter is the textarea default (newline), .exact skips it.
+const onEnter = (event: KeyboardEvent) => {
+	if (event.isComposing) return;
 	event.preventDefault();
 	submitPrompt();
-}
+};
+
+const sendNotesNow = () => chat.steer(true);
+
+// Mod+Enter while Bob works sends the draft and every queued note straight away
+const onSendNow = (event: KeyboardEvent) => {
+	if (event.isComposing || event.defaultPrevented) return;
+	event.preventDefault();
+	if (isSubmitting.value) sendNotesNow();
+	else submitPrompt();
+};
+
+const history = usePromptHistory(prompt, () => sentPrompts.value);
+
+// Up first takes back what Bob hasn't read yet, then steps through earlier prompts
+const onArrow = (event: KeyboardEvent) => {
+	const el = event.target;
+	if (event.isComposing || event.defaultPrevented || menuOpen.value) return;
+	if (!(el instanceof HTMLTextAreaElement)) return;
+	const up = event.key === "ArrowUp";
+	if (up && queuedNotes.value.length && caretAtEdge(el, true)) {
+		event.preventDefault();
+		chat.takeBackNotes();
+	} else if (history.step(up, el)) {
+		event.preventDefault();
+	}
+};
 
 //// Neoffice — the three doors: what a person who does not know what to ask can say. The text is written into the
 //// field for them to continue; the two others send their sentence, and the assistant answers with the playbook's own
@@ -1012,6 +1113,7 @@ onMounted(() => {
 	// is actually usable rather than inferring it from Builder Settings alone.
 	builderStore.refreshAIState();
 });
+useAIStatePoll(() => builderStore.leftPanelActiveTab === "Chat", builderStore);
 
 //// Neoffice — a dashboard "Create with AI" lands here with ?nora=site: once the session is
 //// loaded, send the site playbook's opening line as the user's first message (only on a chat

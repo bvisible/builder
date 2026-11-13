@@ -3,6 +3,7 @@ import frameworkUI from "@framework/ui/vite";
 import frappeui from "frappe-ui/vite";
 import path from "path";
 import { defineConfig } from "vite";
+import hostModules from "./vite/hostModules.mjs";
 
 // https://vitejs.dev/config/
 export default defineConfig({
@@ -49,6 +50,10 @@ export default defineConfig({
 		}),
 		vue(),
 		frameworkUI(),
+		hostModules({
+			root: import.meta.dirname,
+			configFile: path.resolve(import.meta.dirname, "vite.config.mjs"),
+		}),
 	],
 	build: {
 		chunkSizeWarningLimit: 1500,
