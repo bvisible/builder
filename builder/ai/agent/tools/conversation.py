@@ -42,6 +42,18 @@ MAX_ELEMENTS = 30
 MAX_UI_JSON = 24000
 
 
+# //// Neoffice — added function, see run_present_ui: a list of choices written as text over a single button.
+LISTED_LINE = re.compile(r"^\s*(?:[-*•–]|\d+[.)])\s+\S", re.M)
+
+
+def listed_choices_over_one_button(text: str, ui: list[dict]) -> bool:
+	"""Two lines or more of a list in the card's text, and nothing in its `ui` but one actions group of a single button.
+	A confirmation (two buttons), a recap (two buttons) or any card with a group to answer is not one."""
+	if len(ui) != 1 or ui[0].get("kind") != "actions" or len(ui[0].get("buttons") or []) != 1:
+		return False
+	return len(LISTED_LINE.findall(text or "")) >= 2
+
+
 # //// Neoffice — added function, see run_present_ui: a narration that repeats the card is dropped.
 def _without_echo(steps: list[dict], text: str) -> list[dict]:
 	"""The timeline without its last narration when that says what the card says. Only a
@@ -79,6 +91,15 @@ def run_present_ui(ctx, args: dict) -> str | None:
 			"FAILED: the card has no elements, so it renders as a question the user cannot "
 			"answer. `ui` must be an ARRAY of element objects, e.g. "
 			"[{'kind': 'choices', 'options': [...]}]. Call present_ui again with real elements."
+		)
+	# //// Neoffice — a card that lists its choices in its text and offers one button leaves nothing to choose: the
+	# //// site playbook's style step came as five bullets (palette, colours, layout, ground) over a lone « Continue »
+	# //// (13.11, osiris). Bounced like the dead cards above, so the model puts the groups in `ui` in the same turn.
+	if listed_choices_over_one_button(text, ui):
+		return (
+			"FAILED: the card lists its choices in its text and offers only one button, so the user cannot choose "
+			"any of them. Put each question in `ui` as its own group (choices with options, color_input, input), "
+			"keep `text` to one short sentence, and call present_ui again."
 		)
 	# //// Neoffice — the recap before a build names the site it is built for, from the page open
 	# //// in the editor (cards.recap_names_the_site): a whole recap listed the name, the pages and

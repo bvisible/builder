@@ -6,7 +6,9 @@ its first question was « Name »: the opening sentence belonged to the fourth q
 playbook's English examples and wrote a French person's card in English.
 """
 
+import json
 import unittest
+from types import SimpleNamespace
 from unittest import mock
 
 import frappe
@@ -96,3 +98,58 @@ class TestThePersonsLanguage(unittest.TestCase):
 	def test_the_playbook_carries_it(self):
 		with mock.patch.object(prompts, "person_language_line", return_value="The person you talk to uses français (fr)."):
 			self.assertIn("The person you talk to uses français (fr).", prompts.site_playbook(None))
+
+
+class TestChoicesWrittenAsTextOverOneButton(unittest.TestCase):
+	"""The style step came as five bullets (palette, colours, layout, ground) over a lone « Continue »: nothing to choose
+	(13.11, osiris). present_ui bounces such a card so the model puts the groups in `ui`."""
+
+	STYLE = "Quelques choix sur le style :\n- Palette, 3 options\n- Couleur principale\n- Fond clair ou sombre"
+	ONE = [{"kind": "actions", "buttons": [{"label": "Continuer"}]}]
+
+	def test_a_listed_card_over_one_button_is_bounced(self):
+		from builder.ai.agent.tools.conversation import listed_choices_over_one_button, run_present_ui
+
+		self.assertTrue(listed_choices_over_one_button(self.STYLE, self.ONE))
+		answer = run_present_ui(SimpleNamespace(), {"text": self.STYLE, "ui": self.ONE})
+		self.assertTrue(str(answer).startswith("FAILED: the card lists its choices in its text"))
+
+	def test_a_confirmation_a_recap_or_a_real_card_is_not(self):
+		from builder.ai.agent.tools.conversation import listed_choices_over_one_button
+
+		two = [{"kind": "actions", "buttons": [{"label": "Construire le site"}, {"label": "Changer quelque chose"}]}]
+		self.assertFalse(listed_choices_over_one_button(self.STYLE, two), "a recap has two buttons")
+		self.assertFalse(listed_choices_over_one_button("On construit ?", self.ONE), "a plain question over one button")
+		self.assertFalse(
+			listed_choices_over_one_button(self.STYLE, [{"kind": "choices", "options": [{"label": "Clair"}]}, *self.ONE]),
+			"a card with a group to answer",
+		)
+
+
+class TestASiteWaitsForItsRecap(unittest.TestCase):
+	"""The model built a whole site straight from the style answer, skipping the photographs step and the recap (13.11,
+	osiris): generate_site refuses a whole site until the conversation presented the recap card."""
+
+	def rows(self, *cards):
+		return [SimpleNamespace(metadata_json=json.dumps({"ui": ui})) for ui in cards]
+
+	def test_no_recap_no_whole_site(self):
+		from builder.site_ai.nora import tools
+
+		style = [{"kind": "actions", "buttons": [{"label": "Continuer"}]}]
+		with mock.patch.object(tools.frappe, "get_all", return_value=self.rows(style)):
+			self.assertFalse(tools.recap_was_presented("s1"))
+			answer = tools.run_generate_site(SimpleNamespace(session_id="s1"), {"site_name": "X", "activity": "Y", "pages": []})
+		self.assertEqual(answer, tools.RECAP_FIRST)
+
+	def test_a_recap_a_part_of_a_site_or_no_conversation_goes_on(self):
+		from builder.site_ai.nora import tools
+
+		recap = [{"kind": "list", "items": ["Nom : X"]}, {"kind": "actions", "buttons": [{"label": "Construire le site"}, {"label": "Changer quelque chose"}]}]
+		with mock.patch.object(tools.frappe, "get_all", return_value=self.rows(recap)):
+			self.assertTrue(tools.recap_was_presented("s1"))
+		self.assertTrue(tools.recap_was_presented(None), "a build run from the console has no conversation")
+		with mock.patch.object(tools, "recap_was_presented", return_value=False), mock.patch(
+			"builder.site_ai.nora.site_builder.build_site", return_value="DONE"
+		):
+			self.assertEqual(tools.run_generate_site(SimpleNamespace(session_id="s1"), {"scope": "pages"}), "DONE")

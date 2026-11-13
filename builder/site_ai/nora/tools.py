@@ -12,9 +12,46 @@ from builder.ai.agent.registry import Tool
 SITE_TYPES = ["vitrine", "vitrine_user", "one_page", "blog", "ecommerce", "ecommerce_search", "saas", "portfolio"]
 
 
+RECAP_FIRST = (
+    "FAILED: a whole site is built only after the person approved the recap card (step 5 of the playbook), and none was "
+    "presented in this conversation. If step 4 (the logo, the sites they like, their own photographs) was not asked, ask it "
+    "now with its present_ui card; then present the recap (a heading, a list, actions 'Build the site' / 'Change "
+    "something', in the person's language) and call generate_site after they approve it."
+)
+
+
+def recap_was_presented(session_id: str | None) -> bool:
+    """Whether one of the conversation's latest cards is the recap, a card ending on a build button (cards.BUILD_BUTTON).
+    The model built a site straight from the style answer, skipping the photographs step and the recap the playbook says
+    is never skipped (13.11, osiris): the person never saw what would be built nor gave their pictures. Without a
+    conversation (a build run from the console or a bench), nothing is asked."""
+    if not session_id:
+        return True
+    from builder.ai.session import AISession
+    from builder.site_ai.nora.cards import BUILD_BUTTON
+
+    rows = frappe.get_all(
+        AISession.MESSAGE_DOCTYPE,
+        filters={"session": session_id, "role": "assistant", "message_type": "clarification"},
+        fields=["metadata_json"],
+        order_by="creation desc",
+        limit=10,
+    )
+    for row in rows:
+        ui = AISession.load_metadata(row.metadata_json).get("ui") or []
+        for element in ui if isinstance(ui, list) else []:
+            if isinstance(element, dict) and element.get("kind") == "actions":
+                if any(BUILD_BUTTON.search(str((b or {}).get("label") or "")) for b in element.get("buttons") or []):
+                    return True
+    return False
+
+
 def run_generate_site(ctx, args: dict) -> str:
     from builder.site_ai.nora.site_builder import build_site
 
+    # a whole site waits for the recap the person approved; a page or two of a site that exists does not (scope='pages')
+    if str((args or {}).get("scope") or "site") != "pages" and not recap_was_presented(getattr(ctx, "session_id", None)):
+        return RECAP_FIRST
     try:
         return build_site(ctx, args or {})
     except Exception as e:
