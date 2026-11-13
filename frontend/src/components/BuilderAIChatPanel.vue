@@ -14,7 +14,7 @@
 					variant="ghost"
 					size="sm"
 					icon="lucide-plus"
-					tooltip="New chat"
+					:tooltip="__('New chat')"
 					:disabled="isSubmitting"
 					@click="newSession" />
 				<Dropdown v-if="sessionOptions.length" :options="sessionOptions" :offset="6">
@@ -22,7 +22,7 @@
 						variant="ghost"
 						size="sm"
 						icon="lucide-history"
-						tooltip="Chats on this page"
+						:tooltip="__('Chats on this page')"
 						:disabled="isSubmitting" />
 				</Dropdown>
 			</div>
@@ -34,7 +34,7 @@
 			v-if="!builderStore.isAIStateKnown || (isLoadingSession && !messages.length)"
 			class="flex flex-1 items-center justify-center pb-40">
 			<span class="bob-pill-in" style="animation-delay: 300ms">
-				<span class="animate-shine text-p-xs">Loading</span>
+				<span class="animate-shine text-p-xs">{{ __("Loading") }}</span>
 			</span>
 		</div>
 
@@ -48,12 +48,12 @@
 				<SparklesIcon class="bob-orb-spark relative z-10 size-7 text-ink-gray-8" />
 			</span>
 			<div class="flex flex-col items-center gap-1 text-center">
-				<p class="text-sm font-medium text-ink-gray-8">Build pages by describing them</p>
+				<p class="text-sm font-medium text-ink-gray-8">{{ __("Build pages by describing them") }}</p>
 				<p class="text-p-xs text-ink-gray-5">
-					Connect a model first. Takes a minute if you already have an API key.
+					{{ __("Connect a model first. Takes a minute if you already have an API key.") }}
 				</p>
 			</div>
-			<Button variant="solid" size="sm" @click="menu.open(connectLevel(bob))">Set up AI</Button>
+			<Button variant="solid" size="sm" @click="menu.open(connectLevel(bob))">{{ __("Set up AI") }}</Button>
 		</div>
 
 		<template v-else>
@@ -65,9 +65,9 @@
 							<SparklesIcon class="bob-orb-spark relative z-10 size-7 text-ink-gray-8" />
 						</span>
 						<p class="text-sm font-medium text-ink-gray-8">
-							{{ pageHasContent ? "What should we change?" : "Tell me what you're building" }}
+							{{ pageHasContent ? __("What should we change?") : __("Tell me what you're building") }}
 						</p>
-						<p class="text-p-xs text-ink-gray-5">Try one of these, or type your own below</p>
+						<p class="text-p-xs text-ink-gray-5">{{ __("Try one of these, or type your own below") }}</p>
 					</div>
 					<div class="flex w-full flex-col gap-2">
 						<Button
@@ -122,7 +122,7 @@
 								v-if="stillWorking(message) && (!!assistantText(message) || !message.metadata?.steps?.length)"
 								class="animate-shine w-fit text-p-xs text-ink-gray-5"
 								:class="assistantText(message) && 'mt-1'">
-								Working
+								{{ __("Working") }}
 							</div>
 						</template>
 						<div v-else>
@@ -147,22 +147,22 @@
 								@select-block="selectBlockById"
 								@open-script="openScriptByName" />
 
-							<Tooltip v-if="message.metadata?.revertSnapshot" text="Revert the page to before this AI edit">
+							<Tooltip v-if="message.metadata?.revertSnapshot" :text="__('Revert the page to before this AI edit')">
 								<button
 									class="inline-flex items-center gap-1 transition-colors hover:text-ink-gray-7 disabled:cursor-not-allowed disabled:opacity-40"
 									:disabled="isSubmitting || !isEditingPage"
 									@click="revertTurn(message)">
 									<span class="lucide-rotate-ccw size-3" />
-									Revert
+									{{ __("Revert") }}
 								</button>
 							</Tooltip>
 							<!-- Time taken + debugger trigger (full breakdown lives in the debug panel) -->
 							<template v-if="message.metadata?.debug">
 								<div class="ml-auto flex items-center gap-2">
 									<span v-if="message.metadata.debug.elapsedMs">
-										took {{ formatDuration(message.metadata.debug.elapsedMs) }}
+										{{ __("took {0}", [formatDuration(message.metadata.debug.elapsedMs)]) }}
 									</span>
-									<Tooltip text="Inspect this turn (rounds, tools, tokens, why it stopped)">
+									<Tooltip :text="__('Inspect this turn (rounds, tools, tokens, why it stopped)')">
 										<button
 											class="inline-flex items-center transition-colors"
 											:class="
@@ -184,7 +184,7 @@
 						<div
 							v-if="message.metadata?.status === 'pending_action'"
 							class="mt-2 w-full rounded-6 border border-outline-gray-2 bg-surface-gray-1 p-3">
-							<p class="text-p-xs font-medium text-ink-amber-8">Needs your OK</p>
+							<p class="text-p-xs font-medium text-ink-amber-8">{{ __("Needs your OK") }}</p>
 							<p class="mt-1 text-p-sm leading-snug text-ink-gray-8">
 								{{ pendingPreview(message.metadata) }}
 							</p>
@@ -201,7 +201,7 @@
 									size="sm"
 									:disabled="confirmingAction"
 									@click="confirmPendingAction(message, 'skip')">
-									Skip
+									{{ __("Skip") }}
 								</Button>
 							</div>
 						</div>
@@ -227,7 +227,7 @@
 							v-if="message.metadata?.attachedImageUrl"
 							class="inline-flex items-center gap-1 rounded-4 bg-surface-gray-2 px-1.5 py-0.5 text-[10px] text-ink-gray-6">
 							<img :src="message.metadata.attachedImageUrl" class="h-3 w-3 rounded-4 object-cover" alt="" />
-							Image
+							{{ __("Image") }}
 						</span>
 						<!-- block chips -->
 						<button
@@ -243,8 +243,8 @@
 							@click="toggleChips(message.id)">
 							{{
 								expandedMessages.has(message.id)
-									? "Show less"
-									: `+${(message.metadata?.selectedBlockContext?.length ?? 0) - MAX_VISIBLE_CHIPS} more`
+									? __("Show less")
+									: __("+{0} more", [(message.metadata?.selectedBlockContext?.length ?? 0) - MAX_VISIBLE_CHIPS])
 							}}
 						</button>
 					</div>
@@ -257,14 +257,14 @@
 			<div
 				v-if="attachedBlocks.length || attachableBlocks.length"
 				class="mb-2 flex flex-wrap items-center gap-1.5">
-				<span v-if="attachedBlocks.length" class="text-xs text-ink-gray-5">Context:</span>
+				<span v-if="attachedBlocks.length" class="text-xs text-ink-gray-5">{{ __("Context:") }}</span>
 				<span
 					v-for="block in attachedBlocks"
 					:key="block.id"
 					class="inline-flex items-center gap-1 rounded-4 bg-surface-gray-2 px-1.5 py-0.5 text-xs text-ink-gray-7">
 					<span class="lucide-square-dashed h-3 w-3 shrink-0 text-ink-gray-5" />
 					<span class="block max-w-[8rem] truncate">{{ block.label }}</span>
-					<Tooltip text="Remove from context">
+					<Tooltip :text="__('Remove from context')">
 						<button
 							type="button"
 							class="ml-0.5 flex items-center text-ink-gray-4 hover:text-ink-red-7"
@@ -283,7 +283,7 @@
 						{{
 							attachableBlocks.length === 1
 								? attachableBlocks[0].getBlockDescription()
-								: `${attachableBlocks.length} selected blocks`
+								: __("{0} selected blocks", [attachableBlocks.length])
 						}}
 					</span>
 				</button>
@@ -294,7 +294,7 @@
 						class="inline-flex items-center gap-1 rounded-4 bg-surface-gray-2 px-1.5 py-0.5 text-xs text-ink-gray-7">
 						<img :src="imagePreviewUrl" class="h-3 w-3 rounded-4 object-cover" alt="" />
 						<span class="max-w-[120px] truncate">{{ imageFileName }}</span>
-						<Tooltip text="Remove image">
+						<Tooltip :text="__('Remove image')">
 							<button
 								type="button"
 								class="ml-0.5 flex items-center text-ink-gray-4 hover:text-ink-red-7"
@@ -310,22 +310,22 @@
 				v-if="selectedModelUnusable"
 				class="mb-2 flex items-center gap-2 rounded-5 bg-surface-amber-1 px-2.5 py-1.5 text-p-xs text-ink-amber-7">
 				<span class="lucide-key-round size-3.5 shrink-0" />
-				<span class="flex-1">{{ modelLabel }} has no API key.</span>
+				<span class="flex-1">{{ __("{0} has no API key.", [modelLabel]) }}</span>
 				<button
 					class="shrink-0 font-medium underline underline-offset-2"
 					@click="menu.open(providersLevel(bob))">
-					Add one
+					{{ __("Add one") }}
 				</button>
 			</div>
 			<div
 				v-else-if="!isEditingPage"
 				class="mb-2 flex items-center gap-2 rounded-5 bg-surface-gray-2 px-2.5 py-1.5 text-p-xs text-ink-gray-6">
 				<span class="lucide-box size-3.5 shrink-0" />
-				<span class="flex-1">Bob only edits the page.</span>
+				<span class="flex-1">{{ __("{0} only edits the page.", [assistantLabel]) }}</span>
 				<button
 					class="shrink-0 font-medium underline underline-offset-2"
 					@click="canvasStore.exitFragmentMode()">
-					Back to page
+					{{ __("Back to page") }}
 				</button>
 			</div>
 			<!-- one box: the field on top, its controls along the bottom edge -->
@@ -352,8 +352,8 @@
 					<Button
 						variant="ghost"
 						icon="lucide-plus"
-						label="Attach image"
-						:tooltip="isVisionModel ? 'Attach image' : `${modelLabel} can't read images`"
+						:label="__('Attach image')"
+						:tooltip="isVisionModel ? __('Attach image') : cannotReadImages"
 						:disabled="!isVisionModel || !isEditingPage"
 						@click="imageInput?.click()" />
 					<input ref="imageInput" type="file" accept="image/*" class="hidden" @change="pickImage" />
@@ -378,12 +378,12 @@
 						icon="lucide-square"
 						class="ml-auto"
 						:loading="isCancelling"
-						:tooltip="isCancelling ? 'Cancelling…' : 'Cancel generation'"
+						:tooltip="isCancelling ? __('Cancelling…') : __('Cancel generation')"
 						@click="chat.cancel" />
 					<Tooltip v-else side="top">
 						<template #content>
 							<span class="flex items-center gap-1.5">
-								Send
+								{{ __("Send") }}
 								<KeyboardShortcut combo="Mod+Enter" class="!text-xs !text-ink-gray-4" />
 							</span>
 						</template>
@@ -408,7 +408,7 @@
 				</Transition>
 			</div>
 		</div>
-		<Dialog title="Turn debug" size="3xl" v-model="debugOpen">
+		<Dialog :title="__('Turn debug')" size="3xl" v-model="debugOpen">
 			<template #default>
 				<AIDebugPanel :debug="debugData" />
 			</template>
@@ -418,6 +418,8 @@
 
 <script setup lang="ts">
 //// Neoffice — see the panel title above, and the site-creation seed below.
+//// Neoffice — every label of the panel goes through __() (upstream's Bob panel is English only, neoffice-maintenance#1200): the French catalogue is builder/locale/fr.po.
+import { __ } from "@/translation";
 import { assistantName, showModelPicker } from "@/utils/neofficeBoot";
 import { isSiteCreationRoute, siteCreationSeed, SITE_CREATION_QUERY } from "@/composables/useSiteCreation";
 import { useRoute, useRouter } from "vue-router";
@@ -453,10 +455,11 @@ const modelPicker = showModelPicker();
 const chat = new AIChatController();
 
 const { prompt, isSubmitting, isCancelling, messages, modelLabel, canSubmit } = chat;
+const cannotReadImages = computed(() => __("{0} can't read images", [modelLabel.value]));
 const { isEditingPage } = chat;
 const { selectedModelUnusable } = chat;
 const { progressMessage } = chat;
-const currentActivity = computed(() => progressMessage.value || "Thinking…");
+const currentActivity = computed(() => progressMessage.value || __("Thinking…"));
 const { revertTurn, selectOption } = chat;
 const { sessions, sessionId, switchSession, newSession, deleteSession, isLoadingSession } = chat;
 
@@ -464,7 +467,7 @@ const currentSessionTitle = computed(() => {
 	// blank until loaded, not "New chat" flipping to the real title
 	if (!sessionId.value || !sessions.value.length) return "";
 	const current = sessions.value.find((s) => s.name === sessionId.value);
-	return current?.title || "New chat";
+	return current?.title || __("New chat");
 });
 
 /** VS Code-style session switcher: this page's chats (current one checked),
@@ -482,7 +485,7 @@ const sessionOptions = computed(() => {
 			group: "Chats",
 			hideLabel: true,
 			options: sessions.value.map((s) => ({
-				label: truncateTitle(s.title || "New chat"),
+				label: truncateTitle(s.title || __("New chat")),
 				icon: s.name === sessionId.value ? "lucide-check" : "lucide-message-circle",
 				onClick: () => switchSession(s.name),
 			})),
@@ -493,7 +496,7 @@ const sessionOptions = computed(() => {
 			// theme belongs on the item — a group-level one isn't inherited.
 			options: [
 				{
-					label: "Delete current chat",
+					label: __("Delete current chat"),
 					icon: "lucide-trash-2",
 					theme: "red",
 					onClick: deleteSession,
@@ -532,32 +535,34 @@ function pendingPreview(m: Record<string, any>): string {
 	const fields = fieldNames(p.fields);
 	switch (m.kind) {
 		case "create_doctype":
-			return `Create “${p.name}” to store this page's data${fields ? ` (${fields})` : ""}.`;
+			return __("Create “{0}” to store this page's data{1}.", [p.name, fields ? ` (${fields})` : ""]);
 		case "connect_form":
-			return `Save this form's submissions as “${p.doctype_name}” records${fields ? ` (${fields})` : ""}.`;
+			return __("Save this form's submissions as “{0}” records{1}.", [p.doctype_name, fields ? ` (${fields})` : ""]);
 		case "seed_sample_data": {
 			const n = (p.rows || []).length;
-			return `Add ${n} sample ${n === 1 ? "record" : "records"} to “${p.doctype}”.`;
+			return n === 1
+				? __("Add {0} sample record to “{1}”.", [n, p.doctype])
+				: __("Add {0} sample records to “{1}”.", [n, p.doctype]);
 		}
 		case "global_settings":
-			return `Update site-wide code (${Object.keys(p).join(", ")}). This loads on every page.`;
+			return __("Update site-wide code ({0}). This loads on every page.", [Object.keys(p).join(", ")]);
 		case "home_page":
-			return `Make “/${String(p.route || "").replace(/^\//, "")}” the site's home page.`;
+			return __("Make “/{0}” the site's home page.", [String(p.route || "").replace(/^\//, "")]);
 		default:
-			return "Confirm this change?";
+			return __("Confirm this change?");
 	}
 }
 
 /** The apply button names the action it performs; a bare "Apply" makes the user
  * re-read the card to know what they're agreeing to. */
 const APPLY_LABELS: Record<string, string> = {
-	create_doctype: "Create it",
-	connect_form: "Connect form",
-	seed_sample_data: "Add records",
-	home_page: "Set home page",
-	global_settings: "Apply",
+	create_doctype: __("Create it"),
+	connect_form: __("Connect form"),
+	seed_sample_data: __("Add records"),
+	home_page: __("Set home page"),
+	global_settings: __("Apply"),
 };
-const applyLabel = (kind?: string) => APPLY_LABELS[kind || ""] || "Apply";
+const applyLabel = (kind?: string) => APPLY_LABELS[kind || ""] || __("Apply");
 const builderStore = useBuilderStore();
 const canvasStore = useCanvasStore();
 
@@ -614,98 +619,118 @@ const visibleMessages = computed(() =>
 // A wide, characterful pool sampled 3-at-a-time so the panel feels fresh.
 type Suggestion = { label: string; prompt: string };
 const pageHasContent = computed(() => (canvasStore.activeCanvas?.getRootBlock()?.children?.length ?? 0) > 0);
+//// Neoffice — the examples are translated (__) and placed here, not in Goa, Mumbai and Pune: a Swiss
+//// business reads them in its own language and its own country (neoffice-maintenance#1200).
 const BUILD_POOL: Suggestion[] = [
 	{
-		label: "A wood-fired pizzeria in Goa",
-		prompt:
-			"Build a website for Forno, a wood-fired pizzeria in Anjuna, Goa. Warm, rustic-modern feel with big appetizing food photography and a cozy dark-terracotta palette. Sections: a hero with our story, the menu (wood-fired pizzas, small plates, natural wines), a photo gallery, and a visit section with hours and location.",
+		label: __("A wood-fired pizzeria in Lausanne"),
+		prompt: __(
+			"Build a website for Forno, a wood-fired pizzeria in Lausanne. Warm, rustic-modern feel with big appetizing food photography and a cozy dark-terracotta palette. Sections: a hero with our story, the menu (wood-fired pizzas, small plates, natural wines), a photo gallery, and a visit section with hours and location.",
+		),
 	},
 	{
-		label: "Moody portfolio for a photographer",
-		prompt:
+		label: __("Moody portfolio for a photographer"),
+		prompt: __(
 			"Build a portfolio for Aria Sen, a portrait and editorial photographer. Dark, cinematic, image-first design where the photos dominate. Sections: a full-bleed hero image, a gallery of selected work, a short about/bio, a client list, and a contact/booking section.",
+		),
 	},
 	{
-		label: "Waitlist page for an AI app",
-		prompt:
+		label: __("Waitlist page for an AI app"),
+		prompt: __(
 			"Build a launch and waitlist page for Nimbus, an AI note-taking app. Clean and modern with a confident gradient accent. Sections: a punchy hero with the value prop and an email waitlist form, three key features, a short 'how it works', and social proof.",
+		),
 	},
 	{
-		label: "Menu & story for a ramen bar",
-		prompt:
-			"Build a website for Slurp, a ramen bar in Bandra, Mumbai. Bold, appetizing, a little playful. Sections: a hero, the ramen menu with descriptions and prices, our origin story, a gallery, and hours and location.",
+		label: __("Menu & story for a ramen bar"),
+		prompt: __(
+			"Build a website for Slurp, a ramen bar in Geneva. Bold, appetizing, a little playful. Sections: a hero, the ramen menu with descriptions and prices, our origin story, a gallery, and hours and location.",
+		),
 	},
 	{
-		label: "A vintage record store",
-		prompt:
+		label: __("A vintage record store"),
+		prompt: __(
 			"Build a website for Groove Vault, a vintage vinyl record store. Retro, textured, warm analog vibe. Sections: a hero, featured new arrivals, the genres we stock, our story, in-store events, and how to find us.",
+		),
 	},
 	{
-		label: "Landing page for a yoga studio",
-		prompt:
+		label: __("Landing page for a yoga studio"),
+		prompt: __(
 			"Build a landing page for Stillpoint, a boutique yoga studio. Calm, airy, minimal with soft natural tones and gentle motion. Sections: a hero, class types and schedule, the teachers, a membership/pricing section, and a book-a-first-class CTA.",
+		),
 	},
 	{
-		label: "A bold skincare brand",
-		prompt:
+		label: __("A bold skincare brand"),
+		prompt: __(
 			"Build a product site for Lumen, a clean skincare brand. Bold, premium, editorial with big product shots. Sections: a hero, the hero product with ingredients and benefits, results, reviews, and a shop/buy CTA.",
+		),
 	},
 	{
-		label: "Personal site for a designer",
-		prompt:
+		label: __("Personal site for a designer"),
+		prompt: __(
 			"Build a personal site for Maya Rao, a product designer. Confident, minimal, type-driven. Sections: a short intro hero, selected case studies, an about section, and contact links (email, LinkedIn, resume).",
+		),
 	},
 	{
-		label: "A craft coffee roaster",
-		prompt:
+		label: __("A craft coffee roaster"),
+		prompt: __(
 			"Build a website for Ember & Oak, a craft coffee roaster. Warm, artisanal, rich browns and texture. Sections: a hero, our roasts with tasting notes, the roasting story, wholesale info, and where to buy or visit.",
+		),
 	},
 	{
-		label: "Event page for a design meetup",
-		prompt:
-			"Build an event page for Design Jam, a monthly design meetup in Pune. Energetic, modern, poster-like. Sections: a hero with date, venue and RSVP, the speaker lineup, the schedule, past-event highlights, and sponsors.",
+		label: __("Event page for a design meetup"),
+		prompt: __(
+			"Build an event page for Design Jam, a monthly design meetup in Fribourg. Energetic, modern, poster-like. Sections: a hero with date, venue and RSVP, the speaker lineup, the schedule, past-event highlights, and sponsors.",
+		),
 	},
 ];
 const EDIT_POOL: Suggestion[] = [
 	{
-		label: "Add a testimonials section",
-		prompt:
+		label: __("Add a testimonials section"),
+		prompt: __(
 			"Add a testimonials section with three or four short customer quotes, each with a name and role, styled to match the rest of the page.",
+		),
 	},
 	{
-		label: "Make the hero more dramatic",
-		prompt:
+		label: __("Make the hero more dramatic"),
+		prompt: __(
 			"Make the hero more dramatic: a larger headline, stronger contrast, a full-bleed background image or bold color, and a clear primary call-to-action.",
+		),
 	},
 	{
-		label: "Switch to a dark theme",
-		prompt:
+		label: __("Switch to a dark theme"),
+		prompt: __(
 			"Rework the whole page in a cohesive dark theme, keeping the layout but adjusting backgrounds, text, and accents for good contrast.",
+		),
 	},
 	{
-		label: "Add a pricing section",
-		prompt:
+		label: __("Add a pricing section"),
+		prompt: __(
 			"Add a pricing section with three tiers (name, price, feature list, and a CTA button each), styled to match the page.",
+		),
 	},
 	{
-		label: "Add scroll animations",
-		prompt:
+		label: __("Add scroll animations"),
+		prompt: __(
 			"Add tasteful scroll animations: staggered fade-and-rise reveals on each section as it enters the viewport, subtle and smooth.",
+		),
 	},
 	{
-		label: "Tighten the spacing everywhere",
-		prompt:
+		label: __("Tighten the spacing everywhere"),
+		prompt: __(
 			"Tighten the spacing across the page: reduce oversized gaps, align section padding to a consistent rhythm, and improve the vertical flow.",
+		),
 	},
 	{
-		label: "Add a sticky header with nav",
-		prompt:
+		label: __("Add a sticky header with nav"),
+		prompt: __(
 			"Add a sticky header with the name or logo on the left and nav links to each section on the right, gaining a subtle background on scroll.",
+		),
 	},
 	{
-		label: "Make it feel more premium",
-		prompt:
+		label: __("Make it feel more premium"),
+		prompt: __(
 			"Make the page feel more premium: refine the typography and spacing, add depth with subtle shadows and borders, and elevate the color and imagery treatment.",
+		),
 	},
 ];
 function sample3(pool: Suggestion[]): Suggestion[] {
@@ -781,8 +806,8 @@ onUnmounted(menu.close);
 
 const composerPlaceholder = computed(() =>
 	menuLevel.value && !menuLevel.value.input
-		? "Type to filter"
-		: "Ask to create or edit this page, or type / for commands",
+		? __("Type to filter")
+		: __("Ask to create or edit this page, or type / for commands"),
 );
 
 // a key or URL is typed into a field inside the menu; hand focus back after
