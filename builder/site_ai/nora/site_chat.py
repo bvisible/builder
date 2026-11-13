@@ -354,6 +354,8 @@ def send(
 def run_site_job(prompt: str, model: str, profile: str | None = None, **kwargs):
 	from builder.ai import llm
 
+	# a worker starts in the site's config language: what the turn writes for the person is said in theirs
+	frappe.set_user_lang(frappe.session.user)
 	kwargs.pop("api_key", None)
 	SiteChatRunner(prompt, model, llm.resolve_api_key(model), profile=profile, **kwargs).run()
 

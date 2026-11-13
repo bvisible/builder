@@ -1077,8 +1077,11 @@ class AgentRunner:
 
 		counts = Counter(op.get("tool_name") for op in operations)
 
-		def blk(n: int) -> str:
-			return "block" if n == 1 else "blocks"
+		# //// Neoffice — upstream wrote these in English (« Applied 40 changes to the page »), the last words of a turn
+		# //// the person reads; translatable now, said in the person's language (run_agent_job sets it). One phrase per
+		# //// number (frappe has no plural forms); its {0} lets a language put the number where it goes.
+		def count(n: int, one: str, many: str) -> str:
+			return (one if n == 1 else many).format(n)
 
 		# update_blocks edits many blocks in one op — count the blocks it touched,
 		# not the single call, so the summary reads "updated 12 blocks" not "1".
@@ -1090,26 +1093,26 @@ class AgentRunner:
 			patches = args.get("patches")
 			batched += len(patches) if isinstance(patches, list) else len(args.get("block_ids") or [])
 
+		_ = frappe._  # //// Neoffice — the phrases below are the person's (see count)
 		parts: list[str] = []
 		if n := counts.get("add_block"):
-			parts.append(f"added {n} {blk(n)}")
+			parts.append(count(n, _("added {0} block"), _("added {0} blocks")))
 		if n := (counts.get("update_block", 0) + batched):
-			parts.append(f"updated {n} {blk(n)}")
+			parts.append(count(n, _("updated {0} block"), _("updated {0} blocks")))  # //// Neoffice — translatable
 		if n := counts.get("remove_block"):
-			parts.append(f"removed {n} {blk(n)}")
+			parts.append(count(n, _("removed {0} block"), _("removed {0} blocks")))  # //// Neoffice — translatable
 		if n := counts.get("move_block"):
-			parts.append(f"moved {n} {blk(n)}")
+			parts.append(count(n, _("moved {0} block"), _("moved {0} blocks")))  # //// Neoffice — translatable
 		if counts.get("set_page_blocks"):
-			parts.append("updated the page")
+			parts.append(_("updated the page"))  # //// Neoffice — translatable
 		if counts.get("set_page_script"):
-			parts.append("added a script")
+			parts.append(_("added a script"))  # //// Neoffice — translatable
 		if counts.get("update_script"):
-			parts.append("updated a script")
+			parts.append(_("updated a script"))  # //// Neoffice — translatable
 
 		if not parts:
-			n = len(operations)
-			return f"Applied {n} change{'s' if n != 1 else ''} to the page"
-		sentence = parts[0] if len(parts) == 1 else f"{', '.join(parts[:-1])} and {parts[-1]}"
+			return count(len(operations), _("Applied {0} change to the page"), _("Applied {0} changes to the page"))  # //// Neoffice — translatable
+		sentence = parts[0] if len(parts) == 1 else _("{0} and {1}").format(", ".join(parts[:-1]), parts[-1])  # //// Neoffice — translatable
 		# No trailing period: these render as timeline rows beside "Checked how it
 		# looks" and friends, which carry none.
 		return sentence[0].upper() + sentence[1:]
@@ -1559,7 +1562,10 @@ class AgentRunner:
 		# Hit the per-turn round cap → the work is INCOMPLETE. Say so, so a big edit
 		# doesn't look finished; the user can reply "continue" to resume from here.
 		if self.stop_reason == "max_rounds":
-			hint = '\n\n⚠️ I hit my edit-step limit for one turn before finishing — reply "continue" and I\'ll pick up where I left off.'
+			# //// Neoffice — translatable (upstream's sentence was English only); the person's language, see run_agent_job
+			hint = "\n\n⚠️ " + frappe._(
+				"I hit my edit-step limit for one turn before finishing: reply « continue » and I'll pick up where I left off."
+			)
 			summary_text += hint
 			self.emit("stream", chunk=hint)
 
@@ -1743,6 +1749,9 @@ class AgentRunner:
 
 
 def run_agent_job(prompt: str, model: str, **kwargs):
+	# //// Neoffice — a worker starts in the site's config language (« en » when it names none), not the person's: what
+	# //// the turn writes for the person (describe_operations, the step limit's hint, a refusal) is said in theirs.
+	frappe.set_user_lang(frappe.session.user)
 	# Resolved here so the key never sits in Redis; jobs queued by older code still pass one.
 	kwargs.pop("api_key", None)
 	AgentRunner(prompt, model, llm.resolve_api_key(model), **kwargs).run()

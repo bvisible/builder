@@ -51,6 +51,12 @@ class TestPicturesSentInAMessage(unittest.TestCase):
 		self.assertIn("keep their addresses for generate_site", text)
 		self.assertIn("logo_image for a logo, photos for the others", text)
 
+	def test_they_answer_the_card_that_asks_for_them(self):
+		"""After « My images » the assistant presented the logo and photographs card again instead of going on (13.11)."""
+		text = prompts.site_playbook(None)
+		self.assertIn("They ANSWER step 4 (the logo and photographs card)", text)
+		self.assertIn("never present that card again after them", text)
+
 
 class TestThePersonsLanguage(unittest.TestCase):
 	def say(self, user_language, system_language=None, builder_language=None, language_name="français"):

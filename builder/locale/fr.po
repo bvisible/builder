@@ -13006,3 +13006,63 @@ msgstr "titre"
 #: frontend/src/components/ai/noraEditorChat.ts
 msgid "Skipped. Nothing was changed."
 msgstr "Action non réalisée. Rien n'a été modifié."
+
+#: builder/ai/agent/loop.py
+msgid "added {0} block"
+msgstr "{0} bloc ajouté"
+
+#: builder/ai/agent/loop.py
+msgid "added {0} blocks"
+msgstr "{0} blocs ajoutés"
+
+#: builder/ai/agent/loop.py
+msgid "updated {0} block"
+msgstr "{0} bloc mis à jour"
+
+#: builder/ai/agent/loop.py
+msgid "updated {0} blocks"
+msgstr "{0} blocs mis à jour"
+
+#: builder/ai/agent/loop.py
+msgid "removed {0} block"
+msgstr "{0} bloc supprimé"
+
+#: builder/ai/agent/loop.py
+msgid "removed {0} blocks"
+msgstr "{0} blocs supprimés"
+
+#: builder/ai/agent/loop.py
+msgid "moved {0} block"
+msgstr "{0} bloc déplacé"
+
+#: builder/ai/agent/loop.py
+msgid "moved {0} blocks"
+msgstr "{0} blocs déplacés"
+
+#: builder/ai/agent/loop.py
+msgid "updated the page"
+msgstr "page mise à jour"
+
+#: builder/ai/agent/loop.py
+msgid "added a script"
+msgstr "script ajouté"
+
+#: builder/ai/agent/loop.py
+msgid "updated a script"
+msgstr "script mis à jour"
+
+#: builder/ai/agent/loop.py
+msgid "Applied {0} change to the page"
+msgstr "{0} modification appliquée à la page"
+
+#: builder/ai/agent/loop.py
+msgid "Applied {0} changes to the page"
+msgstr "{0} modifications appliquées à la page"
+
+#: builder/ai/agent/loop.py
+msgid "{0} and {1}"
+msgstr "{0} et {1}"
+
+#: builder/ai/agent/loop.py
+msgid "I hit my edit-step limit for one turn before finishing: reply « continue » and I'll pick up where I left off."
+msgstr "J'ai atteint ma limite d'étapes de modification pour ce tour avant de finir : répondez « continuer » et je reprendrai là où je me suis arrêtée."
