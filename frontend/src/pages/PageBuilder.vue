@@ -279,8 +279,28 @@ onActivated(async () => {
 	if (route.params.pageId && route.params.pageId !== "new") {
 		await pageStore.setPage(route.params.pageId as string, true, route.query);
 		offerPendingAssetImport(route.params.pageId as string);
+		//// Neoffice — « ?block=<id> » opens the editor on that block, selected and in view (selectBlockFromRoute)
+		selectBlockFromRoute();
 	}
 });
+
+//// Neoffice — the cards of the Website space's Nora tab link each section Nora changed to the editor with « ?block=<id> »
+//// (builder/site_ai/nora/site_changes.py, page_links): the block is selected and brought into view once the canvas holds
+//// it. The canvas mounts its blocks a few frames after setPage, so it is asked again for six seconds at most.
+function selectBlockFromRoute() {
+	const blockId = typeof route.query.block === "string" ? route.query.block : "";
+	if (!blockId) return;
+	let tries = 0;
+	const attempt = () => {
+		const block = canvasStore.settingPage ? null : pageCanvas.value?.findBlock(blockId);
+		if (block) {
+			canvasStore.selectBlock(block, null, true, true);
+			return;
+		}
+		if (++tries < 40) setTimeout(attempt, 150);
+	};
+	attempt();
+}
 
 // In-editor navigation to ANOTHER page (the build pill's "View"/"Go back" links):
 // the component is reused, so onActivated never refires — swap the page here or
