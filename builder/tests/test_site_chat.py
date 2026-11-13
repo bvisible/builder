@@ -283,3 +283,28 @@ class TestLiveStates(unittest.TestCase):
 		self.assertTrue(cards[0]["links"]["editor"].endswith("/page/p1?block=b1"))
 		self.assertEqual((cards[1]["state"], cards[1]["links"]), ("deleted", {}))
 		self.assertEqual(cards[2]["state"], "site", "a whole-site card is left as it was")
+
+
+class TestATurnWaitingInTheQueueIsRunning(unittest.TestCase):
+	"""A turn of the tab queued behind a busy worker holds no lock yet: the tab took it for one that had ended and fell
+	silent (13.11, osiris's default queue thousands of jobs long). Running = its lock, or its named job still queued."""
+
+	def test_a_queued_turn_without_lock_is_running(self):
+		with (
+			patch.object(site_chat.AISession, "is_session_running", return_value=False),
+			patch("builder.site_ai.nora.api.turn_state", return_value={"running": True}),
+		):
+			self.assertTrue(site_chat.turn_running("s1"))
+
+	def test_a_turn_at_work_is_running_and_none_is_not(self):
+		with (
+			patch.object(site_chat.AISession, "is_session_running", return_value=True),
+			patch("builder.site_ai.nora.api.turn_state", return_value={"running": False}),
+		):
+			self.assertTrue(site_chat.turn_running("s1"))
+		with (
+			patch.object(site_chat.AISession, "is_session_running", return_value=False),
+			patch("builder.site_ai.nora.api.turn_state", return_value={"running": False}),
+		):
+			self.assertFalse(site_chat.turn_running("s1"))
+		self.assertFalse(site_chat.turn_running(None))

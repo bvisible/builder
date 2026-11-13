@@ -218,7 +218,7 @@ def open_chat(website_profile: str | None = None, session_id: str | None = None)
 		"messages": with_live_states(AISession(frappe.get_doc(AISession.DOCTYPE, current)).get_messages())
 		if current
 		else [],
-		"running": bool(current) and AISession.is_session_running(current),
+		"running": turn_running(current),
 		"ready": ai_ready(),
 		"assistant": get_assistant_name(),
 		"pages": site_page_count(profile),
@@ -274,6 +274,17 @@ def with_live_states(messages: list[dict]) -> list[dict]:
 	return messages
 
 
+def turn_running(session_id: str | None) -> bool:
+	"""A turn of the conversation at work (its lock) or still waiting in the queue (its job, named by turn_job_id): a turn
+	queued behind a busy worker holds no lock yet, and the tab took it for one that had ended (13.11, osiris's default
+	queue thousands of jobs long), as the editor's panel had."""
+	if not session_id:
+		return False
+	from builder.site_ai.nora.api import turn_state
+
+	return AISession.is_session_running(session_id) or bool(turn_state(session_id).get("running"))
+
+
 @frappe.whitelist()
 @builder_role_required()
 def get_messages(session_id: str) -> dict:
@@ -282,7 +293,7 @@ def get_messages(session_id: str) -> dict:
 		frappe.throw(_("This conversation is not one of the Website space"), frappe.PermissionError)
 	return {
 		"messages": with_live_states(AISession(frappe.get_doc(AISession.DOCTYPE, session_id)).get_messages()),
-		"running": AISession.is_session_running(session_id),
+		"running": turn_running(session_id),
 	}
 
 
@@ -313,7 +324,7 @@ def send(
 		website_profile = session_site(session_id) or website_profile
 	profile = chosen_site(website_profile, sites)
 	# A plain answer, never 429 or 202 as the editor's endpoint gives: the desk's frappe.call runs its callback for a 200 only.
-	if session_id and AISession.is_session_running(session_id):
+	if turn_running(session_id):
 		return {"status": "busy", "message": _("Nora is still working on your last message.")}
 
 	page = frappe.db.get_value(AISession.DOCTYPE, session_id, "page") if session_id else None
@@ -334,9 +345,13 @@ def send(
 		meta["attachedImageUrl"] = image_file_url or image_url
 	session.append_message("user", prompt, message_type="chat", task_type="agent", metadata=meta)
 
+	from builder.site_ai.nora.api import turn_job_id
+
 	frappe.enqueue(
 		run_site_job,
 		queue="default",
+		# named, so that a turn still in the queue is seen as running (turn_running), not as ended
+		job_id=turn_job_id(session_id),
 		timeout=frappe.utils.cint(frappe.conf.get("builder_agent_job_timeout")) or 14400,
 		prompt=prompt,
 		model=model,
@@ -407,7 +422,7 @@ def revert(session_id: str, message_id: str) -> dict:
 	require_session_owner(session_id)
 	if not is_site_session(session_id):
 		frappe.throw(_("This conversation is not one of the Website space"), frappe.PermissionError)
-	if AISession.is_session_running(session_id):
+	if turn_running(session_id):
 		frappe.throw(_("Nora is still working: wait for her answer before going back."))
 	row = frappe.db.get_value(
 		AISession.MESSAGE_DOCTYPE, {"name": message_id, "session": session_id}, "metadata_json"
