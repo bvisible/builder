@@ -505,7 +505,15 @@ function modules() {
 	});
 }
 
-watch(sessionId, (id) => core?.features?.resume?.setState({ session_id: id }));
+watch(sessionId, (id) => {
+	core?.features?.resume?.setState({ session_id: id });
+	// the cards are the chat's: its id comes from the server after the conversation is drawn, and another chat has
+	// its own cards (the painter leaves what it did not draw)
+	const cards = core?.features?.action_cards;
+	if (!cards?.on) return;
+	core.$messages.find(".nora-qc-action-card, .nora-qc-pending-chip").remove();
+	cards.load();
+});
 
 /** The cards are drawn by their module, not by the painter. A card waiting is a conversation too: the first visit
  * (which hides the conversation) steps aside for it, or the person would never see what waits for them. */
