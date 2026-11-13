@@ -109,11 +109,32 @@ def site_home_page(website_profile: str | None = None) -> str | None:
 @builder_role_required()
 def turn_state(session_id: str) -> dict:
 	"""Whether a turn of this chat session is still running, read from the session
-	lock upstream holds for the whole turn (a site build included). The panel's
-	watchdog polls it when a closing event may have been lost."""
+	lock upstream holds for the whole turn (a site build included), or still waiting in
+	the queue (turn_job_id). The panel's watchdog polls it when a closing event may have
+	been lost."""
 	from builder.ai import locks
 	from builder.utils import require_session_owner
 
 	require_session_owner(session_id)
-	return {"running": bool(session_id) and locks.held(locks.session_key(session_id))}
+	if not session_id:
+		return {"running": False}
+	if locks.held(locks.session_key(session_id)):
+		return {"running": True}
+	# a turn still waiting in the queue holds no lock yet: on a busy worker the watchdog took it for a turn that had
+	# ended and the panel dropped it (13.11, behind hundreds of queued jobs)
+	from frappe.utils.background_jobs import is_job_enqueued
+
+	job_id = frappe.cache().get_value(TURN_JOB_KEY + session_id)
+	return {"running": bool(job_id) and is_job_enqueued(job_id)}
+
+
+TURN_JOB_KEY = "builder_turn_job:"
+
+
+def turn_job_id(session_id: str) -> str:
+	"""The name of the RQ job of this chat's next turn, kept for turn_state (one per turn: a second message must never
+	overwrite the job of the first one)."""
+	job_id = f"builder-turn::{session_id}::{frappe.generate_hash(length=8)}"
+	frappe.cache().set_value(TURN_JOB_KEY + session_id, job_id, expires_in_sec=6 * 3600)
+	return job_id
 

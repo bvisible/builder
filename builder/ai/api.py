@@ -122,9 +122,14 @@ def run(
 	# now=True would hold this web worker open for the entire stream — exhausting the
 	# worker pool under concurrency. Realtime events flow over Redis pub/sub regardless
 	# of which process runs the job.
+	# //// Neoffice — the turn's job is named for its chat, so the panel's watchdog sees a turn still in the queue
+	# //// (builder.site_ai.nora.api.turn_state) instead of taking it for one that ended
+	from builder.site_ai.nora.api import turn_job_id
+
 	frappe.enqueue(
 		run_agent_job,
 		queue="default",
+		job_id=turn_job_id(session_id),  # //// Neoffice — see above
 		# //// Neoffice — a whole-site build (generate_site) runs inside the turn and needs far more
 		# //// than upstream's 600 s; the ceiling is configurable per site. Four hours since
 		# //// 2026-09-17: a site built under the gate (a thinking writer, up to three looked-at
@@ -208,11 +213,13 @@ def resume_after_action(session_id: str, outcome: str) -> bool:
 		resolve_api_key(resolved_model)
 		# //// Neoffice — a conversation of the Website space's Nora tab goes on in its own runner (site_chat), so the
 		# //// rest of the turn reaches the tab and not an editor open on the site's home page.
+		from builder.site_ai.nora.api import turn_job_id
 		from builder.site_ai.nora.site_chat import resume_job
 
 		frappe.enqueue(
 			resume_job(session_id) or run_agent_job,  # //// Neoffice — the tab's own runner, see above
 			queue="default",
+			job_id=turn_job_id(session_id),  # //// Neoffice — named for the watchdog, as in run
 			timeout=600,
 			# run_agent_job does not persist its prompt, so no phantom "continue" in the chat
 			prompt=f"{outcome}\n\nContinue with what you were doing. Do not repeat this step.",
