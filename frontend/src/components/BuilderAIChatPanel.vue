@@ -10,6 +10,7 @@
 				</div>
 			</div>
 			<div v-if="builderStore.isAIEnabled" class="flex shrink-0 items-center gap-1">
+				<!-- //// Neoffice — translated: the upstream panel is English only (neoffice-maintenance#1200) -->
 				<Button
 					variant="ghost"
 					size="sm"
@@ -18,6 +19,7 @@
 					:disabled="isSubmitting"
 					@click="newSession" />
 				<Dropdown v-if="sessionOptions.length" :options="sessionOptions" :offset="6">
+					<!-- //// Neoffice — translated: the upstream panel is English only (neoffice-maintenance#1200) -->
 					<Button
 						variant="ghost"
 						size="sm"
@@ -34,6 +36,7 @@
 			v-if="!builderStore.isAIStateKnown || (isLoadingSession && !messages.length)"
 			class="flex flex-1 items-center justify-center pb-40">
 			<span class="bob-pill-in" style="animation-delay: 300ms">
+				<!-- //// Neoffice — translated: the upstream panel is English only (neoffice-maintenance#1200) -->
 				<span class="animate-shine text-p-xs">{{ __("Loading") }}</span>
 			</span>
 		</div>
@@ -48,11 +51,13 @@
 				<SparklesIcon class="bob-orb-spark relative z-10 size-7 text-ink-gray-8" />
 			</span>
 			<div class="flex flex-col items-center gap-1 text-center">
+				<!-- //// Neoffice — translated: the upstream panel is English only (neoffice-maintenance#1200) -->
 				<p class="text-sm font-medium text-ink-gray-8">{{ __("Build pages by describing them") }}</p>
 				<p class="text-p-xs text-ink-gray-5">
 					{{ __("Connect a model first. Takes a minute if you already have an API key.") }}
 				</p>
 			</div>
+			<!-- //// Neoffice — translated: the upstream panel is English only (neoffice-maintenance#1200) -->
 			<Button variant="solid" size="sm" @click="menu.open(connectLevel(bob))">{{ __("Set up AI") }}</Button>
 		</div>
 
@@ -65,6 +70,7 @@
 							<SparklesIcon class="bob-orb-spark relative z-10 size-7 text-ink-gray-8" />
 						</span>
 						<p class="text-sm font-medium text-ink-gray-8">
+							<!-- //// Neoffice — translated: the upstream panel is English only (neoffice-maintenance#1200) -->
 							{{ pageHasContent ? __("What should we change?") : __("Tell me what you're building") }}
 						</p>
 						<p class="text-p-xs text-ink-gray-5">{{ __("Try one of these, or type your own below") }}</p>
@@ -122,6 +128,7 @@
 								v-if="stillWorking(message) && (!!assistantText(message) || !message.metadata?.steps?.length)"
 								class="animate-shine w-fit text-p-xs text-ink-gray-5"
 								:class="assistantText(message) && 'mt-1'">
+								<!-- //// Neoffice — translated: the upstream panel is English only (neoffice-maintenance#1200) -->
 								{{ __("Working") }}
 							</div>
 						</template>
@@ -147,12 +154,14 @@
 								@select-block="selectBlockById"
 								@open-script="openScriptByName" />
 
+							<!-- //// Neoffice — translated: the upstream panel is English only (neoffice-maintenance#1200) -->
 							<Tooltip v-if="message.metadata?.revertSnapshot" :text="__('Revert the page to before this AI edit')">
 								<button
 									class="inline-flex items-center gap-1 transition-colors hover:text-ink-gray-7 disabled:cursor-not-allowed disabled:opacity-40"
 									:disabled="isSubmitting || !isEditingPage"
 									@click="revertTurn(message)">
 									<span class="lucide-rotate-ccw size-3" />
+									<!-- //// Neoffice — translated: the upstream panel is English only (neoffice-maintenance#1200) -->
 									{{ __("Revert") }}
 								</button>
 							</Tooltip>
@@ -160,6 +169,7 @@
 							<template v-if="message.metadata?.debug">
 								<div class="ml-auto flex items-center gap-2">
 									<span v-if="message.metadata.debug.elapsedMs">
+										<!-- //// Neoffice — translated: the upstream panel is English only (neoffice-maintenance#1200) -->
 										{{ __("took {0}", [formatDuration(message.metadata.debug.elapsedMs)]) }}
 									</span>
 									<Tooltip :text="__('Inspect this turn (rounds, tools, tokens, why it stopped)')">
@@ -184,6 +194,7 @@
 						<div
 							v-if="message.metadata?.status === 'pending_action'"
 							class="mt-2 w-full rounded-6 border border-outline-gray-2 bg-surface-gray-1 p-3">
+							<!-- //// Neoffice — translated: the upstream panel is English only (neoffice-maintenance#1200) -->
 							<p class="text-p-xs font-medium text-ink-amber-8">{{ __("Needs your OK") }}</p>
 							<p class="mt-1 text-p-sm leading-snug text-ink-gray-8">
 								{{ pendingPreview(message.metadata) }}
@@ -201,6 +212,7 @@
 									size="sm"
 									:disabled="confirmingAction"
 									@click="confirmPendingAction(message, 'skip')">
+									<!-- //// Neoffice — translated: the upstream panel is English only (neoffice-maintenance#1200) -->
 									{{ __("Skip") }}
 								</Button>
 							</div>
@@ -227,6 +239,7 @@
 							v-if="message.metadata?.attachedImageUrl"
 							class="inline-flex items-center gap-1 rounded-4 bg-surface-gray-2 px-1.5 py-0.5 text-[10px] text-ink-gray-6">
 							<img :src="message.metadata.attachedImageUrl" class="h-3 w-3 rounded-4 object-cover" alt="" />
+							<!-- //// Neoffice — translated: the upstream panel is English only (neoffice-maintenance#1200) -->
 							{{ __("Image") }}
 						</span>
 						<!-- block chips -->
@@ -243,6 +256,7 @@
 							@click="toggleChips(message.id)">
 							{{
 								expandedMessages.has(message.id)
+									//// Neoffice — translated: the upstream panel is English only (neoffice-maintenance#1200)
 									? __("Show less")
 									: __("+{0} more", [(message.metadata?.selectedBlockContext?.length ?? 0) - MAX_VISIBLE_CHIPS])
 							}}
@@ -257,6 +271,7 @@
 			<div
 				v-if="attachedBlocks.length || attachableBlocks.length"
 				class="mb-2 flex flex-wrap items-center gap-1.5">
+				<!-- //// Neoffice — translated: the upstream panel is English only (neoffice-maintenance#1200) -->
 				<span v-if="attachedBlocks.length" class="text-xs text-ink-gray-5">{{ __("Context:") }}</span>
 				<span
 					v-for="block in attachedBlocks"
@@ -264,6 +279,7 @@
 					class="inline-flex items-center gap-1 rounded-4 bg-surface-gray-2 px-1.5 py-0.5 text-xs text-ink-gray-7">
 					<span class="lucide-square-dashed h-3 w-3 shrink-0 text-ink-gray-5" />
 					<span class="block max-w-[8rem] truncate">{{ block.label }}</span>
+					<!-- //// Neoffice — translated: the upstream panel is English only (neoffice-maintenance#1200) -->
 					<Tooltip :text="__('Remove from context')">
 						<button
 							type="button"
@@ -283,6 +299,7 @@
 						{{
 							attachableBlocks.length === 1
 								? attachableBlocks[0].getBlockDescription()
+								//// Neoffice — translated: the upstream panel is English only (neoffice-maintenance#1200)
 								: __("{0} selected blocks", [attachableBlocks.length])
 						}}
 					</span>
@@ -294,6 +311,7 @@
 						class="inline-flex items-center gap-1 rounded-4 bg-surface-gray-2 px-1.5 py-0.5 text-xs text-ink-gray-7">
 						<img :src="imagePreviewUrl" class="h-3 w-3 rounded-4 object-cover" alt="" />
 						<span class="max-w-[120px] truncate">{{ imageFileName }}</span>
+						<!-- //// Neoffice — translated: the upstream panel is English only (neoffice-maintenance#1200) -->
 						<Tooltip :text="__('Remove image')">
 							<button
 								type="button"
@@ -310,10 +328,12 @@
 				v-if="selectedModelUnusable"
 				class="mb-2 flex items-center gap-2 rounded-5 bg-surface-amber-1 px-2.5 py-1.5 text-p-xs text-ink-amber-7">
 				<span class="lucide-key-round size-3.5 shrink-0" />
+				<!-- //// Neoffice — translated: the upstream panel is English only (neoffice-maintenance#1200) -->
 				<span class="flex-1">{{ __("{0} has no API key.", [modelLabel]) }}</span>
 				<button
 					class="shrink-0 font-medium underline underline-offset-2"
 					@click="menu.open(providersLevel(bob))">
+					<!-- //// Neoffice — translated: the upstream panel is English only (neoffice-maintenance#1200) -->
 					{{ __("Add one") }}
 				</button>
 			</div>
@@ -321,10 +341,12 @@
 				v-else-if="!isEditingPage"
 				class="mb-2 flex items-center gap-2 rounded-5 bg-surface-gray-2 px-2.5 py-1.5 text-p-xs text-ink-gray-6">
 				<span class="lucide-box size-3.5 shrink-0" />
+				<!-- //// Neoffice — translated: the upstream panel is English only (neoffice-maintenance#1200) -->
 				<span class="flex-1">{{ __("{0} only edits the page.", [assistantLabel]) }}</span>
 				<button
 					class="shrink-0 font-medium underline underline-offset-2"
 					@click="canvasStore.exitFragmentMode()">
+					<!-- //// Neoffice — translated: the upstream panel is English only (neoffice-maintenance#1200) -->
 					{{ __("Back to page") }}
 				</button>
 			</div>
@@ -349,6 +371,7 @@
 					@keydown.meta.enter="submitPrompt"
 					@keydown.ctrl.enter="submitPrompt" />
 				<div class="flex items-center gap-0.5 p-1.5">
+					<!-- //// Neoffice — translated: the upstream panel is English only (neoffice-maintenance#1200) -->
 					<Button
 						variant="ghost"
 						icon="lucide-plus"
@@ -372,6 +395,7 @@
 						<span class="lucide-sparkles size-3.5 shrink-0" />
 						<span class="truncate">{{ assistantLabel }}</span>
 					</span>
+					<!-- //// Neoffice — translated: the upstream panel is English only (neoffice-maintenance#1200) -->
 					<Button
 						v-if="isSubmitting"
 						variant="solid"
@@ -383,6 +407,7 @@
 					<Tooltip v-else side="top">
 						<template #content>
 							<span class="flex items-center gap-1.5">
+								<!-- //// Neoffice — translated: the upstream panel is English only (neoffice-maintenance#1200) -->
 								{{ __("Send") }}
 								<KeyboardShortcut combo="Mod+Enter" class="!text-xs !text-ink-gray-4" />
 							</span>
@@ -408,6 +433,7 @@
 				</Transition>
 			</div>
 		</div>
+		<!-- //// Neoffice — translated: the upstream panel is English only (neoffice-maintenance#1200) -->
 		<Dialog :title="__('Turn debug')" size="3xl" v-model="debugOpen">
 			<template #default>
 				<AIDebugPanel :debug="debugData" />
@@ -455,10 +481,12 @@ const modelPicker = showModelPicker();
 const chat = new AIChatController();
 
 const { prompt, isSubmitting, isCancelling, messages, modelLabel, canSubmit } = chat;
+//// Neoffice — translated: the upstream panel is English only (neoffice-maintenance#1200)
 const cannotReadImages = computed(() => __("{0} can't read images", [modelLabel.value]));
 const { isEditingPage } = chat;
 const { selectedModelUnusable } = chat;
 const { progressMessage } = chat;
+//// Neoffice — translated: the upstream panel is English only (neoffice-maintenance#1200)
 const currentActivity = computed(() => progressMessage.value || __("Thinking…"));
 const { revertTurn, selectOption } = chat;
 const { sessions, sessionId, switchSession, newSession, deleteSession, isLoadingSession } = chat;
@@ -467,6 +495,7 @@ const currentSessionTitle = computed(() => {
 	// blank until loaded, not "New chat" flipping to the real title
 	if (!sessionId.value || !sessions.value.length) return "";
 	const current = sessions.value.find((s) => s.name === sessionId.value);
+	//// Neoffice — translated: the upstream panel is English only (neoffice-maintenance#1200)
 	return current?.title || __("New chat");
 });
 
@@ -485,6 +514,7 @@ const sessionOptions = computed(() => {
 			group: "Chats",
 			hideLabel: true,
 			options: sessions.value.map((s) => ({
+				//// Neoffice — translated: the upstream panel is English only (neoffice-maintenance#1200)
 				label: truncateTitle(s.title || __("New chat")),
 				icon: s.name === sessionId.value ? "lucide-check" : "lucide-message-circle",
 				onClick: () => switchSession(s.name),
@@ -496,6 +526,7 @@ const sessionOptions = computed(() => {
 			// theme belongs on the item — a group-level one isn't inherited.
 			options: [
 				{
+					//// Neoffice — translated: the upstream panel is English only (neoffice-maintenance#1200)
 					label: __("Delete current chat"),
 					icon: "lucide-trash-2",
 					theme: "red",
@@ -535,20 +566,24 @@ function pendingPreview(m: Record<string, any>): string {
 	const fields = fieldNames(p.fields);
 	switch (m.kind) {
 		case "create_doctype":
+			//// Neoffice — translated: the upstream panel is English only (neoffice-maintenance#1200)
 			return __("Create “{0}” to store this page's data{1}.", [p.name, fields ? ` (${fields})` : ""]);
 		case "connect_form":
 			return __("Save this form's submissions as “{0}” records{1}.", [p.doctype_name, fields ? ` (${fields})` : ""]);
 		case "seed_sample_data": {
 			const n = (p.rows || []).length;
+			//// Neoffice — translated: the upstream panel is English only (neoffice-maintenance#1200)
 			return n === 1
 				? __("Add {0} sample record to “{1}”.", [n, p.doctype])
 				: __("Add {0} sample records to “{1}”.", [n, p.doctype]);
 		}
 		case "global_settings":
+			//// Neoffice — translated: the upstream panel is English only (neoffice-maintenance#1200)
 			return __("Update site-wide code ({0}). This loads on every page.", [Object.keys(p).join(", ")]);
 		case "home_page":
 			return __("Make “/{0}” the site's home page.", [String(p.route || "").replace(/^\//, "")]);
 		default:
+			//// Neoffice — translated: the upstream panel is English only (neoffice-maintenance#1200)
 			return __("Confirm this change?");
 	}
 }
@@ -556,12 +591,14 @@ function pendingPreview(m: Record<string, any>): string {
 /** The apply button names the action it performs; a bare "Apply" makes the user
  * re-read the card to know what they're agreeing to. */
 const APPLY_LABELS: Record<string, string> = {
+	//// Neoffice — translated: the upstream panel is English only (neoffice-maintenance#1200)
 	create_doctype: __("Create it"),
 	connect_form: __("Connect form"),
 	seed_sample_data: __("Add records"),
 	home_page: __("Set home page"),
 	global_settings: __("Apply"),
 };
+//// Neoffice — translated: the upstream panel is English only (neoffice-maintenance#1200)
 const applyLabel = (kind?: string) => APPLY_LABELS[kind || ""] || __("Apply");
 const builderStore = useBuilderStore();
 const canvasStore = useCanvasStore();
@@ -629,54 +666,70 @@ const BUILD_POOL: Suggestion[] = [
 		),
 	},
 	{
+		//// Neoffice — translated: the upstream panel is English only (neoffice-maintenance#1200)
 		label: __("Moody portfolio for a photographer"),
 		prompt: __(
 			"Build a portfolio for Aria Sen, a portrait and editorial photographer. Dark, cinematic, image-first design where the photos dominate. Sections: a full-bleed hero image, a gallery of selected work, a short about/bio, a client list, and a contact/booking section.",
+		//// Neoffice — translated: the upstream panel is English only (neoffice-maintenance#1200)
 		),
 	},
 	{
+		//// Neoffice — translated: the upstream panel is English only (neoffice-maintenance#1200)
 		label: __("Waitlist page for an AI app"),
 		prompt: __(
 			"Build a launch and waitlist page for Nimbus, an AI note-taking app. Clean and modern with a confident gradient accent. Sections: a punchy hero with the value prop and an email waitlist form, three key features, a short 'how it works', and social proof.",
+		//// Neoffice — translated: the upstream panel is English only (neoffice-maintenance#1200)
 		),
 	},
 	{
+		//// Neoffice — translated: the upstream panel is English only (neoffice-maintenance#1200)
 		label: __("Menu & story for a ramen bar"),
 		prompt: __(
 			"Build a website for Slurp, a ramen bar in Geneva. Bold, appetizing, a little playful. Sections: a hero, the ramen menu with descriptions and prices, our origin story, a gallery, and hours and location.",
 		),
 	},
 	{
+		//// Neoffice — translated: the upstream panel is English only (neoffice-maintenance#1200)
 		label: __("A vintage record store"),
 		prompt: __(
 			"Build a website for Groove Vault, a vintage vinyl record store. Retro, textured, warm analog vibe. Sections: a hero, featured new arrivals, the genres we stock, our story, in-store events, and how to find us.",
+		//// Neoffice — translated: the upstream panel is English only (neoffice-maintenance#1200)
 		),
 	},
 	{
+		//// Neoffice — translated: the upstream panel is English only (neoffice-maintenance#1200)
 		label: __("Landing page for a yoga studio"),
 		prompt: __(
 			"Build a landing page for Stillpoint, a boutique yoga studio. Calm, airy, minimal with soft natural tones and gentle motion. Sections: a hero, class types and schedule, the teachers, a membership/pricing section, and a book-a-first-class CTA.",
+		//// Neoffice — translated: the upstream panel is English only (neoffice-maintenance#1200)
 		),
 	},
 	{
+		//// Neoffice — translated: the upstream panel is English only (neoffice-maintenance#1200)
 		label: __("A bold skincare brand"),
 		prompt: __(
 			"Build a product site for Lumen, a clean skincare brand. Bold, premium, editorial with big product shots. Sections: a hero, the hero product with ingredients and benefits, results, reviews, and a shop/buy CTA.",
+		//// Neoffice — translated: the upstream panel is English only (neoffice-maintenance#1200)
 		),
 	},
 	{
+		//// Neoffice — translated: the upstream panel is English only (neoffice-maintenance#1200)
 		label: __("Personal site for a designer"),
 		prompt: __(
 			"Build a personal site for Maya Rao, a product designer. Confident, minimal, type-driven. Sections: a short intro hero, selected case studies, an about section, and contact links (email, LinkedIn, resume).",
+		//// Neoffice — translated: the upstream panel is English only (neoffice-maintenance#1200)
 		),
 	},
 	{
+		//// Neoffice — translated: the upstream panel is English only (neoffice-maintenance#1200)
 		label: __("A craft coffee roaster"),
 		prompt: __(
 			"Build a website for Ember & Oak, a craft coffee roaster. Warm, artisanal, rich browns and texture. Sections: a hero, our roasts with tasting notes, the roasting story, wholesale info, and where to buy or visit.",
+		//// Neoffice — translated: the upstream panel is English only (neoffice-maintenance#1200)
 		),
 	},
 	{
+		//// Neoffice — translated: the upstream panel is English only (neoffice-maintenance#1200)
 		label: __("Event page for a design meetup"),
 		prompt: __(
 			"Build an event page for Design Jam, a monthly design meetup in Fribourg. Energetic, modern, poster-like. Sections: a hero with date, venue and RSVP, the speaker lineup, the schedule, past-event highlights, and sponsors.",
@@ -685,51 +738,67 @@ const BUILD_POOL: Suggestion[] = [
 ];
 const EDIT_POOL: Suggestion[] = [
 	{
+		//// Neoffice — translated: the upstream panel is English only (neoffice-maintenance#1200)
 		label: __("Add a testimonials section"),
 		prompt: __(
 			"Add a testimonials section with three or four short customer quotes, each with a name and role, styled to match the rest of the page.",
+		//// Neoffice — translated: the upstream panel is English only (neoffice-maintenance#1200)
 		),
 	},
 	{
+		//// Neoffice — translated: the upstream panel is English only (neoffice-maintenance#1200)
 		label: __("Make the hero more dramatic"),
 		prompt: __(
 			"Make the hero more dramatic: a larger headline, stronger contrast, a full-bleed background image or bold color, and a clear primary call-to-action.",
+		//// Neoffice — translated: the upstream panel is English only (neoffice-maintenance#1200)
 		),
 	},
 	{
+		//// Neoffice — translated: the upstream panel is English only (neoffice-maintenance#1200)
 		label: __("Switch to a dark theme"),
 		prompt: __(
 			"Rework the whole page in a cohesive dark theme, keeping the layout but adjusting backgrounds, text, and accents for good contrast.",
+		//// Neoffice — translated: the upstream panel is English only (neoffice-maintenance#1200)
 		),
 	},
 	{
+		//// Neoffice — translated: the upstream panel is English only (neoffice-maintenance#1200)
 		label: __("Add a pricing section"),
 		prompt: __(
 			"Add a pricing section with three tiers (name, price, feature list, and a CTA button each), styled to match the page.",
+		//// Neoffice — translated: the upstream panel is English only (neoffice-maintenance#1200)
 		),
 	},
 	{
+		//// Neoffice — translated: the upstream panel is English only (neoffice-maintenance#1200)
 		label: __("Add scroll animations"),
 		prompt: __(
 			"Add tasteful scroll animations: staggered fade-and-rise reveals on each section as it enters the viewport, subtle and smooth.",
+		//// Neoffice — translated: the upstream panel is English only (neoffice-maintenance#1200)
 		),
 	},
 	{
+		//// Neoffice — translated: the upstream panel is English only (neoffice-maintenance#1200)
 		label: __("Tighten the spacing everywhere"),
 		prompt: __(
 			"Tighten the spacing across the page: reduce oversized gaps, align section padding to a consistent rhythm, and improve the vertical flow.",
+		//// Neoffice — translated: the upstream panel is English only (neoffice-maintenance#1200)
 		),
 	},
 	{
+		//// Neoffice — translated: the upstream panel is English only (neoffice-maintenance#1200)
 		label: __("Add a sticky header with nav"),
 		prompt: __(
 			"Add a sticky header with the name or logo on the left and nav links to each section on the right, gaining a subtle background on scroll.",
+		//// Neoffice — translated: the upstream panel is English only (neoffice-maintenance#1200)
 		),
 	},
 	{
+		//// Neoffice — translated: the upstream panel is English only (neoffice-maintenance#1200)
 		label: __("Make it feel more premium"),
 		prompt: __(
 			"Make the page feel more premium: refine the typography and spacing, add depth with subtle shadows and borders, and elevate the color and imagery treatment.",
+		//// Neoffice — translated: the upstream panel is English only (neoffice-maintenance#1200)
 		),
 	},
 ];
@@ -806,6 +875,7 @@ onUnmounted(menu.close);
 
 const composerPlaceholder = computed(() =>
 	menuLevel.value && !menuLevel.value.input
+		//// Neoffice — translated: the upstream panel is English only (neoffice-maintenance#1200)
 		? __("Type to filter")
 		: __("Ask to create or edit this page, or type / for commands"),
 );
