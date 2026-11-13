@@ -404,3 +404,27 @@ def recap_names_the_site(ui: list[dict], text: str, site: str | None) -> list[di
         return ui
     at = next((i for i, el in enumerate(ui) if el.get("kind") == "actions"), len(ui))
     return [*ui[:at], {"kind": "list", "items": [line]}, *ui[at:]]
+
+
+# //// Neoffice — the playbook's button labels the model copies as they are written there (13.11, osiris: a French recap
+# //// ended on « Build the site » / « Change something », the photographs card on « Continue »). Said in the person's
+# //// language when the label is exactly one of them; a label the model wrote itself is left as it is. Each build label still
+# //// matches BUILD_BUTTON, which tells a recap.
+BUTTON_WORDS = {
+    "fr": {"build the site": "Construire le site", "change something": "Changer quelque chose", "continue": "Continuer", "skip": "Passer"},
+    "de": {"build the site": "Website erstellen", "change something": "Etwas ändern", "continue": "Weiter", "skip": "Überspringen"},
+    "it": {"build the site": "Crea il sito", "change something": "Cambia qualcosa", "continue": "Continua", "skip": "Salta"},
+}
+
+
+def buttons_in_the_persons_language(ui: list[dict], lang: str | None) -> list[dict]:
+    words = BUTTON_WORDS.get((lang or "")[:2].lower())
+    if not words:
+        return ui
+    for element in ui:
+        if isinstance(element, dict) and element.get("kind") == "actions":
+            for button in element.get("buttons") or []:
+                label = str((button or {}).get("label") or "").strip().lower()
+                if label in words:
+                    button["label"] = words[label]
+    return ui

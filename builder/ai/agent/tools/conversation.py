@@ -108,6 +108,10 @@ def run_present_ui(ctx, args: dict) -> str | None:
 	from builder.site_ai.nora.prompts import page_profile
 
 	ui = recap_names_the_site(ui, text, page_profile(getattr(ctx, "page_id", None)))
+	# //// Neoffice — the playbook's labels the model copies (« Build the site ») said in the person's language (cards.py)
+	from builder.site_ai.nora.cards import buttons_in_the_persons_language
+
+	ui = buttons_in_the_persons_language(ui, getattr(frappe.local, "lang", None))
 	content = render_ui_text(text, ui)
 	metadata = {"status": "ui", "text": text, "ui": ui}
 	if timeline := ctx.timeline():

@@ -153,3 +153,43 @@ class TestASiteWaitsForItsRecap(unittest.TestCase):
 			"builder.site_ai.nora.site_builder.build_site", return_value="DONE"
 		):
 			self.assertEqual(tools.run_generate_site(SimpleNamespace(session_id="s1"), {"scope": "pages"}), "DONE")
+
+
+class TestWhatThePersonGaveReachesTheBuild(unittest.TestCase):
+	"""The model built a site without the logo, the photographs, the site liked and the language the person gave on the cards,
+	though its recap said « your logo and photos included » (13.11, osiris)."""
+
+	ANSWER = (
+		"Continue\nLogo: /files/logo-lumiere.png\nVos photos (soins, institut, vous): /files/a.png, /files/b.png\n"
+		"Le site que vous aimez (lien): https://www.example.ch/fr/\nLangue du site: Français"
+	)
+
+	def test_the_answers_are_read(self):
+		from builder.site_ai.nora import tools
+
+		with mock.patch.object(tools.frappe, "get_all", return_value=[SimpleNamespace(content=self.ANSWER)]):
+			found = tools.answers_of_the_conversation("s1")
+		self.assertEqual(found["logo_image"], "/files/logo-lumiere.png")
+		self.assertEqual(found["photos"], ["/files/a.png", "/files/b.png"])
+		self.assertEqual(found["inspiration_urls"], ["https://www.example.ch/fr/"])
+		self.assertEqual(found["language"], "fr")
+		self.assertEqual(tools.answers_of_the_conversation(None), {})
+
+	def test_they_fill_only_what_the_model_left_out(self):
+		from builder.site_ai.nora import tools
+
+		with mock.patch.object(tools.frappe, "get_all", return_value=[SimpleNamespace(content=self.ANSWER)]):
+			args = tools.with_the_persons_answers("s1", {"site_name": "X", "logo_image": "/files/model.png", "photos": []})
+		self.assertEqual(args["logo_image"], "/files/model.png", "what the model passed stays")
+		self.assertEqual(args["photos"], ["/files/a.png", "/files/b.png"], "an empty list is filled")
+		self.assertEqual(args["site_name"], "X")
+
+	def test_the_playbooks_buttons_in_the_persons_language(self):
+		from builder.site_ai.nora.cards import BUILD_BUTTON, buttons_in_the_persons_language
+
+		ui = [{"kind": "actions", "buttons": [{"label": "Build the site"}, {"label": "Change something"}, {"label": "Voir"}]}]
+		labels = [b["label"] for b in buttons_in_the_persons_language(ui, "fr")[0]["buttons"]]
+		self.assertEqual(labels, ["Construire le site", "Changer quelque chose", "Voir"])
+		self.assertTrue(BUILD_BUTTON.search(labels[0]), "still a recap")
+		same = [{"kind": "actions", "buttons": [{"label": "Build the site"}]}]
+		self.assertEqual(buttons_in_the_persons_language(same, "en")[0]["buttons"][0]["label"], "Build the site")

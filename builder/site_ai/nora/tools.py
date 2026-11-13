@@ -3,6 +3,8 @@
 
 from __future__ import annotations
 
+import re
+
 import frappe
 
 from builder.ai.agent.registry import Tool
@@ -46,12 +48,68 @@ def recap_was_presented(session_id: str | None) -> bool:
     return False
 
 
+ANSWER_LINE = re.compile(r"^\s*([^:\n]{2,80}?)\s*:\s*(.+?)\s*$", re.M)
+LANGUAGES = {"fran": "fr", "french": "fr", "engl": "en", "angl": "en", "deutsch": "de", "allem": "de", "german": "de", "ital": "it"}
+
+
+def _words(label: str, *words: str) -> bool:
+    return any(word in label for word in words)
+
+
+def answers_of_the_conversation(session_id: str | None) -> dict:
+    """What the person gave on the playbook's cards, read from their answers (« Label: value » lines): the logo, their own
+    photographs, the pictures and the sites they like, the site's language. The model built a site without any of them
+    though its own recap said « your logo and photos included » (13.11, osiris): generate_site takes them from here when
+    the model leaves them out, and never over what the model passed."""
+    if not session_id:
+        return {}
+    from builder.ai.session import AISession
+
+    rows = frappe.get_all(
+        AISession.MESSAGE_DOCTYPE, filters={"session": session_id, "role": "user"}, fields=["content"], order_by="creation asc"
+    )
+    found: dict = {}
+    for row in rows:
+        for label, value in ANSWER_LINE.findall(row.content or ""):
+            label = label.lower()
+            values = [v.strip() for v in value.split(",") if v.strip()]
+            files = [v for v in values if v.startswith("/files/")]
+            links = [v for v in values if re.match(r"^https?://", v)]
+            if files and _words(label, "logo", "emblem", "embl"):
+                key = "footer_logo_image" if _words(label, "pied", "footer", "fuß", "fuss", "piè") else "logo_image"
+                found[key] = files[0]
+            elif files and _words(label, "aim", "like", "inspir", "gefall", "piac"):
+                found["inspiration_images"] = files
+            elif files:
+                found["photos"] = files
+            elif links and _words(label, "site", "lien", "link", "url", "web"):
+                found["inspiration_urls"] = links
+            elif _words(label, "langue", "language", "sprache", "lingua"):
+                code = next((c for k, c in LANGUAGES.items() if k in value.lower()), None)
+                if code:
+                    found["language"] = code
+    return found
+
+
+def with_the_persons_answers(session_id: str | None, args: dict) -> dict:
+    """The tool's arguments, completed by what the person answered and the model left out."""
+    answers = answers_of_the_conversation(session_id)
+    missing = {key: value for key, value in answers.items() if not (args or {}).get(key)}
+    if missing:
+        from builder.site_ai.logging import ai_log
+
+        ai_log("info", "Brief completed from the person's answers", keys=sorted(missing))
+    return {**(args or {}), **missing}
+
+
 def run_generate_site(ctx, args: dict) -> str:
     from builder.site_ai.nora.site_builder import build_site
 
     # a whole site waits for the recap the person approved; a page or two of a site that exists does not (scope='pages')
     if str((args or {}).get("scope") or "site") != "pages" and not recap_was_presented(getattr(ctx, "session_id", None)):
         return RECAP_FIRST
+    # the logo, the photographs, the sites they like and the language the person gave on the cards reach the build
+    args = with_the_persons_answers(getattr(ctx, "session_id", None), args or {})
     try:
         return build_site(ctx, args or {})
     except Exception as e:
