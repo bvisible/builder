@@ -60,13 +60,18 @@ class TestThePersonsLanguage(unittest.TestCase):
 		def get_single_value(doctype, field):
 			return system_language if doctype == "System Settings" else builder_language
 
-		with (
-			mock.patch.object(frappe.db, "get_value", side_effect=get_value),
-			mock.patch.object(frappe.db, "get_single_value", side_effect=get_single_value),
-			# frappe.session is a proxy of the request's session: the local object is what holds it
-			mock.patch.object(frappe.local, "session", frappe._dict(user="someone@example.test"), create=True),
-		):
-			return prompts.person_language_line()
+		# frappe.session is a proxy of the request's session: the local object holds it, and it is put back as it was (a
+		# patch that deletes it leaves every later test of the process without a session)
+		previous = getattr(frappe.local, "session", None)
+		frappe.local.session = frappe._dict(user="someone@example.test")
+		try:
+			with (
+				mock.patch.object(frappe.db, "get_value", side_effect=get_value),
+				mock.patch.object(frappe.db, "get_single_value", side_effect=get_single_value),
+			):
+				return prompts.person_language_line()
+		finally:
+			frappe.local.session = previous
 
 	def test_the_language_of_the_account_is_said_by_name_and_code(self):
 		line = self.say("fr")
