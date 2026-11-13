@@ -70,10 +70,13 @@
 
 {#- //// Neoffice — data-audience: who sees the button, "visitors" or "signed-in" (get_cta_audience); the
     //// rule in header_styles.html applies it once the browser knows the visitor's state -#}
+{#- //// Neoffice — the button's text is asked through _(): its default, set by the doctypes, is « Contact Us », which every
+    //// site kept and which read in English on a French portal (maintenance#1091). A text a client wrote has no catalogue
+    //// entry and comes back as written -#}
 {%- macro render_cta(cta) -%}
 <a href="{{ cta.url or '#' }}"
    class="site-cta site-cta--{{ cta.style | lower }} site-cta--shape-{{ (cta.shape or 'Rounded') | lower }} site-cta--size-{{ (cta.size or 'Medium') | lower }}"{% if cta.audience in ("visitors", "signed-in") %} data-audience="{{ cta.audience }}"{% endif %}>
-	{{ cta.text or "Contact" }}
+	{{ _(cta.text) if cta.text else _("Contact") }}
 </a>
 {%- endmacro -%}
 
