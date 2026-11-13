@@ -12224,3 +12224,515 @@ msgstr "l’identifiant du formulaire à afficher, à laisser vide pour le formu
 #: builder/hooks.py
 msgid "which form to draw: \"simple\" (name, e-mail, message), \"steps\" (the same in two, one question at a time) or \"questions\" (what the request is about, the budget and the timing before the message)"
 msgstr "quel formulaire afficher : \"simple\" (nom, e-mail, message), \"steps\" (les mêmes champs en deux étapes, une question à la fois) ou \"questions\" (le sujet de la demande, le budget et le délai, avant le message)"
+
+#: frontend/src/components/BuilderAIChatPanel.vue:709
+msgid "A bold skincare brand"
+msgstr "Une marque de soins de la peau audacieuse"
+
+#: frontend/src/components/BuilderAIChatPanel.vue:725
+msgid "A craft coffee roaster"
+msgstr "Une torréfaction artisanale de café"
+
+#: frontend/src/components/BuilderAIChatPanel.vue:693
+msgid "A vintage record store"
+msgstr "Un disquaire vintage"
+
+#: frontend/src/components/BuilderAIChatPanel.vue:663
+msgid "A wood-fired pizzeria in Lausanne"
+msgstr "Une pizzeria au feu de bois à Lausanne"
+
+#: builder/api.py:258
+msgid "about"
+msgstr "À propos"
+
+#: frontend/src/components/BuilderAIChatPanel.vue:766
+msgid "Add a pricing section"
+msgstr "Ajoute une section tarifs"
+
+#: frontend/src/components/BuilderAIChatPanel.vue:767
+msgid "Add a pricing section with three tiers (name, price, feature list, and a CTA button each), styled to match the page."
+msgstr "Ajoute une section tarifs avec trois formules (nom, prix, liste de prestations et bouton d’action pour chacune), dans le style de la page."
+
+#: frontend/src/components/BuilderAIChatPanel.vue:790
+msgid "Add a sticky header with nav"
+msgstr "Ajoute un en-tête épinglé avec la navigation"
+
+#: frontend/src/components/BuilderAIChatPanel.vue:791
+msgid "Add a sticky header with the name or logo on the left and nav links to each section on the right, gaining a subtle background on scroll."
+msgstr "Ajoute un en-tête épinglé avec le nom ou le logo à gauche et des liens vers chaque section à droite, qui prend un fond discret au défilement."
+
+#: frontend/src/components/BuilderAIChatPanel.vue:742
+msgid "Add a testimonials section"
+msgstr "Ajoute une section témoignages"
+
+#: frontend/src/components/BuilderAIChatPanel.vue:743
+msgid "Add a testimonials section with three or four short customer quotes, each with a name and role, styled to match the rest of the page."
+msgstr "Ajoute une section témoignages avec trois ou quatre courtes citations de clients, chacune avec un nom et une fonction, dans le style du reste de la page."
+
+#: frontend/src/components/BuilderAIChatPanel.vue:337
+msgid "Add one"
+msgstr "En ajouter un"
+
+#: frontend/src/components/BuilderAIChatPanel.vue:597
+msgid "Add records"
+msgstr "Ajouter des enregistrements"
+
+#: frontend/src/components/BuilderAIChatPanel.vue:774
+msgid "Add scroll animations"
+msgstr "Ajoute des animations au défilement"
+
+#: frontend/src/components/BuilderAIChatPanel.vue:775
+msgid "Add tasteful scroll animations: staggered fade-and-rise reveals on each section as it enters the viewport, subtle and smooth."
+msgstr "Ajoute des animations de défilement sobres : chaque section apparaît en fondu et en montée au moment où elle entre dans la fenêtre, en douceur."
+
+#: frontend/src/components/BuilderAIChatPanel.vue:577
+#, python-brace-format
+msgid "Add {0} sample record to “{1}”."
+msgstr "Ajouter {0} exemple d’enregistrement à “{1}”."
+
+#: frontend/src/components/BuilderAIChatPanel.vue:578
+#, python-brace-format
+msgid "Add {0} sample records to “{1}”."
+msgstr "Ajouter {0} exemples d’enregistrements à “{1}”."
+
+#: frontend/src/components/Settings/GlobalAgents.vue:23
+msgid "Agents can only reach this site over https or at a *.localhost address."
+msgstr "Les agents ne peuvent joindre ce site qu’en https ou à une adresse *.localhost."
+
+#: frontend/src/components/BuilderAIChatPanel.vue:880
+msgid "Ask to create or edit this page, or type / for commands"
+msgstr "Demandez de créer ou de modifier cette page, ou tapez / pour voir les commandes"
+
+#: frontend/src/components/BuilderAIChatPanel.vue:378
+#: frontend/src/components/BuilderAIChatPanel.vue:379
+msgid "Attach image"
+msgstr "Joindre une image"
+
+#: frontend/src/components/BuilderAIChatPanel.vue:350
+msgid "Back to page"
+msgstr "Retour à la page"
+
+#: frontend/src/components/BuilderAIChatPanel.vue:702
+msgid "Build a landing page for Stillpoint, a boutique yoga studio. Calm, airy, minimal with soft natural tones and gentle motion. Sections: a hero, class types and schedule, the teachers, a membership/pricing section, and a book-a-first-class CTA."
+msgstr "Crée une page d’accueil pour Stillpoint, un petit studio de yoga haut de gamme. Ambiance calme, aérée et épurée, tons naturels doux et mouvements légers. Sections : un héros, les types de cours et le planning, les professeurs, une section adhésions et tarifs, et un appel à l’action pour réserver un premier cours."
+
+#: frontend/src/components/BuilderAIChatPanel.vue:679
+msgid "Build a launch and waitlist page for Nimbus, an AI note-taking app. Clean and modern with a confident gradient accent. Sections: a punchy hero with the value prop and an email waitlist form, three key features, a short 'how it works', and social proof."
+msgstr "Crée une page de lancement et de liste d’attente pour Nimbus, une application d’IA de prise de notes. Style épuré et moderne avec un dégradé affirmé en accent. Sections : un héros percutant avec la promesse et un formulaire d’inscription à la liste d’attente par e-mail, trois fonctionnalités clés, un court « comment ça marche », et des avis de clients."
+
+#: frontend/src/components/BuilderAIChatPanel.vue:718
+msgid "Build a personal site for Maya Rao, a product designer. Confident, minimal, type-driven. Sections: a short intro hero, selected case studies, an about section, and contact links (email, LinkedIn, resume)."
+msgstr "Crée un site personnel pour Maya Rao, designer produit. Ton affirmé, épuré, centré sur la typographie. Sections : un court héros d’introduction, quelques études de cas, une section à propos, et des liens de contact (e-mail, LinkedIn, CV)."
+
+#: frontend/src/components/BuilderAIChatPanel.vue:671
+msgid "Build a portfolio for Aria Sen, a portrait and editorial photographer. Dark, cinematic, image-first design where the photos dominate. Sections: a full-bleed hero image, a gallery of selected work, a short about/bio, a client list, and a contact/booking section."
+msgstr "Crée un portfolio pour Aria Sen, photographe de portrait et d’éditorial. Ambiance sombre et cinématographique, design centré sur l’image où les photos dominent. Sections : une image de héros pleine largeur, une galerie de travaux choisis, une courte présentation, une liste de clients, et une section contact et réservation."
+
+#: frontend/src/components/BuilderAIChatPanel.vue:710
+msgid "Build a product site for Lumen, a clean skincare brand. Bold, premium, editorial with big product shots. Sections: a hero, the hero product with ingredients and benefits, results, reviews, and a shop/buy CTA."
+msgstr "Crée un site produit pour Lumen, une marque de soins de la peau épurée. Style affirmé, premium et éditorial, avec de grandes photos de produits. Sections : un héros, le produit phare avec ses ingrédients et bienfaits, les résultats, les avis, et un appel à l’action pour acheter en boutique."
+
+#: frontend/src/components/BuilderAIChatPanel.vue:726
+msgid "Build a website for Ember & Oak, a craft coffee roaster. Warm, artisanal, rich browns and texture. Sections: a hero, our roasts with tasting notes, the roasting story, wholesale info, and where to buy or visit."
+msgstr "Crée un site pour Ember & Oak, une torréfaction artisanale de café. Style chaleureux et artisanal, bruns riches et textures. Sections : un héros, nos torréfactions avec leurs notes de dégustation, l’histoire de la torréfaction, les informations pour les professionnels (vente en gros), et où acheter ou nous rendre visite."
+
+#: frontend/src/components/BuilderAIChatPanel.vue:664
+msgid "Build a website for Forno, a wood-fired pizzeria in Lausanne. Warm, rustic-modern feel with big appetizing food photography and a cozy dark-terracotta palette. Sections: a hero with our story, the menu (wood-fired pizzas, small plates, natural wines), a photo gallery, and a visit section with hours and location."
+msgstr "Crée un site pour Forno, une pizzeria au feu de bois à Lausanne. Style chaleureux et rustique moderne, grandes photos de plats appétissantes et palette cosy terracotta foncé. Sections : un héros avec notre histoire, la carte (pizzas au feu de bois, petites assiettes, vins naturels), une galerie de photos, et une section visite avec horaires et adresse."
+
+#: frontend/src/components/BuilderAIChatPanel.vue:694
+msgid "Build a website for Groove Vault, a vintage vinyl record store. Retro, textured, warm analog vibe. Sections: a hero, featured new arrivals, the genres we stock, our story, in-store events, and how to find us."
+msgstr "Crée un site pour Groove Vault, un disquaire de vinyles vintage. Style rétro et texturé, ambiance analogique chaleureuse. Sections : un héros, les nouveautés en vedette, les genres que nous proposons, notre histoire, les événements en magasin, et comment nous trouver."
+
+#: frontend/src/components/BuilderAIChatPanel.vue:687
+msgid "Build a website for Slurp, a ramen bar in Geneva. Bold, appetizing, a little playful. Sections: a hero, the ramen menu with descriptions and prices, our origin story, a gallery, and hours and location."
+msgstr "Crée un site pour Slurp, un bar à ramen à Genève. Style appétissant, dynamique et un brin ludique. Sections : un héros, la carte des ramens avec descriptions et prix, notre histoire d’origine, une galerie, et horaires et adresse."
+
+#: frontend/src/components/BuilderAIChatPanel.vue:734
+msgid "Build an event page for Design Jam, a monthly design meetup in Fribourg. Energetic, modern, poster-like. Sections: a hero with date, venue and RSVP, the speaker lineup, the schedule, past-event highlights, and sponsors."
+msgstr "Crée une page d’événement pour Design Jam, une rencontre mensuelle de design à Fribourg. Style dynamique et moderne, dans l’esprit d’une affiche. Sections : un héros avec la date, le lieu et l’inscription, la liste des intervenants, le programme, les moments forts des éditions passées, et les partenaires."
+
+#: frontend/src/components/BuilderAIChatPanel.vue:55
+msgid "Build pages by describing them"
+msgstr "Créez des pages en les décrivant"
+
+#: frontend/src/components/BuilderAIChatPanel.vue:405
+msgid "Cancel generation"
+msgstr "Annuler la génération"
+
+#: frontend/src/utils/dialogs.ts:239
+msgid "Changes are saved automatically. This action saves the current state as a version."
+msgstr "Les modifications sont enregistrées automatiquement. Cette action enregistre l’état actuel comme version."
+
+#: frontend/src/components/BuilderAIChatPanel.vue:27
+msgid "Chats on this page"
+msgstr "Conversations sur cette page"
+
+#: frontend/src/components/BuilderAIChatPanel.vue:587
+msgid "Confirm this change?"
+msgstr "Confirmer cette modification ?"
+
+#: frontend/src/components/BuilderAIChatPanel.vue:57
+msgid "Connect a model first. Takes a minute if you already have an API key."
+msgstr "Connectez d’abord un modèle. Cela prend une minute si vous avez déjà une clé API."
+
+#: frontend/src/components/BuilderAIChatPanel.vue:596
+msgid "Connect form"
+msgstr "Relier le formulaire"
+
+#: frontend/src/components/Settings/index.ts:140
+msgid "Connect Your Agent"
+msgstr "Connectez votre agent"
+
+#: frontend/src/components/BuilderAIChatPanel.vue:275
+msgid "Context:"
+msgstr "Contexte :"
+
+#: frontend/src/utils/dialogs.ts:225
+msgid "Could not save version"
+msgstr "Impossible d’enregistrer la version"
+
+#: frontend/src/components/BuilderAIChatPanel.vue:595
+msgid "Create it"
+msgstr "Le créer"
+
+#: frontend/src/components/BuilderAIChatPanel.vue:570
+#, python-brace-format
+msgid "Create “{0}” to store this page's data{1}."
+msgstr "Créer “{0}” pour stocker les données de cette page{1}."
+
+#: frontend/src/utils/pageActions.ts:157
+msgid "Danger"
+msgstr "Zone dangereuse"
+
+#: frontend/src/components/BuilderAIChatPanel.vue:530
+msgid "Delete current chat"
+msgstr "Supprimer la conversation en cours"
+
+#: frontend/src/utils/dialogs.ts:71
+msgid "Discard unsaved changes?"
+msgstr "Abandonner les modifications non enregistrées ?"
+
+#: frontend/src/utils/dialogs.ts:242
+msgid "Don't remind me again"
+msgstr "Ne plus me le rappeler"
+
+#: frontend/src/components/MoreStylesPanel.vue:182
+msgid "Edit Property"
+msgstr "Modifier la propriété"
+
+#: frontend/src/components/BuilderAIChatPanel.vue:733
+msgid "Event page for a design meetup"
+msgstr "Page d’événement pour une rencontre de design"
+
+#: frontend/src/components/PageClientScriptManager.vue:407
+msgid "Failed to add script"
+msgstr "Échec de l’ajout du script"
+
+#: frontend/src/components/PageClientScriptManager.vue:425
+msgid "Failed to attach script"
+msgstr "Échec de la liaison du script"
+
+#: frontend/src/components/PageClientScriptManager.vue:446
+msgid "Failed to remove script"
+msgstr "Échec de la suppression du script"
+
+#. Label of a Data field in DocType 'Block Template'
+#: builder/builder/doctype/block_template/block_template.json:77
+msgid "Hub Block"
+msgstr "Bloc du hub"
+
+#. Label of a Data field in DocType 'Block Template'
+#: builder/builder/doctype/block_template/block_template.json:85
+msgid "Hub Hash"
+msgstr "Hachage du hub"
+
+#: frontend/src/components/BuilderAIChatPanel.vue:175
+msgid "Inspect this turn (rounds, tools, tokens, why it stopped)"
+msgstr "Inspecter ce tour (étapes, outils, jetons, raison de l’arrêt)"
+
+#: frontend/src/components/BlockPropertySections/LinkSection.ts:35
+msgid "Instant"
+msgstr "Instantané"
+
+#: frontend/src/components/Settings/GlobalAgents.vue:26
+msgid "It works as your user, so your user needs the Website Manager role."
+msgstr "Il agit sous votre compte, qui doit donc avoir le rôle Responsable du Site Web."
+
+#: frontend/src/utils/dialogs.ts:75
+msgid "Keep Editing"
+msgstr "Continuer la modification"
+
+#: frontend/src/components/BuilderAIChatPanel.vue:701
+msgid "Landing page for a yoga studio"
+msgstr "Page d’accueil pour un studio de yoga"
+
+#. Description of the 'API Key' (Password) field in DocType 'Builder AI
+#. Provider'
+#: builder/builder/doctype/builder_ai_provider/builder_ai_provider.json:67
+msgid "Leave empty for a gateway that needs no key. An OpenRouter provider without a key uses the one in Builder Settings."
+msgstr "Laissez vide pour une passerelle qui n’exige pas de clé. Un fournisseur OpenRouter sans clé utilise celle des paramètres de Builder."
+
+#: frontend/src/components/BlockPropertySections/OptionsSection.ts:37
+msgid "Links to #id scroll to this block"
+msgstr "Les liens vers #id font défiler la page jusqu’à ce bloc"
+
+#: frontend/src/utils/dialogs.ts:94
+msgid "Load Latest"
+msgstr "Charger la dernière version"
+
+#: frontend/src/components/BuilderAIChatPanel.vue:798
+msgid "Make it feel more premium"
+msgstr "Donne-lui un aspect plus premium"
+
+#: frontend/src/components/BuilderAIChatPanel.vue:750
+msgid "Make the hero more dramatic"
+msgstr "Rends le héros plus spectaculaire"
+
+#: frontend/src/components/BuilderAIChatPanel.vue:751
+msgid "Make the hero more dramatic: a larger headline, stronger contrast, a full-bleed background image or bold color, and a clear primary call-to-action."
+msgstr "Rends le héros plus spectaculaire : un titre plus grand, un contraste plus marqué, une image de fond pleine largeur ou une couleur affirmée, et un appel à l’action principal bien visible."
+
+#: frontend/src/components/BuilderAIChatPanel.vue:799
+msgid "Make the page feel more premium: refine the typography and spacing, add depth with subtle shadows and borders, and elevate the color and imagery treatment."
+msgstr "Donne à la page un aspect plus premium : affine la typographie et les espacements, ajoute de la profondeur avec des ombres et des bordures discrètes, et valorise les couleurs et le traitement des images."
+
+#: frontend/src/components/BuilderAIChatPanel.vue:584
+#, python-brace-format
+msgid "Make “/{0}” the site's home page."
+msgstr "Faire de “/{0}” la page d’accueil du site."
+
+#: frontend/src/components/BuilderAIChatPanel.vue:686
+msgid "Menu & story for a ramen bar"
+msgstr "Carte et histoire d’un bar à ramen"
+
+#: frontend/src/components/BuilderAIChatPanel.vue:670
+msgid "Moody portfolio for a photographer"
+msgstr "Portfolio à l’ambiance sombre pour un photographe"
+
+#: frontend/src/components/BuilderAIChatPanel.vue:198
+msgid "Needs your OK"
+msgstr "Attend votre accord"
+
+#: frontend/src/components/BuilderAIChatPanel.vue:18
+#: frontend/src/components/BuilderAIChatPanel.vue:499
+#: frontend/src/components/BuilderAIChatPanel.vue:518
+msgid "New chat"
+msgstr "Nouvelle conversation"
+
+#: frontend/src/utils/dialogs.ts:224
+msgid "No changes since the last version"
+msgstr "Aucune modification depuis la dernière version"
+
+#: frontend/src/components/Settings/GlobalAgents.vue:5
+msgid "Paste this into your coding agent (Claude Code, Codex, OpenCode and others) to let it build, edit and publish pages on this site. When your browser asks, click Allow."
+msgstr "Collez ceci dans votre agent de code (Claude Code, Codex, OpenCode et d’autres) pour lui permettre de créer, modifier et publier des pages sur ce site. Quand votre navigateur le demande, cliquez sur Autoriser."
+
+#: frontend/src/components/BuilderAIChatPanel.vue:717
+msgid "Personal site for a designer"
+msgstr "Site personnel pour un designer"
+
+#: frontend/src/components/DashboardFilter.vue:69
+msgid "Protected"
+msgstr "Protégé"
+
+#: frontend/src/components/BuilderAIChatPanel.vue:283
+msgid "Remove from context"
+msgstr "Retirer du contexte"
+
+#: frontend/src/components/BuilderAIChatPanel.vue:158
+msgid "Revert the page to before this AI edit"
+msgstr "Revenir à la page telle qu’elle était avant cette modification par l’IA"
+
+#: frontend/src/components/BuilderAIChatPanel.vue:759
+msgid "Rework the whole page in a cohesive dark theme, keeping the layout but adjusting backgrounds, text, and accents for good contrast."
+msgstr "Retravaille toute la page dans un thème sombre cohérent, en gardant la mise en page mais en ajustant fonds, textes et accents pour un bon contraste."
+
+#: frontend/src/utils/dialogs.ts:238
+msgid "Save a Version History"
+msgstr "Enregistrer un historique des versions"
+
+#: frontend/src/utils/dialogs.ts:59
+msgid "Save as Copy for This Page"
+msgstr "Enregistrer une copie pour cette page"
+
+#: frontend/src/components/BuilderAIChatPanel.vue:572
+#, python-brace-format
+msgid "Save this form's submissions as “{0}” records{1}."
+msgstr "Enregistrer les envois de ce formulaire comme enregistrements “{0}”{1}."
+
+#: frontend/src/utils/dialogs.ts:241
+msgid "Save Version"
+msgstr "Enregistrer la version"
+
+#: frontend/src/components/PageClientScriptManager.vue:391
+#, python-brace-format
+msgid "Saved as {0} for this page"
+msgstr "Enregistré comme {0} pour cette page"
+
+#: frontend/src/utils/dialogs.ts:223
+msgid "Saving version..."
+msgstr "Enregistrement de la version…"
+
+#: frontend/src/utils/dialogs.ts:86
+msgid "Script changed elsewhere"
+msgstr "Script modifié ailleurs"
+
+#: frontend/src/components/BlockPropertySections/LinkSection.ts:89
+msgid "Scroll To"
+msgstr "Défiler jusqu’à"
+
+#: frontend/src/components/BlockPropertySections/LinkSection.ts:104
+msgid "Scrolling"
+msgstr "Défilement"
+
+#: frontend/src/components/Commands/index.ts:295
+msgid "Select Entire Canvas"
+msgstr "Sélectionner tout le tableau"
+
+#: frontend/src/components/BuilderAIChatPanel.vue:598
+msgid "Set home page"
+msgstr "Définir comme page d’accueil"
+
+#: frontend/src/components/BuilderAIChatPanel.vue:61
+msgid "Set up AI"
+msgstr "Configurer l’IA"
+
+#: frontend/src/pages/PagePreview.vue:122
+msgid "Show Breakpoints"
+msgstr "Afficher les points de rupture"
+
+#: frontend/src/components/BuilderAIChatPanel.vue:758
+msgid "Switch to a dark theme"
+msgstr "Passer à un thème sombre"
+
+#: frontend/src/components/BuilderAIChatPanel.vue:74
+msgid "Tell me what you're building"
+msgstr "Dites-moi ce que vous construisez"
+
+#: builder/site_ai/capabilities.py:41
+msgid "The AI of this site is managed by its host"
+msgstr "L’IA de ce site est gérée par son hébergeur"
+
+#. Description of the 'Hub Block' (Data) field in DocType 'Block Template'
+#: builder/builder/doctype/block_template/block_template.json:74
+msgid "The id of the block of the Builder Hub this template is drawn from (site_ai/nora/hub_templates.py keeps these rows in line with the hub)"
+msgstr "L’identifiant du bloc du Builder Hub dont ce modèle est issu (site_ai/nora/hub_templates.py garde ces lignes alignées sur le hub)"
+
+#: frontend/src/components/BuilderAIChatPanel.vue:490
+msgid "Thinking…"
+msgstr "Elle réfléchit…"
+
+#: frontend/src/components/BuilderAIChatPanel.vue:783
+msgid "Tighten the spacing across the page: reduce oversized gaps, align section padding to a consistent rhythm, and improve the vertical flow."
+msgstr "Resserre les espacements de la page : réduis les écarts trop grands, aligne les marges des sections sur un rythme régulier et améliore l’enchaînement vertical."
+
+#: frontend/src/components/BuilderAIChatPanel.vue:782
+msgid "Tighten the spacing everywhere"
+msgstr "Resserre les espacements partout"
+
+#: frontend/src/components/BuilderAIChatPanel.vue:173
+#, python-brace-format
+msgid "took {0}"
+msgstr "en {0}"
+
+#: frontend/src/components/BuilderAIChatPanel.vue:76
+msgid "Try one of these, or type your own below"
+msgstr "Essayez l’une de ces demandes, ou écrivez la vôtre ci-dessous"
+
+#: frontend/src/components/BuilderAIChatPanel.vue:437
+msgid "Turn debug"
+msgstr "Activer le débogage"
+
+#: frontend/src/components/BuilderAIChatPanel.vue:879
+msgid "Type to filter"
+msgstr "Taper pour filtrer"
+
+#: frontend/src/utils/dialogs.ts:48
+msgid "Update a shared script?"
+msgstr "Mettre à jour un script partagé ?"
+
+#: frontend/src/utils/dialogs.ts:60
+msgid "Update All Pages"
+msgstr "Mettre à jour toutes les pages"
+
+#: frontend/src/components/BuilderAIChatPanel.vue:582
+#, python-brace-format
+msgid "Update site-wide code ({0}). This loads on every page."
+msgstr "Mettre à jour le code de tout le site ({0}). Il se charge sur chaque page."
+
+#: frontend/src/components/BlockPropertySections/LinkSection.ts:64
+msgid "URL or /page"
+msgstr "URL ou /page"
+
+#: frontend/src/components/BuilderAIChatPanel.vue:678
+msgid "Waitlist page for an AI app"
+msgstr "Page de liste d’attente pour une application d’IA"
+
+#: frontend/src/components/BuilderAIChatPanel.vue:74
+msgid "What should we change?"
+msgstr "Que faut-il modifier ?"
+
+#: builder/ai/api.py:332
+msgid "You are not permitted to view AI providers"
+msgstr "Vous n’êtes pas autorisé à consulter les fournisseurs d’IA"
+
+#: builder/ai/agent/pending.py:212
+#, python-brace-format
+msgid "You are not permitted to {0}"
+msgstr "Vous n’êtes pas autorisé à {0}"
+
+#: frontend/src/utils/dialogs.ts:72
+#, python-brace-format
+msgid "Your edits to {0} have not been saved."
+msgstr "Vos modifications de {0} n’ont pas été enregistrées."
+
+#: builder/ai/agent/pending.py:209
+#, python-brace-format
+msgid "{0} already exists and is not a form submission DocType"
+msgstr "{0} existe déjà et n’est pas un DocType d’envois de formulaire"
+
+#: frontend/src/components/BuilderAIChatPanel.vue:485
+#, python-brace-format
+msgid "{0} can't read images"
+msgstr "{0} ne peut pas lire les images"
+
+#: frontend/src/components/MoreStylesPanel.vue:213
+#, python-brace-format
+msgid "{0} has its own control in the sections above."
+msgstr "{0} a son propre réglage dans les sections ci-dessus."
+
+#: frontend/src/components/BuilderAIChatPanel.vue:332
+#, python-brace-format
+msgid "{0} has no API key."
+msgstr "{0} n’a pas de clé API."
+
+#: frontend/src/utils/dialogs.ts:51
+#, python-brace-format
+msgid "{0} is also used on 1 other page. Saving changes how that page behaves too."
+msgstr "{0} est aussi utilisé sur 1 autre page. Enregistrer modifie aussi le comportement de cette page."
+
+#: frontend/src/utils/dialogs.ts:52
+#, python-brace-format
+msgid "{0} is also used on {1} other pages. Saving changes how those pages behave too."
+msgstr "{0} est aussi utilisé sur {1} autres pages. Enregistrer modifie aussi le comportement de ces pages."
+
+#: builder/api.py:1057
+#, python-brace-format
+msgid "{0} is not attached to this page"
+msgstr "{0} n’est pas lié à cette page"
+
+#: frontend/src/components/BuilderAIChatPanel.vue:345
+#, python-brace-format
+msgid "{0} only edits the page."
+msgstr "{0} modifie seulement la page."
+
+#: frontend/src/components/BuilderAIChatPanel.vue:303
+#, python-brace-format
+msgid "{0} selected blocks"
+msgstr "{0} blocs sélectionnés"
+
+#: frontend/src/utils/dialogs.ts:87
+#, python-brace-format
+msgid "{0} was saved somewhere else (another tab or another person) after you opened it. Overwrite that version with yours, or load it and drop your edit?"
+msgstr "{0} a été enregistré ailleurs (dans un autre onglet ou par une autre personne) après que vous l’avez ouvert. Écraser cette version avec la vôtre, ou charger celle-ci et abandonner votre modification ?"
