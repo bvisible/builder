@@ -354,14 +354,18 @@
 			     finding images. Each says a sentence to the assistant (useDoor); the cards it answers with are the
 			     playbook's own (the upload cards, search_images). -->
 			<div v-if="builderStore.isAIEnabled && isEditingPage && !isSubmitting" class="mb-2 flex flex-wrap gap-1.5">
+				<!-- //// Neoffice — the images door shows its progress and waits for the upload (pickImages) -->
 				<Button
 					v-for="door in doors"
 					:key="door.key"
 					variant="subtle"
 					size="xs"
 					:icon-left="door.icon"
-					:label="door.label"
+					:label="door.key === 'images' && sendingImages ? sendingLabel : door.label"
+					:disabled="sendingImages"
 					@click="useDoor(door)" />
+				<!-- //// Neoffice — the "My images" door opens the file chooser itself (pickImages) -->
+				<input ref="imagesInput" type="file" accept="image/*" multiple class="hidden" @change="pickImages" />
 			</div>
 			<!-- one box: the field on top, its controls along the bottom edge -->
 			<div
@@ -488,7 +492,8 @@ import type { AITurnStep, ChatMessage } from "@/components/ai/types";
 import { reloadAIRegistry } from "@/data/aiModels";
 import useBuilderStore from "@/stores/builderStore";
 import useCanvasStore from "@/stores/canvasStore";
-import { Button, Dropdown, KeyboardShortcut, Textarea, Tooltip } from "frappe-ui";
+//// Neoffice — toast: the images door says when its upload failed (pickImages)
+import { Button, Dropdown, KeyboardShortcut, Textarea, Tooltip, toast } from "frappe-ui";
 import { computed, nextTick, onMounted, onUnmounted, ref, watch } from "vue";
 
 //// Neoffice — the panel title, see the template.
@@ -927,13 +932,8 @@ function onComposerKeydown(event: KeyboardEvent) {
 type Door = { key: string; icon: string; label: string; prompt: string; send: boolean };
 const doors = computed<Door[]>(() => [
 	{ key: "text", icon: "lucide-pen-line", label: __("My text"), prompt: __("Here is the text for my site:") + "\n", send: false },
-	{
-		key: "images",
-		icon: "lucide-image-plus",
-		label: __("My images"),
-		prompt: __("I want to give you my images (logo, photos). Show me where to add them."),
-		send: true,
-	},
+	//// Neoffice — "images" opens the file chooser (useDoor), it has no sentence of its own
+	{ key: "images", icon: "lucide-image-plus", label: __("My images"), prompt: "", send: false },
 	{
 		key: "find",
 		icon: "lucide-search",
@@ -942,7 +942,56 @@ const doors = computed<Door[]>(() => [
 		send: true,
 	},
 ]);
+//// Neoffice — "My images" does not send a sentence for the model to explain where to put them (it answered with a page of
+//// English about the site chrome): it opens the file chooser, sends each picture the way the cards' upload does, then hands
+//// the assistant the addresses (neoffice-maintenance#2614).
+const imagesInput = ref<HTMLInputElement | null>(null);
+const sendingImages = ref(false);
+const sentImages = ref(0);
+const totalImages = ref(0);
+const sendingLabel = computed(() => __("Sending {0}/{1}…", [sentImages.value, totalImages.value]));
+async function pickImages(event: Event) {
+	const input = event.target as HTMLInputElement;
+	const chosen = Array.from(input.files || []).filter((file) => file.type.startsWith("image/"));
+	input.value = "";
+	if (!chosen.length) return;
+	sendingImages.value = true;
+	sentImages.value = 0;
+	totalImages.value = chosen.length;
+	const urls: string[] = [];
+	for (const file of chosen) {
+		const form = new FormData();
+		form.append("file", file, file.name);
+		form.append("is_private", "0");
+		form.append("folder", "Home/Builder Uploads");
+		try {
+			const response = await fetch("/api/method/builder.api.upload_builder_asset", {
+				method: "POST",
+				headers: { "X-Frappe-CSRF-Token": (window as any).csrf_token || "" },
+				body: form,
+			});
+			const url = (await response.json())?.message?.file_url;
+			if (url) urls.push(url);
+		} catch (e) {
+			console.error("upload failed", file.name, e);
+		}
+		sentImages.value += 1;
+	}
+	sendingImages.value = false;
+	if (!urls.length) {
+		toast.error(__("Your images could not be sent."));
+		return;
+	}
+	prompt.value = __("Here are my images (logo, photos):") + "\n" + urls.join("\n");
+	submitPrompt();
+}
+
 function useDoor(door: Door) {
+	//// Neoffice — the images door opens the file chooser instead of sending a sentence (pickImages)
+	if (door.key === "images") {
+		imagesInput.value?.click();
+		return;
+	}
 	prompt.value = door.prompt;
 	if (door.send) submitPrompt();
 	else promptInput.value?.focus();
