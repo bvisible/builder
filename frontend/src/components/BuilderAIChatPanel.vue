@@ -912,10 +912,24 @@ onMounted(() => {
 //// with no messages yet), then drop the query so a reload does not send it again.
 const siteRoute = useRoute();
 const siteRouter = useRouter();
+//// Neoffice — reading a session never creates one: get_ai_session answers a blank session
+//// (session_id "") for a page nobody chatted on, and the first message creates it. `sessionId` is
+//// therefore empty on exactly the page this seed is for (a fresh draft), so the seed waits for the
+//// read to END instead; without it "Create my site with Nora" opened an assistant that never
+//// started (neoffice-maintenance#2614).
+const sessionRead = ref(false);
+watch(
+	chat.isLoadingSession,
+	(loading, wasLoading) => {
+		if (wasLoading && !loading) sessionRead.value = true;
+	},
+	{ immediate: true },
+);
 const seedSiteConversation = () => {
 	// canSubmit needs a non-empty prompt, so it is the seed that makes it true: wait for the
 	// session and a model, then set the prompt and submit (submitPrompt re-checks canSubmit)
-	if (!isSiteCreationRoute(siteRoute) || !chat.sessionId.value || !chat.selectedModel.value) return;
+	//// Neoffice — the read of the session has ended (sessionRead), not "the session exists".
+	if (!isSiteCreationRoute(siteRoute) || !sessionRead.value || !chat.selectedModel.value) return;
 	if (chat.isSubmitting.value) return;
 	const query = { ...siteRoute.query };
 	delete query[SITE_CREATION_QUERY];
@@ -924,8 +938,9 @@ const seedSiteConversation = () => {
 	chat.prompt.value = siteCreationSeed();
 	chat.submitPrompt();
 };
+//// Neoffice — woken by the end of the session's read, see sessionRead.
 watch(
-	() => [chat.sessionId.value, chat.selectedModel.value, chat.isSubmitting.value],
+	() => [sessionRead.value, chat.selectedModel.value, chat.isSubmitting.value],
 	seedSiteConversation,
 	{ immediate: true },
 );
