@@ -251,9 +251,16 @@ function useDoor(door: Door) {
 
 async function pickImages(event: Event) {
 	const input = event.target as HTMLInputElement;
-	const chosen = Array.from(input.files || []).filter((file) => file.type.startsWith("image/"));
+	const chosen = Array.from(input.files || []);
 	input.value = "";
-	if (!chosen.length) return;
+	await sendImages(chosen);
+}
+
+/** The images go up as the editor's assets, then the assistant gets their addresses (the door « Mes images », and the
+ * files dropped on the conversation's drop zone). */
+async function sendImages(files: File[]) {
+	const chosen = files.filter((file) => file.type.startsWith("image/"));
+	if (!chosen.length || sendingImages.value) return;
 	sendingImages.value = true;
 	sentImages.value = 0;
 	totalImages.value = chosen.length;
@@ -466,6 +473,29 @@ function act(value: string, coreId: number) {
 const debugOpen = ref(false);
 const debugData = ref<Record<string, any> | null>(null);
 
+/** The conversation's modules, on as everywhere (Jérémy, 13.11: « si on fait partout la même chose, c'est mieux »); each
+ * shows only when it serves. « Aide » and the blocks of an answer as on the desk; the drop zone's files go up as the
+ * door « Mes images » sends them. `resume` keeps which chat of the page this is, and never offers its banner: the editor
+ * reopens the page's last chat from the server by itself. `use` is once per conversation: a module the conversation
+ * already turned on keeps its options. */
+function modules() {
+	if (!core || !window.nora?.chat?.features) return;
+	core.use("blocks", { help: true });
+	core.use("dropzone", { accept: "image/*", multiple: true });
+	core.use("resume", {
+		key: `builder:${route.params.pageId || ""}`,
+		offer: false,
+		state: { session_id: sessionId.value },
+	});
+	core.on("files", ({ files }: { files: File[] }) => sendImages(files || []));
+	core.on("resume", ({ state }: { state?: { session_id?: string } }) => {
+		painter?.reset();
+		if (state?.session_id) switchSession(state.session_id);
+	});
+}
+
+watch(sessionId, (id) => core?.features?.resume?.setState({ session_id: id }));
+
 async function start() {
 	let Core: any;
 	try {
@@ -489,6 +519,7 @@ async function start() {
 	painter = new Painter(core);
 	above.value = core.slot("above");
 	below.value = core.slot("below");
+	modules();
 	core.on("send", ({ message }: { message: string }) => {
 		// the "/" menu is open: the words are a command being typed, they stay in the entry
 		if (menuOpen.value) return core.setInputValue(message);

@@ -120,12 +120,18 @@ def nora_chat_boot(lang: str) -> dict | None:
 		if "neoffice_activity" in installed
 		else None
 	)
-	scripts = [url for url in (entry, core) if url]
+	# //// Neoffice — the conversation's modules (blocks, dropzone, resume, document), after the conversation: on everywhere (Jérémy,
+	# 13.11: « si on fait partout la même chose, c'est mieux »); they draw with the quick chat's sheet, scoped to the
+	# conversation
+	features = hook_asset("nora", "app_include_js", "/nora_chat_features.js")
+	scripts = [url for url in (entry, core, features) if url]
 	styles = [
 		url
 		for url in (
 			hook_asset("nora", "app_include_css", "/nora_tokens.css"),
 			hook_asset("nora", "app_include_css", "/nora-chat-core.css"),
+			# //// Neoffice — the modules' sheet, with them (see features above)
+			hook_asset("nora", "app_include_css", "/nora_quick_chat.css") if features else None,
 		)
 		if url
 	]

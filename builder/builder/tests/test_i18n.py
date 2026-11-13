@@ -91,9 +91,13 @@ class TestI18n(FrappeTestCase):
 			("app_include_js", "nora"): [
 				"/assets/nora/js/other.js",
 				"/assets/nora/js/nora_chat/nora_chat_core.js?v=9",
+				# //// Neoffice — the conversation's modules (13.11)
+				"/assets/nora/js/nora_chat/nora_chat_features.js?v=3",
 			],
 			("app_include_css", "nora"): [
 				"/assets/nora/css/nora_tokens.css?v=2",
+				# //// Neoffice — the modules' sheet (13.11)
+				"/assets/nora/css/nora_quick_chat.css?v=49",
 				"/assets/nora/css/nora_chat/nora-chat-core.css?v=6",
 			],
 			("app_include_js", "neoffice_activity"): ["/assets/neoffice_activity/js/nora_input.js?v=2"],
@@ -114,11 +118,18 @@ class TestI18n(FrappeTestCase):
 			[
 				"/assets/neoffice_activity/js/nora_input.js?v=2",
 				"/assets/nora/js/nora_chat/nora_chat_core.js?v=9",
+				# //// Neoffice — the conversation's modules come after it (13.11)
+				"/assets/nora/js/nora_chat/nora_chat_features.js?v=3",
 			],
 		)
+		# //// Neoffice — and the modules' sheet after the conversation's (13.11)
 		self.assertEqual(
 			boot["styles"],
-			["/assets/nora/css/nora_tokens.css?v=2", "/assets/nora/css/nora_chat/nora-chat-core.css?v=6"],
+			[
+				"/assets/nora/css/nora_tokens.css?v=2",
+				"/assets/nora/css/nora_chat/nora-chat-core.css?v=6",
+				"/assets/nora/css/nora_quick_chat.css?v=49",
+			],
 		)
 		self.assertEqual(boot["messages"], {"Stop": "Arrêter"})
 
