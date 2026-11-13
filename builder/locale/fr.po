@@ -13066,3 +13066,35 @@ msgstr "{0} et {1}"
 #: builder/ai/agent/loop.py
 msgid "I hit my edit-step limit for one turn before finishing: reply « continue » and I'll pick up where I left off."
 msgstr "J'ai atteint ma limite d'étapes de modification pour ce tour avant de finir : répondez « continuer » et je reprendrai là où je me suis arrêtée."
+
+#: frontend/src/components/EmptyDraftHint.vue:107
+#, python-brace-format
+msgid "Answer {0}'s questions on the left: she draws this page in the style of your site."
+msgstr "Répondez aux questions de {0} à gauche : elle dessine cette page dans le style de votre site."
+
+#: frontend/src/composables/useNoraKickoff.ts:22
+msgid "Design this page with me: ask me first what it is for, then draw it in the style of my site."
+msgstr "Concevez cette page avec moi : demandez-moi d'abord à quoi elle sert, puis dessinez-la dans le style de mon site."
+
+#: frontend/src/components/EmptyDraftHint.vue:25
+#, python-brace-format
+msgid "Design with {0}"
+msgstr "Designer avec {0}"
+
+#: frontend/src/components/EmptyDraftHint.vue:102
+#, python-brace-format
+msgid "This is the first page of your site, still empty. {0} builds it with you, then creates the other pages and the menu."
+msgstr "Ceci est la première page de votre site, encore vide. {0} la conçoit avec vous, puis crée les autres pages et le menu."
+
+#: frontend/src/components/EmptyDraftHint.vue:94
+msgid "This page is empty"
+msgstr "Cette page est vide"
+
+#: frontend/src/composables/useNoraKickoff.ts:27
+msgid "This page is empty. Ask me first, in one question, what the page is for and who it speaks to. Then design the whole page at once in the theme of this site: read one of its pages first and carry its colours, fonts and section style into the new page."
+msgstr "Cette page est vide. Demandez-moi d'abord, en une seule question, à quoi sert la page et à qui elle s'adresse. Ensuite, concevez toute la page d'un coup dans le thème de ce site : lisez d'abord une de ses pages et reprenez ses couleurs, ses polices et le style de ses sections dans la nouvelle page."
+
+#: frontend/src/components/EmptyDraftHint.vue:108
+#, python-brace-format
+msgid "{0} can design it with you: she asks what the page is for, then draws it in the style of your site."
+msgstr "{0} peut la concevoir avec vous : elle vous demande à quoi sert la page, puis la dessine dans le style de votre site."
