@@ -209,3 +209,24 @@ class TestResume(unittest.TestCase):
 	def test_the_editors_conversation_keeps_the_editors_runner(self):
 		with patch.object(site_chat, "is_site_session", return_value=False):
 			self.assertIsNone(site_chat.resume_job("s1"))
+
+
+class TestDeskAnswers(unittest.TestCase):
+	def test_send_answers_with_a_plain_200(self):
+		"""The desk's frappe.call runs its callback for a 200 only: a 202 (the editor's endpoint gives one) left the tab
+		without its conversation, deaf to every event of the turn (seen on osiris, 13.11)."""
+		import inspect
+
+		self.assertNotIn("http_status_code", inspect.getsource(site_chat.send))
+
+
+class TestSiteScopes(unittest.TestCase):
+	def test_a_site_counts_its_own_pages_and_the_shared_ones(self):
+		with patch.object(site_chat.frappe.db, "has_column", return_value=True):
+			self.assertEqual(
+				site_chat.site_scopes("Main"),
+				[{"neo_website_profile": "Main"}, {"neo_website_profile": ("is", "not set")}],
+			)
+			self.assertEqual(site_chat.site_scopes(None), [{"neo_website_profile": ("is", "not set")}])
+		with patch.object(site_chat.frappe.db, "has_column", return_value=False):
+			self.assertEqual(site_chat.site_scopes("Main"), [{}])

@@ -27,6 +27,7 @@ from frappe import _
 from builder.ai import locks
 from builder.ai.agent.loop import AgentRunner
 from builder.ai.agent.registry import Tool
+from builder.ai.agent.tools import site_scope
 from builder.ai.session import AISession
 from builder.site_ai.nora import site_changes
 from builder.utils import builder_role_required, require_session_owner
@@ -193,11 +194,20 @@ def open_chat(website_profile: str | None = None, session_id: str | None = None)
 	}
 
 
+def site_scopes(profile: str | None) -> list[dict]:
+	"""The page filters of a site: its own pages, then the shared ones (untagged, served by every site), as the agent's
+	reads resolve them (site_scope.own_site_filters). One filter, nothing, on an instance without Website Profiles."""
+	if not frappe.db.has_column("Builder Page", site_scope.PROFILE_FIELD):
+		return [{}]
+	if not profile:
+		return [{site_scope.PROFILE_FIELD: ("is", "not set")}]
+	return list(site_scope.own_site_filters(profile))
+
+
 def site_page_count(profile: str | None) -> int:
-	filters: dict = {"is_template": 0}
-	if frappe.db.has_column("Builder Page", "neo_website_profile"):
-		filters["neo_website_profile"] = profile if profile else ("is", "not set")
-	return frappe.db.count("Builder Page", filters) if frappe.has_permission("Builder Page", "read") else 0
+	if not frappe.has_permission("Builder Page", "read"):
+		return 0
+	return sum(frappe.db.count("Builder Page", {"is_template": 0, **scope}) for scope in site_scopes(profile))
 
 
 @frappe.whitelist()
@@ -238,8 +248,8 @@ def send(
 			frappe.throw(_("This conversation is not one of the Website space"), frappe.PermissionError)
 		website_profile = session_site(session_id) or website_profile
 	profile = chosen_site(website_profile, sites)
+	# A plain answer, never 429 or 202 as the editor's endpoint gives: the desk's frappe.call runs its callback for a 200 only.
 	if session_id and AISession.is_session_running(session_id):
-		frappe.local.response.http_status_code = 429
 		return {"status": "busy", "message": _("Nora is still working on your last message.")}
 
 	page = frappe.db.get_value(AISession.DOCTYPE, session_id, "page") if session_id else None
@@ -274,7 +284,6 @@ def send(
 		image_file_url=image_file_url,
 		enqueue_after_commit=True,
 	)
-	frappe.local.response.http_status_code = 202
 	return {"status": "accepted", "session_id": session_id, "page": page}
 
 
@@ -440,12 +449,14 @@ class SiteChatRunner(AgentRunner):
 	def pages_written_meanwhile(self, seen: set[str]) -> list[tuple[str, bool]]:
 		"""The site's pages this turn wrote without opening them (a page built or rebuilt by generate_site, a
 		component synced into them), with whether the turn created them."""
-		filters: dict = {"is_template": 0, "modified": [">=", self.site_started]}
-		if self.site_profile and frappe.db.has_column("Builder Page", "neo_website_profile"):
-			filters["neo_website_profile"] = self.site_profile
-		rows = frappe.get_all(
-			"Builder Page", filters=filters, fields=["name", "creation"], order_by="creation asc"
-		)
+		rows = []
+		for scope in site_scopes(self.site_profile):
+			rows += frappe.get_all(
+				"Builder Page",
+				filters={"is_template": 0, "modified": [">=", self.site_started], **scope},
+				fields=["name", "creation"],
+				order_by="creation asc",
+			)
 		return [(row.name, row.creation >= self.site_started) for row in rows if row.name not in seen]
 
 	def site_wide_kinds(self) -> list[str]:
@@ -496,16 +507,17 @@ class SiteChatRunner(AgentRunner):
 
 
 def own_pages(profile: str | None, limit: int = 60) -> list[dict]:
-	filters: dict = {"is_template": 0}
-	if frappe.db.has_column("Builder Page", "neo_website_profile"):
-		filters["neo_website_profile"] = profile if profile else ("is", "not set")
-	return frappe.get_all(
-		"Builder Page",
-		filters=filters,
-		fields=["name", "page_title", "route", "published"],
-		order_by="published desc, page_title asc",
-		limit=limit,
-	)
+	"""The site's pages: its own first, then the shared ones."""
+	pages: list[dict] = []
+	for scope in site_scopes(profile):
+		pages += frappe.get_all(
+			"Builder Page",
+			filters={"is_template": 0, **scope},
+			fields=["name", "page_title", "route", "published"],
+			order_by="published desc, page_title asc",
+			limit=limit,
+		)
+	return pages[:limit]
 
 
 def pages_line(profile: str | None) -> str:
