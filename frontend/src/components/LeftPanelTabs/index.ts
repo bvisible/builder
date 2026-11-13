@@ -107,5 +107,8 @@ leftPanelTabs.register({
 	component: defineAsyncComponent(() => import("@/components/BuilderAIChatPanel.vue")),
 	shortcut: "Mod+Shift+O",
 	// the composer's controls and the chat bubbles stop fitting below this
-	minWidth: 300,
+	//// Neoffice — 420, not 300 (neoffice-maintenance#2614): a person who writes their site's text, reads Nora's cards and
+	//// answers them needs room for long lines; the panel opens at least this wide on the assistant's tab and the person
+	//// can still resize it (the panel's own maximum is 500).
+	minWidth: 420,
 });
