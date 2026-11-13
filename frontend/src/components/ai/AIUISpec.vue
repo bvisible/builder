@@ -19,7 +19,8 @@
 		<!-- Several questions in one card walk one at a time: the whole set is asked
 		     in a single turn, and the user still meets them one decision at a time. -->
 		<div v-if="isStepped" class="flex items-center justify-between">
-			<span class="text-p-xs font-medium text-ink-gray-5">{{ stepIndex + 1 }} of {{ steps.length }}</span>
+			<!-- //// Neoffice — the steps' counter, buttons and upload labels go through __() (neoffice-maintenance#1200) -->
+			<span class="text-p-xs font-medium text-ink-gray-5">{{ __("{0} of {1}", [stepIndex + 1, steps.length]) }}</span>
 			<div class="flex items-center gap-1">
 				<Button
 					variant="ghost"
@@ -164,11 +165,13 @@
 						:disabled="!interactive || disabled || batchBusy[i]"
 						@click="batchInputs[i]?.click()">
 						{{
+							//// Neoffice — through __() (neoffice-maintenance#1200)
 							batchBusy[i]
-								? `Uploading ${batchDone[i]}/${batchTotal[i]}…`
+								? __("Uploading {0}/{1}…", [batchDone[i], batchTotal[i]])
 								: (uploads[i] || []).length
-									? `Add more (${(uploads[i] || []).length})`
-									: "Upload photos"
+									? __("Add more ({0})", [(uploads[i] || []).length])
+									//// Neoffice — through __() (neoffice-maintenance#1200)
+									: __("Upload photos")
 						}}
 					</Button>
 				</div>
@@ -200,7 +203,12 @@
 								@click="openFileSelector()">
 								<!-- //// Neoffice — bf412e4f "feat(chat card): an upload slot can take a whole batch of photographs" — label checks `uploads[i]?.length` instead of truthiness, since uploads[i] is now an array. -->
 								{{
-									uploading ? `Uploading ${progress}%` : uploads[i]?.length ? "Replace image" : "Upload image"
+									//// Neoffice — through __() (neoffice-maintenance#1200)
+									uploading
+										? __("Uploading {0}%", [progress])
+										: uploads[i]?.length
+											? __("Replace image")
+											: __("Upload image")
 								}}
 							</Button>
 						</div>
@@ -219,11 +227,12 @@
 					<div v-for="(slot, k) in colorSlotDefs(el)" :key="k" class="flex flex-col gap-1">
 						<span class="text-p-sm text-ink-gray-7">{{ slot.label }}</span>
 						<span v-if="slot.hint" class="-mt-0.5 text-p-xs text-ink-gray-4">{{ slot.hint }}</span>
+						<!-- //// Neoffice — the placeholder goes through __() (neoffice-maintenance#1200) -->
 						<ColorInput
 							:modelValue="colorSlots[i]?.[k] || null"
 							:showColorVariableOptions="false"
 							placement="left"
-							placeholder="Pick a colour"
+							:placeholder="__('Pick a colour')"
 							@update:modelValue="(c: string) => setColorSlot(i, k, c)" />
 					</div>
 				</div>
@@ -244,12 +253,14 @@
 		</template>
 		<!-- Stepping forward is the only control a mid-card step needs; the model's
 		     own actions row belongs to the last step and renders in the loop above. -->
+		<!-- //// Neoffice — the Next button goes through __() (neoffice-maintenance#1200) -->
 		<Button
 			v-if="isStepped && !isLastStep"
 			variant="subtle"
 			:disabled="!interactive || disabled"
 			@click="goNext">
-			Next
+			<!-- //// Neoffice — through __() (neoffice-maintenance#1200) -->
+			{{ __("Next") }}
 		</Button>
 		<!-- A waiting card with nothing tappable strands the user (e.g. a form the
 		     model forgot to put buttons on) — give it a default way forward. -->
