@@ -414,7 +414,8 @@ function repaint() {
 		const atEnd = !scroller || scroller.scrollHeight - scroller.scrollTop - scroller.clientHeight < 200;
 		painter.paint(messages.value, context());
 		if (scroller && atEnd) scroller.scrollTop = scroller.scrollHeight;
-		const empty = !messages.value.length;
+		// a card waiting counts as a conversation (see watchCards)
+		const empty = !messages.value.length && !cardsDrawn.value;
 		if (empty && !chat.isLoadingSession.value && builderStore.isAIEnabled) welcome();
 		else if (!empty) core.hideWelcome();
 		activity();
@@ -489,7 +490,11 @@ function modules() {
 		offer: false,
 		state: { session_id: sessionId.value },
 	});
-	core.use("action_cards", { conversation: () => null });
+	// the editor's chat is the conversation the cards belong to (the page's, until its chat has an id): the server then
+	// gives the cards still waiting and that chat's own, never the person's decided ones of every other conversation
+	// (asked with none, it gave the twenty last ones, decided or not)
+	core.use("action_cards", { conversation: () => sessionId.value || `builder:${route.params.pageId || ""}` });
+	watchCards();
 	core.on("files", ({ files }: { files: File[] }) => sendImages(files || []));
 	core.on("resume", ({ state }: { state?: { session_id?: string } }) => {
 		painter?.reset();
@@ -500,6 +505,22 @@ function modules() {
 }
 
 watch(sessionId, (id) => core?.features?.resume?.setState({ session_id: id }));
+
+/** The cards are drawn by their module, not by the painter. A card waiting is a conversation too: the first visit
+ * (which hides the conversation) steps aside for it, or the person would never see what waits for them. */
+const cardsDrawn = ref(false);
+let cardsWatch: MutationObserver | null = null;
+function watchCards() {
+	const list: HTMLElement | undefined = core?.$messages?.[0];
+	if (!list || cardsWatch) return;
+	cardsWatch = new MutationObserver(() => {
+		const drawn = Boolean(list.querySelector(".nora-qc-action-card"));
+		if (drawn === cardsDrawn.value) return;
+		cardsDrawn.value = drawn;
+		repaint();
+	});
+	cardsWatch.observe(list, { childList: true });
+}
 
 async function start() {
 	let Core: any;
@@ -586,6 +607,7 @@ onMounted(() => {
 onUnmounted(() => {
 	if (!fallback.value) chat.unmount();
 	cancelAnimationFrame(frame);
+	cardsWatch?.disconnect();
 });
 
 // the tab usually loads behind another one, where the conversation cannot scroll
