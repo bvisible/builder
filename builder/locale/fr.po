@@ -12796,3 +12796,16 @@ msgstr "Ajouter des photos"
 #, python-brace-format
 msgid "Uploading {0}/{1}…"
 msgstr "Envoi {0}/{1}…"
+
+#: frontend/src/components/BuilderAIChatPanel.vue:985
+msgid "Here are my images (logo, photos):"
+msgstr "Voici mes images (logo, photos) :"
+
+#: frontend/src/components/BuilderAIChatPanel.vue:952
+#, python-brace-format
+msgid "Sending {0}/{1}…"
+msgstr "Envoi {0}/{1}…"
+
+#: frontend/src/components/BuilderAIChatPanel.vue:982
+msgid "Your images could not be sent."
+msgstr "Vos images n'ont pas pu être envoyées."
