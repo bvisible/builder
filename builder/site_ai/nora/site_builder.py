@@ -3,7 +3,7 @@
 
 Our orchestration (brief with design intelligence, design tokens, site chrome,
 multi-profile scoping, menu, images) on upstream's page engine: every page is
-YAML written by the heavy model under Prompts.GENERATION_YAML and expanded by
+YAML written by the heavy model under GENERATION_YAML (yaml_prompt.py) and expanded by
 builder.ai.page_writer, so the result is a page the editor agent edits with
 its own conventions. Runs inside the agent's turn (a server tool), reporting
 progress on the chat channel and in the generation status cache.
@@ -1929,7 +1929,8 @@ def _page_model(ctx) -> str:
 
 def _write_page(page: dict, blocks: list, data_script: str, profile: str | None, host_page: str | None, description: str) -> tuple[str, str]:
     """Create (or refill the host page as) a published Builder Page. Returns (name, route)."""
-    from builder.ai.page_writer import compact_json
+    # compact_json lives in builder.utils (page_writer only re-exported it until upstream 1.38.0)
+    from builder.utils import compact_json
     from builder.api import _blocks_fingerprint
 
     payload = compact_json(blocks)
@@ -2372,7 +2373,8 @@ def build_site(ctx, spec: dict) -> str:
     from builder.ai import llm
     from builder.ai.block_codec import BlockCodec
     from builder.ai.page_writer import expand_page_yaml
-    from builder.ai.prompts import Prompts
+    # the YAML page prompt is ours since upstream 1.38.0 dropped Prompts.GENERATION_YAML (yaml_prompt.py)
+    from builder.site_ai.nora.yaml_prompt import GENERATION_YAML
     from builder.api import (
         SITE_TYPE_HEADER_FOOTER_DEFAULTS,
         _contact_context_prompt,
@@ -2989,7 +2991,7 @@ def build_site(ctx, spec: dict) -> str:
         messages = [
             # //// Neoffice — the editorial vocabulary follows the craft prompt in the SAME system message (a second system message
             # //// is refused by some chat templates), with the site's own handles (design_vocabulary)
-            {"role": "system", "content": Prompts.GENERATION_YAML + ("\n\n" + design_vocabulary(handles) if design_vocabulary(handles) else "")},
+            {"role": "system", "content": GENERATION_YAML + ("\n\n" + design_vocabulary(handles) if design_vocabulary(handles) else "")},
             {"role": "user", "content": f"Build this page now:\n{brief_text}"},
         ]
         blocks, data_script, error = [], "", None
