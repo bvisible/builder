@@ -95,7 +95,11 @@ export function applyLabel(kind?: string): string {
 /** Nora's words of a message: a card's lead-in, a pending action's question, a stopped turn said as such. */
 export function assistantText(message: ChatMessage, cancelling = false): string {
 	const meta = message.metadata || {};
-	if (meta.status === "pending_action") return pendingQuestion(meta);
+	// a sensitive action is said as its question, asked or decided (its content is the model's summary, in English)
+	if (["pending_action", "action_skipped", "action_applied"].includes(meta.status) && meta.kind)
+		return pendingQuestion(meta);
+	if (message.message_type === "status" && message.content === "Skipped. Nothing was changed.")
+		return __("Skipped. Nothing was changed.");
 	// a stopped turn is said as the Website space's tab says it (the stored answer is English)
 	if (meta.status === "cancelled") return __("Stopped. What was done so far is kept.");
 	if (cancelling && meta.status === "running") return "";

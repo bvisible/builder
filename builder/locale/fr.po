@@ -13002,3 +13002,7 @@ msgstr "Toute la page"
 msgctxt "Nora's answer"
 msgid "title"
 msgstr "titre"
+
+#: frontend/src/components/ai/noraEditorChat.ts
+msgid "Skipped. Nothing was changed."
+msgstr "Action non réalisée. Rien n'a été modifié."

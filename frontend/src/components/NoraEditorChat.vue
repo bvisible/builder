@@ -402,7 +402,11 @@ function repaint() {
 	frame = requestAnimationFrame(() => {
 		frame = 0;
 		if (!core || !painter) return;
+		// the reader at the end of the conversation stays there as it grows (a long card arrives in one piece)
+		const scroller = host.value?.querySelector<HTMLElement>(".nora-chat-messages");
+		const atEnd = !scroller || scroller.scrollHeight - scroller.scrollTop - scroller.clientHeight < 200;
 		painter.paint(messages.value, context());
+		if (scroller && atEnd) scroller.scrollTop = scroller.scrollHeight;
 		const empty = !messages.value.length;
 		if (empty && !chat.isLoadingSession.value && builderStore.isAIEnabled) welcome();
 		else if (!empty) core.hideWelcome();
@@ -601,6 +605,10 @@ watch(
 /* the pane is the paper; Nora's answers lift off it on their cards (design system § 6.12) */
 .nora-editor-chat {
 	--nora-chat-bg: var(--color-bg);
+	/* the desk's entry (neoffice_activity.nora_input) reads the desk's colours, which the editor does not have */
+	--text-color: var(--text-primary);
+	--text-muted: var(--text-secondary);
+	--border-color: var(--border-default);
 	display: flex;
 	flex-direction: column;
 	height: 100%;
