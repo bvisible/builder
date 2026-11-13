@@ -69,6 +69,12 @@ def run(
 	accepted ops to the canvas.
 	"""
 	logger.info(f"run: page_id={page_id}, model={model}, session_id={session_id}")
+	# //// Neoffice — a conversation of the Website tab (builder.site_ai.nora.site_chat) is never written from the editor:
+	# //// both anchor theirs on the site's home page, and a question asked in the editor landed in the tab's chat
+	# //// (13.11). The editor's turn starts a conversation of its own instead (its id comes back with the answer).
+	from builder.site_ai.nora.site_chat import editor_session
+
+	session_id = editor_session(session_id)
 
 	image_url = BlockCodec.validate_image_data(image_data) if image_data else None
 	canvas_theme = canvas_theme if canvas_theme in ("light", "dark") else None
@@ -501,8 +507,15 @@ def get_ai_session(page_id: str, model: str | None = None, session_id: str | Non
 	if not page_id or page_id == "new" or not frappe.db.exists("Builder Page", page_id):
 		return blank_session(page_id, model)
 
+	# //// Neoffice — the editor reopens its own conversations, never one of the Website tab (see run)
+	from builder.site_ai.nora.site_chat import editor_session, not_site_sessions
+
+	session_id = editor_session(session_id)
 	if not (session_id and frappe.db.exists(AISession.DOCTYPE, session_id)):
-		session_id = AISession.last_used({"page": page_id, "session_user": frappe.session.user})
+		session_id = AISession.last_used(
+			# //// Neoffice — the tab's conversations left out (see above)
+			{"page": page_id, "session_user": frappe.session.user, **not_site_sessions(page_id)}
+		)
 	if not session_id:
 		return blank_session(page_id, model)
 	session = AISession.get(session_id, page_id=page_id)
@@ -531,9 +544,18 @@ def list_page_ai_sessions(page_id: str, limit: int = 20):
 	"""This page's chat sessions for the current user — powers the session switcher."""
 	if not page_id or page_id == "new":
 		return []
+	# //// Neoffice — nor lists the Website tab's (see run)
+	from builder.site_ai.nora.site_chat import not_site_sessions
+
 	rows = frappe.get_all(
 		AISession.DOCTYPE,
-		filters={"page": page_id, "session_user": frappe.session.user, "status": "Active"},
+		filters={
+			"page": page_id,
+			"session_user": frappe.session.user,
+			"status": "Active",
+			# //// Neoffice — the tab's conversations left out (see above)
+			**not_site_sessions(page_id),
+		},
 		fields=["name", "title", "last_interaction_on"],
 		order_by="last_interaction_on desc",
 		limit=min(int(limit), 50),

@@ -121,6 +121,35 @@ def session_site(session_id: str) -> str | None:
 	return AISession.load_metadata(meta).get(MARK) or None
 
 
+def site_session_names(page: str | None, user: str | None = None) -> list[str]:
+	"""Every conversation of the tab the person holds on `page` (a site's home page, where the tab anchors them)."""
+	if not page:
+		return []
+	sessions = frappe.get_all(
+		AISession.DOCTYPE, filters={"page": page, "session_user": user or frappe.session.user}, pluck="name"
+	)
+	if not sessions:
+		return []
+	return frappe.get_all(
+		AISession.MESSAGE_DOCTYPE,
+		filters={"session": ["in", sessions], "role": "user", "metadata_json": ["like", f'%"{MARK}":%']},
+		pluck="session",
+		distinct=True,
+	)
+
+
+def not_site_sessions(page: str | None) -> dict:
+	"""The filter that keeps the tab's conversations of `page` out of the editor's chat: the editor neither reopens,
+	lists nor writes into them, or a question asked in the editor lands in the tab's conversation (13.11)."""
+	names = site_session_names(page)
+	return {"name": ["not in", names]} if names else {}
+
+
+def editor_session(session_id: str | None) -> str | None:
+	"""The editor's chat may go on in this conversation; None for one of the tab (a new conversation then)."""
+	return None if is_site_session(session_id) else session_id
+
+
 def site_sessions(page: str | None) -> list[dict]:
 	"""The reader's conversations of the tab about the site whose home is `page`, the latest first."""
 	if not page:
