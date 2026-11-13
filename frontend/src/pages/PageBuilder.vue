@@ -70,7 +70,7 @@
 				right: `${builderStore.showRightPanel ? builderStore.builderLayout.rightPanelWidth : 0}px`,
 			}"
 			class="canvas-container absolute bottom-0 flex justify-center overflow-hidden bg-surface-gray-1 p-10"></BuilderCanvas>
-		<!-- //// Neoffice — a word over the empty first page of a site being built (EmptyDraftHint) -->
+		<!-- //// Neoffice — a word over an empty page, and « Design with Nora » (EmptyDraftHint) -->
 		<EmptyDraftHint />
 
 		<!-- Panels layer (middle) - comes after canvas in DOM -->

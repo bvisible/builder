@@ -144,6 +144,7 @@ import type { BobContext } from "@/components/ai/commands/shared";
 import { Painter, type PaintContext } from "@/components/ai/noraEditorChat";
 import type { ChatMessage } from "@/components/ai/types";
 import { isSiteCreationRoute, siteCreationSeed, SITE_CREATION_QUERY } from "@/composables/useSiteCreation";
+import { markNoraStarted, noraKickoff, pageSeed, pageSeedForNora } from "@/composables/useNoraKickoff";
 import { reloadAIRegistry } from "@/data/aiModels";
 import useBuilderStore from "@/stores/builderStore";
 import useCanvasStore from "@/stores/canvasStore";
@@ -652,6 +653,41 @@ watch(
 		prompt.value = siteCreationSeed();
 		chat.submitPrompt();
 	},
+	{ immediate: true },
+);
+
+// ─────────────── « Design with Nora » over an empty page (EmptyDraftHint): sent once the chat is read ───────────────
+
+watch(
+	() => [
+		noraKickoff.value,
+		sessionRead.value,
+		chat.isLoadingSession.value,
+		chat.selectedModel.value,
+		isSubmitting.value,
+	],
+	() => {
+		const ask = noraKickoff.value;
+		if (!ask || ask.pageId !== String(route.params.pageId || "")) return;
+		// the page's own chat, read (another page's may still be loading after a move)
+		if (!sessionRead.value || chat.isLoadingSession.value || !chat.selectedModel.value || isSubmitting.value)
+			return;
+		noraKickoff.value = null;
+		if (ask.kind === "site") {
+			prompt.value = siteCreationSeed();
+			chat.submitPrompt();
+			return;
+		}
+		// Nora reads what she must do; the person's line says it in a few words
+		chat.selectOption(pageSeedForNora(), pageSeed());
+	},
+	{ immediate: true },
+);
+
+// the page's conversation has begun once the person said something: the empty page's button steps aside
+watch(
+	() => messages.value.some((message) => message.role === "user"),
+	(said) => said && markNoraStarted(String(route.params.pageId || "")),
 	{ immediate: true },
 );
 </script>

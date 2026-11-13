@@ -47,6 +47,45 @@ def site_creation_page(website_profile: str | None = None) -> dict:
     return {"page_id": page.name, "created": True}
 
 
+@frappe.whitelist()
+@builder_role_required()
+def page_kickoff(page_id: str) -> dict:
+    """What « Design with Nora » starts on an empty page of the editor (13.11): the site's conversation (`site`) when no
+    other page of its site is built yet, else this page's; and whether the editor's conversation of the page has begun
+    (`started`: a message of the person), when the button is no longer offered."""
+    from builder.ai.session import AISession
+    from builder.site_ai.nora.site_chat import not_site_sessions
+
+    if not page_id or not frappe.db.exists("Builder Page", page_id):
+        return {"site": False, "started": False}
+    filters: dict = {"is_template": 0, "name": ("!=", page_id)}
+    if frappe.db.has_column("Builder Page", "neo_website_profile"):
+        profile = frappe.db.get_value("Builder Page", page_id, "neo_website_profile")
+        filters["neo_website_profile"] = profile if profile else ("is", "not set")
+    others = frappe.get_all("Builder Page", filters=filters, fields=["blocks", "draft_blocks"], limit=200)
+    built = any(has_content(page.draft_blocks) or has_content(page.blocks) for page in others)
+    # the editor's conversations only: the Website tab's live on the site's home page too
+    sessions = frappe.get_all(
+        AISession.DOCTYPE,
+        filters={"page": page_id, "session_user": frappe.session.user, **not_site_sessions(page_id)},
+        pluck="name",
+    )
+    started = bool(sessions) and bool(
+        frappe.db.exists(AISession.MESSAGE_DOCTYPE, {"session": ("in", sessions), "role": "user"})
+    )
+    return {"site": not built, "started": started}
+
+
+def has_content(blocks: str | None) -> bool:
+    """Whether a page's block tree holds anything under its root (a new page is a root and nothing else)."""
+    try:
+        tree = json.loads(blocks or "[]")
+    except ValueError:
+        return False
+    root = tree[0] if isinstance(tree, list) and tree else tree if isinstance(tree, dict) else {}
+    return bool(isinstance(root, dict) and root.get("children"))
+
+
 def site_home_page(website_profile: str | None = None) -> str | None:
     """The site's existing page that hosts its conversation, without creating one: the profile's
     home page, else its page at « home » or « index », else its first page; None when the site
