@@ -2525,6 +2525,23 @@ def build_site(ctx, spec: dict) -> str:
     lang_code = lang_code[:2] if lang_code[:2] in ("fr", "en", "de", "it") else "fr"
     primary = (spec.get("primary_color") or "").strip() or None
     secondary = (spec.get("secondary_color") or "").strip() or None
+    # //// Neoffice — the example site the person chose to start from, and how (examples.py, Jérémy 14.11): its colours, type and ground
+    # //// are the site's, its home is read as a reference, the plan is told its sections; `as_is` lays its own pages and rewrites their words
+    from builder.site_ai.nora import examples
+
+    example, example_rows, example_prefix, example_look = None, [], "", {}
+    if spec.get("example_site"):
+        example = examples.find(spec.get("example_site"), lang_code)
+        if example:
+            example_prefix, example_rows = examples.tokens(example)
+            example_look = examples.look(example, example_rows)
+            primary = primary or example_look.get("primary") or None
+            secondary = secondary or example_look.get("secondary") or None
+        else:
+            ai_log("warning", "Example site not found, the site is written without it", example=spec.get("example_site"))
+    example_use = str(spec.get("example_use") or "look") if example else ""
+    if example_use not in examples.USES:
+        example_use = "look" if example else ""
     logo_image = clean_logo(spec.get("logo_image"))
     footer_logo_image = clean_logo(spec.get("footer_logo_image"))
     # //// Neoffice — a run that writes only the pages it names, leaving the rest of the site — and
@@ -2734,6 +2751,9 @@ def build_site(ctx, spec: dict) -> str:
 
     inspiration = {"images": [], "notes": [], "failed": []}
     inspiration_urls, inspiration_images = clean_list(spec.get("inspiration_urls")), clean_list(spec.get("inspiration_images"))
+    # //// Neoffice — the example's home is the first reference of the site (examples.py): the brief and the plan see it
+    if example and example.get("url") and example["url"] not in inspiration_urls:
+        inspiration_urls = [example["url"], *inspiration_urls]
     if inspiration_urls or inspiration_images:
         _progress(ctx, job_id, _("Reading the inspirations"), 5)
         try:
@@ -2767,6 +2787,9 @@ def build_site(ctx, spec: dict) -> str:
     background_mode = (spec.get("background_mode") or "auto").strip().lower()
     if background_mode not in ("light", "dark"):
         background_mode = "auto"
+    # //// Neoffice — an example's ground is the site's (examples.look)
+    if background_mode == "auto" and example_look.get("background_mode"):
+        background_mode = example_look["background_mode"]
     background_prompt = ""
     if background_mode == "light":
         background_prompt = (
@@ -2887,6 +2910,14 @@ def build_site(ctx, spec: dict) -> str:
         brief = get_default_brief(theme="modern", primary_color=primary, secondary_color=secondary)
     primary = primary or getattr(brief, "primary_color", None)
     secondary = secondary or getattr(brief, "secondary_color", None)
+    # //// Neoffice — an example's type is the site's (examples.look): the chrome and the tokens take it from the brief
+    if example_look.get("heading_font"):
+        for field, key in (("heading_font", "heading_font"), ("body_font", "body_font")):
+            if example_look.get(key):
+                try:
+                    setattr(brief, field, example_look[key])
+                except Exception:
+                    pass
 
     # 4. the design system as tokens, and the chrome from the brief
     # //// Neoffice — a prefix no other site of the instance holds (unique_token_prefix)
@@ -2897,6 +2928,14 @@ def build_site(ctx, spec: dict) -> str:
         handles.update(mint_grid_tokens(prefix, profile or site_name, choose_layout_system(spec.get("style_direction"), brief)))
     except Exception as e:
         ai_log("warning", "Grid tokens failed", error=str(e)[:200])
+    # //// Neoffice — and its tokens, as they are, over the ones just minted: colours, type, container and gutters (examples.adopt_tokens)
+    if example_rows:
+        try:
+            adopted = examples.adopt_tokens(example_rows, prefix, profile or site_name, _write_token)
+            frappe.db.commit()
+            ai_log("info", "Example tokens adopted", example=example["name"], use=example_use, tokens=adopted)
+        except Exception as e:
+            ai_log("warning", "Example tokens not adopted", error=str(e)[:200])
     palette = palette_values(prefix)
     # //// Neoffice — see the block marker above: text made readable on background
     readable = ensure_readable_text(prefix, palette)
@@ -2970,6 +3009,35 @@ def build_site(ctx, spec: dict) -> str:
             # //// Neoffice — and the ground the client chose reaches every page brief (2026-09-17)
             "background_mode": background_mode}
     site["sells"] = _sells_here
+    # //// Neoffice — the example whose look the site takes: the plan is told its pages and their sections (examples.plan_lines); with `as_is`
+    # //// its own pages are fetched, to be laid on the site and written again for the business in write_page (examples.page_from_example)
+    example_pages, example_links, example_facts = {}, {}, ""
+    if example:
+        try:
+            site["example_plan"] = examples.plan_lines(example)
+        except Exception as e:
+            ai_log("warning", "Example sections not read for the plan", error=str(e)[:200])
+        if example_use == "as_is":
+            example_links = examples.route_map(example, pages)
+            for wanted in pages:
+                candidate = examples.matching_page(example, wanted)
+                found = examples.bundle(candidate["name"]) if candidate else None
+                if found:
+                    example_pages[wanted["route"]] = found
+            example_facts = "\n".join(
+                line
+                for line in (
+                    f"- name: {site_name}",
+                    f"- what it does: {activity}",
+                    f"- what makes it different: {spec.get('differentiators')}" if spec.get("differentiators") else "",
+                    f"- its categories: {', '.join(categories)}" if categories else "",
+                    f"- its brands: {', '.join(brands)}" if brands else "",
+                    f"- contact: {contact_prompt.strip()}" if contact_prompt else "",
+                    ("- its own words, from its previous pages: " + " ".join(t["text"] for t in client_texts)[:3000]) if client_texts else "",
+                )
+                if line
+            )
+        ai_log("info", "Example site taken", example=example["name"], use=example_use, laid=sorted(example_pages))
     # //// Neoffice ▼▼▼ — the site plan (site_plan.py, 2026-09-16): every page's sections decided
     # //// once, by the model that thinks best, from the brief and the client's material — logo,
     # //// references, their photographs and what the vision read in them, categories, brands —
@@ -3088,17 +3156,36 @@ def build_site(ctx, spec: dict) -> str:
             {"role": "user", "content": f"Build this page now:\n{brief_text}"},
         ]
         blocks, data_script, error = [], "", None
+        # //// Neoffice — a page the example has, with `as_is`: its own blocks laid and its words and photographs written again
+        # //// (examples.page_from_example), then the same passes as a written page; the writer writes it when that fails
+        example_found = example_pages.get(page["route"]) if page["type"] != "legal" else None
         for attempt in range(2):
             try:
-                # //// Neoffice — a first attempt cut at the provider's output ceiling is asked again for a
-                # //// more compact page; the second keeps what it gets (OutputCut, _stream_text)
-                with meter.kind(meter.WRITING):
-                    raw = _stream_text(ctx, page_model, messages, llm.TASK_PARAMS["complex"], keep_cut=attempt == 1)
-                blocks, data_script = expand_page_yaml(BlockCodec.strip_fences(raw))
+                blocks = []
+                if example_found is not None:
+                    with meter.kind(meter.WRITING):
+                        laid, done = examples.page_from_example(
+                            example_found, example_prefix, prefix, example_links, page, example_facts, language, page_model, client_photos,
+                            notes="\n".join(x for x in (revision or "", *(notes or [])) if x),
+                        )
+                    if laid:
+                        blocks, data_script, raw = laid, "", ""
+                        photos = [*(photos or []), *(p["url"] for p in client_photos)]
+                        ai_log("info", "Example page laid and written again", page=page["title"], example=example["name"], texts=done["texts"],
+                               photos=done["photos"], made=done["made"], emptied=done["emptied"][:6])
+                    else:
+                        example_found = None
+                        ai_log("warning", "Example page not written again, the writer writes it", page=page["title"])
+                if not blocks:
+                    # //// Neoffice — a first attempt cut at the provider's output ceiling is asked again for a
+                    # //// more compact page; the second keeps what it gets (OutputCut, _stream_text)
+                    with meter.kind(meter.WRITING):
+                        raw = _stream_text(ctx, page_model, messages, llm.TASK_PARAMS["complex"], keep_cut=attempt == 1)
+                    blocks, data_script = expand_page_yaml(BlockCodec.strip_fences(raw))
                 # //// Neoffice — a page written without the words of its headings is asked for again, once, with the
                 # //// elements named: the visual check only saw "a hero with no headline" after a screenshot round
                 # //// and its revision did not know which elements had no text (layout.textless_blocks)
-                if attempt == 0 and blocks:
+                if attempt == 0 and blocks and example_found is None:
                     from builder.site_ai.nora.layout import textless_blocks
 
                     missing = textless_blocks(blocks)

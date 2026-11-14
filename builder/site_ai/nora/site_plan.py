@@ -180,6 +180,9 @@ def plan_prompt(site: dict, brief, pages: list[dict], includes_by_route: dict[st
     ]
     if site.get("inspiration"):
         lines.append("INSPIRATIONS the client likes (echo the palette and the mood, never copy): " + " | ".join(site["inspiration"]))
+    # //// Neoffice — the example site whose look the site takes: its pages and their sections, in order (examples.plan_lines, 14.11)
+    if site.get("example_plan"):
+        lines.append(site["example_plan"])
     if site.get("categories"):
         lines.append("CATEGORIES in the client's words, in this order: " + ", ".join(site["categories"]))
     if site.get("brands"):

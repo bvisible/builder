@@ -84,6 +84,13 @@ def answers_of_the_conversation(session_id: str | None) -> dict:
                 found["photos"] = files
             elif links and _words(label, "site", "lien", "link", "url", "web"):
                 found["inspiration_urls"] = links
+            # //// Neoffice — a choice with a picture answers with its address: the example site the person picked (examples.py)
+            elif links and label.startswith("(chosen image"):
+                from builder.site_ai.nora import examples
+
+                chosen = examples.find(links[0].rstrip(")"))  # the reply closes the address with a parenthesis
+                if chosen:
+                    found["example_site"] = chosen["name"]
             elif _words(label, "langue", "language", "sprache", "lingua"):
                 code = next((c for k, c in LANGUAGES.items() if k in value.lower()), None)
                 if code:
@@ -197,6 +204,9 @@ generate_site = Tool(
             # //// Neoffice — the texts of the pages a rebuild replaces, kept when the person says so (page_texts, #2624)
             "keep_texts": {"type": "boolean", "description": "True when the person answered 'keep my texts': every new page is written from the words of the page it replaces (same route or title), their prices, dates, names, people and testimonials kept. Default false: the site is written from the brief alone."},
             # //// Neoffice — whose business the site is, the person's answer kept on the site's record (site_builder.business_to_ask, 14.11)
+            # //// Neoffice — the example site the person chose to start from, and how (examples.py, Jérémy 14.11)
+            "example_site": {"type": "string", "description": "The name of the example site the person chose in step 1c, exactly as listed. Leave it out when they chose none."},
+            "example_use": {"type": "string", "enum": ["look", "as_is"], "description": "The person's answer to step 1d: 'look' writes the site in the example's colours, type and section layout with their words and photographs; 'as_is' lays the example's pages on the site and writes every word and photograph of them again."},
             "instance_business": {"type": "boolean", "description": "The person's answer to 'is this site one of the company this instance belongs to (or one of its brands)?': true shows the company's contact details, team, history, opening hours and shop on the site; false shows none of them. Pass it ONLY when the person answered that question, never a guess: left out, the build asks for it when it is needed."},
         },
         "required": ["site_name", "activity", "pages", "language"],
