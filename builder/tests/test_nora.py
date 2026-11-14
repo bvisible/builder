@@ -702,8 +702,12 @@ class TestAQuestionWrittenAsABulletList(unittest.TestCase):
 	def test_a_list_of_routes_is_a_fact_not_an_option(self):
 		self.assertIsNone(self.card("Quelles pages existent ?\n\n- Accueil : /\n- À propos : /a-propos\n- Contact : /contact"))
 
-	def test_two_bullets_are_not_a_choice_worth_a_card(self):
-		self.assertIsNone(self.card("Tu préfères quoi ?\n\n- Clair\n- Foncé"))
+	def test_two_bullets_right_under_a_question_are_a_card(self):
+		"""Two answers were left out on purpose (2026-09-16), and a real question of two answers then stayed raw text the person
+		could not tap, twice (whose business the site is, 14.11). They count when the question sits right over them."""
+		card = self.card("Tu préfères quoi ?\n\n- Clair\n- Foncé")
+		self.assertEqual([o["label"] for o in card["ui"][0]["options"]], ["Clair", "Foncé"])
+		self.assertIsNone(self.card("Tu préfères quoi ?\nJ'ai noté deux pistes :\n- Clair\n- Foncé"))
 
 	def test_the_bracketed_shape_still_wins(self):
 		"""The explicit syntax keeps its own parser: the bullet reader is the last resort."""

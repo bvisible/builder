@@ -170,6 +170,21 @@ class TestChoicesWrittenAsACall(unittest.TestCase):
 		card = parse_card("J'ai fait deux choses.\n- Accueil réécrite\n- Menu mis à jour\n[buttons: Continuer]")
 		self.assertNotIn("choices", [el["kind"] for el in card["ui"]])
 
+	def test_a_question_of_two_answers_with_no_button_is_a_card(self):
+		"""The same question written with the company's name and no button line: two bullets closing the message stayed raw
+		text, the safety net asking three where no button is written (14.11)."""
+		text = (
+			"Le site est-il celui de Dupont & Fils SA ou d'une de ses marques, ou celui d'une autre entreprise ?\n"
+			"* Oui, Dupont & Fils SA\n"
+			"* Non, une autre entreprise"
+		)
+		card = parse_card(text)
+		self.assertEqual(card["text"], "Le site est-il celui de Dupont & Fils SA ou d'une de ses marques, ou celui d'une autre entreprise ?")
+		self.assertEqual(card["ui"], [{"kind": "choices", "options": [{"label": "Oui, Dupont & Fils SA"}, {"label": "Non, une autre entreprise"}]}])
+		# two lines that do not sit right under the question, or with no question at all, stay what they are
+		self.assertIsNone(parse_card("Vous voulez la suite ?\nVoici ce que j'ai fait :\n- Accueil réécrite\n- Menu mis à jour"))
+		self.assertIsNone(parse_card("J'ai fait deux choses.\n- Accueil réécrite\n- Menu mis à jour"))
+
 	def test_a_report_over_one_button_stays_a_report(self):
 		card = parse_card("J'ai fait trois choses.\n- Accueil réécrite\n- Photos placées\n- Menu mis à jour\n[buttons: Continuer]")
 		self.assertNotIn("choices", [el["kind"] for el in card["ui"]])

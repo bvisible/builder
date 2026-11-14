@@ -260,6 +260,9 @@ def _bullet_choices(text: str, minimum: int = 3) -> dict | None:
         options.append(option)
     if len(options) < minimum:
         return None
+    # two answers are a question's only when the question sits right over them: a line between, and they are a report
+    if len(options) < 3 and any(lines[i].strip() for i in range(question_at + 1, first_bullet)):
+        return None
     question = lines[question_at].strip()
     return {
         "text": question,
@@ -307,7 +310,16 @@ def parse_card(text: str) -> dict | None:
     if not groups:
         # //// Neoffice — no bracket, no brace: the plain markdown a model writes when it
         # //// forgets the tool altogether (see _bullet_choices)
-        return _bullet_choices(text or "")
+        card = _bullet_choices(text or "")
+        if card:
+            return card
+        # //// a question of two answers closing the message, no button written (« is the site the company's or another
+        # //// business's? » / « Oui, … » / « Non, … », 14.11): a lone single-select choices, which submits on tap
+        listed = _listed_above(text or "")
+        if listed:
+            head, element = listed
+            return {"text": head[:600] or "…", "ui": [element]}
+        return None
     ui: list[dict] = []
     has_control = False
     for kind, multi, body in groups:
