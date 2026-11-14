@@ -475,3 +475,57 @@ class TestFiguresOfTheExample(HubCase):
 		)
 		examples.rewrite(blocks, {"title": "Accueil"}, "", "French", "m", [], call=lambda p, s: next(calls))
 		self.assertEqual(blocks[0]["children"][2]["children"][0]["innerHTML"], "Géométrie 3D en")
+
+
+class TestTheExamplesAreAlwaysShown(HubCase):
+	"""The model skipped step 1c once and went straight to the pages (14.11): a site being made is not built before the person saw them."""
+
+	def test_a_conversation_that_showed_them_is_told_apart(self):
+		with mock.patch.object(
+			examples.frappe, "get_all", return_value=[SimpleNamespace(content="Pages ?", metadata_json="{}")]
+		):
+			self.assertFalse(examples.shown("s1"))
+		card = SimpleNamespace(
+			content="",
+			metadata_json=json.dumps(
+				{"ui": [{"kind": "choices", "options": [{"image": GARAGE["thumbnail"]}]}]}
+			),
+		)
+		with mock.patch.object(examples.frappe, "get_all", return_value=[card]):
+			self.assertTrue(examples.shown("s1"))
+		self.assertTrue(examples.shown(None), "a build run from the console has no conversation")
+
+	def test_a_new_site_is_sent_back_to_step_1c(self):
+		from builder.site_ai.nora import tools
+
+		ctx = SimpleNamespace(session_id="s1", page_id="page-1")
+		with (
+			mock.patch.object(tools, "recap_was_presented", return_value=True),
+			mock.patch.object(examples, "first_site", return_value=True),
+			mock.patch.object(examples, "shown", return_value=False),
+			mock.patch("builder.site_ai.nora.site_builder.build_site", return_value="BUILT"),
+		):
+			self.assertEqual(
+				tools.run_generate_site(ctx, {"site_name": "X", "website_profile": "P"}),
+				examples.EXAMPLES_FIRST,
+			)
+			self.assertEqual(
+				tools.run_generate_site(
+					ctx, {"site_name": "X", "website_profile": "P", "example_site": "garage"}
+				),
+				"BUILT",
+			)
+			self.assertEqual(
+				tools.run_generate_site(ctx, {"site_name": "X", "website_profile": "P", "scope": "pages"}),
+				"BUILT",
+			)
+		with (
+			mock.patch.object(tools, "recap_was_presented", return_value=True),
+			mock.patch.object(examples, "first_site", return_value=False),
+			mock.patch("builder.site_ai.nora.site_builder.build_site", return_value="BUILT"),
+		):
+			self.assertEqual(
+				tools.run_generate_site(ctx, {"site_name": "X", "website_profile": "P"}),
+				"BUILT",
+				"a site rebuilt is not",
+			)

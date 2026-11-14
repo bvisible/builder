@@ -147,6 +147,35 @@ def playbook_line(lang: str = "fr") -> str:
     )
 
 
+def shown(session_id: str | None, lang: str = "fr") -> bool:
+    """Whether the conversation showed the person the example sites (step 1c): a card of Nora's that carries an example's picture or link, or
+    a reply that picked one."""
+    if not session_id:
+        return True
+    marks = {m for e in examples(lang) for m in (e["thumbnail"], e["url"]) if m}
+    if not marks:
+        return True
+    from builder.ai.session import AISession
+
+    rows = frappe.get_all(AISession.MESSAGE_DOCTYPE, filters={"session": session_id}, fields=["content", "metadata_json"])
+    return any(mark in f"{row.content or ''} {row.metadata_json or ''}" for row in rows for mark in marks)
+
+
+def first_site(profile: str | None) -> bool:
+    """Whether the site has no published page yet: a site being made, not one rebuilt."""
+    filters = {"published": 1, "is_template": 0}
+    if frappe.db.has_column("Builder Page", "neo_website_profile"):
+        filters["neo_website_profile"] = profile if profile else ("is", "not set")
+    return not frappe.db.count("Builder Page", filters)
+
+
+EXAMPLES_FIRST = (
+    "NOT BUILT: the person has not seen the example sites (step 1c of the playbook). Show them now, with ONE present_ui card as step 1c "
+    "says (the links to open each one whole, then the choices with their pictures and « Sans exemple »), ask step 1d if they pick one, then "
+    "call generate_site again with the same arguments plus example_site and example_use — or as they are when they chose no example."
+)
+
+
 # ---------------------------------------------------------------- what an example looks like
 
 

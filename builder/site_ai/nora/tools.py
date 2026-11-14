@@ -142,6 +142,18 @@ def run_generate_site(ctx, args: dict) -> str:
     # a whole site waits for the recap the person approved; a page or two of a site that exists does not (scope='pages')
     if str((args or {}).get("scope") or "site") != "pages" and not recap_was_presented(getattr(ctx, "session_id", None)):
         return RECAP_FIRST
+    # //// Neoffice — a site being made is never built before the person saw the example sites (examples.py, Jérémy 14.11: « il faudrait
+    # //// pouvoir voir »): the model skipped step 1c once and went straight to the pages
+    if str((args or {}).get("scope") or "site") != "pages" and not (args or {}).get("example_site"):
+        from builder.site_ai.nora import examples
+        from builder.site_ai.nora.prompts import page_profile
+
+        try:
+            profile = (args or {}).get("website_profile") or page_profile(getattr(ctx, "page_id", None))
+            if examples.first_site(profile) and not examples.shown(getattr(ctx, "session_id", None)):
+                return examples.EXAMPLES_FIRST
+        except Exception as e:
+            frappe.log_error("generate_site: examples not checked", str(e))
     # the logo, the photographs, the sites they like and the language the person gave on the cards reach the build
     args = with_the_persons_answers(getattr(ctx, "session_id", None), args or {})
     if args.get("instance_business") in (None, ""):
