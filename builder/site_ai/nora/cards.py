@@ -223,11 +223,12 @@ MULTI_HINT = re.compile(r"plusieurs choix|choix multiples|multi[- ]?select|selec
 NOT_AN_OPTION = re.compile(r"https?://|(?:^|\s)/[a-z0-9\-/]+")
 
 
-def _bullet_choices(text: str) -> dict | None:
-    """A question line followed by at least three option bullets, as a choices card.
+def _bullet_choices(text: str, minimum: int = 3) -> dict | None:
+    """A question line followed by at least three option bullets (`minimum`), as a choices card.
 
     Deliberately narrow: without the question mark this is a report, and turning a summary's
-    bullet list into a card would put a control under a sentence that asked nothing."""
+    bullet list into a card would put a control under a sentence that asked nothing. Two bullets
+    are enough only where the text says more (_listed_above: they sit right over the card's buttons)."""
     lines = [line.rstrip() for line in (text or "").split("\n")]
     # //// the first bullet, then the nearest question above it: the question line often trails a
     # //// parenthesis ("… ? (plusieurs choix possibles)"), so it is not enough to end on "?"
@@ -257,7 +258,7 @@ def _bullet_choices(text: str) -> dict | None:
         if len(parts) > 1 and parts[1].strip():
             option["description"] = parts[1].strip()
         options.append(option)
-    if len(options) < 3:
+    if len(options) < minimum:
         return None
     question = lines[question_at].strip()
     return {
@@ -287,7 +288,9 @@ def _listed_above(lead: str) -> tuple[str, dict] | None:
         if label:
             element["label"] = label[:120]
         return head, element
-    card = _bullet_choices(lead)
+    # a question of two answers is a question too, once its bullets sit right over the buttons: « this site is the
+    # company's / another business's » stayed raw text over « [buttons: Continuer] » (14.11, osiris)
+    card = _bullet_choices(lead, minimum=2)
     if not card:
         return None
     # the question stays the card's text, said once

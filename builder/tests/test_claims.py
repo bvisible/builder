@@ -148,6 +148,28 @@ class TestChoicesWrittenAsACall(unittest.TestCase):
 		self.assertEqual([o["label"] for o in group["options"]], ["Reconstruire avec une autre direction", "Publier telle quelle", "Je la finis moi-même"])
 		self.assertEqual(group["options"][0]["description"], "je réécris la page, en gardant vos tarifs")
 
+	def test_a_question_of_two_answers_over_the_buttons_is_a_card(self):
+		"""Whose business the site is, asked as text with its two answers as bullets over « [buttons: Continuer] »: two
+		bullets were not enough for a choice, present_ui bounced the card and the raw text stayed on screen (14.11)."""
+		from builder.ai.agent.tools.conversation import listed_choices_over_one_button
+
+		text = (
+			"Une dernière chose avant de lancer la construction : ce site est-il pour Dupont & Fils SA elle-même, ou pour une "
+			"autre entreprise ?\n"
+			"* Ce site est à Dupont & Fils SA — ses coordonnées, son équipe et sa boutique y apparaissent\n"
+			"* C'est le site d'une autre entreprise — aucun de ces éléments n'y figure\n"
+			"[buttons: Continuer]"
+		)
+		card = parse_card(text)
+		self.assertTrue(card["text"].endswith("ou pour une autre entreprise ?"))
+		group = card["ui"][0]
+		self.assertEqual(group["kind"], "choices")
+		self.assertEqual([o["label"] for o in group["options"]], ["Ce site est à Dupont & Fils SA", "C'est le site d'une autre entreprise"])
+		self.assertFalse(listed_choices_over_one_button(card["text"], card["ui"]), "present_ui takes it")
+		# two bullets with no question above them stay a report
+		card = parse_card("J'ai fait deux choses.\n- Accueil réécrite\n- Menu mis à jour\n[buttons: Continuer]")
+		self.assertNotIn("choices", [el["kind"] for el in card["ui"]])
+
 	def test_a_report_over_one_button_stays_a_report(self):
 		card = parse_card("J'ai fait trois choses.\n- Accueil réécrite\n- Photos placées\n- Menu mis à jour\n[buttons: Continuer]")
 		self.assertNotIn("choices", [el["kind"] for el in card["ui"]])
