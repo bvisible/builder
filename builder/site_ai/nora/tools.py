@@ -196,6 +196,8 @@ generate_site = Tool(
             },
             # //// Neoffice — the texts of the pages a rebuild replaces, kept when the person says so (page_texts, #2624)
             "keep_texts": {"type": "boolean", "description": "True when the person answered 'keep my texts': every new page is written from the words of the page it replaces (same route or title), their prices, dates, names, people and testimonials kept. Default false: the site is written from the brief alone."},
+            # //// Neoffice — whose business the site is, the person's answer kept on the site's record (site_builder.business_to_ask, 14.11)
+            "instance_business": {"type": "boolean", "description": "The person's answer to 'is this site one of the company this instance belongs to (or one of its brands)?': true shows the company's contact details, team, history, opening hours and shop on the site; false shows none of them. Pass it ONLY when the person answered that question, never a guess: left out, the build asks for it when it is needed."},
         },
         "required": ["site_name", "activity", "pages", "language"],
     },

@@ -1028,6 +1028,10 @@ def _other_business(profile: str | None, site_name: str = "") -> bool:
     try:
         if frappe.db.get_value("Website Profile", profile, "is_default"):
             return False
+        # //// Neoffice — the person's answer, kept on the site's record, decides before any guess (answered_business)
+        answer = answered_business(profile)
+        if answer:
+            return answer == ANOTHER_BUSINESS
         company = frappe.db.get_single_value("Global Defaults", "default_company") or ""
         title = frappe.db.get_value("Website Profile", profile, "title") or ""
     except Exception:
@@ -1041,6 +1045,83 @@ def _other_business(profile: str | None, site_name: str = "") -> bool:
         if theirs and (mine in theirs or theirs in mine):
             return False
     return True
+
+
+# //// Neoffice — whose business a site is, asked once by Nora and kept on the site's record (Jérémy, 14.11). « A site with Nora »
+# //// names the site's record after the site, so the guess above took every site created that way for a brand of the instance's
+# //// company: a beauty institute's test site showed the test company's name, telephone and address, and a sports centre's
+# //// classes. The name cannot tell a brand of the company from another business; the person can, once.
+SITE_BUSINESS_FIELD = "site_business"
+OUR_COMPANY = "Our Company"
+ANOTHER_BUSINESS = "Another Business"
+
+
+def _can_keep_the_answer() -> bool:
+    """Whether the site's record has the field that keeps the answer (neoffice_theme's Website Profile)."""
+    try:
+        return bool(frappe.db.has_column("Website Profile", SITE_BUSINESS_FIELD))
+    except Exception:
+        return False
+
+
+def answered_business(profile: str | None) -> str | None:
+    """OUR_COMPANY or ANOTHER_BUSINESS as the person answered it for this site, None while nobody has."""
+    if not profile or not _can_keep_the_answer():
+        return None
+    value = frappe.db.get_value("Website Profile", profile, SITE_BUSINESS_FIELD)
+    return value if value in (OUR_COMPANY, ANOTHER_BUSINESS) else None
+
+
+def business_to_ask(profile: str | None, site_name: str = "") -> str | None:
+    """The instance's company Nora asks about — is this site its own? — or None when there is nothing to ask: no site record or
+    the default one, an answer already kept, a site named as the company itself, or a record that cannot keep the answer (an
+    instance whose theme is older: the guess of _other_business stays). '' when the instance names no company."""
+    if not profile or not _can_keep_the_answer():
+        return None
+    try:
+        if frappe.db.get_value("Website Profile", profile, "is_default") or answered_business(profile):
+            return None
+        company = frappe.db.get_single_value("Global Defaults", "default_company") or ""
+    except Exception:
+        return None
+    mine, theirs = _business_key(site_name), _business_key(company)
+    if mine and theirs and (mine in theirs or theirs in mine):
+        return None
+    return company
+
+
+def instance_business_answer(value) -> bool | None:
+    """generate_site's instance_business as True, False or None (not answered), whatever form the model gave it in."""
+    if value is None or value == "":
+        return None
+    if isinstance(value, bool):
+        return value
+    text = str(value).strip().lower()
+    if text in ("true", "yes", "oui", "ja", "si", "sì", "1"):
+        return True
+    if text in ("false", "no", "non", "nein", "0"):
+        return False
+    return None
+
+
+def keep_business_answer(profile: str | None, ours: bool) -> None:
+    """The person's answer, kept on the site's record: asked once, never again, and readable (and changeable) on the record."""
+    if profile and _can_keep_the_answer():
+        frappe.db.set_value("Website Profile", profile, SITE_BUSINESS_FIELD, OUR_COMPANY if ours else ANOTHER_BUSINESS)
+
+
+def business_question(site_name: str, company: str) -> str:
+    """What generate_site answers while whose business the site is was never asked (business_to_ask)."""
+    whose = company or "the company this instance belongs to"
+    return (
+        f"CONFIRM_NEEDED: whose business « {site_name} » is has never been asked, and it decides what the site may show. Ask the "
+        "person ONCE, with ONE present_ui card holding a single-select choices group of two options (it submits on tap), in their "
+        f"language: is « {site_name} » a site of {whose}, the company this instance belongs to, or of one of its brands? Options: "
+        f"'Yes, {company or 'our company'}' (description: its contact details, team, history, opening hours and shop appear on the "
+        f"site) and 'No, another business' (description: none of {whose}'s details appear, only what the person gave). Then call "
+        "generate_site again with the same arguments plus instance_business=true or false. The answer is kept with the site: "
+        "it is never asked again."
+    )
 
 
 # //// Neoffice — added helper and _webshop_installed() below (5efa79d1 "feat(nora): a B2B
@@ -2426,6 +2507,15 @@ def build_site(ctx, spec: dict) -> str:
     profile = (spec.get("website_profile") or "").strip() or page_profile(ctx.page_id)
     if profile and not frappe.db.exists("Website Profile", profile):
         return f"FAILED: unknown website_profile '{profile}'."
+    # //// Neoffice — whose business the site is, asked once and kept (business_to_ask): read before anything that shows the instance's data
+    ours = instance_business_answer(spec.get("instance_business"))
+    if ours is not None:
+        keep_business_answer(profile, ours)
+    else:
+        company = business_to_ask(profile, site_name)
+        if company is not None:
+            ai_log("info", "Site build asks whose business the site is", site_name=site_name, profile=profile)
+            return business_question(site_name, company)
     replace_existing = spec.get("replace_existing") or "auto"
     lang_code = (spec.get("language") or frappe.db.get_single_value("Builder Settings", "default_language") or "fr").strip().lower()
     language = {"fr": "French", "en": "English", "de": "German", "it": "Italian"}.get(lang_code[:2], lang_code)

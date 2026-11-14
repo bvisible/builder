@@ -99,6 +99,29 @@ def existing_texts_line(page_id: str | None) -> str:
         return ""
 
 
+def business_line(page_id: str | None) -> str:
+    """Is the site the instance company's own? asked once before the recap, when the site's record does not say and its name is
+    not the company's (site_builder.business_to_ask, Jérémy 14.11)."""
+    from builder.site_ai.nora.site_builder import business_to_ask
+
+    try:
+        company = business_to_ask(page_profile(page_id))
+    except Exception as e:
+        # a playbook that cannot read the site's record still runs: generate_site asks instead
+        frappe.log_error("Site playbook: whose business unread", str(e))
+        return ""
+    if company is None:
+        return ""
+    whose = f"'{company}'" if company else "the company this instance belongs to"
+    return (
+        f"Whose business this site is has never been asked. Unless the business the person describes IS {whose} itself, ask it ONCE "
+        "before the recap, with ONE present_ui card holding a single-select choices group of two options, in the person's language: "
+        f"is the site {whose}'s own, or one of its brands (its contact details, team, history, opening hours and shop then appear on "
+        "it), or another business's (none of them appear)? Pass the answer as instance_business=true or false to generate_site and "
+        "name it in the recap. It is kept with the site and never asked again."
+    )
+
+
 def person_language_line() -> str:
     """The language the person uses, from their account, the system or the Builder: the model took the language of the English
     examples of the playbook and wrote a French person's first card in English (neoffice-maintenance#2614)."""
@@ -132,6 +155,7 @@ present_ui(text="Which pages do you want?", ui=[{{"kind":"choices","label":"Page
 3. Colours and style. present_ui with FOUR groups in one card: a choices group 'Palette' whose 3 options each carry `colors` (primary, secondary, background hex you propose for this activity), a color_input with two EMPTY slots (Primary, Secondary, no preset value: they are for the user's OWN colours, and the chosen palette's hex are the site colours unless the user typed something there), a choices group 'Layout direction' with 3 options and one-line descriptions (for example an editorial grid, a bold poster, a clean classic layout), and a choices group 'Background' with exactly two options — 'Light' (white and off-white sections, dark text) and 'Dark' (deep near-black sections, light text) — whose answer you pass as background_mode ('light' or 'dark'). ASK it: it is the single choice that decides how the whole site reads, and guessing it wrong means redoing the site. Then an actions button.
 4. The logo, the inspirations and the client's photographs. present_ui with ui=[{{kind:'upload', label:'Logo'}}, {{kind:'upload', label:'Logo for the footer (optional)'}}, {{kind:'input', label:'Sites you like (links)'}}, {{kind:'upload', label:'Pictures you like'}}, {{kind:'upload', label:'Your own photos for the site', multiple:true}}, {{kind:'actions', buttons:[{{label:'Continue'}}, {{label:'Skip', variant:'secondary'}}]}}]. A second mark, when they have one — an emblem, a monogram, a monochrome version — becomes footer_logo_image: the footer wears it instead of repeating the header's. The links become inspiration_urls, ONE PER SITE and ALL of them (up to eight: never keep a shortlist of what the user named). Pictures they LIKE become inspiration_images; pictures that are THEIRS, of their business, their products, their premises, become photos — these are placed in the pages, so ask for them whenever the site is meant to show real photography. {profiles_line(page_id)}
 {existing_texts_line(page_id)}
+{business_line(page_id)}
 5. The recap. present_ui with a heading, a list (name, the site it is built for, pages, language, colours, direction, logo) and actions "Build the site" / "Change something". On approval call generate_site with everything collected (site_name, activity, differentiators, pages, categories, language, primary_color, secondary_color, palette_mode, background_mode, copy_density, style_direction, logo_image, footer_logo_image, inspiration_urls, inspiration_images, photos, website_profile). language is the language the site is WRITTEN in: the one the user asked for, else the language of their messages; never leave it out, the instance default is only a guess (a site asked for in English came out in French). categories lists the segments, categories or collections the user named, each in their words: they are not to be folded into the activity (a home lost its five category tiles that way). The tool writes the pages, the header and footer, the menu, and starts the images; it takes several minutes and reports progress. If it answers CONFIRM_NEEDED, present the question it carries as a confirm card and call it again with the user's choice. When it succeeds, summarise what now exists (pages and routes) in two or three sentences and say the dashboard lists the pages. Never use generate_page to create a site.
 
 - Pictures the person sends in a plain message (addresses such as /files/…, usually after the words "my images" or "mes images") are THEIR OWN pictures - a logo, photographs - given for the site you are about to build. Do NOT put them on the page, do NOT edit or read any block, do NOT call generate_page or edit_component for them: keep their addresses for generate_site (logo_image for a logo, photos for the others), say in one short sentence, in the person's language, that you have them, and carry on with the next unanswered step of this playbook. The picture's addresses are the whole message: do not ask the person to send them again. They ANSWER step 4 (the logo and photographs card): never present that card again after them; go on to the step after the last one answered (the recap, when the rest is known).
