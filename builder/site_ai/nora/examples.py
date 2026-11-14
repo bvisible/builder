@@ -139,9 +139,11 @@ def playbook_line(lang: str = "fr") -> str:
         "1d. When the person picked an example, ask ONCE, with ONE present_ui card holding a single-select choices group of two options, in "
         "their language, how to start from it: « Reprendre son allure » (description: your site is written in its colours, its type and the "
         "layout of its sections, with your words and your photographs) and « Le reprendre tel quel » (description: its pages are laid on your "
-        "site, and every word and every photograph of them is replaced by yours). With an example, step 2 offers the example's pages ticked "
-        "first, step 3 is NOT asked (the colours and the type are the example's), the recap names the example and how it is used, and "
-        "generate_site takes example_site=<its name> and example_use='look' or 'as_is'. Without an example, go on with step 2 as usual."
+        "site, and every word and every photograph of them is replaced by yours). With an example, step 2 is the same card as always (ONE "
+        "multi-select choices group, an option per page with its one-line description, then a Continue button), its first options the "
+        "example's pages, in its order and under its titles, then the other pages that suit the business; step 3 is NOT asked (the colours "
+        "and the type are the example's); the recap names the example and how it is used; generate_site takes example_site=<its name> and "
+        "example_use='look' or 'as_is'. Without an example, go on with step 2 as usual."
     )
 
 

@@ -152,6 +152,10 @@ class TestTheExamplesAreShown(HubCase):
 		self.assertIn("« Le reprendre tel quel »", line)
 		self.assertIn("example_use='look' or 'as_is'", line)
 		self.assertIn("step 3 is NOT asked", line)
+		# a card cannot tick an option for the person: the example's pages come first, and the person ticks them (14.11: a pages card
+		# asked for « ticked » came with no page at all)
+		self.assertNotIn("ticked", line)
+		self.assertIn("its first options the example's pages", line)
 
 	def test_the_title_is_in_the_persons_language(self):
 		self.assertEqual(examples.examples("en")[0]["title"], "Garage: independent workshop")
@@ -330,7 +334,9 @@ class TestItsWordsWrittenAgain(HubCase):
 			answer([("t0", "Atelier"), ("t1", "Le bois"), ("t2", "Nous écrire"), ("t3", "100% bois")]),
 			answer([("t3", "100% bois")]),
 		)
-		self.assertEqual(blocks[0]["children"][2]["children"][0]["innerHTML"], "bois")  # hero, divider, figures
+		self.assertEqual(
+			blocks[0]["children"][2]["children"][0]["innerHTML"], "bois"
+		)  # hero, divider, figures
 		self.assertTrue(done["emptied"][0].startswith("number dropped"))
 
 	def test_a_brace_the_answer_left_at_the_end_is_dropped(self):
