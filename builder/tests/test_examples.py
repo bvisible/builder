@@ -152,6 +152,8 @@ class TestTheExamplesAreShown(HubCase):
 		self.assertIn("« Le reprendre tel quel »", line)
 		self.assertIn("example_use='look' or 'as_is'", line)
 		self.assertIn("step 3 is NOT asked", line)
+		# the model went from the example straight to the recap, without the pages or the logo and photographs (14.11)
+		self.assertIn("Only step 3 is skipped, never step 2 or step 4", line)
 		# a card cannot tick an option for the person: the example's pages come first, and the person ticks them (14.11: a pages card
 		# asked for « ticked » came with no page at all)
 		self.assertNotIn("ticked", line)

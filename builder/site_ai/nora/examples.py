@@ -142,8 +142,9 @@ def playbook_line(lang: str = "fr") -> str:
         "site, and every word and every photograph of them is replaced by yours). With an example, step 2 is the same card as always (ONE "
         "multi-select choices group, an option per page with its one-line description, then a Continue button), its first options the "
         "example's pages, in its order and under its titles, then the other pages that suit the business; step 3 is NOT asked (the colours "
-        "and the type are the example's); the recap names the example and how it is used; generate_site takes example_site=<its name> and "
-        "example_use='look' or 'as_is'. Without an example, go on with step 2 as usual."
+        "and the type are the example's); step 4 (the logo, the sites liked and the person's own photographs) IS asked as always: the "
+        "example's photographs are never the person's. Only step 3 is skipped, never step 2 or step 4. The recap names the example and how it "
+        "is used; generate_site takes example_site=<its name> and example_use='look' or 'as_is'. Without an example, go on with step 2 as usual."
     )
 
 
