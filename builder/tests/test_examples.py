@@ -294,9 +294,7 @@ class TestItsWordsWrittenAgain(HubCase):
 		blocks, _done = self.rewrite(
 			answer([("t0", "<script>x</script>Atelier"), ("t1", "a"), ("t2", "b"), ("t3", "c")], [])
 		)
-		self.assertEqual(
-			blocks[0]["children"][0]["children"][0]["innerHTML"], "&lt;script&gt;x&lt;/script&gt;Atelier"
-		)
+		self.assertEqual(blocks[0]["children"][0]["children"][0]["innerHTML"], "xAtelier")
 
 	def test_a_text_left_out_is_asked_again_then_emptied_never_kept(self):
 		blocks, done = self.rewrite(
@@ -332,6 +330,7 @@ class TestItsWordsWrittenAgain(HubCase):
 		self.assertTrue(suspect("Depuis 2003", "Depuis 2003", ""))
 		blocks, done = self.rewrite(
 			answer([("t0", "Atelier"), ("t1", "Le bois"), ("t2", "Nous écrire"), ("t3", "100% bois")]),
+			answer([("t3", "100% bois")]),
 			answer([("t3", "100% bois")]),
 		)
 		self.assertEqual(
@@ -434,3 +433,45 @@ class TestAGenericLabelKept(HubCase):
 			blocks[0]["children"][0]["children"][1]["innerHTML"], "La précision <em>avant tout</em>"
 		)
 		self.assertEqual(done["emptied"], [])
+
+
+class TestFiguresOfTheExample(HubCase):
+	def test_a_dimension_is_no_quantity(self):
+		from builder.site_ai.nora.examples import quantities, suspect
+
+		self.assertEqual(quantities("Géométrie 3D, pneus 4x4 et 48h"), ["48"])
+		self.assertEqual(suspect("Géométrie 3D", "Géométrie 3D", ""), "")
+
+	def test_a_figure_is_marked_in_the_list(self):
+		texts, pictures = examples.slots(examples.lay_example(BUNDLE, "qtg", "abc", {}))
+		prompt = examples.rewrite_prompt(texts, pictures, {"title": "Accueil"}, "", "French", [])
+		self.assertIn("t3 | figures | p | 48h | FIGURE", prompt)
+		self.assertNotIn("Atelier toutes marques | FIGURE", prompt)
+		self.assertIn("never stated, in digits or in words", prompt)
+
+	def test_a_figure_kept_twice_is_asked_a_third_time_without_digits(self):
+		blocks = examples.lay_example(BUNDLE, "qtg", "abc", {})
+		calls = iter(
+			[
+				answer([("t0", "Carrosserie"), ("t1", "Le bois"), ("t2", "Nous écrire"), ("t3", "48h")]),
+				answer([("t3", "Sous 48h")]),
+				answer([("t3", "Rapide")]),
+			]
+		)
+		done = examples.rewrite(
+			blocks, {"title": "Accueil"}, "", "French", "m", [], call=lambda p, s: next(calls)
+		)
+		self.assertEqual(blocks[0]["children"][2]["children"][0]["innerHTML"], "Rapide")
+		self.assertEqual(done["emptied"], [])
+
+	def test_a_number_taken_out_keeps_a_dimension(self):
+		blocks = examples.lay_example(BUNDLE, "qtg", "abc", {})
+		calls = iter(
+			[
+				answer([("t0", "a"), ("t1", "b"), ("t2", "c"), ("t3", "Géométrie 3D en 48h")]),
+				answer([("t3", "Géométrie 3D en 48h")]),
+				answer([("t3", "Géométrie 3D en 48h")]),
+			]
+		)
+		examples.rewrite(blocks, {"title": "Accueil"}, "", "French", "m", [], call=lambda p, s: next(calls))
+		self.assertEqual(blocks[0]["children"][2]["children"][0]["innerHTML"], "Géométrie 3D en")

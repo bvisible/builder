@@ -398,12 +398,20 @@ def suspect(new: str, original: str, facts: str) -> str:
     if len(plain) > 12 and plain.lower() == before.lower():
         return "the example's own words"
     given = set(re.findall(r"\d+", facts or ""))
-    invented = [n for n in re.findall(r"\d+", plain) if n not in given]
+    invented = [n for n in quantities(plain) if n not in given]
     return f"a number nobody gave ({', '.join(invented)})" if invented else ""
 
 
+NOT_A_QUANTITY = re.compile(r"\b\d+\s*[dD]\b|\b\d+\s*[x×]\s*\d+\b")
+
+
+def quantities(text: str) -> list[str]:
+    """The numbers a text states, a dimension (« 3D ») or a format (« 4x4 ») left out: those are names, not quantities."""
+    return re.findall(r"\d+", NOT_A_QUANTITY.sub(" ", str(text or "")))
+
+
 def safe_text(new: str, original: str) -> str:
-    """The new text, with the inline tags the example's text had kept and any other markup written as text."""
+    """The new text, with the inline tags the example's text had kept and any other tag dropped (its words kept)."""
     # a structured answer sometimes closes a string on the brace of its object: « … adaptée    } »
     new = re.sub(r"\s+[}\]]+\s*$", "", str(new or ""))
     allowed = set(TAG.findall(original or "")) | {"<br>", "<br/>", "<br />"}
@@ -411,7 +419,8 @@ def safe_text(new: str, original: str) -> str:
     for found in TAG.finditer(new or ""):
         out.append(html.escape(new[last : found.start()], quote=False))
         tag = found.group(0)
-        out.append(tag if tag in allowed else html.escape(tag, quote=False))
+        # a tag the example's text did not have is dropped: written as text, « <em> » showed on the page (14.11)
+        out.append(tag if tag in allowed else "")
         last = found.end()
     out.append(html.escape((new or "")[last:], quote=False))
     return "".join(out).strip()
@@ -435,12 +444,19 @@ def rewrite_prompt(texts: list[dict], pictures: list[dict], page: dict, facts: s
         "",
         "Every text below is the text of an EXAMPLE site of another business, laid on this page as it is. Write each one again for THIS business: "
         "the same role (a kicker stays a kicker, a heading a heading, a button a button), about the same length (never more than a third longer), "
-        "the same inline tags in the same places (an <em> on the word to stress, a <br> where the line breaks). Never keep the example's words, "
-        "names, places, figures, prices, years or reviews: they are the example's. A figure, a price or a year nobody gave becomes a short phrase "
-        "without a number (« Sur mesure », « Bois suisse »). A text whose role this business has nothing to say for is still written, short and true.",
+        "the same inline tags in the same places (an <em> on the word to stress, a <br> where the line breaks), and no tag the example's text "
+        "does not have. Never keep the example's words, names, places, figures, prices, years or reviews: they are the example's. Its services, "
+        "equipment, delays, guarantees, team and history are the example's too: state only what THE BUSINESS gave — a list of the example's "
+        "services becomes a list of this business's services as given, never the example's kept or reworded. A figure, a price, a delay, a "
+        "guarantee or a year nobody gave is never stated, in digits or in words: it becomes a short phrase without a number (« Sur mesure », "
+        "« Agréé par les assurances »). A text whose role this business has nothing to say for is still written, short and true.",
         "",
-        "TEXTS (id, section, element, the example's text):",
-        *[f"{t['id']} | {t['section'] or '-'} | {t['element']} | {t['html']}" for t in texts],
+        "TEXTS (id, section, element, the example's text; FIGURE marks a text whose number is the example's):",
+        *[
+            f"{t['id']} | {t['section'] or '-'} | {t['element']} | {t['html']}"
+            + (" | FIGURE: no digit and no number in words unless the business gave it" if quantities(_plain(t['html'])) and not NUMBERING.match(_plain(t['html'])) else "")
+            for t in texts
+        ],
     ]
     if pictures:
         lines += [
@@ -495,6 +511,19 @@ def rewrite(blocks: list, page: dict, facts: str, language: str, model: str, pho
             if text.id in wrong and not suspect(text.text, next(t["html"] for t in texts if t["id"] == text.id), facts):
                 new_texts[text.id] = text.text
                 wrong.pop(text.id)
+        numbered = [k for k, why in wrong.items() if why.startswith("a number")]
+        if numbered:
+            # a figure kept twice: asked once more, with no digit at all, before its number is taken out
+            last = call(
+                rewrite_prompt([t for t in texts if t["id"] in numbered], [], page, facts, language, photos, notes)
+                + "\nThese texts still state a number this business never gave: write each one with NO DIGIT at all and no number in words, a "
+                "short phrase that says what the business does give (« Rapide », « Sur rendez-vous », « Agréé par les assurances »).",
+                REWRITE_SYSTEM,
+            )
+            for text in last.texts if last else []:
+                if text.id in wrong and not suspect(text.text, next(t["html"] for t in texts if t["id"] == text.id), facts):
+                    new_texts[text.id] = text.text
+                    wrong.pop(text.id)
     emptied = []
     for item in texts:
         written = str(new_texts.get(item["id"]) or "").strip()
@@ -509,7 +538,15 @@ def rewrite(blocks: list, page: dict, facts: str, language: str, model: str, pho
             pass
         elif why:
             # a number nobody gave, twice: the text without it
-            written = re.sub(r"\s{2,}", " ", re.sub(r"[\d][\d'’.,]*\s*%?", "", _plain(written))).strip()
+            # a dimension (« 3D ») is kept aside under a mark with no digit in it, the numbers taken out, then it is put back
+            kept = {m.group(0): f"\x00{chr(0xE000 + i)}\x00" for i, m in enumerate(NOT_A_QUANTITY.finditer(_plain(written)))}
+            plain = _plain(written)
+            for name, mark in kept.items():
+                plain = plain.replace(name, mark)
+            plain = re.sub(r"\d[\d'’.,]*\s*(?:%|h\b)?", "", plain)
+            for name, mark in kept.items():
+                plain = plain.replace(mark, name)
+            written = re.sub(r"\s{2,}", " ", plain).strip()
             emptied.append(f"number dropped: {_plain(item['html'])[:30]}")
         item["block"]["innerHTML"] = safe_text(written, item["html"]) if written else ""
     offered = {p["url"]: str(p.get("shows") or "").strip() for p in photos}
