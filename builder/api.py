@@ -2760,6 +2760,7 @@ def _drop_card_photo_in_page(page_name: str, block_id: str):
 
 	try:
 		page = frappe.get_doc("Builder Page", page_name)
+		untouched = _untouched_by_hand(page)  # //// Neoffice — see _untouched_by_hand
 		changed = False
 		for field in ("blocks", "draft_blocks"):
 			blocks_json = page.get(field)
@@ -2770,15 +2771,32 @@ def _drop_card_photo_in_page(page_name: str, block_id: str):
 				page.set(field, json.dumps(blocks))
 				changed = True
 		if changed:
+			_keep_untouched(page, untouched)  # //// Neoffice — see _untouched_by_hand
 			page.save(ignore_permissions=True)
 			frappe.db.commit()
 	except Exception:
 		frappe.log_error("Card photo not taken out", frappe.get_traceback())
 
 
+# //// Neoffice — added (14.11): a page the generator wrote and nobody touched stays the generator's once its pictures are drawn. The
+# //// image job rewrote the blocks without its fingerprint (ai_blocks_hash), and the next rebuild asked to replace « pages made by
+# //// hand » that were the generator's own, exactly the ones with generated photographs (classify_existing_pages).
+def _untouched_by_hand(page) -> bool:
+	"""Whether the page is still as the generator wrote it (its blocks match the fingerprint it left)."""
+	stored = page.get("ai_blocks_hash")
+	return bool(stored) and _blocks_fingerprint(page.get("draft_blocks") or page.get("blocks")) == stored
+
+
+def _keep_untouched(page, was_untouched: bool) -> None:
+	"""After the image job changed an untouched page, its fingerprint follows; a page someone edited is left as it is."""
+	if was_untouched:
+		page.set("ai_blocks_hash", _blocks_fingerprint(page.get("draft_blocks") or page.get("blocks")))
+
+
 def _replace_image_in_page(page_name: str, block_id: str, new_src: str, img_type: str = "img"):
 	"""Replace a placeholder image src in a Builder Page by blockId."""
 	page = frappe.get_doc("Builder Page", page_name)
+	untouched = _untouched_by_hand(page)  # //// Neoffice — see _untouched_by_hand
 
 	for field in ("blocks", "draft_blocks"):
 		blocks_json = page.get(field)
@@ -2789,6 +2807,7 @@ def _replace_image_in_page(page_name: str, block_id: str, new_src: str, img_type
 		if _replace_block_src(blocks, block_id, new_src, img_type=img_type):
 			page.set(field, json.dumps(blocks))
 
+	_keep_untouched(page, untouched)  # //// Neoffice — see _untouched_by_hand
 	page.save(ignore_permissions=True)
 	frappe.db.commit()
 
