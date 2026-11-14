@@ -176,6 +176,32 @@ EXAMPLES_FIRST = (
 )
 
 
+OPEN_WHOLE = {
+    "fr": "Voir les exemples en entier",
+    "en": "See the examples whole",
+    "de": "Die Beispiele ganz ansehen",
+    "it": "Vedere gli esempi per intero",
+}
+
+
+def with_links(ui: list, lang: str | None = None) -> list | None:
+    """The card, with a line of links that open each example it shows whole, in a new tab, put first; None when the card shows no example or
+    already links them."""
+    lang = (lang or "fr")[:2]
+    by_picture = {e["thumbnail"]: e for e in examples(lang) if e.get("thumbnail") and e.get("url")}
+    picked = []
+    for element in ui or []:
+        if isinstance(element, dict) and element.get("kind") == "choices":
+            for option in element.get("options") or []:
+                found = by_picture.get(str((option or {}).get("image") or ""))
+                if found and found not in picked:
+                    picked.append(found)
+    if not picked or any(e["url"] in json.dumps(ui, ensure_ascii=False) for e in picked):
+        return None
+    links = " · ".join(f"[{e['title']}]({e['url']})" for e in picked)
+    return [{"kind": "text", "text": f"{OPEN_WHOLE.get(lang, OPEN_WHOLE['fr'])} : {links}"}, *ui]
+
+
 # ---------------------------------------------------------------- what an example looks like
 
 

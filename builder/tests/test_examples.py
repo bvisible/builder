@@ -531,3 +531,32 @@ class TestTheExamplesAreAlwaysShown(HubCase):
 				"BUILT",
 				"a site rebuilt is not",
 			)
+
+
+class TestTheExamplesCanBeOpened(HubCase):
+	"""The model showed the examples' pictures without the links that open them, once (14.11): the card gets them."""
+
+	def card(self):
+		return [
+			{
+				"kind": "choices",
+				"label": "Exemple",
+				"options": [{"label": "Garage", "image": GARAGE["thumbnail"]}, {"label": "Sans exemple"}],
+			}
+		]
+
+	def test_a_card_of_pictures_gets_its_links(self):
+		ui = examples.with_links(self.card(), "fr")
+		self.assertEqual(ui[0]["kind"], "text")
+		self.assertIn(
+			"[Garage : atelier indépendant](https://hub.example/templates/garage/accueil)", ui[0]["text"]
+		)
+		self.assertTrue(ui[0]["text"].startswith("Voir les exemples en entier"))
+
+	def test_a_card_that_links_them_or_shows_none_is_left(self):
+		linked = [
+			{"kind": "text", "text": "[Garage](https://hub.example/templates/garage/accueil)"},
+			*self.card(),
+		]
+		self.assertIsNone(examples.with_links(linked, "fr"))
+		self.assertIsNone(examples.with_links([{"kind": "choices", "options": [{"label": "Accueil"}]}], "fr"))

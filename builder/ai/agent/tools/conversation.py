@@ -112,6 +112,14 @@ def run_present_ui(ctx, args: dict) -> str | None:
 	from builder.site_ai.nora.cards import buttons_in_the_persons_language
 
 	ui = buttons_in_the_persons_language(ui, getattr(frappe.local, "lang", None))
+	# //// Neoffice — a card that shows the hub's example sites carries the links that open each one whole (examples.with_links): the model
+	# //// left them out once, and the person saw the pictures with no way to see the sites (14.11)
+	from builder.site_ai.nora import examples
+
+	try:
+		ui = examples.with_links(ui, getattr(frappe.local, "lang", None)) or ui
+	except Exception as e:
+		frappe.log_error("present_ui: example links not added", str(e))
 	content = render_ui_text(text, ui)
 	metadata = {"status": "ui", "text": text, "ui": ui}
 	if timeline := ctx.timeline():
