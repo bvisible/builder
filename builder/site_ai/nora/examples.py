@@ -387,8 +387,9 @@ def _plain(text: str) -> str:
 
 
 def suspect(new: str, original: str, facts: str) -> str:
-    """Why a written text cannot stay, or "": the example's own words kept (beyond a short label), or a number the business never gave (a
-    section's numbering, « /01 », kept as it is). It is asked again."""
+    """Why a written text is asked again, or "": the example's own words kept (beyond a short label), or a number the business never gave (a
+    section's numbering, « /01 », kept as it is). After the second answer a missing text is emptied, a number taken out, and the example's
+    words kept: they then fit this business too."""
     plain, before = _plain(new), _plain(original)
     if not plain:
         return "missing"
@@ -498,10 +499,14 @@ def rewrite(blocks: list, page: dict, facts: str, language: str, model: str, pho
     for item in texts:
         written = str(new_texts.get(item["id"]) or "").strip()
         why = wrong.get(item["id"]) or ""
-        if why == "missing" or why == "the example's own words":
-            # never the example's words: an empty text, which the look of the page then shows
+        if why == "missing":
+            # never the example's text for a text that did not come: an empty one, which the look of the page then shows
             emptied.append(_plain(item["html"])[:40])
             written = ""
+        elif why == "the example's own words":
+            # asked again and kept: a label that fits this business too (« Devis annoncé » on a garage and a body shop), never emptied — an
+            # emptied label left a price list with holes the look of the page refused three times (14.11)
+            pass
         elif why:
             # a number nobody gave, twice: the text without it
             written = re.sub(r"\s{2,}", " ", re.sub(r"[\d][\d'’.,]*\s*%?", "", _plain(written))).strip()

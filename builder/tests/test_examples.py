@@ -408,3 +408,29 @@ class TestThePlaybookOrder(unittest.TestCase):
 		self.assertIn(
 			"3. Colours and style. SKIP this step when the person chose an example site in step 1c", text
 		)
+
+
+class TestAGenericLabelKept(HubCase):
+	def test_a_label_kept_twice_stays_never_emptied(self):
+		"""« Devis annoncé » kept twice on a body shop's price list was emptied, and the page was refused three times (14.11)."""
+		blocks = examples.lay_example(BUNDLE, "qtg", "abc", {})
+		calls = iter(
+			[
+				answer(
+					[
+						("t0", "Carrosserie"),
+						("t1", "La précision <em>avant tout</em>"),
+						("t2", "Nous écrire"),
+						("t3", "Sur mesure"),
+					]
+				),
+				answer([("t1", "La précision <em>avant tout</em>")]),
+			]
+		)
+		done = examples.rewrite(
+			blocks, {"title": "Accueil"}, "", "French", "m", [], call=lambda p, s: next(calls)
+		)
+		self.assertEqual(
+			blocks[0]["children"][0]["children"][1]["innerHTML"], "La précision <em>avant tout</em>"
+		)
+		self.assertEqual(done["emptied"], [])
