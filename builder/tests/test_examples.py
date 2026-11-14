@@ -326,6 +326,8 @@ class TestItsWordsWrittenAgain(HubCase):
 		from builder.site_ai.nora.examples import suspect
 
 		self.assertEqual(suspect("/01", "/01", ""), "")
+		self.assertEqual(suspect("02", "02", ""), "")
+		self.assertTrue(suspect("0", "0", ""), "a lone figure of the example is a quantity, not a numbering")
 		self.assertEqual(suspect("Fondé en 1987", "Depuis 2003", "- founded in 1987"), "")
 		self.assertTrue(suspect("Depuis 2003", "Depuis 2003", ""))
 		blocks, done = self.rewrite(

@@ -408,7 +408,8 @@ def slots(blocks: list) -> tuple[list[dict], list[dict]]:
     return texts, pictures
 
 
-NUMBERING = re.compile(r"^/?\d{1,2}\.?$")
+# a section's numbering (« 01 », « /03 »): a lone figure (« 0 », « 48 ») is a quantity, and the example's « 0 » stayed on a page (14.11)
+NUMBERING = re.compile(r"^/?0\d\.?$|^/\d{1,2}$")
 
 
 def _plain(text: str) -> str:
