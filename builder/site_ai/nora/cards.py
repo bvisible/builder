@@ -215,7 +215,9 @@ def _bare_buttons(text: str) -> str:
 # ////     - Accueil — vitrine avec le carrousel de marques
 # ////     - Nos marques — présentation de 9 marques distribuées
 # //// The user sees a list they cannot tick and the build stalls. Read as a choices group.
-BULLET = re.compile(r"^[ \t]*[-*•–][ \t]+(.{2,120})$")
+# an option and its description run past 120 characters: « Oui, <the company> — its contact details, team, history, opening
+# hours and shop appear on the site » was no bullet, and the question it answered stayed raw text (14.11)
+BULLET = re.compile(r"^[ \t]*[-*•–][ \t]+(.{2,300})$")
 # a label and its explanation, separated by an em/en dash or a colon
 OPTION_SPLIT = re.compile(r"\s+[—–]\s+|:\s+")
 MULTI_HINT = re.compile(r"plusieurs choix|choix multiples|multi[- ]?select|select all|mehrere", re.IGNORECASE)
@@ -256,7 +258,7 @@ def _bullet_choices(text: str, minimum: int = 3) -> dict | None:
         parts = OPTION_SPLIT.split(body, maxsplit=1)
         option = {"label": parts[0].strip()}
         if len(parts) > 1 and parts[1].strip():
-            option["description"] = parts[1].strip()
+            option["description"] = parts[1].strip()[:240]
         options.append(option)
     if len(options) < minimum:
         return None

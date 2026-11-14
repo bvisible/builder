@@ -185,6 +185,22 @@ class TestChoicesWrittenAsACall(unittest.TestCase):
 		self.assertIsNone(parse_card("Vous voulez la suite ?\nVoici ce que j'ai fait :\n- Accueil réécrite\n- Menu mis à jour"))
 		self.assertIsNone(parse_card("J'ai fait deux choses.\n- Accueil réécrite\n- Menu mis à jour"))
 
+	def test_an_answer_with_a_long_description_is_still_an_option(self):
+		"""The first answer ran to 179 characters with its description, past the 120 a bullet could hold: no bullet, so no
+		list closing the text, and the question stayed raw text over « [buttons: Continue] » (14.11)."""
+		text = (
+			"Parfait. Cette fromagerie est-elle celle de Dupont & Fils SA ou d'une de ses marques, ou celle d'une autre entreprise ?\n"
+			"* Oui, Dupont & Fils SA — le site est celui de Dupont & Fils SA ou de l'une de ses marques : ses coordonnées, son "
+			"équipe, son histoire, ses horaires et sa boutique figurent sur le site\n"
+			"* Non, une autre entreprise — aucune donnée de Dupont & Fils SA ne figure sur le site\n"
+			"[buttons: Continue]"
+		)
+		card = parse_card(text)
+		group = card["ui"][0]
+		self.assertEqual(group["kind"], "choices")
+		self.assertEqual([o["label"] for o in group["options"]], ["Oui, Dupont & Fils SA", "Non, une autre entreprise"])
+		self.assertTrue(group["options"][0]["description"].endswith("figurent sur le site"))
+
 	def test_a_report_over_one_button_stays_a_report(self):
 		card = parse_card("J'ai fait trois choses.\n- Accueil réécrite\n- Photos placées\n- Menu mis à jour\n[buttons: Continuer]")
 		self.assertNotIn("choices", [el["kind"] for el in card["ui"]])
