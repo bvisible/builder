@@ -1113,14 +1113,17 @@ def keep_business_answer(profile: str | None, ours: bool) -> None:
 def business_question(site_name: str, company: str) -> str:
     """What generate_site answers while whose business the site is was never asked (business_to_ask)."""
     whose = company or "the company this instance belongs to"
+    named = company or "votre entreprise"
     return (
-        f"CONFIRM_NEEDED: whose business « {site_name} » is has never been asked, and it decides what the site may show. Ask the "
-        "person ONCE, with ONE present_ui card holding a single-select choices group of two options (it submits on tap), in their "
-        f"language: is « {site_name} » a site of {whose}, the company this instance belongs to, or of one of its brands? Options: "
-        f"'Yes, {company or 'our company'}' (description: its contact details, team, history, opening hours and shop appear on the "
-        f"site) and 'No, another business' (description: none of {whose}'s details appear, only what the person gave). Then call "
-        "generate_site again with the same arguments plus instance_business=true or false. The answer is kept with the site: "
-        "it is never asked again."
+        f"CONFIRM_NEEDED: whose business « {site_name} » is has never been asked, and it decides what the site may show. This "
+        f"instance belongs to the company {whose}. Ask the person ONCE, with ONE present_ui card holding a single-select choices "
+        f"group of two options (it submits on tap), in their language, whether « {site_name} » is a site of {whose} (the company "
+        f"itself or one of its brands) or of another business. Name {whose} in the question and in the first option, never "
+        f"« {site_name} »: for example « Ce site est-il celui de {named} ou d'une de ses marques, ou celui d'une autre entreprise ? » "
+        f"with « Oui, {named} » (description: its contact details, team, history, opening hours and shop appear on the site) and "
+        f"« Non, une autre entreprise » (description: none of {whose}'s details appear, only what the person gave). Then call "
+        "generate_site again with the same arguments plus instance_business=true or false. The answer is kept with the site: it is "
+        "never asked again."
     )
 
 

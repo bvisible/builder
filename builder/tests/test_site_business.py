@@ -129,9 +129,10 @@ class TestTheBuildAsksFirst(unittest.TestCase):
 		self.assertTrue(answer.startswith("CONFIRM_NEEDED:"), answer)
 		for words in (
 			"« Institut Lumière »",
-			"Dupont & Fils SA",
+			"« Oui, Dupont & Fils SA »",
+			"never « Institut Lumière »",
 			"instance_business=true or false",
-			"No, another business",
+			"« Non, une autre entreprise »",
 		):
 			self.assertIn(words, answer)
 		kept.assert_not_called()
@@ -152,9 +153,12 @@ class TestThePlaybookAsks(unittest.TestCase):
 
 	def test_the_question_is_in_the_playbook_while_it_is_open(self):
 		line = self.line("Dupont & Fils SA")
-		self.assertIn("'Dupont & Fils SA'", line)
+		# the company is named in the question and in its first answer, never the business just described (14.11)
+		self.assertIn("This instance belongs to the company Dupont & Fils SA.", line)
+		self.assertIn("« Oui, Dupont & Fils SA »", line)
+		self.assertIn("never the business the person described", line)
 		self.assertIn("instance_business=true or false", line)
-		self.assertIn("right after step 1", line)
+		self.assertIn("Right after step 1", line)
 		self.assertIn("go on with step 2", line)
 
 	def test_the_question_comes_after_the_business_never_before_the_recap(self):

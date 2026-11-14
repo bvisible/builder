@@ -113,14 +113,19 @@ def business_line(page_id: str | None) -> str:
         return ""
     if company is None:
         return ""
-    whose = f"'{company}'" if company else "the company this instance belongs to"
+    # //// the company is named in the question and its first answer, by an example: told « is the site 'X''s own », the model
+    # //// asked « is the site <the business just described> itself, or another business? », a question with no sense (14.11)
+    owner = company or "the company this instance belongs to"
+    named = company or "votre entreprise"
     return (
-        f"1b. Whose business the site is. It has never been asked: right after step 1, unless the business the person described IS "
-        f"{whose} itself, ask it ONCE with ONE present_ui card holding a single-select choices group of two options, in the person's "
-        f"language: is the site {whose}'s own, or one of its brands (its contact details, team, history, opening hours and shop then "
-        "appear on it), or another business's (none of them appear)? Then go on with step 2: every step below is still asked. Pass the "
-        "answer as instance_business=true or false to generate_site and name it in the recap. It is kept with the site and never "
-        "asked again."
+        f"1b. Whose business the site is. This instance belongs to the company {owner}. Right after step 1, unless the business the "
+        f"person described IS {owner} itself, ask ONCE, with ONE present_ui card holding a single-select choices group of two options, "
+        f"in the person's language, whether the site is {owner}'s own (the company itself or one of its brands: its contact details, "
+        f"team, history, opening hours and shop then appear on the site) or the site of another business (none of {owner}'s details "
+        f"appear). Name {owner} in the question and in the first option, never the business the person described: for example "
+        f"« Ce site est-il celui de {named} ou d'une de ses marques, ou celui d'une autre entreprise ? » with the options "
+        f"« Oui, {named} » and « Non, une autre entreprise ». Then go on with step 2: every step below is still asked. Pass the answer "
+        "as instance_business=true or false to generate_site and name it in the recap. It is kept with the site and never asked again."
     )
 
 
