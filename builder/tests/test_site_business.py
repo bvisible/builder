@@ -154,7 +154,15 @@ class TestThePlaybookAsks(unittest.TestCase):
 		line = self.line("Dupont & Fils SA")
 		self.assertIn("'Dupont & Fils SA'", line)
 		self.assertIn("instance_business=true or false", line)
-		self.assertIn("before the recap", line)
+		self.assertIn("right after step 1", line)
+		self.assertIn("go on with step 2", line)
+
+	def test_the_question_comes_after_the_business_never_before_the_recap(self):
+		# placed before the recap as « one last thing », it made the model jump over the logo and photographs card (14.11)
+		with mock.patch.object(prompts, "business_line", return_value="1b. WHOSE"):
+			text = prompts.site_playbook("page-1")
+		self.assertLess(text.index("1. The business."), text.index("1b. WHOSE"))
+		self.assertLess(text.index("1b. WHOSE"), text.index("2. The pages."))
 
 	def test_nothing_is_asked_once_it_is_known(self):
 		self.assertEqual(self.line(None), "")
