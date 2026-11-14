@@ -2931,7 +2931,10 @@ def build_site(ctx, spec: dict) -> str:
     # //// Neoffice — and its tokens, as they are, over the ones just minted: colours, type, container and gutters (examples.adopt_tokens)
     if example_rows:
         try:
-            adopted = examples.adopt_tokens(example_rows, prefix, profile or site_name, _write_token)
+            # colours the person chose themselves win over the example's: its type, container and gutters are still taken
+            own_colours = bool((spec.get("primary_color") or "").strip())
+            rows = [r for r in example_rows if not (own_colours and r.get("type") == "Color")]
+            adopted = examples.adopt_tokens(rows, prefix, profile or site_name, _write_token)
             frappe.db.commit()
             ai_log("info", "Example tokens adopted", example=example["name"], use=example_use, tokens=adopted)
         except Exception as e:

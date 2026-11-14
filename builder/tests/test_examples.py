@@ -400,3 +400,11 @@ class TestThePlaybookOrder(unittest.TestCase):
 			text = prompts.site_playbook("page-1")
 		self.assertLess(text.index("1. The business."), text.index("1c. EXAMPLES"))
 		self.assertLess(text.index("1c. EXAMPLES"), text.index("2. The pages."))
+		# the steps the example changes say it themselves: told only in 1d, the model still asked the colours (14.11)
+		self.assertIn(
+			"When the person chose an example site in step 1c, the example's pages are this card's first options",
+			text,
+		)
+		self.assertIn(
+			"3. Colours and style. SKIP this step when the person chose an example site in step 1c", text
+		)
