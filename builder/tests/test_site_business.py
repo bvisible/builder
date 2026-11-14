@@ -175,3 +175,41 @@ class TestThePlaybookAsks(unittest.TestCase):
 		from builder.site_ai.nora import tools
 
 		self.assertEqual(tools.generate_site.parameters["properties"]["instance_business"]["type"], "boolean")
+
+
+class TestTheAnswerGivenOnTheCard(unittest.TestCase):
+	"""The model asked step 1b, then left the answer out of generate_site, and the build asked it a second time (14.11)."""
+
+	def answer(self, *replies):
+		from builder.site_ai.nora import tools
+
+		rows = [SimpleNamespace(content=r) for r in replies]
+		with (
+			mock.patch.object(tools.frappe, "get_all", return_value=rows),
+			mock.patch.object(tools.frappe.db, "get_single_value", return_value="Dupont & Fils SA"),
+		):
+			return tools.business_from_answers("s1")
+
+	def test_the_answer_is_read_from_the_reply(self):
+		self.assertFalse(
+			self.answer("Non, une autre entreprise: aucun détail de Dupont & Fils SA n'apparaît")
+		)
+		self.assertTrue(self.answer("Continuer\nEntreprise: Oui, Dupont & Fils SA"))
+		self.assertFalse(self.answer("Entreprise: No, another business"))
+		self.assertIsNone(self.answer("Vitrine", "Pages: Accueil, Contact"))
+		self.assertTrue(
+			self.answer("Non, une autre entreprise", "Oui, Dupont & Fils SA: finalement c'est notre marque"),
+			"the last answer wins",
+		)
+
+	def test_the_build_gets_it_when_the_model_left_it_out(self):
+		from builder.site_ai.nora import tools
+
+		with (
+			mock.patch.object(tools, "recap_was_presented", return_value=True),
+			mock.patch.object(tools, "with_the_persons_answers", side_effect=lambda s, a: a),
+			mock.patch.object(tools, "business_from_answers", return_value=False),
+			mock.patch("builder.site_ai.nora.site_builder.build_site", side_effect=lambda ctx, spec: spec),
+		):
+			spec = tools.run_generate_site(SimpleNamespace(session_id="s1"), {"site_name": "X"})
+		self.assertIs(spec["instance_business"], False)

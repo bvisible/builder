@@ -98,6 +98,33 @@ def answers_of_the_conversation(session_id: str | None) -> dict:
     return found
 
 
+# //// Neoffice — the answer to step 1b, read from the person's replies (Jérémy 14.11, « Nora le demande »): the model asked it, then left it
+# //// out of generate_site, and the build asked it a second time
+ANOTHER_BUSINESS = re.compile(r"\b(?:une autre entreprise|another (?:business|company)|ein(?:em)? andere[sn]? (?:unternehmen|firma)|un'altra azienda)\b", re.I)
+YES = re.compile(r"^\s*(?:[^:\n]{0,80}:\s*)?(?:oui|yes|ja|s[iì])\b", re.I)
+
+
+def business_from_answers(session_id: str | None) -> bool | None:
+    """The person's answer to « is the site the instance company's own, or another business's? »: True, False, or None when they gave none.
+    Their last answer wins."""
+    if not session_id:
+        return None
+    from builder.ai.session import AISession
+
+    company = str(frappe.db.get_single_value("Global Defaults", "default_company") or "").strip().lower()
+    rows = frappe.get_all(
+        AISession.MESSAGE_DOCTYPE, filters={"session": session_id, "role": "user"}, fields=["content"], order_by="creation asc"
+    )
+    answer = None
+    for row in rows:
+        for line in str(row.content or "").splitlines():
+            if company and company in line.lower() and YES.match(line):
+                answer = True
+            elif ANOTHER_BUSINESS.search(line):
+                answer = False
+    return answer
+
+
 def with_the_persons_answers(session_id: str | None, args: dict) -> dict:
     """The tool's arguments, completed by what the person answered and the model left out."""
     answers = answers_of_the_conversation(session_id)
@@ -117,6 +144,10 @@ def run_generate_site(ctx, args: dict) -> str:
         return RECAP_FIRST
     # the logo, the photographs, the sites they like and the language the person gave on the cards reach the build
     args = with_the_persons_answers(getattr(ctx, "session_id", None), args or {})
+    if args.get("instance_business") in (None, ""):
+        given = business_from_answers(getattr(ctx, "session_id", None))
+        if given is not None:
+            args = {**args, "instance_business": given}
     try:
         return build_site(ctx, args or {})
     except Exception as e:
