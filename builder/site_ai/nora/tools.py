@@ -111,9 +111,12 @@ def business_from_answers(session_id: str | None) -> bool | None:
         return None
     from builder.ai.session import AISession
 
-    # //// Neoffice — the company from Frappe's global defaults, which ERPNext's Global Defaults writes on save: read from
-    # //// « Global Defaults » itself, builder's own tests died on a site without ERPNext (15.11)
-    company = str(frappe.defaults.get_global_default("company") or "").strip().lower()
+    # //// Neoffice — « Global Defaults » is ERPNext's: builder's own tests run on a site without it, where there is no
+    # //// instance company to recognise (15.11), as site_builder's readers of the same value already allow
+    try:
+        company = str(frappe.db.get_single_value("Global Defaults", "default_company") or "").strip().lower()
+    except frappe.DoesNotExistError:
+        company = ""
     rows = frappe.get_all(
         AISession.MESSAGE_DOCTYPE, filters={"session": session_id, "role": "user"}, fields=["content"], order_by="creation asc"
     )
