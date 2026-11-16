@@ -321,6 +321,9 @@ Upstream moved 249 commits from v1.36.6; 24 files conflicted. What the merge dec
 | `builder/plugins/__init__.py` | present | `^def route_guard\(` | the plugin registry lives in the package since 1.38.0 (a package shadows a module of its name): before_request calls builder.plugins.route_guard on every request. |
 | `builder/ai/skills/forms-and-data.md` | absent | `\(contact,` | a contact form is the site's contact_form include, never connect_form: upstream's skill lists contact among the forms to connect. |
 | `builder/ai/prompts.py` | present | `a CONTACT form` | the same rule in the agent's instructions (a second contact form opened a DocType nobody read, 2026-10-19). |
+| `builder/www/404.py` | absent | `^no_cache = 1` | neoffice-maintenance#2727: a module-level no_cache kept every not-found page out of frappe's page cache, so each robot probe rendered the site chrome again (~200 ms of a worker); upstream's 404.py has one. |
+| `builder/www/404.py` | present | `context\.no_cache = 1 if _kept_out_of_the_cache\(installed\) else 0` | same: the page goes into the cache, keyed by language and website profile (our frappe fork's cache_html), unless it depends on the address. |
+| `builder/www/404.py` | present | `if frappe\.session\.user != "Guest":` | same: a signed-in person's rendering is never written to the page cache, which is the anonymous visitor's. |
 
 ### Merge forecast
 

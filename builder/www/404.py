@@ -17,10 +17,13 @@ sentence and no apology.
 """
 
 import frappe
+
 # //// Neoffice — see the module header.
 from frappe import _
 
-no_cache = 1
+# //// Neoffice — no module-level `no_cache` (neoffice-maintenance#2727): it kept every not-found page out of frappe's
+# //// page cache, so each robot probe (/.env, /wp-login.php…) rendered the whole site chrome again, ~200 ms of a
+# //// worker. get_context decides instead, page by page (see `_kept_out_of_the_cache`).
 
 # Routes an app we have not installed yet will own. The generator writes these
 # links on purpose, so the site keeps them and says what they are.
@@ -48,17 +51,16 @@ def get_context(context):
 	path = (frappe.request.path if frappe.request else "").strip("/")
 	root = path.split("/", 1)[0] if path else ""
 
+	# //// Neoffice — the installed apps are read for every address now, not only for a reserved route: the cache
+	# //// decision below needs them (neoffice-maintenance#2727).
+	installed = _installed_apps()
 	reserved = RESERVED.get(root)
-	if reserved:
-		try:
-			installed = set(frappe.get_installed_apps())
-		except Exception:
-			installed = set()
-		# once the app is really there, a 404 under its route is a genuine 404
-		if reserved["app"] in installed:
-			reserved = None
+	# once the app is really there, a 404 under its route is a genuine 404
+	if reserved and reserved["app"] in installed:
+		reserved = None
 
-	context.no_cache = 1
+	# //// Neoffice — frappe's page cache (neoffice-maintenance#2727), see `_kept_out_of_the_cache`.
+	context.no_cache = 1 if _kept_out_of_the_cache(installed) else 0
 	# This page is its own opening statement, centred on the page: the shared
 	# band above it would print the same words a second time.
 	context.show_page_header = False
@@ -80,3 +82,27 @@ def get_context(context):
 		context.menu_items = []
 
 	return context
+
+
+# //// Neoffice — see the module header.
+def _installed_apps() -> set:
+	try:
+		return set(frappe.get_installed_apps())
+	except Exception:
+		return set()
+
+
+# //// Neoffice — neoffice-maintenance#2727.
+def _kept_out_of_the_cache(installed: set) -> bool:
+	"""Whether this rendering must stay out of frappe's page cache.
+
+	The cache holds ONE not-found page per language and per website profile (the key of our frappe fork's
+	cache_html), whatever the address asked, and it is read before get_context runs. So the page may go into it only
+	when it does not depend on the address, and only from a visitor's rendering:
+	- while an app of RESERVED is missing, a reserved route says « Coming soon » and any other address « Page not
+	  found »: one cached page would answer both, so none is cached on such a site;
+	- a signed-in person's rendering is never written: the page cache is the anonymous visitor's.
+	"""
+	if frappe.session.user != "Guest":
+		return True
+	return any(spec["app"] not in installed for spec in RESERVED.values())
