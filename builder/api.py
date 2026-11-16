@@ -2910,6 +2910,26 @@ def _describe_page(blocks) -> str:
 	return _shorten_for_footer(chosen, limit=180) if chosen else ""
 
 
+# //// Neoffice — the words a cut never ends on (neoffice-maintenance#2717), in the four languages a site is
+# //// written in: an article, a preposition, a conjunction, a possessive. "…maquillage de…" reads as a text
+# //// that broke, not as one that stops.
+FOOTER_TAIL_WORDS = frozenset(
+	(
+		# French
+		"à a au aux avec chez contre dans de des du en entre et ou où par pour sans selon sous sur vers un une le la les "
+		"son sa ses leur leurs votre vos notre nos ce cet cette ces qui que dont mais ni car puis "
+		# English
+		"an the and or of to in on at by for from with into about as than that which your our their its "
+		# German
+		"der die das den dem des ein eine einen einem einer und oder mit für von zu zum zur im am an auf bei aus nach "
+		"über unter vor ihr ihre unser unsere "
+		# Italian
+		"il lo i gli uno di da del dello della dei degli delle al allo alla ai agli alle dal nel nella con per su tra "
+		"fra e ed o"
+	).split()
+)
+
+
 def _shorten_for_footer(text: str, limit: int = 200) -> str:
 	"""A short version of the brief that does not stop mid-word.
 
@@ -2931,9 +2951,59 @@ def _shorten_for_footer(text: str, limit: int = 200) -> str:
 	if kept.strip():
 		return kept.strip()
 
+	# //// Neoffice — the cut reads as meant (neoffice-maintenance#2717). The last whole word left a site's footer
+	# //// reading "…beauté du regard (rehaussement et teinture des cils), maquillage de…" on every page. An
+	# //// activity this long is a list: the cut ends where an item of it ends (a comma, a semicolon, a closing
+	# //// parenthesis) when one falls past half the limit, never inside an open parenthesis, and never on a word
+	# //// that announces another (FOOTER_TAIL_WORDS).
 	cut = text[:limit]
-	space = cut.rfind(" ")
-	return (cut[:space] if space > 0 else cut).rstrip(" ,;:") + "…"
+	return _footer_tail(_cut_at_list_end(cut, limit) or _cut_at_word(text, limit), limit) + "…"
+
+
+def _balanced(piece: str) -> bool:
+	return piece.count("(") <= piece.count(")")
+
+
+def _cut_at_list_end(cut: str, limit: int) -> str:
+	"""The longest part of `cut` that ends with an item of a list, or "" when none ends past half the limit."""
+	import re
+
+	for found in reversed(list(re.finditer(r"[,;]|\)", cut))):
+		end = found.end() if found.group() == ")" else found.start()
+		if end < limit // 2:
+			break
+		piece = cut[:end].rstrip()
+		if _balanced(piece):
+			return piece
+	return ""
+
+
+def _cut_at_word(text: str, limit: int) -> str:
+	"""The last whole word within the limit, and not inside a parenthesis left open when it can be helped."""
+	cut = text[:limit]
+	if not text[limit : limit + 1].isspace():
+		space = cut.rfind(" ")
+		cut = cut[:space] if space > 0 else cut
+	if not _balanced(cut) and cut.rfind("(") >= limit // 2:
+		cut = cut[: cut.rfind("(")]
+	return cut
+
+
+def _footer_tail(piece: str, limit: int) -> str:
+	"""`piece` without the punctuation and the words a sentence cannot end on, unless that leaves too little."""
+	piece = piece.rstrip(" ,;:-–—(")
+	words = piece.split(" ")
+	while len(words) > 1:
+		last = words[-1].strip(" ,;:-–—(").lower()
+		if last and last.rstrip("'’") != last:  # an elided article (l', d', qu') belongs to the next word
+			last = ""
+		if last and last not in FOOTER_TAIL_WORDS:
+			break
+		shorter = " ".join(words[:-1]).rstrip(" ,;:-–—(")
+		if len(shorter) < limit // 3:
+			break
+		words = shorter.split(" ")
+	return " ".join(words)
 
 
 def _background_with_scrim(block, new_src: str) -> str:
