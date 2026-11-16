@@ -3327,6 +3327,16 @@ def build_site(ctx, spec: dict) -> str:
                     wrapped = wrap_phone_rows(blocks)
                     if wrapped:
                         ai_log("info", "Flex rows allowed to wrap on the phone", page=page["title"], edits=wrapped)
+                    # //// Neoffice — and on the phone a section number laid over its heading goes into the flow, a caption held on one
+                    # //// line in a box may wrap (layout.numbers_in_flow_on_the_phone, layout.captions_wrap_on_the_phone, #1750)
+                    from builder.site_ai.nora.layout import (
+                        captions_wrap_on_the_phone,
+                        numbers_in_flow_on_the_phone,
+                    )
+
+                    unlaid = numbers_in_flow_on_the_phone(blocks) + captions_wrap_on_the_phone(blocks)
+                    if unlaid:
+                        ai_log("info", "Numbers and captions kept whole on the phone", page=page["title"], edits=unlaid)
                     # //// Neoffice — see layout.flex_rows_off_the_grid (2026-11-01)
                     # //// Neoffice — see the three passes of layout.py (2026-11-01): what the eye calls misaligned
                     aligned = spread_rows_fill_their_column(blocks) + buttons_keep_their_size_in_a_centred_column(blocks) + titles_follow_a_centred_form(blocks)

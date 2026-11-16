@@ -330,6 +330,88 @@ def wrap_phone_rows(blocks: list) -> int:
     return edits
 
 
+# //// Neoffice ▼▼▼ — two defects of the phone that the layout probe sees (rules 7 and 8, `overlapping-text` and `text-cut`) and
+# //// the writer keeps making (neoffice-maintenance#1750). Read in the pages the local model stored on 2026-10-20 (an inn, an
+# //// accounting firm), each drawn at 375 px:
+# //// - a section number ("01", "02") laid with `position: absolute; top: 12px; left: 12px` in the container of the section's
+# ////   heading. The writer cleared it on a wide screen (the heading 60 % wide and centred, or a 56 px left margin) and took the
+# ////   clearance back for the phone (`width: 100%`, `margin: 0`): the number sat on the heading's first line;
+# //// - a caption laid in a coloured square with `position: absolute; left: 50%; transform: translateX(-50%); white-space:
+# ////   nowrap`: wider than the square on a phone, it was cut on both sides by the section's `overflow: hidden`.
+SECTION_NUMBER = re.compile(r"^\s*(?:n°|no\.?|#)?\s*\d{1,3}\s*[.)]?\s*$", re.I)
+NUMBERED_HEADINGS = ("h1", "h2", "h3", "h4")
+
+
+def _absolute(block: dict) -> bool:
+    return str((block.get("baseStyles") or {}).get("position") or "").strip().lower() == "absolute"
+
+
+def _faint(block: dict) -> bool:
+    try:
+        return float((block.get("baseStyles") or {}).get("opacity")) < 0.5
+    except (TypeError, ValueError):
+        return False
+
+
+def _own_text(block: dict) -> str:
+    return re.sub(r"<[^>]+>", " ", str(block.get("innerHTML") or "")).strip()
+
+
+def _holds_heading(block: dict) -> bool:
+    return any(str(b.get("element") or "").lower() in NUMBERED_HEADINGS and not _absolute(b) for b in _walk([block]))
+
+
+def numbers_in_flow_on_the_phone(blocks: list) -> int:
+    """A short number laid absolutely in the container of a heading goes into the flow on the phone, on a line of its own
+    above what follows it: `position: static`, a full line, a small gap below. On a wide screen it keeps its place. Left
+    alone: a faint number (opacity under 0.5, a watermark the heading is meant to sit on), a number whose phone position
+    the page wrote, and a number with no heading beside it. Returns the edit count."""
+    edits = 0
+    for parent in _walk(blocks):
+        children = [c for c in parent.get("children") or [] if isinstance(c, dict)]
+        for number in children:
+            if not _absolute(number) or _faint(number) or not SECTION_NUMBER.match(_own_text(number)):
+                continue
+            if "position" in (number.get("mobileStyles") or {}):
+                continue
+            if not any(_holds_heading(other) for other in children if other is not number):
+                continue
+            phone = number.setdefault("mobileStyles", {})
+            phone.update({"position": "static", "display": "block", "width": "100%"})
+            phone.setdefault("marginBottom", "8px")
+            edits += 1
+    return edits
+
+
+def _centred_on_its_left(styles: dict) -> bool:
+    return str(styles.get("left") or "").strip() == "50%" and re.search(r"translate(?:X)?\(\s*-50%", str(styles.get("transform") or "")) is not None
+
+
+def captions_wrap_on_the_phone(blocks: list) -> int:
+    """A text laid absolutely in a box and held on one line (`white-space: nowrap`) is wider than the box on a phone, and
+    the box cuts it. On the phone it may wrap; centred on its box, it keeps the box's width less a margin and centres its
+    lines. Left alone: a text whose phone line-breaking the page wrote, one that ends on an ellipsis (`textOverflow`),
+    and a block with no text of its own. Returns the edit count."""
+    edits = 0
+    for block in _walk(blocks):
+        styles = block.get("baseStyles") or {}
+        phone = block.get("mobileStyles") or {}
+        if not _absolute(block) or str(styles.get("whiteSpace") or "").strip().lower() != "nowrap":
+            continue
+        if "whiteSpace" in phone or styles.get("textOverflow") or not _own_text(block):
+            continue
+        phone = block.setdefault("mobileStyles", {})
+        phone["whiteSpace"] = "normal"
+        if _centred_on_its_left(styles):
+            phone.setdefault("width", "90%")
+            phone.setdefault("textAlign", "center")
+        edits += 1
+    return edits
+
+
+# //// Neoffice ▲▲▲
+
+
 # //// Neoffice — added (2026-10-26): a heading that holds inline markup is a line of text, never a flex container. Two headings of a
 # //// regenerated About page carried `display: flex; align-items: center; gap: 0.6rem` (the writer laid them out around a small square)
 # //// and an accent word in <em>: each run of text of a flex container is an item of its own, so the accent word stood apart from the
