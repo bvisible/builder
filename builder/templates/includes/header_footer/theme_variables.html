@@ -21,7 +21,13 @@
 {%- set text_hex = theme.text_color if theme else '#1a1a1a' -%}
 {%- set heading_family = theme.heading_font if theme else 'Inter' -%}
 {%- set body_family = theme.body_font if theme else 'Inter' -%}
-{%- if tp %}<link rel="stylesheet" href="/builder_assets/tokens.css">{% endif %}
+{#- //// Neoffice — no link in a page rendered for a preview image or a PDF (request.for_preview,
+    neoffice-maintenance#1890). Chrome's PDF generator reads every request to the site as a file, and
+    /builder_assets/tokens.css is a rendered route, not a file: each preview image of a site with tokens
+    was refused as "Attempted Unauthorized File Access in PDF Generator" and wrote an Error Log row. A
+    Builder page inlines the same stylesheet itself in a preview (webpage.html, inline_tokens_css), and
+    a preview is always a Builder page. -#}
+{%- if tp and not for_preview %}<link rel="stylesheet" href="/builder_assets/tokens.css">{% endif %}
 <style>
 /* ==========================================================================
    Theme Variables - Injected from Website Header Footer Config

@@ -372,6 +372,9 @@ def get_theme_css(config=None) -> str:
 		"builder/templates/includes/header_footer/theme_variables.html",
 		{
 			"theme": theme,
+			# //// Neoffice — a page rendered for a preview image or a PDF links no rendered route
+			# //// (neoffice-maintenance#1890): see the token stylesheet in theme_variables.html.
+			"for_preview": bool(getattr(getattr(frappe.local, "request", None), "for_preview", None)),
 			"font_stylesheets": chrome_stylesheets(theme),
 			"surface_text": surface_text,
 			"surface_is_light": surface_is_light,
