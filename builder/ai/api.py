@@ -188,7 +188,10 @@ def confirm_pending_settings(message_id: str, decision: str = "apply"):
 		frappe.db.set_value(AISession.MESSAGE_DOCTYPE, message_id, "status", "action_skipped")
 		outcome = "Skipped. Nothing was changed."
 		AISession.try_append_message(msg.session, "assistant", outcome, message_type="status")
-		resumed = resume_after_action(msg.session, outcome)
+		# //// Neoffice — upstream resumes a refusal with the same "carry on" as an approval: the agent read
+		# //// "Skipped", went back to its plan, and asked for the very action the person had just refused (a page made
+		# //// the home page, refused twice in a row, neoffice-maintenance#2636). The resumed turn is told it was a No.
+		resumed = resume_after_action(msg.session, outcome, prompt=declined_prompt(msg.content))
 		return {"status": "skipped", "resumed": resumed}
 
 	meta = AISession.load_metadata(msg.metadata_json)
@@ -201,7 +204,22 @@ def confirm_pending_settings(message_id: str, decision: str = "apply"):
 	return {"status": "applied", "message": result, "resumed": resumed}
 
 
-def resume_after_action(session_id: str, outcome: str) -> bool:
+# //// Neoffice — added (neoffice-maintenance#2636): what the agent reads when the person answered No to its card.
+def declined_prompt(proposal: str | None) -> str:
+	"""The resumed turn's prompt after a refused card: the refusal said in plain words, the proposal
+	named, and the one thing the agent must not do, ask for it again."""
+	proposal = " ".join(str(proposal or "").split())[:300]
+	named = f" ({proposal})" if proposal else ""
+	return (
+		f"The user answered No to the action you proposed{named}. It was not applied and must stay that way: "
+		"do not propose it again in this turn, in the same words or in others, and do not reach the same result "
+		"another way. Carry on with whatever else you were doing that does not depend on it; if that was all, "
+		"say in one short sentence that it was left as it is, and end the turn."
+	)
+
+
+# //// Neoffice — `prompt` added (neoffice-maintenance#2636): a refusal resumes with its own words (declined_prompt)
+def resume_after_action(session_id: str, outcome: str, prompt: str | None = None) -> bool:
 	"""Carry on with the plan once a confirm-gated action has been decided.
 
 	A confirm card authorises a step, it does not change the plan, so ending the turn
@@ -230,7 +248,8 @@ def resume_after_action(session_id: str, outcome: str) -> bool:
 			job_id=turn_job_id(session_id),  # //// Neoffice — named for the watchdog, as in run
 			timeout=thinking.job_timeout,
 			# run_agent_job does not persist its prompt, so no phantom "continue" in the chat
-			prompt=f"{outcome}\n\nContinue with what you were doing. Do not repeat this step.",
+			# //// Neoffice — a refusal brings its own prompt (declined_prompt, #2636)
+			prompt=prompt or f"{outcome}\n\nContinue with what you were doing. Do not repeat this step.",
 			model=resolved_model,
 			user=frappe.session.user,
 			page_id=page_id,
