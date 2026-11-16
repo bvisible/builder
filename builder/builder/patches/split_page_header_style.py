@@ -30,7 +30,7 @@ def _pages_already_open_on_their_own() -> bool:
 	A site generated before the shared band exists carries its opening inside
 	each page — an eyebrow, then a large heading. Switching the band on above
 	that stacks two titles, which is worse than having no band at all. Seen on a
-	live client site: /about opened on "À PROPOS / Daniel Moret Info Service"
+	live client site: /about opened on "À PROPOS / Jean Exemple Info Service"
 	and the band would have added "Accueil / À propos" over it.
 
 	So the band defaults to off wherever the pages already speak for themselves.

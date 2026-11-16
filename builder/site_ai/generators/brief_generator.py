@@ -260,7 +260,7 @@ def get_default_brief(
     brief_data = {
         # Generic art direction so the fallback brief PASSES validation —
         # without it, an LLM outage degrades into 3 failed retries and an
-        # incoherent merged brief (seen on KM Home: vision error → defaults
+        # incoherent merged brief (seen on a client site: vision error → defaults
         # without design_concept → "Brief still invalid after merge").
         "design_concept": (
             f"A clean, {overrides.get('site_tone', 'professional')} direction in the "
