@@ -7,6 +7,8 @@ import {
 	syncBlockWithComponent,
 } from "@/utils/block/componentInstance";
 import { findBlockInTree, resetBlock } from "@/utils/block/tree";
+//// Neoffice — the keys an older editor broke are put back on load (#2671), see the constructor
+import { repairCustomPropertyKeys } from "@/utils/cssCustomProperty";
 import type { SpacingType } from "@/utils/cssUtils";
 import {
 	addPxToNumber,
@@ -212,12 +214,16 @@ class Block implements BlockOptions {
 			return getBlockInstance(child);
 		});
 
+		//// Neoffice — the custom properties an older editor saved as `-PrimaryColor` are put back as `--primary-color`
+		//// (neoffice-maintenance#2671): the draft of a page heals the next time it is opened and saved.
 		this.baseStyles = reactive(
-			mergeLegacyRawStyles({ ...(options.styles || options.baseStyles || {}) }, options.rawStyles),
+			repairCustomPropertyKeys(
+				mergeLegacyRawStyles({ ...(options.styles || options.baseStyles || {}) }, options.rawStyles),
+			),
 		);
 		this.customAttributes = reactive(options.customAttributes || {});
-		this.mobileStyles = reactive(options.mobileStyles || {});
-		this.tabletStyles = reactive(options.tabletStyles || {});
+		this.mobileStyles = reactive(repairCustomPropertyKeys(options.mobileStyles || {})); //// Neoffice — see above
+		this.tabletStyles = reactive(repairCustomPropertyKeys(options.tabletStyles || {})); //// Neoffice — see above
 		this.attributes = reactive(options.attributes || {});
 		this.dynamicValues = reactive(options.dynamicValues || []);
 		this.props = reactive(options.props || {});

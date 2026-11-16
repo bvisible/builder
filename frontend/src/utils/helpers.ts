@@ -7,6 +7,8 @@ import { editorDemo } from "@/utils/editorDemo";
 import { dialog, FileUploadHandler, toast, type DialogSize, type DialogTheme } from "frappe-ui";
 import { reactive, toRaw } from "vue";
 import { getRGB, HexToHSV, HSVToHex } from "./colors";
+//// Neoffice — a custom property keeps its name (#2671), see toStyleProperty
+import { isCustomProperty } from "./cssCustomProperty";
 import {
 	addPxToNumber,
 	extractNumberAndUnit,
@@ -152,6 +154,9 @@ function splitStylePrefix(style: string) {
 // hover:border-color -> hover:borderColor
 function toStyleProperty(cssProperty: string) {
 	const { prefix, property } = splitStylePrefix(cssProperty);
+	//// Neoffice — a CSS custom property is kept as written (neoffice-maintenance#2671): camel-casing made
+	//// `--primary-color` into `-PrimaryColor`, a key no browser reads (utils/cssCustomProperty.ts)
+	if (isCustomProperty(property)) return `${prefix}${property.trim()}` as styleProperty;
 	return `${prefix}${kebabToCamelCase(property)}` as styleProperty;
 }
 

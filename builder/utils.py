@@ -675,10 +675,55 @@ def kebab_to_camel_case(text):
 
 
 def normalize_legacy_style_key(style):
+	# //// Neoffice — a CSS custom property keeps its name (neoffice-maintenance#2671): camel-casing made
+	# //// `--primary-color` into `-PrimaryColor`. The render turned it back by chance (camel_case_to_kebab_case),
+	# //// but an exported page and the editor carried the broken key. Same rule as the editor's toStyleProperty.
+	if style.strip().startswith("--"):
+		return style.strip()
 	if ":" not in style:
 		return kebab_to_camel_case(style)
 	state, property_name = style.split(":", 1)
+	if property_name.strip().startswith("--"):  # //// Neoffice — see above
+		return f"{state}:{property_name.strip()}"
 	return f"{state}:{kebab_to_camel_case(property_name)}"
+
+
+# //// Neoffice — added (neoffice-maintenance#2671): the keys an older editor saved as `-PrimaryColor` for a block's
+# //// `--primary-color`. A real property never starts with a dash in its camel-case form (`WebkitLineClamp`).
+BROKEN_CUSTOM_PROPERTY = re.compile(r"^(?P<prefix>(?:[a-z-]+:)?)-(?P<name>[A-Z][A-Za-z0-9]*)$")
+STYLE_MAPS = ("baseStyles", "mobileStyles", "tabletStyles")
+
+
+def repaired_custom_property(key: str) -> str | None:
+	"""`-PrimaryColor` → `--primary-color`, `hover:-GfPrimary` → `hover:--gf-primary`; None for any other key."""
+	found = BROKEN_CUSTOM_PROPERTY.match(str(key))
+	if not found:
+		return None
+	kebab = re.sub(r"([a-z0-9])([A-Z])", r"\1-\2", found["name"])
+	kebab = re.sub(r"([A-Z])([A-Z][a-z])", r"\1-\2", kebab).lower()
+	return f"{found['prefix']}--{kebab}"
+
+
+def repair_custom_property_keys(blocks) -> int:
+	"""Put back, in place, every custom property an older editor broke in a block tree (a list, a block, or its
+	JSON is NOT accepted: parse it first). A key already written correctly wins over its broken twin. Returns
+	the number of keys repaired."""
+	repaired = 0
+	stack = list(blocks) if isinstance(blocks, list) else [blocks]
+	while stack:
+		block = stack.pop()
+		if not isinstance(block, dict):
+			continue
+		for field in STYLE_MAPS:
+			styles = block.get(field)
+			if not isinstance(styles, dict):
+				continue
+			for key in [k for k in styles if repaired_custom_property(k)]:
+				value = styles.pop(key)
+				styles.setdefault(repaired_custom_property(key), value)
+				repaired += 1
+		stack.extend(block.get("children") or [])
+	return repaired
 
 
 def count_blocks(blocks) -> int:
