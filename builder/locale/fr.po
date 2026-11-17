@@ -4298,11 +4298,11 @@ msgstr "Inviter des utilisateurs"
 
 #: frontend/src/components/Settings/GlobalUsers.vue:29
 msgid "Invited {0}"
-msgstr "{0} invité"
+msgstr "Invité {0}"
 
 #: frontend/src/components/Settings/GlobalUsers.vue:29
 msgid "Invited {0} by {1}"
-msgstr "{0} invité par {1}"
+msgstr "Invité {0} par {1}"
 
 #: frontend/src/components/PropsPopoverContent.vue:33
 msgid "Is Required"
@@ -13916,3 +13916,7 @@ msgstr "Utilisez le script de données du composant pour fournir des données dy
 #: frontend/src/components/PageScript.vue
 msgid "Props are accessible via the {0} object."
 msgstr "Les props sont accessibles via l'objet {0}."
+
+#: frontend/src/components/PageCard.vue
+msgid "Created {0}"
+msgstr "Créé {0}"
