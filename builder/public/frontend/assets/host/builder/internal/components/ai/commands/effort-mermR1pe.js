@@ -1,1 +1,0 @@
-import{A as e,O as t,k as n}from"../../../../../../BuilderAIChatPanel~10-D_HgcfNK.js";export{t as EFFORTS,n as effortLabel,e as effortLevel};

@@ -1,1 +1,0 @@
-import{a as e,c as t,l as n,o as r,s as i}from"../../../../../TemplatesDialog~66-CrJU3UF2.js";export{e as commandGroupLabels,r as commandShortcuts,i as commands,t as resolveText,n as runCommand};
