@@ -44,7 +44,10 @@
    is already out of the way. */
 .site-header--sticky {
 	transition: transform var(--transition, 200ms ease);
-	will-change: transform;
+	/* //// Neoffice — no `will-change: transform` here (it was). It makes the bar the containing block of
+	   //// its position:fixed descendants: the phone menu (inset 0) was sized to the 64px bar instead of the
+	   //// screen, so its panel was one bar high and its links lay over the page, on every site with a
+	   //// sticky header since 2026-08-04. The bar still slides; only the optimisation hint goes. */
 }
 
 .site-header--sticky.is-hidden {
