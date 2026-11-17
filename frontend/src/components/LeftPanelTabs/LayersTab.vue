@@ -10,7 +10,12 @@
 					'size-3',
 				]"
 				aria-hidden="true" />
-			{{ canvasStore.activeCanvas?.activeBreakpoint }}
+			<!-- //// Neoffice — the breakpoint's translated name (« Bureau »), not its raw key « desktop » (#1200) -->
+			{{
+				canvasStore.activeCanvas?.canvasProps.breakpoints.find(
+					(b) => b.device === canvasStore.activeCanvas?.activeBreakpoint,
+				)?.displayName || canvasStore.activeCanvas?.activeBreakpoint
+			}}
 		</span>
 		<BlockLayers
 			class="block-layers w-fit min-w-full pr-3"

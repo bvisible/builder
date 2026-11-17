@@ -1245,7 +1245,8 @@ def create_page_from_bundle(
 	new_page = frappe.get_doc(
 		{
 			"doctype": "Builder Page",
-			"page_title": page.get("page_title") or "My Page",
+			# //// Neoffice — a new page is named in the person's language (« Ma page »), not in English (#1200)
+			"page_title": page.get("page_title") or _("My Page"),
 			"preview": preview or None,
 			# //// Neoffice — the stripped blocks, not the bundle's raw ones (e545a8b3).
 			"draft_blocks": compact_json(page_blocks),

@@ -323,7 +323,8 @@ watch(
 	(to, from) => {
 		if (to.name === "builder" && to.params.pageId === "new") {
 			const pageInfo = {
-				page_title: "My Page",
+				//// Neoffice — a new page is named in the person's language (« Ma page »), not in English (#1200)
+				page_title: __("My Page"),
 				draft_blocks: [getRootBlockTemplate()],
 			} as BuilderPage;
 			const folder = (to.query.folder as string) || builderStore.activeFolder;
