@@ -12674,3 +12674,16 @@ msgstr ""
 #: frontend/src/components/Settings/GlobalGeneral.vue:114
 msgid "Robots.txt Guide"
 msgstr ""
+
+#: frontend/src/components/NoraEditorChat.vue
+msgid "Here are my documents:"
+msgstr ""
+
+#: frontend/src/components/NoraEditorChat.vue
+msgid "Your files could not be sent."
+msgstr ""
+
+#: frontend/src/components/NoraEditorChat.vue
+#, python-brace-format
+msgid "Some files could not be sent: {0}"
+msgstr ""

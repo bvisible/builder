@@ -254,22 +254,25 @@ async function pickImages(event: Event) {
 	const input = event.target as HTMLInputElement;
 	const chosen = Array.from(input.files || []);
 	input.value = "";
-	await sendImages(chosen);
+	await sendFiles(chosen);
 }
 
-/** The images go up as the editor's assets, then the assistant gets their addresses (the door « Mes images », and the
- * files dropped on the conversation's drop zone). */
-async function sendImages(files: File[]) {
-	const chosen = files.filter((file) => file.type.startsWith("image/"));
-	if (!chosen.length || sendingImages.value) return;
+/** The files go up as the editor's assets (a picture the site may show; a document is only handed over, so private),
+ * then the assistant gets their addresses in one message: the door « My images », the paperclip with several files,
+ * and the files dropped on the conversation (#2826). Nothing is read here: what the assistant does with a document
+ * is hers, not decided by the editor. */
+async function sendFiles(files: File[]) {
+	if (!files.length || sendingImages.value) return;
+	const isImage = (file: File) => file.type.startsWith("image/");
 	sendingImages.value = true;
 	sentImages.value = 0;
-	totalImages.value = chosen.length;
-	const urls: string[] = [];
-	for (const file of chosen) {
+	totalImages.value = files.length;
+	const sent = { images: [] as string[], documents: [] as string[] };
+	const failed: string[] = [];
+	for (const file of files) {
 		const form = new FormData();
 		form.append("file", file, file.name);
-		form.append("is_private", "0");
+		form.append("is_private", isImage(file) ? "0" : "1");
 		form.append("folder", "Home/Builder Uploads");
 		try {
 			const response = await fetch("/api/method/builder.api.upload_builder_asset", {
@@ -278,15 +281,25 @@ async function sendImages(files: File[]) {
 				body: form,
 			});
 			const url = (await response.json())?.message?.file_url;
-			if (url) urls.push(url);
+			if (url) sent[isImage(file) ? "images" : "documents"].push(url);
+			else failed.push(file.name);
 		} catch (e) {
 			console.error("upload failed", file.name, e);
+			failed.push(file.name);
 		}
 		sentImages.value += 1;
 	}
 	sendingImages.value = false;
-	if (!urls.length) return toast.error(__("Your images could not be sent."));
-	prompt.value = __("Here are my images (logo, photos):") + "\n" + urls.join("\n");
+	const parts: string[] = [];
+	if (sent.images.length) parts.push([__("Here are my images (logo, photos):"), ...sent.images].join("\n"));
+	if (sent.documents.length) parts.push([__("Here are my documents:"), ...sent.documents].join("\n"));
+	if (!parts.length) {
+		return toast.error(
+			files.every(isImage) ? __("Your images could not be sent.") : __("Your files could not be sent."),
+		);
+	}
+	if (failed.length) toast.error(__("Some files could not be sent: {0}", [failed.join(", ")]));
+	prompt.value = parts.join("\n\n");
 	chat.submitPrompt();
 }
 
@@ -497,7 +510,7 @@ function features() {
 function modules() {
 	if (!core) return;
 	watchCards();
-	core.on("files", ({ files }: { files: File[] }) => sendImages(files || []));
+	core.on("files", ({ files }: { files: File[] }) => sendFiles(files || []));
 	core.on("resume", ({ state }: { state?: { session_id?: string } }) => {
 		painter?.reset();
 		// the conversation drawn again from nothing: its cards come back with it
@@ -549,7 +562,10 @@ async function start() {
 		placeholder: __("Write to {0}…", [assistantLabel]),
 		echo_user: false,
 		enable_upload: true,
-		upload_accept: "image/*",
+		// the paperclip takes several files, pictures and documents (#2826): they go up (sendFiles); one image alone is
+		// still shown to the assistant (file_select)
+		upload_accept: "image/*,.pdf,.doc,.docx,.odt,.txt,.md,.rtf",
+		upload_multiple: true,
 		max_upload_size: 10 * 1024 * 1024,
 		features: features(),
 	});

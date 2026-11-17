@@ -13920,3 +13920,16 @@ msgstr "Les props sont accessibles via l'objet {0}."
 #: frontend/src/components/PageCard.vue
 msgid "Created {0}"
 msgstr "Créé {0}"
+
+#: frontend/src/components/NoraEditorChat.vue
+msgid "Here are my documents:"
+msgstr "Voici mes documents :"
+
+#: frontend/src/components/NoraEditorChat.vue
+msgid "Your files could not be sent."
+msgstr "Vos fichiers n'ont pas pu être envoyés."
+
+#: frontend/src/components/NoraEditorChat.vue
+#, python-brace-format
+msgid "Some files could not be sent: {0}"
+msgstr "Certains fichiers n'ont pas pu être envoyés : {0}"
