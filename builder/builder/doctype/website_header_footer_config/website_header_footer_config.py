@@ -3,6 +3,8 @@
 # Copyright (c) 2025, Frappe Technologies Pvt Ltd and contributors
 # For license information, please see license.txt
 
+from typing import ClassVar
+
 import frappe
 from frappe import _
 from frappe.model.document import Document
@@ -256,7 +258,10 @@ class WebsiteHeaderFooterConfig(Document):
 		return {
 			"type": self.logo_type,
 			"text": self.logo_text or "My Site",
-			"image": _versioned(self.logo_image) or DEFAULT_LOGO,
+			# //// Neoffice — the client's own logo (the stable path provisioning fills, builder.branding) comes
+			# //// before Neoffice's: a site whose chrome had no logo picked wore Neoffice's mark in its header
+			# //// while the business's logo sat in the ERP (2026-11-17).
+			"image": _versioned(self.logo_image) or _client_logo() or DEFAULT_LOGO,
 		}
 
 	def get_footer_logo_data(self) -> dict:
@@ -270,7 +275,8 @@ class WebsiteHeaderFooterConfig(Document):
 		return {
 			"type": self.footer_logo_type,
 			"text": self.footer_logo_text or "My Site",
-			"image": _versioned(self.footer_logo_image) or DEFAULT_LOGO,
+			# //// Neoffice — same order as the header's: see get_logo_data.
+			"image": _versioned(self.footer_logo_image) or _client_logo() or DEFAULT_LOGO,
 		}
 
 	def get_cta_data(self) -> dict | None:
@@ -392,7 +398,7 @@ class WebsiteHeaderFooterConfig(Document):
 
 
 	# theme field -> token key: the six values the AI site build mints as Builder Tokens
-	TOKEN_FIELDS = {
+	TOKEN_FIELDS: ClassVar[dict[str, str]] = {
 		"primary_color": "primary",
 		"secondary_color": "secondary",
 		"background_color": "background",
@@ -459,6 +465,23 @@ class WebsiteHeaderFooterConfig(Document):
 def get_header_footer_config() -> "WebsiteHeaderFooterConfig":
 	"""Get the Website Header Footer Config singleton."""
 	return frappe.get_single("Website Header Footer Config")
+
+
+def _client_logo() -> str | None:
+	"""The logo of the business itself: the file at the stable logo path (builder.branding), which provisioning fills
+	for each client, or None when there is no such file (or an empty one). Only this path: what the framework or the
+	ERP keeps elsewhere is not necessarily the business's, nor a file a public page may show."""
+	import os
+
+	from builder.branding import LOGO_PATH, logo_disk_path
+
+	try:
+		if os.path.getsize(logo_disk_path()) <= 0:
+			return None
+	except Exception:
+		# a header must never fail to render over a logo lookup (no site folder, an unreadable file): Neoffice's mark
+		return None
+	return _versioned(LOGO_PATH)
 
 
 def _versioned(url: str | None) -> str | None:
