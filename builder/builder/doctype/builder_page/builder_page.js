@@ -4,7 +4,9 @@
 frappe.ui.form.on("Builder Page", {
   refresh(frm) {
     // only show in developer mode
-    if (frappe.boot.developer_mode || !frm.doc.is_template) {
+    //// Neoffice — a new page has no __onload yet: reading __onload.builder_path threw at the refresh
+    //// of every new Builder Page (maintenance#2805). The link opens a saved page only.
+    if (!frm.is_new() && (frappe.boot.developer_mode || !frm.doc.is_template)) {
       frm.sidebar
         .add_user_action(__("Open in Builder"))
         .attr("href", `/${frm.doc.__onload.builder_path}/page/${frm.doc.name}`)
