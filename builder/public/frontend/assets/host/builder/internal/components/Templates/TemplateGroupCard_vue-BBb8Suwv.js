@@ -1,0 +1,1 @@
+import{a as e}from"../../../../../TemplateGallery~65-Cr_stE4q.js";export{e as default};

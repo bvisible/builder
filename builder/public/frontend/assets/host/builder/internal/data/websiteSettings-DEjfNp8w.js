@@ -1,0 +1,1 @@
+import{dt as e}from"../../../../toast~94-BpcNnnmF.js";var t=e({doctype:`Website Settings`,name:`Website Settings`});export{t as websiteSettings};
