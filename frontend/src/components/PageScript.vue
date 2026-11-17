@@ -70,17 +70,15 @@
 								@save="savePageDataScript"
 								:showSaveButton="true"
 								:show-line-numbers="true"></CodeEditor>
+							<!-- //// Neoffice — help text translatable, see pageDataDescription (neoffice-maintenance#1200) -->
 							<CodeEditor
+								:description="pageDataDescription"
 								v-model="pageStore.pageData"
 								type="JSON"
 								:label="__('Data Preview')"
 								:showLineNumbers="true"
 								class="-mt-5 w-1/3 [&>div>div]:bg-surface-base"
 								height="calc(100% - 110px)"
-								description='Use Data Script to provide dynamic data to your web page.<br>
-								<b>{{ __("Example:") }}</b> data.events = frappe.get_list("Event")<br><br>
-								For more details on how to write data script, refer to <b><a class="underline" href="https://docs.frappe.io/builder/data-script" target="_blank">this documentation</a></b>.
-								'
 								:readonly="true"></CodeEditor>
 						</div>
 					</div>
@@ -128,16 +126,15 @@
 								@save="saveComponentDataScript"
 								:showSaveButton="true"
 								:show-line-numbers="true"></CodeEditor>
+							<!-- //// Neoffice — help text translatable, see componentDataDescription (neoffice-maintenance#1200) -->
 							<CodeEditor
+								:description="componentDataDescription"
 								v-model="componentDataPreview"
 								type="JSON"
 								:label="__('Component Data Preview')"
 								:showLineNumbers="true"
 								class="[&>div>div]:bg-surface-white -mt-5 w-1/3"
 								height="calc(100% - 110px)"
-								description='Use Component Data Script to provide dynamic data to your component.<br>
-								<b>{{ __("Example:") }}</b> data.items = frappe.get_list("Item")<br><br>
-								Props are accessible via the <b>props</b> object.'
 								:readonly="true"></CodeEditor>
 						</div>
 					</div>
@@ -161,6 +158,24 @@ import { computed, defineComponent, ref, watch } from "vue";
 import CodeEditor from "./Controls/CodeEditor.vue";
 import PageClientScriptManager from "./PageClientScriptManager.vue";
 import PropsEditor from "./PropsEditor.vue";
+
+//// Neoffice — the descriptions of the two data previews, translatable (neoffice-maintenance#1200). Upstream wrote them
+//// as plain attributes in English, with a {{ __("Example:") }} that Vue does not evaluate inside an attribute: it was
+//// shown as written.
+const pageDataDescription = computed(
+	() =>
+		`${__("Use Data Script to provide dynamic data to your web page.")}<br>` +
+		`<b>${__("Example:")}</b> data.events = frappe.get_list("Event")<br><br>` +
+		__("For more details on how to write data script, refer to {0}.", [
+			`<b><a class="underline" href="https://docs.frappe.io/builder/data-script" target="_blank">${__("this documentation")}</a></b>`,
+		]),
+);
+const componentDataDescription = computed(
+	() =>
+		`${__("Use Component Data Script to provide dynamic data to your component.")}<br>` +
+		`<b>${__("Example:")}</b> data.items = frappe.get_list("Item")<br><br>` +
+		__("Props are accessible via the {0} object.", ["<b>props</b>"]),
+);
 
 const { capture } = useTelemetry();
 

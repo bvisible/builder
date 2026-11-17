@@ -31,7 +31,8 @@
 								</p>
 							</div>
 						</div>
-						<UseTimeAgo v-slot="{ timeAgo }" :time="timestamp">
+						<!-- //// Neoffice — the time in the person's language (timeAgo.ts, neoffice-maintenance#1200) -->
+						<UseTimeAgo :messages="timeAgoMessages()" v-slot="{ timeAgo }" :time="timestamp">
 							<PageStatusLine
 								:page="page"
 								:time="
@@ -71,6 +72,7 @@ import PageStatusLine from "@/components/PageStatusLine.vue";
 import { BuilderPage } from "@/types/doctypes";
 import { getUserInfo } from "@/usersInfo";
 import { UseTimeAgo } from "@vueuse/components";
+import { timeAgoMessages } from "@/utils/timeAgo"; //// Neoffice — see timeAgo.ts
 import { Avatar } from "frappe-ui";
 import { computed } from "vue";
 

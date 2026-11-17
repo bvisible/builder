@@ -24,7 +24,8 @@
 						<Avatar shape="circle" :label="invite.email" size="lg" />
 						<div class="flex min-w-0 flex-col">
 							<span class="truncate text-p-sm text-ink-gray-8">{{ invite.email }}</span>
-							<UseTimeAgo v-slot="{ timeAgo }" :time="invite.creation">
+							<!-- //// Neoffice — the time in the person's language (timeAgo.ts, neoffice-maintenance#1200) -->
+							<UseTimeAgo :messages="timeAgoMessages()" v-slot="{ timeAgo }" :time="invite.creation">
 								<span class="truncate text-p-xs text-ink-gray-5">
 									{{
 										invite.invited_by_name
@@ -97,6 +98,7 @@ import { __ } from "@/translation";
 import router, { sessionUser } from "@/router";
 import { confirm } from "@/utils/helpers";
 import { UseTimeAgo } from "@vueuse/components";
+import { timeAgoMessages } from "@/utils/timeAgo"; //// Neoffice — see timeAgo.ts
 import { Avatar, Badge, Dialog, createResource, toast } from "frappe-ui";
 import { computed, nextTick, ref } from "vue";
 

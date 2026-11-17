@@ -1556,7 +1556,9 @@ class AgentRunner:
 		# surest way to degrade output.
 		self.loop_model = self.model
 		label = ModelRegistry.get_label(self.loop_model)
-		self.emit("progress", message=f"Thinking with {label}" if label else "Thinking…")
+		# //// Neoffice — the panel's headline, read by the person: upstream wrote it in English (neoffice-maintenance#1200);
+		# //// said in the person's language, which run_agent_job sets.
+		self.emit("progress", message=frappe._("Thinking with {0}").format(label) if label else frappe._("Thinking…"))
 
 		messages = self.build_messages()
 		summary_text = ""

@@ -95,7 +95,8 @@
 					<component :is="'style'" v-if="configuredHeaderHtml.css">{{ configuredHeaderHtml.css }}</component>
 					<div v-html="configuredHeaderHtml.html"></div>
 					<div class="absolute bottom-2 right-2 z-10 rounded bg-surface-gray-2 px-2 py-0.5 text-xs text-ink-gray-5">
-						Header Preview
+						<!-- //// Neoffice — translatable (neoffice-maintenance#1200) -->
+						{{ __("Header Preview") }}
 					</div>
 				</div>
 				<!-- //// Neoffice — added: the top-of-page band a visitor sees above this page, between the header
@@ -131,7 +132,8 @@
 					<component :is="'style'" v-if="configuredFooterHtml.css">{{ configuredFooterHtml.css }}</component>
 					<div v-html="configuredFooterHtml.html"></div>
 					<div class="absolute top-1 right-2 rounded bg-surface-gray-2 px-2 py-0.5 text-xs text-ink-gray-5">
-						Footer Preview
+						<!-- //// Neoffice — translatable (neoffice-maintenance#1200) -->
+						{{ __("Footer Preview") }}
 					</div>
 				</div>
 			</div>

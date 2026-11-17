@@ -17,7 +17,8 @@
 					<p class="text-base-medium truncate text-ink-gray-7 group-hover:text-ink-gray-9">
 						{{ page.page_title || page.page_name }}
 					</p>
-					<UseTimeAgo v-slot="{ timeAgo }" :time="timestamp">
+					<!-- //// Neoffice — the time in the person's language (timeAgo.ts, neoffice-maintenance#1200) -->
+					<UseTimeAgo :messages="timeAgoMessages()" v-slot="{ timeAgo }" :time="timestamp">
 						<PageStatusLine
 							:page="page"
 							class="mt-1"
@@ -52,6 +53,7 @@ import { useDashboardState } from "@/composables/useDashboardState";
 import PageStatusLine from "@/components/PageStatusLine.vue";
 import { BuilderPage } from "@/types/doctypes";
 import { UseTimeAgo } from "@vueuse/components";
+import { timeAgoMessages } from "@/utils/timeAgo"; //// Neoffice — see timeAgo.ts
 import { Tooltip } from "frappe-ui";
 import { computed } from "vue";
 

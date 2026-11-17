@@ -58,7 +58,8 @@
 						</Tooltip>
 						<!-- fixed width so the dots line up into a rail down the tree -->
 						<span class="flex w-36 shrink-0 items-center">
-							<UseTimeAgo v-slot="{ timeAgo }" :time="node.page.modified">
+							<!-- //// Neoffice — the time in the person's language (timeAgo.ts, neoffice-maintenance#1200) -->
+							<UseTimeAgo :messages="timeAgoMessages()" v-slot="{ timeAgo }" :time="node.page.modified">
 								<PageStatusLine :page="node.page" :time="timeAgo" />
 							</UseTimeAgo>
 						</span>
@@ -115,6 +116,7 @@ import PageStatusLine from "@/components/PageStatusLine.vue";
 import { __ } from "@/translation";
 import { BuilderPage } from "@/types/doctypes";
 import { UseTimeAgo } from "@vueuse/components";
+import { timeAgoMessages } from "@/utils/timeAgo"; //// Neoffice — see timeAgo.ts
 import { Tooltip } from "frappe-ui";
 import HomeIcon from "~icons/lucide/house";
 

@@ -59,7 +59,8 @@
 		     opening) live HERE, as the timeline's tail row, flush left like the
 		     thinking row — its most common fate is becoming "Thinking" in place,
 		     with no layout shift. -->
-		<div v-if="working" class="animate-shine w-fit text-p-xs text-ink-gray-5">Working</div>
+		<!-- //// Neoffice — translatable (neoffice-maintenance#1200): upstream wrote the word in English -->
+		<div v-if="working" class="animate-shine w-fit text-p-xs text-ink-gray-5">{{ __("Working") }}</div>
 	</div>
 </template>
 
