@@ -35,7 +35,8 @@ TARGETS = [
     (re.compile(r"catalogue|catalog|produit|product|boutique|shop|collection|commander|order", re.I), ("all-products", "produit", "product", "boutique", "shop", "catalogue")),
     (re.compile(r"contact|devis|quote|rendez-vous|appointment", re.I), ("contact",)),
     (re.compile(r"agence|agency|propos|about|[ée]quipe|team|histoire|story", re.I), ("propos", "about", "equipe", "team")),
-    (re.compile(r"service|prestation|offre|offer", re.I), ("service", "prestation", "offre")),
+    # « activités » is what a care or leisure site calls its services: "Découvrir nos activités" went to the contact form
+    (re.compile(r"service|prestation|offre|offer|activit", re.I), ("service", "prestation", "offre", "activit")),
     (re.compile(r"blog|actualit|news|article", re.I), ("blog", "actualite", "news")),
 ]
 

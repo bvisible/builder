@@ -202,3 +202,24 @@ class TestCallsToAction(unittest.TestCase):
 		self.assertEqual(guess_target("Voir le catalogue", ROUTES, "/contact"), "/all-products")
 		self.assertEqual(guess_target("Découvrir l'agence", ROUTES, "/contact"), "/a-propos")
 		self.assertEqual(guess_target("En savoir plus", ROUTES, "/contact"), "/contact")
+
+	def test_a_call_to_discover_the_activities_goes_to_the_services(self):
+		"""« Découvrir nos activités » fell back to the contact form on a site whose page of services is /services."""
+		routes = ["/", "/about", "/services", "/contact"]
+		self.assertEqual(guess_target("Découvrir nos activités", routes, "/contact"), "/services")
+		# a site that has a page of that name gets it
+		self.assertEqual(guess_target("Nos activités", ["/", "/activites", "/contact"], "/contact"), "/activites")
+
+	def test_the_two_buttons_of_a_home_page_that_linked_pages_the_site_never_had(self):
+		"""A generated home linked /activites and /a-propos while its pages were /services and /about: both gave a 404."""
+		from builder.site_ai.nora.buttons import repair_foreign_links
+
+		routes = ["/", "/about", "/services", "/contact"]
+		activities = {"element": "a", "attributes": {"href": "/activites"}, "innerHTML": "Découvrir nos activités"}
+		more = {"element": "a", "attributes": {"href": "/a-propos"}, "innerHTML": "En savoir plus"}
+		contact = {"element": "a", "attributes": {"href": "/contact"}, "innerHTML": "Nous contacter"}
+		edits = repair_foreign_links([activities, more, contact], routes, "/contact")
+		self.assertEqual(activities["attributes"]["href"], "/services")
+		self.assertEqual(more["attributes"]["href"], "/about")
+		self.assertEqual(contact["attributes"]["href"], "/contact")
+		self.assertEqual(len(edits), 2)
