@@ -103,6 +103,11 @@ class TestACachedNotFoundPageHoldsNothingOfASignedInPerson(FrappeTestCase):
 		super().tearDownClass()
 
 	def setUp(self):
+		# A request starts with nothing on frappe.local (it is released after each one), but a test run is one process:
+		# an earlier test that rendered a page in preview (BuilderPage.get_preview_html sets frappe.local.no_cache = 1
+		# and leaves it) kept every rendering of this class out of the cache. Green alone, red in the app's run in CI.
+		self.addCleanup(setattr, frappe.local, "no_cache", getattr(frappe.local, "no_cache", 0))
+		frappe.local.no_cache = 0
 		self._forget()
 		self.patches = [
 			patch("frappe.website.utils.can_cache", _like_production),
