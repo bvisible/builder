@@ -368,6 +368,16 @@ class TestTheGroundIsMeasured(unittest.TestCase):
 		page, _chrome = visual_check.contract_findings(m, is_home=False, background_mode="auto")
 		self.assertEqual(page, [])
 
+	def test_a_page_laid_from_its_example_keeps_the_examples_ground(self):
+		# the example's dark sections, kept « as is », were measured against the light ground read off that same example, and the
+		# home was rewritten on them again and again (18.11); a page the writer wrote is still held to the site's ground
+		from builder.site_ai.nora.site_builder import ground_to_measure
+
+		laid = {"home": {"name": "page-home"}}
+		self.assertEqual(ground_to_measure("home", laid, "light"), "auto")
+		self.assertEqual(ground_to_measure("contact", laid, "light"), "light")
+		self.assertEqual(ground_to_measure("home", {}, "light"), "light")
+
 	def test_the_page_brief_repeats_the_ground_on_every_page(self):
 		site = {"site_name": "Atelier Test", "activity": "a workshop", "site_type": "vitrine", "profile": None, "page_types": ["accueil"], "background_mode": "light"}
 		page = {"title": "Accueil", "route": "home", "type": "accueil"}

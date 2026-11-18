@@ -2609,6 +2609,14 @@ def site_language(spec: dict) -> str:
     )
 
 
+# //// Neoffice — the ground measured on a page (visual_check.contract_findings), 18.11: a page laid from an example « as is » keeps the
+# //// example's layout, its dark sections with it, and its words alone are written again; the « light » ground read off that same example
+# //// measured them as breaks, and the home was rewritten again and again on them (points=0 measured=2), each look calling it professional
+def ground_to_measure(route: str, example_pages: dict, background_mode: str) -> str:
+    """The ground the look holds a page to: the site's, except on a page laid from its example, which keeps the example's own."""
+    return "auto" if route in (example_pages or {}) else background_mode
+
+
 def build_site(ctx, spec: dict) -> str:
     from builder.ai import llm
     from builder.ai.block_codec import BlockCodec
@@ -3939,7 +3947,7 @@ def build_site(ctx, spec: dict) -> str:
         # //// Neoffice — "type" travels with the page (2026-09-15): the reviewer needs it to know
         # //// that the bracketed blanks of a legal page are deliberate (visual_check.LEGAL_CONTEXT).
         # //// Neoffice — the ground travels with the page (2026-09-17): the look measures it
-        created.append({"name": name, "title": page["title"], "route": f"/{route}", "planned": page["route"], "type": page["type"], "background_mode": background_mode})
+        created.append({"name": name, "title": page["title"], "route": f"/{route}", "planned": page["route"], "type": page["type"], "background_mode": ground_to_measure(page["route"], example_pages, background_mode)})
         # //// Neoffice — the ceiling, checked between pages (builder/ai/meter.py, 2026-09-15): the
         # //// build finishes what it has rather than dying, and says so in its summary.
         if (over := meter.over_budget()) and not over_budget_at:
