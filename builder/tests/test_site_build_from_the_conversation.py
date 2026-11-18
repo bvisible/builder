@@ -132,6 +132,16 @@ class TestTheLanguageOfTheSite(unittest.TestCase):
 		with patch.object(site_builder.frappe.db, "get_single_value", return_value="de"):
 			self.assertEqual(site_builder.site_language({}), "de")
 
+	def test_the_answer_after_a_build_is_in_the_persons_language(self):
+		# a site written in English, and Nora asked a French person in English what to do with a refused page (18.11)
+		with patch.object(tools, "persons_language", return_value="fr"):
+			line = site_builder.answer_language_line("en")
+			self.assertIn("English", line)
+			self.assertIn("French", line)
+			self.assertEqual(site_builder.answer_language_line("fr"), "")
+		with patch.object(tools, "persons_language", return_value=""):
+			self.assertEqual(site_builder.answer_language_line("en"), "")
+
 	def ask(self, args, person="fr", named=None):
 		with (
 			patch.object(tools, "persons_language", return_value=person),

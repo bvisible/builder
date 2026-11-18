@@ -811,6 +811,22 @@ def foreign_language_line(reviews: list[dict], language: str) -> str:
     )
 
 
+# //// Neoffice — a site written in another language than the person's (18.11, osiris): the summary, the pages and their reviews are all in
+# //// the site's language, and Nora asked a French person in English what to do with a refused page, options and buttons included
+def answer_language_line(site_lang: str | None) -> str:
+    """The last line of the summary when the site is written in another language than the person's: the answer is in theirs."""
+    from builder.site_ai.nora.tools import LANGUAGE_NAMES, persons_language
+
+    person = persons_language()
+    if not person or not site_lang or person == site_lang[:2]:
+        return ""
+    site_name, person_name = LANGUAGE_NAMES.get(site_lang[:2], site_lang), LANGUAGE_NAMES.get(person, person)
+    return (
+        f"The site is written in {site_name}; the conversation is not. Write your answer and every card (its question, options and "
+        f"buttons) in the language of the person's messages ({person_name} on their account), never in {site_name} because the site is."
+    )
+
+
 def kept_pages_line(profile: str | None, lang_code: str | None, language: str, written: set) -> str:
     """The pages of the site this build left as they were (edits kept, a partial build), which the visual check did not read.
 
@@ -4441,4 +4457,7 @@ def build_site(ctx, spec: dict) -> str:
         )
     for title, texts in facts_left.items():
         lines.append(f"Still on {title} after that rewrite, to confirm with the client or remove: " + ", ".join(texts))
+    # //// Neoffice — see answer_language_line
+    if line := answer_language_line(lang_code):
+        lines.append(line)
     return "\n".join(lines)
