@@ -204,6 +204,11 @@ doc_events = {
 	"Builder Component": {
 		"on_update": "builder.page_header.clear_band_cache",
 	},
+	# //// Neoffice — a site record deleted from the desk takes its pages with it (to the trash), its conversations with Nora kept
+	# //// (builder.site_ai.nora.site_delete, 2026-11-18): the pages' link refused the deletion, and a site was emptied by hand
+	"Website Profile": {
+		"on_trash": "builder.site_ai.nora.site_delete.on_profile_trash",
+	},
 }
 
 # Scheduled Tasks

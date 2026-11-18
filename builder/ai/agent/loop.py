@@ -281,6 +281,8 @@ TOOL_LABELS = {
 	"generate_page": ("Building the page", "Built the page"),
 	"preview_page": ("Checking how it looks", "Checked how it looks"),
 	"search_images": ("Searching for photos", "Searched for photos"),
+	# //// Neoffice — the picture the assistant draws (tools/images.generate_image, 2026-11-18)
+	"generate_image": ("Drawing a picture", "Drew a picture"),
 	"extract_component": ("Making a reusable component", "Made a reusable component"),
 
 	"edit_component": ("Updating a shared component", "Updated a shared component"),

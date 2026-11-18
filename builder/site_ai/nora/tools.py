@@ -527,4 +527,7 @@ inspect_inspiration = Tool(
 )
 
 
-TOOLS = [generate_site, inspect_inspiration, get_site_chrome, update_site_chrome]
+# //// Neoffice — delete_site added (site_delete.py, 2026-11-18): a person asked to start again had their site emptied by hand
+from builder.site_ai.nora.site_delete import delete_site
+
+TOOLS = [generate_site, inspect_inspiration, get_site_chrome, update_site_chrome, delete_site]

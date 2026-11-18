@@ -121,6 +121,10 @@ def build_default_registry() -> ToolRegistry:
 	registry.extend(forms.TOOLS)
 	registry.extend(settings.TOOLS)
 	registry.extend(images.TOOLS)
+	# //// Neoffice — drawing a picture is offered where the site can draw one (images.generate_image, 2026-11-18): a tool the
+	# //// model is offered but that can only refuse is a tool it keeps trying
+	if images.image_generation_available():
+		registry.extend([images.generate_image])
 	registry.extend(web.TOOLS)
 	registry.extend(preview.TOOLS)
 	registry.extend(components.TOOLS)
