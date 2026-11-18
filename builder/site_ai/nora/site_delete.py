@@ -86,11 +86,15 @@ def _answered_since(ctx, asked_at: float) -> bool:
 
 
 def leave_the_open_page(ctx, page_names: list[str], site: str | None) -> bool:
-	"""The page open in the editor went with the site: the editor is told after the commit (it must not look before the
-	deletion lands), with the site that stays emptied, if any, where « Build a new site » starts (the editor's « Create
-	with AI », site_creation_page). Without it, the editor reloaded a conversation of a page that no longer exists, met an
-	empty one, and stayed open on a page it could no longer save (18.11). The Website space's Nora tab was no way on: it
-	opens the instance's other sites, and the person who wanted to start again would have talked about one of them."""
+	"""The page this conversation is on went with the site: its screen is told after the commit (it must not look before
+	the deletion lands), with the site that stays emptied, if any, where « Build a new site » starts. The event goes on
+	the conversation's channel: the editor's page, or the conversation itself in the Website space's Nora tab.
+
+	- The editor reloaded a conversation of a page that no longer exists, met an empty one, and stayed open on a page it
+	  could no longer save (18.11): it now opens a window whose button is its « Create with AI » (site_creation_page).
+	- The tab stayed on the deleted site, ready to send into a conversation with no page: it now keeps Nora's answer and
+	  puts the button under it, to the form of a new site or a new conversation on the emptied one (theme, site_nora.js).
+	  The tab with no site named was no way on for the editor: it opens the instance's default site."""
 	page = getattr(ctx, "page_id", None)
 	if not page or page not in page_names or not hasattr(ctx, "emit"):
 		return False
@@ -149,9 +153,9 @@ def run_delete_site(ctx, args: dict) -> str:
 	frappe.db.commit()
 	if left:
 		done += (
-			" The page open in the editor went with it: the editor now offers the person, in a window, to build the new "
-			"site with you, from a fresh page. Say in one or two sentences that it is done and that the window takes them "
-			"there; ask nothing more here."
+			" The page this conversation was on went with it: the person's screen (the editor's window, or a button under "
+			"your answer in the Website space) now offers them to build the new site with you. Say in one or two sentences "
+			"that it is done and that this starts the new site; ask nothing more here."
 		)
 	return done
 

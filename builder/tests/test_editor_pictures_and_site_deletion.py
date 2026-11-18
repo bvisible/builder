@@ -191,7 +191,7 @@ class TestNoraDeletesASite(unittest.TestCase):
 			answer = site_delete.run_delete_site(ctx, {"website_profile": "Second site", "confirmed": True})
 		# the site is gone: no site to start the new one on
 		ctx.emit.assert_called_once_with("refetch", resources=["page_gone"], site=None, after_commit=True)
-		self.assertIn("the editor now offers the person", answer)
+		self.assertIn("now offers them to build the new site", answer)
 
 	def test_the_emptied_site_is_where_the_new_one_starts(self):
 		ctx = SimpleNamespace(session_id=None, page_id="page-1", emit=MagicMock())
@@ -212,7 +212,7 @@ class TestNoraDeletesASite(unittest.TestCase):
 			site_delete.run_delete_site(ctx, {"website_profile": "Second site"})
 			answer = site_delete.run_delete_site(ctx, {"website_profile": "Second site", "confirmed": True})
 		ctx.emit.assert_not_called()
-		self.assertNotIn("the editor now offers", answer)
+		self.assertNotIn("now offers them", answer)
 
 	def test_a_person_who_may_not_delete_is_refused(self):
 		with self.exists(only=False), patch.object(site_delete.frappe, "has_permission", return_value=False):
