@@ -517,6 +517,68 @@ def textless_blocks(blocks: list) -> list[str]:
     return []
 
 
+# //// Neoffice ▼▼▼ — a section the writer left with its heading alone (18.11, osiris): a contact page opened on « Write to the
+# //// Bakery » over an empty eyebrow and an empty lead, two blank paragraphs that ask no second try (textless_blocks); the look
+# //// refused the page for it (heading-over-nothing) and the revision fixed nothing. Mechanical, before the page is published.
+BLANK_REMOVED = frozenset({"h1", "h2", "h3", "h4", "h5", "h6", "p", "li", "label", "blockquote"})
+SHOWS_SOMETHING = frozenset({"img", "picture", "svg", "video", "iframe", "form", "input", "textarea", "select", "table", "a", "button"})
+
+
+def _blank(block: dict) -> bool:
+    """A text element that shows nothing: no words, no binding to a repeater's data, no child."""
+    return (
+        str(block.get("element") or "").lower() in BLANK_REMOVED
+        and not block.get("children")
+        and not block.get("dynamicValues")
+        and not block.get("isRepeaterBlock")
+        and not block.get("dataKey")
+        and not str(block.get("innerHTML") or "").strip()
+    )
+
+
+def _heading_alone(section: dict) -> str | None:
+    """The heading of a section that holds nothing else: no other words, no link, picture, field, include or repeater."""
+    heading, other = "", 0
+    for block in _walk([section]):
+        tag = str(block.get("element") or "").lower()
+        html = str(block.get("innerHTML") or "")
+        if tag in SHOWS_SOMETHING or block.get("isRepeaterBlock") or block.get("dataKey") or block.get("dynamicValues"):
+            return None
+        if "{%" in html or re.search(r"<(?:img|svg|iframe|form|video|a|button|input)\b", html, re.IGNORECASE):
+            return None
+        words = _plain(html)
+        if not words:
+            continue
+        if tag in HEADINGS:
+            heading = heading or re.sub(r"<[^>]+>", "", html).strip()
+        else:
+            other += len(words)
+    return heading if heading and not other else None
+
+
+def drop_hollow_sections(blocks: list) -> list[str]:
+    """The page's blank text elements removed (they show nothing), then each top section left with its heading alone removed.
+    Returns the headings of the sections that went."""
+    for block in _walk(blocks):
+        kids = block.get("children")
+        if isinstance(kids, list) and any(isinstance(kid, dict) and _blank(kid) for kid in kids):
+            block["children"] = [kid for kid in kids if not (isinstance(kid, dict) and _blank(kid))]
+    top = [b for b in blocks or [] if isinstance(b, dict)]
+    holder = top[0] if len(top) == 1 and isinstance(top[0].get("children"), list) else None
+    sections = holder["children"] if holder else blocks
+    dropped, kept = [], []
+    for section in sections:
+        heading = _heading_alone(section) if isinstance(section, dict) and section.get("element") == "section" else None
+        if heading:
+            dropped.append(heading)
+        else:
+            kept.append(section)
+    if dropped:
+        sections[:] = kept
+    return dropped
+# //// Neoffice ▲▲▲
+
+
 def _is_grid(block: dict) -> bool:
     return "u-grid" in (block.get("classes") or []) or (block.get("baseStyles") or {}).get("display") == "grid"
 

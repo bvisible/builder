@@ -3436,6 +3436,12 @@ def build_site(ctx, spec: dict) -> str:
                     scrubbed_slots = section_recipes.scrub_unfilled(blocks)
                     if scrubbed_slots:
                         ai_log("warning", "Recipe slots left in the page removed", page=page["title"], slots=scrubbed_slots)
+                    # //// Neoffice — a section left with its heading alone goes, its blank texts first (layout.drop_hollow_sections, 18.11)
+                    from builder.site_ai.nora.layout import drop_hollow_sections
+
+                    hollow = drop_hollow_sections(blocks)
+                    if hollow:
+                        ai_log("info", "Sections left with their heading alone dropped", page=page["title"], headings=hollow[:4])
                     # //// Neoffice — the movement the writer dropped from a section of a recipe that moves is put back (recipes.restore_motion, 2026-10-30)
                     restored_motion = section_recipes.restore_motion(blocks, (site.get("recipe_uses") or {}).get(page["route"], {}))
                     if restored_motion:

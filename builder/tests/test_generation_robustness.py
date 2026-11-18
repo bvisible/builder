@@ -1139,6 +1139,57 @@ class TestTextlessBlocks(unittest.TestCase):
 		self.assertEqual(layout.textless_blocks(page), [])
 
 
+class TestASectionLeftWithItsHeadingAlone(unittest.TestCase):
+	"""A contact page opened on « Write to the Bakery » over an empty eyebrow and an empty lead (18.11, osiris): two blank
+	paragraphs ask no second try, and the look refused the page for a section that said nothing under its heading."""
+
+	def el(self, tag, text="", **extra):
+		return {"element": tag, "innerHTML": text, **extra}
+
+	def ornament(self):
+		return self.el("div", children=[self.el("span"), self.el("span"), self.el("span")])
+
+	def page(self, *sections):
+		return [self.el("div", children=list(sections))]
+
+	def hollow(self):
+		return self.el(
+			"section",
+			children=[
+				self.el("div", children=[self.el("p"), self.el("h2", "Write to the <em>Bakery</em>"), self.el("p"), self.ornament()])
+			],
+		)
+
+	def form(self):
+		return self.el(
+			"section",
+			children=[
+				self.el("p", "How we work"),
+				self.el("h2", "Send a message"),
+				self.el("div", '{%- set site_form = "x-contact" -%}{% include "builder/templates/includes/site_form.html" %}'),
+			],
+		)
+
+	def test_the_hollow_section_goes_and_the_form_stays(self):
+		page = self.page(self.hollow(), self.form())
+		self.assertEqual(layout.drop_hollow_sections(page), ["Write to the Bakery"])
+		self.assertEqual([s["children"][1]["innerHTML"] for s in page[0]["children"]], ["Send a message"])
+
+	def test_a_heading_with_words_a_link_or_a_picture_stays(self):
+		with_words = self.el("section", children=[self.el("h2", "Our story"), self.el("p", "Since 1950.")])
+		with_link = self.el("section", children=[self.el("h2", "Ready?"), self.el("a", "Contact us", attributes={"href": "/contact"})])
+		with_picture = self.el("section", children=[self.el("h2", "The shop"), self.el("img", attributes={"src": "/files/a.webp"})])
+		page = self.page(with_words, with_link, with_picture)
+		self.assertEqual(layout.drop_hollow_sections(page), [])
+		self.assertEqual(len(page[0]["children"]), 3)
+
+	def test_blank_texts_go_everywhere_words_stay(self):
+		section = self.el("section", children=[self.el("p"), self.el("h2", "Title"), self.el("p", "A line."), self.el("li", " ")])
+		page = self.page(section)
+		layout.drop_hollow_sections(page)
+		self.assertEqual([c["element"] for c in page[0]["children"][0]["children"]], ["h2", "p"])
+
+
 class TestTheStarvedTextRule(unittest.TestCase):
 	"""A page was refused for a card title of 176 px on three lines (2026-10-20): readable, whole, and its
 	writer could not "fix" it in three revisions. Starved is four lines, or three below 150 px. The rule lives in
