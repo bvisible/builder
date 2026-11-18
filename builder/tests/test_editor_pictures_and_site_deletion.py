@@ -79,8 +79,10 @@ class TestASiteDeletedFromTheDesk(unittest.TestCase):
 			patch.object(site_delete.frappe.db, "set_value") as set_value,
 			patch.object(site_delete.frappe, "delete_doc") as delete,
 			patch.object(site_delete.frappe.db, "exists", return_value=True),
+			patch.object(site_delete, "let_go_of_the_pages") as let_go,
 		):
 			site_delete.on_profile_trash(SimpleNamespace(name="Second site"))
+		let_go.assert_called_once_with("Second site", ["page-1", "page-2"])
 		set_value.assert_called_once_with(
 			"Builder AI Session", "chat-1", {"page": None, "status": "Archived"}, update_modified=False
 		)
@@ -89,6 +91,52 @@ class TestASiteDeletedFromTheDesk(unittest.TestCase):
 			deleted,
 			[("Builder Page", "page-1"), ("Builder Page", "page-2"), (site_delete.VARIANT, "Second site")],
 		)
+
+
+class TestASiteThatHoldsItsHome(unittest.TestCase):
+	"""On the database itself (the clone): a site's record links its home page, and frappe refuses to delete a page a record still
+	links. Mocked, the deletion passed; for real, 74 of 87 test sites of osiris refused to go (2026-11-18)."""
+
+	SITE = "ZZ Test site that holds its home"
+
+	def setUp(self):
+		if not frappe.db.exists("DocType", "Website Profile") or not frappe.db.has_column(
+			"Builder Page", "neo_website_profile"
+		):
+			self.skipTest("the sites of the theme are not installed")
+		frappe.set_user("Administrator")
+		self.addCleanup(self.clean)
+		frappe.get_doc(
+			{"doctype": "Website Profile", "title": self.SITE, "primary_domain": "zz-holds-its-home.test"}
+		).insert(ignore_permissions=True)
+		page = frappe.get_doc(
+			{
+				"doctype": "Builder Page",
+				"page_title": "Accueil",
+				"route": "zz-holds-its-home",
+				"neo_website_profile": self.SITE,
+				"blocks": "[]",
+			}
+		).insert(ignore_permissions=True)
+		frappe.db.set_value("Website Profile", self.SITE, "home_page", page.name)
+		self.page = page.name
+
+	def clean(self):
+		frappe.db.rollback()
+		for doctype, name in (("Builder Page", getattr(self, "page", None)), ("Website Profile", self.SITE)):
+			if name and frappe.db.exists(doctype, name):
+				frappe.db.delete(doctype, {"name": name})
+		frappe.db.commit()
+
+	def test_the_site_goes_with_its_home(self):
+		frappe.delete_doc("Website Profile", self.SITE, ignore_permissions=True)
+		self.assertFalse(frappe.db.exists("Website Profile", self.SITE))
+		self.assertFalse(frappe.db.exists("Builder Page", self.page))
+
+	def test_the_only_site_emptied_lets_go_of_its_home(self):
+		self.assertEqual(site_delete.remove_pages(self.SITE)["pages"], 1)
+		self.assertFalse(frappe.db.exists("Builder Page", self.page))
+		self.assertFalse(frappe.db.get_value("Website Profile", self.SITE, "home_page"))
 
 
 class TestNoraDeletesASite(unittest.TestCase):

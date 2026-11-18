@@ -46,10 +46,26 @@ def keep_the_conversations(page_names: list[str]) -> int:
 	return len(sessions)
 
 
+def let_go_of_the_pages(site: str, page_names: list[str]) -> list[str]:
+	"""The site record's own links to these pages (its home page) emptied, so that the pages can go: frappe refuses to delete a page a
+	record still links, and a site's record links its home (2026-11-18: 74 of 87 test sites refused to go, their pages untouched)."""
+	if not page_names or not frappe.db.exists("Website Profile", site):
+		return []
+	cleared = []
+	for field in frappe.get_meta("Website Profile").get(
+		"fields", {"fieldtype": "Link", "options": "Builder Page"}
+	):
+		if frappe.db.get_value("Website Profile", site, field.fieldname) in page_names:
+			frappe.db.set_value("Website Profile", site, field.fieldname, None, update_modified=False)
+			cleared.append(field.fieldname)
+	return cleared
+
+
 def remove_pages(site: str) -> dict:
 	"""Every page of the site to the trash, its conversations kept. The caller checked the person may do it."""
 	pages = pages_of(site)
 	kept = keep_the_conversations([page.name for page in pages])
+	let_go_of_the_pages(site, [page.name for page in pages])
 	for page in pages:
 		frappe.delete_doc("Builder Page", page.name, ignore_permissions=True, ignore_missing=True)
 	return {"pages": len(pages), "conversations_kept": kept}
