@@ -32,7 +32,13 @@ export async function startSiteCreation(websiteProfile?: string, afterDeletion =
 		const result = (await createResource({ url: "builder.site_ai.nora.api.site_creation_page" }).submit({
 			website_profile: websiteProfile || null,
 			fresh: afterDeletion ? 1 : 0,
-		})) as { page_id: string };
+		})) as { page_id: string | null; open?: string };
+		//// Neoffice — a site deleted on an instance that keeps others: the new one starts in the Website space's form, which asks
+		//// its name and its address (site_creation_page); a blank page there belonged to no site (18.11)
+		if (result.open) {
+			window.location.assign(result.open);
+			return;
+		}
 		const target = {
 			name: "builder",
 			params: { pageId: result.page_id },

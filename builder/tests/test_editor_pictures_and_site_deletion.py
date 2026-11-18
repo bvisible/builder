@@ -313,23 +313,50 @@ class TestTheCardOfADeletion(unittest.TestCase):
 class TestTheNewSiteAfterADeletion(unittest.TestCase):
 	"""« Build a new site » of the editor's window, once Nora deleted the site of the open page."""
 
-	def page_for(self, **kwargs):
+	def page_for(self, form=None, **kwargs):
 		from builder.site_ai.nora import api
 
 		page = MagicMock(name="page")
 		page.name = "page-new"
 		with (
 			patch.object(api, "site_home_page", return_value="shared-home") as home,
-			patch.object(api.frappe, "new_doc", return_value=page),
+			patch.object(api, "new_site_form", return_value=form),
+			patch.object(api.frappe, "new_doc", return_value=page) as new_doc,
 			patch.object(api.frappe.db, "commit"),
 		):
 			result = api.site_creation_page(**kwargs)
+		self.new_doc = new_doc
 		return result, home
 
 	def test_no_site_left_means_a_blank_page_never_a_shared_one(self):
 		result, home = self.page_for(website_profile=None, fresh=1)
 		home.assert_not_called()
 		self.assertEqual(result, {"page_id": "page-new", "created": True})
+
+	def test_an_instance_that_keeps_other_sites_starts_the_new_one_in_its_form(self):
+		# a blank page there belonged to no site, and its build would have worked on the main site's header and footer (18.11)
+		result, home = self.page_for(form="/app/site-nora?new=1", website_profile=None, fresh=1)
+		self.assertEqual(result, {"page_id": None, "created": False, "open": "/app/site-nora?new=1"})
+		self.new_doc.assert_not_called()
+		home.assert_not_called()
+
+	def test_the_form_is_the_answer_only_after_a_deletion(self):
+		result, _home = self.page_for(form="/app/site-nora?new=1", website_profile=None)
+		self.assertEqual(result["page_id"], "shared-home")
+
+	def test_the_form_is_known_only_where_the_website_space_keeps_sites(self):
+		from builder.site_ai.nora import api
+
+		def run(page_exists=True, sites=3):
+			with (
+				patch.object(api.frappe.db, "exists", side_effect=lambda doctype, name=None: page_exists or doctype != "Page"),
+				patch.object(api.frappe.db, "count", return_value=sites),
+			):
+				return api.new_site_form()
+
+		self.assertEqual(run(), "/app/site-nora?new=1")
+		self.assertIsNone(run(page_exists=False))
+		self.assertIsNone(run(sites=0))
 
 	def test_create_with_ai_still_reopens_the_page_it_finds(self):
 		result, home = self.page_for(website_profile=None)

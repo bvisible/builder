@@ -25,6 +25,19 @@ def blank_root_blocks() -> str:
     ])
 
 
+# //// Neoffice — after a site was deleted on an instance that keeps other sites (18.11, osiris): the blank draft belonged to no site, and
+# //// a site built from it works on the pages every site shares and on the instance's own header and footer, the main site's. The new site
+# //// starts where it gets its name and its address: the Website space's form.
+NEW_SITE_FORM = "/app/site-nora?new=1"
+
+
+def new_site_form() -> str | None:
+    """The Website space's form that starts a site (its name, its address), on an instance that keeps site records; else None."""
+    if not frappe.db.exists("DocType", "Website Profile") or not frappe.db.exists("Page", "site-nora"):
+        return None
+    return NEW_SITE_FORM if frappe.db.count("Website Profile") else None
+
+
 @frappe.whitelist()
 @builder_role_required()
 def site_creation_page(website_profile: str | None = None, fresh: int | bool = 0) -> dict:
@@ -33,7 +46,12 @@ def site_creation_page(website_profile: str | None = None, fresh: int | bool = 0
     home page. The agent's sessions are page-scoped, so a site needs one page to start.
     `fresh` without a profile: always the blank draft. A person whose site was just deleted starts
     a new one (site_delete): the pages shared by every site (no profile, a legal page among them)
-    are not theirs to start it on, nor the conversation one of them already holds (18.11)."""
+    are not theirs to start it on, nor the conversation one of them already holds (18.11). On an instance that keeps other sites,
+    the answer is the form that starts one (`open`, new_site_form): no page is made."""
+    if frappe.utils.cint(fresh) and not website_profile:
+        form = new_site_form()
+        if form:
+            return {"page_id": None, "created": False, "open": form}
     found = None if (frappe.utils.cint(fresh) and not website_profile) else site_home_page(website_profile)
     if found:
         return {"page_id": found, "created": False}
