@@ -228,12 +228,87 @@ def with_the_persons_answers(session_id: str | None, args: dict) -> dict:
     return {**(args or {}), **missing}
 
 
+# //// Neoffice ▼▼▼ — the call the recap was made from (18.11, osiris). The model's first call carried the language (en), the example and its
+# //// use (restaurant, as_is) and the site; it was turned back for the recap, the person approved a recap saying « Langue : anglais » and
+# //// « reprend tel quel l'exemple Restaurant », and the call after their tap carried only the name, the activity and the pages: the site
+# //// came out in French, the instance's default, without its example. A call turned back is kept for the conversation; the call that
+# //// builds and leaves out what it carried goes back to the model once, which calls again with the recap (or says the person changed it).
+CARRIED = (
+    "language", "language_confirmed", "example_site", "example_use", "website_profile", "instance_business", "site_type", "primary_color",
+    "secondary_color", "style_direction", "palette_mode", "background_mode", "copy_density", "logo_image",
+    "footer_logo_image", "inspiration_urls", "inspiration_images", "photos", "categories", "brands", "keep_texts",
+)
+TURNED_BACK_SECONDS = 6 * 3600
+DROPPED = (
+    "FAILED: the recap the person approved was made from your earlier generate_site call, which carried {items}. This call leaves "
+    "them out, and the site would be built without them (in the instance's default language, without the example). Call "
+    "generate_site again now with everything the recap says: those values, unless the person changed them since."
+)
+
+
+def _turned_back_key(session_id: str) -> str:
+    return f"nora_site_call_turned_back:{session_id}"
+
+
+def _given(key: str, value) -> bool:
+    """Whether a call says something for this key: an empty value says nothing, nor does False, except for the person's answer
+    on whose business the site is (instance_business=false is an answer)."""
+    if value in (None, "", [], {}):
+        return False
+    return value is not False or key == "instance_business"
+
+
+def remember_turned_back(session_id: str | None, args: dict) -> None:
+    """A whole-site call turned back before the build (the recap, the examples, the language, a confirmation): what it carried."""
+    if not session_id or str((args or {}).get("scope") or "site") == "pages":
+        return
+    import json
+
+    kept = {key: args[key] for key in CARRIED if _given(key, (args or {}).get(key))}
+    if kept:
+        frappe.cache.set_value(_turned_back_key(session_id), json.dumps(kept), expires_in_sec=TURNED_BACK_SECONDS)
+
+
+def dropped_since_turned_back(session_id: str | None, args: dict) -> dict:
+    """What the conversation's call turned back carried and this call leaves out, asked once: the second call is the model's word."""
+    if not session_id or str((args or {}).get("scope") or "site") == "pages":
+        return {}
+    import json
+
+    raw = frappe.cache.get_value(_turned_back_key(session_id))
+    if not raw:
+        return {}
+    frappe.cache.delete_value(_turned_back_key(session_id))
+    try:
+        earlier = json.loads(raw)
+    except (TypeError, ValueError):
+        return {}
+    return {key: value for key, value in (earlier or {}).items() if key in CARRIED and not _given(key, (args or {}).get(key))}
+
+
+def turned_back(session_id: str | None, args: dict, answer: str) -> str:
+    remember_turned_back(session_id, args)
+    return answer
+# //// Neoffice ▲▲▲
+
+
 def run_generate_site(ctx, args: dict) -> str:
     from builder.site_ai.nora.site_builder import build_site
 
+    session_id = getattr(ctx, "session_id", None)
     # a whole site waits for the recap the person approved; a page or two of a site that exists does not (scope='pages')
-    if str((args or {}).get("scope") or "site") != "pages" and not recap_was_presented(getattr(ctx, "session_id", None)):
-        return RECAP_FIRST
+    if str((args or {}).get("scope") or "site") != "pages" and not recap_was_presented(session_id):
+        return turned_back(session_id, args, RECAP_FIRST)
+    # the logo, the photographs, the sites they like and the language the person gave on the cards reach the build
+    args = with_the_persons_answers(session_id, args or {})
+    # //// Neoffice — what the call turned back carried and this one leaves out goes back to the model once (dropped_since_turned_back)
+    dropped = dropped_since_turned_back(session_id, args)
+    if dropped:
+        from builder.site_ai.logging import ai_log
+
+        ai_log("info", "Site build call left out what the recap was made from", dropped=sorted(dropped))
+        # not kept again: the next call is the model's word, built as it comes
+        return DROPPED.format(items=", ".join(f"{key}={value!r}" for key, value in dropped.items()))
     # //// Neoffice — a site being made is never built before the person saw the example sites (examples.py, Jérémy 14.11: « il faudrait
     # //// pouvoir voir »): the model skipped step 1c once and went straight to the pages
     if str((args or {}).get("scope") or "site") != "pages" and not (args or {}).get("example_site"):
@@ -242,25 +317,27 @@ def run_generate_site(ctx, args: dict) -> str:
 
         try:
             profile = (args or {}).get("website_profile") or page_profile(getattr(ctx, "page_id", None))
-            if examples.first_site(profile) and not examples.shown(getattr(ctx, "session_id", None)):
-                return examples.EXAMPLES_FIRST
+            if examples.first_site(profile) and not examples.shown(session_id):
+                return turned_back(session_id, args, examples.EXAMPLES_FIRST)
         except Exception as e:
             frappe.log_error("generate_site: examples not checked", str(e))
-    # the logo, the photographs, the sites they like and the language the person gave on the cards reach the build
-    args = with_the_persons_answers(getattr(ctx, "session_id", None), args or {})
     # //// Neoffice — a whole site in a language that is not the person's is asked first (language_to_ask, 2026-11-18)
-    question = language_to_ask(getattr(ctx, "session_id", None), args)
+    question = language_to_ask(session_id, args)
     if question:
         from builder.site_ai.logging import ai_log
 
         ai_log("info", "Site language asked before the build", wanted=args.get("language"), person=persons_language())
-        return question
+        return turned_back(session_id, args, question)
     if args.get("instance_business") in (None, ""):
-        given = business_from_answers(getattr(ctx, "session_id", None))
+        given = business_from_answers(session_id)
         if given is not None:
             args = {**args, "instance_business": given}
     try:
-        return build_site(ctx, args or {})
+        answer = build_site(ctx, args or {})
+        # a confirmation asked by the build (whose business it is, hand-made pages) is a call turned back too
+        if isinstance(answer, str) and answer.startswith("CONFIRM_NEEDED"):
+            remember_turned_back(session_id, args)
+        return answer
     except Exception as e:
         frappe.log_error("generate_site failed", frappe.get_traceback())
         return f"FAILED: the site generation stopped with an error: {str(e)[:300]}. Tell the user, and suggest trying again."

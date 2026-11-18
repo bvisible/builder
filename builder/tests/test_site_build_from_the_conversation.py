@@ -157,6 +157,84 @@ class TestTheLanguageOfTheSite(unittest.TestCase):
 			self.assertEqual(build.call_args.args[1]["language"], "en")
 
 
+class FakeCache(dict):
+	def set_value(self, key, value, expires_in_sec=None):
+		self[key] = value
+
+	def get_value(self, key):
+		return self.get(key)
+
+	def delete_value(self, key):
+		self.pop(key, None)
+
+
+FIRST_CALL = {
+	"site_name": "Lakeside Bakery",
+	"activity": "an artisan bakery by the lake",
+	"pages": [{"title": "Home"}, {"title": "About"}],
+	"language": "en",
+	"language_confirmed": True,
+	"example_site": "restaurant",
+	"example_use": "as_is",
+	"website_profile": "ZZ Test Site",
+	"instance_business": False,
+}
+CALL_AFTER_THE_TAP = {
+	"site_name": "Lakeside Bakery",
+	"activity": "an artisan bakery by the lake",
+	"pages": [{"title": "Home"}, {"title": "About"}],
+}
+
+
+class TestTheCallTheRecapWasMadeFrom(unittest.TestCase):
+	"""18.11, osiris: the call turned back for the recap carried the language, the example and the site; the call after the person's
+	tap carried only the name, the activity and the pages, and the site came out in French, without its example."""
+
+	def run_calls(self, *calls):
+		recap = iter([False] + [True] * len(calls))
+		ctx = SimpleNamespace(session_id="a-session", page_id=None)
+		with (
+			patch.object(tools.frappe, "cache", FakeCache()),
+			patch.object(tools, "recap_was_presented", side_effect=lambda session: next(recap)),
+			patch.object(tools, "answers_of_the_conversation", return_value={}),
+			patch.object(tools, "persons_language", return_value="fr"),
+			patch.object(tools, "business_from_answers", return_value=None),
+			patch("builder.site_ai.nora.examples.first_site", return_value=False),
+			patch("builder.site_ai.nora.prompts.page_profile", return_value=None),
+			patch("builder.site_ai.logging.ai_log"),
+			patch("builder.site_ai.nora.site_builder.build_site", return_value="DONE") as build,
+		):
+			answers = [tools.run_generate_site(ctx, dict(args)) for args in calls]
+		return answers, build
+
+	def test_the_call_after_the_tap_goes_back_with_what_it_left_out(self):
+		answers, build = self.run_calls(FIRST_CALL, CALL_AFTER_THE_TAP, FIRST_CALL)
+		self.assertEqual(answers[0], tools.RECAP_FIRST)
+		self.assertTrue(answers[1].startswith("FAILED"))
+		for said in ("language='en'", "example_site='restaurant'", "example_use='as_is'", "website_profile='ZZ Test Site'"):
+			self.assertIn(said, answers[1])
+		# the person's answer « another business » is an answer, carried like the others
+		self.assertIn("instance_business=False", answers[1])
+		self.assertEqual(answers[2], "DONE")
+		build.assert_called_once()
+		self.assertEqual(build.call_args.args[1]["language"], "en")
+		self.assertEqual(build.call_args.args[1]["example_use"], "as_is")
+
+	def test_it_goes_back_once_then_builds_what_the_model_says(self):
+		answers, build = self.run_calls(FIRST_CALL, CALL_AFTER_THE_TAP, CALL_AFTER_THE_TAP)
+		self.assertTrue(answers[1].startswith("FAILED"))
+		self.assertEqual(answers[2], "DONE")
+		self.assertNotIn("language", build.call_args.args[1])
+
+	def test_a_call_that_carries_the_recap_builds_at_once(self):
+		answers, _build = self.run_calls(FIRST_CALL, FIRST_CALL)
+		self.assertEqual(answers[1], "DONE")
+
+	def test_a_page_added_to_a_site_is_never_compared(self):
+		answers, _build = self.run_calls(FIRST_CALL, {**CALL_AFTER_THE_TAP, "scope": "pages"})
+		self.assertEqual(answers[1], "DONE")
+
+
 class TestWhatTheSummarySays(unittest.TestCase):
 	def test_a_build_without_the_clients_photographs_says_so(self):
 		line = site_builder.photo_report_line([], {}, 0, building_part=False)
