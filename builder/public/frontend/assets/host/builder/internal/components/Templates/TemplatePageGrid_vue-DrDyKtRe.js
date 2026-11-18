@@ -1,0 +1,1 @@
+import{r as e}from"../../../../../TemplateGallery~65-BlGmQUNR.js";export{e as default};

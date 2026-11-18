@@ -1,1 +1,0 @@
-import{a as e}from"../../../../../Settings~58-DniZCZhF.js";export{e as registerNeofficePanes};

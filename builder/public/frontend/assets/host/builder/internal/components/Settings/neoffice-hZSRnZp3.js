@@ -1,0 +1,1 @@
+import{a as e}from"../../../../../Settings~58-Cxtplam_.js";export{e as registerNeofficePanes};
