@@ -378,3 +378,65 @@ class TestAToolCallWrittenAsText(unittest.TestCase):
 		self.assertFalse(tool_call_written_as_text("The site name is Atelier Nord and it has four pages."))
 		self.assertFalse(tool_call_written_as_text(""))
 
+
+
+# the two answers of 18.11 (osiris) that carried a card as a list: nothing to tap, nothing to fill
+EXAMPLES_AS_A_LIST = (
+	"Parfait, noté. Lakeside Bakery sera présenté comme une entreprise à part entière.\n\n"
+	"Voici les exemples de sites existants, pour vous aider à visualiser le type de structure et de contenu que nous pourrions adopter :\n\n"
+	"* [Cabinet dentaire](https://hub.example.test/templates/cabinet_dentaire/accueil)\n"
+	"* [Garage](https://hub.example.test/templates/garage/accueil)\n"
+	"* [Restaurant](https://hub.example.test/templates/restaurant/accueil)\n\n"
+	"Souhaitez-vous que nous partions d'un de ces exemples, ou préférez-vous que nous concevions un site sur mesure ?"
+)
+FIELDS_AS_A_LIST = (
+	"Parfait. Vous avez choisi de reprendre l'exemple Restaurant tel quel.\n\n"
+	"Maintenant, quelques détails pour finaliser le site :\n"
+	"- Logo pour la boutique\n- Sites que vous aimez (liens)\n- Photos que vous aimez\n- Vos propres photos pour le site"
+)
+
+
+class TestACardWrittenAsAList(unittest.TestCase):
+	def setUp(self):
+		from builder.ai.agent import loop
+
+		logging = patch.object(loop, "logger")
+		logging.start()
+		self.addCleanup(logging.stop)
+
+	def test_the_examples_and_the_fields_are_cards(self):
+		from builder.site_ai.nora.claims import card_written_as_list
+
+		self.assertTrue(card_written_as_list(EXAMPLES_AS_A_LIST))
+		self.assertTrue(card_written_as_list(FIELDS_AS_A_LIST))
+		# neither is a shape the cards parser reads
+		self.assertIsNone(parse_card(EXAMPLES_AS_A_LIST))
+		self.assertIsNone(parse_card(FIELDS_AS_A_LIST))
+
+	def test_an_answer_that_lists_nothing_to_choose_is_left(self):
+		from builder.site_ai.nora.claims import card_written_as_list
+
+		self.assertFalse(card_written_as_list("Le site est en ligne. Ses pages sont Accueil, La carte et Contact."))
+		self.assertFalse(card_written_as_list("Une seule chose :\n- le logo"))
+		long_items = "Ce qui a changé :\n- " + "x" * 90 + "\n- " + "y" * 90
+		self.assertFalse(card_written_as_list(long_items))
+		# a list with neither a line that announces it nor a question
+		self.assertFalse(card_written_as_list("Accueil\n- une\n- deux\nFin."))
+
+	def runner(self):
+		runner = MagicMock(applied_operations=[], live_text=FIELDS_AS_A_LIST, card_sent_back=False)
+		runner.tool_steps.return_value = []
+		return runner
+
+	def test_it_goes_back_once_and_never_after_a_tool(self):
+		from builder.ai.agent import loop
+		from builder.site_ai.nora.claims import NUDGE_CARD
+
+		runner, messages = self.runner(), []
+		self.assertTrue(loop.AgentRunner.send_back_card_as_list(runner, messages, FIELDS_AS_A_LIST))
+		self.assertEqual(messages[-1], {"role": "user", "content": NUDGE_CARD})
+		runner.emit.assert_called_once_with("stream", chunk="", replace=True)
+		self.assertFalse(loop.AgentRunner.send_back_card_as_list(runner, messages, FIELDS_AS_A_LIST))
+		ran = self.runner()
+		ran.tool_steps.return_value = [{"kind": "tool", "tool": "present_ui"}]
+		self.assertFalse(loop.AgentRunner.send_back_card_as_list(ran, [], FIELDS_AS_A_LIST))

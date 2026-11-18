@@ -94,3 +94,44 @@ def tool_call_written_as_text(answer: str) -> bool:
 	return quoted >= 3
 # //// Neoffice ▲▲▲
 
+
+
+# //// Neoffice ▼▼▼ — a card written as a list (18.11, osiris). Past its first cards the model wrote the example sites as a bullet
+# //// list of links with its question under it, then the logo and photographs step as a bullet list of fields: no card, nothing to
+# //// tap or to fill, and the shapes the cards parser reads (cards.parse_card) were not these. Read by its form, never by its words:
+# //// a short list of short items, under a line that announces it (« : ») or beside a question (« ? »); the loop sends it back once.
+LIST_ITEM = re.compile(r"^[ \t]*[-*•–][ \t]+(.+?)[ \t]*$")
+MARKDOWN_LINK = re.compile(r"\[([^\]]+)\]\([^)]*\)")
+
+NUDGE_CARD = (
+	"You wrote a list for the person to choose from or to fill in, as text, and ended the turn: the person has nothing to tap and "
+	"no field to fill, and the site cannot move on. Choices and fields reach the person ONLY through a present_ui card. Call "
+	"present_ui now with that question and those items (choices for options, inputs or uploads for what they give), in their "
+	"language. If the list only informed and asked nothing, write the same answer again, as it is."
+)
+
+
+def card_written_as_list(answer: str) -> bool:
+	"""Whether the answer ends its turn on a list that a card should carry: two to twelve short items in a row, announced by the
+	line above them (ending on « : ») or beside a question. The caller knows no tool ran and no card was read in the text."""
+	lines = [line.rstrip() for line in (answer or "").split("\n")]
+	runs, run, before = [], [], ""
+	for line in [*lines, ""]:
+		found = LIST_ITEM.match(line)
+		if found:
+			run.append(found.group(1))
+			continue
+		if run:
+			runs.append((before, run))
+			run = []
+		if line.strip():
+			before = line.strip()
+	asks = "?" in MARKDOWN_LINK.sub(r"\1", answer or "")
+	for lead, items in runs:
+		visible = [re.sub(r"https?://\S+", "", MARKDOWN_LINK.sub(r"\1", item)).strip(" *_`") for item in items]
+		if not 2 <= len(visible) <= 12 or any(not item or len(item) > 80 for item in visible):
+			continue
+		if lead.endswith(":") or asks:
+			return True
+	return False
+# //// Neoffice ▲▲▲

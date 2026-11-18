@@ -1461,6 +1461,23 @@ class AgentRunner:
 		messages.append({"role": "user", "content": NUDGE_CALL})
 		return True
 
+	def send_back_card_as_list(self, messages: list[dict], text: str) -> bool:
+		"""//// Neoffice — a card written as a bullet list, no tool run: back to the model once (claims.card_written_as_list,
+		18.11)."""
+		from builder.site_ai.nora.claims import NUDGE_CARD, card_written_as_list
+
+		if getattr(self, "card_sent_back", False) or self.tool_steps() or self.applied_operations:
+			return False
+		if not card_written_as_list(text):
+			return False
+		self.card_sent_back = True
+		logger.warning("Agent wrote a card as a list; asking it to present the card")
+		self.live_text = ""
+		self.emit("stream", chunk="", replace=True)
+		messages.append({"role": "assistant", "content": text})
+		messages.append({"role": "user", "content": NUDGE_CARD})
+		return True
+
 	def flush_pending_images(self, messages: list[dict]) -> None:
 		"""Images a tool captured this round (preview_page screenshots) ride a
 		follow-up user message — appended only after every role:"tool" result,
@@ -1602,6 +1619,9 @@ class AgentRunner:
 						continue
 					# //// Neoffice — and a tool call written as text, nothing run, goes back too
 					if summary_text and self.send_back_tool_call_in_text(messages, summary_text):
+						continue
+					# //// Neoffice — and a card written as a list (options or fields as bullets), nothing to tap, goes back too
+					if summary_text and self.send_back_card_as_list(messages, summary_text):
 						continue
 					self.stop_reason = "model_finished"
 					break
