@@ -13982,3 +13982,17 @@ msgstr "Le site « {0} » est supprimé : ses {1} page(s) sont à la corbeille, 
 #: frontend/src/components/ai/noraEditorChat.ts:95
 msgid "Delete the site"
 msgstr "Supprimer le site"
+
+#: builder/site_ai/nora/site_delete.py:201
+msgid "another record still uses it."
+msgstr "un autre enregistrement l'utilise encore."
+
+#: builder/site_ai/nora/site_delete.py:142
+#, python-brace-format
+msgid "Its {0} form(s) go to the trash too; the messages already received are kept."
+msgstr "Ses {0} formulaire(s) partent aussi à la corbeille ; les messages déjà reçus sont conservés."
+
+#: builder/site_ai/nora/site_delete.py:200
+#, python-brace-format
+msgid "The site « {0} » is not deleted, and nothing was removed: {1}"
+msgstr "Le site « {0} » n'est pas supprimé, et rien n'a été retiré : {1}"
