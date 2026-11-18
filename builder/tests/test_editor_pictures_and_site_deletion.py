@@ -349,3 +349,41 @@ class TestARebuildKeepsTheConversations(unittest.TestCase):
 		self.assertLess(
 			kept, source.index('frappe.delete_doc("Builder Page", name, ignore_permissions=True, force=True)')
 		)
+
+
+class TestABaseSiteIsOfferedToBeGenerated(unittest.TestCase):
+	"""A new instance holds the four pages generated when it was set up, shared by every site and never touched: the Nora tab
+	offers to generate the site, not to change it (Jérémy, 18.11)."""
+
+	def base(self, own, shared, may_read=True):
+		from builder.site_ai.nora import site_chat
+
+		classes = {"A Site": own, None: shared}
+		with (
+			patch.object(site_chat.frappe, "has_permission", return_value=may_read),
+			patch.object(site_chat.frappe.db, "has_column", return_value=True),
+			patch("builder.api.classify_existing_pages", side_effect=lambda profile=None: classes[profile]),
+		):
+			return site_chat.site_is_base("A Site")
+
+	def test_the_pages_of_the_setup_untouched_make_a_base_site(self):
+		empty = {"untouched": [], "protected": []}
+		self.assertTrue(self.base(empty, {"untouched": [{"name": "p1"}], "protected": []}))
+
+	def test_a_page_edited_or_a_site_built_is_no_base_site(self):
+		empty = {"untouched": [], "protected": []}
+		edited = {"untouched": [{"name": "p1"}], "protected": [{"name": "p2"}]}
+		self.assertFalse(self.base(empty, edited))
+		self.assertFalse(
+			self.base(
+				{"untouched": [{"name": "own"}], "protected": []},
+				{"untouched": [{"name": "p1"}], "protected": []},
+			)
+		)
+		self.assertFalse(self.base(empty, empty))
+		self.assertFalse(self.base(empty, {"untouched": [{"name": "p1"}], "protected": []}, may_read=False))
+
+	def test_the_tab_is_told(self):
+		from builder.site_ai.nora import site_chat
+
+		self.assertIn('"base": site_is_base(profile)', inspect.getsource(site_chat.open_chat))

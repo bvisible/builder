@@ -222,6 +222,7 @@ def open_chat(website_profile: str | None = None, session_id: str | None = None)
 		"ready": ai_ready(),
 		"assistant": get_assistant_name(),
 		"pages": site_page_count(profile),
+		"base": site_is_base(profile),
 	}
 
 
@@ -239,6 +240,26 @@ def site_page_count(profile: str | None) -> int:
 	if not frappe.has_permission("Builder Page", "read"):
 		return 0
 	return sum(frappe.db.count("Builder Page", {"is_template": 0, **scope}) for scope in site_scopes(profile))
+
+
+def site_is_base(profile: str | None) -> bool:
+	"""Whether the site is still the one the instance started with: pages generated when it was set up, shared by every site,
+	none edited since, and none built for this site. The tab then offers to generate the site rather than to change it.
+
+	//// Neoffice — added (2026-11-18, Jérémy: « si il a pas de site (site de base mais pas modifié) il faut pas parler de
+	modification mais dire générer un nouveau site »). A new instance holds four such pages (home, about, services, contact),
+	untagged, written by the generator and never touched; a build of Nora tags its pages with the site, and a person's edit
+	changes a page's blocks from the ones stamped at its generation (classify_existing_pages)."""
+	from builder.api import classify_existing_pages
+
+	if not frappe.has_permission("Builder Page", "read"):
+		return False
+	if profile and frappe.db.has_column("Builder Page", site_scope.PROFILE_FIELD):
+		own = classify_existing_pages(profile)
+		if own["untouched"] or own["protected"]:
+			return False
+	shared = classify_existing_pages(None)
+	return bool(shared["untouched"]) and not shared["protected"]
 
 
 def with_live_states(messages: list[dict]) -> list[dict]:
