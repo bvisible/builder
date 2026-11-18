@@ -763,6 +763,23 @@ def unlooked_line(unlooked: list[str]) -> str:
     )
 
 
+# //// Neoffice — added (2026-11-18): the pages where the judge still reads text in another language than the site's (visual_check
+# //// LANGUAGE_CONTEXT), after the revisions. A site rebuilt in French kept English words a reused part had brought, and Nora told
+# //// the person all was in French: she can only say what she is told.
+def foreign_language_line(reviews: list[dict], language: str) -> str:
+    left = []
+    for review in reviews or []:
+        texts = [str(i.get("problem") or "")[:120] for i in (review.get("issues") or []) if i.get("language")]
+        if texts:
+            left.append(f"{review.get('title')} ({'; '.join(texts[:2])})")
+    if not left:
+        return ""
+    return (
+        f"Text in another language than {language} remains on {len(left)} page(s): {', '.join(left)}. Say so to the person, "
+        f"never that the whole site is in {language}, and offer to translate it with them in the editor."
+    )
+
+
 # //// Neoffice — added (2026-11-18): the logo among the person's pictures, as the vision read them (content_understanding flags
 # //// is_logo as suggested_slots "logo"). The « my images » button sends the logo with the photographs and says which is which nowhere.
 def is_seen_logo(row) -> bool:
@@ -3844,7 +3861,7 @@ def build_site(ctx, spec: dict) -> str:
                     break
                 with meter.kind(meter.READING):
                     # //// Neoffice — the page's own headlines: the render must show them (2026-09-17)
-                    look = visual_check.review_page(created[-1], profile, judge, site_name=site_name, activity=activity, expect=site["headlines_by_route"].get(page["route"]) or [page["title"]])
+                    look = visual_check.review_page(created[-1], profile, judge, site_name=site_name, activity=activity, language=language, expect=site["headlines_by_route"].get(page["route"]) or [page["title"]])
                 attempts += 1
                 # //// Neoffice — a measured contrast is repaired on the spot and looked at again,
                 # //// without a model call (contrast.repair_measured_contrast, 2026-09-17)
@@ -3859,7 +3876,7 @@ def build_site(ctx, spec: dict) -> str:
                         # measured and set again if the writer loses it
                         ai_log("info", "Measured contrast repaired", page=page["title"], fixes=measured_fixes[:4])
                         with meter.kind(meter.READING):
-                            look = visual_check.review_page(created[-1], profile, judge, site_name=site_name, activity=activity, expect=site["headlines_by_route"].get(page["route"]) or [page["title"]])
+                            look = visual_check.review_page(created[-1], profile, judge, site_name=site_name, activity=activity, language=language, expect=site["headlines_by_route"].get(page["route"]) or [page["title"]])
                 # //// Neoffice — see thin_copy_issue: the floor of the brief is measured on the stored page
                 if not look.get("error"):
                     thin_blocks, thin_script = stored_page(name)
@@ -4044,7 +4061,7 @@ def build_site(ctx, spec: dict) -> str:
                     _progress(ctx, job_id, _("Visual check: {0}").format(item["title"]), 96, {"pages_created": created})
                     with meter.kind(meter.READING):
                         # //// Neoffice — read by the judge, not the writer (2026-09-16)
-                        reviews.append(visual_check.review_page(item, profile, judge, site_name=site_name, activity=activity))
+                        reviews.append(visual_check.review_page(item, profile, judge, site_name=site_name, activity=activity, language=language))
             known = known_text(site, contact_prompt)
             earlier: list[str] = []
             for item in created:
@@ -4110,7 +4127,7 @@ def build_site(ctx, spec: dict) -> str:
                 # //// Neoffice — and looked at again (2026-09-17): a rewrite nobody reads is the fault
                 # //// this whole gate exists to end. A rewrite the look refuses is held like any other.
                 with meter.kind(meter.READING):
-                    again = visual_check.review_page(item_for(r["name"]), profile, judge, site_name=site_name, activity=activity, expect=page_headlines(blocks, categories) or [page["title"]])
+                    again = visual_check.review_page(item_for(r["name"]), profile, judge, site_name=site_name, activity=activity, language=language, expect=page_headlines(blocks, categories) or [page["title"]])
                 r.update({k: again.get(k) for k in ("professional", "issues", "overall", "gate", "chrome", "error", "http_error", "all_issues")})
                 if visual_check.refused(again) and r["name"] not in {h["name"] for h in held}:
                     essential = page["route"] in ("home", "index") or f"/{page['route']}".rstrip("/") == (cta[1] or "").rstrip("/")
@@ -4180,6 +4197,9 @@ def build_site(ctx, spec: dict) -> str:
     if line := photo_report_line(client_photos, photos_used, placed, building_part):
         lines.append(line)
     if line := unlooked_line(unlooked):
+        lines.append(line)
+    # //// Neoffice — see foreign_language_line
+    if line := foreign_language_line(reviews, language):
         lines.append(line)
     # //// Neoffice — and the real placement, photo by photo, so the assistant tells the user where each went and which were left out
     if library_all:

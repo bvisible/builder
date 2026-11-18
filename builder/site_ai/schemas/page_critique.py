@@ -33,6 +33,12 @@ class PageIssue(BaseModel):
         default="",
         description="One concrete corrective action.",
     )
+    # Neoffice, 18.11: the judge says when a point is text in another language than the site's, so the build can say it
+    # (a site rebuilt in French kept English words a reused part had brought, and Nora wrote that all was in French).
+    language: bool = Field(
+        default=False,
+        description="true when the problem is text a visitor reads that is not in the site's language.",
+    )
 
     class Config:
         extra = "ignore"

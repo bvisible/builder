@@ -105,7 +105,8 @@ def actionable(critique) -> list[dict]:
             continue
         if any(word in (issue.area or "").lower() for word in CHROME_AREAS):
             continue
-        out.append({"area": issue.area, "severity": issue.severity, "problem": issue.problem, "fix": issue.fix})
+        # //// Neoffice — `language` (LANGUAGE_CONTEXT): the summary says the pages left with another language
+        out.append({"area": issue.area, "severity": issue.severity, "problem": issue.problem, "fix": issue.fix, "language": bool(getattr(issue, "language", False))})
     return out
 
 
@@ -381,6 +382,15 @@ REVIEW_CONTEXT = (
     "photo would be are deliberate: ignore them, judge the layout, the copy and the typography of THIS page."
 )
 
+# //// Neoffice — the site's language, said to the judge (2026-11-18): every text a visitor reads is in it. A site rebuilt in French
+# //// kept English words that a reused part had brought (a form, a section of a former build), nobody looked at the language, and
+# //// Nora's summary said all was in French. The judge reads it; the code only passes the language and reads its `language` point.
+LANGUAGE_CONTEXT = (
+    " The site is written in {language}: every text a visitor reads on this page (headings, paragraphs, buttons, labels, form "
+    "fields, captions) must be in {language}. A text in another language is a [high] point: quote it in `problem`, give its "
+    "{language} wording in `fix`, and set `language` to true. Names (the business, a brand, a product) are not a language fault."
+)
+
 # //// Neoffice — what a legal page is (2026-09-15; rewritten 2026-10-26). The reviewer read the bracketed blanks of a privacy policy as
 # //// "unfinished placeholders" and spent a revision erasing them, so it was told they were deliberate. They are not any more: no legal page
 # //// asks its owner to complete it (legal.py reads the company record, the model is told to leave out what it was not given), so a
@@ -508,7 +518,8 @@ def forget_page_caches(route: str) -> None:
         pass
 
 
-def review_page(page: dict, profile: str | None, model: str, site_name: str = "", activity: str = "", expect: list[str] | None = None) -> dict:
+# //// Neoffice — `language` (2026-11-18): the site's language, said to the judge (LANGUAGE_CONTEXT)
+def review_page(page: dict, profile: str | None, model: str, site_name: str = "", activity: str = "", expect: list[str] | None = None, language: str = "") -> dict:
     """Measure one page in the browser, screenshot it on a desktop and on a phone, and have the
     judge read it. Never raises: a page that cannot be reviewed is reported as such.
 
@@ -584,6 +595,9 @@ def review_page(page: dict, profile: str | None, model: str, site_name: str = ""
         phone_picture = _readable_data_url(phone) if phone and phone.get("success") else None
         picture = _readable_data_url(shot) or shot["file_url"]
         context = REVIEW_CONTEXT.format(site_name=site_name, activity=activity[:160]) + (LEGAL_CONTEXT if str(page.get("type") or "") == "legal" else "")
+        # //// Neoffice — see LANGUAGE_CONTEXT
+        if language:
+            context += LANGUAGE_CONTEXT.format(language=language)
 
         def read(judge: str, style: str):
             # //// Neoffice — a lane of the host's own that has another lane behind it does not wait five minutes for its one
