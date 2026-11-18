@@ -109,9 +109,10 @@ def run_present_ui(ctx, args: dict) -> str | None:
 
 	ui = recap_names_the_site(ui, text, page_profile(getattr(ctx, "page_id", None)))
 	# //// Neoffice — the playbook's labels the model copies (« Build the site ») said in the person's language (cards.py)
-	from builder.site_ai.nora.cards import buttons_in_the_persons_language
+	from builder.site_ai.nora.cards import buttons_in_the_persons_language, split_joined_buttons
 
-	ui = buttons_in_the_persons_language(ui, getattr(frappe.local, "lang", None))
+	# //// Neoffice — and one button per label when the model joined them in one (« Continuer · Passer », cards.split_joined_buttons)
+	ui = buttons_in_the_persons_language(split_joined_buttons(ui), getattr(frappe.local, "lang", None))
 	# //// Neoffice — a card that shows the hub's example sites carries the links that open each one whole (examples.with_links): the model
 	# //// left them out once, and the person saw the pictures with no way to see the sites (14.11)
 	from builder.site_ai.nora import examples

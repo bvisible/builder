@@ -193,3 +193,18 @@ class TestWhatThePersonGaveReachesTheBuild(unittest.TestCase):
 		self.assertTrue(BUILD_BUTTON.search(labels[0]), "still a recap")
 		same = [{"kind": "actions", "buttons": [{"label": "Build the site"}]}]
 		self.assertEqual(buttons_in_the_persons_language(same, "en")[0]["buttons"][0]["label"], "Build the site")
+
+	def test_two_buttons_written_as_one_are_two(self):
+		# the logo and photographs card came with one button « Continuer · Passer » (18.11, osiris)
+		from builder.site_ai.nora.cards import split_joined_buttons
+
+		ui = [{"kind": "actions", "buttons": [{"label": "Continuer · Passer", "variant": "primary"}]}]
+		buttons = split_joined_buttons(ui)[0]["buttons"]
+		self.assertEqual([(b["label"], b.get("variant")) for b in buttons], [("Continuer", "primary"), ("Passer", "secondary")])
+		self.assertEqual(
+			[b["label"] for b in split_joined_buttons([{"kind": "actions", "buttons": [{"label": "Continue / Skip"}]}])[0]["buttons"]],
+			["Continue", "Skip"],
+		)
+		# a label of the model's own stays whole
+		mine = [{"kind": "actions", "buttons": [{"label": "Voir le site · en ligne"}]}]
+		self.assertEqual([b["label"] for b in split_joined_buttons(mine)[0]["buttons"]], ["Voir le site · en ligne"])

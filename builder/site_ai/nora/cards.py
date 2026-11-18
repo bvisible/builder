@@ -237,6 +237,25 @@ def _playbook_buttons_written(text: str) -> str:
     return stripped[:start] + "[buttons: " + ", ".join(parts) + "]"
 
 
+def split_joined_buttons(ui: list[dict]) -> list[dict]:
+    """A button whose label is the playbook's labels joined (« Continuer · Passer », 18.11, osiris: the logo and photographs card
+    came with one button for both) becomes one button per label, the first one leading. A label of the model's own stays whole."""
+    known = _playbook_labels()
+    for element in ui or []:
+        if not isinstance(element, dict) or element.get("kind") != "actions":
+            continue
+        buttons = []
+        for button in element.get("buttons") or []:
+            label = str((button or {}).get("label") or "").strip()
+            parts = [part.strip(" \t*_`[]") for part in LABEL_SEPARATOR.split(label)]
+            if len(parts) > 1 and all(part.lower() in known for part in parts):
+                buttons += [{**button, "label": part, "variant": button.get("variant") if not i else "secondary"} for i, part in enumerate(parts)]
+            else:
+                buttons.append(button)
+        element["buttons"] = buttons
+    return ui
+
+
 def _is_recap(ui: list[dict]) -> bool:
     """Whether the card ends on a build button: its bullets are what the site will be, not choices."""
     return any(
