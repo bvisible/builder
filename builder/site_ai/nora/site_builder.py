@@ -2767,6 +2767,15 @@ def build_site(ctx, spec: dict) -> str:
         ai_log("info", "Texts of the replaced pages kept", pages=[t["title"] or t["route"] for t in client_texts])
     to_delete = [n for n in to_delete if n != host_page]
     _progress(ctx, job_id, _("Preparing the site"), 3)
+    # //// Neoffice — the conversations with Nora on the pages a rebuild replaces are kept, archived, as when a site is deleted
+    # //// (site_delete.keep_the_conversations, 2026-11-18): Builder Page.on_trash deletes every chat on a page, and a rebuild took
+    # //// the conversations of the pages it replaced with them
+    if to_delete:
+        from builder.site_ai.nora.site_delete import keep_the_conversations
+
+        kept_chats = keep_the_conversations(list(to_delete))
+        if kept_chats:
+            ai_log("info", "Conversations of the replaced pages kept", conversations=kept_chats)
     for name in to_delete:
         try:
             frappe.delete_doc("Builder Page", name, ignore_permissions=True, force=True)

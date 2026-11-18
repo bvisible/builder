@@ -10,6 +10,7 @@ What is held here: the picture tool is offered only where the site can draw, dra
 site deleted from the desk takes its pages and its header with it, its conversations kept; Nora deletes a site only on an answer
 given after her question, and empties the only site of an instance instead of deleting it."""
 
+import inspect
 import json
 import unittest
 from types import SimpleNamespace
@@ -19,7 +20,7 @@ import frappe
 
 from builder.ai.agent import registry
 from builder.ai.agent.tools import images
-from builder.site_ai.nora import site_delete
+from builder.site_ai.nora import site_builder, site_delete
 
 
 class TestTheAssistantDrawsAPicture(unittest.TestCase):
@@ -339,3 +340,12 @@ class TestTheNewSiteAfterADeletion(unittest.TestCase):
 		result, home = self.page_for(website_profile="Main site", fresh=1)
 		home.assert_called_once_with("Main site")
 		self.assertEqual(result["page_id"], "shared-home")
+
+
+class TestARebuildKeepsTheConversations(unittest.TestCase):
+	def test_the_chats_of_the_replaced_pages_are_archived_before_they_go(self):
+		source = inspect.getsource(site_builder.build_site)
+		kept = source.index("keep_the_conversations(list(to_delete))")
+		self.assertLess(
+			kept, source.index('frappe.delete_doc("Builder Page", name, ignore_permissions=True, force=True)')
+		)
