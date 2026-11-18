@@ -231,6 +231,9 @@ class TestNoraDeletesASite(unittest.TestCase):
 				"pages_of",
 				return_value=[frappe._dict(name="page-1", page_title="Accueil", route="home")],
 			),
+			# a site without a form: `exists` answers True for every doctype here, the theme's Site Form included, which the
+			# CI does not install (its meta cannot be read there)
+			patch.object(site_delete, "forms_of", return_value=[]),
 			patch.object(site_delete.frappe, "has_permission", return_value=True),
 		]
 		for p in patches:
