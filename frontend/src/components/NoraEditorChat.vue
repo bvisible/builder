@@ -621,8 +621,22 @@ async function start() {
 	core.on("form_submit", ({ reply, display }: { reply: string; display: string }) =>
 		chat.selectOption(reply, display),
 	);
-	core.on("card_action", ({ value, message_id }: { value: string; message_id: number }) =>
-		act(value, message_id),
+	//// Neoffice — the card waits while its work runs, its button turning (nora.chat.Core.cardBusy, 18.11): deleting a site
+	//// took half a minute over a card that showed nothing, and the person clicked again
+	core.on(
+		"card_action",
+		({
+			value,
+			message_id,
+			busy,
+		}: {
+			value: string;
+			message_id: number;
+			busy?: (work: unknown) => Promise<unknown>;
+		}) => {
+			const work = act(value, message_id);
+			return busy ? busy(work).catch(() => undefined) : work;
+		},
 	);
 	core.on("chip_click", ({ value, message_id }: { value: string; message_id: number }) =>
 		act(value, message_id),
