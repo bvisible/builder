@@ -235,6 +235,25 @@ class TestAnExamplePageLaid(HubCase):
 		)
 		self.assertIsNone(examples.matching_page(example, {"title": "Blog", "route": "blog"}))
 
+	def test_a_page_written_in_another_language_finds_the_example_page_it_names(self):
+		# the examples are French: by its title, « The Menu » of a site written in English was no page of the example, and only the
+		# home was laid (18.11)
+		example = examples.find("garage")
+		self.assertIsNone(examples.matching_page(example, {"title": "Book an appointment", "route": "book"}))
+		named = {"title": "Book an appointment", "route": "book", "example_page": "Prendre rendez-vous"}
+		self.assertEqual(examples.matching_page(example, named)["name"], "page-book")
+		# a page the example has not is no page of it, whatever the model named
+		self.assertIsNone(examples.matching_page(example, {"title": "Blog", "route": "blog", "example_page": "Le blog"}))
+
+	def test_the_build_keeps_the_example_page_named(self):
+		from builder.site_ai.nora.site_builder import normalise_pages
+
+		pages = normalise_pages(
+			[{"title": "Home"}, {"title": "Book an appointment", "example_page": "Prendre rendez-vous"}], "vitrine"
+		)
+		self.assertEqual(pages[1].get("example_page"), "Prendre rendez-vous")
+		self.assertNotIn("example_page", pages[0])
+
 
 def answer(texts=(), pictures=()):
 	return examples.Rewrite(

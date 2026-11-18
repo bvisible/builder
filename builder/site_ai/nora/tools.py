@@ -374,6 +374,10 @@ generate_site = Tool(
                         "title": {"type": "string"},
                         "route": {"type": "string"},
                         "type": {"type": "string"},
+                        "example_page": {
+                            "type": "string",
+                            "description": "With an example site: the title of the example's page this page is made from, as the example lists it (« La carte » for « The Menu » on a site written in English). Leave it out for a page the example has not.",
+                        },
                     },
                     "required": ["title"],
                 },

@@ -384,7 +384,11 @@ def normalise_pages(pages: list, site_type: str) -> list[dict]:
         if route in seen:
             continue
         seen.add(route)
-        out.append({"title": title, "route": route, "type": ptype})
+        page = {"title": title, "route": route, "type": ptype}
+        # //// Neoffice — the example page it is made from, as the model named it (examples.matching_page, 18.11)
+        if isinstance(raw.get("example_page"), str) and raw["example_page"].strip():
+            page["example_page"] = raw["example_page"].strip()[:120]
+        out.append(page)
     if not out:
         from builder.api import DEFAULT_PAGES_BY_SITE_TYPE
 

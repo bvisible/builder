@@ -319,8 +319,15 @@ def _norm(text: str) -> str:
 
 
 def matching_page(example: dict, page: dict) -> dict | None:
-    """The example page a page of the site is made from: the same title, else the same address, else the home for the home."""
+    """The example page a page of the site is made from: the one the model named (`example_page`), else the same title, else the same
+    address, else the home for the home. A site written in another language than its example has none of its titles: « The Menu » is
+    the example's « La carte », and only the home was laid (18.11)."""
     pages = example.get("pages") or []
+    named = _norm(page.get("example_page"))
+    if named:
+        for candidate in pages:
+            if named in (_norm(candidate["title"]), _norm(str(candidate.get("slug") or "").replace("_", " "))):
+                return candidate
     title, route = _norm(page.get("title")), _norm(str(page.get("route") or "").replace("-", " "))
     for candidate in pages:
         if _norm(candidate["title"]) == title:
