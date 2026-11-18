@@ -113,9 +113,24 @@ class TestTheLanguageOfTheSite(unittest.TestCase):
 			("italiano", "it"),
 			("", ""),
 			("es", ""),
+			# the names the model writes in the person's language (18.11)
+			("anglais", "en"),
+			("allemand", "de"),
+			("inglese", "en"),
+			("tedesco", "de"),
+			("Englisch", "en"),
 		):
 			with self.subTest(value=value):
 				self.assertEqual(tools.language_code(value), code)
+
+	def test_the_build_reads_the_language_by_its_name_too(self):
+		# read by its first two letters, « anglais » gave « an » and the site fell back to French (18.11)
+		with patch.object(site_builder.frappe.db, "get_single_value", return_value="fr"):
+			for value, code in (("anglais", "en"), ("allemand", "de"), ("English", "en"), ("it", "it"), ("", "fr"), ("es", "fr")):
+				with self.subTest(value=value):
+					self.assertEqual(site_builder.site_language({"language": value}), code)
+		with patch.object(site_builder.frappe.db, "get_single_value", return_value="de"):
+			self.assertEqual(site_builder.site_language({}), "de")
 
 	def ask(self, args, person="fr", named=None):
 		with (

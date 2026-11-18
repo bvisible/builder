@@ -2592,6 +2592,19 @@ def chrome_font(config, field: str, wanted: str) -> str:
     return "Inter" if "Inter" in options else options[0]
 
 
+# //// Neoffice — the language as the model names it, a code or a name in any of the four languages (tools.language_code, 18.11):
+# //// read by its first two letters, « anglais » gave « an » and « allemand » « al », and both sites fell back to French
+def site_language(spec: dict) -> str:
+    """The two-letter code the site is written in: the one the call names, else the instance's default, else French."""
+    from builder.site_ai.nora.tools import language_code
+
+    return (
+        language_code((spec or {}).get("language"))
+        or language_code(frappe.db.get_single_value("Builder Settings", "default_language"))
+        or "fr"
+    )
+
+
 def build_site(ctx, spec: dict) -> str:
     from builder.ai import llm
     from builder.ai.block_codec import BlockCodec
@@ -2660,9 +2673,8 @@ def build_site(ctx, spec: dict) -> str:
             ai_log("info", "Site build asks whose business the site is", site_name=site_name, profile=profile)
             return business_question(site_name, company)
     replace_existing = spec.get("replace_existing") or "auto"
-    lang_code = (spec.get("language") or frappe.db.get_single_value("Builder Settings", "default_language") or "fr").strip().lower()
-    language = {"fr": "French", "en": "English", "de": "German", "it": "Italian"}.get(lang_code[:2], lang_code)
-    lang_code = lang_code[:2] if lang_code[:2] in ("fr", "en", "de", "it") else "fr"
+    lang_code = site_language(spec)
+    language = {"fr": "French", "en": "English", "de": "German", "it": "Italian"}[lang_code]
     primary = (spec.get("primary_color") or "").strip() or None
     secondary = (spec.get("secondary_color") or "").strip() or None
     # //// Neoffice — the example site the person chose to start from, and how (examples.py, Jérémy 14.11): its colours, type and ground

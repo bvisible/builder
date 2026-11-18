@@ -49,7 +49,11 @@ def recap_was_presented(session_id: str | None) -> bool:
 
 
 ANSWER_LINE = re.compile(r"^\s*([^:\n]{2,80}?)\s*:\s*(.+?)\s*$", re.M)
-LANGUAGES = {"fran": "fr", "french": "fr", "engl": "en", "angl": "en", "deutsch": "de", "allem": "de", "german": "de", "ital": "it"}
+# //// the names of the four languages as a person or the model writes them in any of the four: « inglese » and « tedesco » too (18.11)
+LANGUAGES = {
+    "fran": "fr", "french": "fr", "engl": "en", "angl": "en", "inglese": "en", "deutsch": "de", "allem": "de", "german": "de",
+    "tedesco": "de", "ital": "it",
+}
 # //// Neoffice — one answer, read a line at a time with the bare addresses written under it (2026-11-18): see _answer_entries
 ENTRY_LINE = re.compile(r"^\s*([^:\n]{2,80}?)\s*:\s*(.*?)\s*$")
 ADDRESS_LINE = re.compile(r"^\s*(?:/files/\S+|https?://\S+)\s*$")
