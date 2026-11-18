@@ -27,11 +27,14 @@ def blank_root_blocks() -> str:
 
 @frappe.whitelist()
 @builder_role_required()
-def site_creation_page(website_profile: str | None = None) -> dict:
+def site_creation_page(website_profile: str | None = None, fresh: int | bool = 0) -> dict:
     """The page whose editor hosts the site conversation: the profile's home page when it
     exists, else its first page, else a fresh blank draft the pipeline turns into the
-    home page. The agent's sessions are page-scoped, so a site needs one page to start."""
-    found = site_home_page(website_profile)
+    home page. The agent's sessions are page-scoped, so a site needs one page to start.
+    `fresh` without a profile: always the blank draft. A person whose site was just deleted starts
+    a new one (site_delete): the pages shared by every site (no profile, a legal page among them)
+    are not theirs to start it on, nor the conversation one of them already holds (18.11)."""
+    found = None if (frappe.utils.cint(fresh) and not website_profile) else site_home_page(website_profile)
     if found:
         return {"page_id": found, "created": False}
     scoped = frappe.db.has_column("Builder Page", "neo_website_profile")

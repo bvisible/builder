@@ -23,20 +23,22 @@ export const SITE_CHAT_VALUE = "chat";
 export const opensTheAssistant = (route: RouteLocationNormalizedLoaded) =>
 	isSiteCreationRoute(route) || route.query[SITE_CREATION_QUERY] === SITE_CHAT_VALUE;
 
-/** the profile's home page (or first page, or a fresh blank draft), then the editor on it. `reload`: the editor is loaded
- * anew there, for a caller whose open page is gone (a site deleted by Nora, 18.11): the panel sends the site's first
- * message once it has read the page's chat, which an editor moving from page to page had already done. */
-export async function startSiteCreation(websiteProfile?: string, reload = false) {
+/** the profile's home page (or first page, or a fresh blank draft), then the editor on it. `afterDeletion`: for a caller
+ * whose site was just deleted (Nora's delete_site, 18.11): a blank draft when no site stays (never a page every site
+ * shares), and the editor loaded anew there: the panel sends the site's first message once it has read the page's chat,
+ * which an editor moving from page to page had already done. */
+export async function startSiteCreation(websiteProfile?: string, afterDeletion = false) {
 	try {
 		const result = (await createResource({ url: "builder.site_ai.nora.api.site_creation_page" }).submit({
 			website_profile: websiteProfile || null,
+			fresh: afterDeletion ? 1 : 0,
 		})) as { page_id: string };
 		const target = {
 			name: "builder",
 			params: { pageId: result.page_id },
 			query: { [SITE_CREATION_QUERY]: SITE_CREATION_VALUE },
 		};
-		if (reload) {
+		if (afterDeletion) {
 			window.location.assign(router.resolve(target).href);
 			return;
 		}

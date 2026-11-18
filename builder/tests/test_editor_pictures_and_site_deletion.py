@@ -219,3 +219,35 @@ class TestNoraDeletesASite(unittest.TestCase):
 			self.assertTrue(
 				site_delete.run_delete_site(self.ctx, {"website_profile": "Second site"}).startswith("FAILED")
 			)
+
+
+class TestTheNewSiteAfterADeletion(unittest.TestCase):
+	"""« Build a new site » of the editor's window, once Nora deleted the site of the open page."""
+
+	def page_for(self, **kwargs):
+		from builder.site_ai.nora import api
+
+		page = MagicMock(name="page")
+		page.name = "page-new"
+		with (
+			patch.object(api, "site_home_page", return_value="shared-home") as home,
+			patch.object(api.frappe, "new_doc", return_value=page),
+			patch.object(api.frappe.db, "commit"),
+		):
+			result = api.site_creation_page(**kwargs)
+		return result, home
+
+	def test_no_site_left_means_a_blank_page_never_a_shared_one(self):
+		result, home = self.page_for(website_profile=None, fresh=1)
+		home.assert_not_called()
+		self.assertEqual(result, {"page_id": "page-new", "created": True})
+
+	def test_create_with_ai_still_reopens_the_page_it_finds(self):
+		result, home = self.page_for(website_profile=None)
+		home.assert_called_once_with(None)
+		self.assertEqual(result, {"page_id": "shared-home", "created": False})
+
+	def test_the_emptied_site_is_looked_up_even_after_a_deletion(self):
+		result, home = self.page_for(website_profile="Main site", fresh=1)
+		home.assert_called_once_with("Main site")
+		self.assertEqual(result["page_id"], "shared-home")
