@@ -1,1 +1,0 @@
-import{a as e,i as t,n,r,t as i}from"../../../../blocks~72-YrofrFDS.js";export{i as PLUGIN_BLOCK_TYPE,n as addBeside,r as freshBlock,t as insertBlock,e as startBlockDrag};
