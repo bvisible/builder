@@ -77,6 +77,10 @@ export class AIChatController {
 	}
 	// This page's chat sessions (most recent first) — the panel's session switcher.
 	readonly sessions = ref<Array<{ name: string; title: string | null }>>([]);
+	//// Neoffice — the open page went with its site (Nora's delete_site, 2026-11-18): where the person goes on. While it
+	//// is set, the conversation is not reloaded: the server only knows a page that is gone as an empty chat, and the
+	//// pane lost Nora's last answer under the person's eyes.
+	readonly pageGone = ref<{ goto: string } | null>(null);
 	readonly availableModels = ref<AIProvider[]>([]);
 	readonly selectedModel = useLocalStorage("ai-selected-model", "");
 	readonly selectedEffort = useLocalStorage("ai-thinking-effort", "");
@@ -246,6 +250,7 @@ export class AIChatController {
 			if (!newPageId) return;
 			attachAIChatListeners(this.builderStore.realtime, newPageId, this.handlers);
 			this.resetTransientState();
+			this.pageGone.value = null; //// Neoffice — see pageGone
 			// Sessions are page-scoped: never carry one across a page switch.
 			this.sessionIntentEpoch++;
 			this.invalidateSessionLoads();
@@ -420,6 +425,7 @@ export class AIChatController {
 	 * several parallel sessions; see switchSession/newSession. */
 	async loadSession(sessionId?: string) {
 		if (!this.pageId.value || !this.builderStore.isAIEnabled || this.isUnsavedPage.value) return;
+		if (this.pageGone.value) return; //// Neoffice — see pageGone
 		const target = sessionId || this.pendingSessionId || this.sessionId.value || undefined;
 		const epoch = ++this.loadSessionEpoch;
 		const pageId = this.pageId.value;
@@ -616,8 +622,14 @@ export class AIChatController {
 	 * theme variables (var(--id) styles), the evaluated page data (repeater
 	 * previews), or the page doc (route/meta). NOT session-scoped — this state is
 	 * page/site-level, so any chat's turn should refresh it. */
-	onRefetch = async (data: { resources?: string[] }) => {
+	//// Neoffice — `goto` rides "page_gone" (below)
+	onRefetch = async (data: { resources?: string[]; goto?: string }) => {
 		const resources = data.resources || [];
+		//// Neoffice — "page_gone": the open page went with its site (see pageGone); nothing of it is fetched again.
+		if (resources.includes("page_gone")) {
+			this.pageGone.value = { goto: data.goto || "/builder/home" };
+			return;
+		}
 		if (resources.includes("variables")) {
 			builderTokens.reload();
 			useBuilderToken().clearTokenHistory();

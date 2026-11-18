@@ -13933,3 +13933,21 @@ msgstr "Vos fichiers n'ont pas pu être envoyés."
 #, python-brace-format
 msgid "Some files could not be sent: {0}"
 msgstr "Certains fichiers n'ont pas pu être envoyés : {0}"
+
+#: frontend/src/components/NoraEditorChat.vue:132
+msgid "The site is deleted"
+msgstr "Le site est supprimé"
+
+#: frontend/src/components/NoraEditorChat.vue:135
+#, python-brace-format
+msgid "Its pages are in the trash, where an administrator can restore them, and your conversation is kept. The new site is built with {0} in the Website space."
+msgstr "Ses pages sont dans la corbeille, où un administrateur peut les restaurer, et votre conversation est conservée. Le nouveau site se construit avec {0} dans l'espace Site web."
+
+#: frontend/src/components/NoraEditorChat.vue:144
+#, python-brace-format
+msgid "Build a new site with {0}"
+msgstr "Créer un nouveau site avec {0}"
+
+#: frontend/src/components/NoraEditorChat.vue:148
+msgid "Back to the Builder"
+msgstr "Retour au Builder"

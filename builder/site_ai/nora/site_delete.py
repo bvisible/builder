@@ -10,11 +10,15 @@ person had pasted into it included. Now:
 * Nora deletes a site on the person's word (`delete_site`): it asks first, and acts only on an answer given after its question.
   The only site of an instance is emptied instead (its pages go, the site stays, ready to be built again)."""
 
+from urllib.parse import urlencode
+
 import frappe
 
 from builder.ai.agent.registry import Tool
 
 VARIANT = "Website Header Footer Variant"
+# The Nora tab of the Website space (neoffice_theme page `site-nora`), where a site is built from its first message.
+SITE_TAB = "site-nora"
 ASK_KEY = "builder_delete_site_asked:{session}:{site}"
 ASK_SECONDS = 15 * 60
 
@@ -85,6 +89,28 @@ def _answered_since(ctx, asked_at: float) -> bool:
 	return bool(last) and frappe.utils.get_datetime(last[0].creation).timestamp() > asked_at
 
 
+def next_address(site: str | None) -> str:
+	"""Where the person goes on once their site is gone: the Nora tab of the Website space, which builds a site from its
+	first message (on the emptied site when it stays), or the Builder's home for one who may not open that tab."""
+	try:
+		if frappe.db.exists("Page", SITE_TAB) and frappe.get_doc("Page", SITE_TAB).is_permitted():
+			return f"/app/{SITE_TAB}" + (f"?{urlencode({'site': site})}" if site else "")
+	except Exception:
+		pass
+	return "/builder/home"
+
+
+def leave_the_open_page(ctx, page_names: list[str], site: str | None) -> bool:
+	"""The page open in the editor went with the site: the editor is told, with the address to go on at, after the commit
+	(it must not look before the deletion lands). Without it, the editor reloaded a conversation of a page that no longer
+	exists, met an empty one, and stayed open on a page it could no longer save (18.11)."""
+	page = getattr(ctx, "page_id", None)
+	if not page or page not in page_names or not hasattr(ctx, "emit"):
+		return False
+	ctx.emit("refetch", resources=["page_gone"], goto=next_address(site), after_commit=True)
+	return True
+
+
 def _site_of(ctx, args: dict) -> str | None:
 	site = (args.get("website_profile") or "").strip()
 	if not site and getattr(ctx, "page_id", None):
@@ -125,14 +151,22 @@ def run_delete_site(ctx, args: dict) -> str:
 	frappe.cache.delete_value(key)
 	if only:
 		removed = remove_pages(site)
-		frappe.db.commit()
-		return (
+		done = (
 			f"DONE: the {removed['pages']} page(s) of « {site} » are in the trash; the site stays, empty, ready to be built again "
 			f"({removed['conversations_kept']} conversation(s) with Nora kept)."
 		)
-	frappe.delete_doc("Website Profile", site)
+	else:
+		frappe.delete_doc("Website Profile", site)
+		done = f"DONE: the site « {site} » is deleted, with its {len(pages)} page(s) (in the trash) and its header and footer."
+	left = leave_the_open_page(ctx, [page.name for page in pages], site if only else None)
 	frappe.db.commit()
-	return f"DONE: the site « {site} » is deleted, with its {len(pages)} page(s) (in the trash) and its header and footer."
+	if left:
+		done += (
+			" The page open in the editor went with it: the editor now shows the person the way to the Nora tab of the "
+			"Website space, where the new site is built. Say in one or two sentences that it is done and that they go on "
+			"there; ask nothing more here."
+		)
+	return done
 
 
 delete_site = Tool(

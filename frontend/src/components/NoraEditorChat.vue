@@ -125,6 +125,28 @@
 				<AIDebugPanel :debug="debugData" />
 			</template>
 		</Dialog>
+		<!-- //// Neoffice — the open page went with its site (Nora's delete_site): once her answer is in, the way on.
+			 Not dismissible: behind it is a page that no longer exists, which the editor could not save. -->
+		<Dialog
+			:modelValue="siteGone"
+			:title="__('The site is deleted')"
+			:message="
+				__(
+					'Its pages are in the trash, where an administrator can restore them, and your conversation is kept. The new site is built with {0} in the Website space.',
+					[assistantLabel],
+				)
+			"
+			size="md"
+			:dismissible="false"
+			:showCloseButton="false"
+			:actions="[
+				{
+					label: __('Build a new site with {0}', [assistantLabel]),
+					variant: 'solid',
+					onClick: () => leaveTo(chat.pageGone.value?.goto),
+				},
+				{ label: __('Back to the Builder'), variant: 'subtle', onClick: () => leaveTo('/builder/home') },
+			]" />
 	</div>
 </template>
 
@@ -487,6 +509,14 @@ function act(value: string, coreId: number) {
 
 const debugOpen = ref(false);
 const debugData = ref<Record<string, any> | null>(null);
+
+//// Neoffice — the open page went with its site (AIChatController.pageGone): the window opens once the turn is over, so
+//// Nora's last answer is in the pane before it; both ways out reload the desk or the Builder, nothing of the gone page
+//// is kept in memory.
+const siteGone = computed(() => Boolean(chat.pageGone.value) && !isSubmitting.value);
+const leaveTo = (address?: string) => {
+	window.location.href = address || "/builder/home";
+};
 
 /** The conversation's modules, on as everywhere (Jérémy, 13.11: « si on fait partout la même chose, c'est mieux »); each
  * shows only when it serves. Their options ride the conversation's construction: from nora.chat.Core 12 every module
