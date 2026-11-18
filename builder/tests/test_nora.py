@@ -1788,12 +1788,14 @@ class TestChromeTools(unittest.TestCase):
 	def test_the_registry_carries_the_five_site_tools(self):
 		from builder.site_ai.nora.tools import TOOLS
 
-		# delete_site (site_delete.py, 18.11): a person who wants to start again deletes their site through Nora
+		# delete_site (site_delete.py, 18.11): a person who wants to start again deletes their site through Nora's card
 		self.assertEqual(
 			[t.name for t in TOOLS],
 			["generate_site", "inspect_inspiration", "get_site_chrome", "update_site_chrome", "delete_site"],
 		)
-		self.assertTrue(all(t.side == "server" and callable(t.handler) for t in TOOLS))
+		self.assertTrue(all(callable(t.handler) for t in TOOLS))
+		# every tool runs in the turn, but the deletion: it raises its card and ends the turn, the click deletes
+		self.assertEqual({t.name: t.side for t in TOOLS if t.side != "server"}, {"delete_site": "terminal"})
 
 	def test_update_payload_keeps_the_chrome_fields_only(self):
 		from builder.site_ai.nora.tools import chrome_payload

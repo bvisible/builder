@@ -24,6 +24,8 @@ KINDS = {
 	# //// Neoffice — the forms of the website kept as data (2026-10-20, neoffice-maintenance#1593)
 	"create_site_form",
 	"update_site_form",
+	# //// Neoffice — a whole site deleted on the person's click (builder.site_ai.nora.site_delete, 2026-11-18)
+	"delete_site",
 }
 
 GLOBAL_SETTING_FIELDS = {"script", "style", "head_html", "body_html"}
@@ -83,7 +85,17 @@ def apply_pending_action(kind: str, payload: dict) -> str:
 		# //// Neoffice — the forms of the website kept as data (see apply_create_site_form below)
 		"create_site_form": apply_create_site_form,
 		"update_site_form": apply_update_site_form,
+		# //// Neoffice — see KINDS
+		"delete_site": apply_delete_site,
 	}[kind](payload)
+
+
+# //// Neoffice — the deletion itself lives with the rest of a site's deletion (site_delete.apply_delete_site), and checks
+# //// the confirming person's right to delete that site: it is not a Builder setting.
+def apply_delete_site(payload: dict) -> str:
+	from builder.site_ai.nora.site_delete import apply_delete_site as delete
+
+	return delete(payload)
 
 
 # //// Neoffice — the two writes of the assistant on the forms of the website. Both run as the user who applied the

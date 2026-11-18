@@ -172,12 +172,17 @@ def confirm_pending_settings(message_id: str, decision: str = "apply"):
 	payload off the pending-action message and dispatches to apply_pending_action."""
 	from builder.ai.agent.pending import apply_pending_action
 
-	if not frappe.has_permission("Builder Settings", "write"):
-		frappe.throw(_("You are not permitted to apply this change"), frappe.PermissionError)
+	# //// Neoffice — the message is read before the right is asked: a site's deletion (kind delete_site) is held to the
+	# //// right to delete that site (site_delete.apply_delete_site checks it), not to the Builder's settings, which the
+	# //// client administrator who may delete a site does not write (2026-11-18). Every other kind keeps upstream's gate.
 	if not message_id or not frappe.db.exists(AISession.MESSAGE_DOCTYPE, message_id):
 		frappe.throw(_("Pending action not found"))
 
 	msg = frappe.get_doc(AISession.MESSAGE_DOCTYPE, message_id)
+	# //// Neoffice — the gate itself (see above)
+	kind = AISession.load_metadata(msg.metadata_json).get("kind")
+	if kind != "delete_site" and not frappe.has_permission("Builder Settings", "write"):
+		frappe.throw(_("You are not permitted to apply this change"), frappe.PermissionError)
 	owner = frappe.db.get_value(AISession.DOCTYPE, msg.session, "session_user")
 	if owner != frappe.session.user:
 		frappe.throw(_("This action does not belong to you"), frappe.PermissionError)
@@ -200,6 +205,14 @@ def confirm_pending_settings(message_id: str, decision: str = "apply"):
 	# The OUTCOME becomes part of the conversation — visible in the chat after a
 	# reload, and context for the agent's next turn (it knows what was applied).
 	AISession.try_append_message(msg.session, "assistant", result, message_type="status")
+	# //// Neoffice — a deleted site ends the conversation there (2026-11-18): the outcome is the last word, no turn is
+	# //// resumed on pages that are gone, and the screen is told when its page went with the site (site_delete.page_gone:
+	# //// the editor opens its window, the Website space's Nora tab its button to a new site).
+	if kind == "delete_site":
+		from builder.site_ai.nora.site_delete import tell_the_screens
+
+		gone = tell_the_screens(meta.get("payload"), msg.session)
+		return {"status": "applied", "message": result, "resumed": False, "page_gone": gone}
 	resumed = resume_after_action(msg.session, result)
 	return {"status": "applied", "message": result, "resumed": resumed}
 

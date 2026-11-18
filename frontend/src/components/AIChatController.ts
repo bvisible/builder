@@ -625,7 +625,8 @@ export class AIChatController {
 	//// Neoffice — `site` rides "page_gone" (below)
 	onRefetch = async (data: { resources?: string[]; site?: string | null }) => {
 		const resources = data.resources || [];
-		//// Neoffice — "page_gone": the open page went with its site (see pageGone); nothing of it is fetched again.
+		//// Neoffice — "page_gone": the site of the open page was deleted from Nora's card, maybe in another screen
+		//// (site_delete.tell_the_screens): see pageGone; nothing of the page is fetched again.
 		if (resources.includes("page_gone")) {
 			this.pageGone.value = { site: data.site || null };
 			return;
@@ -896,6 +897,18 @@ export class AIChatController {
 				url: "builder.ai.api.confirm_pending_settings",
 				method: "POST",
 			}).submit({ message_id: message.id, decision });
+			//// Neoffice — the card deleted the site of the open page (delete_site, 2026-11-18): the page is gone, so the
+			//// conversation is not read again (see pageGone); the card is said decided, the outcome added, and the window opens.
+			if (res?.page_gone) {
+				this.messages.value = [
+					...this.messages.value.map((m) =>
+						m.id === message.id ? { ...m, metadata: { ...(m.metadata || {}), status: "action_applied" } } : m,
+					),
+					buildLocalMessage("assistant", res.message || ""),
+				];
+				this.pageGone.value = { site: res.page_gone.site || null };
+				return;
+			}
 			await this.loadSession();
 			//// Neoffice — translated: the panel speaks the person's language (Nora's conversation in the Chat tab, 13.11)
 			if (decision === "apply") toast.success(res?.message || __("Applied"));

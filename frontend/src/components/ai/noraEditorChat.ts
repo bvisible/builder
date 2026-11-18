@@ -75,6 +75,9 @@ export function pendingQuestion(meta: Record<string, any>): string {
 			return __("Update site-wide code ({0}). This loads on every page.", [Object.keys(p).join(", ")]);
 		case "home_page":
 			return __("Make “/{0}” the site's home page.", [String(p.route || "").replace(/^\//, "")]);
+		//// Neoffice — a site's deletion: its question is the server's, already in the person's language (site_delete)
+		case "delete_site":
+			return p.question || __("Confirm this change?");
 		default:
 			return __("Confirm this change?");
 	}
@@ -88,6 +91,8 @@ export function applyLabel(kind?: string): string {
 		seed_sample_data: __("Add records"),
 		home_page: __("Set home page"),
 		global_settings: __("Apply"),
+		//// Neoffice — see pendingQuestion
+		delete_site: __("Delete the site"),
 	};
 	return labels[kind || ""] || __("Apply");
 }

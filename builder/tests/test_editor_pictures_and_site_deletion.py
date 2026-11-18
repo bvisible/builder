@@ -10,6 +10,7 @@ What is held here: the picture tool is offered only where the site can draw, dra
 site deleted from the desk takes its pages and its header with it, its conversations kept; Nora deletes a site only on an answer
 given after her question, and empties the only site of an instance instead of deleting it."""
 
+import json
 import unittest
 from types import SimpleNamespace
 from unittest.mock import MagicMock, patch
@@ -91,44 +92,22 @@ class TestASiteDeletedFromTheDesk(unittest.TestCase):
 
 
 class TestNoraDeletesASite(unittest.TestCase):
+	"""Nora proposes, the person's click deletes: delete_site raises a confirm card and nothing else; the deletion runs
+	when the card is applied (apply_delete_site), held to the right of the person who applies it."""
+
 	def setUp(self):
-		# Only the question's own key is kept here: every other key (the installed apps, the time zone…) goes to the real cache.
-		self.cache = {}
-		cache = site_delete.frappe.cache
-		real = {name: getattr(cache, name) for name in ("get_value", "set_value", "delete_value")}
-
-		def ours(key):
-			return isinstance(key, str) and key.startswith("builder_delete_site_asked")
-
-		def get_value(key, *args, **kwargs):
-			return self.cache.get(key) if ours(key) else real["get_value"](key, *args, **kwargs)
-
-		def set_value(key, value, *args, **kwargs):
-			if not ours(key):
-				return real["set_value"](key, value, *args, **kwargs)
-			self.cache[key] = value
-
-		def delete_value(key, *args, **kwargs):
-			if not ours(key):
-				return real["delete_value"](key, *args, **kwargs)
-			self.cache.pop(key, None)
-
 		patches = [
-			patch.object(cache, "get_value", side_effect=get_value),
-			patch.object(cache, "set_value", side_effect=set_value),
-			patch.object(cache, "delete_value", side_effect=delete_value),
 			patch.object(
 				site_delete,
 				"pages_of",
 				return_value=[frappe._dict(name="page-1", page_title="Accueil", route="home")],
 			),
 			patch.object(site_delete.frappe, "has_permission", return_value=True),
-			patch.object(site_delete.frappe.db, "commit"),
 		]
 		for p in patches:
 			p.start()
 			self.addCleanup(p.stop)
-		self.ctx = SimpleNamespace(session_id=None, page_id=None)
+		self.ctx = SimpleNamespace(session_id="a-chat", page_id="page-1")
 
 	def exists(self, only):
 		def answer(doctype, filters=None):
@@ -138,24 +117,45 @@ class TestNoraDeletesASite(unittest.TestCase):
 
 		return patch.object(site_delete.frappe.db, "exists", side_effect=answer)
 
-	def test_nora_asks_first(self):
-		with self.exists(only=False), patch.object(site_delete.frappe, "delete_doc") as delete:
-			answer = site_delete.run_delete_site(
-				self.ctx, {"website_profile": "Second site", "confirmed": True}
-			)
-		self.assertTrue(answer.startswith("CONFIRM_NEEDED"))
+	def test_nora_only_raises_the_card(self):
+		with (
+			self.exists(only=False),
+			patch("builder.ai.agent.pending.request_confirmation") as card,
+			patch.object(site_delete.frappe, "delete_doc") as delete,
+		):
+			answer = site_delete.request_delete_site(self.ctx, {"website_profile": "Second site"})
+		self.assertIsNone(answer)  # the turn ends on the card
 		delete.assert_not_called()
+		_ctx, kind, question, payload = card.call_args.args
+		self.assertEqual(kind, "delete_site")
+		self.assertIn("Second site", question)
+		self.assertIn("Accueil", question)
+		self.assertEqual(
+			payload,
+			{"site": "Second site", "only": False, "page": "page-1", "channel": "", "question": question},
+		)
 
-	def test_after_the_yes_the_site_goes(self):
+	def test_the_tool_ends_the_turn_and_takes_no_confirmation_from_the_model(self):
+		self.assertEqual(site_delete.delete_site.side, "terminal")
+		self.assertEqual(list(site_delete.delete_site.parameters["properties"]), ["website_profile"])
+
+	def test_a_person_who_may_not_delete_is_refused_before_any_card(self):
+		with (
+			self.exists(only=False),
+			patch.object(site_delete.frappe, "has_permission", return_value=False),
+			patch("builder.ai.agent.pending.request_confirmation") as card,
+		):
+			answer = site_delete.request_delete_site(self.ctx, {"website_profile": "Second site"})
+		self.assertTrue(answer.startswith("DECLINED"))
+		card.assert_not_called()
+
+	def test_the_click_deletes_the_site(self):
 		with self.exists(only=False), patch.object(site_delete.frappe, "delete_doc") as delete:
-			site_delete.run_delete_site(self.ctx, {"website_profile": "Second site"})
-			answer = site_delete.run_delete_site(
-				self.ctx, {"website_profile": "Second site", "confirmed": True}
-			)
-		self.assertTrue(answer.startswith("DONE"))
+			outcome = site_delete.apply_delete_site({"site": "Second site", "page": "page-1"})
 		delete.assert_called_once_with("Website Profile", "Second site")
+		self.assertIn("Second site", outcome)
 
-	def test_the_only_site_is_emptied_not_deleted(self):
+	def test_the_click_empties_the_only_site(self):
 		with (
 			self.exists(only=True),
 			patch.object(
@@ -163,62 +163,102 @@ class TestNoraDeletesASite(unittest.TestCase):
 			) as remove,
 			patch.object(site_delete.frappe, "delete_doc") as delete,
 		):
-			site_delete.run_delete_site(self.ctx, {"website_profile": "Main site"})
-			answer = site_delete.run_delete_site(
-				self.ctx, {"website_profile": "Main site", "confirmed": True}
-			)
+			site_delete.apply_delete_site({"site": "Main site", "page": "page-1"})
 		remove.assert_called_once_with("Main site")
 		delete.assert_not_called()
-		self.assertIn("the site stays", answer)
 
-	def test_a_yes_written_before_the_question_counts_for_nothing(self):
-		ctx = SimpleNamespace(session_id="a-chat", page_id=None)
+	def test_the_click_asks_the_right_again(self):
 		with (
 			self.exists(only=False),
-			patch.object(site_delete, "_answered_since", return_value=False),
+			patch.object(site_delete.frappe, "has_permission", return_value=False),
 			patch.object(site_delete.frappe, "delete_doc") as delete,
 		):
-			site_delete.run_delete_site(ctx, {"website_profile": "Second site"})
-			answer = site_delete.run_delete_site(ctx, {"website_profile": "Second site", "confirmed": True})
-		self.assertTrue(answer.startswith("CONFIRM_NEEDED"))
+			with self.assertRaises(frappe.PermissionError):
+				site_delete.apply_delete_site({"site": "Second site", "page": "page-1"})
 		delete.assert_not_called()
 
-	def test_the_editor_open_on_the_site_is_told_its_page_is_gone(self):
-		ctx = SimpleNamespace(session_id=None, page_id="page-1", emit=MagicMock())
-		with self.exists(only=False), patch.object(site_delete.frappe, "delete_doc"):
-			site_delete.run_delete_site(ctx, {"website_profile": "Second site"})
-			ctx.emit.assert_not_called()  # the question changes nothing
-			answer = site_delete.run_delete_site(ctx, {"website_profile": "Second site", "confirmed": True})
-		# the site is gone: no site to start the new one on
-		ctx.emit.assert_called_once_with("refetch", resources=["page_gone"], site=None, after_commit=True)
-		self.assertIn("now offers them to build the new site", answer)
+	def test_the_screen_hears_its_page_went_with_the_site(self):
+		def gone(doctype, name=None):
+			return (
+				doctype == "Website Profile" and name == "Main site"
+			)  # the emptied site stays, the page went
 
-	def test_the_emptied_site_is_where_the_new_one_starts(self):
-		ctx = SimpleNamespace(session_id=None, page_id="page-1", emit=MagicMock())
-		with (
-			self.exists(only=True),
-			patch.object(site_delete, "remove_pages", return_value={"pages": 1, "conversations_kept": 1}),
-			patch.object(site_delete.frappe, "delete_doc"),
-		):
-			site_delete.run_delete_site(ctx, {"website_profile": "Main site"})
-			site_delete.run_delete_site(ctx, {"website_profile": "Main site", "confirmed": True})
-		ctx.emit.assert_called_once_with(
-			"refetch", resources=["page_gone"], site="Main site", after_commit=True
-		)
-
-	def test_an_editor_open_elsewhere_is_left_alone(self):
-		ctx = SimpleNamespace(session_id=None, page_id="another-site-page", emit=MagicMock())
-		with self.exists(only=False), patch.object(site_delete.frappe, "delete_doc"):
-			site_delete.run_delete_site(ctx, {"website_profile": "Second site"})
-			answer = site_delete.run_delete_site(ctx, {"website_profile": "Second site", "confirmed": True})
-		ctx.emit.assert_not_called()
-		self.assertNotIn("now offers them", answer)
-
-	def test_a_person_who_may_not_delete_is_refused(self):
-		with self.exists(only=False), patch.object(site_delete.frappe, "has_permission", return_value=False):
-			self.assertTrue(
-				site_delete.run_delete_site(self.ctx, {"website_profile": "Second site"}).startswith("FAILED")
+		with patch.object(site_delete.frappe.db, "exists", side_effect=gone):
+			self.assertEqual(
+				site_delete.page_gone({"site": "Main site", "page": "page-1"}), {"site": "Main site"}
 			)
+		with patch.object(site_delete.frappe.db, "exists", return_value=False):
+			self.assertEqual(site_delete.page_gone({"site": "Second site", "page": "page-1"}), {"site": None})
+		with patch.object(site_delete.frappe.db, "exists", return_value=True):
+			self.assertIsNone(site_delete.page_gone({"site": "Second site", "page": "page-1"}))
+
+	def test_another_screen_on_the_conversation_hears_it_too(self):
+		payload = {"site": "Second site", "page": "page-1", "channel": "page-1"}
+		with (
+			patch.object(site_delete, "page_gone", return_value={"site": None}),
+			patch.object(site_delete.frappe, "publish_realtime") as said,
+		):
+			self.assertEqual(site_delete.tell_the_screens(payload, "a-chat"), {"site": None})
+		said.assert_called_once_with(
+			"ai_chat_refetch_page-1",
+			{"resources": ["page_gone"], "site": None, "session_id": "a-chat"},
+			user=site_delete.frappe.session.user,
+			after_commit=True,
+		)
+		with (
+			patch.object(site_delete, "page_gone", return_value=None),
+			patch.object(site_delete.frappe, "publish_realtime") as said,
+		):
+			self.assertIsNone(
+				site_delete.tell_the_screens(payload, "a-chat")
+			)  # the page stayed: nothing to say
+		said.assert_not_called()
+
+
+class TestTheCardOfADeletion(unittest.TestCase):
+	"""confirm_pending_settings for a deletion: held to the site's right, not to the Builder's settings; no turn resumed;
+	the screen told that its page is gone."""
+
+	def confirm(self, settings_right, decision="apply", kind="delete_site"):
+		from builder.ai import api
+
+		message = SimpleNamespace(
+			session="a-chat",
+			status="pending_action",
+			content="Delete the site?",
+			metadata_json=json.dumps(
+				{
+					"status": "pending_action",
+					"kind": kind,
+					"payload": {"site": "Second site", "page": "page-1"},
+				}
+			),
+		)
+		with (
+			patch.object(api.frappe.db, "exists", return_value=True),
+			patch.object(api.frappe, "get_doc", return_value=message),
+			patch.object(api.frappe, "has_permission", return_value=settings_right),
+			patch.object(api.frappe.db, "get_value", return_value=api.frappe.session.user),
+			patch.object(api.frappe.db, "set_value"),
+			patch.object(api.AISession, "try_append_message"),
+			patch(
+				"builder.ai.agent.pending.apply_pending_action", return_value="The site is deleted."
+			) as apply,
+			patch.object(api, "resume_after_action", return_value=True) as resume,
+			patch("builder.site_ai.nora.site_delete.tell_the_screens", return_value={"site": None}),
+		):
+			return api.confirm_pending_settings("msg-1", decision), apply, resume
+
+	def test_the_site_manager_applies_it_without_the_builder_settings(self):
+		result, apply, resume = self.confirm(settings_right=False)
+		apply.assert_called_once_with("delete_site", {"site": "Second site", "page": "page-1"})
+		resume.assert_not_called()
+		self.assertEqual(result["page_gone"], {"site": None})
+		self.assertFalse(result["resumed"])
+
+	def test_every_other_card_keeps_the_builder_settings_gate(self):
+		with self.assertRaises(frappe.PermissionError):
+			self.confirm(settings_right=False, kind="home_page")
 
 
 class TestTheNewSiteAfterADeletion(unittest.TestCase):

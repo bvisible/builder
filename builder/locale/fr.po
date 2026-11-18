@@ -13950,3 +13950,35 @@ msgstr "Créer un nouveau site avec {0}"
 #: frontend/src/components/NoraEditorChat.vue:143
 msgid "Back to the Builder"
 msgstr "Retour au Builder"
+
+#: builder/site_ai/nora/site_delete.py:94
+#, python-brace-format
+msgid "Empty the site « {0} »? It is the only site of this instance: its {1} page(s) ({2}) go to the trash, where an administrator can restore them, and the site stays, ready to be built again."
+msgstr "Vider le site « {0} » ? C’est le seul site de cette instance : ses {1} page(s) ({2}) partent à la corbeille, où un administrateur peut les restaurer, et le site reste, prêt à être reconstruit."
+
+#: builder/site_ai/nora/site_delete.py:98
+#, python-brace-format
+msgid "Delete the site « {0} »? Its {1} page(s) ({2}) go to the trash, where an administrator can restore them, and its header and footer are removed. Your conversations with Nora are kept."
+msgstr "Supprimer le site « {0} » ? Ses {1} page(s) ({2}) partent à la corbeille, où un administrateur peut les restaurer, et son en-tête et son pied de page sont retirés. Vos conversations avec Nora sont conservées."
+
+#: builder/site_ai/nora/site_delete.py:137
+msgid "This site no longer exists."
+msgstr "Ce site n’existe plus."
+
+#: builder/site_ai/nora/site_delete.py:140
+msgid "You may not delete this site."
+msgstr "Vous ne pouvez pas supprimer ce site."
+
+#: builder/site_ai/nora/site_delete.py:143
+#, python-brace-format
+msgid "The {0} page(s) of « {1} » are in the trash, where an administrator can restore them; the site stays, empty, ready to be built again."
+msgstr "Les {0} page(s) de « {1} » sont à la corbeille, où un administrateur peut les restaurer ; le site reste, vide, prêt à être reconstruit."
+
+#: builder/site_ai/nora/site_delete.py:149
+#, python-brace-format
+msgid "The site « {0} » is deleted: its {1} page(s) are in the trash, where an administrator can restore them, its header and footer are removed, and your conversations with Nora are kept."
+msgstr "Le site « {0} » est supprimé : ses {1} page(s) sont à la corbeille, où un administrateur peut les restaurer, son en-tête et son pied de page sont retirés, et vos conversations avec Nora sont conservées."
+
+#: frontend/src/components/ai/noraEditorChat.ts:95
+msgid "Delete the site"
+msgstr "Supprimer le site"
