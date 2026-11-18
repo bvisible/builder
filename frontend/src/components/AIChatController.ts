@@ -77,10 +77,10 @@ export class AIChatController {
 	}
 	// This page's chat sessions (most recent first) — the panel's session switcher.
 	readonly sessions = ref<Array<{ name: string; title: string | null }>>([]);
-	//// Neoffice — the open page went with its site (Nora's delete_site, 2026-11-18): where the person goes on. While it
-	//// is set, the conversation is not reloaded: the server only knows a page that is gone as an empty chat, and the
-	//// pane lost Nora's last answer under the person's eyes.
-	readonly pageGone = ref<{ goto: string } | null>(null);
+	//// Neoffice — the open page went with its site (Nora's delete_site, 2026-11-18), and the site that stays emptied, if
+	//// any, where a new one starts. While it is set, the conversation is not reloaded: the server only knows a page that
+	//// is gone as an empty chat, and the pane lost Nora's last answer under the person's eyes.
+	readonly pageGone = ref<{ site: string | null } | null>(null);
 	readonly availableModels = ref<AIProvider[]>([]);
 	readonly selectedModel = useLocalStorage("ai-selected-model", "");
 	readonly selectedEffort = useLocalStorage("ai-thinking-effort", "");
@@ -622,12 +622,12 @@ export class AIChatController {
 	 * theme variables (var(--id) styles), the evaluated page data (repeater
 	 * previews), or the page doc (route/meta). NOT session-scoped — this state is
 	 * page/site-level, so any chat's turn should refresh it. */
-	//// Neoffice — `goto` rides "page_gone" (below)
-	onRefetch = async (data: { resources?: string[]; goto?: string }) => {
+	//// Neoffice — `site` rides "page_gone" (below)
+	onRefetch = async (data: { resources?: string[]; site?: string | null }) => {
 		const resources = data.resources || [];
 		//// Neoffice — "page_gone": the open page went with its site (see pageGone); nothing of it is fetched again.
 		if (resources.includes("page_gone")) {
-			this.pageGone.value = { goto: data.goto || "/builder/home" };
+			this.pageGone.value = { site: data.site || null };
 			return;
 		}
 		if (resources.includes("variables")) {

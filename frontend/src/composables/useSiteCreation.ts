@@ -23,17 +23,24 @@ export const SITE_CHAT_VALUE = "chat";
 export const opensTheAssistant = (route: RouteLocationNormalizedLoaded) =>
 	isSiteCreationRoute(route) || route.query[SITE_CREATION_QUERY] === SITE_CHAT_VALUE;
 
-/** the profile's home page (or first page, or a fresh blank draft), then the editor on it */
-export async function startSiteCreation(websiteProfile?: string) {
+/** the profile's home page (or first page, or a fresh blank draft), then the editor on it. `reload`: the editor is loaded
+ * anew there, for a caller whose open page is gone (a site deleted by Nora, 18.11): the panel sends the site's first
+ * message once it has read the page's chat, which an editor moving from page to page had already done. */
+export async function startSiteCreation(websiteProfile?: string, reload = false) {
 	try {
 		const result = (await createResource({ url: "builder.site_ai.nora.api.site_creation_page" }).submit({
 			website_profile: websiteProfile || null,
 		})) as { page_id: string };
-		await router.push({
+		const target = {
 			name: "builder",
 			params: { pageId: result.page_id },
 			query: { [SITE_CREATION_QUERY]: SITE_CREATION_VALUE },
-		});
+		};
+		if (reload) {
+			window.location.assign(router.resolve(target).href);
+			return;
+		}
+		await router.push(target);
 	} catch (error) {
 		toast.error((error as { messages?: string[] })?.messages?.[0] || __("Could not start the site assistant"));
 	}

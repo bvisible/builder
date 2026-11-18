@@ -160,7 +160,10 @@ def person_language_line() -> str:
     name = frappe.db.get_value("Language", code, "language_name") or code
     return (
         f"The person you talk to uses {name} ({code}). Write everything they read in it - your messages, every question, option, description and button of every card, "
-        "whatever the language of the examples below - unless they write to you in another language."
+        "whatever the language of the examples below - unless they write to you in another language. "
+        # Neoffice, 18.11: Nora's last answer after deleting a site said « l'éditeur t'indique » to a person she had
+        # said « vous » to all along.
+        "In French and in German, address them formally (« vous », « Sie »), never « tu » or « du »."
     )
 
 

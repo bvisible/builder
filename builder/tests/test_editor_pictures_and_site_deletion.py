@@ -183,21 +183,28 @@ class TestNoraDeletesASite(unittest.TestCase):
 		self.assertTrue(answer.startswith("CONFIRM_NEEDED"))
 		delete.assert_not_called()
 
-	def test_the_editor_open_on_the_site_is_told_where_to_go_on(self):
+	def test_the_editor_open_on_the_site_is_told_its_page_is_gone(self):
 		ctx = SimpleNamespace(session_id=None, page_id="page-1", emit=MagicMock())
-		with (
-			self.exists(only=False),
-			patch.object(site_delete, "next_address", return_value="/app/site-nora") as address,
-			patch.object(site_delete.frappe, "delete_doc"),
-		):
+		with self.exists(only=False), patch.object(site_delete.frappe, "delete_doc"):
 			site_delete.run_delete_site(ctx, {"website_profile": "Second site"})
 			ctx.emit.assert_not_called()  # the question changes nothing
 			answer = site_delete.run_delete_site(ctx, {"website_profile": "Second site", "confirmed": True})
-		address.assert_called_once_with(None)  # the site is gone: no site to name
+		# the site is gone: no site to start the new one on
+		ctx.emit.assert_called_once_with("refetch", resources=["page_gone"], site=None, after_commit=True)
+		self.assertIn("the editor now offers the person", answer)
+
+	def test_the_emptied_site_is_where_the_new_one_starts(self):
+		ctx = SimpleNamespace(session_id=None, page_id="page-1", emit=MagicMock())
+		with (
+			self.exists(only=True),
+			patch.object(site_delete, "remove_pages", return_value={"pages": 1, "conversations_kept": 1}),
+			patch.object(site_delete.frappe, "delete_doc"),
+		):
+			site_delete.run_delete_site(ctx, {"website_profile": "Main site"})
+			site_delete.run_delete_site(ctx, {"website_profile": "Main site", "confirmed": True})
 		ctx.emit.assert_called_once_with(
-			"refetch", resources=["page_gone"], goto="/app/site-nora", after_commit=True
+			"refetch", resources=["page_gone"], site="Main site", after_commit=True
 		)
-		self.assertIn("Nora tab of the Website space", answer)
 
 	def test_an_editor_open_elsewhere_is_left_alone(self):
 		ctx = SimpleNamespace(session_id=None, page_id="another-site-page", emit=MagicMock())
@@ -205,19 +212,7 @@ class TestNoraDeletesASite(unittest.TestCase):
 			site_delete.run_delete_site(ctx, {"website_profile": "Second site"})
 			answer = site_delete.run_delete_site(ctx, {"website_profile": "Second site", "confirmed": True})
 		ctx.emit.assert_not_called()
-		self.assertNotIn("Nora tab", answer)
-
-	def test_the_way_on_is_the_site_tab_on_the_emptied_site_or_the_builder(self):
-		page = MagicMock()
-		with (
-			patch.object(site_delete.frappe.db, "exists", return_value=True),
-			patch.object(site_delete.frappe, "get_doc", return_value=page),
-		):
-			page.is_permitted.return_value = True
-			self.assertEqual(site_delete.next_address("Main site"), "/app/site-nora?site=Main+site")
-			self.assertEqual(site_delete.next_address(None), "/app/site-nora")
-			page.is_permitted.return_value = False
-			self.assertEqual(site_delete.next_address("Main site"), "/builder/home")
+		self.assertNotIn("the editor now offers", answer)
 
 	def test_a_person_who_may_not_delete_is_refused(self):
 		with self.exists(only=False), patch.object(site_delete.frappe, "has_permission", return_value=False):

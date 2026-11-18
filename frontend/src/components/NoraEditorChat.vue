@@ -132,8 +132,7 @@
 			:title="__('The site is deleted')"
 			:message="
 				__(
-					'Its pages are in the trash, where an administrator can restore them, and your conversation is kept. The new site is built with {0} in the Website space.',
-					[assistantLabel],
+					'Its pages are in the trash, where an administrator can restore them, and your conversation is kept.',
 				)
 			"
 			size="md"
@@ -143,9 +142,9 @@
 				{
 					label: __('Build a new site with {0}', [assistantLabel]),
 					variant: 'solid',
-					onClick: () => leaveTo(chat.pageGone.value?.goto),
+					onClick: () => startSiteCreation(chat.pageGone.value?.site || undefined, true),
 				},
-				{ label: __('Back to the Builder'), variant: 'subtle', onClick: () => leaveTo('/builder/home') },
+				{ label: __('Back to the Builder'), variant: 'subtle', onClick: backToTheBuilder },
 			]" />
 	</div>
 </template>
@@ -165,7 +164,12 @@ import { providersLevel } from "@/components/ai/commands/providers";
 import type { BobContext } from "@/components/ai/commands/shared";
 import { Painter, type PaintContext } from "@/components/ai/noraEditorChat";
 import type { ChatMessage } from "@/components/ai/types";
-import { isSiteCreationRoute, siteCreationSeed, SITE_CREATION_QUERY } from "@/composables/useSiteCreation";
+import {
+	isSiteCreationRoute,
+	siteCreationSeed,
+	SITE_CREATION_QUERY,
+	startSiteCreation,
+} from "@/composables/useSiteCreation";
 import { markNoraStarted, noraKickoff, pageSeed, pageSeedForNora } from "@/composables/useNoraKickoff";
 import { reloadAIRegistry } from "@/data/aiModels";
 import useBuilderStore from "@/stores/builderStore";
@@ -511,11 +515,11 @@ const debugOpen = ref(false);
 const debugData = ref<Record<string, any> | null>(null);
 
 //// Neoffice — the open page went with its site (AIChatController.pageGone): the window opens once the turn is over, so
-//// Nora's last answer is in the pane before it; both ways out reload the desk or the Builder, nothing of the gone page
-//// is kept in memory.
+//// Nora's last answer is in the pane before it. « Build a new site » is the editor's « Create with AI » (on the emptied
+//// site when it stays), loaded anew: a new page and its conversation, nothing of the gone page kept in memory.
 const siteGone = computed(() => Boolean(chat.pageGone.value) && !isSubmitting.value);
-const leaveTo = (address?: string) => {
-	window.location.href = address || "/builder/home";
+const backToTheBuilder = () => {
+	window.location.href = "/builder/home";
 };
 
 /** The conversation's modules, on as everywhere (Jérémy, 13.11: « si on fait partout la même chose, c'est mieux »); each
