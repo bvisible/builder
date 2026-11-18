@@ -709,13 +709,18 @@ def library_photos(session_id: str | None, only: list[str] | None = None) -> lis
     rows = frappe.get_all(
         "Builder Content Asset",
         filters={"session_id": session_id, "asset_type": "Image"},
-        fields=["file", "original_filename", "summary", "tags", "orientation", "quality", "extracted_text", "suggested_section", "understanding"],
+        # //// Neoffice — suggested_slots added: a logo is no photograph for a page (see is_seen_logo)
+        fields=["file", "original_filename", "summary", "tags", "orientation", "quality", "extracted_text", "suggested_section", "understanding", "suggested_slots"],
         order_by="creation asc",
     )
     wanted = set(only or [])
     photos = []
     for row in rows:
         if not (row.file or "").startswith("/files/") or (wanted and row.file not in wanted):
+            continue
+        # //// Neoffice — the logo the vision recognised among the person's pictures stays off the pages (2026-11-18): the « my images »
+        # //// button sends the logo with the photographs, and the matcher already skipped it while this list laid it on a page
+        if is_seen_logo(row):
             continue
         stem = (row.original_filename or row.file).rsplit("/", 1)[-1].rsplit(".", 1)[0]
         words = {w for w in re.split(r"[^a-z0-9]+", f"{stem} {row.tags or ''} {row.suggested_section or ''}".lower()) if len(w) > 2}
@@ -731,6 +736,51 @@ def library_photos(session_id: str | None, only: list[str] | None = None) -> lis
             }
         )
     return photos
+
+
+# //// Neoffice — added (2026-11-18): what the summary says of the client's photographs and of the pages the look could not see. The
+# //// assistant reports from this summary: what it does not say, the assistant fills in (« your ten pictures are in the site »).
+def photo_report_line(client_photos: list, photos_used: dict, placed: int, building_part: bool) -> str:
+    if client_photos:
+        return (
+            f"{len(photos_used)} of the client's {len(client_photos)} photographs were laid into the pages as they were "
+            f"written; {placed} leftover photo slot(s) were filled with them afterwards."
+        )
+    if building_part:
+        return ""
+    return (
+        "No photograph of the client reached this build: the pages carry drawn or plain pictures. Never say the client's own "
+        "photographs are in the site; if they sent some, say they were not used and ask for them again (step 4)."
+    )
+
+
+def unlooked_line(unlooked: list[str]) -> str:
+    if not unlooked:
+        return ""
+    return (
+        f"{len(unlooked)} page(s) could not be looked at in the browser before publishing, and are published without the visual "
+        f"check: {', '.join(unlooked)}. Say so to the person, and offer to look at them together in the editor."
+    )
+
+
+# //// Neoffice — added (2026-11-18): the logo among the person's pictures, as the vision read them (content_understanding flags
+# //// is_logo as suggested_slots "logo"). The « my images » button sends the logo with the photographs and says which is which nowhere.
+def is_seen_logo(row) -> bool:
+    return str((row or {}).get("suggested_slots") or "").strip().lower() == "logo"
+
+
+def library_logo(session_id: str | None, only: list[str] | None = None) -> str | None:
+    """The first picture of this conversation's library the vision recognised as a logo (among `only` when given), or None."""
+    if not session_id or not frappe.db.exists("DocType", "Builder Content Asset"):
+        return None
+    wanted = set(only or [])
+    rows = frappe.get_all(
+        "Builder Content Asset",
+        filters={"session_id": session_id, "asset_type": "Image"},
+        fields=["file", "suggested_slots"],
+        order_by="creation asc",
+    )
+    return next((row.file for row in rows if (row.file or "").startswith("/files/") and (not wanted or row.file in wanted) and is_seen_logo(row)), None)
 
 
 def _vision_saw_text(understanding) -> bool:
@@ -2834,6 +2884,15 @@ def build_site(ctx, spec: dict) -> str:
     # for "the same 12 photos", the model hunted them in the File list and found 10 on the pages,
     # or product shots beside them (2026-09-12)
     client_photos = library_photos(getattr(ctx, "session_id", None), only=photos or None)
+    # //// Neoffice — the person's logo, when they sent it among their pictures and named none (2026-11-18): the vision recognised it
+    # //// (library_logo); it heads the site instead of the company's logo from the instance, which logo_image held until now
+    if photos and not clean_logo(spec.get("logo_image")) and not building_part:
+        seen_logo = library_logo(getattr(ctx, "session_id", None), only=photos)
+        if seen_logo:
+            logo_image = seen_logo
+            config.logo_type, config.logo_image = "Image", seen_logo
+            config.save(ignore_permissions=True)
+            ai_log("info", "Logo taken from the person's pictures", file=seen_logo.rsplit("/", 1)[-1])
     # //// Neoffice — the photographs that do not belong on THIS site stay out (photo_fit.unusable_photos, 2026-10-21): a modern home
     # //// office brought among the photographs of a mountain restaurant was laid on its booking page, because the picker takes whatever is left
     library_all = list(client_photos)
@@ -3089,6 +3148,8 @@ def build_site(ctx, spec: dict) -> str:
     # //// Neoffice — what the look decided (2026-09-16): the pages it refused, how many looks each
     # //// page took, what it measured on the chrome, and how many passed at first look
     held, looked, chrome_findings, first_look_accepted, accepted_later = [], {}, [], 0, 0
+    # //// Neoffice — the pages the look could not see, said in the summary (unlooked_line, 2026-11-18)
+    unlooked: list[str] = []
     judge = visual_check.judge_model(page_model)
     # //// Neoffice — what the reviewer already read, and the page's state when it did (2026-09-15)
     reviewed_already: dict[str, dict] = {}
@@ -3843,6 +3904,9 @@ def build_site(ctx, spec: dict) -> str:
                 ai_log("info", "Page revised after the look", page=page["title"], attempt=attempt + 1, points=len(seen), measured=len(look.get("gate") or []))
             if look is not None:
                 looked[name] = attempts
+                # //// Neoffice — see unlooked_line
+                if look.get("error") and not look.get("http_error"):
+                    unlooked.append(page["title"])
                 if visual_check.refused(look):
                     essential = page["route"] in ("home", "index") or f"/{route}".rstrip("/") == (cta[1] or "").rstrip("/")
                     why = visual_check.why_refused(look)
@@ -3920,7 +3984,9 @@ def build_site(ctx, spec: dict) -> str:
 
             report = match_and_apply(ctx.session_id, [p["name"] for p in created], exclude=set(left_out))
             placed = report.get("matched") or 0
-            ai_log("info", "Client photos placed", placed=placed, slots=report.get("slots"), assets=report.get("assets"))
+            # //// Neoffice — laid_while_writing: the photographs the writer put on the pages itself, which slots never counts (2026-11-18:
+            # //// « placed=0 slots=0 » read as « no photograph » on a site that carried six)
+            ai_log("info", "Client photos placed", placed=placed, slots=report.get("slots"), assets=report.get("assets"), laid_while_writing=len(photos_used))
         except Exception as e:
             ai_log("warning", "Client photos not placed", error=str(e)[:200])
     # //// Neoffice ▲▲▲
@@ -4109,11 +4175,12 @@ def build_site(ctx, spec: dict) -> str:
     # //// always claiming a background image job is filling the slots (65d8f360 "fix(nora): cards never stack in a column, and photo slots without photos are plain blocks")
     # //// Neoffice — the client's own photographs come first, and what they filled is said
     # //// before anything about drawn images (see step 7).
-    if client_photos:
-        lines.append(
-            f"{len(photos_used)} of the client's {len(client_photos)} photographs were laid into the pages as they were "
-            f"written; {placed} leftover photo slot(s) were filled with them afterwards."
-        )
+    # //// Neoffice — said in every case now (photo_report_line, 2026-11-18): with no photograph, the summary said nothing, and the
+    # //// assistant told the person their ten pictures were in the site while the build had received none
+    if line := photo_report_line(client_photos, photos_used, placed, building_part):
+        lines.append(line)
+    if line := unlooked_line(unlooked):
+        lines.append(line)
     # //// Neoffice — and the real placement, photo by photo, so the assistant tells the user where each went and which were left out
     if library_all:
         try:

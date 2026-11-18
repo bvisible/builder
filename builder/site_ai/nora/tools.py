@@ -50,10 +50,89 @@ def recap_was_presented(session_id: str | None) -> bool:
 
 ANSWER_LINE = re.compile(r"^\s*([^:\n]{2,80}?)\s*:\s*(.+?)\s*$", re.M)
 LANGUAGES = {"fran": "fr", "french": "fr", "engl": "en", "angl": "en", "deutsch": "de", "allem": "de", "german": "de", "ital": "it"}
+# //// Neoffice — one answer, read a line at a time with the bare addresses written under it (2026-11-18): see _answer_entries
+ENTRY_LINE = re.compile(r"^\s*([^:\n]{2,80}?)\s*:\s*(.*?)\s*$")
+ADDRESS_LINE = re.compile(r"^\s*(?:/files/\S+|https?://\S+)\s*$")
+# //// Neoffice — the label the editor's « my images » button writes, then one address a line (NoraEditorChat.vue, BuilderAIChatPanel.vue)
+IMAGES_BUTTON = "Here are my images (logo, photos):"
+SITE_LANGUAGES = ("fr", "en", "de", "it")
 
 
 def _words(label: str, *words: str) -> bool:
     return any(word in label for word in words)
+
+
+def _answer_entries(content: str) -> list[tuple[str, list[str]]]:
+    """The « Label: value » answers of a message, each with its values: those on its line, comma separated, and the bare
+    addresses on the lines under it. The editor's « my images » button writes its label alone, then one address a line: read
+    one line at a time, the label kept its first address only and the others were lost (a client's ten pictures came down to
+    one logo and no photograph, 17.11)."""
+    entries: list[tuple[str, list[str]]] = []
+    for line in (content or "").splitlines():
+        if ADDRESS_LINE.match(line):
+            if entries:
+                entries[-1][1].append(line.strip())
+            continue
+        match = ENTRY_LINE.match(line)
+        if match:
+            entries.append((match.group(1), [v.strip() for v in match.group(2).split(",") if v.strip()]))
+    return entries
+
+
+def _bare_label(text: str) -> str:
+    return re.sub(r"\s*:\s*$", "", str(text or "")).strip().lower()
+
+
+def _images_button_labels() -> set[str]:
+    """The « my images » button's label in each language a site speaks: its own text, translated by frappe (an exact match on
+    what our editor writes, not a guess from the words)."""
+    labels = {IMAGES_BUTTON}
+    for lang in (*SITE_LANGUAGES, getattr(frappe.local, "lang", None)):
+        if lang:
+            try:
+                labels.add(frappe._(IMAGES_BUTTON, lang=lang))
+            except Exception:
+                pass
+    return {_bare_label(label) for label in labels}
+
+
+def language_code(value) -> str:
+    """The two-letter code of a language the site may be written in, from an ISO code or a name; empty when it is none of them.
+    The same codes the build writes in (build_site), read the same way the person's answers are (LANGUAGES)."""
+    text = str(value or "").strip().lower()
+    if text[:2] in SITE_LANGUAGES and (len(text) == 2 or text[2:3] in ("-", "_")):
+        return text[:2]
+    return next((code for key, code in LANGUAGES.items() if key in text), "")
+
+
+def persons_language() -> str:
+    """The language this person works in: their account's, else the instance's."""
+    user = frappe.session.user
+    own = frappe.db.get_value("User", user, "language") if user and user != "Guest" else None
+    return language_code(own or frappe.db.get_single_value("System Settings", "language"))
+
+
+# //// Neoffice — the language of the site is checked against the person's own (2026-11-18): the model called the build in English for a
+# //// person writing in French, whose account and instance are French, and the whole site came out in English, its contact form too
+LANGUAGE_CHECK = (
+    "FAILED: the site would be written in {wanted}, while this person works in {person} (their account) and named no language "
+    "in this conversation. Ask them with ONE present_ui choices card, in their language, which language the site is written in "
+    "({person} or {wanted}); then call generate_site again with their answer as `language` and language_confirmed=true."
+)
+LANGUAGE_NAMES = {"fr": "French", "en": "English", "de": "German", "it": "Italian"}
+
+
+def language_to_ask(session_id: str | None, args: dict) -> str | None:
+    """The question to put to the person before a whole site is built in a language that is not theirs, or None. Asked once:
+    the call that carries their answer says language_confirmed. A page added to a site keeps the site's language."""
+    if str((args or {}).get("scope") or "site") == "pages" or (args or {}).get("language_confirmed"):
+        return None
+    wanted, person = language_code((args or {}).get("language")), persons_language()
+    if not wanted or not person or wanted == person:
+        return None
+    if language_code(answers_of_the_conversation(session_id).get("language")) == wanted:
+        return None
+    return LANGUAGE_CHECK.format(wanted=LANGUAGE_NAMES[wanted], person=LANGUAGE_NAMES[person])
 
 
 def answers_of_the_conversation(session_id: str | None) -> dict:
@@ -69,12 +148,20 @@ def answers_of_the_conversation(session_id: str | None) -> dict:
         AISession.MESSAGE_DOCTYPE, filters={"session": session_id, "role": "user"}, fields=["content"], order_by="creation asc"
     )
     found: dict = {}
+    images_button = _images_button_labels()
     for row in rows:
-        for label, value in ANSWER_LINE.findall(row.content or ""):
-            label = label.lower()
-            values = [v.strip() for v in value.split(",") if v.strip()]
+        # //// Neoffice — the values written under a label count too (_answer_entries, 2026-11-18)
+        for label, values in _answer_entries(row.content or ""):
+            value = ", ".join(values)
             files = [v for v in values if v.startswith("/files/")]
             links = [v for v in values if re.match(r"^https?://", v)]
+            # //// Neoffice — the « my images » button sends the logo AND the photographs, which file is which unsaid: every file is a
+            # //// photograph here, and the build takes the logo the vision recognises among them (site_builder.library_logo). Read on
+            # //// the word « logo », the first file became the logo and the other nine were dropped (17.11)
+            if files and _bare_label(label) in images_button:
+                found["photos"] = list(dict.fromkeys([*(found.get("photos") or []), *files]))
+                continue
+            label = label.lower()
             if files and _words(label, "logo", "emblem", "embl"):
                 key = "footer_logo_image" if _words(label, "pied", "footer", "fuß", "fuss", "piè") else "logo_image"
                 found[key] = files[0]
@@ -161,6 +248,13 @@ def run_generate_site(ctx, args: dict) -> str:
             frappe.log_error("generate_site: examples not checked", str(e))
     # the logo, the photographs, the sites they like and the language the person gave on the cards reach the build
     args = with_the_persons_answers(getattr(ctx, "session_id", None), args or {})
+    # //// Neoffice — a whole site in a language that is not the person's is asked first (language_to_ask, 2026-11-18)
+    question = language_to_ask(getattr(ctx, "session_id", None), args)
+    if question:
+        from builder.site_ai.logging import ai_log
+
+        ai_log("info", "Site language asked before the build", wanted=args.get("language"), person=persons_language())
+        return question
     if args.get("instance_business") in (None, ""):
         given = business_from_answers(getattr(ctx, "session_id", None))
         if given is not None:
@@ -242,6 +336,8 @@ generate_site = Tool(
             # //// one, and the default filled in (the instance's, else French) wrote a site asked
             # //// for in English in French (2026-09-11).
             "language": {"type": "string", "description": "The language the site is WRITTEN in (ISO code or name): the one the user asked for, else the language of their messages. Always pass it: the instance default is only a guess."},
+            # //// Neoffice — the answer to the language question generate_site asks (tools.language_to_ask, 2026-11-18)
+            "language_confirmed": {"type": "boolean", "description": "true ONLY when the person has just chosen the site's language on the card generate_site asked you to present; never set it otherwise."},
             # //// Neoffice — keep_edited: "keep them" after a CONFIRM_NEEDED meant keeping the
             # //// hand-made pages, and 'none' kept the whole previous site beside the new one.
             "replace_existing": {
