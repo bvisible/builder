@@ -71,14 +71,35 @@ def remove_pages(site: str) -> dict:
 	return {"pages": len(pages), "conversations_kept": kept}
 
 
+FORM = "Site Form"
+
+
+def forms_of(site: str) -> list[str]:
+	"""The site's own forms (the theme's Site Form: its contact form, made by the build), where the instance keeps them."""
+	if not frappe.db.exists("DocType", FORM) or not frappe.get_meta(FORM).has_field("profile"):
+		return []
+	return frappe.get_all(FORM, filters={"profile": site}, pluck="name")
+
+
+def remove_forms(site: str) -> int:
+	"""The site's forms to the trash. A form held the site's record (18.11, osiris: a site built with its contact page refused
+	to go, LinkExistsError); the messages it received are kept, they name the form in plain text (Website Message)."""
+	names = forms_of(site)
+	for name in names:
+		frappe.delete_doc(FORM, name, ignore_permissions=True, ignore_missing=True)
+	return len(names)
+
+
 def on_profile_trash(doc, method=None):
-	"""doc_events: a site record that goes takes its pages and its header and footer with it. Run after the theme's guard (the
-	record's own on_trash), which refuses the only site; frappe checks the links after on_trash, so the pages no longer hold it."""
+	"""doc_events: a site record that goes takes its pages, its header and footer and its forms with it. Run after the theme's
+	guard (the record's own on_trash), which refuses the only site; frappe checks the links after on_trash, so the pages and the
+	forms no longer hold it."""
 	removed = remove_pages(doc.name)
+	forms = remove_forms(doc.name)
 	if frappe.db.exists("DocType", VARIANT) and frappe.db.exists(VARIANT, doc.name):
 		frappe.delete_doc(VARIANT, doc.name, ignore_permissions=True, ignore_missing=True)
 	frappe.logger("builder").info(
-		f"site {doc.name} deleted with {removed['pages']} pages, {removed['conversations_kept']} conversations kept"
+		f"site {doc.name} deleted with {removed['pages']} pages and {forms} forms, {removed['conversations_kept']} conversations kept"
 	)
 
 
@@ -111,10 +132,15 @@ def question(site: str, pages: list, only: bool) -> str:
 			"Empty the site « {0} »? It is the only site of this instance: its {1} page(s) ({2}) go to the trash, where an "
 			"administrator can restore them, and the site stays, ready to be built again."
 		).format(site, len(pages), titles or "-")
-	return _(
+	asked = _(
 		"Delete the site « {0} »? Its {1} page(s) ({2}) go to the trash, where an administrator can restore them, and its "
 		"header and footer are removed. Your conversations with Nora are kept."
 	).format(site, len(pages), titles or "-")
+	# //// Neoffice — its forms go with it (remove_forms, 18.11), and the card says so
+	forms = len(forms_of(site))
+	if forms:
+		asked += " " + _("Its {0} form(s) go to the trash too; the messages already received are kept.").format(forms)
+	return asked
 
 
 def request_delete_site(ctx, args: dict) -> str | None:
@@ -163,7 +189,17 @@ def apply_delete_site(payload: dict) -> str:
 			"ready to be built again."
 		).format(removed["pages"], site)
 	pages = len(pages_of(site))
-	frappe.delete_doc("Website Profile", site)
+	# //// Neoffice — a record that still uses the site (its orders, its articles, an invitation) refuses the deletion: said plainly,
+	# //// nothing removed, instead of an error the card swallowed (18.11, osiris: the person clicked twice and saw nothing)
+	frappe.db.savepoint("delete_site")
+	try:
+		frappe.delete_doc("Website Profile", site)
+	except frappe.LinkExistsError as e:
+		frappe.db.rollback(save_point="delete_site")
+		frappe.clear_messages()
+		return _("The site « {0} » is not deleted, and nothing was removed: {1}").format(
+			site, frappe.utils.strip_html(str(e) or "").strip() or _("another record still uses it.")
+		)
 	return _(
 		"The site « {0} » is deleted: its {1} page(s) are in the trash, where an administrator can restore them, its "
 		"header and footer are removed, and your conversations with Nora are kept."

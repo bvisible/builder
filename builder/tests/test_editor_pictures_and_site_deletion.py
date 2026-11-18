@@ -81,6 +81,7 @@ class TestASiteDeletedFromTheDesk(unittest.TestCase):
 			patch.object(site_delete.frappe, "delete_doc") as delete,
 			patch.object(site_delete.frappe.db, "exists", return_value=True),
 			patch.object(site_delete, "let_go_of_the_pages") as let_go,
+			patch.object(site_delete, "forms_of", return_value=["second-site-contact"]),
 		):
 			site_delete.on_profile_trash(SimpleNamespace(name="Second site"))
 		let_go.assert_called_once_with("Second site", ["page-1", "page-2"])
@@ -90,7 +91,12 @@ class TestASiteDeletedFromTheDesk(unittest.TestCase):
 		deleted = [call.args[:2] for call in delete.call_args_list]
 		self.assertEqual(
 			deleted,
-			[("Builder Page", "page-1"), ("Builder Page", "page-2"), (site_delete.VARIANT, "Second site")],
+			[
+				("Builder Page", "page-1"),
+				("Builder Page", "page-2"),
+				(site_delete.FORM, "second-site-contact"),
+				(site_delete.VARIANT, "Second site"),
+			],
 		)
 
 
@@ -138,6 +144,80 @@ class TestASiteThatHoldsItsHome(unittest.TestCase):
 		self.assertEqual(site_delete.remove_pages(self.SITE)["pages"], 1)
 		self.assertFalse(frappe.db.exists("Builder Page", self.page))
 		self.assertFalse(frappe.db.get_value("Website Profile", self.SITE, "home_page"))
+
+
+class TestASiteThatHoldsItsForm(unittest.TestCase):
+	"""On the database itself (the clone): the build gives a site with a contact page its own form (the theme's Site Form), and the
+	form links the site's record: the site refused to go, and the card said nothing (18.11, osiris)."""
+
+	SITE = "ZZ Test site that holds its form"
+	FORM = "zz-test-site-that-holds-its-form-contact"
+
+	def setUp(self):
+		if not frappe.db.exists("DocType", "Website Profile") or not frappe.db.exists("DocType", site_delete.FORM):
+			self.skipTest("the sites of the theme are not installed")
+		frappe.set_user("Administrator")
+		self.addCleanup(self.clean)
+		frappe.get_doc(
+			{"doctype": "Website Profile", "title": self.SITE, "primary_domain": "zz-holds-its-form.test"}
+		).insert(ignore_permissions=True)
+		frappe.get_doc(
+			{
+				"doctype": site_delete.FORM,
+				"title": "Contact",
+				"slug": self.FORM,
+				"profile": self.SITE,
+				"kind": "Contact",
+				"form_fields": [
+					{"label": "Email", "type": "Email", "required": 1, "step": 1, "fieldname": "sender", "role": "Email"},
+					{"label": "Message", "type": "Long text", "required": 1, "step": 1, "fieldname": "message", "role": "Message"},
+				],
+			}
+		).insert(ignore_permissions=True)
+
+	def clean(self):
+		frappe.db.rollback()
+		for doctype, name in ((site_delete.FORM, self.FORM), ("Website Profile", self.SITE)):
+			if frappe.db.exists(doctype, name):
+				frappe.db.delete(doctype, {"name": name})
+		frappe.db.commit()
+
+	def test_the_site_goes_with_its_form(self):
+		self.assertEqual(site_delete.forms_of(self.SITE), [self.FORM])
+		frappe.delete_doc("Website Profile", self.SITE, ignore_permissions=True)
+		self.assertFalse(frappe.db.exists("Website Profile", self.SITE))
+		self.assertFalse(frappe.db.exists(site_delete.FORM, self.FORM))
+
+	def test_the_card_names_the_form(self):
+		with_form = site_delete.question(self.SITE, [], only=False)
+		with patch.object(site_delete, "forms_of", return_value=[]):
+			without = site_delete.question(self.SITE, [], only=False)
+		self.assertTrue(with_form.startswith(without) and len(with_form) > len(without))
+
+
+class TestARefusedDeletionIsSaid(unittest.TestCase):
+	"""A record that still uses the site (an order, an article) refuses its deletion: the person reads why, nothing is removed."""
+
+	def test_the_refusal_is_said_and_nothing_is_removed(self):
+		with (
+			patch.object(site_delete.frappe.db, "exists", return_value=True),
+			patch.object(site_delete, "_only_site", return_value=False),
+			patch.object(site_delete, "may_delete", return_value=True),
+			patch.object(site_delete, "pages_of", return_value=[]),
+			patch.object(site_delete.frappe.db, "savepoint") as savepoint,
+			patch.object(site_delete.frappe.db, "rollback") as rollback,
+			patch.object(
+				site_delete.frappe,
+				"delete_doc",
+				side_effect=frappe.LinkExistsError("Cannot delete: <a href='/app/sales-order/SO-1'>SO-1</a> uses it"),
+			),
+		):
+			said = site_delete.apply_delete_site({"site": "Second site"})
+		savepoint.assert_called_once_with("delete_site")
+		rollback.assert_called_once_with(save_point="delete_site")
+		self.assertIn("Second site", said)
+		self.assertIn("SO-1", said)
+		self.assertNotIn("<a", said)
 
 
 class TestNoraDeletesASite(unittest.TestCase):
