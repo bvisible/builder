@@ -86,6 +86,46 @@ class TestBareButtons(unittest.TestCase):
 	def test_a_footnote_is_not_a_button(self):
 		self.assertIsNone(parse_card("The brief says so in the second email [1]"))
 
+	# a French recap as the model wrote it on 18.11 (osiris), its buttons in bold words, no card: nothing to tap
+	RECAP_IN_BOLD = (
+		"Voici le récapitulatif du site avant de lancer la construction :\n\n"
+		"**Lakeside Bakery** — boulangerie artisanale au bord du lac\n\n"
+		"- **Site** : vitrine, 5 pages, indépendante (aucune donnée de Exemple SA)\n"
+		"- **Pages** : Accueil, La carte, Réserver une table, Infos pratiques, À propos\n"
+		"- **Langue** : français\n"
+		"- **Structure** : reprend tel quel l'exemple Restaurant (cuisine de saison) — mêmes pages, mêmes sections, "
+		"chaque mot et chaque photo remplacés par ceux de Lakeside Bakery\n"
+		"- **Couleurs et typographie** : celles de l'exemple Restaurant (pas de choix de palette, direction fixée par l'exemple)\n"
+		"- **Logo** : non fourni (un logo texte « Lakeside Bakery » sera utilisé)\n"
+		"- **Photos** : aucune fournie — des photos seront générées pour les sections (pain au levain, viennoiseries, café, "
+		"four à bois, le lac)\n"
+		"- **Positionnement** : farines biologiques de la région, four à bois allumé chaque nuit, pain au levain, "
+		"viennoiseries et café le matin\n\n"
+		"**Build the site** / **Change something**"
+	)
+
+	def test_the_playbooks_buttons_written_in_bold_are_the_recaps_buttons(self):
+		card = parse_card(self.RECAP_IN_BOLD)
+		self.assertIsNotNone(card)
+		self.assertEqual([el["kind"] for el in card["ui"]], ["actions"])
+		self.assertEqual([b["label"] for b in card["ui"][-1]["buttons"]], ["Build the site", "Change something"])
+		# the whole recap is the card's text, its last line included, and the buttons are no longer words in it
+		self.assertIn("Positionnement", card["text"])
+		self.assertNotIn("Change something", card["text"])
+
+	def test_the_playbooks_buttons_in_the_persons_words_too(self):
+		card = parse_card("Récapitulatif\n- Langue : anglais\n\n**Construire le site** | **Changer quelque chose**")
+		self.assertEqual([b["label"] for b in card["ui"][-1]["buttons"]], ["Construire le site", "Changer quelque chose"])
+
+	def test_a_bold_closing_line_of_the_models_own_words_stays_text(self):
+		self.assertIsNone(parse_card("Votre site est prêt.\n\n**Bonne visite !**"))
+		self.assertIsNone(parse_card("Les pages sont écrites.\n**Accueil** / **À propos**"))
+		self.assertIsNone(parse_card("**Build the site**"))
+
+	def test_a_recaps_list_under_a_question_is_not_choices(self):
+		recap = "Tout est juste ?\n- Langue : anglais\n- Pages : Home, About\n[Build the site] [Change something]"
+		self.assertEqual([el["kind"] for el in parse_card(recap)["ui"]], ["actions"])
+
 
 class TestChoicesWrittenAsACall(unittest.TestCase):
 	"""After a build, the question about three refused pages came as text, its choices written as the tool's arguments,

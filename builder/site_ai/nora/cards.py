@@ -201,11 +201,49 @@ def _bare_buttons(text: str) -> str:
     ([1]) or a kind group ([choices: …]) is not a button."""
     m = BARE_BUTTONS.search(text or "")
     if not m:
-        return text
+        return _playbook_buttons_written(text)
     labels = [label.strip() for label in re.findall(r"\[([^\[\]\n:]{2,40})\]", m.group(1))]
     if not labels or any(not re.search(r"[^\W\d_]", label) or label.split()[0].lower() in KINDS for label in labels):
         return text
     return text[: m.start(1)] + "[buttons: " + ", ".join(labels) + "]"
+
+
+# //// Neoffice ▼▼▼ — the playbook's buttons written as bold words (18.11, osiris): a French recap ended on « **Build the site** /
+# //// **Change something** », no card, the person had nothing to tap and read English words. Read as the card's buttons only when every
+# //// word on that closing line is one of the playbook's own labels, in any language (BUTTON_WORDS): a bold line of the model's own
+# //// words stays text.
+LABEL_SEPARATOR = re.compile(r"\s+[/|·]\s+")
+
+
+def _playbook_labels() -> set[str]:
+    labels: set[str] = set()
+    for words in BUTTON_WORDS.values():
+        labels |= set(words) | {word.lower() for word in words.values()}
+    return labels
+
+
+def _playbook_buttons_written(text: str) -> str:
+    """'**Build the site** / **Change something**' closing a message, rewritten '[buttons: Build the site, Change something]'. A
+    message that is that line alone is no card's text: it is left as it is."""
+    stripped = (text or "").rstrip()
+    start = stripped.rfind("\n") + 1
+    if not start:
+        return text
+    parts = [part.strip(" \t*_`[]") for part in LABEL_SEPARATOR.split(stripped[start:].strip(" \t-•"))]
+    parts = [part for part in parts if part]
+    known = _playbook_labels()
+    if not 1 <= len(parts) <= 4 or any(part.lower() not in known for part in parts):
+        return text
+    return stripped[:start] + "[buttons: " + ", ".join(parts) + "]"
+
+
+def _is_recap(ui: list[dict]) -> bool:
+    """Whether the card ends on a build button: its bullets are what the site will be, not choices."""
+    return any(
+        el.get("kind") == "actions" and any(BUILD_BUTTON.search(str(b.get("label") or "")) for b in el.get("buttons") or [])
+        for el in ui
+    )
+# //// Neoffice ▲▲▲
 
 
 # //// Neoffice ▼▼▼ — a question followed by a plain bullet list (2026-09-16). The bracketed and
@@ -422,7 +460,9 @@ def parse_card(text: str) -> dict | None:
     # //// Neoffice — a question and its bullets written ABOVE the card's buttons: the bullets are its choices. Left in the
     # //// text, present_ui bounced the card (one button under listed choices) and the raw text stayed, « [buttons:
     # //// Continuer] » on screen (13.11, osiris).
-    if not any(el.get("kind") == "choices" for el in ui):
+    # //// a recap's list (« Langue : français », « Pages : … ») is what the site will be, never choices (18.11)
+    recap = _is_recap(ui)
+    if not recap and not any(el.get("kind") == "choices" for el in ui):
         listed = _listed_above(lead)
         if listed:
             lead, element = listed
@@ -433,7 +473,8 @@ def parse_card(text: str) -> dict | None:
     # a card with inputs or multi-select needs a submit button; the model's own is used first
     if not any(el.get("kind") == "actions" for el in ui):
         ui.append({"kind": "actions", "buttons": [{"label": "Continue"}]})
-    return {"text": lead[:600] or "…", "ui": ui}
+    # //// a recap is the card's whole text: cut at 600 signs, the recap of 18.11 (983 signs) lost its logo, photos and positioning lines
+    return {"text": lead[: 3000 if recap else 600] or "…", "ui": ui}
 
 
 def materialise_text_card(ctx, text: str) -> bool:
