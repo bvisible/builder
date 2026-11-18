@@ -177,6 +177,16 @@ def forms_for_assistant(profile: str | None = None) -> list[dict]:
 # -- the booking and sign-up forms the assistant connects --------------------------------------------------
 
 
+# //// Neoffice — the words a connected form shows on its button, in the language of the page that carries it (2026-11-18): they were
+# //// English on every site. The script is shared by the pages of every site, so the page chooses them by its `<html lang>`.
+FORM_WORDS = {
+	"fr": {"sending": "Envoi en cours…", "thanks": "Merci !", "again": "Réessayer"},
+	"en": {"sending": "Sending…", "thanks": "Thank you!", "again": "Try again"},
+	"de": {"sending": "Wird gesendet…", "thanks": "Danke!", "again": "Erneut versuchen"},
+	"it": {"sending": "Invio in corso…", "thanks": "Grazie!", "again": "Riprova"},
+}
+
+
 def guarded_form_script(selector: str, web_form: str, fieldnames: list, assistant: str = "") -> str:
 	"""The script that makes a connected form (booking, sign-up) send its fields.
 
@@ -188,6 +198,7 @@ def guarded_form_script(selector: str, web_form: str, fieldnames: list, assistan
 	selector_js = json.dumps(selector or "")
 	web_form_js = json.dumps(web_form)
 	fields_js = json.dumps(fieldnames)
+	words_js = json.dumps(FORM_WORDS, ensure_ascii=False)
 	return f"""// Auto-wired by {assistant or "the assistant"}: saves this form to the '{web_form}' Web Form, through the site's one door for forms.
 (function () {{
   // The script loads in <head>, before the form is parsed — wait for the DOM.
@@ -196,6 +207,8 @@ def guarded_form_script(selector: str, web_form: str, fieldnames: list, assistan
   function init() {{
   var SEL = {selector_js}, WF = {web_form_js}, FIELDS = {fields_js};
   var KEY = 'webform:' + WF;
+  var WORDS = {words_js};
+  var SAY = WORDS[(document.documentElement.lang || '').slice(0, 2).toLowerCase()] || WORDS.fr;
   var Q = 'input:not([type=hidden]):not([type=submit]):not([type=button]), select, textarea';
   function findForm() {{
     if (SEL) {{ var f = document.querySelector(SEL); if (f && f.querySelector(Q)) return f; }}
@@ -283,7 +296,7 @@ def guarded_form_script(selector: str, web_form: str, fieldnames: list, assistan
     if (!Object.keys(data).length) return false;
     busy = true;
     var label = btn && btn.textContent;
-    if (btn) {{ btn.textContent = 'Sending…'; btn.disabled = true; }}
+    if (btn) {{ btn.textContent = SAY.sending; btn.disabled = true; }}
     readyToken().then(function () {{
       var body = new URLSearchParams({{
         form: KEY,
@@ -299,13 +312,13 @@ def guarded_form_script(selector: str, web_form: str, fieldnames: list, assistan
       return fetch('/api/method/neoffice_theme.website_messages.submit', {{ method: 'POST', body: body, headers: headers, credentials: 'same-origin' }});
     }}).then(function (r) {{ if (!r.ok) throw r; return r.json(); }})
       .then(function () {{
-        if (btn) btn.textContent = 'Thank you!';
+        if (btn) btn.textContent = SAY.thanks;
         inputs.forEach(function (el) {{ if (el.type === 'checkbox' || el.type === 'radio') el.checked = false; else el.value = ''; }});
         touched = 0;
       }})
       .catch(function () {{
         busy = false;
-        if (btn) {{ btn.textContent = label || 'Try again'; btn.disabled = false; }}
+        if (btn) {{ btn.textContent = label || SAY.again; btn.disabled = false; }}
       }})
       .then(function () {{ if (captcha) captcha.reset(); fetchToken(); }});
     return false;
@@ -457,6 +470,27 @@ def adopt_contact_forms(
 			except Exception:  # noqa: BLE001 - the page keeps its plain contact form; the build goes on
 				frappe.log_error("Site form: a contact form was not adopted", frappe.get_traceback())
 	return changed
+
+
+# //// Neoffice — added (2026-11-18): the forms of a website that no page shows. A site rebuilt in another language gets its contact
+# //// form in that language and the former one stays, enabled, read by nobody (« Quote request » beside « Demande de devis »). The
+# //// build says them; whether to keep or delete one is the person's, never the build's (a form may be made before its page).
+def unused_forms(profile: str | None) -> list[dict]:
+	if not profile or not available():
+		return []
+	module = theme_module()
+	own = [row for row in module.list_forms(profile) if row.get("profile") == profile and row.get("enabled")]
+	if not own:
+		return []
+	pages = frappe.get_all(
+		"Builder Page", filters={"neo_website_profile": profile, "is_template": 0}, fields=["blocks", "draft_blocks"]
+	)
+	shown = " ".join(f"{p.blocks or ''} {p.draft_blocks or ''}" for p in pages)
+	return [
+		{"name": row["name"], "title": row.get("title") or row["name"]}
+		for row in own
+		if f'\\"{row["name"]}\\"' not in shown and f'"{row["name"]}"' not in shown
+	]
 
 
 def _equivalent_form(module, profile: str | None, signature: str) -> str | None:

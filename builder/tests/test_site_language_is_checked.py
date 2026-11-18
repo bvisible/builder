@@ -101,7 +101,105 @@ class TestTheSummarySaysWhatIsLeft(unittest.TestCase):
 		self.assertNotIn("Contact", line)
 		self.assertIn("never that the whole site is in French", line)
 
-	def test_nothing_left_says_nothing(self):
+	def test_nothing_left_is_said_with_what_was_read(self):
+		line = site_builder.foreign_language_line([{"title": "Accueil", "issues": []}], "French")
+		self.assertIn("read 1 page(s) and found no text in another language than French", line)
+
+	def test_nothing_read_says_nothing(self):
 		self.assertEqual(
-			site_builder.foreign_language_line([{"title": "Accueil", "issues": []}], "French"), ""
+			site_builder.foreign_language_line([{"title": "Accueil", "error": "no screenshot"}], "French"), ""
 		)
+		self.assertEqual(site_builder.foreign_language_line([], "French"), "")
+
+
+class TestWhatIsReusedFollowsTheLanguage(unittest.TestCase):
+	"""The parts a build reuses or writes without the model: they follow the site's language too."""
+
+	def test_the_site_language_is_set_before_the_first_page_is_written(self):
+		source = inspect.getsource(site_builder.build_site)
+		early = source.index("Site language set before the pages are written")
+		self.assertLess(early, source.index("_write_page("))
+		self.assertIn(
+			"if not building_part and profile and remember_site_language(profile, lang_code)", source
+		)
+
+	def test_a_plan_is_reused_only_in_its_own_language(self):
+		self.assertIn(
+			'plan_key = f"nora_site_plan::{profile or site_name}::{lang_code}"',
+			inspect.getsource(site_builder.build_site),
+		)
+
+	def test_a_page_says_its_site_language(self):
+		with (
+			patch.object(site_builder.frappe.db, "has_column", return_value=True),
+			patch.object(site_builder.frappe.db, "get_value", return_value="en"),
+		):
+			self.assertEqual(site_builder.page_language("A Site"), "en")
+		self.assertIsNone(site_builder.page_language(None))
+		self.assertIn("doc.language = language", inspect.getsource(site_builder._write_page))
+
+	def test_the_picture_still_to_make_is_described_in_the_site_language(self):
+		from builder.site_ai.nora import examples
+
+		self.assertEqual(examples.premises_alt("Contact", "French"), "Contact, les locaux de l’entreprise")
+		self.assertEqual(
+			examples.premises_alt("Kontakt", "German"), "Kontakt, die Räumlichkeiten des Unternehmens"
+		)
+		self.assertNotIn("the premises of the business", inspect.getsource(examples.rewrite))
+
+	def test_a_connected_form_speaks_the_page_language(self):
+		from builder import site_forms
+
+		script = site_forms.guarded_form_script(".form", "Booking", ["name", "email"], "Nora")
+		self.assertIn("document.documentElement.lang", script)
+		self.assertIn("Envoi en cours…", script)
+		self.assertIn("SAY.sending", script)
+		self.assertNotIn("'Sending…'", script)
+
+	def test_the_scripts_already_wired_are_rewritten_once(self):
+		from builder import site_forms
+		from builder.builder.patches import connected_forms_speak_the_page_language as patch_module
+
+		old = site_forms.guarded_form_script(".form", "Booking", ["name"], "Nora").replace(
+			"SAY.sending", "'Sending…'"
+		)
+		doc = SimpleNamespace(script=old, save=lambda **kwargs: None)
+		with (
+			patch.object(site_forms, "available", return_value=True),
+			patch.object(patch_module.frappe.db, "table_exists", return_value=True),
+			patch.object(patch_module.frappe, "get_all", return_value=["Save Booking submissions"]),
+			patch.object(patch_module.frappe, "get_doc", return_value=doc),
+		):
+			patch_module.execute()
+			self.assertIn("SAY.sending", doc.script)
+			again = doc.script
+			patch_module.execute()  # a script already speaking the page's language is left alone
+		self.assertEqual(doc.script, again)
+
+
+class TestTheFormsNoPageShows(unittest.TestCase):
+	def test_a_former_build_form_is_named_and_the_person_asked(self):
+		from builder import site_forms
+
+		module = SimpleNamespace(
+			list_forms=lambda profile: [
+				{"name": "quote-request", "title": "Quote request", "profile": "A Site", "enabled": 1},
+				{"name": "demande-de-devis", "title": "Demande de devis", "profile": "A Site", "enabled": 1},
+				{"name": "shared", "title": "Shared", "profile": None, "enabled": 1},
+			]
+		)
+		pages = [
+			SimpleNamespace(
+				blocks='[{"innerHTML": "{%- set site_form = \\"demande-de-devis\\" -%}"}]', draft_blocks=""
+			)
+		]
+		with (
+			patch.object(site_forms, "available", return_value=True),
+			patch.object(site_forms, "theme_module", return_value=module),
+			patch.object(site_forms.frappe, "get_all", return_value=pages),
+		):
+			unused = site_forms.unused_forms("A Site")
+			line = site_builder.unused_forms_line("A Site")
+		self.assertEqual(unused, [{"name": "quote-request", "title": "Quote request"}])
+		self.assertIn("« Quote request »", line)
+		self.assertIn("delete nothing yourself", line)

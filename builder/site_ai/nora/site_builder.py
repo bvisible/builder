@@ -763,6 +763,27 @@ def unlooked_line(unlooked: list[str]) -> str:
     )
 
 
+# //// Neoffice — added (2026-11-18): the forms of the site that no page shows (a former build's, in its language). Nora asks the person.
+def unused_forms_line(profile: str | None) -> str:
+    # ai_log is imported where it is used: it is not a name of this module (a NameError hid in a branch, 20.10)
+    from builder.site_ai.logging import ai_log
+
+    try:
+        from builder import site_forms
+
+        unused = site_forms.unused_forms(profile)
+    except Exception as e:
+        ai_log("warning", "Unused forms not listed", error=str(e)[:160])
+        return ""
+    if not unused:
+        return ""
+    names = ", ".join(f"« {f['title']} »" for f in unused)
+    return (
+        f"{len(unused)} form(s) of this site are shown on no page and still enabled (a former build's, maybe in another language): "
+        f"{names}. Tell the person and ask whether to keep or delete them; delete nothing yourself."
+    )
+
+
 # //// Neoffice — added (2026-11-18): the pages where the judge still reads text in another language than the site's (visual_check
 # //// LANGUAGE_CONTEXT), after the revisions. A site rebuilt in French kept English words a reused part had brought, and Nora told
 # //// the person all was in French: she can only say what she is told.
@@ -773,7 +794,13 @@ def foreign_language_line(reviews: list[dict], language: str) -> str:
         if texts:
             left.append(f"{review.get('title')} ({'; '.join(texts[:2])})")
     if not left:
-        return ""
+        read = [review for review in reviews or [] if not review.get("error")]
+        if not read:
+            return ""
+        return (
+            f"The visual check read {len(read)} page(s) and found no text in another language than {language} on them "
+            "(pages it could not read are said apart)."
+        )
     return (
         f"Text in another language than {language} remains on {len(left)} page(s): {', '.join(left)}. Say so to the person, "
         f"never that the whole site is in {language}, and offer to translate it with them in the editor."
@@ -2088,6 +2115,9 @@ def _write_page(page: dict, blocks: list, data_script: str, profile: str | None,
     # a page that carries its own description (the fixed legal pages: legal.description) keeps it over the one taken from its body
     description = page.get("description") or description
     scoped = frappe.db.has_column("Builder Page", "neo_website_profile")
+    # //// Neoffice — the page says the site's language (2026-11-18): `<html lang>` came from the Builder's setting, so a site built in
+    # //// English on a French instance said « fr » to browsers, screen readers and the words its forms choose by it
+    language = page_language(profile)
     if host_page and frappe.db.exists("Builder Page", host_page):
         name = host_page
         doc = frappe.get_doc("Builder Page", name)
@@ -2099,6 +2129,8 @@ def _write_page(page: dict, blocks: list, data_script: str, profile: str | None,
         doc.meta_description = description
         if scoped:
             doc.neo_website_profile = profile
+        if language:
+            doc.language = language
         doc.save(ignore_permissions=True)
     else:
         doc = frappe.new_doc("Builder Page")
@@ -2110,6 +2142,8 @@ def _write_page(page: dict, blocks: list, data_script: str, profile: str | None,
         doc.meta_description = description
         if scoped and profile:
             doc.neo_website_profile = profile
+        if language:
+            doc.language = language
         doc.insert(ignore_permissions=True)
         name = doc.name
     route = page["route"]
@@ -2146,6 +2180,13 @@ def _describe(blocks: list) -> str:
         return _describe_page(blocks) or ""
     except Exception:
         return ""
+
+
+# //// Neoffice — added (2026-11-18): the language a page of this site is written in, as its profile says (set at the start of a build)
+def page_language(profile: str | None) -> str | None:
+    if not profile or not frappe.db.has_column("Website Profile", "language"):
+        return None
+    return (frappe.db.get_value("Website Profile", profile, "language") or "").strip() or None
 
 
 def remember_site_language(profile: str | None, lang: str | None) -> bool:
@@ -2710,6 +2751,13 @@ def build_site(ctx, spec: dict) -> str:
     total = len(pages)
     _update_generation_status(job_id, {"status": "running", "progress": 0, "total_pages": total, "current_step": "Starting", "pages_created": [], "error": None, "site_name": site_name, "started_at": now()})
     ai_log("info", "=== NORA SITE BUILD STARTED ===", job_id=job_id, site_name=site_name, profile=profile, lang=lang_code, replace=replace_existing, pages=[p["title"] for p in pages])
+    # //// Neoffice — the site's language is the profile's from the start of a whole build (2026-11-18), not only at its end: the
+    # //// theme renders the forms, the includes and the chrome of a profile's pages in the profile's language, and each page is
+    # //// looked at while it is written. A site rebuilt in French was looked at with the English forms of its former build, and
+    # //// now that the judge reads the language, it would have sent pages back for words no writer can change.
+    if not building_part and profile and remember_site_language(profile, lang_code):
+        frappe.cache.delete_value("nt_website_profiles_by_host")
+        ai_log("info", "Site language set before the pages are written", profile=profile, lang=lang_code)
 
     # 2. the chrome basics
     config = _get_site_chrome_config(profile)
@@ -3132,7 +3180,9 @@ def build_site(ctx, spec: dict) -> str:
         # //// Neoffice — a rebuild of the same pages reuses the plan it already has (2026-09-17),
         # //// as it reuses the brief: six minutes of the strong model's thinking, kept 48 h. A
         # //// changed page list, or reuse_brief=False, thinks again.
-        plan_key = f"nora_site_plan::{profile or site_name}"
+        # //// Neoffice — the language is part of the key (2026-11-18): the plan's directions and section words were written in the
+        # //// language of its build, and a site rebuilt in another language reused the plan of the former one
+        plan_key = f"nora_site_plan::{profile or site_name}::{lang_code}"
         wanted_routes = sorted(p["route"] for p in pages)
         if spec.get("reuse_brief", True):
             try:
@@ -4200,6 +4250,9 @@ def build_site(ctx, spec: dict) -> str:
         lines.append(line)
     # //// Neoffice — see foreign_language_line
     if line := foreign_language_line(reviews, language):
+        lines.append(line)
+    # //// Neoffice — the forms no page shows any more, after a whole build (site_forms.unused_forms, 2026-11-18)
+    if not building_part and (line := unused_forms_line(profile)):
         lines.append(line)
     # //// Neoffice — and the real placement, photo by photo, so the assistant tells the user where each went and which were left out
     if library_all:

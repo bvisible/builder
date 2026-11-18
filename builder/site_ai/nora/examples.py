@@ -538,6 +538,20 @@ REWRITE_SYSTEM = (
 )
 
 
+# //// Neoffice — the alt of a picture still to make, when the model gave none, in the site's language (2026-11-18): it was an English
+# //// sentence on every site, and an alt is read (a screen reader, an image that does not load) and is what the picture is drawn from
+PREMISES = {
+    "French": "{title}, les locaux de l’entreprise",
+    "English": "{title}, the premises of the business",
+    "German": "{title}, die Räumlichkeiten des Unternehmens",
+    "Italian": "{title}, i locali dell’azienda",
+}
+
+
+def premises_alt(title, language: str) -> str:
+    return PREMISES.get(language, PREMISES["French"]).format(title=str(title or "").strip())
+
+
 def rewrite(blocks: list, page: dict, facts: str, language: str, model: str, photos: list[dict], notes: str = "", call=None) -> dict | None:
     """Every word and picture of an example page written again for the business, in place. `call(prompt, system)` returns a Rewrite (the
     model by default). Returns what was done: {texts, pictures, photos, made, emptied}; None when the model gave nothing (nothing changed)."""
@@ -621,7 +635,7 @@ def rewrite(blocks: list, page: dict, facts: str, language: str, model: str, pho
             continue
         w, h = _size(item["block"])
         attrs["src"] = PLACEHOLDER.format(w=w, h=h)
-        attrs["alt"] = str(getattr(chosen, "shows", "") or "").strip() or f"{page.get('title')}, the premises of the business"
+        attrs["alt"] = str(getattr(chosen, "shows", "") or "").strip() or premises_alt(page.get("title"), language)
         made += 1
     return {"texts": len(texts), "pictures": len(pictures), "photos": placed, "made": made, "emptied": emptied}
 
