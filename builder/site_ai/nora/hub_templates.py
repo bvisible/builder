@@ -81,8 +81,11 @@ def fetch() -> dict | None:
 
 
 def sample_language(language: str | None) -> str:
-	"""The language of the sample words for a site in this language: French for a French site, English for any other (the samples exist in two)."""
-	return "fr" if str(language or "").lower().startswith("fr") else "en"
+	"""The language of the sample words for a site in this language: its own among French, German and Italian, English for any other.
+
+	//// Neoffice — German and Italian added (2026-11-18): a site of those languages was shown English sample words in the editor's cards."""
+	code = str(language or "").lower()[:2]
+	return code if code in ("fr", "de", "it") else "en"
 
 
 def site_design() -> tuple[dict, dict] | None:
@@ -121,6 +124,9 @@ def design_signature(handles: dict, palette: dict, language: str) -> str:
 SHORT_SAMPLES = {
 	"fr": ("Détail", "Un détail", "Un court libellé", "Un libellé court et précis"),
 	"en": ("Detail", "A detail", "A short label", "A short and precise label"),
+	# //// Neoffice — German and Italian (2026-11-18), see sample_language
+	"de": ("Detail", "Ein Detail", "Ein kurzes Label", "Ein kurzes, präzises Label"),
+	"it": ("Dettaglio", "Un dettaglio", "Una breve etichetta", "Un'etichetta breve e precisa"),
 }
 MAX_WORDS = (
 	re.compile(r"(\d+)\s*(?:to|-|–|à)\s*(\d+)\s*(?:words|mots)", re.I),

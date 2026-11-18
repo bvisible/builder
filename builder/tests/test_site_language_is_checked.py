@@ -10,6 +10,8 @@ import unittest
 from types import SimpleNamespace
 from unittest.mock import patch
 
+import frappe
+
 from builder.site_ai.nora import site_builder, visual_check
 from builder.site_ai.schemas.page_critique import PageCritique
 
@@ -203,3 +205,214 @@ class TestTheFormsNoPageShows(unittest.TestCase):
 		self.assertEqual(unused, [{"name": "quote-request", "title": "Quote request"}])
 		self.assertIn("« Quote request »", line)
 		self.assertIn("delete nothing yourself", line)
+
+
+class TestTheTitlesAndTheFooterSpeakTheSiteLanguage(unittest.TestCase):
+	"""The titles came as the person's card showed them (in their language, or an example's), and the footer said the activity as
+	typed: the plan, which writes in the site's language, gives the menu's titles and the footer's sentence (2026-11-18)."""
+
+	def plan(self, **footer):
+		from builder.site_ai.nora import site_plan
+
+		return site_plan.SitePlan.model_validate(
+			{
+				"pages": [
+					{"route": "home", "title": "Accueil", "menu_title": "Home"},
+					{"route": "services", "title": "Services", "menu_title": "Services"},
+					{"route": "contact", "title": "Contact"},
+				],
+				**footer,
+			}
+		)
+
+	def test_the_plan_retitles_the_pages_in_the_site_language(self):
+		from builder.site_ai.nora import site_plan
+
+		pages = [
+			{"title": "Accueil", "route": "home"},
+			{"title": "Services", "route": "services"},
+			{"title": "Contact", "route": "contact"},
+		]
+		self.assertEqual({"Accueil": "Home"}, site_plan.titles_in_language(self.plan(), pages))
+		self.assertEqual(["Home", "Services", "Contact"], [p["title"] for p in pages])
+		self.assertEqual({}, site_plan.titles_in_language(None, pages))
+
+	def test_the_footer_sentence_comes_from_the_plan(self):
+		from builder.site_ai.nora import site_plan
+
+		self.assertEqual(
+			"Woodwork made to measure in Sion.",
+			site_plan.footer_line(self.plan(footer_line="  Woodwork made to measure\n in Sion. ")),
+		)
+		self.assertEqual("", site_plan.footer_line(self.plan()))
+		self.assertEqual("", site_plan.footer_line(None))
+
+	def test_the_plan_is_told_to_write_them_in_the_site_language(self):
+		from builder.site_ai.nora import site_plan
+
+		self.assertIn("menu_title and the footer_line are in", inspect.getsource(site_plan.plan_prompt))
+		self.assertIn("its menu_title in", inspect.getsource(site_plan.completion_prompt))
+
+	def test_the_build_uses_them_and_a_partial_build_keeps_its_footer(self):
+		source = inspect.getsource(site_builder.build_site)
+		self.assertLess(source.index("planner.titles_in_language(site"), source.index("_write_page("))
+		self.assertIn(
+			'footer_text = planner.footer_line(site["plan"]) or (None if building_part else activity)', source
+		)
+		self.assertEqual(2, source.count("apply_navigation(config, shown, site_type, footer_text,"))
+		self.assertIn(
+			'hasattr(config, "footer_description") and description is not None',
+			inspect.getsource(site_builder.apply_navigation),
+		)
+
+	def test_nora_passes_the_titles_in_the_site_language(self):
+		from builder.site_ai.nora import prompts, tools
+
+		self.assertIn(
+			"The titles in pages are the site's menu entries", inspect.getsource(prompts.site_playbook)
+		)
+		self.assertIn("in the site's `language`", inspect.getsource(tools))
+
+
+class TestAnExamplePageHasNoWordOfTheExampleLeft(unittest.TestCase):
+	"""A page laid from an example: its tooltips, labels and field hints were left in the example's words, and the client's photograph
+	was described in the instance's language (2026-11-18)."""
+
+	def blocks(self):
+		return [
+			{
+				"element": "section",
+				"blockName": "hero",
+				"children": [
+					{
+						"element": "h2",
+						"innerHTML": "Notre atelier",
+						"attributes": {"title": "Atelier de menuiserie"},
+					},
+					{
+						"element": "a",
+						"innerHTML": "Devis",
+						"attributes": {"aria-label": "Demander un devis gratuit"},
+					},
+					{
+						"element": "input",
+						"attributes": {"placeholder": "Votre nom", "aria-label": "{{ label }}"},
+					},
+					{"element": "button", "attributes": {"aria-label": "01"}},
+					{"element": "img", "attributes": {"src": "/files/example.jpg", "alt": "Un établi"}},
+				],
+			}
+		]
+
+	def test_the_worded_attributes_are_texts_to_write(self):
+		from builder.site_ai.nora import examples
+
+		texts, pictures = examples.slots(self.blocks())
+		worded = [(t["element"], t["html"]) for t in texts if t.get("attr")]
+		self.assertEqual(
+			[
+				("h2 title", "Atelier de menuiserie"),
+				("a aria-label", "Demander un devis gratuit"),
+				("input placeholder", "Votre nom"),
+			],
+			worded,
+		)
+		self.assertEqual(1, len(pictures))
+
+	def test_they_are_written_again_and_the_photo_described_in_the_site_language(self):
+		from builder.site_ai.nora import examples
+
+		blocks = self.blocks()
+		texts, _ = examples.slots(blocks)
+		words = {
+			"Notre atelier": "Our workshop",
+			"Atelier de menuiserie": "Joinery workshop",
+			"Devis": "Quote",
+			"Demander un devis gratuit": "Ask for a free quote",
+			"Votre nom": "",
+		}
+		answer = examples.Rewrite(
+			texts=[examples.NewText(id=t["id"], text=words[t["html"]]) for t in texts],
+			pictures=[
+				examples.NewPicture(id="p0", photo="/files/shop.jpg", shows="The shop seen from the street")
+			],
+		)
+		photos = [{"url": "/files/shop.jpg", "shows": "La boutique vue de la rue"}]
+		done = examples.rewrite(
+			blocks, {"title": "Home"}, "a joiner", "English", "m", photos, call=lambda prompt, system: answer
+		)
+		hero = blocks[0]["children"]
+		self.assertEqual("Joinery workshop", hero[0]["attributes"]["title"])
+		self.assertEqual("Ask for a free quote", hero[1]["attributes"]["aria-label"])
+		self.assertNotIn("placeholder", hero[2]["attributes"])  # no words came: the example's are not kept
+		self.assertEqual("{{ label }}", hero[2]["attributes"]["aria-label"])
+		self.assertEqual("The shop seen from the street", hero[4]["attributes"]["alt"])
+		self.assertEqual(1, done["photos"])
+
+
+class TestAHubBlockWritesItsLabels(unittest.TestCase):
+	def tree(self, **attrs):
+		return {
+			"el": "section",
+			"name": "s",
+			"style": {"backgroundColor": "{{ground.background}}", "padding": "4rem 0"},
+			"c": [
+				{"el": "h2", "name": "heading", "text": "WRITE heading: 4 to 8 words"},
+				{
+					"el": "a",
+					"name": "button",
+					"attrs": {"href": "{{cta_href}}", **attrs},
+					"text": "WRITE button: 2 to 4 words",
+				},
+			],
+		}
+
+	def errors(self, tree):
+		from builder.site_ai.nora import block_format
+
+		return block_format.lint(
+			tree, block_id="cta.test", kinds=["cta"], photos=0, form=False, motion="None"
+		)[0]
+
+	def test_a_label_or_a_tooltip_in_fixed_words_is_refused(self):
+		for attr in ("aria-label", "title"):
+			with self.subTest(attr):
+				self.assertTrue(
+					any("fixed words" in e for e in self.errors(self.tree(**{attr: "Open the menu"})))
+				)
+				self.assertEqual(
+					[], self.errors(self.tree(**{attr: "WRITE label: what the button does, 2 to 4 words"}))
+				)
+
+
+class TestThePagesABuildKept(unittest.TestCase):
+	def line(self, rows, written=frozenset()):
+		with (
+			patch.object(site_builder.frappe.db, "has_column", return_value=True),
+			patch.object(site_builder.frappe, "get_all", return_value=[frappe._dict(r) for r in rows]),
+		):
+			return site_builder.kept_pages_line("A Site", "fr", "French", set(written))
+
+	def test_a_kept_page_in_another_language_is_named(self):
+		line = self.line(
+			[
+				{"name": "p1", "page_title": "Accueil", "language": "fr"},
+				{"name": "p2", "page_title": "About", "language": "en"},
+				{"name": "p3", "page_title": "Old offer", "language": None},
+			]
+		)
+		self.assertIn("About (en)", line)
+		self.assertIn("not read for their language: Old offer", line)
+		self.assertNotIn("Accueil", line)
+		self.assertIn("never that the whole site is in French", line)
+
+	def test_the_pages_it_wrote_or_in_its_language_say_nothing(self):
+		self.assertEqual("", self.line([{"name": "p1", "page_title": "Accueil", "language": "fr"}]))
+		self.assertEqual(
+			"", self.line([{"name": "p2", "page_title": "About", "language": "en"}], written={"p2"})
+		)
+
+	def test_the_summary_carries_it(self):
+		self.assertIn(
+			"kept_pages_line(profile, lang_code, language,", inspect.getsource(site_builder.build_site)
+		)

@@ -807,6 +807,36 @@ def foreign_language_line(reviews: list[dict], language: str) -> str:
     )
 
 
+def kept_pages_line(profile: str | None, lang_code: str | None, language: str, written: set) -> str:
+    """The pages of the site this build left as they were (edits kept, a partial build), which the visual check did not read.
+
+    //// Neoffice — added (2026-11-18): a page kept from a former build in another language stayed so, and Nora said the site was in
+    its language. A page says the language it was written in (Builder Page.language, set at its writing since 18.11): one in another
+    language is named, one that says none was not checked, and Nora says so instead of claiming the whole site."""
+    if not profile or not lang_code or not frappe.db.has_column("Builder Page", "neo_website_profile"):
+        return ""
+    rows = frappe.get_all(
+        "Builder Page",
+        filters={"neo_website_profile": profile, "is_template": 0, "published": 1},
+        fields=["name", "page_title", "language"],
+        order_by="creation asc",
+    )
+    kept = [row for row in rows if row.name not in written]
+    if not kept:
+        return ""
+    own = lang_code.split("-")[0].lower()
+    other = [f"{row.page_title} ({row.language})" for row in kept if row.language and row.language.split("-")[0].lower() != own]
+    unknown = [row.page_title for row in kept if not row.language]
+    parts = []
+    if other:
+        parts.append(f"{len(other)} page(s) kept from before are written in another language than {language}: {', '.join(other[:6])}")
+    if unknown:
+        parts.append(f"{len(unknown)} page(s) kept from before were not read for their language: {', '.join(unknown[:6])}")
+    if not parts:
+        return ""
+    return "; ".join(parts) + f". Say so to the person, never that the whole site is in {language}, and offer to rebuild those pages in it."
+
+
 # //// Neoffice — added (2026-11-18): the logo among the person's pictures, as the vision read them (content_understanding flags
 # //// is_logo as suggested_slots "logo"). The « my images » button sends the logo with the photographs and says which is which nowhere.
 def is_seen_logo(row) -> bool:
@@ -2108,8 +2138,8 @@ def _page_model(ctx) -> str:
 def _write_page(page: dict, blocks: list, data_script: str, profile: str | None, host_page: str | None, description: str) -> tuple[str, str]:
     """Create (or refill the host page as) a published Builder Page. Returns (name, route)."""
     # compact_json lives in builder.utils (page_writer only re-exported it until upstream 1.38.0)
-    from builder.utils import compact_json
     from builder.api import _blocks_fingerprint
+    from builder.utils import compact_json
 
     payload = compact_json(blocks)
     # a page that carries its own description (the fixed legal pages: legal.description) keeps it over the one taken from its body
@@ -2429,7 +2459,7 @@ def menu_pages(created: list[dict], cta_url: str = "") -> list[dict]:
     return kept
 
 
-def apply_navigation(config, created: list[dict], site_type: str, description: str, profile: str | None, lang: str = "fr", site_name: str = "") -> None:
+def apply_navigation(config, created: list[dict], site_type: str, description: str | None, profile: str | None, lang: str = "fr", site_name: str = "") -> None:
     """Menu, footer and home page from the pages the SITE has (site_pages_for_menu), which is
     the pages this run built plus the published ones it left alone. Labels are translated into
     the site's language, not the operator's session."""
@@ -2476,7 +2506,8 @@ def apply_navigation(config, created: list[dict], site_type: str, description: s
             continue
         if hasattr(config, field):
             config.set(field, value)
-    if hasattr(config, "footer_description"):
+    # //// Neoffice — no description (None: a partial build without a plan) keeps the footer's sentence the site has (2026-11-18)
+    if hasattr(config, "footer_description") and description is not None:
         from builder.api import _shorten_for_footer
 
         config.footer_description = _shorten_for_footer(footer_blurb(description))
@@ -2565,8 +2596,6 @@ def build_site(ctx, spec: dict) -> str:
     from builder.ai import llm
     from builder.ai.block_codec import BlockCodec
     from builder.ai.page_writer import expand_page_yaml
-    # the YAML page prompt is ours since upstream 1.38.0 dropped Prompts.GENERATION_YAML (yaml_prompt.py)
-    from builder.site_ai.nora.yaml_prompt import GENERATION_YAML
     from builder.api import (
         SITE_TYPE_HEADER_FOOTER_DEFAULTS,
         _contact_context_prompt,
@@ -2607,6 +2636,9 @@ def build_site(ctx, spec: dict) -> str:
         stray_quotes,
     )
     from builder.site_ai.nora.typography import cap_font_sizes
+
+    # the YAML page prompt is ours since upstream 1.38.0 dropped Prompts.GENERATION_YAML (yaml_prompt.py)
+    from builder.site_ai.nora.yaml_prompt import GENERATION_YAML
 
     started = time.time()
     site_name = (spec.get("site_name") or "").strip()
@@ -3211,6 +3243,12 @@ def build_site(ctx, spec: dict) -> str:
             except Exception as e:
                 ai_log("warning", "Site plan step failed, the static plans apply", error=str(e)[:200])
     # //// Neoffice ▲▲▲
+    # //// Neoffice — the pages' titles and the footer's sentence in the site's language, as the plan wrote them (2026-11-18): the titles came
+    # //// as the person's card showed them, and the footer said the activity as typed. A partial build keeps the footer's sentence it has.
+    retitled = planner.titles_in_language(site["plan"], pages)
+    if retitled:
+        ai_log("info", "Page titles written in the site's language", titles=retitled)
+    footer_text = planner.footer_line(site["plan"]) or (None if building_part else activity)
     created, failed, cancelled = [], [], False
     # //// Neoffice — what the look decided (2026-09-16): the pages it refused, how many looks each
     # //// page took, what it measured on the chrome, and how many passed at first look
@@ -4034,7 +4072,7 @@ def build_site(ctx, spec: dict) -> str:
                 ai_log("warning", "Links to a held page not repointed", page=p["title"], error=str(e)[:160])
     # 6. menu, footer, home
     _progress(ctx, job_id, _("Menu, footer and home page"), 92, {"pages_created": created})
-    apply_navigation(config, shown, site_type, activity, profile, lang_code, site_name=site_name)
+    apply_navigation(config, shown, site_type, footer_text, profile, lang_code, site_name=site_name)
 
     # 7. the images: the client's own photographs first, drawings only for what is left
     # //// Neoffice ▼▼▼ — a client who supplies photographs wants THEM on the page, and a
@@ -4205,7 +4243,7 @@ def build_site(ctx, spec: dict) -> str:
     if any(h["name"] in hidden for h in held) and len([p for p in created if p["name"] not in hidden]) != len(shown):
         shown = [p for p in created if p["name"] not in hidden]
         try:
-            apply_navigation(config, shown, site_type, activity, profile, lang_code, site_name=site_name)
+            apply_navigation(config, shown, site_type, footer_text, profile, lang_code, site_name=site_name)
         except Exception as e:
             ai_log("warning", "Menu not rebuilt after the final pass", error=str(e)[:160])
 
@@ -4250,6 +4288,9 @@ def build_site(ctx, spec: dict) -> str:
         lines.append(line)
     # //// Neoffice — see foreign_language_line
     if line := foreign_language_line(reviews, language):
+        lines.append(line)
+    # //// Neoffice — the pages this build did not write, and their language (kept_pages_line)
+    if line := kept_pages_line(profile, lang_code, language, {made.get("name") for made in created}):
         lines.append(line)
     # //// Neoffice — the forms no page shows any more, after a whole build (site_forms.unused_forms, 2026-11-18)
     if not building_part and (line := unused_forms_line(profile)):

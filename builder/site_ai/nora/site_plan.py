@@ -87,6 +87,9 @@ class PlannedSection(BaseModel):
 class PlannedPage(BaseModel):
     route: str = Field(description="the page's route, exactly as given")
     title: str = Field(description="the page's title, exactly as given")
+    # //// Neoffice — the title the visitor reads, in the site's language (2026-11-18): the titles came as the person's card showed them, in
+    # //// the person's language or the example's, and a site written in English had « Accueil » and « Prestations » in its menu
+    menu_title: str = Field(default="", description="the page's title as the site's menu, footer and title band show it, in the site's language: the title given when it is already in that language, else its translation; one to four words")
     sections: list[PlannedSection] = Field(default_factory=list)
     notes: str = Field(default="", description="what the writer of this page must know that the sections do not say")
 
@@ -118,6 +121,8 @@ class SitePlan(BaseModel):
     interior_top: str = Field(default="", description="what every interior page opens with, the site's title band being drawn ABOVE it by the site: the shape of the first content section (never a hero, never an h1)")
     rhythm: str = Field(default="", description="section padding scale, the content's maximum width, the grid, how backgrounds alternate")
     logo_notes: str = Field(default="", description="what the logo imposes: its colours, the header background it reads on, whether the wordmark is wide or tall")
+    # //// Neoffice — the footer's sentence about the business, in the site's language (2026-11-18): it was the activity as the person typed it
+    footer_line: str = Field(default="", description="ONE sentence the footer says about the business, in the site's language, from the activity and the positioning (no fact they do not give), at most 160 characters")
     pages: list[PlannedPage] = Field(default_factory=list)
 
     @field_validator("pages", mode="before")
@@ -225,6 +230,8 @@ def plan_prompt(site: dict, brief, pages: list[dict], includes_by_route: dict[st
         "- The signature move is ONE device, described as CSS, inside its section: never a shape, a mark or a layer that leaves the section or the page.",
         "- Only facts the material gives. A section that would need a fact nobody gave (a price, a figure, a review, an opening hour) is not planned.",
         "- Copy is written in the site's language, in the client's words for categories and brands.",
+        # //// Neoffice — see PlannedPage.menu_title and SitePlan.footer_line
+        f"- Every page's menu_title and the footer_line are in {language}: a title given in another language is translated, one already in {language} is kept as it is.",
         # //// Neoffice — the one movement a section may have is the one its recipe carries (2026-10-30, the motion layer of theme_variables.html):
         # //// the catalogue says which recipes move, and the site draws them still where motion is off. The plan still invents none of its own.
         "- Everything reads at rest: no marquee, no auto-scrolling strip, no content that only appears on hover or on scroll, none of your own. The only movement a section may have is the one a recipe that says it moves carries, and that one rests where motion is off. A brand row is a static row of names or logos.",
@@ -256,7 +263,8 @@ def completion_prompt(plan: SitePlan, site: dict, brief, lacking: list[dict], in
     free = [p for p in photos if p.get("url") not in used]
     decided = [
         "THE PLAN OF THE SITE IS ALREADY DECIDED and must not change. Plan ONLY the pages listed under PAGES below, in the same hand, "
-        "and answer with `pages` only: one entry per listed page, each with its sections, its route and its title exactly as given.",
+        "and answer with `pages` only: one entry per listed page, each with its sections, its route and its title exactly as given, "
+        f"and its menu_title in {language}.",
         f"- art direction: {plan.direction}",
         f"- signature move, on every page: {plan.signature_move}",
         f"- every interior page opens with: {plan.interior_top}",
@@ -360,6 +368,29 @@ def plan_site(model: str, site: dict, brief, pages: list[dict], includes_by_rout
     except Exception as e:
         ai_log("warning", "Site plan not written, the static plans apply", model=model, error=str(e)[:200])
         return None
+
+
+def titles_in_language(plan: SitePlan | None, pages: list[dict]) -> dict[str, str]:
+    """Each page's title replaced, in place, by the one the plan wrote in the site's language (menu_title). Returns {old: new}.
+
+    //// Neoffice — added (2026-11-18): the titles the build received were the person's card's, in the person's language or the example's;
+    the plan, which writes in the site's language, gives the one the menu, the footer and the title band show."""
+    if plan is None:
+        return {}
+    changed = {}
+    # by its route alone: a page the plan gave a title without its sections (a cut answer) still has its title
+    titles = {(p.route or "").strip("/"): p.menu_title for p in plan.pages if p.menu_title}
+    for page in pages:
+        title = " ".join(str(titles.get((page.get("route") or "").strip("/")) or "").split())[:60]
+        if title and title != page.get("title"):
+            changed[page.get("title")] = title
+            page["title"] = title
+    return changed
+
+
+def footer_line(plan: SitePlan | None) -> str:
+    """The footer's sentence about the business, in the site's language, or "" (the activity is used then)."""
+    return " ".join(str(getattr(plan, "footer_line", "") or "").split()) if plan is not None else ""
 
 
 def page_of(plan: SitePlan | None, route: str) -> PlannedPage | None:

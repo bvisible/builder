@@ -45,11 +45,24 @@ class TestWhetherASiteAsked(unittest.TestCase):
 	def test_the_generators_switch_is_not_this_one(self):
 		self.assertFalse(T.enabled({"nora_hub_blocks": 1}))
 
-	def test_the_sample_words_are_french_for_a_french_site_and_english_for_any_other(self):
+	def test_the_sample_words_are_in_the_site_language_and_english_for_any_other(self):
+		# //// Neoffice — German and Italian too (2026-11-18): a German site's cards showed English sample words
 		self.assertEqual("fr", T.sample_language("fr"))
 		self.assertEqual("fr", T.sample_language("fr-CH"))
-		self.assertEqual("en", T.sample_language("de"))
+		self.assertEqual("de", T.sample_language("de"))
+		self.assertEqual("it", T.sample_language("it-CH"))
+		self.assertEqual("en", T.sample_language("es"))
 		self.assertEqual("en", T.sample_language(None))
+
+	def test_every_language_has_every_sample_role(self):
+		roles = set(T.section_recipes.SAMPLES["en"])
+		for language in ("fr", "de", "it"):
+			with self.subTest(language):
+				self.assertEqual(roles, set(T.section_recipes.SAMPLES[language]))
+				counts = [len(words.split()) for words in T.SHORT_SAMPLES[language]]
+				self.assertEqual((4, 1), (len(counts), counts[0]))
+				self.assertEqual(sorted(counts), counts)
+		self.assertEqual("Mehr erfahren", T.sample_for("WRITE link: 2 words", "de"))
 
 
 class TestABlockDrawn(unittest.TestCase):

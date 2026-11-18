@@ -384,6 +384,8 @@ def lay_example(found: dict, from_prefix: str, to_prefix: str, links: dict[str, 
 
 
 TAG = re.compile(r"<[^>]+>")
+# //// Neoffice — the attributes that carry words (slots): see slots
+WORDED_ATTRIBUTES = ("title", "aria-label", "placeholder")
 
 
 class NewText(BaseModel):
@@ -394,7 +396,7 @@ class NewText(BaseModel):
 class NewPicture(BaseModel):
     id: str = Field(description="the id of the picture, exactly as given")
     photo: str = Field(default="", description="the address of ONE of the client's photographs, copied exactly from the list, when one fits this place")
-    shows: str = Field(default="", description="when none of the client's photographs fits: what the photograph to make for this place shows, in the site's language, one sentence (it is the picture's alt text too)")
+    shows: str = Field(default="", description="in the site's language, one sentence: what the photograph in this place shows, the client's one you chose or, when none fits, the one to make (it is the picture's alt text)")
 
 
 class Rewrite(BaseModel):
@@ -415,6 +417,12 @@ def slots(blocks: list) -> tuple[list[dict], list[dict]]:
         inner = str(block.get("innerHTML") or "")
         if inner.strip() and "{%" not in inner and "{{" not in inner and TAG.sub("", inner).strip():
             texts.append({"block": block, "section": where, "element": element or "div", "html": inner})
+        # //// Neoffice — the words a visitor reads without seeing them on the page (2026-11-18): a tooltip, the label a screen reader says, a
+        # //// field's hint. They were left as the example wrote them, in its language and about its business
+        for attr in WORDED_ATTRIBUTES:
+            value = str((block.get("attributes") or {}).get(attr) or "")
+            if value.strip() and "{%" not in value and "{{" not in value and re.search(r"[^\W\d_]", value):
+                texts.append({"block": block, "section": where, "element": f"{element or 'div'} {attr}", "html": value, "attr": attr})
 
     def walk(node, where):
         if isinstance(node, dict):
@@ -519,8 +527,8 @@ def rewrite_prompt(texts: list[dict], pictures: list[dict], page: dict, facts: s
         lines += [
             "",
             "PICTURES of the example (id, section, what the example's picture showed). For each, give the address of ONE of the client's "
-            "photographs that fits this place (each at most once), else say in `shows` what the photograph to make shows for this business — "
-            "a place, premises, tools or products, never a person:",
+            "photographs that fits this place (each at most once), else the photograph to make for this business — a place, premises, tools or "
+            f"products, never a person; and say in `shows`, in {language}, what the photograph there shows (it is its alt text):",
             *[f"{p['id']} | {p['section'] or '-'} | {p['alt'] or '-'}" for p in pictures],
             "",
             "THE CLIENT'S PHOTOGRAPHS: "
@@ -619,6 +627,14 @@ def rewrite(blocks: list, page: dict, facts: str, language: str, model: str, pho
                 plain = plain.replace(mark, name)
             written = re.sub(r"\s{2,}", " ", plain).strip()
             emptied.append(f"number dropped: {_plain(item['html'])[:30]}")
+        if item.get("attr"):
+            # an attribute holds plain words: emptied, it goes (an empty label says nothing either)
+            attrs = item["block"].setdefault("attributes", {})
+            if written:
+                attrs[item["attr"]] = _plain(written)
+            else:
+                attrs.pop(item["attr"], None)
+            continue
         item["block"]["innerHTML"] = safe_text(written, item["html"]) if written else ""
     offered = {p["url"]: str(p.get("shows") or "").strip() for p in photos}
     used, placed, made = set(), 0, 0
@@ -628,8 +644,9 @@ def rewrite(blocks: list, page: dict, facts: str, language: str, model: str, pho
         photo = str(getattr(chosen, "photo", "") or "").strip()
         if photo in offered and photo not in used:
             attrs["src"] = photo
-            # the example's alt described the example's picture: the client's photograph is described by what it shows
-            attrs["alt"] = offered[photo] or str(getattr(chosen, "shows", "") or "").strip() or str(page.get("title") or "")
+            # the example's alt described the example's picture: the client's photograph is described by what it shows, in the site's
+            # language (the model's words; what the vision read is in the instance's language, used when the model gave none)
+            attrs["alt"] = str(getattr(chosen, "shows", "") or "").strip() or offered[photo] or str(page.get("title") or "")
             used.add(photo)
             placed += 1
             continue

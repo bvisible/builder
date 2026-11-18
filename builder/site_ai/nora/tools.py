@@ -286,7 +286,7 @@ generate_site = Tool(
             "differentiators": {"type": "string", "description": "What makes it different: positioning, tone, values, signature offer."},
             "pages": {
                 "type": "array",
-                "description": "The pages to build, in menu order. Each {title, route?, type?}; route and type are derived from the title when omitted.",
+                "description": "The pages to build, in menu order. Each {title, route?, type?}; route and type are derived from the title when omitted. Each title as the site's menu shows it, in the site's `language` (translate the titles the card showed in the user's language or an example's).",
                 "items": {
                     "type": "object",
                     "properties": {
@@ -405,8 +405,8 @@ def run_get_site_chrome(ctx, args: dict) -> str:
     import json
 
     from builder.hf_utils.chrome_api import get_chrome_settings
-    from builder.site_ai.nora.prompts import page_profile
     from builder.site_ai import components as catalogue
+    from builder.site_ai.nora.prompts import page_profile
     from builder.site_ai.nora.site_builder import available_includes
 
     profile = page_profile(ctx.page_id) or None
