@@ -190,7 +190,9 @@ def _shop_trail(context, current: str) -> list:
 	crumbs = [{"label": _("Home"), "url": "/"}, {"label": _("Shop"), "url": "/all-products"}]
 	parents = []
 	for parent in context.get("parents") or []:
-		label = str(parent.get("label") or parent.get("title") or parent.get("name") or "")
+		# //// Neoffice — a parent's label in the page's language: the portal's routes set « Invoices »,
+		# //// « Quotations », « Orders » in English (erpnext hooks), shown as is (neoffice-maintenance#2934).
+		label = _(str(parent.get("label") or parent.get("title") or parent.get("name") or ""))
 		route = str(parent.get("route") or parent.get("url") or "").strip("/")
 		if label and route not in _SHOP_LISTING_ROUTES and label.strip().lower() not in listing:
 			parents.append({"label": label, "url": "/" + route})
@@ -226,7 +228,8 @@ def _breadcrumbs(context, path: str, current: str) -> list:
 			label = parent.get("label") or parent.get("title") or parent.get("name")
 			route = parent.get("route") or parent.get("url") or ""
 			if label:
-				crumbs.append({"label": str(label), "url": "/" + str(route).lstrip("/")})
+				# //// Neoffice — in the page's language (« Invoices » of erpnext's routes, neoffice-maintenance#2934).
+				crumbs.append({"label": _(str(label)), "url": "/" + str(route).lstrip("/")})
 	else:
 		walked = []
 		for segment in [s for s in path.split("/") if s][:-1]:
