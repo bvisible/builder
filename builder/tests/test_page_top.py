@@ -129,11 +129,31 @@ class TestPageTop(unittest.TestCase):
 		]
 		context = frappe._dict(doc=frappe._dict(doctype="Website Item"), parents=parents)
 		trail = page_header._breadcrumbs(context, "products/t-shirt/coastline", "Coastline")
-		self.assertEqual([c["label"] for c in trail], [frappe._("Home"), frappe._("Shop"), "Products", "T-Shirt", "Coastline"])
+		self.assertEqual(
+			[c["label"] for c in trail],
+			[frappe._("Home"), frappe._("Shop"), "Products", "T-Shirt", "Coastline"],
+		)
 		self.assertEqual(trail[1]["url"], "/all-products")
 		listing = page_header._breadcrumbs(frappe._dict(), "all-products", frappe._("All Products"))
 		self.assertEqual([c["label"] for c in listing], [frappe._("Home"), frappe._("Shop")])
 		self.assertEqual(listing[-1]["url"], "")
+
+	def test_the_route_of_a_page_behind_a_route_rule_is_the_page_itself_never_a_parent(self):
+		"""/account-opening/<secret> read « Home / Account opening / Open your account »: the page's own route,
+		named in English from its address, before its title (2026-11-19)."""
+		context = frappe._dict(route="account-opening", parents=[])
+		trail = page_header._breadcrumbs(context, "account-opening/k3Y-s3cr3t", "Open your account")
+		self.assertEqual([c["label"] for c in trail], [frappe._("Home"), "Open your account"])
+		self.assertNotIn(
+			"/account-opening", [c["url"] for c in trail], "no crumb to a page that opens nothing"
+		)
+		# a parent before the page's route stays, and the parameters after it are no pages
+		deeper = frappe._dict(route="members/card", parents=[])
+		trail = page_header._breadcrumbs(deeper, "members/card/k3Y/2026", "Your card")
+		self.assertEqual([c["label"] for c in trail], [frappe._("Home"), "Members", "Your card"])
+		# a route the address does not start with changes nothing (erpnext's /orders/<name> opens « order »)
+		plain = page_header._breadcrumbs(frappe._dict(route="order"), "orders/SO-0001", "SO-0001")
+		self.assertEqual([c["label"] for c in plain], [frappe._("Home"), "Orders", "SO-0001"])
 
 	def test_the_band_says_when_it_prints_the_title(self):
 		"""The shop's product page hid its h1 under the band's and kept it in the markup."""
@@ -141,7 +161,9 @@ class TestPageTop(unittest.TestCase):
 		with patch.object(frappe.local, "page_header_route", "cart", create=True):
 			with patch.object(page_header, "settings", return_value=dict(page_header.DEFAULTS)):
 				self.assertEqual(page_header.band_draws(context), {"trail": True, "title": True})
-			with patch.object(page_header, "settings", return_value=dict(page_header.DEFAULTS, page_header_template="None")):
+			with patch.object(
+				page_header, "settings", return_value=dict(page_header.DEFAULTS, page_header_template="None")
+			):
 				self.assertEqual(page_header.band_draws(context), {"trail": False, "title": False})
 			# a page that opens on its own title draws its trail itself, under that title
 			own = frappe._dict(title="Cart", parents=[], page_opens_itself=True)
@@ -154,7 +176,9 @@ class TestPageTop(unittest.TestCase):
 		with patch.object(frappe.local, "page_header_route", "cart", create=True):
 			with patch.object(page_header, "settings", return_value=dict(page_header.DEFAULTS)):
 				self.assertTrue(page_header.band_draws_trail(context))
-			with patch.object(page_header, "settings", return_value=dict(page_header.DEFAULTS, show_breadcrumbs=0)):
+			with patch.object(
+				page_header, "settings", return_value=dict(page_header.DEFAULTS, show_breadcrumbs=0)
+			):
 				self.assertFalse(page_header.band_draws_trail(context))
 
 	def test_a_page_opening_on_its_content_keeps_the_band(self):
@@ -188,8 +212,14 @@ class TestPageTop(unittest.TestCase):
 		self.assertEqual(page_header._page_fonts(page(section(text("h2", "Plain")))), "")
 
 	def test_a_face_cannot_leave_its_declaration(self):
-		for family in ("Lora;background:url(//x.test/a.png)", "Lora}</style><script>", "expression(alert(1))"):
-			self.assertEqual(page_header._page_fonts(page(section(text("h2", "T", fontFamily=family)))), "", family)
+		for family in (
+			"Lora;background:url(//x.test/a.png)",
+			"Lora}</style><script>",
+			"expression(alert(1))",
+		):
+			self.assertEqual(
+				page_header._page_fonts(page(section(text("h2", "T", fontFamily=family)))), "", family
+			)
 		self.assertEqual(
 			page_header._page_fonts(page(section(text("h2", "T", fontFamily="var(--nt-font-heading)")))),
 			"--sph-heading-font:var(--nt-font-heading);",
@@ -210,7 +240,9 @@ class TestPageTop(unittest.TestCase):
 			patch.object(page_header, "_config", return_value=None),
 			patch.object(page_header, "settings", return_value=dict(page_header.DEFAULTS)),
 		):
-			self.assertIn('class="site-page-header', page_header.render_builder_page_header(doc, own_top=False))
+			self.assertIn(
+				'class="site-page-header', page_header.render_builder_page_header(doc, own_top=False)
+			)
 			# on its own, the page gets no band and no second title: its trail goes under its own title
 			auto = page_header.render_builder_page_header(doc)
 			self.assertNotIn("site-page-header", auto)
@@ -235,7 +267,9 @@ class TestPageTop(unittest.TestCase):
 			patch.object(page_header, "settings", return_value=dict(page_header.DEFAULTS)),
 		):
 			html = page_header.render_builder_page_header(doc)
-			own = page_header.render_builder_page_header(frappe._dict(route="services", page_title="Services", blocks=OWN_TOP, hide_page_header=1))
+			own = page_header.render_builder_page_header(
+				frappe._dict(route="services", page_title="Services", blocks=OWN_TOP, hide_page_header=1)
+			)
 		self.assertEqual(html.count("<h1"), 1)
 		self.assertIn('class="site-page-header__quiet"', html)
 		self.assertIn("clip:rect(0,0,0,0)", html)
@@ -244,16 +278,34 @@ class TestPageTop(unittest.TestCase):
 
 	def test_a_designed_top_page_draws_its_component_with_the_page_data(self):
 		"""The band as a component designed in the Builder: its title block is bound to page_title."""
-		component = json.dumps({
-			"blockId": "band", "element": "section", "baseStyles": {"padding": "48px 24px"},
-			"children": [{
-				"blockId": "title", "element": "h1", "innerHTML": "Designed title", "baseStyles": {},
-				"dynamicValues": [{"key": "page_title", "property": "innerHTML", "type": "key", "comesFrom": "dataScript"}],
-				"children": [],
-			}],
-		})
+		component = json.dumps(
+			{
+				"blockId": "band",
+				"element": "section",
+				"baseStyles": {"padding": "48px 24px"},
+				"children": [
+					{
+						"blockId": "title",
+						"element": "h1",
+						"innerHTML": "Designed title",
+						"baseStyles": {},
+						"dynamicValues": [
+							{
+								"key": "page_title",
+								"property": "innerHTML",
+								"type": "key",
+								"comesFrom": "dataScript",
+							}
+						],
+						"children": [],
+					}
+				],
+			}
+		)
 		doc = frappe._dict(route="services", page_title="Services <b>", blocks=CONTENT_FIRST)
-		settings = dict(page_header.DEFAULTS, page_header_template="Builder", page_header_component="Top Band")
+		settings = dict(
+			page_header.DEFAULTS, page_header_template="Builder", page_header_component="Top Band"
+		)
 		with (
 			patch.object(page_header, "_config", return_value=None),
 			patch.object(page_header, "settings", return_value=settings),
@@ -281,7 +333,12 @@ class TestPageTop(unittest.TestCase):
 		with patch.object(frappe.db, "get_value", side_effect=component_reader(flat)):
 			html = page_header.render_component_band(
 				"Top Band",
-				{"page_title": "Services", "page_subtitle": "", "breadcrumbs": [{"label": "Home", "url": "/"}, {"label": "Services", "url": ""}], "page_image": ""},
+				{
+					"page_title": "Services",
+					"page_subtitle": "",
+					"breadcrumbs": [{"label": "Home", "url": "/"}, {"label": "Services", "url": ""}],
+					"page_image": "",
+				},
 			)
 		self.assertIn("Services", html)
 		self.assertIn('<a href="/">Home</a>', html)
@@ -302,7 +359,10 @@ class TestPageTop(unittest.TestCase):
 	def test_a_frappe_page_band_carries_no_script(self):
 		"""frappe hoists a web template's <script> tags without their type: the trail's JSON-LD
 		ran as JavaScript on every page that went through the Site Header template."""
-		previous = (getattr(frappe.local, "page_header_route", None), getattr(frappe.local, "page_header_context", None))
+		previous = (
+			getattr(frappe.local, "page_header_route", None),
+			getattr(frappe.local, "page_header_context", None),
+		)
 		frappe.local.page_header_route = "shop/boards"
 		frappe.local.page_header_context = frappe._dict(title="Boards")
 		try:
@@ -318,11 +378,17 @@ class TestPageTop(unittest.TestCase):
 	def test_the_head_of_a_frappe_page_gets_the_trail(self):
 		from builder.overrides import site_chrome
 
-		previous = (getattr(frappe.local, "page_header_route", None), getattr(frappe.local, "page_header_context", None))
+		previous = (
+			getattr(frappe.local, "page_header_route", None),
+			getattr(frappe.local, "page_header_context", None),
+		)
 		frappe.local.page_header_route = "shop/boards"
 		try:
 			with (
-				patch("builder.hf_utils.header_footer.get_header_footer_config", return_value=frappe._dict(header_layout="Logo | Menu Center | Icons")),
+				patch(
+					"builder.hf_utils.header_footer.get_header_footer_config",
+					return_value=frappe._dict(header_layout="Logo | Menu Center | Icons"),
+				),
 				patch.object(page_header, "settings", return_value=dict(page_header.DEFAULTS)),
 			):
 				listing = frappe._dict(title="Boards", head_include="<meta name='x'>")
@@ -371,7 +437,9 @@ class TestPageTop(unittest.TestCase):
 		"""The title's accent is chosen for a size the trail does not have: gold under a gold title measured
 		2.74:1 against its pale ground, where small text needs 4.5:1 (2026-09-14)."""
 		# the line sets a colour of its own: the trail takes it, not the title's
-		coloured = page(section(text("h1", "What we do", color="#a67c00"), text("p", "From the market.", color="#222222")))
+		coloured = page(
+			section(text("h1", "What we do", color="#a67c00"), text("p", "From the market.", color="#222222"))
+		)
 		self.assertIn("color:#222222;", nav_of(self.placed(coloured, content="<h1>T</h1><p>x</p>")))
 		# it sets none: the trail inherits, which is what that line shows
 		plain = page(section(text("h1", "What we do", color="#a67c00"), text("p", "From the market.")))
@@ -402,7 +470,8 @@ class TestPageTop(unittest.TestCase):
 		band = self.band(CONTENT_FIRST)
 		self.assertIn("site-page-header--trail-below", band_classes(band))
 		self.assertLess(
-			band.index('<h1 class="site-page-header__title"'), band.index('<nav class="site-page-header__crumbs"')
+			band.index('<h1 class="site-page-header__title"'),
+			band.index('<nav class="site-page-header__crumbs"'),
 		)
 		page = self.placed(OWN_TOP)
 		self.assertLess(page.index("<h1"), page.index('<nav class="site-page-crumbs"'))
@@ -411,7 +480,8 @@ class TestPageTop(unittest.TestCase):
 		band = self.band(CONTENT_FIRST, breadcrumb_position=page_header.ABOVE_TITLE)
 		self.assertNotIn("site-page-header--trail-below", band_classes(band))
 		self.assertLess(
-			band.index('<nav class="site-page-header__crumbs"'), band.index('<h1 class="site-page-header__title"')
+			band.index('<nav class="site-page-header__crumbs"'),
+			band.index('<h1 class="site-page-header__title"'),
 		)
 		page = self.placed(OWN_TOP, breadcrumb_position=page_header.ABOVE_TITLE)
 		self.assertIn('<nav class="site-page-crumbs site-page-crumbs--above"', page)

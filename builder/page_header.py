@@ -19,11 +19,13 @@ a title.
 """
 
 import json
+
 # //// Neoffice — re: the colour allowlist added below (_COLOUR_RE).
 import re
 
 import frappe
 from frappe import _
+
 # //// Neoffice — escape_html: frappe's Jinja has no autoescape and this band is
 # //// rendered through `| safe`, so the title and subtitle printed raw markup.
 from frappe.utils import escape_html
@@ -54,7 +56,7 @@ BREADCRUMB_POSITIONS = (BELOW_TITLE, ABOVE_TITLE)
 DEFAULTS = {
 	"page_header_template": "Standard",
 	"page_header_background": "None",
-	"page_header_bg_color": "",     # empty: Tinted washes the primary colour
+	"page_header_bg_color": "",  # empty: Tinted washes the primary colour
 	"page_header_image": "",
 	"page_header_excluded_routes": "",
 	"show_breadcrumbs": 1,
@@ -66,6 +68,7 @@ DEFAULTS = {
 def _trail_below(config: dict) -> bool:
 	"""Whether the trail goes under the title, which is the default."""
 	return (config.get("breadcrumb_position") or BELOW_TITLE) != ABOVE_TITLE
+
 
 # Fills that put the title over something dark enough to need light text.
 _DARK_BACKGROUNDS = ("Image", "Solid")
@@ -83,9 +86,7 @@ _DARK_BACKGROUNDS = ("Image", "Solid")
 #
 # //// Neoffice — the inner column sits on the site grid with the header and the footer
 # //// (theme_variables.html, --container-*), at their thresholds: 24px then 16px without the grid tokens.
-_CSS = (
-	"<style>.site-page-header{border-bottom:1px solid var(--footer-border,rgba(0,0,0,0.08))}.site-page-header__inner{max-width:var(--container-width,1280px);margin:0 auto;padding:44px var(--container-padding,24px) 36px;font-family:var(--sph-body-font,inherit)}.site-page-header__crumbs{display:flex;flex-wrap:wrap;align-items:center;gap:6px;font-size:0.8125rem;color:var(--text-muted,var(--muted-color,#6b7280));margin-bottom:12px}.site-page-header--trail-below .site-page-header__crumbs{margin-bottom:0;margin-top:12px}.site-page-header__crumbs a{color:inherit;text-decoration:none}.site-page-header__crumbs a:hover{color:var(--primary-color,#111)}.site-page-header__sep{opacity:0.5}.site-page-header__title{font-size:clamp(1.9rem,1.2rem + 2.2vw,3rem);font-weight:var(--sph-heading-weight,700);font-family:var(--sph-heading-font,var(--heading-font,inherit));line-height:1.15;margin:0}.site-page-header__subtitle{max-width:62ch;margin:10px 0 0;color:var(--text-muted,var(--muted-color,#6b7280));line-height:1.6}.site-page-header--minimal .site-page-header__inner{padding-top:32px;padding-bottom:24px}.site-page-header--centered .site-page-header__inner{text-align:center}.site-page-header--centered .site-page-header__crumbs{justify-content:center}.site-page-header--centered .site-page-header__subtitle{margin-left:auto;margin-right:auto}.site-page-header__split{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:32px;align-items:end}.site-page-header__split .site-page-header__subtitle{margin-top:0}@media (max-width:768px){.site-page-header__split{grid-template-columns:1fr;gap:12px}}.site-page-header--bg-image .site-page-header__inner,.site-page-header--bg-solid .site-page-header__inner{padding-top:72px;padding-bottom:64px}.site-page-header--on-dark{border-bottom-color:transparent}.site-page-header--on-dark .site-page-header__title{color:#fff}.site-page-header--on-dark .site-page-header__subtitle,.site-page-header--on-dark .site-page-header__crumbs{color:rgba(255,255,255,0.82)}.site-page-header--on-dark .site-page-header__crumbs a:hover{color:#fff}.site-page-header--bg-tinted{border-bottom-color:transparent}@media (max-width:768px){.site-page-header .site-page-header__inner{padding-left:var(--container-padding-tablet,16px);padding-right:var(--container-padding-tablet,16px)}}@media (max-width:576px){.site-page-header .site-page-header__inner{padding-left:var(--container-padding-phone,16px);padding-right:var(--container-padding-phone,16px)}}</style>"
-)
+_CSS = "<style>.site-page-header{border-bottom:1px solid var(--footer-border,rgba(0,0,0,0.08))}.site-page-header__inner{max-width:var(--container-width,1280px);margin:0 auto;padding:44px var(--container-padding,24px) 36px;font-family:var(--sph-body-font,inherit)}.site-page-header__crumbs{display:flex;flex-wrap:wrap;align-items:center;gap:6px;font-size:0.8125rem;color:var(--text-muted,var(--muted-color,#6b7280));margin-bottom:12px}.site-page-header--trail-below .site-page-header__crumbs{margin-bottom:0;margin-top:12px}.site-page-header__crumbs a{color:inherit;text-decoration:none}.site-page-header__crumbs a:hover{color:var(--primary-color,#111)}.site-page-header__sep{opacity:0.5}.site-page-header__title{font-size:clamp(1.9rem,1.2rem + 2.2vw,3rem);font-weight:var(--sph-heading-weight,700);font-family:var(--sph-heading-font,var(--heading-font,inherit));line-height:1.15;margin:0}.site-page-header__subtitle{max-width:62ch;margin:10px 0 0;color:var(--text-muted,var(--muted-color,#6b7280));line-height:1.6}.site-page-header--minimal .site-page-header__inner{padding-top:32px;padding-bottom:24px}.site-page-header--centered .site-page-header__inner{text-align:center}.site-page-header--centered .site-page-header__crumbs{justify-content:center}.site-page-header--centered .site-page-header__subtitle{margin-left:auto;margin-right:auto}.site-page-header__split{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:32px;align-items:end}.site-page-header__split .site-page-header__subtitle{margin-top:0}@media (max-width:768px){.site-page-header__split{grid-template-columns:1fr;gap:12px}}.site-page-header--bg-image .site-page-header__inner,.site-page-header--bg-solid .site-page-header__inner{padding-top:72px;padding-bottom:64px}.site-page-header--on-dark{border-bottom-color:transparent}.site-page-header--on-dark .site-page-header__title{color:#fff}.site-page-header--on-dark .site-page-header__subtitle,.site-page-header--on-dark .site-page-header__crumbs{color:rgba(255,255,255,0.82)}.site-page-header--on-dark .site-page-header__crumbs a:hover{color:#fff}.site-page-header--bg-tinted{border-bottom-color:transparent}@media (max-width:768px){.site-page-header .site-page-header__inner{padding-left:var(--container-padding-tablet,16px);padding-right:var(--container-padding-tablet,16px)}}@media (max-width:576px){.site-page-header .site-page-header__inner{padding-left:var(--container-padding-phone,16px);padding-right:var(--container-padding-phone,16px)}}</style>"
 
 
 # Pages that carry their own opening and must not get a second one.
@@ -231,13 +232,23 @@ def _breadcrumbs(context, path: str, current: str) -> list:
 				# //// Neoffice — in the page's language (« Invoices » of erpnext's routes, neoffice-maintenance#2934).
 				crumbs.append({"label": _(str(label)), "url": "/" + str(route).lstrip("/")})
 	else:
+		# //// Neoffice — the address of a page a route rule opens carries its parameters after its own route
+		# //// (`/account-opening/<secret>` opens the page `account-opening`): that route is the page itself, never a
+		# //// parent, and what follows it is no page. The trail read « Home / Account opening / Open your account », the
+		# //// address's English name before the page's own title, linking to a page that opens nothing (2026-11-19). The
+		# //// page's title closes the trail below; a parent before its route stays.
+		own = str(context.get("route") or "").strip("/")
 		walked = []
 		for segment in [s for s in path.split("/") if s][:-1]:
 			walked.append(segment)
-			crumbs.append({
-				"label": segment.replace("-", " ").replace("_", " ").capitalize(),
-				"url": "/" + "/".join(walked),
-			})
+			if own and "/".join(walked) == own:
+				break
+			crumbs.append(
+				{
+					"label": segment.replace("-", " ").replace("_", " ").capitalize(),
+					"url": "/" + "/".join(walked),
+				}
+			)
 
 	home = _("Home")
 	if not crumbs or crumbs[0]["label"].strip().lower() not in {home.lower(), "home"}:
@@ -272,7 +283,9 @@ def _band_parts(context) -> tuple[str, str]:
 	if context.get("show_page_header") is False:
 		return "", ""
 
-	path = (getattr(frappe.local, "page_header_route", None) or (frappe.request.path if frappe.request else "")).strip("/")
+	path = (
+		getattr(frappe.local, "page_header_route", None) or (frappe.request.path if frappe.request else "")
+	).strip("/")
 	if _is_excluded(path, _excluded_routes(config)):
 		return "", ""
 
@@ -348,9 +361,7 @@ def _band_parts(context) -> tuple[str, str]:
 			# //// Neoffice — escaped (see the marker above `crumbs`).
 			"title": escape_html(title),
 			"subtitle": escape_html(context.get("page_header_subtitle") or ""),
-			"breadcrumbs": [
-				{"label": escape_html(c["label"]), "url": escape_html(c["url"])} for c in crumbs
-			],
+			"breadcrumbs": [{"label": escape_html(c["label"]), "url": escape_html(c["url"])} for c in crumbs],
 		},
 	), seo
 
@@ -456,7 +467,8 @@ def band_draws(context) -> dict:
 	return {
 		"trail": 'class="site-page-header__crumbs"' in band,
 		# a designed band (template Builder) is the component's own markup: its h1 counts as the title
-		"title": 'class="site-page-header__title"' in band or ("site-page-header--builder" in band and "<h1" in band),
+		"title": 'class="site-page-header__title"' in band
+		or ("site-page-header--builder" in band and "<h1" in band),
 	}
 
 
@@ -544,7 +556,11 @@ def _first_section(blocks):
 	"""The first section a visitor sees: the first shown child of the body block Builder roots
 	every page on (or the first shown top-level block of a tree without one)."""
 	tree = _page_tree(blocks)
-	if len(tree) == 1 and isinstance(tree[0], dict) and "body" in (tree[0].get("originalElement"), tree[0].get("element")):
+	if (
+		len(tree) == 1
+		and isinstance(tree[0], dict)
+		and "body" in (tree[0].get("originalElement"), tree[0].get("element"))
+	):
 		tree = tree[0].get("children") or []
 	for block in tree:
 		if not isinstance(block, dict) or block.get("element") in _INVISIBLE:
@@ -677,10 +693,7 @@ def render_builder_page_header(doc=None, own_top=None) -> str:
 	if _is_home(route):
 		return ""
 
-	title = (
-		(doc.get("page_title") if hasattr(doc, "get") else getattr(doc, "page_title", ""))
-		or ""
-	)
+	title = (doc.get("page_title") if hasattr(doc, "get") else getattr(doc, "page_title", "")) or ""
 	if not title:
 		return ""
 	# //// Neoffice — the band writes the page's title and subtitle in the language of the request (builder/translation.py)
@@ -843,7 +856,7 @@ def _title_and_rules(blocks):
 				while index + 1 + rules < len(children) and _is_rule(children[index + 1 + rules]):
 					rules += 1
 				line = None
-				for after in children[index + 1 + rules:]:
+				for after in children[index + 1 + rules :]:
 					line = _first_text(after)
 					if line is not None:
 						break
@@ -870,7 +883,9 @@ def _crumbs_style(title, line) -> str:
 	"""
 	styles = (title.get("baseStyles") or {}) if isinstance(title, dict) else {}
 	source = line if isinstance(line, dict) else title
-	colour = _colour(str(((source.get("baseStyles") or {}) if isinstance(source, dict) else {}).get("color") or ""))
+	colour = _colour(
+		str(((source.get("baseStyles") or {}) if isinstance(source, dict) else {}).get("color") or "")
+	)
 	align = _CRUMBS_ALIGN.get(str(styles.get("textAlign") or "").strip().lower())
 	return (f"color:{colour};" if colour else "") + (f"justify-content:{align};" if align else "")
 
@@ -975,6 +990,7 @@ def default_band_block(prefix: str = "") -> dict:
 	"""The top page a site starts from when it designs its own: the trail, the title and the subtitle of
 	the page, bound to the band's data and set in the site's tokens. The trail is a Jinja loop in the
 	block's text, the way the Builder's shortcodes are written."""
+
 	def token(name: str, fallback: str) -> str:
 		return f"var(--{prefix}-{name})" if prefix else fallback
 
@@ -982,9 +998,9 @@ def default_band_block(prefix: str = "") -> dict:
 		return frappe.generate_hash(length=10)
 
 	trail = (
-		"{% for crumb in breadcrumbs %}{% if not loop.first %}<span aria-hidden=\"true\"> / </span>{% endif %}"
-		"{% if crumb.url %}<a href=\"{{ crumb.url }}\">{{ crumb.label }}</a>"
-		"{% else %}<span aria-current=\"page\">{{ crumb.label }}</span>{% endif %}{% endfor %}"
+		'{% for crumb in breadcrumbs %}{% if not loop.first %}<span aria-hidden="true"> / </span>{% endif %}'
+		'{% if crumb.url %}<a href="{{ crumb.url }}">{{ crumb.label }}</a>'
+		'{% else %}<span aria-current="page">{{ crumb.label }}</span>{% endif %}{% endfor %}'
 	)
 	text = {"color": token("text", "#111111"), "fontFamily": token("font-body", "inherit")}
 	return {
@@ -992,43 +1008,97 @@ def default_band_block(prefix: str = "") -> dict:
 		"element": "section",
 		"blockName": "top-page",
 		"baseStyles": {
-			"display": "flex", "flexDirection": "column", "width": "100%", "paddingTop": "56px",
-			"paddingBottom": "48px", "background": token("background", "#ffffff"),
+			"display": "flex",
+			"flexDirection": "column",
+			"width": "100%",
+			"paddingTop": "56px",
+			"paddingBottom": "48px",
+			"background": token("background", "#ffffff"),
 		},
-		"children": [{
-			"blockId": uid(),
-			"element": "div",
-			"blockName": "top-page-inner",
-			# the column of the header and the footer (theme_variables.html): the width and the gutter on
-			# the same box, down to the phone. The gutter on the outer section put the text 24px left of
-			# the logo (2026-09-14).
-			"baseStyles": {
-				"display": "flex", "flexDirection": "column", "gap": "12px", "width": "100%",
-				"maxWidth": "var(--container-width, 1280px)", "marginLeft": "auto", "marginRight": "auto",
-				"paddingLeft": "var(--container-padding, 24px)", "paddingRight": "var(--container-padding, 24px)",
-				"boxSizing": "border-box",
-			},
-			"mobileStyles": {
-				"paddingLeft": "var(--container-padding-phone, 16px)",
-				"paddingRight": "var(--container-padding-phone, 16px)",
-			},
-			"children": [
-				{"blockId": uid(), "element": "h1", "blockName": "title", "innerHTML": "Page title",
-				 "baseStyles": {"margin": "0", "fontSize": "clamp(2rem, 1.2rem + 2.4vw, 3.2rem)", "lineHeight": "1.1",
-				                "color": token("text", "#111111"), "fontFamily": token("font-heading", "inherit")},
-				 "dynamicValues": [{"key": "page_title", "property": "innerHTML", "type": "key", "comesFrom": "dataScript"}],
-				 "children": []},
-				# //// Neoffice — under the title, the default side of a trail (BELOW_TITLE)
-				{"blockId": uid(), "element": "nav", "blockName": "trail", "innerHTML": trail,
-				 "attributes": {"aria-label": "Breadcrumb"},
-				 "baseStyles": {**text, "fontSize": "13px", "opacity": "0.7"}, "children": []},
-				{"blockId": uid(), "element": "p", "blockName": "subtitle", "innerHTML": "One line under the title.",
-				 "baseStyles": {**text, "margin": "0", "maxWidth": "62ch", "fontSize": "17px", "lineHeight": "1.6", "opacity": "0.8"},
-				 "dynamicValues": [{"key": "page_subtitle", "property": "innerHTML", "type": "key", "comesFrom": "dataScript"}],
-				 "visibilityCondition": {"key": "page_subtitle", "comesFrom": "dataScript"},
-				 "children": []},
-			],
-		}],
+		"children": [
+			{
+				"blockId": uid(),
+				"element": "div",
+				"blockName": "top-page-inner",
+				# the column of the header and the footer (theme_variables.html): the width and the gutter on
+				# the same box, down to the phone. The gutter on the outer section put the text 24px left of
+				# the logo (2026-09-14).
+				"baseStyles": {
+					"display": "flex",
+					"flexDirection": "column",
+					"gap": "12px",
+					"width": "100%",
+					"maxWidth": "var(--container-width, 1280px)",
+					"marginLeft": "auto",
+					"marginRight": "auto",
+					"paddingLeft": "var(--container-padding, 24px)",
+					"paddingRight": "var(--container-padding, 24px)",
+					"boxSizing": "border-box",
+				},
+				"mobileStyles": {
+					"paddingLeft": "var(--container-padding-phone, 16px)",
+					"paddingRight": "var(--container-padding-phone, 16px)",
+				},
+				"children": [
+					{
+						"blockId": uid(),
+						"element": "h1",
+						"blockName": "title",
+						"innerHTML": "Page title",
+						"baseStyles": {
+							"margin": "0",
+							"fontSize": "clamp(2rem, 1.2rem + 2.4vw, 3.2rem)",
+							"lineHeight": "1.1",
+							"color": token("text", "#111111"),
+							"fontFamily": token("font-heading", "inherit"),
+						},
+						"dynamicValues": [
+							{
+								"key": "page_title",
+								"property": "innerHTML",
+								"type": "key",
+								"comesFrom": "dataScript",
+							}
+						],
+						"children": [],
+					},
+					# //// Neoffice — under the title, the default side of a trail (BELOW_TITLE)
+					{
+						"blockId": uid(),
+						"element": "nav",
+						"blockName": "trail",
+						"innerHTML": trail,
+						"attributes": {"aria-label": "Breadcrumb"},
+						"baseStyles": {**text, "fontSize": "13px", "opacity": "0.7"},
+						"children": [],
+					},
+					{
+						"blockId": uid(),
+						"element": "p",
+						"blockName": "subtitle",
+						"innerHTML": "One line under the title.",
+						"baseStyles": {
+							**text,
+							"margin": "0",
+							"maxWidth": "62ch",
+							"fontSize": "17px",
+							"lineHeight": "1.6",
+							"opacity": "0.8",
+						},
+						"dynamicValues": [
+							{
+								"key": "page_subtitle",
+								"property": "innerHTML",
+								"type": "key",
+								"comesFrom": "dataScript",
+							}
+						],
+						"visibilityCondition": {"key": "page_subtitle", "comesFrom": "dataScript"},
+						"children": [],
+					},
+				],
+			}
+		],
 	}
 
 
@@ -1051,7 +1121,6 @@ def clear_band_cache(doc, method=None) -> None:
 			return
 
 
-
 # //// Neoffice — the band goes after a navigation the page draws itself (neoffice-maintenance#2115). A page
 # //// whose menu is a block of its own (an imported page, a page from the first generator that drew its menu
 # //// with a web template) got the band printed before its content, so the title and the trail sat ABOVE the
@@ -1060,7 +1129,21 @@ def clear_band_cache(doc, method=None) -> None:
 _PAGE_ROOT = re.compile(r"<div\b[^>]*\bclass=[\"'][^\"']*\bbuilder-page-content\b[^>]*>", re.I)
 _OPAQUE = re.compile(r"<script\b.*?</script\s*>|<style\b.*?</style\s*>|<!--.*?-->", re.I | re.S)
 _START_TAG = re.compile(r"<([a-zA-Z][a-zA-Z0-9-]*)\b[^>]*>")
-_VOID_TAGS = {"area", "base", "br", "col", "embed", "hr", "img", "input", "link", "meta", "source", "track", "wbr"}
+_VOID_TAGS = {
+	"area",
+	"base",
+	"br",
+	"col",
+	"embed",
+	"hr",
+	"img",
+	"input",
+	"link",
+	"meta",
+	"source",
+	"track",
+	"wbr",
+}
 _CHROME = re.compile(r"<(?:header|nav)\b", re.I)
 _PAGE_TITLE = re.compile(r"<h1\b", re.I)
 
