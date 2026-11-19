@@ -19,6 +19,13 @@
 
 		{# Dropdown menu (for logged in users) #}
 		<div id="builder-user-dropdown" class="builder-user-header__dropdown" style="display: none;">
+			{#- //// Neoffice — a site that takes bookings online leads its signed-in customer to her appointments first (2026-11-19):
+			    what is delivered must be found from the home page. The link comes from the site's app (`site_my_bookings_link`,
+			    neoffice_theme), nothing when it is not installed or the site takes no bookings. -#}
+			{%- set neo_bookings = site_my_bookings_link() if site_my_bookings_link is defined else "" -%}
+			{%- if neo_bookings %}
+			<a href="{{ neo_bookings }}" class="builder-user-header__dropdown-item">{{ _("My bookings") }}</a>
+			{%- endif %}
 			<a href="/me" class="builder-user-header__dropdown-item">{{ _("My account") }}</a>
 			{#- //// Neoffice — orders and wishlist are a shop's (2026-10-26): the menu of a signed-in visitor of a showcase site (profile kind Showcase) holds neither -#}
 			{%- set neo_legal = site_legal() if site_legal is defined else {} -%}

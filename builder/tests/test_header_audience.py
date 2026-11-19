@@ -37,8 +37,12 @@ class TestButtonAudience(unittest.TestCase):
 
 	def test_an_explicit_choice_wins(self):
 		self.assertEqual(chrome(cta_url="/login", cta_audience="Everyone").get_cta_audience(), "everyone")
-		self.assertEqual(chrome(cta_url="/contact", cta_audience="Visitors only").get_cta_audience(), "visitors")
-		self.assertEqual(chrome(cta_url="/contact", cta_audience="Signed-in users only").get_cta_audience(), "signed-in")
+		self.assertEqual(
+			chrome(cta_url="/contact", cta_audience="Visitors only").get_cta_audience(), "visitors"
+		)
+		self.assertEqual(
+			chrome(cta_url="/contact", cta_audience="Signed-in users only").get_cta_audience(), "signed-in"
+		)
 
 	def test_the_button_data_carries_its_audience(self):
 		self.assertEqual(chrome(show_cta=1, cta_url="/login").get_cta_data()["audience"], "visitors")
@@ -64,8 +68,9 @@ class TestCartAudience(unittest.TestCase):
 	def test_a_site_is_b2b_by_its_kind_or_its_sign_in_gate(self):
 		doc = chrome()
 		for row, expected in (((None, 1), True), (("B2B", 0), True), (("B2C", 0), False), (None, False)):
-			with patch.object(frappe.local, "website_profile", "A site", create=True), patch.object(
-				frappe.db, "get_value", return_value=row
+			with (
+				patch.object(frappe.local, "website_profile", "A site", create=True),
+				patch.object(frappe.db, "get_value", return_value=row),
 			):
 				self.assertEqual(doc.is_b2b_site(), expected, row)
 		with patch.object(frappe.local, "website_profile", None, create=True):
@@ -75,12 +80,23 @@ class TestCartAudience(unittest.TestCase):
 class TestHeaderMarkup(unittest.TestCase):
 	def test_the_button_says_who_sees_it(self):
 		cta = {"text": "Request an account", "url": "/login", "style": "Primary", "audience": "visitors"}
-		self.assertIn('data-audience="visitors"', frappe.render_template(MACROS + "{{ render_cta(cta) }}", {"cta": cta}))
+		self.assertIn(
+			'data-audience="visitors"', frappe.render_template(MACROS + "{{ render_cta(cta) }}", {"cta": cta})
+		)
 		cta = {"text": "Contact", "url": "/contact", "style": "Primary", "audience": "everyone"}
-		self.assertNotIn("data-audience", frappe.render_template(MACROS + "{{ render_cta(cta) }}", {"cta": cta}))
+		self.assertNotIn(
+			"data-audience", frappe.render_template(MACROS + "{{ render_cta(cta) }}", {"cta": cta})
+		)
 
 	def test_a_b2b_cart_waits_for_the_sign_in(self):
-		icons = {"search": 0, "search_bar": 0, "user": 0, "wishlist": 0, "cart": 1, "cart_audience": "signed-in"}
+		icons = {
+			"search": 0,
+			"search_bar": 0,
+			"user": 0,
+			"wishlist": 0,
+			"cart": 1,
+			"cart_audience": "signed-in",
+		}
 		html = frappe.render_template(MACROS + "{{ render_icons(icons) }}", {"icons": icons})
 		self.assertIn('data-audience="signed-in"', html)
 
@@ -96,3 +112,21 @@ class TestHeaderMarkup(unittest.TestCase):
 		styles = template("header_styles.html")
 		self.assertIn("'.site-header__left', '.site-header__right'", styles)
 		self.assertIn("observer.observe(side)", styles)
+
+
+class TestTheAccountMenu(unittest.TestCase):
+	"""A site that takes bookings online leads its signed-in customer to « My bookings » first (2026-11-19): the link comes from
+	the site's app (`site_my_bookings_link`), and nothing is offered where it says none."""
+
+	def render(self, link):
+		return frappe.render_template(
+			template("components/user_header.html"), {"site_my_bookings_link": lambda: link}
+		)
+
+	def test_a_site_that_takes_bookings_leads_to_my_bookings_first(self):
+		menu = self.render("/my-bookings")
+		self.assertIn('href="/my-bookings"', menu)
+		self.assertLess(menu.index('href="/my-bookings"'), menu.index('href="/me"'))
+
+	def test_a_site_that_takes_no_bookings_offers_no_such_link(self):
+		self.assertNotIn("/my-bookings", self.render(""))
