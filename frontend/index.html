@@ -6,6 +6,18 @@
 		<meta name="viewport" content="width=device-width, initial-scale=1.0" />
 		<!-- <script src="https://cdn.tailwindcss.com"></script> -->
 		<title>Frappe Builder</title>
+		<!-- //// Neoffice — the accent of frappe-ui (its blue scale) is repainted with the Neoffice signal by one sheet
+		     //// that neoffice_theme serves to every Vue app. It replaces the block each app copied into src/index.css,
+		     //// which set RGB triplets where frappe-ui reads colours and so never applied (measured 23.11.2026).
+		     //// A script and not a <link>: the build would try to resolve a sheet another app serves. -->
+		<script>
+			(function () {
+				var l = document.createElement("link");
+				l.rel = "stylesheet";
+				l.href = "/assets/neoffice_theme/css/spa_accent.css";
+				document.head.appendChild(l);
+			})();
+		</script>
 	</head>
 	<body class="overscroll-none bg-surface-base no-scrollbar selection:bg-gray-500/30" style="scrollbar-width: auto;">
 		<div id="app"></div>
