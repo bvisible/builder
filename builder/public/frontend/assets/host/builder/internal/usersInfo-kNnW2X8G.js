@@ -1,1 +1,0 @@
-import{d as e,u as t}from"../../../TemplateGallery~65-ECMfXw0P.js";export{t as getUserInfo,e as getUsersInfo};

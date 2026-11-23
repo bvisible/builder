@@ -1,0 +1,1 @@
+import{t as e}from"../../../../../TemplateGallery~65-DMauBRYV.js";export{e as default};
