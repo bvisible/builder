@@ -19,8 +19,13 @@
    //// ({form, answers}), and the token comes with the name of the field only a script is shown. The forms
    //// written before them keep their eight names and the folding of the other questions into the message.
    ////
+   //// Loaded by a page that carries a form (builder_page.py) and by the footer of the site chrome when it carries the
+   //// contact window (footer.html, neoffice-maintenance#3336): a page may get it twice, and the second does nothing.
+   ////
    //// To remove: nothing to remove, there is no upstream counterpart. */
 (function () {
+  if (window.neoContactForm) return;
+
   // The names neoffice_theme.website_messages.submit knows: the eight of the plain form, and the four a form kept
   // as data adds (form, answers, elapsed, captcha). Anything else is a question of this template's own, and
   // travels inside the message.

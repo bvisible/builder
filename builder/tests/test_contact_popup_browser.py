@@ -49,6 +49,10 @@ def footer(**config):
 	return frappe.render_template("builder/templates/includes/header_footer/footer.html", context)
 
 
+RUNTIME = "/assets/builder/js/neo_contact_form.js"
+RUNTIME_SOURCE = read("public", "js", "neo_contact_form.js")
+
+
 def header_script():
 	"""The script the real header ships (the burger menu), as it is: header_styles.html holds one."""
 	scripts = re.findall(
@@ -76,7 +80,9 @@ HEADER = """
 """
 
 
-def page(body="", window=True, **config):
+def page(body="", window=True, runtime=False, **config):
+	"""A page of a site. The window brings its own runtime in the footer; a page that carries a form of its own loads
+	it as builder_page.py does (`runtime`), which on a page with both makes it load twice."""
 	return (
 		"<!doctype html><html lang='en'><head><meta charset='utf-8'><title>Test</title></head><body>"
 		+ HEADER
@@ -84,9 +90,9 @@ def page(body="", window=True, **config):
 		+ body
 		+ "</main><footer>"
 		+ (footer(**config) if window else "")
-		+ "</footer><script>"
-		+ read("public", "js", "neo_contact_form.js")
-		+ "</script><script>"
+		+ "</footer>"
+		+ (f"<script src='{RUNTIME}?v=1'></script>" if runtime else "")
+		+ "<script>"
 		+ header_script()
 		+ "</script></body></html>"
 	)
@@ -127,6 +133,8 @@ class TestContactPopupInABrowser(unittest.TestCase):
 				return route.fulfill(json={"message": {}})
 			if url.path == SUBMIT:
 				return route.fulfill(json={"message": "ok"})
+			if url.path == RUNTIME:
+				return route.fulfill(body=RUNTIME_SOURCE, content_type="application/javascript")
 			if url.path in pages:
 				return route.fulfill(body=pages[url.path], content_type="text/html")
 			return route.fulfill(status=404, body="")
@@ -231,7 +239,10 @@ class TestContactPopupInABrowser(unittest.TestCase):
 			tab = self.visit(
 				{
 					"/about": page(
-						body=body, window=window, contact_popup_success="Thanks, we will reply soon."
+						body=body,
+						window=window,
+						runtime=not window,
+						contact_popup_success="Thanks, we will reply soon.",
 					)
 				}
 			)
@@ -270,7 +281,8 @@ class TestContactPopupInABrowser(unittest.TestCase):
 			+ '" %}',
 			{},
 		)
-		tab = self.visit({"/about": page(body=own)})
+		# the page loads the runtime too, as a page with a form does: it is loaded twice and answers once
+		tab = self.visit({"/about": page(body=own, runtime=True)})
 		tab.click("#menu-contact")
 		self.assertEqual(1, self.open_windows(tab))  # the first window of the page answers the link
 		tab.keyboard.press("Escape")
@@ -283,6 +295,7 @@ class TestContactPopupInABrowser(unittest.TestCase):
 		tab.click("#menu-contact")
 		self.assertEqual(0, self.open_windows(tab))
 		self.assertEqual(HOST + "/about#contact", tab.url)  # the link does what a link does
+		self.assertEqual([], self.requests_to(RUNTIME))  # and no runtime was fetched for nothing
 
 	def test_the_header_script_is_the_one_the_test_plays(self):
 		"""The burger test above is faithful only while the header keeps these hooks."""

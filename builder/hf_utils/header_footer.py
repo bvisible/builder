@@ -237,10 +237,20 @@ def render_footer(config=None) -> str:
 				footer_columns[column] = []
 			footer_columns[column].append(link)
 
+	# //// Neoffice — the runtime of the contact window (footer.html, neoffice-maintenance#3336). builder_page.py loads
+	# //// it on the pages that carry a form, and the chrome is on pages that carry none, and on pages it does not render at
+	# //// all (the shop's): the window brings its runtime with it, at the version its content hashes to.
+	contact_form_script = None
+	if config.get("contact_popup"):
+		from builder.hooks import _asset_version
+
+		contact_form_script = f"/assets/builder/js/neo_contact_form.js?v={_asset_version('js/neo_contact_form.js')}"
+
 	return frappe.render_template(
 		"builder/templates/includes/header_footer/footer.html",
 		{
 			"config": config,
+			"contact_form_script": contact_form_script,
 			"template": config.footer_template,
 			"logo": logo,
 			"description": config.footer_description,

@@ -117,6 +117,26 @@ class TestContactPopup(unittest.TestCase):
 		page = frappe.render_template('{%- set contact_dialog = true -%}{% include "' + FORM + '" %}', {})
 		self.assertNotIn("data-neo-lazy", page)
 
+	def test_the_runtime_comes_with_the_window(self):
+		"""builder_page.py loads the script only on a page that carries a form: the chrome's window is on pages that carry none."""
+		html = render_footer()
+		self.assertRegex(html, r'<script src="/assets/builder/js/neo_contact_form\.js" defer></script>')
+		self.assertNotIn("neo_contact_form", render_footer(contact_popup=0))
+
+	def test_the_footer_of_the_chrome_gives_the_runtime_its_version(self):
+		from builder.hf_utils.header_footer import render_footer as render
+
+		doc = frappe.new_doc("Website Header Footer Variant")
+		doc.update(
+			{"website_profile": "E2E-contact-window-unsaved", "footer_template": "Simple", "contact_popup": 1}
+		)
+		self.assertRegex(
+			render(doc),
+			r'<script src="/assets/builder/js/neo_contact_form\.js\?v=[0-9a-f]{8}" defer></script>',
+		)
+		doc.contact_popup = 0
+		self.assertNotIn("neo_contact_form", render(doc))
+
 	def test_the_window_speaks_in_the_words_of_the_site(self):
 		html = window(
 			render_footer(

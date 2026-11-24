@@ -403,6 +403,9 @@
          contact_success = config.get("contact_popup_success") -%}
 {% include "builder/templates/includes/contact_form.html" %}
 {%- endwith -%}
+{#- the runtime comes with the window: builder_page.py loads it only on a page that carries a form, and this window is on
+    the pages that carry none (and on the shop's pages, which that file does not render). Loaded twice, it does nothing the second time. -#}
+<script src="{{ contact_form_script or '/assets/builder/js/neo_contact_form.js' }}" defer></script>
 {%- endif -%}
 {#- //// Neoffice — the two movements the stylesheet cannot do alone (2026-10-30, theme_variables.html "The motion layer"): a strip
     //// of words that drifts needs its words twice, and a figure that counts up needs to read its own number. Both are decoration:
