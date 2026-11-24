@@ -13996,3 +13996,43 @@ msgstr "Ses {0} formulaire(s) partent aussi à la corbeille ; les messages déj�
 #, python-brace-format
 msgid "The site « {0} » is not deleted, and nothing was removed: {1}"
 msgstr "Le site « {0} » n'est pas supprimé, et rien n'a été retiré : {1}"
+
+#: builder/builder/doctype/website_header_footer_config/website_header_footer_config.json
+#: builder/builder/doctype/website_header_footer_variant/website_header_footer_variant.json
+msgid "Contact Window"
+msgstr "Fenêtre de contact"
+
+#: builder/builder/doctype/website_header_footer_config/website_header_footer_config.json
+#: builder/builder/doctype/website_header_footer_variant/website_header_footer_variant.json
+msgid "Window Title"
+msgstr "Titre de la fenêtre"
+
+#: builder/builder/doctype/website_header_footer_config/website_header_footer_config.json
+#: builder/builder/doctype/website_header_footer_variant/website_header_footer_variant.json
+msgid "Window Text"
+msgstr "Texte de la fenêtre"
+
+#: builder/builder/doctype/website_header_footer_config/website_header_footer_config.json
+#: builder/builder/doctype/website_header_footer_variant/website_header_footer_variant.json
+msgid "Window Success Message"
+msgstr "Message de confirmation de la fenêtre"
+
+#: builder/builder/doctype/website_header_footer_config/website_header_footer_config.json
+#: builder/builder/doctype/website_header_footer_variant/website_header_footer_variant.json
+msgid "The site's contact form in a window, on every page, opened by a menu item whose URL is #contact (any link to #contact opens it). The window holds the form and nothing else: no e-mail, no phone, no address. The message reaches the site's inbox like the form of a page. Add the menu item yourself; a site with a Contact page keeps it."
+msgstr "Le formulaire de contact du site, affiché dans une fenêtre sur chaque page. La fenêtre s'ouvre depuis une ligne du menu dont l'adresse est #contact (tout lien vers #contact l'ouvre). Elle ne contient que le formulaire : ni e-mail, ni téléphone, ni adresse. Le message arrive dans la boîte de réception du site, comme celui du formulaire d'une page. Ajoutez vous-même la ligne du menu ; un site qui possède déjà une page Contact garde celle-ci."
+
+#: builder/builder/doctype/website_header_footer_config/website_header_footer_config.json
+#: builder/builder/doctype/website_header_footer_variant/website_header_footer_variant.json
+msgid "Leave empty for \"Contact us\"."
+msgstr "Laissez vide pour « Contactez-nous »."
+
+#: builder/builder/doctype/website_header_footer_config/website_header_footer_config.json
+#: builder/builder/doctype/website_header_footer_variant/website_header_footer_variant.json
+msgid "A sentence under the title, in the site's language. Example: Ask us anything about an order, we answer within a day."
+msgstr "Une phrase sous le titre, dans la langue du site. Exemple : Posez-nous vos questions sur une commande, nous répondons sous 24 heures."
+
+#: builder/builder/doctype/website_header_footer_config/website_header_footer_config.json
+#: builder/builder/doctype/website_header_footer_variant/website_header_footer_variant.json
+msgid "What the visitor reads once the message is sent. Leave empty for the form's own sentence."
+msgstr "Ce que le visiteur lit une fois le message envoyé. Laissez vide pour la phrase propre au formulaire."
