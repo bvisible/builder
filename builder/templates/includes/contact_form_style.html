@@ -221,6 +221,15 @@ html:has(.builder-contact-form__dialog[open]) {
 .builder-contact-form__close:focus-visible {
     border-color: currentColor;
 }
+/* //// Neoffice — the sentence under the title of the site chrome's window (contact_intro,
+   neoffice-maintenance#3336): in the window's ink, held close to the title it belongs to. */
+.builder-contact-form__bar:has(+ .builder-contact-form__intro) {
+    margin-bottom: 0.75rem;
+}
+.builder-contact-form .builder-contact-form__intro {
+    margin: 0 0 1.5rem;
+    line-height: 1.55;
+}
 /* //// Neoffice — the two steps (2026-10-15). Without JavaScript both fieldsets show and the form is
    the single page it always was; the script hides the second and adds the buttons. */
 .builder-contact-form fieldset.builder-contact-form__step {

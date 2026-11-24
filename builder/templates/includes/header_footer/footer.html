@@ -389,6 +389,21 @@
 })();
 </script>
 {%- endif -%}
+{#- //// Neoffice — the contact window of the site (neoffice-maintenance#3336): a shop asked for its contact form in a window
+    //// opened by a link of the menu (a menu item whose url is #contact), with no Contact page and none of its own details on
+    //// display. contact_popup on the chrome config draws the site's contact form here, on every page, in the window the form
+    //// already knows (contact_form.html, contact_dialog), and nothing else: not the e-mail, not the phone, not the address.
+    //// The message leaves by the road of the form of a page (neoffice_theme.website_messages.submit), the words are the
+    //// owner's (contact_popup_title, _text, _success), else the form's own, translated in the language of the request like
+    //// every text of this file. No button of its own: the menu's link opens it, as does any link to #contact on the page
+    //// (public/js/neo_contact_form.js). Off unless a site asks: nothing is drawn, and the footer is what it was. -#}
+{%- if config.get("contact_popup") -%}
+{%- with contact_dialog = true, contact_chrome = true, contact_button_text = "", contact_model = "simple",
+         contact_title = config.get("contact_popup_title"), contact_intro = config.get("contact_popup_text"),
+         contact_success = config.get("contact_popup_success") -%}
+{% include "builder/templates/includes/contact_form.html" %}
+{%- endwith -%}
+{%- endif -%}
 {#- //// Neoffice — the two movements the stylesheet cannot do alone (2026-10-30, theme_variables.html "The motion layer"): a strip
     //// of words that drifts needs its words twice, and a figure that counts up needs to read its own number. Both are decoration:
     //// without this script, or with reduced motion asked for, the strip is a centred row of wrapped words and the figure is the

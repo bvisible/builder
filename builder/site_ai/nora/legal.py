@@ -383,6 +383,9 @@ def uses_of(profile: str | None, site_type: str = "") -> dict:
 
 		config = _get_site_chrome_config(profile)
 		uses["newsletter"] = bool(config and (config.get("show_newsletter") or config.get("newsletter_popup")))
+		# //// Neoffice — the contact window of the chrome (neoffice-maintenance#3336) is a form no page holds: a site whose
+		# //// only form is that window still collects what its visitors write, and its privacy policy must say so.
+		uses["form"] = uses["form"] or bool(config and config.get("contact_popup"))
 	except Exception:
 		pass
 	return uses

@@ -97,6 +97,11 @@
   "newsletter_popup_consent",
   "newsletter_popup_success",
   "newsletter_popup_delay",
+  "contact_popup_section",
+  "contact_popup",
+  "contact_popup_title",
+  "contact_popup_text",
+  "contact_popup_success",
   "opening_hours_section",
   "show_opening_hours",
   "opening_hours_display",
@@ -744,6 +749,39 @@
    "label": "Popup Delay"
   },
   {
+   "fieldname": "contact_popup_section",
+   "fieldtype": "Section Break",
+   "label": "Contact Window"
+  },
+  {
+   "default": "0",
+   "description": "The site's contact form in a window, on every page, opened by a menu item whose URL is #contact (any link to #contact opens it). The window holds the form and nothing else: no e-mail, no phone, no address. The message reaches the site's inbox like the form of a page. Add the menu item yourself; a site with a Contact page keeps it.",
+   "fieldname": "contact_popup",
+   "fieldtype": "Check",
+   "label": "Contact Window"
+  },
+  {
+   "depends_on": "contact_popup",
+   "description": "Leave empty for \"Contact us\".",
+   "fieldname": "contact_popup_title",
+   "fieldtype": "Data",
+   "label": "Window Title"
+  },
+  {
+   "depends_on": "contact_popup",
+   "description": "A sentence under the title, in the site's language. Example: Ask us anything about an order, we answer within a day.",
+   "fieldname": "contact_popup_text",
+   "fieldtype": "Small Text",
+   "label": "Window Text"
+  },
+  {
+   "depends_on": "contact_popup",
+   "description": "What the visitor reads once the message is sent. Leave empty for the form's own sentence.",
+   "fieldname": "contact_popup_success",
+   "fieldtype": "Small Text",
+   "label": "Window Success Message"
+  },
+  {
    "fieldname": "opening_hours_section",
    "fieldtype": "Section Break",
    "label": "Opening Hours",
@@ -1157,7 +1195,7 @@
  "index_web_pages_for_search": 1,
  "issingle": 0,
  "links": [],
- "modified": "2026-11-08 16:00:00.000000",
+ "modified": "2026-11-24 17:30:00.000000",
  "modified_by": "Administrator",
  "module": "Builder",
  "name": "Website Header Footer Variant",

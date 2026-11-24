@@ -33,6 +33,21 @@
 {%- set cf_title = cf_button or _("Contact us") -%}
 {%- set cf_consent = consent_text if consent_text is defined and consent_text else "" -%}
 {%- set cf_phone_required = phone_required is defined and phone_required -%}
+{#- //// Neoffice — four more parameters, set by the site chrome and by nobody else (neoffice-maintenance#3336; they are
+    //// not in the catalogue, so a generated page cannot set them). The chrome draws this form in a window on every page,
+    //// opened by a link of the menu (footer.html, contact_popup of the chrome config):
+    ////   contact_chrome   this window belongs to the chrome. Its ids carry their own prefix, so a page may carry a window
+    ////                    of its own beside it; and it is bound when it first opens (data-neo-lazy), not when the page
+    ////                    loads, because the chrome is on EVERY page and a bound form takes a signed token and looks
+    ////                    for a captcha as soon as it is.
+    ////   contact_title    the window's title, what the owner wrote (default: the button's text, else "Contact us").
+    ////   contact_intro    a sentence under the title, what the owner wrote.
+    ////   contact_success  what the visitor reads once the message is sent (default: the form's own sentence).
+    //// What the owner wrote is escaped here, once; the texts of this file are ours and printed as they are. -#}
+{%- set cf_chrome = contact_chrome is defined and contact_chrome -%}
+{%- set cf_heading = (contact_title | e) if contact_title is defined and contact_title else cf_title -%}
+{%- set cf_intro = (contact_intro | e) if contact_intro is defined and contact_intro else "" -%}
+{%- set cf_sent = (contact_success | e) if contact_success is defined and contact_success else (_('Thank you, your message has been sent.') | e) -%}
 {#- //// Neoffice — contact_model says WHICH form this is (2026-10-17, neoffice-maintenance#1593).
     //// One shortcode, three forms: "simple" asks the three things every site needs, "steps" walks
     //// them in two, "questions" asks what the request is about, the budget and the timing before
@@ -43,23 +58,26 @@
 {%- set cf_steps = cf_model != "simple" -%}
 {%- set cf_questions = cf_model == "questions" -%}
 {#- a page may carry the form twice (a window and a contact section): the window's fields keep ids of their own -#}
-{%- set cf_id = "dialog_" if cf_dialog else "" -%}
+{%- set cf_id = "site_contact_" if cf_chrome else ("dialog_" if cf_dialog else "") -%}
 <div class="builder-contact-form{% if cf_dialog %} builder-contact-form--dialog{% endif %}">
     {%- if cf_dialog %}
     {%- if cf_button %}
     <button type="button" class="u-btn u-btn--primary builder-contact-form__open" data-contact-open>{{ cf_button }}</button>
     {%- endif %}
-    <dialog class="builder-contact-form__dialog" aria-labelledby="{{ cf_id }}contact_title">
+    <dialog class="builder-contact-form__dialog" aria-labelledby="{{ cf_id }}contact_title"{% if cf_intro %} aria-describedby="{{ cf_id }}contact_intro"{% endif %}{% if cf_chrome %} data-neo-lazy{% endif %}>
     <div class="builder-contact-form__panel">
     <div class="builder-contact-form__bar">
-        <h2 class="builder-contact-form__title" id="{{ cf_id }}contact_title">{{ cf_title }}</h2>
+        <h2 class="builder-contact-form__title" id="{{ cf_id }}contact_title">{{ cf_heading }}</h2>
         <button type="button" class="builder-contact-form__close" data-contact-close aria-label="{{ _('Close') | e }}">&times;</button>
     </div>
+    {%- if cf_intro %}
+    <p class="builder-contact-form__intro" id="{{ cf_id }}contact_intro">{{ cf_intro }}</p>
+    {%- endif %}
     {%- endif %}
     <form action="/api/method/neoffice_theme.website_messages.submit" method="POST" class="contact-form" data-neo-contact="1"
           data-legacy-action="/api/method/frappe.www.contact.send_message"
           data-token-url="/api/method/neoffice_theme.website_messages.issue_token"
-          data-sent="{{ _('Thank you, your message has been sent.') | e }}"
+          data-sent="{{ cf_sent }}"
           data-failed="{{ _('Your message could not be sent. Please check your email address and try again.') | e }}"
           data-throttled="{{ _('Too many messages have been sent. Please try again later.') | e }}"
           data-name-label="{{ _('Name') | e }}"
@@ -397,6 +415,15 @@ html:has(.builder-contact-form__dialog[open]) {
 .builder-contact-form__close:hover,
 .builder-contact-form__close:focus-visible {
     border-color: currentColor;
+}
+/* //// Neoffice — the sentence under the title of the site chrome's window (contact_intro,
+   neoffice-maintenance#3336): in the window's ink, held close to the title it belongs to. */
+.builder-contact-form__bar:has(+ .builder-contact-form__intro) {
+    margin-bottom: 0.75rem;
+}
+.builder-contact-form .builder-contact-form__intro {
+    margin: 0 0 1.5rem;
+    line-height: 1.55;
 }
 /* //// Neoffice — the two steps (2026-10-15). Without JavaScript both fieldsets show and the form is
    the single page it always was; the script hides the second and adds the buttons. */

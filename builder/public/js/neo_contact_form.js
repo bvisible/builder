@@ -536,18 +536,70 @@
     });
   };
 
-  // //// Neoffice — the form in a window (the include's contact_dialog, and the "in a window" block
-  // //// template). The first window of the page answers #contact: its own button, any link to
-  // //// #contact on the page, and a visit to the page's #contact from elsewhere. Closing it takes
-  // //// #contact off the address, so a reload does not open it again.
+  // //// Neoffice — the form in a window (the include's contact_dialog, the "in a window" block
+  // //// template, and the window of the site chrome, neoffice-maintenance#3336). The first window of
+  // //// the page answers #contact: any link to #contact on the page, and a visit to the page's
+  // //// #contact from elsewhere; a page that carries a window of its own AND the chrome's gets the
+  // //// one that comes first, never both stacked. A window's own button opens that window and no
+  // //// other. Closing it takes #contact off the address, so a reload does not open it again.
+  // //// The chrome is on every page, so its window is bound when it first opens (data-neo-lazy):
+  // //// a form bound at load takes a signed token and looks for a captcha whether anyone writes or not.
+  var answering = null;
+
+  // the places a link of the header may sit in, and where the focus goes when the window closes
+  // and the link is no longer there to take it: the burger menu and the "more" menu hide their links
+  var fallbackOf = function (opener) {
+    if (opener.closest(".site-header__mobile-menu"))
+      return document.querySelector(".site-header__burger");
+    var more = opener.closest(".site-nav__more");
+    return more ? more.querySelector(".site-nav__more-btn") : null;
+  };
+
+  // what a Tab can reach inside a window, in the order it walks: the controls a visitor sees (a step
+  // that is not the current one, and the field only a script fills, are out)
+  var reachable = function (dialog) {
+    return Array.prototype.filter.call(
+      dialog.querySelectorAll(
+        'a[href], button, input:not([type="hidden"]), textarea, select, [tabindex]',
+      ),
+      function (element) {
+        return (
+          !element.disabled &&
+          element.getAttribute("tabindex") !== "-1" &&
+          element.getClientRects().length > 0
+        );
+      },
+    );
+  };
+
   var bindDialog = function (dialog) {
     dialog.setAttribute("data-bound", "1");
-    var open = function () {
+    var answers = !answering;
+    if (answers) answering = dialog;
+    var wrapper = dialog.closest(".builder-contact-form");
+    var back = [];
+    var open = function (opener) {
       if (dialog.open) return;
       var status = dialog.querySelector(
         "[data-neo-status], .builder-contact-form__status",
       );
       if (status) status.hidden = true;
+      if (dialog.hasAttribute("data-neo-lazy")) {
+        hideHoneypots();
+        dialog
+          .querySelectorAll("form:not([data-bound])")
+          .forEach(function (form) {
+            bind(form);
+          });
+      }
+      back = [];
+      if (opener) {
+        back = [opener, fallbackOf(opener)];
+        // the burger menu covers the page: it steps aside for the window
+        var menu = opener.closest(".site-header__mobile-menu");
+        var shut = menu && menu.querySelector(".mobile-menu__close");
+        if (shut) shut.click();
+      }
       // the window focuses its first control, the close button: no keyboard springs up on a phone
       dialog.showModal();
     };
@@ -565,14 +617,17 @@
       function (event) {
         var target = event.target instanceof Element ? event.target : null;
         if (!target) return;
-        if (target.closest("[data-contact-open]")) {
-          open();
+        var button = target.closest("[data-contact-open]");
+        if (button) {
+          var owner = button.closest(".builder-contact-form");
+          if (!owner || !wrapper || owner === wrapper) open(button);
           return;
         }
+        if (!answers) return;
         var link = target.closest("a[href]");
         if (isContactLink(link)) {
           event.preventDefault();
-          open();
+          open(link);
         }
       },
       true,
@@ -586,6 +641,24 @@
     dialog.addEventListener("click", function (event) {
       if (event.target === dialog) dialog.close();
     });
+    // the page behind a modal window is inert, but a Tab from its last control still walks out to the
+    // browser and back: the window keeps the focus for itself, in both directions
+    dialog.addEventListener("keydown", function (event) {
+      if (event.key !== "Tab" || event.altKey || event.ctrlKey || event.metaKey)
+        return;
+      var controls = reachable(dialog);
+      if (!controls.length) return;
+      var first = controls[0];
+      var last = controls[controls.length - 1];
+      var active = document.activeElement;
+      if (event.shiftKey && (active === first || active === dialog)) {
+        event.preventDefault();
+        last.focus();
+      } else if (!event.shiftKey && active === last) {
+        event.preventDefault();
+        first.focus();
+      }
+    });
     dialog.addEventListener("close", function () {
       if (window.location.hash === "#contact") {
         history.replaceState(
@@ -594,18 +667,33 @@
           window.location.pathname + window.location.search,
         );
       }
+      // the link that opened it takes the focus back, else the button of the menu it sat in
+      back.some(function (element) {
+        if (!element || !element.isConnected) return false;
+        element.focus({ preventScroll: true });
+        return document.activeElement === element;
+      });
+      back = [];
     });
-    window.addEventListener("hashchange", function () {
+    if (answers) {
+      window.addEventListener("hashchange", function () {
+        if (window.location.hash === "#contact") open();
+      });
       if (window.location.hash === "#contact") open();
-    });
-    if (window.location.hash === "#contact") open();
+    }
   };
 
   // One listener per form and per window, however many times this runs: a page may carry the form
   // twice (a window and a section of its own), and a block may arrive after the page has loaded.
+  // A form in a window that waits for its first opening (data-neo-lazy) is left to bindDialog.
   var scan = function () {
-    var forms = document.querySelectorAll(
-      "form[data-neo-contact]:not([data-bound]), .builder-contact-form form:not([data-bound])",
+    var forms = Array.prototype.filter.call(
+      document.querySelectorAll(
+        "form[data-neo-contact]:not([data-bound]), .builder-contact-form form:not([data-bound])",
+      ),
+      function (form) {
+        return !form.closest("dialog[data-neo-lazy]");
+      },
     );
     if (forms.length) hideHoneypots();
     forms.forEach(bind);

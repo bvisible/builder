@@ -98,6 +98,11 @@ SIMPLE_FIELDS = (
 	"newsletter_popup_consent",
 	"newsletter_popup_success",
 	"newsletter_popup_delay",
+	# //// Neoffice — the contact window (footer.html, neoffice-maintenance#3336)
+	"contact_popup",
+	"contact_popup_title",
+	"contact_popup_text",
+	"contact_popup_success",
 	# //// Neoffice — the footer's opening-hours block (webshop provides the block itself)
 	"show_opening_hours",
 	"opening_hours_display",
