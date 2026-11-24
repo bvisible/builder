@@ -479,9 +479,10 @@ html:has(.builder-contact-form__dialog[open]) {
 }
 </style>
 
-{# //// Neoffice — the script that drove this form moved to public/js/neo_contact_form.js, loaded on
-   //// every website page by web_include_js (2026-10-17). The block templates an owner drops in the
-   //// editor (builder_block_template/contact_form_*) run on that same one, so the signed token, the
-   //// minimum delay, the hidden field, the steps and the fallback to the stock URL live in ONE place.
+{# //// Neoffice — the script that drove this form moved to public/js/neo_contact_form.js (2026-10-17). It is
+   //// not a web_include_js: a Builder page never goes through base.html, so builder_page.py loads it on a page whose
+   //// content holds a form, and the footer of the chrome loads it with the contact window (footer.html). The block
+   //// templates an owner drops in the editor (builder_block_template/contact_form_*) run on that same one, so the
+   //// signed token, the minimum delay, the hidden field, the steps and the fallback to the stock URL live in ONE place.
    //// This markup keeps its hooks: the form's data- attributes carry the texts and the two URLs, the
    //// fieldsets are [data-step], the window is .builder-contact-form__dialog. #}
