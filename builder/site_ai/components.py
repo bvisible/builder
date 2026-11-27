@@ -300,7 +300,13 @@ def catalogue() -> list[Component]:
 def has_data(component: Component, profile: str | None) -> bool | None:
 	"""Whether the component has anything to show on this site: True, False, or None when it
 	declares no check. A check that raises counts as nothing to show — the include would fail
-	the same way at render time."""
+	the same way at render time.
+
+	The check is read in three places: the generator (what to offer), the editor (the preview says
+	"nothing to show") and, since 2026-11-27, THE RENDERER (empty_includes.include_has_data: a page
+	that carries the component loses its block when the check says False). So it must answer "does
+	this component draw something on this site NOW", never "should the generator propose it": a
+	check that also asks for a switch the page does not need would take a working block off a page."""
 	if not component.data_check:
 		return None
 	try:

@@ -14,7 +14,13 @@ include_has_data), but a page written earlier, or by hand, still carries it, and
 be emptied after the page is written. So the renderer drops it as well (prune_for_render, in
 BuilderPage.get_context): each bare include whose record is empty, the short text-only
 blocks right before it that announce it, and every block the removal leaves with nothing to
-show. An include not listed in DATA_CHECKS, or one written with parameters, draws as before.
+show. An include written with parameters is read the same way (its {% set %} lines are skipped).
+
+Which includes are asked is decided in two places. The eight files of DATA_CHECKS, by file name.
+Any other component, by the `data_check` its own app declares in the catalogue (hooks.py
+`website_components`), matched on its whole path (SP1, G8). And an include whose template
+cannot be found at all, because its app was removed, counts as having nothing to show: see
+builder/missing_includes.py (SP1, G4).
 """
 
 import copy
@@ -23,6 +29,8 @@ import json
 import re
 
 import frappe
+
+from builder.missing_includes import report_missing_include, template_is_missing
 
 # a block whose whole text is one include tag, optionally preceded by the {% set %} parameters
 # that configure it. The parameters are a composition choice — a title, a limit — but what the
@@ -193,22 +201,45 @@ DATA_CHECKS = {
 
 def include_has_data(path: str, profile: str | None = None) -> bool | None:
 	"""Whether the include at `path` has something to show on this site: True or False for an
-	include listed in DATA_CHECKS, None for any other. A check that fails counts as nothing
-	to show: the app it reads is absent or broken, and the include would fail the same way."""
+	include listed in DATA_CHECKS, or for a component the catalogue holds at exactly this path
+	with a `data_check`; None for any other. A check that fails counts as nothing to show: the
+	app it reads is absent or broken, and the include would fail the same way.
+
+	//// Neoffice — the table comes first and is not touched (SP1, G8, 2026-11-27): it is keyed by
+	//// FILE NAME, and the eight files in it keep the decision they always had. Only a file the table
+	//// does not know goes on to the catalogue, so the component of any other app (a hotel's rooms, a
+	//// salon's services) is judged by the check its own app declared in hooks.py, the one the editor
+	//// and the generator already read."""
 	check = DATA_CHECKS.get(str(path or "").rsplit("/", 1)[-1])
 	if not check:
-		return None
+		return _catalogue_has_data(path, profile)
 	try:
 		return bool(check(profile))
 	except Exception:
 		return False
 
 
-def prune_for_render(blocks, profile: str | None = None):
+def _catalogue_has_data(path: str, profile: str | None = None) -> bool | None:
+	"""The answer of the `data_check` the catalogue declares for the component at `path`, matched by the
+	WHOLE path (two apps may ship a file of the same name); None when it holds none for it."""
+	try:
+		from builder.site_ai import components
+
+		entry = next((c for c in components.catalogue() if c.path == path), None)
+		if entry is None or not entry.data_check:
+			return None
+		return components.has_data(entry, profile)
+	except Exception:
+		# the catalogue could not be read: the include is drawn as it was before it was consulted
+		return None
+
+
+def prune_for_render(blocks, profile: str | None = None, page: str | None = None):
 	"""The blocks a page renders, without the includes that have nothing to show on this site
-	(prune_empty_includes). `blocks` as stored (JSON text) or parsed; returned untouched when
-	nothing goes, and on any error: this runs on every page view and must never be the reason
-	a page fails."""
+	(prune_empty_includes) and the ones whose template cannot be found (missing_includes: the
+	app that owns it is gone, and Jinja would take the whole page down). `blocks` as stored (JSON
+	text) or parsed; returned untouched when nothing goes, and on any error: this runs on every
+	page view and must never be the reason a page fails. `page` names the page in the Error Log."""
 	if not blocks or (isinstance(blocks, str) and "include" not in blocks):
 		return blocks
 	try:
@@ -217,7 +248,11 @@ def prune_for_render(blocks, profile: str | None = None):
 
 		def has_data(path):
 			if path not in checked:
-				checked[path] = include_has_data(path, profile)
+				if template_is_missing(path):
+					report_missing_include(path, page)
+					checked[path] = False
+				else:
+					checked[path] = include_has_data(path, profile)
 			return checked[path]
 
 		return data if prune_empty_includes(data, has_data) else blocks

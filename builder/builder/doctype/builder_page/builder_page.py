@@ -705,7 +705,10 @@ class BuilderPage(WebsiteGenerator):
 		# //// the page kept a label over an empty space (builder/empty_includes.py, 2026-09-13).
 		from builder.empty_includes import prune_for_render
 
-		blocks = prune_for_render(blocks, getattr(frappe.local, "website_profile", None))
+		# //// Neoffice — also the include whose template is gone (the app that owns it was removed): its block is
+		# //// left out, and the page's name goes to the check so the Error Log line says which page carries it
+		# //// (builder/missing_includes.py, SP1 G4). Nothing to undo when upstream grows the same guard.
+		blocks = prune_for_render(blocks, getattr(frappe.local, "website_profile", None), page=self.name)
 		# //// Neoffice — a filled button is drawn in the variant that reads on its section with the
 		# //// theme of this render (builder/site_ai/nora/buttons.py settle_for_render, 2026-09-13):
 		# //// the rule for the buttons' colour changed under pages written before it, and a primary
@@ -807,7 +810,13 @@ class BuilderPage(WebsiteGenerator):
 		# //// the page in the site chrome), so a page's own <body> would nest one inside another.
 		# //// Rewrite it into div.builder-page-content — which is also the anchor the tests scope
 		# //// to (36cbdc0b, re-applied while resolving merge 721cf013).
-		rendered_content = render_template(context.__content, context)  # nosemgrep
+		# //// Neoffice — an include of a template that cannot be found (an app removed from the site) turned the
+		# //// published route into an error page: frappe/utils/jinja.py makes a ValidationError of Jinja's
+		# //// TemplateNotFound. The tag goes before the render, whatever block carries it, and the incident is
+		# //// logged (builder/missing_includes.py, SP1 G4). Retire when upstream renders a missing include as empty.
+		from builder.missing_includes import drop_missing_includes
+
+		rendered_content = render_template(drop_missing_includes(context.__content, self.name), context)  # nosemgrep
 		# Replace <body> tags with <div> to avoid nested body elements
 		# when the template already provides a body tag
 		import re
