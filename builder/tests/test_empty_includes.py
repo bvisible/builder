@@ -235,10 +235,13 @@ class TestPruneForRender(unittest.TestCase):
 
 	def test_the_stored_page_is_pruned_as_its_records_say(self):
 		blocks = json.dumps([box(box(text("p", "Hours"), include(HOURS)), text("p", "Write to us"))])
-		with patch("builder.empty_includes.opening_hours_configured", return_value=False):
-			self.assertEqual(texts(prune_for_render(blocks)), ["Write to us"])
-		with patch("builder.empty_includes.opening_hours_configured", return_value=True):
-			self.assertIs(prune_for_render(blocks), blocks)
+		# The records decide here, not the app: the opening hours' template belongs to webshop, which the CI's site does not
+		# have, and since a28d6cb0 a template that cannot be found is pruned first (missing_includes).
+		with patch("builder.empty_includes.template_is_missing", return_value=False):
+			with patch("builder.empty_includes.opening_hours_configured", return_value=False):
+				self.assertEqual(texts(prune_for_render(blocks)), ["Write to us"])
+			with patch("builder.empty_includes.opening_hours_configured", return_value=True):
+				self.assertIs(prune_for_render(blocks), blocks)
 
 	def test_a_failure_leaves_the_page_as_it_was(self):
 		blocks = json.dumps([box(text("p", "Hours"), include(HOURS))])
